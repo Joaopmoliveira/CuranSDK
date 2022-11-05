@@ -1,0 +1,8 @@
+add_subdirectory(lib_asio)
+add_subdirectory(lib_GeometricTools)
+add_subdirectory(lib_glfw)
+add_subdirectory(lib_ITK)
+add_subdirectory(lib_nlohmann_json)
+add_subdirectory(lib_OpenIGTLink)
+add_subdirectory(lib_sigslot)
+add_subdirectory(lib_spdlog)
