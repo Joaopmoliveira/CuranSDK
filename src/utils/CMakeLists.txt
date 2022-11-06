@@ -11,7 +11,7 @@ else()
 		INTERFACE 	${SKIA_SOURCE_DIR})
 endif()
 
-add_executable(Curan mainfile.cpp)
+add_executable(Curan app.cpp UserInterface.h UserInterface.cpp DkLibrary.cpp DkLibrary.h DkUtilities.cpp DkUtilities.h PkLibrary.h PkLibrary.cpp stb_image.h CkLibrary.cpp CkLibrary.h)
 
 target_include_directories(Curan PUBLIC $<TARGET_PROPERTY:skia,INTERFACE>)
 

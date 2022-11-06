@@ -329,8 +329,8 @@ namespace curan
 		pixels unto the screen.
 		*/
 		class Widget {
-			SkRect widget_position = SkRect::MakeWH(1, 1);
-			Page* parent = nullptr;
+			SkRect widget_position = SkRect::MakeWH(1,1);
+			Page* parent;
 		public:
 			Widget();
 			virtual void draw(SkCanvas* canvas, SkRect& widget_rect);
@@ -372,18 +372,7 @@ namespace curan
 		protected:
 			SkPaint paint_layout;
 			Arrangement arrangment;
-		};
-
-		class window {
-		private:
-			bool is_dirty = true;
-			std::list<Widget> contained_widgets;
-		public:
-			void draw();
-
-		};
-
-		
+		};	
 
 		/*
 		The LayoutLinearContainer class is a specific type of layout

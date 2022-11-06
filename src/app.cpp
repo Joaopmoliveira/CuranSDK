@@ -185,13 +185,16 @@ void start_up()
 	curan::utils::ThreadPool* pool = curan::utils::ThreadPool::Get();
 	curan::display::IconResources* resources = curan::display::IconResources::Load("C:/dev/Curan/resources");
 
-	curan::image::StudyManager* study_manager = curan::image::StudyManager::Get();
-	study_manager->LoadStudies({ "C:/libraries/data/MRBRAIN.DCM" });
+	//curan::image::StudyManager* study_manager = curan::image::StudyManager::Get();
+	//study_manager->LoadStudies({ "C:/libraries/data/MRBRAIN.DCM" });
 
 	curan::display::Context context;
 	context.initialize_context();
 
 	curan::display::DisplayParams param;
+	curan::display::Window* viewer = new curan::display::Window{ param };
+
+
 	std::shared_ptr<TestingWindow> testing_window = TestingWindow::make(&context, 0, 0, param);
 	testing_window->init();
 	testing_window->run();
