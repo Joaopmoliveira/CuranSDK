@@ -395,6 +395,27 @@ with a given swapchain image.
 		class Page;
 
 		/*
+		The info parent class contains all the characteristics shared by all 
+		info methodologies. This guarantees that new implementations of new widgets
+		shared these same underlying characterstics which can be called by the parent classes
+		*/
+		class InfoParent {
+			/*
+			If the is_interactive flag is false then we tell the widget that they should
+			never react to external changes, whilst if we say that it is true then by definition
+			the widget can change its properties depending on external inputs.
+			*/
+			bool is_interactive = false; 
+
+			/*
+			The is_drawable flag tells the widget if they should draw themselfs on screen or not.
+			Some edge cases might want to turn of the drawing capabilities of widgets depending 
+			on external inputs by the user.
+			*/
+			bool is_drawable = true;
+		};
+
+		/*
 		Drawable is something that can be displayed on screen. If 
 		it can be displayed, i.e. think layout, widgets, then it 
 		must implement two important methods, i.e. how should it 
@@ -406,7 +427,8 @@ with a given swapchain image.
 		*/
 		class Drawable {
 			std::shared_ptr<Page> rendering_scene =  nullptr;
-			SkRect drawabe_area; //pixel coordinates
+			std::array<pixelcoordinates, 2> coordinates_screen;
+			std::array<normalizedcoordinates, 2> coordinates_normalized;
 
 		public:
 			/*
@@ -418,26 +440,33 @@ with a given swapchain image.
 			* resized, therefore we need to recompute the dimensions of the pixelcoordinates for the 
 			* widgets, layouts, etc...
 			*/
-			virtual void user_interaction(Signal signal) = 0;
+			virtual void callback(Signal signal) = 0;
 			/*
 			* The draw method implemented by the children classes should take the pixel coordiantes 
 			* where the widget,layout,etc... should be placed and it prints itself unto the SKCanvas 
 			*/
-			virtual void draw() = 0;
+			virtual void draw(SkCanvas* canvas) = 0;
+
+			/*
+			* The update method should be implemented by all childern classes. This method will be called
+			* by the container which contains the particular instance of the class with the characteristics 
+			* of the new configuration of the pages and so on. It should receive the new position of 
+			* the widgets on the scene.
+			*/
+			virtual void update() = 0;
 		};
 
 		/*
-The Widget class is the parent class of all widgets
-that can be displayed on the screen. All widgets
-should override the implementation of the draw and
-callback methods. These are called to change the
-aperance of the widget on the screen draw the actual
-pixels unto the screen.
-*/
+		The Widget class is the parent class of all widgets
+		that can be displayed on the screen. All widgets
+		should override the implementation of the draw and
+		callback methods. These are called to change the
+		aperance of the widget on the screen draw the actual
+		pixels unto the screen.
+		*/
 		class Widget : public Drawable
 		{
 		private:
-			Page* parent;
 			SkRect widget_position = SkRect::MakeWH(1, 1);
 			
 		public:
@@ -445,14 +474,9 @@ pixels unto the screen.
 			{
 			};
 
-			virtual void draw(SkCanvas* canvas, SkRect& widget_rect) {
-			
-			}
+			virtual void draw(SkCanvas* canvas) override = 0;
 
-			virtual void callback(Signal signal, bool* interacted) {
-			}
-
-			bool interacts(SkScalar x, SkScalar y) {
+			bool interacts(double x, double y) {
 				return ((widget_position.fRight >= x) &&
 					(widget_position.fLeft <= x) &&
 					(widget_position.fBottom >= y) &&
@@ -527,7 +551,7 @@ pixels unto the screen.
 		class LayoutLinearContainer : public Layout
 		{
 		public:
-			struct Info {
+			struct Info : public InfoParent {
 				Arrangement arrangement;
 				std::vector<std::shared_ptr<Layout>> layouts;
 				std::vector<SkScalar> divisions;
@@ -627,7 +651,7 @@ pixels unto the screen.
 		class LayoutVariableContainer : public Layout
 		{
 		public:
-			struct Info {
+			struct Info : public InfoParent {
 				Arrangement arrangement;
 				std::vector<std::shared_ptr<Layout>> layouts;
 				std::vector<SkRect> rectangles_of_contained_layouts;
@@ -684,7 +708,7 @@ pixels unto the screen.
 		class LayoutLinearWidgetContainer : public Layout
 		{
 		public:
-			struct Info {
+			struct Info : public InfoParent {
 				Arrangement arrangement;
 				std::vector<std::shared_ptr<Widget>> widgets;
 				std::vector<SkScalar> divisions;
@@ -785,7 +809,7 @@ pixels unto the screen.
 			std::vector<std::shared_ptr<Widget>> contained_widgets;
 			std::vector<SkRect> rectangles_of_contained_layouts;
 		public:
-			struct Info {
+			struct Info : public InfoParent {
 				Arrangement arrangement;
 				std::vector<std::shared_ptr<Widget>> widgets;
 				std::vector<SkRect> rectangles_of_contained_layouts;
@@ -826,7 +850,6 @@ pixels unto the screen.
 		};
 
 		/*
-
 		The Context class is responsible for initializing the GLFW library,
 		so that surface compatilibity can be queried and to initialize the
 		vulkan instance, the debug callbacks and selecting an appropriate
@@ -1171,10 +1194,12 @@ in space the layouts which in turn they contain widgets.
 */
 		class Page {
 		protected:
+			std::list<std::shared_ptr<Drawable>>::iterator drawable_iterator;
 			SkColor paint_page;
 			std::atomic<bool> is_dirty;
 			std::shared_ptr<Layout> page_layout;
 			std::vector<std::shared_ptr<Widget>> widgets_to_callback;
+			std::list<std::shared_ptr<Drawable>> ui_elements;
 			init_callback intialization_callback;
 
 			/*
@@ -2127,7 +2152,7 @@ in space the layouts which in turn they contain widgets.
 		{
 		protected:
 
-			struct RadioItem {
+			struct RadioItem  {
 				SkRect normalized_position = SkRect::MakeXYWH(0, 0, 1, 1);
 				SkRect real_item_position = SkRect::MakeXYWH(0, 0, 1, 1);
 				SkRect text_size = SkRect::MakeXYWH(0, 0, 1, 1);
@@ -2154,7 +2179,7 @@ in space the layouts which in turn they contain widgets.
 				HORIZONTAL
 			};
 
-			struct Info {
+			struct Info : public InfoParent {
 				RadioButtonLayout layout;
 				std::vector<std::string> options;
 				SkFont text_font;
@@ -2295,6 +2320,10 @@ in space the layouts which in turn they contain widgets.
 }
 
 int main() {
+
+	std::vector<int> tesint_iter;
+	auto ite = tesint_iter.begin();
+
 	std::shared_ptr<curan::display::Page> page;
 	SkColor colbuton = { SK_ColorWHITE };
 	SkColor coltext = { SK_ColorBLACK };
