@@ -13,8 +13,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-#Externally provided content
+#Externally provided targets
 add_subdirectory(third_party)
 
-#Main targets built by this project
+#Add internal Curan libraries to the list of known targets
+add_subdirectory(libraries)
+
+#Curan executable
 add_subdirectory(src)

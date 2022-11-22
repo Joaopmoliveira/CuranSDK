@@ -426,21 +426,27 @@ with a given swapchain image.
 		method that it must implement is the draw method.
 		*/
 		class Drawable {
-			std::shared_ptr<Page> rendering_scene =  nullptr;
 			std::array<pixelcoordinates, 2> coordinates_screen;
 			std::array<normalizedcoordinates, 2> coordinates_normalized;
-
+			bool is_drawable;
+			bool is_interactive;
 		public:
 			/*
-			* The user_interaction function should be implemented in all children class.
+			* The callback function should be implemented in all children class.
 			* It takes the signal received from the enviorment and depending on the implementation
 			* it can change the information provided to the Parent, to let him known that the scene 
 			* has changed and it needs to be updated. There should always be two kinds of warnings
 			* The scene needs to be repainted (therefore all the sizes stay the same) or the scene has been
 			* resized, therefore we need to recompute the dimensions of the pixelcoordinates for the 
-			* widgets, layouts, etc...
+			* widgets, layouts, etc... It returns a bool indicating if this particular widget, or layout, 
+			* has interacted with the signal being propagated through the tree. Given that the trigger to proccess
+			* external signals is lauched by the Page class, which contains all the drawable instanced, there is
+			* no need to concern the developer with the order of drawing, given that first the draw command is called
+			* and only after every drawable has been called, the callback methods are called. The bool dirtied_scene
+			* flag tells the Page class that on the next drawing scheme it needs to repaint the scene because something
+			* has changed due to an external signal.
 			*/
-			virtual void callback(Signal signal) = 0;
+			virtual bool callback(Signal signal,bool dirtied_scene) = 0;
 			/*
 			* The draw method implemented by the children classes should take the pixel coordiantes 
 			* where the widget,layout,etc... should be placed and it prints itself unto the SKCanvas 
@@ -454,6 +460,34 @@ with a given swapchain image.
 			* the widgets on the scene.
 			*/
 			virtual void update() = 0;
+
+			/*
+			Returns the current drawable state of the instance itself
+			*/
+			bool get_drawable() {
+				return is_drawable;
+			}
+
+			/*
+			Establishes the drawable state of the current instance
+			*/
+			void set_drawable(bool drawable) {
+				is_drawable = drawable;
+			}
+
+			/*
+			Establishes the interactive state with external signals 
+			of the instance itself
+			*/
+			void set_interactive(bool interactive) {
+				is_interactive = interactive;
+			}
+			/*
+			Returns the interactive state of the library itself.
+			*/
+			bool get_interactive() {
+				return is_interactive;
+			}
 		};
 
 		/*
@@ -475,19 +509,6 @@ with a given swapchain image.
 			};
 
 			virtual void draw(SkCanvas* canvas) override = 0;
-
-			bool interacts(double x, double y) {
-				return ((widget_position.fRight >= x) &&
-					(widget_position.fLeft <= x) &&
-					(widget_position.fBottom >= y) &&
-					(widget_position.fTop <= y));
-			}
-			void set_position(SkRect& rect) {
-				widget_position = rect;
-			}
-			void get_position(SkRect& rect) {
-				rect = widget_position;
-			}
 		};
 
 		/*
@@ -1186,20 +1207,21 @@ with a given swapchain image.
 		};
 
 		/*
-The Page class is specific in its name. It represents a portion
-of a surface which the developer can draw on. The page has two
-jobs, to propagate the signals to each widget, so that the widget
-can decide if it wishes to deal with said signal and to position
-in space the layouts which in turn they contain widgets.
-*/
+		The Page class is specific in its name. It represents a portion
+		of a surface which the developer can draw on. The page has two
+		jobs, to propagate the signals to each widget, so that the widget
+		can decide if it wishes to deal with said signal and to position
+		in space the layouts which in turn they contain widgets.
+		*/
 		class Page {
 		protected:
-			std::list<std::shared_ptr<Drawable>>::iterator drawable_iterator;
+			std::list<std::shared_ptr<Drawable>> ui_elements;
+
 			SkColor paint_page;
 			std::atomic<bool> is_dirty;
 			std::shared_ptr<Layout> page_layout;
 			std::vector<std::shared_ptr<Widget>> widgets_to_callback;
-			std::list<std::shared_ptr<Drawable>> ui_elements;
+
 			init_callback intialization_callback;
 
 			/*
@@ -1223,6 +1245,11 @@ in space the layouts which in turn they contain widgets.
 				paint_page = info.paint_page;
 				page_layout = info.page_layout;
 				intialization_callback = info.initialize_page_callback;
+
+				//we need to transform the three structure of the layout into a list of drawable objects
+
+				//now we need t
+
 			}
 			void draw(SkCanvas* canvas_to_draw, SkRect& window_size)
 			{
@@ -2186,6 +2213,11 @@ in space the layouts which in turn they contain widgets.
 				SkColor color;
 				SkColor background_color;
 				SkRect size;
+				/*
+				The flag is_exclusive guarantees that only a single option
+				can be selected at once if true, whilst if the option is false
+				then it guarantees that multiply options can be selected.
+				*/
 				bool is_exclusive = false;
 			};
 
