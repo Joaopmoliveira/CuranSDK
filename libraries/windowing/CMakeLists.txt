@@ -1,4 +1,9 @@
 add_library(windowing
+src/BiopsyViewer.cpp
+src/FAIViewer.cpp
+src/MedicalViewer.cpp
+src/WindowBody.cpp
+src/WindowManager.cpp
 )
 
 target_include_directories(windowing

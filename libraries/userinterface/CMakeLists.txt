@@ -1,4 +1,5 @@
 add_library(userinterface
+src/Context.cpp
 )
 
 target_include_directories(userinterface
