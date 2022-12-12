@@ -5,7 +5,9 @@ namespace curan{
         ThreadPool::ThreadPool()
 		{
 			int num_threads = std::thread::hardware_concurrency();
-			num_threads /= 2;
+			num_threads /= 2.0;
+			if (num_threads < 1)
+				num_threads = 1;
 			for (int ii = 0; ii < num_threads; ii++)
 				pool.push_back(std::thread(&ThreadPool::infinite_loop, this));
 		}
@@ -58,6 +60,7 @@ namespace curan{
 
 		void ThreadPool::Shutdown()
 		{
+			std::lock_guard<std::mutex> lk(mut);
 			job_queue.invalidate();
 
 			for (std::thread& every_thread : pool)

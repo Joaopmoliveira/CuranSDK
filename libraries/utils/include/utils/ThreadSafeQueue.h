@@ -3,6 +3,7 @@
 
 #include <mutex>
 #include <queue>
+#include "Logger.h"
 
 namespace curan {
 	namespace utils {
@@ -13,7 +14,7 @@ namespace curan {
 		class ThreadSafeQueue {
 		private:
 			bool invalid = false;
-			mutable std::mutex mut;
+			std::mutex mut;
 			std::queue<contained> data_queue;
 			std::condition_variable data_cond;
 		public:
@@ -32,21 +33,22 @@ namespace curan {
 				data_cond.notify_one();
 			}
 
-			void wait_and_pop(contained& value) {
+			bool wait_and_pop(contained& value) {
 				std::unique_lock<std::mutex> lk(mut);
 				data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });
-				if (invalid) {
+				if (invalid || data_queue.empty()) {
 					value = contained();
-					return;
+					return false;
 				}
 				value = data_queue.front();
 				data_queue.pop();
+				return true;
 			}
 
 			contained wait_and_pop() {
 				std::unique_lock<std::mutex> lk(mut);
 				data_cond.wait(lk, [this] {return ((!data_queue.empty()) || invalid); });
-				if (invalid)
+				if (invalid || data_queue.empty())
 					return contained();
 				contained res(data_queue.front());
 				data_queue.pop();
@@ -96,12 +98,15 @@ namespace curan {
 				return data_queue.size();
 			}
 			void invalidate() {
-				std::unique_lock<std::mutex> lk(mut);
-				invalid = true;
+				{
+					std::lock_guard<std::mutex> lk(mut);
+					invalid = true;
+				}
 				data_cond.notify_all();
 			}
 			bool is_invalid() {
-				std::unique_lock<std::mutex> lk(mut);
+				console->info("trying to lock id of thread {}", std::this_thread::get_id());
+				std::lock_guard<std::mutex> lk(mut);
 				return invalid;
 			}
 		};
