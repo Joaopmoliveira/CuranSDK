@@ -2,6 +2,7 @@
 #define CURAN_FLAG_HEADER_FILE_
 
 #include <mutex>
+#include <memory>
 
 namespace curan {
 	namespace utils {
@@ -12,10 +13,23 @@ namespace curan {
 	*	the methods are protected by a mutex, thus
 	*	avoiding race conditions.
 	*/
-		class Flag
+		class Flag : std::enable_shared_from_this<Flag>
 		{
-		public:
 			Flag() : flag_{ false } {}
+
+		public:
+			
+			/*
+			This guarantees that the user cannot violate the shared flag, and given that be finition 
+			a shared flag is shared across threads then we need a smart pointer to handle memory allocation
+			*/
+			static std::shared_ptr<Flag> make_shared_flag();
+
+			/*
+			Return a copy of this shared flag with a common incrementer and 
+			common undelrying pointer
+			*/
+			std::shared_ptr<Flag> makecommoncopy();
 
 			/*
 			Activates the flag, i.e. the boolean value is set to true
@@ -31,6 +45,14 @@ namespace curan {
 			Waits for the boolean value to be turned to true by some thread.
 			*/
 			void wait();
+
+			/*
+			Return the current value of the underlying flag
+			*/
+			inline bool value() {
+				std::lock_guard<std::mutex> g{mutex_};
+				return flag_;
+			}
 
 		private:
 			bool flag_;

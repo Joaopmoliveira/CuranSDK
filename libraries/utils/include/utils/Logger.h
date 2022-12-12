@@ -8,7 +8,7 @@
 
 namespace curan {
 	namespace utils {
-		extern std:shared_ptr<spdlog::logger> console;
+		extern std::shared_ptr<spdlog::logger> console;
 	}
 }
 

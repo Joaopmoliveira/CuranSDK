@@ -2,6 +2,14 @@
 
 namespace curan{
     namespace utils{
+		std::shared_ptr<Flag> Flag::make_shared_flag() {
+			return std::shared_ptr<Flag>(new Flag());
+		}
+
+		std::shared_ptr<Flag> Flag::makecommoncopy() {
+			return shared_from_this();
+		}
+
         void Flag::set()
 		{
 			std::lock_guard g(mutex_);
