@@ -11,5 +11,5 @@ target_include_directories(windowing
 )
 
 target_link_libraries(windowing PUBLIC
-
+utils
 )

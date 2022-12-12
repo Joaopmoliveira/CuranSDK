@@ -1,3 +1,6 @@
+#ifndef CURAN_FLAG_HEADER_FILE_
+#define CURAN_FLAG_HEADER_FILE_
+
 #include <mutex>
 
 namespace curan {
@@ -37,3 +40,5 @@ namespace curan {
 
 	}
 }
+
+#endif

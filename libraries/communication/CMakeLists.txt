@@ -12,4 +12,5 @@ target_link_libraries(communication PUBLIC
 OpenIGTLink
 Pal::Sigslot
 asio::asio
+utils
 )

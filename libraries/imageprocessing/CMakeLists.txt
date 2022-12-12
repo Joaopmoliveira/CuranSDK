@@ -12,4 +12,5 @@ target_include_directories(imageprocessing
 
 target_link_libraries(imageprocessing PUBLIC
 ${ITK_LIBRARIES}
+utils
 )

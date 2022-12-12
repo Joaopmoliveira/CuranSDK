@@ -1,3 +1,6 @@
+#ifndef CURAN_THREADPOOL_HEADER_FILE_
+#define CURAN_THREADPOOL_HEADER_FILE_
+
 #include <mutex>
 #include <vector>
 #include "ThreadSafeQueue.h"
@@ -36,3 +39,5 @@ namespace curan {
 		};
 	}
 }
+
+#endif

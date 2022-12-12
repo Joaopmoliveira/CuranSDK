@@ -7,5 +7,6 @@ target_include_directories(userinterface
 )
 
 target_link_libraries(userinterface PUBLIC
-
+utils
+skia
 )

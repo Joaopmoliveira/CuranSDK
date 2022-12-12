@@ -132,14 +132,14 @@
 namespace curan {
 	namespace display {
 		/*
-* The GLFW library is a c library, thus it cannot deal
-* with callbacks in C++ style. Thus the cursos_position_callback
-* free function is created. This function is submited
-* to GLFW library for a given window and internally it
-* creates a signal which is compatible with our code base.
-* The signal is then appended to the windows signal queue,
-* to be processed at a latter point in time.
-*/
+		* The GLFW library is a c library, thus it cannot deal
+		* with callbacks in C++ style. Thus the cursos_position_callback
+		* free function is created. This function is submited
+		* to GLFW library for a given window and internally it
+		* creates a signal which is compatible with our code base.
+		* The signal is then appended to the windows signal queue,
+		* to be processed at a latter point in time.
+		*/
 		void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
 
 		/*
@@ -174,9 +174,10 @@ namespace curan {
 		* to be processed at a latter point in time.
 		*/
 		void item_droped_callback(GLFWwindow* window, int count, const char** paths);
+		
 		/*
-Initial width of the window on the screen.
-*/
+		Initial width of the window on the screen.
+		*/
 		const uint32_t WIDTH = 1200;
 
 		/*
@@ -184,13 +185,13 @@ Initial width of the window on the screen.
 		*/
 		const uint32_t HEIGHT = 1000;
 
-		const int MAX_FRAMES_IN_FLIGHT = 2;
-		const int EXTRA_BACK_BUFFER = 1;
+		constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+		constexpr int EXTRA_BACK_BUFFER = 1;
 
 #ifdef NDEBUG
-		const bool enableValidationLayers = false;
+		constexpr bool enableValidationLayers = false;
 #else
-		const bool enableValidationLayers = true;
+		constexpr bool enableValidationLayers = true;
 #endif
 
 		/*
@@ -446,7 +447,7 @@ with a given swapchain image.
 			* flag tells the Page class that on the next drawing scheme it needs to repaint the scene because something
 			* has changed due to an external signal.
 			*/
-			virtual bool callback(Signal signal,bool dirtied_scene) = 0;
+			virtual bool callback(Signal signal,bool* dirtied_scene) = 0;
 			/*
 			* The draw method implemented by the children classes should take the pixel coordiantes 
 			* where the widget,layout,etc... should be placed and it prints itself unto the SKCanvas 
@@ -504,11 +505,9 @@ with a given swapchain image.
 			SkRect widget_position = SkRect::MakeWH(1, 1);
 			
 		public:
-			Widget()
+			Widget() : Drawable()
 			{
 			};
-
-			virtual void draw(SkCanvas* canvas) override = 0;
 		};
 
 		/*
@@ -539,14 +538,16 @@ with a given swapchain image.
 			};
 
 
-			Layout(SkPaint in_paint_layout, Arrangement in_arrangment)
+			Layout(SkPaint in_paint_layout, Arrangement in_arrangment): Drawable()
 			{
 				paint_layout = in_paint_layout;
 				arrangment = in_arrangment;
 			}
 
-			virtual void draw(SkCanvas* canvas_to_draw, SkRect& drawing_area, SkRect& window_size)
+			void draw(SkCanvas* canvas_to_draw) override
 			{
+				SkRect drawing_area;
+				SkRect window_size;
 				SkRect rec = SkRect::MakeLTRB(drawing_area.fLeft * window_size.fLeft,
 					drawing_area.fTop * window_size.fTop,
 					drawing_area.fRight * window_size.fRight,
@@ -626,8 +627,10 @@ with a given swapchain image.
 					}
 				}
 			}
-			void draw(SkCanvas* canvas_to_draw, SkRect& drawing_area, SkRect& window_size) override
+			void draw(SkCanvas* canvas_to_draw) override
 			{
+				SkRect drawing_area;
+				SkRect window_size;
 				SkRect rectangle = SkRect::MakeLTRB(drawing_area.fLeft * window_size.width(),
 					drawing_area.fTop * window_size.height(),
 					drawing_area.fRight * window_size.width(),
@@ -645,9 +648,18 @@ with a given swapchain image.
 					temp2.fLeft = temp2.fLeft * window_size.width();
 					temp2.fRight = temp2.fRight * window_size.width();
 					temp2.fTop = temp2.fTop * window_size.height();
-					contained_layouts[i]->draw(canvas_to_draw, temp, window_size);
+					contained_layouts[i]->draw(canvas_to_draw);
 				}
 			}
+
+			bool callback(Signal signal, bool* dirtied_scene) override {
+				return true;
+			}
+
+			void update() override {
+			
+			}
+
 			static std::shared_ptr<LayoutLinearContainer> make(Info& info)
 			{
 				return std::make_shared<LayoutLinearContainer>(info);
@@ -684,8 +696,10 @@ with a given swapchain image.
 				contained_layouts = info.layouts;
 				rectangles_of_contained_layouts = info.rectangles_of_contained_layouts;
 			}
-			void draw(SkCanvas* canvas_to_draw, SkRect& drawing_area, SkRect& window_size) override
+			void draw(SkCanvas* canvas_to_draw) override
 			{
+				SkRect drawing_area;
+				SkRect window_size;
 				SkRect rectangle = SkRect::MakeLTRB(drawing_area.fLeft * window_size.width(),
 					drawing_area.fTop * window_size.height(),
 					drawing_area.fRight * window_size.width(),
@@ -703,12 +717,20 @@ with a given swapchain image.
 					temp2.fLeft = temp2.fLeft * window_size.width();
 					temp2.fRight = temp2.fRight * window_size.width();
 					temp2.fTop = temp2.fTop * window_size.height();
-					contained_layouts[i]->draw(canvas_to_draw, temp, window_size);
+					contained_layouts[i]->draw(canvas_to_draw);
 				}
 			}
 			static std::shared_ptr<LayoutVariableContainer> make(Info& info)
 			{
 				return std::make_shared<LayoutVariableContainer>(info);
+			}
+
+			bool callback(Signal signal, bool* dirtied_scene) override {
+				return true;
+			}
+
+			void update() override {
+
 			}
 
 
@@ -783,8 +805,10 @@ with a given swapchain image.
 					}
 				}
 			}
-			void draw(SkCanvas* canvas_to_draw, SkRect& drawing_area, SkRect& window_size) override
+			void draw(SkCanvas* canvas_to_draw) override
 			{
+				SkRect drawing_area; 
+				SkRect window_size;
 				SkRect rectangle = SkRect::MakeLTRB(drawing_area.fLeft * window_size.width(),
 					drawing_area.fTop * window_size.height(),
 					drawing_area.fRight * window_size.width(),
@@ -803,13 +827,21 @@ with a given swapchain image.
 					temp2.fRight = temp2.fRight * window_size.width();
 					temp2.fTop = temp2.fTop * window_size.height();
 					//canvas->drawRect(temp2, paint_square);
-					contained_widgets[i]->draw(canvas_to_draw, temp2);
+					contained_widgets[i]->draw(canvas_to_draw);
 				}
 			}
 
 			static std::shared_ptr<LayoutLinearWidgetContainer> make(Info& info)
 			{
 				return std::make_shared<LayoutLinearWidgetContainer>(info);
+			}
+
+			bool callback(Signal signal, bool* dirtied_scene) override {
+				return true;
+			}
+
+			void update() override {
+
 			}
 
 		protected:
@@ -842,8 +874,10 @@ with a given swapchain image.
 				contained_widgets = info.widgets;
 				rectangles_of_contained_layouts = info.rectangles_of_contained_layouts;
 			}
-			void LayoutVariableWidgetContainer::draw(SkCanvas* canvas_to_draw, SkRect& drawing_area, SkRect& window_size) override
+			void LayoutVariableWidgetContainer::draw(SkCanvas* canvas_to_draw) override
 			{
+				SkRect drawing_area;
+				SkRect window_size;
 				SkRect rectangle = SkRect::MakeLTRB(drawing_area.fLeft * window_size.width(),
 					drawing_area.fTop * window_size.height(),
 					drawing_area.fRight * window_size.width(),
@@ -861,12 +895,20 @@ with a given swapchain image.
 					temp2.fLeft = temp2.fLeft * window_size.width();
 					temp2.fRight = temp2.fRight * window_size.width();
 					temp2.fTop = temp2.fTop * window_size.height();
-					contained_widgets[i]->draw(canvas_to_draw, temp2);
+					contained_widgets[i]->draw(canvas_to_draw);
 				}
 			}
 			static std::shared_ptr<LayoutVariableWidgetContainer> make(Info& info)
 			{
 				return std::make_shared<LayoutVariableWidgetContainer>(info);
+			}
+
+			bool callback(Signal signal, bool* dirtied_scene) override {
+				return true;
+			}
+
+			void update() override {
+
 			}
 		};
 
@@ -1256,7 +1298,7 @@ with a given swapchain image.
 				SkSurface* surf = canvas_to_draw->getSurface();
 				SkRect total_size = SkRect::MakeIWH(surf->width(), surf->height());
 				SkRect range = SkRect::MakeLTRB(window_size.fLeft / surf->width(), window_size.fTop / surf->height(), window_size.fRight / surf->width(), window_size.fBottom / surf->height());
-				page_layout->draw(canvas_to_draw, range, total_size);
+				page_layout->draw(canvas_to_draw);
 			}
 			static std::shared_ptr<Page> make(Info& info)
 			{
@@ -2277,8 +2319,9 @@ with a given swapchain image.
 
 
 			}
-			void draw(SkCanvas* canvas, SkRect& widget_rect) override
+			void draw(SkCanvas* canvas) override
 			{
+				SkRect widget_rect;
 				SkRect sized_rectangle = SkRect::MakeXYWH(widget_rect.centerX() - size.width() / 2, widget_rect.centerY() - size.height() / 2, size.width(), size.height());
 				paint.setStyle(SkPaint::kFill_Style);
 				paint.setColor(background_color);
@@ -2316,7 +2359,7 @@ with a given swapchain image.
 			{
 				return std::make_shared<RadioButton>(info);
 			}
-			void callback(Signal signal, bool* interacted) override
+			bool callback(Signal signal, bool* dirtied_scene)
 			{
 				switch (signal.signal_type) {
 				case Signal::Type::MOUSE_MOVE_SIGNAL:
@@ -2345,6 +2388,11 @@ with a given swapchain image.
 				default:
 					break;
 				}
+				return true;
+			}
+
+			void update() override {
+
 			}
 		};
 

@@ -19,5 +19,8 @@ add_subdirectory(third_party)
 #Add internal Curan libraries to the list of known targets
 add_subdirectory(libraries)
 
+# Add tests for submodules of curan, i.e. utilities, communication, etc...
+add_subdirectory(tests)
+
 #Curan executable
 add_subdirectory(src)

@@ -1,3 +1,6 @@
+#ifndef CURAN_JOB_HEADER_FILE_
+#define CURAN_JOB_HEADER_FILE_
+
 #include <string>
 #include <functional>
 
@@ -25,3 +28,5 @@ It has a description associated with the task to finish.
 		};
 	}
 }
+
+#endif
