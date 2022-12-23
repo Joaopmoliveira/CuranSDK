@@ -1,4 +1,8 @@
+#ifndef CURAN_PROCESSOROIGTL_HEADER_FILE_
+#define CURAN_PROCESSOROIGTL_HEADER_FILE_
+
 #include "asio.hpp"
+#include <asio/awaitable.hpp>
 #include "igtlOSUtil.h"
 #include "igtlMessageHeader.h"
 #include "igtlTransformMessage.h"
@@ -15,7 +19,9 @@
 #include "igtlTrackingDataMessage.h"
 #include "igtlQuaternionTrackingDataMessage.h"
 #include "igtlCapabilityMessage.h"
+#endif
 
+#include "utils/ThreadSafeQueue.h"
 #include <sigslot/signal.hpp>
 
 namespace curan{
@@ -34,7 +40,7 @@ namespace curan{
 		*/
 		void GetIOContext(asio::io_context** io_context);
 
-        		/*
+        /*
 		This class is prepared to be used with a asio io_context which is only called from a single thread.
 		If more threads call the io_context the queue which contains outstanding work does not have any
 		protection against concurrent acess.
@@ -73,13 +79,15 @@ namespace curan{
 			void handle_write(const asio::error_code& error);
 			void do_close();
 
-		private:
 			Status current_status = Status::CK_CLOSED;
 			asio::io_context& io_context_;
 			asio::ip::tcp::socket socket_;
 			std::vector<unsigned char> body_data;
+			std::mutex writing_mutex_block;
 			igtl::MessageHeader::Pointer message_header;
 			curan::utils::ThreadSafeQueue<igtl::MessageBase::Pointer> outbond_messages;
 		};
     }
 }
+
+#endif

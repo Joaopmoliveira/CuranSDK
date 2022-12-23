@@ -3,7 +3,15 @@
 #include "utils\Logger.h"
 #include "utils\TheadPool.h"
 #include "utils\ThreadSafeQueue.h"
+#include "utils\Callable.h"
 #include <chrono>
+
+/**
+The utilities library is at the core of curan. All other modules of the 
+medical viewer use the constructs provided by this module. Lets go into the 
+details!
+
+*/
 
 int test_shared_flag() {
 	auto flag = curan::utils::Flag::make_shared_flag();
@@ -23,9 +31,6 @@ int test_shared_flag() {
 		curan::utils::console->info("stopped waiting for the flag");
 	};
 
-	// we have two threads, one tells itself to sleep for a
-	// given amount of time and the other waits until the
-	// other has changed the common flag
 	const std::chrono::time_point<std::chrono::system_clock> start =
 		std::chrono::system_clock::now();
 	std::thread d{ function2 };
@@ -121,8 +126,8 @@ void test_thread_safe_queue() {
 			PoPable temp;
 			curan::utils::console->info("starting to wait for popable");
 			while (!safe_queue.is_invalid()) {
-				safe_queue.wait_and_pop(temp);
-				curan::utils::console->info("Received a poopable! yeye = {}", temp.val);
+				if(safe_queue.wait_and_pop(temp))
+					curan::utils::console->info("Received a poopable! yeye = {}", temp.val);
 			}
 			curan::utils::console->info("finished to wait for popable");
 		}
@@ -150,12 +155,51 @@ void test_thread_safe_queue() {
 	thread_to_run.join();
 }
 
-//TODO the thread pool has a bug which is annoying...
+struct Signal {
+	int value = 0;
+};
+
+struct ObjT : public curan::utils::Callable<Signal> {
+	int process_received_signal(Signal s) {
+		std::string str = " (ObjT) the received value is: " + std::to_string(s.value);
+		curan::utils::console->info(str);
+		return 0;
+	}
+};
+
+struct ObjB : public curan::utils::Callable<Signal> {
+	int process_received_signal(Signal s) {
+		std::string str = "(ObjB) the received value is: " + std::to_string(s.value);
+		curan::utils::console->info(str);
+		return 0;
+	}
+};
+
+void test_callable_mechanism() {
+	std::shared_ptr<ObjT> s1 = std::make_shared<ObjT>();
+	Signal sig;
+	sig.value = 1;
+	{
+		std::shared_ptr<ObjB> s2 = std::make_shared<ObjB>();
+		{
+			auto calleds1 = std::bind(&ObjT::process_received_signal, s1.get(), std::placeholders::_1);
+			auto calleds2 = std::bind(&ObjB::process_received_signal, s2.get(), std::placeholders::_1);
+			curan::utils::CallableConnectInfo<Signal> connection_info{s1,calleds1 ,s2,calleds2 };
+			curan::utils::connect_callables<Signal>(connection_info);
+		}
+		curan::utils::console->info("we expect to read a signal from (ObjB)");
+		s1->call(sig);
+	}
+	sig.value = 2;
+	curan::utils::console->info("we dont expect to read a signal from (ObjB)");
+	s1->call(sig);
+}
 
 int main() {
 	test_shared_flag();
 	test_job_and_thread_pool();
 	test_thread_safe_queue();
+	test_callable_mechanism();
 	return 0;
 }
 

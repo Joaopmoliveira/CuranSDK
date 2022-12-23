@@ -1,8 +1,11 @@
+#ifndef CURAN_FUNCTOR_HEADER_FILE_
+#define CURAN_FUNCTOR_HEADER_FILE_
+
 #include "asio.hpp"
 
 namespace curan{
     namespace communication{
-        		/*
+        /*
 		A Functor is an object which overrides the operator() that can
 		jump start the io_context with a mock task to the execution context
 		thus entering the cycle of the state machine implemented in the
@@ -25,3 +28,5 @@ namespace curan{
 		};
     }
 }
+
+#endif

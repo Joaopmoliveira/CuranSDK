@@ -1,4 +1,4 @@
-#include "ProcessorOIGTL.h"
+#include "communication/ProcessorOIGTL.h"
 
 namespace curan{
     namespace communication{

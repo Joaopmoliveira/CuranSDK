@@ -9,14 +9,8 @@
 namespace curan {
 	namespace utils {
 		/*
-		The DkThreadPool class should be a unique entity in
-		the application. Internally it contains a number of
-		threads (this number is platform and machine specific) that are
-		in a blocked state until tasks are submited to the pool.
-		The class contains a numbering mechanism that can
-		be queried for the number of thread which are currently
-		working and the number of tasks which are in queue
-		to be run.
+		A thread pool contains an array of threads which are waiting for
+		jobs to be supplied. Because this thread pool is 
 		*/
 		class ThreadPool
 		{

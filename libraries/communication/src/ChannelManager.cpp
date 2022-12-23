@@ -1,4 +1,7 @@
-#include "ChannelManager.h"
+#include "communication/ChannelManager.h"
+
+#include "utils/TheadPool.h"
+#include "communication/ProcessorOIGTL.h"
 
 namespace curan{
     namespace communication{
@@ -24,7 +27,7 @@ namespace curan{
 					pool->Submit(pending_task);
 				}
 				// there is no channel with this name so we can continue
-				std::shared_ptr<ProcessorOpenIGTLink> pointer_to_processor = std::make_shared<ProcessorOIGTL>(ctx);
+				std::shared_ptr<ProcessorOIGTL> pointer_to_processor = std::make_shared<ProcessorOIGTL>(ctx);
 				openigtlink_channel_list.emplace(name, pointer_to_processor);
 				if (callback)
 					callback(Error::SUCCESS);

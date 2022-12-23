@@ -20,10 +20,10 @@ namespace curan{
 
 		void ThreadPool::infinite_loop()
 		{
+			Job job;
 			while (true)
 			{
-				Job job = job_queue.wait_and_pop();
-				if (job_queue.is_invalid())
+				if (!job_queue.wait_and_pop(job))
 					break;
 				{
 					std::lock_guard<std::mutex> lk(mut);

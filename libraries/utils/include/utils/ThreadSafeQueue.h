@@ -7,9 +7,6 @@
 
 namespace curan {
 	namespace utils {
-		/*
-		Contained type must be default constructable
-		*/
 		template<typename contained>
 		class ThreadSafeQueue {
 		private:
@@ -33,11 +30,10 @@ namespace curan {
 				data_cond.notify_one();
 			}
 
-			bool wait_and_pop(contained& value) {
+			[[nodiscard]] bool wait_and_pop(contained& value) {
 				std::unique_lock<std::mutex> lk(mut);
 				data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });
 				if (invalid || data_queue.empty()) {
-					value = contained();
 					return false;
 				}
 				value = data_queue.front();
@@ -45,17 +41,7 @@ namespace curan {
 				return true;
 			}
 
-			contained wait_and_pop() {
-				std::unique_lock<std::mutex> lk(mut);
-				data_cond.wait(lk, [this] {return ((!data_queue.empty()) || invalid); });
-				if (invalid || data_queue.empty())
-					return contained();
-				contained res(data_queue.front());
-				data_queue.pop();
-				return res;
-			};
-
-			bool try_pop(contained& value) {
+			[[nodiscard]] bool try_pop(contained& value) {
 				std::lock_guard<std::mutex> lk(mut);
 				if (data_queue.empty())
 					return false;
@@ -63,40 +49,25 @@ namespace curan {
 				data_queue.pop();
 				return true;
 			}
-			contained try_pop() {
-				std::lock_guard<std::mutex> lk(mut);
-				if (data_queue.empty()) {
-					return contained();
-				}
-				contained res(data_queue.front());
-				data_queue.pop();
-				return res;
-			}
 
-			bool try_front(contained& value) {
+			[[nodiscard]] bool try_front(contained& value) {
 				std::lock_guard<std::mutex> lk(mut);
 				if (data_queue.empty())
 					return false;
 				value = data_queue.front();
 				return true;
 			}
-			contained try_front() {
-				std::lock_guard<std::mutex> lk(mut);
-				if (data_queue.empty()) {
-					return contained();
-				}
-				contained res(data_queue.front());
-				return res;
-			}
 
-			bool empty() const {
+			[[nodiscard]] bool empty(){
 				std::lock_guard<std::mutex> lk(mut);
 				return data_queue.empty();
 			}
-			int size() {
+
+			[[nodiscard]] int size() {
 				std::lock_guard<std::mutex> lk(mut);
 				return data_queue.size();
 			}
+
 			void invalidate() {
 				{
 					std::lock_guard<std::mutex> lk(mut);
@@ -104,8 +75,8 @@ namespace curan {
 				}
 				data_cond.notify_all();
 			}
-			bool is_invalid() {
-				console->info("trying to lock id of thread {}", std::this_thread::get_id());
+
+			[[nodiscard]] bool is_invalid() {
 				std::lock_guard<std::mutex> lk(mut);
 				return invalid;
 			}

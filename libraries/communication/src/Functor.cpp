@@ -1,4 +1,7 @@
-#include "Functor.h"
+#include "communication/Functor.h"
+
+#include "utils/Logger.h"
+#include "communication/ChannelManager.h"
 
 namespace curan{
     namespace communication{

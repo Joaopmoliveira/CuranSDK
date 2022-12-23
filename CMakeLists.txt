@@ -5,6 +5,7 @@ project(Curan)
 #Language definitions used throught the entire project
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
+
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
@@ -23,4 +24,4 @@ add_subdirectory(libraries)
 add_subdirectory(tests)
 
 #Curan executable
-add_subdirectory(src)
+#add_subdirectory(src)
