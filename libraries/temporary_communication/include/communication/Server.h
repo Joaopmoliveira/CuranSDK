@@ -2,12 +2,8 @@
 #define CURAN_SERVER_HEADER_FILE_
 
 namespace curan {
-	namespace communication {
-		class Server {
-			Server();
+	namespace io {
 
-
-		}
 	}
 }
 

@@ -3,7 +3,8 @@ src/Flag.cpp
 src/Job.cpp
 src/Logger.cpp
 src/TheadPool.cpp
-)
+src/MemoryUtils.cpp
+ )
 
 target_include_directories(utils
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
@@ -11,4 +12,5 @@ target_include_directories(utils
 
 target_link_libraries(utils PUBLIC
 spdlog::spdlog 
+asio
 )
