@@ -71,6 +71,19 @@ public:
 
 	}
 
+	void post(std::shared_ptr<curan::utils::memory_buffer> buff) {
+		asio::post(_cxt,
+			[this, buff]()
+			{
+				bool write_in_progress = !write_msgs_.empty();
+				write_msgs_.push_back(msg);
+				if (!write_in_progress)
+				{
+					do_write();
+				}
+			});
+	}
+
 	void close(){
 		asio::post(_cxt, [this]() { _socket.close(); });
 	}
@@ -121,9 +134,7 @@ class Client {
 		callable lambda;
 		std::shared_ptr<cancelable> canceled;
 
-		combined() {
-		
-		}
+		combined(callable lambda, std::shared_ptr<cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
 	};
 
 	std::vector<combined> callables;
@@ -142,10 +153,13 @@ public:
 		if (connection_type.index() != c.index())
 			return std::nullopt;
 		auto cancel = cancelable::make_cancelable();
-		combined val;
-		val.canceled = cancel;
+		combined val{ c,cancel };
 		callables.push_back(val);
 		return cancel;
+	}
+
+	void write(std::shared_ptr<curan::utils::memory_buffer> buffer){
+		socket.post(std::move(buffer));
 	}
 };
 
@@ -158,9 +172,7 @@ class Server {
 		callable lambda;
 		std::shared_ptr<cancelable> canceled;
 
-		combined() {
-
-		}
+		combined(callable lambda, std::shared_ptr<cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
 	};
 
 	std::vector<combined> callables;
@@ -179,8 +191,7 @@ public:
 		if (connection_type.index() != c.index())
 			return std::nullopt;
 		auto cancel = cancelable::make_cancelable();
-		combined val;
-		val.canceled = cancel;
+		combined val{c,cancel };
 		callables.push_back(val);
 		return cancel;
 	}
@@ -189,7 +200,17 @@ public:
 namespace protocols {
 	using Protocol = std::function<int(void)>;
 	namespace igtlink {
-		void read_header(Client* socket,std::shared_ptr<curan::utils::memory_buffer>) {
+
+		struct carry_on_luggage {
+			igtl::MessageBase::Pointer message_to_receive;
+			igtl::MessageBase::Pointer header_to_receive;
+		};
+
+		void start() {
+		
+		}
+
+		void read_header() {
 
 			//read header of protocol
 			igtl::MessageBase::Pointer message_to_receive;
@@ -210,7 +231,7 @@ namespace protocols {
 				});
 		}
 
-		void read_body(Socket* socket) {
+		void read_body() {
 
 			//read body of protocol
 
