@@ -25,6 +25,76 @@
 #include "igtlCapabilityMessage.h"
 #endif
 
+
+namespace Protocols {
+	using Protocol = std::function<int(void)>;
+	namespace igtlink {
+		void start() {
+
+		}
+
+		void readheader() {
+
+		}
+
+		void readbody() {
+		
+		}
+	};
+}
+
+/*
+The socket is an abstraction of
+the underlying socket of asio. 
+*/
+class Socket {
+	asio::ip::tcp::socket _socket;
+	asio::io_context& _cxt;
+
+	Socket(asio::io_context& io_context,
+		const tcp::resolver::results_type& endpoints) {
+	
+	}
+};
+
+class Client {
+	asio::io_context& _cxt;
+
+	Client() {
+	}
+};
+
+class Server {
+	asio::io_context& _cxt;
+
+	Server() {
+	}
+};
+
+/*
+Launch a server thread which waits for a 
+connection and talks through the openIGTlink
+protocol
+*/
+void foo() {
+
+}
+
+/*
+Launch a client which connects itself to 
+the server running inside foo.
+*/
+void bar() {
+
+}
+
+int main() {
+
+
+	return 0;
+}
+
+
 /*
 This example shows how the constructors of the servers and the clients
 submit themselfs to the server managers and the client managers, such that we can
@@ -38,6 +108,8 @@ protocol implementation. This allows us to use more than one protocol for commun
 with the outside world.
 */
 
+/*
+
 asio::io_context* get_io_context() {
 	static asio::io_context cxt;
 	return &cxt;
@@ -47,20 +119,24 @@ enum class ProtocolImplmentation {
 	OPEN_IGT_LINK,
 	NONE
 };
+*/
 
 /*
 You can implement the state machine of asio as you wish, but you need to suply two important
 functions, how to handle a connection and how to handle a
 */
+/*
 struct ProtocolInfo {
 	ProtocolImplmentation implementation = ProtocolImplmentation::NONE;
 };
-
+*/
 /*
 All protocols should have a callable signal
 which emits the message just received to all
 the listeners.
 */
+/*
+
 class Session : public std::enable_shared_from_this<Session> {
 protected:
 
@@ -232,13 +308,14 @@ public:
 		curan::utils::console->info("closed the session and the associated socket");
 	}
 };
-
+*/
 /*
 The session manager cannot be instantiated by the user
 since its supposed to always be queried by the get_session_manager
 function. This guarantees that we only have a single object
 of this class.
 */
+/*
 class SessionManager {
 	std::map<std::string, std::shared_ptr<Session>> sessions;
 
@@ -252,13 +329,14 @@ public:
 };
 
 class Server;
-
+*/
 /*
 The server manager cannot be instantiated by the user
 since its supposed to always be queried by the get_server_manager
 function. This guarantees that we only have a single object
 of this class.
 */
+/*
 class ServerManager {
 	std::mutex mut;
 	std::map<size_t, std::shared_ptr<Server>> servers;
@@ -367,18 +445,20 @@ private:
 	asio::io_context& io_context_;
 
 };
-
+*/
 
 /*
 function that deals messages received from the clients connected to the
 */
+/*
 void function2(igtl::MessageBase::Pointer message) {
 	curan::utils::console->info("received a message from the accepted client socket");
 }
-
+*/
 /*
 function that deals with received connections
 */
+/*
 void function1(std::shared_ptr<Session> received_session) {
 	curan::utils::console->info("received a from the callable session");
 
@@ -396,11 +476,11 @@ void function1(std::shared_ptr<Session> received_session) {
 		break;
 	}
 }
-
+*/
 
 //------------------------------------------------------------
 // Function to generate random matrix.
-
+/*
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 {
 	float position[3];
@@ -496,3 +576,5 @@ int main()
 	}
 	return 0;
 }
+
+*/
