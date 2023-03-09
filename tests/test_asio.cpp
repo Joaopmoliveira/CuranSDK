@@ -2,6 +2,7 @@
 // Windows Header Files
 #include <windows.h>
 #include <asio.hpp>
+#include <variant>
 #include <map>
 #include "sigslot\signal.hpp"
 #include "utils\ThreadSafeQueue.h"
@@ -27,14 +28,174 @@
 
 #include "utils/MemoryUtils.h"
 
+/*
+We have three abstractions, the classes that deal with user code,
+the classes that deal with protocol implementations, which must 
+be developed for specific routines with special logic and the inbetween
+which must deal with all the messy details about asio and so forth. 
+We achieve this by creating servers and clients, (the classes) that deal
+with developers, provide interfaces for listener patterns and so forth.
+We have an abstraction of a socket which contains some ASIO logic, and then 
+we have the namespace protocols which defines the routines on how we 
+read messages from sockets and pass them along to our client/server API.
+*/
+
+/*
+The socket is an abstraction of
+the underlying socket of asio.
+*/
+class Socket {
+	asio::ip::tcp::socket _socket;
+	asio::io_context& _cxt;
+
+public:
+	Socket(asio::io_context& io_context,
+		const asio::ip::tcp::resolver::results_type& endpoints) : _cxt(io_context),
+		_socket(io_context) {
+		asio::async_connect(_socket, endpoints,
+			[this](std::error_code ec, asio::ip::tcp::endpoint e)
+			{
+				handle_connect(ec, e);
+			});
+	}
+
+	Socket(asio::io_context& io_context) : _cxt(io_context), _socket{ io_context } {
+
+	}
+
+	~Socket() {
+		close();
+	}
+
+	void handle_connect(std::error_code ec, asio::ip::tcp::endpoint e) {
+
+	}
+
+	void close(){
+		asio::post(_cxt, [this]() { _socket.close(); });
+	}
+};
+
+using callable_openigtlink = std::function<void(size_t, std::error_code, igtl::MessageBase::Pointer)>;
+
+/*
+This is the most important point, we create a 
+variant which contains the signature of the
+callable methods.
+*/
+using callable = std::variant<callable_openigtlink>;
+
+/*
+You can query and request for a connection to be terminated at any moments notice.
+*/
+class cancelable : std::enable_shared_from_this<cancelable> {
+	std::mutex mut;
+	bool is_cancelled;
+
+	cancelable() : is_cancelled{ false } {
+
+	}
+
+public:
+
+	static std::shared_ptr<cancelable> make_cancelable() {
+		return std::shared_ptr<cancelable>(new cancelable());
+	}
+
+	void cancel() {
+		std::lock_guard<std::mutex> g(mut);
+		is_cancelled = 0;
+	}
+
+	bool operator() () {
+		std::lock_guard<std::mutex> g(mut);
+		return is_cancelled;
+	}
+};
+
+class Client {
+	asio::io_context& _cxt;
+	Socket socket;
+	
+	struct combined {
+		callable lambda;
+		std::shared_ptr<cancelable> canceled;
+
+		combined() {
+		
+		}
+	};
+
+	std::vector<combined> callables;
+	callable connection_type;
+public:
+	struct Info {
+		asio::io_context& io_context;
+		callable connection_type;
+	};
+
+	Client(Info& info) : _cxt{ info.io_context }, socket{ _cxt }, connection_type{info.connection_type} {
+
+	}
+
+	std::optional<std::shared_ptr<cancelable>> connect(callable c) {
+		if (connection_type.index() != c.index())
+			return std::nullopt;
+		auto cancel = cancelable::make_cancelable();
+		combined val;
+		val.canceled = cancel;
+		callables.push_back(val);
+		return cancel;
+	}
+};
+
+class Server {
+	asio::io_context& _cxt;
+	Socket socket;
+	std::vector<Client> list_of_clients;
+	
+	struct combined {
+		callable lambda;
+		std::shared_ptr<cancelable> canceled;
+
+		combined() {
+
+		}
+	};
+
+	std::vector<combined> callables;
+	callable connection_type;
+
+public:
+	struct Info {
+		asio::io_context& io_context;
+	};
+
+	Server(Info& info) : _cxt{ info.io_context }, socket{ _cxt } {
+
+	}
+
+	std::optional<std::shared_ptr<cancelable>> connect(callable c) {
+		if (connection_type.index() != c.index())
+			return std::nullopt;
+		auto cancel = cancelable::make_cancelable();
+		combined val;
+		val.canceled = cancel;
+		callables.push_back(val);
+		return cancel;
+	}
+};
+
 namespace protocols {
 	using Protocol = std::function<int(void)>;
 	namespace igtlink {
-		void start(std::shared_ptr<curan::utils::memory_buffer>) {
+		void read_header(Client* socket,std::shared_ptr<curan::utils::memory_buffer>) {
 
 			//read header of protocol
+			igtl::MessageBase::Pointer message_to_receive;
+			igtl::MessageBase::Pointer header_to_receive;
 
-			asio::async_read(socket_,
+			asio::async_read(socket->,
 				asio::buffer(read_msg_.data(), chat_message::header_length),
 				[this](std::error_code ec, std::size_t /*length*/)
 				{
@@ -49,7 +210,7 @@ namespace protocols {
 				});
 		}
 
-		void end() {
+		void read_body(Socket* socket) {
 
 			//read body of protocol
 
@@ -67,57 +228,6 @@ namespace protocols {
 		}
 	};
 }
-
-/*
-The socket is an abstraction of
-the underlying socket of asio. 
-*/
-class Socket {
-	asio::ip::tcp::socket _socket;
-	asio::io_context& _cxt;
-
-public:
-	Socket(asio::io_context& io_context,
-		const asio::ip::tcp::resolver::results_type& endpoints) : _cxt(io_context),
-		_socket(io_context) {
-		asio::async_connect(_socket, endpoints,
-			[this](std::error_code ec, asio::ip::tcp::endpoint e)
-			{
-				handle_connect(ec,e);
-			});
-	}
-
-	~Socket() {
-	
-	}
-
-	void handle_connect(std::error_code ec, asio::ip::tcp::endpoint e) {
-	
-	}
-	void close()
-	{
-		asio::post(_cxt, [this]() { _socket.close(); });
-	}
-};
-
-class Client {
-	asio::io_context& _cxt;
-	Socket socket;
-
-	Client(asio::io_context& io_context) : _cxt{ io_context } : {
-
-	}
-};
-
-class Server {
-	asio::io_context& _cxt;
-	Socket socket;
-	std::vector<Client> list_of_clients;
-
-	Server(asio::io_context& io_context) : _cxt{ io_context } : {
-
-	}
-};
 
 /*
 Launch a server thread which waits for a 
