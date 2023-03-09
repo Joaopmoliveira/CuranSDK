@@ -25,20 +25,45 @@
 #include "igtlCapabilityMessage.h"
 #endif
 
+#include "utils/MemoryUtils.h"
 
-namespace Protocols {
+namespace protocols {
 	using Protocol = std::function<int(void)>;
 	namespace igtlink {
-		void start() {
+		void start(std::shared_ptr<curan::utils::memory_buffer>) {
 
+			//read header of protocol
+
+			asio::async_read(socket_,
+				asio::buffer(read_msg_.data(), chat_message::header_length),
+				[this](std::error_code ec, std::size_t /*length*/)
+				{
+					if (!ec && read_msg_.decode_header())
+					{
+						do_read_body();
+					}
+					else
+					{
+						socket_.close();
+					}
+				});
 		}
 
-		void readheader() {
+		void end() {
 
-		}
+			//read body of protocol
 
-		void readbody() {
-		
+			if (!error)
+			{
+				asio::async_read(socket_,
+					asio::buffer(read_msg_.data(), chat_message::header_length),
+					boost::bind(&chat_client::handle_read_header, this,
+						asio::placeholders::error));
+			}
+			else
+			{
+				do_close();
+			}
 		}
 	};
 }
@@ -51,23 +76,46 @@ class Socket {
 	asio::ip::tcp::socket _socket;
 	asio::io_context& _cxt;
 
+public:
 	Socket(asio::io_context& io_context,
-		const tcp::resolver::results_type& endpoints) {
+		const asio::ip::tcp::resolver::results_type& endpoints) : _cxt(io_context),
+		_socket(io_context) {
+		asio::async_connect(_socket, endpoints,
+			[this](std::error_code ec, asio::ip::tcp::endpoint e)
+			{
+				handle_connect(ec,e);
+			});
+	}
+
+	~Socket() {
 	
+	}
+
+	void handle_connect(std::error_code ec, asio::ip::tcp::endpoint e) {
+	
+	}
+	void close()
+	{
+		asio::post(_cxt, [this]() { _socket.close(); });
 	}
 };
 
 class Client {
 	asio::io_context& _cxt;
+	Socket socket;
 
-	Client() {
+	Client(asio::io_context& io_context) : _cxt{ io_context } : {
+
 	}
 };
 
 class Server {
 	asio::io_context& _cxt;
+	Socket socket;
+	std::vector<Client> list_of_clients;
 
-	Server() {
+	Server(asio::io_context& io_context) : _cxt{ io_context } : {
+
 	}
 };
 

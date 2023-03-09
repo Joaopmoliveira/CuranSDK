@@ -242,9 +242,9 @@ void test_memory_buffers() {
 		};
 		buff_of_interest = curan::utils::capture_memory_buffer::make_shared(lambda);
 		//value to constrol is deleted as well as the local copy of the shared_memory_control, but the shared_pointer is
-		//stored into the lamda which is then copied inot the capture memory buffer
+		//stored into the lamda which is then copied into the capture memory buffer
 	}
-
+	
 	std::cout << "Second buffer is: " << buff_of_interest;
 }
 
