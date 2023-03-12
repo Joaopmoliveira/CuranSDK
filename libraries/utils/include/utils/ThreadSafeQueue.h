@@ -7,30 +7,30 @@
 
 namespace curan {
 	namespace utils {
-		template<typename contained>
-		class ThreadSafeQueue {
+		template<typename T>
+		class SafeQueue {
 		private:
 			bool invalid = false;
 			std::mutex mut;
-			std::queue<contained> data_queue;
+			std::queue<T> data_queue;
 			std::condition_variable data_cond;
 		public:
-			ThreadSafeQueue() {
+			SafeQueue() {
 
 			}
-			ThreadSafeQueue(ThreadSafeQueue const& other) {
+			SafeQueue(SafeQueue const& other) {
 				std::lock_guard<std::mutex> lc(other.mut);
 				std::lock_guard<std::mutex> lk(mut);
 				data_queue = other.data_queue;
 			}
 
-			void push(contained new_value) {
+			void push(T new_value) {
 				std::lock_guard<std::mutex> lk(mut);
 				data_queue.push(new_value);
 				data_cond.notify_one();
 			}
 
-			[[nodiscard]] bool wait_and_pop(contained& value) {
+			[[nodiscard]] bool wait_and_pop(T& value) {
 				std::unique_lock<std::mutex> lk(mut);
 				data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });
 				if (invalid || data_queue.empty()) {
@@ -41,7 +41,7 @@ namespace curan {
 				return true;
 			}
 
-			[[nodiscard]] bool try_pop(contained& value) {
+			[[nodiscard]] bool try_pop(T& value) {
 				std::lock_guard<std::mutex> lk(mut);
 				if (data_queue.empty())
 					return false;
@@ -50,7 +50,7 @@ namespace curan {
 				return true;
 			}
 
-			[[nodiscard]] bool try_front(contained& value) {
+			[[nodiscard]] bool try_front(T& value) {
 				std::lock_guard<std::mutex> lk(mut);
 				if (data_queue.empty())
 					return false;
@@ -69,11 +69,11 @@ namespace curan {
 			}
 
 			void invalidate() {
-				{
-					std::lock_guard<std::mutex> lk(mut);
+				std::lock_guard<std::mutex> lk(mut);
+				if (!invalid) {
 					invalid = true;
+					data_cond.notify_all();
 				}
-				data_cond.notify_all();
 			}
 
 			[[nodiscard]] bool is_invalid() {

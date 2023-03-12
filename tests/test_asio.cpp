@@ -41,6 +41,36 @@ we have the namespace protocols which defines the routines on how we
 read messages from sockets and pass them along to our client/server API.
 */
 
+class Client;
+
+/*
+Interface for the openigtlink protocol.
+*/
+using interface_igtl = std::function<void(const size_t&, const std::error_code&, igtl::MessageBase::Pointer)>;
+
+struct protoigtl {
+	interface_igtl callback;
+	std::function<void(Client*)> start;
+};
+
+/*
+This is the most important point, we create a
+variant which contains the signature of the
+callable methods.
+*/
+using callable = std::variant<protoigtl>;
+
+
+
+/*
+This visitor selects the appropriate protocol
+so that the socket class can start reading bytes from
+said socket
+*/
+class Visitor {
+	std::function<void(Client*)> operator()(interface_igtl val);
+};
+
 /*
 The socket is an abstraction of
 the underlying socket of asio.
@@ -49,19 +79,28 @@ class Socket {
 	asio::ip::tcp::socket _socket;
 	asio::io_context& _cxt;
 	std::list<std::shared_ptr<curan::utils::memory_buffer>> to_send;
+	std::function<void(Client*)> start;
+
 public:
 	Socket(asio::io_context& io_context,
-		const asio::ip::tcp::resolver::results_type& endpoints) : _cxt(io_context),
+		const asio::ip::tcp::resolver::results_type& endpoints, 
+		callable callable, Client* owner) : _cxt(io_context),
 		_socket(io_context) {
+		start = std::visit<std::function<void(Client*)>, Visitor>(Visitor(),callable);
 		asio::async_connect(_socket, endpoints,
-			[this](std::error_code ec, asio::ip::tcp::endpoint e)
+			[this, owner](std::error_code ec, asio::ip::tcp::endpoint e)
 			{
-				handle_connect(ec, e);
+				if(!ec)
+					start(owner);
+
 			});
 	}
 
-	Socket(asio::io_context& io_context, asio::ip::tcp::socket socket) : _cxt(io_context), _socket{ std::move(socket)} {
-	
+	Socket(asio::io_context& io_context, 
+		asio::ip::tcp::socket socket, 
+		callable callable, Client* owner) : _cxt(io_context), _socket{ std::move(socket)} {
+		start = std::visit<std::function<void(Client*)>, Visitor>(Visitor(), callable);
+		start(owner);
 	}
 
 	~Socket() {
@@ -81,7 +120,7 @@ public:
 			[this, buff]()
 			{
 				bool write_in_progress = !to_send.empty();
-				to_send.push_back(std::move(buff));
+				to_send.push_back(buff);
 				if (!write_in_progress)
 				{
 					do_write();
@@ -108,19 +147,6 @@ public:
 		asio::post(_cxt, [this]() { get_underlying_socket().close(); });
 	}
 };
-
-
-/*
-Interface for the openigtlink protocol.
-*/
-using interface_igtl = std::function<void(const size_t&, const std::error_code&, igtl::MessageBase::Pointer)>;
-
-/*
-This is the most important point, we create a 
-variant which contains the signature of the
-callable methods.
-*/
-using callable = std::variant<interface_igtl>;
 
 /*
 You can query and request for a connection to be 
@@ -165,12 +191,12 @@ class Client {
 	struct combined {
 		callable lambda;
 		std::shared_ptr<cancelable> canceled;
-
 		combined(callable lambda, std::shared_ptr<cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
 	};
 
 	std::vector<combined> callables;
 	callable connection_type;
+
 public:
 	struct Info {
 		asio::io_context& io_context;
@@ -179,27 +205,21 @@ public:
 		Info(asio::io_context& io_context, callable connection_type) :io_context{ io_context }, connection_type{ connection_type } {}
 	};
 
-	template<class T,class ... Args>
-	void transverse_callables(Args&&... u) {
-		for (auto& listener : callables) {
-			if (listener.canceled->operator()()) {
-				auto localinterpretation = std::get<T>(listener.lambda);
-				localinterpretation(&u...);
-			}
-		}
-	}
-
 	struct ServerInfo {
 		asio::io_context& io_context;
 		callable connection_type;
 		asio::ip::tcp::socket socket;
 	};
 
-	Client(Info& info) : _cxt{ info.io_context }, socket{ _cxt,info.endpoints}, connection_type{info.connection_type} {
-
+	Client(Info& info) : _cxt{ info.io_context },
+		socket{ _cxt,info.endpoints,info.connection_type,this },
+		connection_type{info.connection_type} {
+		std::cout << "Creating client\n";
 	}
 
-	Client(ServerInfo& info) : _cxt{ info.io_context }, socket{ _cxt,std::move(info.socket) }, connection_type{ info.connection_type } {
+	Client(ServerInfo& info) : _cxt{ info.io_context },
+		socket{ _cxt,std::move(info.socket),info.connection_type,this },
+		connection_type{ info.connection_type } {
 	
 	}
 
@@ -219,12 +239,23 @@ public:
 	Socket& get_socket() {
 		return socket;
 	}
+
+	template<class T, class ... Args>
+	void transverse_callables(Args&&... args) {
+		for (auto& listener : callables) {
+			if (listener.canceled->operator()()) {
+				auto localinterpretation = std::get<T>(listener.lambda);
+				localinterpretation(std::forward<decltype(args)>(args)...);
+			}
+		}
+	}
 };
 
 class Server {
 	asio::io_context& _cxt;
 	asio::ip::tcp::acceptor acceptor_;
-	std::vector<Client> list_of_clients;
+
+	std::list<std::shared_ptr<Client>> list_of_clients;
 	
 	struct combined {
 		callable lambda;
@@ -271,8 +302,9 @@ public:
 	}
 
 	void write(std::shared_ptr<curan::utils::memory_buffer> buffer) {
+		std::cout << "Writing to all clients\n";
 		for (auto& client : list_of_clients)
-			client.write(buffer);
+			client->write(buffer);
 	}
 
 private:
@@ -281,16 +313,20 @@ private:
 		acceptor_.async_accept(
 			[this](std::error_code ec, asio::ip::tcp::socket socket){
 				if (!ec){
+					std::cout << "Server received a client\n";
 					Client::ServerInfo info{ _cxt,connection_type,std::move(socket)};
-					Client received_client{info};
-					list_of_clients.push_back(std::move(received_client));
+					auto client_ptr = std::make_shared<Client>(info);
+					list_of_clients.push_back(std::move(client_ptr));
 				}
 				accept();
 			});
+		std::cout << "Server started listening for clients\n";
 	}
 };
 
 namespace protocols {
+
+
 	namespace igtlink {
 		enum status {
 			OK = 0,
@@ -299,6 +335,7 @@ namespace protocols {
 		};
 
 		namespace implementation {
+
 			struct IgtlinkClientConnection{
 				igtl::MessageBase::Pointer message_to_receive;
 				igtl::MessageBase::Pointer header_to_receive;
@@ -309,8 +346,8 @@ namespace protocols {
 			};
 
 			void read_header_first_time(IgtlinkClientConnection val);
-			void read_body(IgtlinkClientConnection val);
-			void read_header(IgtlinkClientConnection val);
+			void read_body(IgtlinkClientConnection val, std::error_code ec);
+			void read_header(IgtlinkClientConnection val , std::error_code ec);
 
 			void read_header_first_time(IgtlinkClientConnection val) {
 				asio::async_read(val.owner->get_socket().get_underlying_socket(),
@@ -318,28 +355,31 @@ namespace protocols {
 					[val](std::error_code ec, std::size_t len)
 					{
 						if (!ec && val.header_to_receive->Unpack())
-							read_body(std::move(val));
+							read_body(val, ec);
 						else
 							val.owner->get_socket().get_underlying_socket().close();
 					});
 			}
 
-			void read_header(IgtlinkClientConnection val) {
+			void read_header(IgtlinkClientConnection val,std::error_code ec) {
 				//we have a message fully unpacked in memory that we must broadcast to all
 				//listeners of the interface. We do this by calling the templated broadcast method
-				val.owner->transverse_callables<interface_igtl>(status::OK, std::error_code(), val.message_to_receive);
+				auto temp = (size_t) status::OK;
+				
+				val.owner->transverse_callables<interface_igtl>(temp, ec, val.message_to_receive);
+
 				asio::async_read(val.owner->get_socket().get_underlying_socket(),
 					asio::buffer(val.header_to_receive->GetBufferPointer(), val.header_to_receive->GetBufferSize()),
 					[val](std::error_code ec, std::size_t len)
 					{
 						if (!ec && val.header_to_receive->Unpack())
-							read_body(std::move(val));
+							read_body(val, ec);
 						else
 							val.owner->get_socket().get_underlying_socket().close();
 					});
 			}
 
-			void read_body(IgtlinkClientConnection val) {
+			void read_body(IgtlinkClientConnection val, std::error_code ec) {
 				val.message_to_receive->SetMessageHeader(val.header_to_receive);
 				val.message_to_receive->AllocatePack();
 				asio::async_read(val.owner->get_socket().get_underlying_socket(),
@@ -347,7 +387,7 @@ namespace protocols {
 					[val](std::error_code ec, std::size_t len)
 					{
 						if (!ec && val.header_to_receive->Unpack())
-							read_header(std::move(val));
+							read_header(val, ec);
 						else
 							val.owner->get_socket().get_underlying_socket().close();
 					});
@@ -362,6 +402,12 @@ namespace protocols {
 
 	};
 }
+
+
+std::function<void(Client*)> Visitor::operator()(interface_igtl val) {
+	return protocols::igtlink::start;
+}
+
 
 /*
 Launch a server thread which waits for a 

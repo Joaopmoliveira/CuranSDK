@@ -18,7 +18,7 @@ namespace curan {
 			bool stopped = false;
 			mutable std::mutex mut;
 			std::vector<std::thread> pool;
-			ThreadSafeQueue<Job> job_queue;
+			SafeQueue<Job> job_queue;
 			int number_of_tasks_executing = 0;
 			int number_of_pending_tasks = 0;
 			ThreadPool();
