@@ -5,6 +5,9 @@
 #include <list>
 #include <functional>
 #include <memory>
+#include "utils/Cancelable.h"
+#include "utils/MemoryUtils.h"
+#include "Protocols.h"
 
 namespace curan {
 	namespace communication {
@@ -18,9 +21,9 @@ namespace curan {
 
 			struct combined {
 				callable lambda;
-				std::shared_ptr<cancelable> canceled;
+				std::shared_ptr<utils::Cancelable> canceled;
 
-				combined(callable lambda, std::shared_ptr<cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
+				combined(callable lambda, std::shared_ptr<utils::Cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
 			};
 
 			std::vector<combined> callables;
@@ -43,44 +46,17 @@ namespace curan {
 
 			};
 
-			Server(Info& info) : _cxt{ info.io_context }, acceptor_{ _cxt,info.get_endpoint() } {
-				accept();
-			}
+			Server(Info& info);
 
-			~Server() {
-				acceptor_.close();
-			}
+			~Server();
 
-			[[nodiscard]] std::optional<std::shared_ptr<cancelable>> connect(callable c) {
-				if (connection_type.index() != c.index())
-					return std::nullopt;
-				auto cancel = cancelable::make_cancelable();
-				combined val{ c,cancel };
-				callables.push_back(val);
-				return cancel;
-			}
+			[[nodiscard]] std::optional<std::shared_ptr<utils::Cancelable>> connect(callable c);
 
-			void write(std::shared_ptr<curan::utils::memory_buffer> buffer) {
-				std::cout << "Writing to all clients\n";
-				for (auto& client : list_of_clients)
-					client->write(buffer);
-			}
+			void write(std::shared_ptr<curan::utils::MemoryBuffer> buffer);
 
 		private:
 
-			void accept() {
-				acceptor_.async_accept(
-					[this](std::error_code ec, asio::ip::tcp::socket socket) {
-						if (!ec) {
-							std::cout << "Server received a client\n";
-							Client::ServerInfo info{ _cxt,connection_type,std::move(socket) };
-							auto client_ptr = std::make_shared<Client>(info);
-							list_of_clients.push_back(std::move(client_ptr));
-						}
-						accept();
-					});
-				std::cout << "Server started listening for clients\n";
-			}
+			void accept();
 		};
 	}
 }

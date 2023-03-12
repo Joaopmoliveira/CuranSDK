@@ -1,5 +1,5 @@
-#ifndef CURAN_MEMORY_UTILS_HEADER_FILE_
-#define CURAN_MEMORY_UTILS_HEADER_FILE_
+#ifndef CURAN_PROTOIGTL_HEADER_FILE_
+#define CURAN_PROTOIGTL_HEADER_FILE_
 
 #include <asio.hpp>
 
@@ -23,6 +23,9 @@
 
 namespace curan {
 	namespace communication {
+
+		class Client;
+
 		namespace protocols {
 			namespace igtlink {
 				enum status {
@@ -30,8 +33,6 @@ namespace curan {
 					FAILED_TO_UNPACK_HEADER,
 					FAILED_TO_UNPACK_BODY
 				};
-
-				class Client;
 
 				namespace implementation {
 

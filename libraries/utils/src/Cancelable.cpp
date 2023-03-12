@@ -1,15 +1,21 @@
-#include "Cancelable.h"
+#include "utils/Cancelable.h"
 
-std::shared_ptr<Cancelable> Cancelable::make_cancelable() {
-	return std::shared_ptr<Cancelable>(new Cancelable());
-}
+#include <mutex>
 
-void Cancelable::cancel() {
-	std::lock_guard<std::mutex> g(mut);
-	is_cancelled = 0;
-}
+namespace curan {
+	namespace utils {
+		std::shared_ptr<Cancelable> Cancelable::make_cancelable() {
+			return std::shared_ptr<Cancelable>(new Cancelable());
+		}
 
-bool Cancelable::operator() () {
-	std::lock_guard<std::mutex> g(mut);
-	return is_cancelled;
+		void Cancelable::cancel() {
+			std::lock_guard<std::mutex> g(mut);
+			is_cancelled = 0;
+		}
+
+		bool Cancelable::operator() () {
+			std::lock_guard<std::mutex> g(mut);
+			return is_cancelled;
+		}
+	}
 }

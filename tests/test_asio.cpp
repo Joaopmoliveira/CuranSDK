@@ -43,33 +43,21 @@ read messages from sockets and pass them along to our client/server API.
 
 class Client;
 
+//openigtlink specification
+
 /*
 Interface for the openigtlink protocol.
 */
 using interface_igtl = std::function<void(const size_t&, const std::error_code&, igtl::MessageBase::Pointer)>;
-
-struct protoigtl {
-	interface_igtl callback;
-	std::function<void(Client*)> start;
-};
 
 /*
 This is the most important point, we create a
 variant which contains the signature of the
 callable methods.
 */
-using callable = std::variant<protoigtl>;
+using callable = std::variant<interface_igtl>;
 
-
-
-/*
-This visitor selects the appropriate protocol
-so that the socket class can start reading bytes from
-said socket
-*/
-class Visitor {
-	std::function<void(Client*)> operator()(interface_igtl val);
-};
+std::function<void(Client*)> get_interface(callable callable_type);
 
 /*
 The socket is an abstraction of
@@ -78,7 +66,7 @@ the underlying socket of asio.
 class Socket {
 	asio::ip::tcp::socket _socket;
 	asio::io_context& _cxt;
-	std::list<std::shared_ptr<curan::utils::memory_buffer>> to_send;
+	std::list<std::shared_ptr<curan::utils::MemoryBuffer>> to_send;
 	std::function<void(Client*)> start;
 
 public:
@@ -86,7 +74,7 @@ public:
 		const asio::ip::tcp::resolver::results_type& endpoints, 
 		callable callable, Client* owner) : _cxt(io_context),
 		_socket(io_context) {
-		start = std::visit<std::function<void(Client*)>, Visitor>(Visitor(),callable);
+		start = get_interface(callable);
 		asio::async_connect(_socket, endpoints,
 			[this, owner](std::error_code ec, asio::ip::tcp::endpoint e)
 			{
@@ -99,7 +87,7 @@ public:
 	Socket(asio::io_context& io_context, 
 		asio::ip::tcp::socket socket, 
 		callable callable, Client* owner) : _cxt(io_context), _socket{ std::move(socket)} {
-		start = std::visit<std::function<void(Client*)>, Visitor>(Visitor(), callable);
+		start = get_interface(callable);
 		start(owner);
 	}
 
@@ -115,7 +103,7 @@ public:
 
 	}
 
-	void post(std::shared_ptr<curan::utils::memory_buffer> buff) {
+	void post(std::shared_ptr<curan::utils::MemoryBuffer> buff) {
 		asio::post(_cxt,
 			[this, buff]()
 			{
@@ -232,7 +220,7 @@ public:
 		return cancel;
 	}
 
-	void write(std::shared_ptr<curan::utils::memory_buffer> buffer){
+	void write(std::shared_ptr<curan::utils::MemoryBuffer> buffer){
 		socket.post(std::move(buffer));
 	}
 
@@ -301,7 +289,7 @@ public:
 		return cancel;
 	}
 
-	void write(std::shared_ptr<curan::utils::memory_buffer> buffer) {
+	void write(std::shared_ptr<curan::utils::MemoryBuffer> buffer) {
 		std::cout << "Writing to all clients\n";
 		for (auto& client : list_of_clients)
 			client->write(buffer);
@@ -403,9 +391,18 @@ namespace protocols {
 	};
 }
 
+namespace supid_details {
+	// helper type for the visitor #4
+	template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+	// explicit deduction guide (not needed as of C++20)
+	template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+}
 
-std::function<void(Client*)> Visitor::operator()(interface_igtl val) {
-	return protocols::igtlink::start;
+std::function<void(Client*)> get_interface(callable callable_type) {
+	std::function<void(Client*)> val;
+	std::visit(supid_details::overloaded{
+		[&val](interface_igtl arg) { val = protocols::igtlink::start; } }, callable_type);
+	return val;
 }
 
 

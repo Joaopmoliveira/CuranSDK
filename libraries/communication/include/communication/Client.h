@@ -2,9 +2,12 @@
 #define CURAN_CLIENT_HEADER_FILE_
 
 #include <memory>
+#include <asio.hpp>
+#include "Socket.h"
+#include "utils/Cancelable.h"
 
 namespace curan {
-	namespace communication {
+namespace communication {
 		/*
 		The client class has two constructors, one which is called
 		by the user, because its an handcrafted client and the other
@@ -18,8 +21,8 @@ namespace curan {
 
 			struct combined {
 				callable lambda;
-				std::shared_ptr<cancelable> canceled;
-				combined(callable lambda, std::shared_ptr<cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
+				std::shared_ptr<utils::Cancelable> canceled;
+				combined(callable lambda, std::shared_ptr<utils::Cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
 			};
 
 			std::vector<combined> callables;
@@ -39,32 +42,15 @@ namespace curan {
 				asio::ip::tcp::socket socket;
 			};
 
-			Client(Info& info) : _cxt{ info.io_context },
-				socket{ _cxt,info.endpoints,info.connection_type,this },
-				connection_type{ info.connection_type } {
-				std::cout << "Creating client\n";
-			}
+			Client(Info& info);
 
-			Client(ServerInfo& info) : _cxt{ info.io_context },
-				socket{ _cxt,std::move(info.socket),info.connection_type,this },
-				connection_type{ info.connection_type } {
+			Client(ServerInfo& info);
 
-			}
+			[[nodiscard]] std::optional<std::shared_ptr<utils::Cancelable>> connect(callable c);
 
-			[[nodiscard]] std::optional<std::shared_ptr<cancelable>> connect(callable c) {
-				if (connection_type.index() != c.index())
-					return std::nullopt;
-				auto cancel = cancelable::make_cancelable();
-				combined val{ c,cancel };
-				callables.push_back(val);
-				return cancel;
-			}
+			void write(std::shared_ptr<curan::utils::MemoryBuffer> buffer);
 
-			void write(std::shared_ptr<curan::utils::memory_buffer> buffer) {
-				socket.post(std::move(buffer));
-			}
-
-			Socket& get_socket() {
+			inline Socket& get_socket() {
 				return socket;
 			}
 
@@ -78,7 +64,7 @@ namespace curan {
 				}
 			}
 		};
-	}
+}
 }
 
 #endif

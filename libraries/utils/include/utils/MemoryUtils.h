@@ -14,7 +14,7 @@ namespace curan {
 		/*
 		Parent class which definies the characteristics required to obey the ConstBufferSequence
 		*/
-		class memory_buffer {
+		class MemoryBuffer {
 		public:
 			// Implement the ConstBufferSequence requirements.
 			typedef asio::const_buffer value_type;
@@ -23,10 +23,10 @@ namespace curan {
 			virtual const asio::const_buffer* begin() const = 0;
 			virtual const asio::const_buffer* end() const = 0;
 
-			friend std::ostream& operator << (std::ostream& os,const std::shared_ptr<memory_buffer>& val);
+			friend std::ostream& operator << (std::ostream& os,const std::shared_ptr<MemoryBuffer>& val);
 		};
 
-		std::ostream& operator << (std::ostream& os, const  std::shared_ptr<memory_buffer>& val);
+		std::ostream& operator << (std::ostream& os, const  std::shared_ptr<MemoryBuffer>& val);
 
 		/*
 		Typically a binding will capture the object we wish to send (to guarantee the lifetime of the object)
@@ -43,15 +43,15 @@ namespace curan {
 		send a lambda which captures the object (because it is shared) and it constructs it when required
 		by the assyncronous operation.
 		*/
-		class capture_memory_buffer : public memory_buffer {
+		class CaptureBuffer : public MemoryBuffer {
 			// Construct from a std::string.
-			explicit capture_memory_buffer(std::function<asio::const_buffer()>&& val);
+			explicit CaptureBuffer(std::function<asio::const_buffer()>&& val);
 
 		public:
-			static std::shared_ptr<memory_buffer> make_shared(binding&& val);
+			static std::shared_ptr<MemoryBuffer> make_shared(binding&& val);
 
-			const asio::const_buffer* begin() const override { return &buffer_; }
-			const asio::const_buffer* end() const override { return &buffer_ + 1; }
+			inline const asio::const_buffer* begin() const override { return &buffer_; }
+			inline const asio::const_buffer* end() const override { return &buffer_ + 1; }
 
 		private:
 			binding val_;
@@ -63,15 +63,15 @@ namespace curan {
 		a copy of said region of memory, and then it takes ownership of said memory.
 		Because we
 		*/
-		class copy_memory_buffer : public memory_buffer {
+		class CopyBuffer : public MemoryBuffer {
 
 			// Construct from a std::string.
-			explicit copy_memory_buffer(char* data, size_t size);
+			explicit CopyBuffer(char* data, size_t size);
 		public:
-			static std::shared_ptr<memory_buffer> make_shared(char* data, size_t size);
+			static std::shared_ptr<MemoryBuffer> make_shared(char* data, size_t size);
 
-			const asio::const_buffer* begin() const override { return &buffer_; }
-			const asio::const_buffer* end() const override { return &buffer_ + 1; }
+			inline const asio::const_buffer* begin() const override { return &buffer_; }
+			inline const asio::const_buffer* end() const override { return &buffer_ + 1; }
 
 		private:
 			std::unique_ptr<std::vector<char>> data_;

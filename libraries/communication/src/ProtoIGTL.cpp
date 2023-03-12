@@ -1,10 +1,12 @@
 #include "communication/ProtoIGTL.h"
+#include "communication/Client.h"
 
 namespace curan {
 	namespace communication {
 		namespace protocols {
 			namespace igtlink {
 				namespace implementation {
+
 					IgtlinkClientConnection::IgtlinkClientConnection(Client* supplied_owner) : owner{ supplied_owner } {
 						header_to_receive->AllocatePack();
 					}

@@ -1,24 +1,29 @@
 #ifndef CURAN_CANCELABLE_HEADER_FILE_
 #define CURAN_CANCELABLE_HEADER_FILE_
 
-#include <memory>
-/*
-You can query and request for a connection to be
-terminated at any moments notice.
-*/
-class Cancelable : std::enable_shared_from_this<Cancelable> {
-	std::mutex mut;
-	bool is_cancelled;
+#include <mutex>
 
-	Cancelable() : is_cancelled{ false } {}
+namespace curan {
+	namespace utils {
+		/*
+		You can query and request for a connection to be
+		terminated at any moments notice.
+		*/
+		class Cancelable : std::enable_shared_from_this<Cancelable> {
+			std::mutex mut;
+			bool is_cancelled;
 
-public:
+			Cancelable() : is_cancelled{ false } {}
 
-	[[nodiscard]] static std::shared_ptr<Cancelable> make_cancelable();
+		public:
 
-	void cancel();
+			[[nodiscard]] static std::shared_ptr<Cancelable> make_cancelable();
 
-	[[nodiscard]] bool operator() ();
-};
+			void cancel();
 
+			[[nodiscard]] bool operator() ();
+		};
+
+	}
+}
 #endif

@@ -3,6 +3,7 @@ src/Client.cpp
 src/ProtoIGTL.cpp	
 src/Server.cpp	
 src/Socket.cpp	
+src/Protocols.cpp
 )
 
 target_include_directories(communication
@@ -11,6 +12,5 @@ target_include_directories(communication
 
 target_link_libraries(communication PUBLIC
 OpenIGTLink
-asio::asio
 utils
 )

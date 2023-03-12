@@ -120,7 +120,7 @@ struct PoPable {
 
 void test_thread_safe_queue() {
 	PoPable pop;
-	curan::utils::ThreadSafeQueue<PoPable> safe_queue;
+	curan::utils::SafeQueue<PoPable> safe_queue;
 	auto put_in = [&safe_queue](PoPable pop) {
 		safe_queue.push(pop);
 	};
@@ -222,11 +222,11 @@ void test_calling_mechanism_used_in_code() {
 
 
 void test_memory_buffers() {
-	std::shared_ptr<curan::utils::memory_buffer> buff_of_interest;
+	std::shared_ptr<curan::utils::MemoryBuffer> buff_of_interest;
 	{
 		std::string value_to_control = "1_2_3_4_5_6_7_8_9_10_11";
 		std::cout << "Expected buffer is: " << value_to_control << "\n";
-		buff_of_interest = curan::utils::copy_memory_buffer::make_shared(value_to_control.data(), value_to_control.size());
+		buff_of_interest = curan::utils::CopyBuffer::make_shared(value_to_control.data(), value_to_control.size());
 		//value to constrol is deleted but the memory has already been copied into the memory_buffer class
 	}
 	
@@ -240,7 +240,7 @@ void test_memory_buffers() {
 			return asio::buffer(shared_memory_to_control->data(), shared_memory_to_control->size());
 			
 		};
-		buff_of_interest = curan::utils::capture_memory_buffer::make_shared(lambda);
+		buff_of_interest = curan::utils::CaptureBuffer::make_shared(lambda);
 		//value to constrol is deleted as well as the local copy of the shared_memory_control, but the shared_pointer is
 		//stored into the lamda which is then copied into the capture memory buffer
 	}
