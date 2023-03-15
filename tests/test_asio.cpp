@@ -5,7 +5,7 @@
 #include <variant>
 #include <utility>
 #include <map>
-#include "sigslot\signal.hpp"
+
 #include "utils\ThreadSafeQueue.h"
 #include "utils\Logger.h"
 
