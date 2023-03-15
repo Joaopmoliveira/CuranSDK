@@ -1,6 +1,0 @@
-#ifndef CURAN_CONTAINER_HEADER_FILE_
-#define CURAN_CONTAINER_HEADER_FILE_
-
-
-
-#endif

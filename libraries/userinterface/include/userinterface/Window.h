@@ -1,7 +1,7 @@
 #ifndef CURAN_WINDOW_HEADER_FILE_
 #define CURAN_WINDOW_HEADER_FILE_
 
-#include "Signal.h"
+#include "widgets/Signal.h"
 #include <memory>
 #include "utils/ThreadSafeQueue.h"
 #include "Context.h"

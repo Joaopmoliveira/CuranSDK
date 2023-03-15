@@ -1,4 +1,4 @@
-#include "userinterface/Signal.h"
+#include "userinterface/widgets/Signal.h"
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include "userinterface/Window.h"

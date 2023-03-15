@@ -1,6 +1,0 @@
-#ifndef CURAN_WIDGET_HEADER_FILE_
-#define CURAN_WIDGET_HEADER_FILE_
-
-
-
-#endif

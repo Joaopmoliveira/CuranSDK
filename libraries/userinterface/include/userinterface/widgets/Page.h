@@ -4,15 +4,7 @@
 namespace curan {
 	namespace ui {
 		class Page {
-			Page() {
-			
-			}
 
-			void draw() {
-			
-			}
-
-			
 		};
 	}
 }

@@ -4,7 +4,7 @@
 #include <vector>
 #include <memory>
 #include <optional>
-#include "UIdefinitions.h"
+#include "widgets/definitions/UIdefinitions.h"
 
 namespace curan {
 	namespace ui {

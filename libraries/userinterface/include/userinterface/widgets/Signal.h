@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "UIdefinitions.h"
+#include "definitions/UIdefinitions.h"
 
 namespace curan {
 	namespace ui {
