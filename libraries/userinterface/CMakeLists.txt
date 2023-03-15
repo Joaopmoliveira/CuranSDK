@@ -1,10 +1,10 @@
 find_package(Vulkan REQUIRED)
 
-add_library(userinterface
+add_library(userinterface STATIC
 src/Context.cpp
 src/Signal.cpp
 src/Window.cpp
-)
+src/BoxPose.cpp "include/userinterface/Drawable.h")
 
 target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/

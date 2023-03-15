@@ -113,5 +113,4 @@
 #include "include\gpu\vk\GrVkVulkan.h"
 #include "include\pathops\SkPathOps.h"
 #include "include\ports\SkTypeface_win.h"
-
 #endif
