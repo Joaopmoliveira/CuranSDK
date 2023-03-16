@@ -66,8 +66,7 @@ int main() {
 			caldraw(canvas);
 			glfwPollEvents();
 			auto signals = viewer->process_pending_signals();
-			std::cout << "signal size:" << signals.size() << "\n";
-			if(!signals.empty())
+			if (!signals.empty())
 				calsignal(signals.back());
 			bool val = viewer->swapBuffers();
 			if (!val)
