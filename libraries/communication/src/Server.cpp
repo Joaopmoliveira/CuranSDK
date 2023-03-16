@@ -22,6 +22,8 @@ namespace curan {
 
 			void Server::write(std::shared_ptr<curan::utils::MemoryBuffer> buffer) {
 				std::cout << "Writing to all clients\n";
+				if (list_of_clients.size()==0)
+					std::cout << "No client to write\n";
 				for (auto& client : list_of_clients)
 					client->write(buffer);
 			}

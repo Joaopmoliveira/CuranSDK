@@ -6,7 +6,7 @@ utils
 OpenIGTLink
 )
 
-add_executable(test_communication test_asio.cpp)
+add_executable(test_communication test_communication.cpp)
 
 target_link_libraries(test_communication PUBLIC
 communication

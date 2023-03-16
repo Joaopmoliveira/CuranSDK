@@ -37,7 +37,7 @@ namespace curan {
 
 					struct IgtlinkClientConnection {
 						igtl::MessageBase::Pointer message_to_receive;
-						igtl::MessageBase::Pointer header_to_receive;
+						igtl::MessageHeader::Pointer header_to_receive;
 						Client* owner;
 						IgtlinkClientConnection(Client* supplied_owner);
 					};
