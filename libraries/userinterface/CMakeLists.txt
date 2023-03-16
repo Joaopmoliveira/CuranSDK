@@ -4,7 +4,9 @@ add_library(userinterface STATIC
 src/Context.cpp
 src/Signal.cpp
 src/Window.cpp
- "include/userinterface/widgets/Drawable.h" "include/userinterface/widgets/Button.h")
+src/Button.cpp
+src/SingletonIconResources.cpp 
+src/DrawableImageBox.cpp)
 
 target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/

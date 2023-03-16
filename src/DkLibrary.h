@@ -857,7 +857,7 @@ namespace curan
 			SkRect size;
 			bool is_exclusive = false;
 			int current_selected_index = -1;
-			mutable std::mutex mut;
+			std::mutex mut;
 
 		public:
 

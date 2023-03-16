@@ -24,6 +24,19 @@ namespace curan {
 			[[nodiscard]] bool operator() ();
 		};
 
+		template<typename Derived>
+		class Connectable {
+			std::shared_ptr<Cancelable> cancelable;
+		public:
+			void submit_cancelable(std::shared_ptr<Cancelable> submited_cancelable) {
+				cancelable = submited_cancelable;
+			}
+
+			~Connectable() {
+				cancelable->cancel();
+			}
+		};
+
 	}
 }
 #endif
