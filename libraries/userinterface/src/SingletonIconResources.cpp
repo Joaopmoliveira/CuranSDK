@@ -39,5 +39,19 @@ namespace curan {
 				image = item_in_map->second.image_to_display;
 			}
 		}
+
+		Icon Icon::read(const char* s)
+		{
+			Icon icon;
+			icon.pixels = stbi_load(s, &icon.texWidth, &icon.texHeight, &icon.texChannels, STBI_rgb_alpha);
+			if (!icon.pixels) {
+				throw std::runtime_error("failed to load texture image!");
+			}
+			SkImageInfo information = SkImageInfo::Make(icon.texWidth, icon.texHeight, kBGRA_8888_SkColorType, kUnpremul_SkAlphaType);
+			icon.pixmap = SkPixmap(information, icon.pixels, icon.texWidth * 32);
+			icon.image_to_display = SkImage::MakeFromRaster(icon.pixmap, nullptr, nullptr);
+			return icon;
+		}
+
 	}
 }

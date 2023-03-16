@@ -21,7 +21,7 @@ namespace curan {
 
 		};
 
-		class OpenIGTLinkViewer : Drawable<OpenIGTLinkViewer>, Lockable<OpenIGTLinkViewer>, utils::Connectable<OpenIGTLinkViewer> {
+		class OpenIGTLinkViewer : public Drawable<OpenIGTLinkViewer>, Lockable<OpenIGTLinkViewer>, utils::Connectable<OpenIGTLinkViewer> {
 		public:
 			struct Info {
 				SkFont text_font;

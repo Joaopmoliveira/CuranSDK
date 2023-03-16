@@ -2,13 +2,11 @@
 #define CURAN_CANCELABLE_HEADER_FILE_
 
 #include <mutex>
+#include <vector>
 
 namespace curan {
 	namespace utils {
-		/*
-		You can query and request for a connection to be
-		terminated at any moments notice.
-		*/
+
 		class Cancelable : std::enable_shared_from_this<Cancelable> {
 			std::mutex mut;
 			bool is_cancelled;
@@ -26,14 +24,16 @@ namespace curan {
 
 		template<typename Derived>
 		class Connectable {
-			std::shared_ptr<Cancelable> cancelable;
+			std::vector<std::shared_ptr<Cancelable>> cancelable;
 		public:
 			void submit_cancelable(std::shared_ptr<Cancelable> submited_cancelable) {
-				cancelable = submited_cancelable;
+				cancelable.push_back(submited_cancelable);
 			}
 
 			~Connectable() {
-				cancelable->cancel();
+				for (auto& canc : cancelable)
+					if(canc)
+						canc->cancel();
 			}
 		};
 

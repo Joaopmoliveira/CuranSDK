@@ -14,6 +14,7 @@ namespace curan {
 		template<typename Derived>
 		class Drawable {
 
+		public:
 			drawablefunction draw() {
 				return static_cast<Derived*>(this)->impldraw();
 			}

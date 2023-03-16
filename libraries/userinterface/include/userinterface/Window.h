@@ -80,7 +80,7 @@ namespace curan {
 			[[nodiscard]] bool initialize();
 			void destroy();
 
-			void process_pending_signals();
+			std::vector<Signal> process_pending_signals();
 			[[nodiscard]] bool recreateDisplay();
 			BackbufferInfo* getAvailableBackBuffer();
 			static void framebufferResizeCallback(GLFWwindow* window, int width, int height);

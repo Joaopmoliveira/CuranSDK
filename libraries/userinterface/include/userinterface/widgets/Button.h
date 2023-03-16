@@ -8,7 +8,7 @@
 
 namespace curan {
 	namespace ui {
-		class Button : Drawable<Button> , Lockable<Button>, utils::Connectable<Button> {
+		class Button : public  Drawable<Button> , Lockable<Button>, utils::Connectable<Button> {
 		public:
 			struct Info {
 				SkColor hover_color;
@@ -48,6 +48,13 @@ namespace curan {
 			drawablefunction impldraw();
 			callablefunction implcall();
 			bool interacts(double x,double y);
+
+			inline void set_position(SkRect pos) {
+				widget_rect = pos;
+			}
+			inline SkRect get_position() {
+				return widget_rect;
+			}
 		};
 	}
 }

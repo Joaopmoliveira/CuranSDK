@@ -6,34 +6,11 @@
 namespace curan {
 	namespace ui {
 		template<typename Derived>
-		class LockGuard;
-
-		template<typename Derived>
 		class Lockable {
 			std::mutex mut;
-
-
-			void lock() {
-				mut.lock();
-			}
-
-			void unlock() {
-				mut.unlock();
-			}
-
-			friend class LockGuard<Derived>;
-		};
-
-		template<typename Derived>
-		class LockGuard {
-			Lockable<Derived>* lock;
 		public:
-			LockGuard(Lockable<Derived>* supplied_lockable) : lock{ supplied_lockable } {
-				lock->lock();
-			}
-
-			~LockGuard() {
-				lock->unlock();
+			std::mutex& get_mutex() {
+				return mut;
 			}
 		};
 	}
