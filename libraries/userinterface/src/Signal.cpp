@@ -10,7 +10,6 @@ namespace curan {
 			Signal received_signal = data;
 			auto window_pointer = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 			window_pointer->signal_queue.push(received_signal);
-			std::cout << "signal received" << "\n";
 		}
 
 		void cursor_position_click_callback(GLFWwindow* window, int button, int action, int mods) {
@@ -34,7 +33,6 @@ namespace curan {
 			}
 			auto window_pointer = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 			window_pointer->signal_queue.push(received_signal);
-			std::cout << "signal received" << "\n";
 		}
 
 		void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
@@ -45,7 +43,6 @@ namespace curan {
 			received_signal = val;
 			auto window_pointer = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 			window_pointer->signal_queue.push(received_signal);
-			std::cout << "signal received" << "\n";
 		}
 
 		void item_droped_callback(GLFWwindow* window, int count, const char** paths) {
@@ -59,7 +56,6 @@ namespace curan {
 			Signal received_signal = dropped;
 			auto window_pointer = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 			window_pointer->signal_queue.push(received_signal);
-			std::cout << "signal received" << "\n";
 		}
 	}
 }
