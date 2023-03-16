@@ -17,6 +17,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 #Externally provided targets
 add_subdirectory(third_party)
 
+#Add resources necessary by the library
+add_subdirectory(resources)
+
 #Add internal Curan libraries to the list of known targets
 add_subdirectory(libraries)
 

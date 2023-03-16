@@ -15,3 +15,5 @@ target_link_libraries(utils PUBLIC
 spdlog::spdlog 
 asio
 )
+
+add_dependencies(utils WIDGETRESOURCES)
