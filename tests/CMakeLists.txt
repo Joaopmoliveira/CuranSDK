@@ -15,6 +15,12 @@ utils
 OpenIGTLink
 )
 
+add_executable(test_communication test_asio.cpp)
+
+target_link_libraries(test_communication PUBLIC
+communication
+)
+
 add_executable(test_user_interface test_user_interface.cpp)
 
 target_link_libraries(test_user_interface PUBLIC

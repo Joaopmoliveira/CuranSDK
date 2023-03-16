@@ -406,11 +406,6 @@ std::function<void(Client*)> get_interface(callable callable_type) {
 }
 
 
-/*
-Launch a server thread which waits for a 
-connection and talks through the openIGTlink
-protocol
-*/
 void foo(asio::io_context& cxt, short port) {
 	interface_igtl igtlink_interface;
 	Server::Info construction{ cxt,igtlink_interface ,port};

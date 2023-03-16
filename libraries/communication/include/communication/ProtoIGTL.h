@@ -8,7 +8,6 @@
 #include "igtlTransformMessage.h"
 #include "igtlPositionMessage.h"
 #include "igtlImageMessage.h"
-#include "igtlClientSocket.h"
 #include "igtlStatusMessage.h"
 
 #if OpenIGTLink_PROTOCOL_VERSION >= 2
