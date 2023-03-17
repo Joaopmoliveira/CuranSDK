@@ -1,9 +1,10 @@
 #include "communication/Server.h"
 #include "communication/Client.h"
+#include "utils/Logger.h"
 
 namespace curan {
 	namespace communication {
-		Server::Server(Info& info) : _cxt{ info.io_context }, acceptor_{ _cxt,info.get_endpoint() } {
+		Server::Server(Info& info) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), info.port) } {
 				accept();
 			}
 
@@ -21,25 +22,30 @@ namespace curan {
 			}
 
 			void Server::write(std::shared_ptr<curan::utils::MemoryBuffer> buffer) {
-				std::cout << "Writing to all clients\n";
 				if (list_of_clients.size()==0)
-					std::cout << "No client to write\n";
-				for (auto& client : list_of_clients)
-					client->write(buffer);
+					curan::utils::console->info("No client to write");
+				std::erase_if(list_of_clients, [&buffer](std::shared_ptr<Client>& client) {	
+					if (!client->get_socket().get_underlying_socket().is_open())
+						return true;
+					curan::utils::console->info("wrote to client");
+					client->write(buffer); 
+					return false;
+					}
+				);					
 			}
 
 			void Server::accept() {
 				acceptor_.async_accept(
 					[this](std::error_code ec, asio::ip::tcp::socket socket) {
 						if (!ec) {
-							std::cout << "Server received a client\n";
+							curan::utils::console->info("Server received a client");
 							Client::ServerInfo info{ _cxt,connection_type,std::move(socket) };
 							auto client_ptr = std::make_shared<Client>(info);
-							list_of_clients.push_back(std::move(client_ptr));
+							list_of_clients.push_back(client_ptr);
 						}
 						accept();
 					});
-				std::cout << "Server started listening for clients\n";
+				curan::utils::console->info("Server started listening for new client");
 			}
 	}
 }

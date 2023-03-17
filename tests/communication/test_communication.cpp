@@ -4,6 +4,7 @@
 #include <thread>
 #include <csignal>
 #include <chrono>
+#include "utils/Logger.h"
 
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 {
@@ -45,76 +46,96 @@ void signal_handler(int signal)
 
 void foo(asio::io_context& cxt, short port) {
 	using namespace curan::communication;
-	interface_igtl igtlink_interface;
-	Server::Info construction{ cxt,igtlink_interface ,port };
-	Server server{ construction };
+	try {
+		interface_igtl igtlink_interface;
+		Server::Info construction{ cxt,igtlink_interface ,port };
 
-	igtl::TransformMessage::Pointer transMsg;
-	transMsg = igtl::TransformMessage::New();
-	transMsg->SetDeviceName("Tracker");
+		Server server{ construction };
 
-	igtl::TimeStamp::Pointer ts;
-	ts = igtl::TimeStamp::New();
+		igtl::TimeStamp::Pointer ts;
+		ts = igtl::TimeStamp::New();
 
-	while (!gSignalStatus) {
-		auto start = std::chrono::high_resolution_clock::now();
-		igtl::Matrix4x4 matrix;
-		GetRandomTestMatrix(matrix);
-		ts->GetTime();
-		transMsg->SetMatrix(matrix);
-		transMsg->SetTimeStamp(ts);
-		transMsg->Pack();
-		auto callable = [transMsg]() {
-			return asio::buffer(transMsg->GetPackPointer(), transMsg->GetPackSize());
-		};
-		auto to_send = curan::utils::CaptureBuffer::make_shared(std::move(callable));
-		server.write(to_send);
-		auto end = std::chrono::high_resolution_clock::now();
-		std::this_thread::sleep_for(std::chrono::seconds(1) - std::chrono::duration_cast<std::chrono::seconds>(end - start));
+		while (!gSignalStatus) {
+			auto start = std::chrono::high_resolution_clock::now();
+			igtl::Matrix4x4 matrix;
+			GetRandomTestMatrix(matrix);
+			ts->GetTime();
+
+			igtl::TransformMessage::Pointer transMsg;
+			transMsg = igtl::TransformMessage::New();
+			transMsg->SetDeviceName("Tracker");
+
+			transMsg->SetMatrix(matrix);
+			transMsg->SetTimeStamp(ts);
+			transMsg->Pack();
+
+			auto callable = [transMsg]() {
+				return asio::buffer(transMsg->GetPackPointer(), transMsg->GetPackSize());
+			};
+			auto to_send = curan::utils::CaptureBuffer::make_shared(std::move(callable));
+			server.write(to_send);
+			auto end = std::chrono::high_resolution_clock::now();
+			std::this_thread::sleep_for(std::chrono::milliseconds(10) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+		}
+		curan::utils::console->info("Stopping context");
+		cxt.stop();
 	}
-	cxt.stop();
+	catch (std::exception& e) {
+		curan::utils::console->info("CLient exception was thrown" + std::string(e.what()));
+	}
 }
 
-void bar(size_t protocol_defined_val, std::system_error er, igtl::MessageBase::Pointer val) {
-	if (val->GetMessageType() == "TRANSFORM") {
-		std::cout << "Receiving TRANSFORM data type\n";
+void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
+	curan::utils::console->info("received message");
+	assert(val.IsNotNull());
+	std::string tmp = val->GetMessageType();
+	std::string desired = "TRANSFORM";
+	if (!tmp.compare(desired)) {
+		curan::utils::console->info("Receiving TRANSFORM data type");
 		igtl::TransformMessage::Pointer transMsg = igtl::TransformMessage::New();
 
-		transMsg->Copy(val);
+			//transMsg->Copy(val);
+			//int c = transMsg->Unpack(1);
 
-		// Deserialize the transform data
-		// If you want to skip CRC check, call Unpack() without argument.
-		int c = transMsg->Unpack(1);
-
-		if (c & igtl::MessageHeader::UNPACK_BODY) // if CRC check is OK
-		{
-			// Retrive the transform data
-			igtl::Matrix4x4 matrix;
-			transMsg->GetMatrix(matrix);
-			igtl::PrintMatrix(matrix);
-			std::cerr << "\n";
-		}
+			//if (c & igtl::MessageHeader::UNPACK_BODY) // if CRC check is OK
+			//{
+			//	// Retrive the transform data
+			//	igtl::Matrix4x4 matrix;
+			//	transMsg->GetMatrix(matrix);
+			//}
 	}
 	else {
-		std::cout << "Not Receiving TRANSFORM data type\n";
+		curan::utils::console->info("Not Receiving TRANSFORM data type");
 	}
-
 }
 
 int main() {
-	std::signal(SIGINT, signal_handler);
-	using namespace curan::communication;
-	short port = 50000;
-	asio::io_context io_context;
-	auto lauchfunctor = [&io_context, port]() {
-		foo(io_context, port);
-	};
-	std::jthread laucher(lauchfunctor);
-	interface_igtl igtlink_interface;
-	Client::Info construction{ io_context,igtlink_interface };
-	Client client{ construction };
-	auto connectionstatus = client.connect(bar);
-	auto val = io_context.run();
-	std::cout << "stopped running\n";
+	try {
+		curan::utils::console->info("started running");
+		std::signal(SIGINT, signal_handler);
+		using namespace curan::communication;
+		short port = 50000;
+		asio::io_context io_context;
+		auto lauchfunctor = [&io_context, port]() {
+			foo(io_context, port);
+		};
+		std::jthread laucher(lauchfunctor);
+		interface_igtl igtlink_interface;
+		Client::Info construction{ io_context,igtlink_interface };
+		asio::ip::tcp::resolver resolver(io_context);
+		auto endpoints = resolver.resolve("localhost", std::to_string(port));
+		construction.endpoints = endpoints;
+		Client client{ construction };
+		callable lambda;
+		Client::combined val1{lambda,nullptr};
+		auto connectionstatus = client.connect(bar, val1);
+		auto val = io_context.run();
+		curan::utils::console->info("stopped running");
+	}
+	catch (std::exception& e) {
+		curan::utils::console->info("CLient exception was thrown\n"+std::string(e.what()));
+		return 1;
+	}
+
 	return 0;
 }

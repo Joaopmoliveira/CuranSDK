@@ -1,3 +1,4 @@
+cmake_policy(SET CMP0091 NEW)
 PROJECT(OpenIGTLink)
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
@@ -28,6 +29,7 @@ ELSE()
   SET(OpenIGTLink_PROTOCOL_VERSION "1")
 ENDIF()
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 #-----------------------------------------------------------------------------
 # Configure VideoStreaming
 # Create the link to the VideoStreaming libraries
@@ -47,7 +49,7 @@ OPTION(BUILD_SHARED_LIBS "Build OpenIGTLink with shared libraries." OFF)
 SET(OpenIGTLink_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
 
 IF(NOT OpenIGTLink_BUILD_SHARED_LIBS)
-  OPTION(BUILD_GENERATE_PIC "Generate position independent code (for static)." ON)
+  OPTION(BUILD_GENERATE_PIC "Generate position independent code (for static)." OFF)
   SET(OpenIGTLink_BUILD_GENERATE_PIC ${BUILD_GENERATE_PIC})
 ENDIF()
 

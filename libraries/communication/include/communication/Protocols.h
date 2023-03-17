@@ -46,12 +46,14 @@ namespace curan {
 		*/
 		using interface_igtl = std::function<void(const size_t&, const std::error_code&, igtl::MessageBase::Pointer)>;
 
+		using interface_empty = std::function<void(void)>;
+
 		/*
 		This is the most important point, we create a
 		variant which contains the signature of the
 		callable methods.
 		*/
-		using callable = std::variant<interface_igtl>;
+		using callable = std::variant<interface_empty,interface_igtl>;
 
 		/*
 		This function selects which protocol we want to communicate with depending
