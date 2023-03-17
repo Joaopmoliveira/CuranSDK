@@ -5,6 +5,7 @@
 #include <csignal>
 #include <chrono>
 #include "utils/Logger.h"
+#include <atomic>
 
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 {
@@ -34,14 +35,11 @@ void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 	matrix[2][3] = position[2];
 }
 
-namespace
-{
-	volatile std::sig_atomic_t gSignalStatus;
-}
+std::atomic<bool> value = true;
 
 void signal_handler(int signal)
 {
-	gSignalStatus = signal;
+	value.store(false);
 }
 
 void foo(asio::io_context& cxt, short port) {
@@ -55,7 +53,7 @@ void foo(asio::io_context& cxt, short port) {
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
 
-		while (!gSignalStatus) {
+		while (value.load()) {
 			auto start = std::chrono::high_resolution_clock::now();
 			igtl::Matrix4x4 matrix;
 			GetRandomTestMatrix(matrix);
@@ -126,14 +124,12 @@ int main() {
 		auto endpoints = resolver.resolve("localhost", std::to_string(port));
 		construction.endpoints = endpoints;
 		Client client{ construction };
-		callable lambda;
-		Client::combined val1{lambda,nullptr};
-		auto connectionstatus = client.connect(bar, val1);
+		auto connectionstatus = client.connect(bar);
 		auto val = io_context.run();
 		curan::utils::console->info("stopped running");
 	}
 	catch (std::exception& e) {
-		curan::utils::console->info("CLient exception was thrown\n"+std::string(e.what()));
+		curan::utils::console->info("CLient exception was thrown"+std::string(e.what()));
 		return 1;
 	}
 

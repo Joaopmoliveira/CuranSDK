@@ -13,12 +13,11 @@ namespace curan {
 
 		};
 
-		std::optional<std::shared_ptr<utils::Cancelable>> Client::connect(callable c, combined& val1) {
+		std::optional<std::shared_ptr<utils::Cancelable>> Client::connect(callable c) {
 			if (connection_type.index() != c.index())
 				return std::nullopt;
 			auto cancel = utils::Cancelable::make_cancelable();
 			combined val{ c,cancel };
-			val1 = val;
 			callables.push_back(std::move(val));
 			return cancel;
 		};

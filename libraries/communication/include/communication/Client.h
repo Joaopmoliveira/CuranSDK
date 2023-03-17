@@ -6,6 +6,7 @@
 #include "Socket.h"
 #include "utils/Cancelable.h"
 #include "utils/Overloading.h"
+#include <utility>
 
 namespace curan {
 	namespace communication {
@@ -17,13 +18,11 @@ namespace curan {
 		protocol, the arguments are prespecified. More on other examples.
 		*/
 		class Client {
-		public:
 			struct combined {
 				callable lambda;
 				std::shared_ptr<utils::Cancelable> canceled;
 				combined(callable lambda, std::shared_ptr<utils::Cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
 			};
-		private:
 			asio::io_context& _cxt;
 			Socket socket;
 
@@ -49,7 +48,7 @@ namespace curan {
 
 			Client(ServerInfo& info);
 
-			[[nodiscard]] std::optional<std::shared_ptr<utils::Cancelable>> connect(callable c, combined& val1);
+			[[nodiscard]] std::optional<std::shared_ptr<utils::Cancelable>> connect(callable c);
 
 			void write(std::shared_ptr<curan::utils::MemoryBuffer> buffer);
 
@@ -58,11 +57,11 @@ namespace curan {
 			}	
 
 			template<class T, class ... Args>
-			void transverse_callables(Args... args) {
+			void transverse_callables(Args&& ... args) {
 				for (auto& listener : callables) {
 					if (!listener.canceled->operator()() && std::holds_alternative<T>(listener.lambda)) {
 						auto localinterpretation = std::get<T>(listener.lambda);
-						localinterpretation(args...);
+						localinterpretation(std::forward<decltype(args)>(args)...);
 					}
 				}
 
