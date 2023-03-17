@@ -35,13 +35,6 @@ void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 	matrix[2][3] = position[2];
 }
 
-std::atomic<bool> value = true;
-
-void signal_handler(int signal)
-{
-	value.store(false);
-}
-
 void foo(asio::io_context& cxt, short port) {
 	using namespace curan::communication;
 	try {
@@ -52,8 +45,8 @@ void foo(asio::io_context& cxt, short port) {
 
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
-
-		while (value.load()) {
+		int counter = 0;
+		while (counter< 1000) {
 			auto start = std::chrono::high_resolution_clock::now();
 			igtl::Matrix4x4 matrix;
 			GetRandomTestMatrix(matrix);
@@ -74,6 +67,7 @@ void foo(asio::io_context& cxt, short port) {
 			server.write(to_send);
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(10) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+			++counter;
 		}
 		curan::utils::console->info("Stopping context");
 		cxt.stop();
@@ -91,7 +85,6 @@ void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Poin
 	if (!tmp.compare(desired)) {
 		curan::utils::console->info("Receiving TRANSFORM data type");
 		igtl::TransformMessage::Pointer transMsg = igtl::TransformMessage::New();
-
 			//transMsg->Copy(val);
 			//int c = transMsg->Unpack(1);
 
@@ -110,7 +103,6 @@ void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Poin
 int main() {
 	try {
 		curan::utils::console->info("started running");
-		std::signal(SIGINT, signal_handler);
 		using namespace curan::communication;
 		short port = 50000;
 		asio::io_context io_context;

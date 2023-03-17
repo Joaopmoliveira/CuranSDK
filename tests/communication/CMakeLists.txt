@@ -11,9 +11,3 @@ add_executable(test_communication test_communication.cpp)
 target_link_libraries(test_communication PUBLIC
 communication
 )
-
-add_executable(test_OpenIGTLink test_openIGTlink.cpp)
-
-target_link_libraries(test_OpenIGTLink PUBLIC
-OpenIGTLink
-)
