@@ -34,9 +34,23 @@ namespace curan {
 			callablefunction implcall();
 			bool interacts(double x, double y);
 
+			inline void set_position(SkRect pos) {
+				widget_rect = pos;
+			}
+			inline SkRect get_position() {
+				return widget_rect;
+			}
+
 		private:
+
+			struct MessageContainer {
+				igtl::TransformMessage::Pointer transform;
+				igtl::ImageMessage::Pointer image;
+			};
+
 			SkFont text_font;
 			SkPaint paint;
+			SkRect widget_rect;
 			SkPaint paint_text;
 			std::vector<sk_sp<SkTextBlob>> table_headers;
 
@@ -44,7 +58,6 @@ namespace curan {
 			SkPoint center_debug_mode = { 0.0f,0.0f };
 			float debug_mode_radius = 10.0f;
 			sk_sp<SkTextBlob> debug_glyph;
-			std::variant<igtl::TransformMessage::Pointer, igtl::ImageMessage::Pointer> message;
 
 		};
 	}

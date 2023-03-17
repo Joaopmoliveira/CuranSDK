@@ -9,7 +9,7 @@ namespace curan {
 		Window::Window(DisplayParams&& pars) : params{ std::move(pars) }, width{ pars.width }, height{ pars.height }, windowName{pars.windowName} {
 			context = std::move(params.cxt);
 			params.cxt = nullptr;
-			initialize();
+			bool val = initialize();
 			connect_handler();
 		};
 

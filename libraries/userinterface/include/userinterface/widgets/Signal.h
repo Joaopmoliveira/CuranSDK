@@ -39,13 +39,17 @@ namespace curan {
 			double ypos;
 		};
 
+		struct Key {
+			char pressed_char;
+		};
+
 		struct ItemDropped
 		{
 			int count;
 			std::vector<std::string> paths;
 		};
 
-		using Signal = std::variant<Move, Press, Scroll, Unpress, ItemDropped, Empty>;
+		using Signal = std::variant<Empty,Move, Press, Scroll, Unpress, ItemDropped, Key>;
 
 		void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
 
@@ -54,6 +58,8 @@ namespace curan {
 		void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
 		void item_droped_callback(GLFWwindow* window, int count, const char** paths);
+
+		void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	}
 }
 

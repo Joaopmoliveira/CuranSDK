@@ -105,6 +105,9 @@ namespace curan {
 					else
 						current_state = ButtonStates::WAITING;
 					},
+				[this](Key arg) {
+
+					},
 				[this](ItemDropped arg) {;
 
 					}},

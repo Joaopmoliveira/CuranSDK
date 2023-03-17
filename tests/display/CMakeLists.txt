@@ -16,3 +16,9 @@ add_executable(test_button test_button.cpp)
 target_link_libraries(test_button PUBLIC
 userinterface
 )
+
+add_executable(test_openigtlinkviewer test_openigtlink_display.cpp)
+
+target_link_libraries(test_openigtlinkviewer PUBLIC
+userinterface
+)
