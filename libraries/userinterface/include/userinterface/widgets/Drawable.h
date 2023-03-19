@@ -29,7 +29,7 @@ namespace curan {
 			/*
 			
 			*/
-			void virtual framebuffer_resize(SkRect& pos) = 0;
+			void virtual framebuffer_resize() = 0;
 
 			inline void set_position(SkRect pos) {
 				widget_rect = pos;

@@ -46,7 +46,7 @@ namespace curan {
 			static std::shared_ptr<Button> make(Info& info);
 			drawablefunction draw() override;
 			callablefunction call() override;
-			void framebuffer_resize(SkRect& pos) override;
+			void framebuffer_resize() override;
 		};
 	}
 }

@@ -112,7 +112,7 @@ namespace curan {
 			return lamb;
 		}
 
-		void Button::framebuffer_resize(SkRect& pos) {
+		void Button::framebuffer_resize() {
 		
 		}
 	}

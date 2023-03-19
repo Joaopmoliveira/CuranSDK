@@ -347,7 +347,7 @@ namespace curan {
 			return lamb;
 		}
 
-		void OpenIGTLinkViewer::framebuffer_resize(SkRect& pos) {
+		void OpenIGTLinkViewer::framebuffer_resize() {
 
 		}
 	}

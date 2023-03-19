@@ -61,7 +61,7 @@ namespace curan {
 			void process_message(igtl::MessageBase::Pointer pointer);
 			drawablefunction draw() override;
 			callablefunction call() override;
-			void framebuffer_resize(SkRect& pos) override;
+			void framebuffer_resize() override;
 
 			inline std::array<sk_sp<SkTextBlob>, 4>& get_table_header() {
 				return table_headers;

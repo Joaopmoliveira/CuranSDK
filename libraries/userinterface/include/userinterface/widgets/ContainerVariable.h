@@ -1,5 +1,5 @@
-#ifndef CURAN_BUTTON_HEADER_FILE_
-#define CURAN_BUTTON_HEADER_FILE_
+#ifndef CURAN_CONTAINERVARIABLE_HEADER_FILE_
+#define CURAN_CONTAINERVARIABLE_HEADER_FILE_
 
 #include "Drawable.h"
 #include "Lockable.h"
@@ -22,7 +22,7 @@ namespace curan {
 			static std::shared_ptr<ContainerVariable> make(Info& info);
 			drawablefunction draw() override;
 			callablefunction call() override;
-			void update_size(SkRect& pos) override;
+			void framebuffer_resize() override;
 		private:
 			SkPaint paint_layout;
 			Arrangement arrangment;
