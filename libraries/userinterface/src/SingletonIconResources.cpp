@@ -48,7 +48,7 @@ namespace curan {
 				throw std::runtime_error("failed to load texture image!");
 			}
 			SkImageInfo information = SkImageInfo::Make(icon.texWidth, icon.texHeight, kBGRA_8888_SkColorType, kUnpremul_SkAlphaType);
-			icon.pixmap = SkPixmap(information, icon.pixels, icon.texWidth * 32);
+			icon.pixmap = SkPixmap(information, icon.pixels, icon.texWidth * NUMBER_BYTES_PER_PIXEL);
 			icon.image_to_display = SkImage::MakeFromRaster(icon.pixmap, nullptr, nullptr);
 			return icon;
 		}

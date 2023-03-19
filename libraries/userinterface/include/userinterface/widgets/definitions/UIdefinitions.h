@@ -113,4 +113,17 @@
 #include "include\gpu\vk\GrVkVulkan.h"
 #include "include\pathops\SkPathOps.h"
 #include "include\ports\SkTypeface_win.h"
+
+constexpr auto DEFAULT_TEXT_SIZE = 15.0;
+constexpr auto DEFAULT_FRAME_DELAY = std::chrono::milliseconds(15);
+constexpr SkScalar VOLUME_PREVIEW_HEIGHT = 200.0f;
+constexpr SkScalar VOLUME_PREVIEW_WIDTH = 150.0f;
+constexpr SkScalar VOLUME_IMAGE_HEIGHT = 170.0f;
+constexpr SkScalar VOLUME_PREVIEW_EXTREMA_SPACING_COLUNM = 20.f;
+constexpr SkScalar VOLUME_PREVIEW_EXTREMA_SPACING_LINE = 20.0f;
+constexpr int NUMBER_BYTES_PER_PIXEL = 4;
+constexpr SkScalar TASK_PREVIEW_HEIGHT = 150.0f;
+constexpr SkScalar MANIPULATOR_BAR_HEIGHT = 50;
+constexpr SkScalar RADIO_BUTTON_DIMENSION = 20;
+
 #endif
