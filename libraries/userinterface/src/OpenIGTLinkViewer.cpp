@@ -2,6 +2,7 @@
 
 #include <variant>
 #include "utils/Overloading.h"
+#include "utils/StringManipulation.h"
 
 namespace curan {
 	namespace ui {
@@ -43,13 +44,71 @@ namespace curan {
 		}
 
 		void OpenIGTLinkViewer::process_message(igtl::MessageBase::Pointer pointer) {
-
+			bool message_previously_received = false;
+			for (const auto& val : container.received_messages) {
+				std::visit(utils::overloaded{
+					[pointer,&message_previously_received](TransformMessage message) {
+						std::string ident = pointer->GetDeviceName() + pointer->GetMessageType();
+						if (ident.compare(message.identifier)) {
+							message_previously_received = true;
+							igtl::TransformMessage::Pointer message_body = igtl::TransformMessage::New();
+							if (message_body->Copy(pointer) && message_body->Unpack(1) == igtl::MessageBase::UNPACK_BODY)
+							{
+								auto current_time_point = std::chrono::high_resolution_clock::now();
+								message.frequency = 1.0 / std::chrono::duration<double>(current_time_point - message.received_instant).count();
+								message.received_instant = current_time_point;
+								message.transform = message_body;
+							}
+						}
+					},
+					[pointer,&message_previously_received](ImageMessage message) {
+						std::string ident = pointer->GetDeviceName() + pointer->GetMessageType();
+						if (ident.compare(message.identifier)) {
+							message_previously_received = true;
+							igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
+							if (message_body->Copy(pointer) && message_body->Unpack(1) == igtl::MessageBase::UNPACK_BODY)
+							{
+								auto current_time_point = std::chrono::high_resolution_clock::now();
+								message.frequency = 1.0 / std::chrono::duration<double>(current_time_point - message.received_instant).count();
+								message.received_instant = current_time_point;
+								message.image = message_body;
+							}
+						}
+					}},
+					 val
+					);
+			}
+			if (!message_previously_received) {
+				if (pointer->GetMessageType().compare("TRANSFORM")) {
+					TransformMessage message;
+					message.frequency = 0.0;
+					message.identifier = pointer->GetDeviceName() + pointer->GetMessageType();
+					message.received_instant = std::chrono::high_resolution_clock::now();
+					igtl::TransformMessage::Pointer message_body = igtl::TransformMessage::New();
+					if (message_body->Copy(pointer) && message_body->Unpack(1) == igtl::MessageBase::UNPACK_BODY) {
+						message.transform = message_body;
+						container.received_messages.push_back(message);
+					}
+					return;
+				}
+				if (pointer->GetMessageType().compare("IMAGE")) {
+					ImageMessage message;
+					message.frequency = 0.0;
+					message.identifier = pointer->GetDeviceName() + pointer->GetMessageType();
+					message.received_instant = std::chrono::high_resolution_clock::now();
+					igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
+					if (message_body->Copy(pointer) && message_body->Unpack(1) == igtl::MessageBase::UNPACK_BODY) {
+						message.image = message_body;
+						container.received_messages.push_back(message);
+					}
+					return;
+				}
+			}
 		}
 
 		drawablefunction OpenIGTLinkViewer::impldraw() {
 			auto callab = [this](SkCanvas* canvas) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
-				auto container = get_container();
 				paint.setColor(SK_ColorWHITE);
 				paint.setStrokeWidth(1);
 				SkAutoCanvasRestore restore(canvas, true);
@@ -58,9 +117,23 @@ namespace curan {
 				canvas->clipRect(widget_rect);
 				canvas->clear(SK_ColorBLACK);
 				center_debug_mode = { widget_rect.fRight - debug_mode_radius,widget_rect.fTop + debug_mode_radius };
+				if (!in_debug_mode) {
+					canvas->drawCircle(center_debug_mode, debug_mode_radius, paint);
+					canvas->drawTextBlob(debug_glyph, center_debug_mode.fX, center_debug_mode.fY - debug_glyph->bounds().centerY(), paint_text);
+					for (auto& mess : container.received_messages) {
+						std::visit(utils::overloaded{
+							[](TransformMessage message) {
 
-				if (in_debug_mode) {
-
+							},
+							[canvas,widget_rect](ImageMessage message) {
+								SkSamplingOptions options;
+								canvas->drawImage(message.skia_image, widget_rect.x() + (widget_rect.width() - message.skia_image->width()) / 2.0, widget_rect.y() + (widget_rect.height() - message.skia_image->height()) / 2.0);
+							}},
+							mess
+						);
+					}
+				}
+				else {
 					paint.setColor(SK_ColorGRAY);
 					paint.setStyle(SkPaint::kFill_Style);
 					canvas->drawCircle(center_debug_mode, debug_mode_radius, paint);
@@ -130,7 +203,7 @@ namespace curan {
 									canvas->drawSimpleText(timestamp.data(), timestamp.size(), SkTextEncoding::kUTF8, rect.x(), rect.bottom(), text_font, paint_text);
 									rect.offsetTo(rect.x() + rect.width(), rect.y());
 									canvas->drawRect(rect, paint);
-									std::string frequency = std::to_string(info.frequency);
+									std::string frequency = std::to_string(message.frequency);
 									canvas->drawSimpleText(frequency.data(), frequency.size(), SkTextEncoding::kUTF8, rect.x(), rect.bottom(), text_font, paint_text);
 									renctangle.offsetTo(renctangle.x(), renctangle.y() + renctangle.height());
 								},
@@ -149,7 +222,7 @@ namespace curan {
 									canvas->drawSimpleText(timestamp.data(), timestamp.size(), SkTextEncoding::kUTF8, rect.x(), rect.bottom(), text_font, paint_text);
 									rect.offsetTo(rect.x() + rect.width(), rect.y());
 									canvas->drawRect(rect, paint);
-									std::string frequency = std::to_string(info.frequency);
+									std::string frequency = std::to_string(message.frequency);
 									canvas->drawSimpleText(frequency.data(), frequency.size(), SkTextEncoding::kUTF8, rect.x(), rect.bottom(), text_font, paint_text);
 									renctangle.offsetTo(renctangle.x(), renctangle.y() + renctangle.height());
 								},
@@ -165,7 +238,7 @@ namespace curan {
 
 					if (clicked != container.received_messages.end()) {
 						std::visit(utils::overloaded{
-							[&clicked,canvas,this,number_of_cells,y_init](TransformMessage message) {
+							[&clicked,canvas,this,number_of_cells,y_init,widget_rect](TransformMessage message) {
 								SkScalar y = y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
 								// Retrive the transform data
 								igtl::TransformMessage::Pointer transf;
@@ -182,35 +255,13 @@ namespace curan {
 									y += bound_individual_name.height() + 5;
 								}
 							},
-							[&clicked,canvas,this,number_of_cells,y_init](ImageMessage message) {
+							[&clicked,canvas,this,number_of_cells,y_init,widget_rect](ImageMessage message) {
 								SkScalar y = y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
 								SkSamplingOptions options;
-								sk_sp<SkImage> surf;
-								igtl::ImageMessage::Pointer img;
-								if (selected_message.getImage(img, surf)) {
-									canvas->drawImage(surf, widget_rect.x() + (widget_rect.width() - surf->width()) / 2.0, y);
-								}
-							},
-							},
+								canvas->drawImage(message.skia_image, widget_rect.x() + (widget_rect.width() - message.skia_image->width()) / 2.0, y);
+							}},
 							*it
-						);
-					}
-				}
-				else {
-					canvas->drawCircle(center_debug_mode, debug_mode_radius, paint);
-					canvas->drawTextBlob(debug_glyph, center_debug_mode.fX, center_debug_mode.fY - debug_glyph->bounds().centerY(), paint_text);
-					std::map<std::string, MessageInfo>::iterator it = table_conversion.begin();
-					while (it != table_conversion.end())
-					{
-						if (it->second.getType() == MessageType::IMAGE) {
-							SkSamplingOptions options;
-							sk_sp<SkImage> surf;
-							igtl::ImageMessage::Pointer img;
-							it->second.getImage(img, surf);
-							canvas->drawImage(surf, widget_rect.x() + (widget_rect.width() - surf->width()) / 2.0, widget_rect.y() + (widget_rect.height() - surf->height()) / 2.0);
-							return;
-						}
-						++it;
+							);
 					}
 				}
 			};
@@ -230,7 +281,12 @@ namespace curan {
 
 					},
 				[this](Press arg) {;
-
+					last_pressed_position = arg;
+					float x = arg.xpos - center_debug_mode.fX;
+					float y = arg.ypos - center_debug_mode.fY;
+					if (x * x + y * y < debug_mode_radius * debug_mode_radius) {
+						in_debug_mode = !in_debug_mode;
+					}
 					},
 				[this](Scroll arg) {;
 

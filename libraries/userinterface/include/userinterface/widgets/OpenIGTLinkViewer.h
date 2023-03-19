@@ -20,12 +20,15 @@ namespace curan {
 		struct ImageMessage {
 			std::chrono::time_point<std::chrono::high_resolution_clock> received_instant;
 			std::string identifier;
+			double frequency = 0.0;
 			igtl::ImageMessage::Pointer image;
+			sk_sp<SkImage> skia_image;
 		};
 
 		struct TransformMessage {
 			std::chrono::time_point<std::chrono::high_resolution_clock> received_instant;
 			std::string identifier;
+			double frequency = 0.0;
 			igtl::TransformMessage::Pointer transform;
 		};
 

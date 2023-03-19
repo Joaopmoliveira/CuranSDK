@@ -1,22 +1,71 @@
 #include "userinterface/Window.h"
+#include "userinterface/widgets/OpenIGTLinkViewer.h"
 
 int main() {
-	using namespace curan::ui;
-	std::unique_ptr<Context> context = std::make_unique<Context>();;
-	DisplayParams param{ std::move(context),1200,800 };
-	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
-	while (!glfwWindowShouldClose(viewer->window)) {
-		auto start = std::chrono::high_resolution_clock::now();
-		SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
-		SkCanvas* canvas = pointer_to_surface->getCanvas();
-		canvas->drawColor(SK_ColorWHITE);
-		glfwPollEvents();
-		viewer->process_pending_signals();
-		bool val = viewer->swapBuffers();
-		if (!val)
-			throw std::runtime_error("failed to swap buffers");
-		auto end = std::chrono::high_resolution_clock::now();
-		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+	try {
+		using namespace curan::ui;
+		std::unique_ptr<Context> context = std::make_unique<Context>();;
+		DisplayParams param{ std::move(context),1200,800 };
+		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+
+		SkColor colbuton = { SK_ColorWHITE };
+		SkColor coltext = { SK_ColorBLACK };
+
+		SkPaint paint_square;
+		paint_square.setStyle(SkPaint::kFill_Style);
+		paint_square.setAntiAlias(true);
+		paint_square.setStrokeWidth(4);
+		paint_square.setColor(colbuton);
+
+		SkPaint paint_text;
+		paint_text.setStyle(SkPaint::kFill_Style);
+		paint_text.setAntiAlias(true);
+		paint_text.setStrokeWidth(4);
+		paint_text.setColor(coltext);
+
+		const char* fontFamily = nullptr;
+		SkFontStyle fontStyle;
+		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+
+		SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
+		text_font.setEdging(SkFont::Edging::kAntiAlias);
+
+		SkPaint paint_square2;
+		paint_square2.setStyle(SkPaint::kFill_Style);
+		paint_square2.setAntiAlias(true);
+		paint_square2.setStrokeWidth(4);
+		paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
+
+		OpenIGTLinkViewer::Info infor;
+		infor.text_font = text_font;
+		std::shared_ptr<OpenIGTLinkViewer> button = OpenIGTLinkViewer::make(infor);
+		auto caldraw = button->draw();
+		auto calsignal = button->call();
+		SkRect rect = SkRect::MakeLTRB(100, 100, 200, 200);
+		button->set_position(rect);
+
+
+		while (!glfwWindowShouldClose(viewer->window)) {
+			auto start = std::chrono::high_resolution_clock::now();
+			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
+			SkCanvas* canvas = pointer_to_surface->getCanvas();
+			canvas->drawColor(SK_ColorWHITE);
+			caldraw(canvas);
+			glfwPollEvents();
+			auto signals = viewer->process_pending_signals();
+			if (!signals.empty())
+				calsignal(signals.back());
+			bool val = viewer->swapBuffers();
+			if (!val)
+				std::cout << "failed to swap buffers\n";
+			auto end = std::chrono::high_resolution_clock::now();
+			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+		}
+		return 0;
 	}
-	return 0;
+	catch (...) {
+		std::cout << "Failed";
+		return 1;
+	}
 }
