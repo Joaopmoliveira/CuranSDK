@@ -6,6 +6,45 @@
 
 namespace curan {
 	namespace ui {
+
+		void create_skia_image(ImageMessage& message) {
+			int width, height, depth = 0;
+			message.image->GetDimensions(width, height, depth);
+
+			if (message.image->GetNumComponents() != 1)
+				return;
+
+			switch (message.image->GetScalarType())
+			{
+			case igtl::ImageMessage::TYPE_UINT16:
+			case igtl::ImageMessage::TYPE_UINT32:
+			case igtl::ImageMessage::TYPE_FLOAT32:
+			case igtl::ImageMessage::TYPE_FLOAT64:
+			case igtl::ImageMessage::TYPE_INT16:
+			case igtl::ImageMessage::TYPE_INT32:
+				return;
+			case igtl::ImageMessage::TYPE_INT8:
+				message.information = SkImageInfo::Make(width, height, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+				break;
+			case igtl::ImageMessage::TYPE_UINT8:
+				message.information = SkImageInfo::Make(width, height, SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType);
+				break;
+			default:
+
+				return;
+			}
+
+			auto pix = SkPixmap(message.information, message.image->GetScalarPointer(), message.information.bytesPerPixel() * message.information.width());
+			message.skia_image = SkImage::MakeRasterCopy(pix);
+		};
+
+		void set_skia_image(ImageMessage& message) {
+			if (message.image->GetImageSize() == message.information.bytesPerPixel() * message.information.width() * message.information.height()) {
+				auto pix = SkPixmap(message.information, message.image->GetScalarPointer(), message.information.bytesPerPixel() * message.information.width());
+				message.skia_image = SkImage::MakeRasterCopy(pix);
+			}
+		};
+
 		OpenIGTLinkViewer::OpenIGTLinkViewer(Info& info) : last_pressed_position{ -20000.0,-20000.0 } {
 			text_font = info.text_font;
 
@@ -44,12 +83,13 @@ namespace curan {
 		}
 
 		void OpenIGTLinkViewer::process_message(igtl::MessageBase::Pointer pointer) {
+			std::lock_guard<std::mutex> g{ get_mutex() };
 			bool message_previously_received = false;
-			for (const auto& val : container.received_messages) {
+			for (auto& val : container.received_messages) {
 				std::visit(utils::overloaded{
-					[pointer,&message_previously_received](TransformMessage message) {
+					[pointer,&message_previously_received](TransformMessage& message) {
 						std::string ident = pointer->GetDeviceName() + pointer->GetMessageType();
-						if (ident.compare(message.identifier)) {
+						if (!ident.compare(message.identifier)) {
 							message_previously_received = true;
 							igtl::TransformMessage::Pointer message_body = igtl::TransformMessage::New();
 							if (message_body->Copy(pointer) && message_body->Unpack(1) == igtl::MessageBase::UNPACK_BODY)
@@ -61,9 +101,9 @@ namespace curan {
 							}
 						}
 					},
-					[pointer,&message_previously_received](ImageMessage message) {
+					[pointer,&message_previously_received](ImageMessage& message) {
 						std::string ident = pointer->GetDeviceName() + pointer->GetMessageType();
-						if (ident.compare(message.identifier)) {
+						if (!ident.compare(message.identifier)) {
 							message_previously_received = true;
 							igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
 							if (message_body->Copy(pointer) && message_body->Unpack(1) == igtl::MessageBase::UNPACK_BODY)
@@ -72,33 +112,37 @@ namespace curan {
 								message.frequency = 1.0 / std::chrono::duration<double>(current_time_point - message.received_instant).count();
 								message.received_instant = current_time_point;
 								message.image = message_body;
+								set_skia_image(message);
 							}
 						}
-					}},
-					 val
-					);
+					}},val);
 			}
 			if (!message_previously_received) {
-				if (pointer->GetMessageType().compare("TRANSFORM")) {
+				if (!pointer->GetMessageType().compare("TRANSFORM")) {
 					TransformMessage message;
 					message.frequency = 0.0;
 					message.identifier = pointer->GetDeviceName() + pointer->GetMessageType();
 					message.received_instant = std::chrono::high_resolution_clock::now();
 					igtl::TransformMessage::Pointer message_body = igtl::TransformMessage::New();
-					if (message_body->Copy(pointer) && message_body->Unpack(1) == igtl::MessageBase::UNPACK_BODY) {
+					message_body->Copy(pointer);
+					int c = message_body->Unpack(1);
+					if (c & igtl::MessageHeader::UNPACK_BODY){
 						message.transform = message_body;
 						container.received_messages.push_back(message);
 					}
 					return;
 				}
-				if (pointer->GetMessageType().compare("IMAGE")) {
+				if (!pointer->GetMessageType().compare("IMAGE")) {
 					ImageMessage message;
 					message.frequency = 0.0;
 					message.identifier = pointer->GetDeviceName() + pointer->GetMessageType();
 					message.received_instant = std::chrono::high_resolution_clock::now();
 					igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
-					if (message_body->Copy(pointer) && message_body->Unpack(1) == igtl::MessageBase::UNPACK_BODY) {
+					message_body->Copy(pointer);
+					int c = message_body->Unpack(1);
+					if (c & igtl::MessageHeader::UNPACK_BODY) {
 						message.image = message_body;
+						create_skia_image(message);
 						container.received_messages.push_back(message);
 					}
 					return;
@@ -163,7 +207,6 @@ namespace curan {
 					auto clicked = container.received_messages.end();
 
 					for (int index = 0; index < number_of_cells; ++index) {
-
 						if (renctangle.fBottom > last_pressed_position.ypos && renctangle.fTop < last_pressed_position.ypos) {
 							paint.setStyle(SkPaint::kFill_Style);
 							paint.setColor(SK_ColorDKGRAY);
@@ -187,6 +230,7 @@ namespace curan {
 							renctangle.offsetTo(renctangle.x(), renctangle.y() + renctangle.height());
 						}
 						else {
+							Message& val = *it;
 							std::visit(utils::overloaded{
 								[&renctangle,canvas,this](TransformMessage message) {
 									SkRect rect = renctangle;
@@ -225,10 +269,7 @@ namespace curan {
 									std::string frequency = std::to_string(message.frequency);
 									canvas->drawSimpleText(frequency.data(), frequency.size(), SkTextEncoding::kUTF8, rect.x(), rect.bottom(), text_font, paint_text);
 									renctangle.offsetTo(renctangle.x(), renctangle.y() + renctangle.height());
-								},
-								},
-								*it
-									);
+								}},val);
 							++it;
 						}
 					}
@@ -238,12 +279,11 @@ namespace curan {
 
 					if (clicked != container.received_messages.end()) {
 						std::visit(utils::overloaded{
-							[&clicked,canvas,this,number_of_cells,y_init,widget_rect](TransformMessage message) {
+							[&clicked,canvas,this,number_of_cells,y_init,widget_rect](TransformMessage& message) {
 								SkScalar y = y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
 								// Retrive the transform data
-								igtl::TransformMessage::Pointer transf;
 								igtl::Matrix4x4 matrix;
-								transf->GetMatrix(matrix);
+								message.transform->GetMatrix(matrix);
 								for (int i = 0; i < 4; ++i) {
 									std::string row = "[";
 									for (int j = 0; j < 4; ++j)
@@ -255,12 +295,12 @@ namespace curan {
 									y += bound_individual_name.height() + 5;
 								}
 							},
-							[&clicked,canvas,this,number_of_cells,y_init,widget_rect](ImageMessage message) {
+							[&clicked,canvas,this,number_of_cells,y_init,widget_rect](ImageMessage& message) {
 								SkScalar y = y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
 								SkSamplingOptions options;
 								canvas->drawImage(message.skia_image, widget_rect.x() + (widget_rect.width() - message.skia_image->width()) / 2.0, y);
 							}},
-							*it
+							*clicked
 							);
 					}
 				}
@@ -281,11 +321,13 @@ namespace curan {
 
 					},
 				[this](Press arg) {;
-					last_pressed_position = arg;
-					float x = arg.xpos - center_debug_mode.fX;
-					float y = arg.ypos - center_debug_mode.fY;
-					if (x * x + y * y < debug_mode_radius * debug_mode_radius) {
-						in_debug_mode = !in_debug_mode;
+					if (interacts(arg.xpos, arg.ypos)) {
+						last_pressed_position = arg;
+						float x = arg.xpos - center_debug_mode.fX;
+						float y = arg.ypos - center_debug_mode.fY;
+						if (x * x + y * y < debug_mode_radius * debug_mode_radius) {
+							in_debug_mode = !in_debug_mode;
+						}
 					}
 					},
 				[this](Scroll arg) {;
@@ -306,7 +348,8 @@ namespace curan {
 		}
 
 		bool OpenIGTLinkViewer::interacts(double x, double y) {
-			return true;
+			SkRect loc = get_position();
+			return (loc.fLeft < x && loc.fRight > x && loc.fTop < y && loc.fBottom > y) ? true : false;
 		}
 	}
 }

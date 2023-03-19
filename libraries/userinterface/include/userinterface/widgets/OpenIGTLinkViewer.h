@@ -23,7 +23,14 @@ namespace curan {
 			double frequency = 0.0;
 			igtl::ImageMessage::Pointer image;
 			sk_sp<SkImage> skia_image;
+			SkPixmap pixel_array_nocopy;
+			SkImageInfo information;
 		};
+
+		void create_skia_image(ImageMessage& message);
+
+		void set_skia_image(ImageMessage& message);
+
 
 		struct TransformMessage {
 			std::chrono::time_point<std::chrono::high_resolution_clock> received_instant;
@@ -32,10 +39,10 @@ namespace curan {
 			igtl::TransformMessage::Pointer transform;
 		};
 
-		using Messsage = std::variant<TransformMessage, ImageMessage>;
+		using Message = std::variant<TransformMessage, ImageMessage>;
 
 		struct MessageContainer {
-			std::list<Messsage> received_messages;
+			std::list<Message> received_messages;
 		};
 
 		class OpenIGTLinkViewer : public Drawable<OpenIGTLinkViewer>, Lockable<OpenIGTLinkViewer>, utils::Connectable<OpenIGTLinkViewer> {
