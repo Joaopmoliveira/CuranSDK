@@ -8,7 +8,7 @@
 
 namespace curan {
 	namespace ui {
-		class Button : public  Drawable<Button> , Lockable<Button>, utils::Connectable<Button> {
+		class Button : public  Drawable , Lockable<Button>, utils::Connectable<Button> {
 		public:
 			struct Info {
 				SkColor hover_color;
@@ -39,22 +39,14 @@ namespace curan {
 			SkFont text_font;
 			sk_sp<SkTextBlob> text;
 			sk_sp<SkImage> icon_data;
-			SkRect widget_rect;
 			ButtonStates current_state = ButtonStates::WAITING;
 
 		public:
 			Button(Info& info);
 			static std::shared_ptr<Button> make(Info& info);
-			drawablefunction impldraw();
-			callablefunction implcall();
-			bool interacts(double x,double y);
-
-			inline void set_position(SkRect pos) {
-				widget_rect = pos;
-			}
-			inline SkRect get_position() {
-				return widget_rect;
-			}
+			drawablefunction draw() override;
+			callablefunction call() override;
+			void framebuffer_resize(SkRect& pos) override;
 		};
 	}
 }

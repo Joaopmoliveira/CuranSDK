@@ -45,7 +45,7 @@ namespace curan {
 			std::list<Message> received_messages;
 		};
 
-		class OpenIGTLinkViewer : public Drawable<OpenIGTLinkViewer>, Lockable<OpenIGTLinkViewer>, utils::Connectable<OpenIGTLinkViewer> {
+		class OpenIGTLinkViewer : public Drawable, Lockable<OpenIGTLinkViewer>, utils::Connectable<OpenIGTLinkViewer> {
 			MessageContainer container;
 			Press last_pressed_position;
 			SkRect widget_rect;
@@ -59,22 +59,15 @@ namespace curan {
 			OpenIGTLinkViewer(Info& info);
 			static std::shared_ptr<OpenIGTLinkViewer> make(Info& info);
 			void process_message(igtl::MessageBase::Pointer pointer);
-			drawablefunction impldraw();
-			callablefunction implcall();
-			bool interacts(double x, double y);
-
-			inline void set_position(SkRect pos) {
-				widget_rect = pos;
-			}
-			inline SkRect get_position() {
-				return widget_rect;
-			}
+			drawablefunction draw() override;
+			callablefunction call() override;
+			void framebuffer_resize(SkRect& pos) override;
 
 			inline std::array<sk_sp<SkTextBlob>, 4>& get_table_header() {
 				return table_headers;
 			}
 
-			MessageContainer& get_container() {
+			inline MessageContainer& get_container() {
 				return container;
 			}
 

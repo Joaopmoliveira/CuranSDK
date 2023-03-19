@@ -27,13 +27,7 @@ namespace curan {
 			return std::make_shared<Button>(info);
 		}
 
-		bool Button::interacts(double x, double y) {
-
-			SkRect loc = get_position();
-			return (loc.fLeft < x && loc.fRight > x && loc.fTop < y && loc.fBottom > y) ? true : false;
-		}
-
-		drawablefunction Button::impldraw() {
+		drawablefunction Button::draw() {
 			auto lamb = [this](SkCanvas* canvas) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				switch (current_state) {
@@ -47,6 +41,8 @@ namespace curan {
 					paint.setColor(click_color);
 					break;
 				}
+				auto widget_rect = get_position();
+
 				float text_offset_x = widget_rect.centerX() - widget_rect_text.width() / 2.0f;
 				float text_offset_y = widget_rect.centerY() + widget_rect_text.height() / 2.0f;
 				
@@ -74,7 +70,7 @@ namespace curan {
 			return lamb;
 		}
 
-		callablefunction Button::implcall() {
+		callablefunction Button::call() {
 			auto lamb = [this](Signal sig) {
 
 				std::lock_guard<std::mutex> g{ get_mutex() };
@@ -114,6 +110,10 @@ namespace curan {
 				sig);
 			};
 			return lamb;
+		}
+
+		void Button::framebuffer_resize(SkRect& pos) {
+		
 		}
 	}
 }

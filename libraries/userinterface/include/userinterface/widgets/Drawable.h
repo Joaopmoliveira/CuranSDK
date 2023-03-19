@@ -11,16 +11,36 @@ namespace curan {
 		using drawablefunction = std::function<void(SkCanvas* canvas)>;
 		using callablefunction = std::function<void(Signal sig)>;
 
-		template<typename Derived>
-		class Drawable {
+		enum Arrangement {
+			VERTICAL,
 
+			HORIZONTAL,
+
+			VARIABLE
+		};
+
+		class Drawable {
+			SkRect widget_rect = SkRect::MakeLTRB(10,10,100,100);
 		public:
-			drawablefunction draw() {
-				return static_cast<Derived*>(this)->impldraw();
+			drawablefunction virtual draw() = 0;
+
+			callablefunction virtual call() = 0;
+
+			/*
+			
+			*/
+			void virtual framebuffer_resize(SkRect& pos) = 0;
+
+			inline void set_position(SkRect pos) {
+				widget_rect = pos;
 			}
 
-			callablefunction call() {
-				return static_cast<Derived*>(this)->implcall();
+			inline SkRect get_position() {
+				return widget_rect;
+			}
+
+			inline bool interacts(double x, double y) {
+				return (widget_rect.fLeft < x && widget_rect.fRight > x && widget_rect.fTop < y && widget_rect.fBottom > y) ? true : false;
 			}
 		};
 	}

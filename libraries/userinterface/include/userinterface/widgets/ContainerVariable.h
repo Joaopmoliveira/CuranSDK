@@ -1,0 +1,34 @@
+#ifndef CURAN_BUTTON_HEADER_FILE_
+#define CURAN_BUTTON_HEADER_FILE_
+
+#include "Drawable.h"
+#include "Lockable.h"
+#include <vector>
+#include <memory>
+
+namespace curan {
+	namespace ui {
+		class ContainerVariable : public Drawable, Lockable<ContainerVariable> {
+		public:
+
+			struct Info {
+				Arrangement arrangement;
+				std::vector<std::shared_ptr<Drawable>> layouts;
+				std::vector<SkRect> rectangles_of_contained_layouts;
+				SkPaint paint_layout;
+			};
+
+			ContainerVariable(Info& info);
+			static std::shared_ptr<ContainerVariable> make(Info& info);
+			drawablefunction draw() override;
+			callablefunction call() override;
+			void update_size(SkRect& pos) override;
+		private:
+			SkPaint paint_layout;
+			Arrangement arrangment;
+			std::vector<std::shared_ptr<Drawable>> contained_layouts;
+			std::vector<SkRect> rectangles_of_contained_layouts;
+		};
+	}
+}
+#endif

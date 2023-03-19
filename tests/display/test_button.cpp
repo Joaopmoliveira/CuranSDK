@@ -52,11 +52,10 @@ int main() {
 		infor.size = SkRect::MakeLTRB(20, 20, 200, 300);
 		infor.textFont = text_font;
 		std::shared_ptr<Button> button = Button::make(infor);
-		auto caldraw = button->draw();
-		auto calsignal = button->call();
 		SkRect rect = SkRect::MakeLTRB(100, 100, 200, 200);
 		button->set_position(rect);
-
+		auto caldraw = button->draw();
+		auto calsignal = button->call();
 
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();

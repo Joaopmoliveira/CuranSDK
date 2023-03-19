@@ -150,7 +150,7 @@ namespace curan {
 			}
 		}
 
-		drawablefunction OpenIGTLinkViewer::impldraw() {
+		drawablefunction OpenIGTLinkViewer::draw() {
 			auto callab = [this](SkCanvas* canvas) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				paint.setColor(SK_ColorWHITE);
@@ -308,7 +308,7 @@ namespace curan {
 			return callab;
 		}
 
-		callablefunction OpenIGTLinkViewer::implcall() {
+		callablefunction OpenIGTLinkViewer::call() {
 			auto lamb = [this](Signal sig) {
 
 				std::lock_guard<std::mutex> g{ get_mutex() };
@@ -347,9 +347,8 @@ namespace curan {
 			return lamb;
 		}
 
-		bool OpenIGTLinkViewer::interacts(double x, double y) {
-			SkRect loc = get_position();
-			return (loc.fLeft < x && loc.fRight > x && loc.fTop < y && loc.fBottom > y) ? true : false;
+		void OpenIGTLinkViewer::framebuffer_resize(SkRect& pos) {
+
 		}
 	}
 }
