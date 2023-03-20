@@ -312,7 +312,7 @@ namespace curan {
 			auto lamb = [this](Signal sig) {
 
 				std::lock_guard<std::mutex> g{ get_mutex() };
-
+				bool interacted = false;
 				std::visit(utils::overloaded{
 				[this](Empty arg) {
 
@@ -320,13 +320,14 @@ namespace curan {
 				[this](Move arg) {
 
 					},
-				[this](Press arg) {;
+				[this,&interacted](Press arg) {;
 					if (interacts(arg.xpos, arg.ypos)) {
 						last_pressed_position = arg;
 						float x = arg.xpos - center_debug_mode.fX;
 						float y = arg.ypos - center_debug_mode.fY;
 						if (x * x + y * y < debug_mode_radius * debug_mode_radius) {
 							in_debug_mode = !in_debug_mode;
+							interacted = true;
 						}
 					}
 					},
@@ -343,6 +344,7 @@ namespace curan {
 
 					} },
 					sig);
+				return interacted;
 			};
 			return lamb;
 		}

@@ -74,32 +74,41 @@ namespace curan {
 			auto lamb = [this](Signal sig) {
 
 				std::lock_guard<std::mutex> g{ get_mutex() };
-
+				bool interacted = false;
 				std::visit(utils::overloaded{
 				[this](Empty arg) {
 
 					},
-				[this](Move arg) {
+				[this,&interacted](Move arg) {
+					auto previous_state = current_state;
 					if (interacts(arg.xpos,arg.ypos))
 						current_state = ButtonStates::HOVER;
 					else
 						current_state = ButtonStates::WAITING;
+					if (previous_state != current_state)
+						interacted = true;
 					},
-				[this](Press arg) {;
+				[this,&interacted](Press arg) {
+					auto previous_state = current_state;
 					if (interacts(arg.xpos,arg.ypos)) {
 						current_state = ButtonStates::PRESSED;
 					}
 					else
 						current_state = ButtonStates::WAITING;
+					if (previous_state != current_state)
+						interacted = true;
 					},
 				[this](Scroll arg) {;
 
 					},
-				[this](Unpress arg) {;
+				[this,&interacted](Unpress arg) {
+					auto previous_state = current_state;
 					if (interacts(arg.xpos, arg.ypos))
 						current_state = ButtonStates::HOVER;
 					else
 						current_state = ButtonStates::WAITING;
+					if (previous_state != current_state)
+						interacted = true;
 					},
 				[this](Key arg) {
 
@@ -108,6 +117,7 @@ namespace curan {
 
 					}},
 				sig);
+				return interacted;
 			};
 			return lamb;
 		}

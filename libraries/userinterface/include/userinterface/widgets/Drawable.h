@@ -9,7 +9,7 @@ namespace curan {
 	namespace ui {
 
 		using drawablefunction = std::function<void(SkCanvas* canvas)>;
-		using callablefunction = std::function<void(Signal sig)>;
+		using callablefunction = std::function<bool(Signal sig)>;
 
 		enum Arrangement {
 			VERTICAL,

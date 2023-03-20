@@ -61,7 +61,7 @@ namespace curan {
 
 		callablefunction ContainerLinear::call() {
 			auto lamb = [this](Signal canvas) {
-				
+				return false;
 			};
 			return lamb;
 		}

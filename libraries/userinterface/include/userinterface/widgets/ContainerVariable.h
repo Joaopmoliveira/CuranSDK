@@ -1,14 +1,14 @@
 #ifndef CURAN_CONTAINERVARIABLE_HEADER_FILE_
 #define CURAN_CONTAINERVARIABLE_HEADER_FILE_
 
-#include "Drawable.h"
+#include "Container.h"
 #include "Lockable.h"
 #include <vector>
 #include <memory>
 
 namespace curan {
 	namespace ui {
-		class ContainerVariable : public Drawable, Lockable<ContainerVariable> {
+		class ContainerVariable : public Container, Lockable<ContainerVariable> {
 		public:
 
 			struct Info {
@@ -26,8 +26,6 @@ namespace curan {
 		private:
 			SkPaint paint_layout;
 			Arrangement arrangment;
-			std::vector<std::shared_ptr<Drawable>> contained_layouts;
-			std::vector<SkRect> rectangles_of_contained_layouts;
 		};
 	}
 }
