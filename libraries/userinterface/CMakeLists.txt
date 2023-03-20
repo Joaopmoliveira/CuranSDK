@@ -10,7 +10,7 @@ src/OpenIGTLinkViewer.cpp
 src/ConvertCoordinate.cpp
 src/ContainerVariable.cpp 
 src/ContainerLinear.cpp
- "include/userinterface/widgets/Container.h")
+ "include/userinterface/widgets/Container.h" "src/Container.cpp")
 
 target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
