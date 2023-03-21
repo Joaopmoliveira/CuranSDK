@@ -1,9 +1,9 @@
 #ifndef CURAN_THREADPOOL_HEADER_FILE_
 #define CURAN_THREADPOOL_HEADER_FILE_
 
+#include "SafeQueue.h"
 #include <mutex>
 #include <vector>
-#include "ThreadSafeQueue.h"
 #include "Job.h"
 
 namespace curan {

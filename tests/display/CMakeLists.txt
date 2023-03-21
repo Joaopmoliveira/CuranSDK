@@ -22,3 +22,9 @@ add_executable(test_openigtlinkviewer test_openigtlink_display.cpp)
 target_link_libraries(test_openigtlinkviewer PUBLIC
 userinterface
 )
+
+add_executable(test_container_logic test_container_logic.cpp)
+
+target_link_libraries(test_container_logic PUBLIC
+userinterface
+)

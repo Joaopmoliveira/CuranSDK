@@ -6,7 +6,7 @@
 #include <utility>
 #include <map>
 
-#include "utils\ThreadSafeQueue.h"
+#include "utils\SafeQueue.h"
 #include "utils\Logger.h"
 
 #include "igtlOSUtil.h"

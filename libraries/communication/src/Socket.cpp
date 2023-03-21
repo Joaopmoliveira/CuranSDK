@@ -58,7 +58,7 @@ namespace curan {
 					}
 					else {
 						get_underlying_socket().close();
-						curan::utils::console->info("failed");
+						curan::utils::cout << "failed";
 					}
 						
 				});

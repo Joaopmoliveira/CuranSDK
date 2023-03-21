@@ -9,7 +9,6 @@
 namespace curan {
 	namespace ui {
 		class Container : public Drawable , Lockable<Container>{
-
 			SkPaint paint_layout;
 			std::vector<std::shared_ptr<Drawable>> contained_layouts;
 			std::vector<SkRect> rectangles_of_contained_layouts;
@@ -31,14 +30,16 @@ namespace curan {
 			Container(InfoLinearContainer& info);
 			Container(InfoVariableContainer& info);
 
-			std::shared_ptr<Container> make(InfoLinearContainer& info);
-			std::shared_ptr<Container> make(InfoVariableContainer& info);
+			static std::shared_ptr<Container> make(InfoLinearContainer& info);
+			static std::shared_ptr<Container> make(InfoVariableContainer& info);
 
 			drawablefunction draw() override;
 			callablefunction call() override;
 			void framebuffer_resize() override;
 
-
+			inline std::vector<SkRect>& get_positioning() {
+				return rectangles_of_contained_layouts;
+			};
 		};
 	}
 }

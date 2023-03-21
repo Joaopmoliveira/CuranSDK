@@ -2,6 +2,6 @@
 
 namespace curan{
     namespace utils{
-       	std::shared_ptr<spdlog::logger>console = spdlog::stdout_color_mt("logger"); 
+		Logger cout{ "debug_information.txt" };
     }
 }

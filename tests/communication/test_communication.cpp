@@ -69,21 +69,21 @@ void foo(asio::io_context& cxt, short port) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(10) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 			++counter;
 		}
-		curan::utils::console->info("Stopping context");
+		curan::utils::cout << "Stopping context";
 		cxt.stop();
 	}
 	catch (std::exception& e) {
-		curan::utils::console->info("CLient exception was thrown" + std::string(e.what()));
+		curan::utils::cout << "CLient exception was thrown" + std::string(e.what());
 	}
 }
 
 void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
-	curan::utils::console->info("received message");
+	curan::utils::cout << "received message";
 	assert(val.IsNotNull());
 	std::string tmp = val->GetMessageType();
 	std::string desired = "TRANSFORM";
 	if (!tmp.compare(desired)) {
-		curan::utils::console->info("Receiving TRANSFORM data type");
+		curan::utils::cout << "Receiving TRANSFORM data type";
 		igtl::TransformMessage::Pointer transMsg = igtl::TransformMessage::New();
 			//transMsg->Copy(val);
 			//int c = transMsg->Unpack(1);
@@ -96,13 +96,13 @@ void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Poin
 			//}
 	}
 	else {
-		curan::utils::console->info("Not Receiving TRANSFORM data type");
+		curan::utils::cout << "Not Receiving TRANSFORM data type";
 	}
 }
 
 int main() {
 	try {
-		curan::utils::console->info("started running");
+		curan::utils::cout << "started running";
 		using namespace curan::communication;
 		short port = 50000;
 		asio::io_context io_context;
@@ -118,10 +118,10 @@ int main() {
 		Client client{ construction };
 		auto connectionstatus = client.connect(bar);
 		auto val = io_context.run();
-		curan::utils::console->info("stopped running");
+		curan::utils::cout << "stopped running";
 	}
 	catch (std::exception& e) {
-		curan::utils::console->info("CLient exception was thrown"+std::string(e.what()));
+		curan::utils::cout << "CLient exception was thrown"+std::string(e.what());
 		return 1;
 	}
 

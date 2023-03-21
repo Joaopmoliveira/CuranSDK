@@ -286,9 +286,9 @@ namespace curan {
 		void Context::destroy_context() {
 			if (instance != VK_NULL_HANDLE)
 				vkDestroyInstance(instance, nullptr);
-			utils::console->info("destroying instance");
+			utils::cout << "destroying instance";
 			glfwTerminate();
-			utils::console->info("destroyed gflw instance");
+			utils::cout << "destroyed gflw instance";
 		}
 		VKAPI_ATTR VkBool32 VKAPI_CALL Context::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
 			//TODO: std::cout << "validation layer: " << pCallbackData->pMessage << std::endl;

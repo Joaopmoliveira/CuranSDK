@@ -3,10 +3,10 @@
 
 #include <mutex>
 #include <queue>
-#include "Logger.h"
 
 namespace curan {
 	namespace utils {
+
 		template<typename T>
 		class SafeQueue {
 		private:

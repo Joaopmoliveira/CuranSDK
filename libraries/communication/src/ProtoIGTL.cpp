@@ -25,7 +25,7 @@ namespace curan {
 									read_body(val, ec);
 								}
 								else {
-									utils::console->info("failed to read first header");
+									curan::utils::cout << "failed to read first header";
 									val.owner->get_socket().get_underlying_socket().close();
 								}
 									
@@ -52,13 +52,13 @@ namespace curan {
 										read_body(val, ec);
 									}
 									else {
-										utils::console->info("failed to read header");
+										curan::utils::cout << "failed to read header";
 										val.owner->get_socket().get_underlying_socket().close();
 									}
 								});
 						}
 						catch (...) {
-							utils::console->info("exception thrown");
+							curan::utils::cout << "exception thrown";
 						}
 					}
 
@@ -76,7 +76,7 @@ namespace curan {
 									if (!ec)
 										read_header(val, ec);
 									else {
-										utils::console->info("failed to read body");
+										curan::utils::cout << "failed to read body";
 										val.owner->get_socket().get_underlying_socket().close();
 
 									}
@@ -84,13 +84,13 @@ namespace curan {
 								});
 						}
 						catch (...) {
-							utils::console->info("exception thrown");
+							curan::utils::cout << "exception thrown";
 						}
 					}
 				}
 
 				void start(Client* client_pointer) {
-					utils::console->info("starting to:");
+					curan::utils::cout << "starting to:";
 					implementation::IgtlinkClientConnection val{ client_pointer };
 					implementation::read_header_first_time(std::move(val));
 					

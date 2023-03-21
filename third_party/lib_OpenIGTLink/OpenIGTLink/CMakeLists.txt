@@ -67,13 +67,13 @@ endif()
 
 #-----------------------------------------------------------------------------
 if(NOT DEFINED OpenIGTLink_BUILD_TESTING)
-  option(BUILD_TESTING "Build the testing tree." ON)
+  option(BUILD_TESTING "Build the testing tree." OFF)
   set(OpenIGTLink_BUILD_TESTING ${BUILD_TESTING})
 endif()
 
 #-----------------------------------------------------------------------------
 if(NOT DEFINED OpenIGTLink_USE_GTEST)
-  option(USE_GTEST "Use googletest for testing" ON)
+  option(USE_GTEST "Use googletest for testing" OFF)
   set(OpenIGTLink_USE_GTEST ${USE_GTEST})
 endif()
 #link to google test library tend to fail https://github.com/openigtlink/OpenIGTLink/issues/122

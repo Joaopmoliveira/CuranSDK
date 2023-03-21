@@ -3,7 +3,7 @@
 
 #include "widgets/Signal.h"
 #include <memory>
-#include "utils/ThreadSafeQueue.h"
+#include "utils/SafeQueue.h"
 #include "Context.h"
 
 namespace curan {

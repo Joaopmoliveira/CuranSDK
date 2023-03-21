@@ -113,7 +113,7 @@
 
 #include <string>
 #include <variant>
-#include "utils/ThreadSafeQueue.h"
+#include "utils/SafeQueue.h"
 #include <iostream>
 
 /*

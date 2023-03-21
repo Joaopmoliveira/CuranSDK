@@ -468,14 +468,14 @@ namespace curan {
 				skia_context->abandonContext();
 				skia_context.reset();
 			}
-			utils::console->info("destroying swapchain");
+			curan::utils::cout << "destroying swapchain";
 			vkDestroySwapchainKHR(device, swapChain, nullptr);
 			vkDestroyDevice(device, nullptr);
 			vkDestroySurfaceKHR(context->instance, surface, nullptr);
-			utils::console->info("destroyed swapchain");
-			utils::console->info("destroying window");
+			curan::utils::cout << "destroyed swapchain";
+			curan::utils::cout << "destroying window";
 			glfwDestroyWindow(window);
-			utils::console->info("destroyed window");
+			curan::utils::cout << "destroyed window";
 			return;
 		}
 

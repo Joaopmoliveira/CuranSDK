@@ -66,7 +66,7 @@ void generate_transform_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> bu
 		std::this_thread::sleep_for(std::chrono::milliseconds(500) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		++counter;
 	}
-	curan::utils::console->info("stopped to send data");
+	curan::utils::cout << "stopped to send data";
 }
 
 void GLFW_error(int error, const char* description)
@@ -119,11 +119,11 @@ int main() {
 					calsignal(signals.back());
 				bool val = viewer->swapBuffers();
 				if (!val)
-					std::cout << "failed to swap buffers\n";
+					curan::utils::cout << "failed to swap buffers\n";
 				auto end = std::chrono::high_resolution_clock::now();
 				std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 			}
-			curan::utils::console->info("stopped window");
+			curan::utils::cout << "stopped window";
 			message_generator.join();
 		}
 		return 0;

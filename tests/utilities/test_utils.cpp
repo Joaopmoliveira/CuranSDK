@@ -2,7 +2,7 @@
 #include "utils\Job.h"
 #include "utils\Logger.h"
 #include "utils\TheadPool.h"
-#include "utils\ThreadSafeQueue.h"
+#include "utils\SafeQueue.h"
 #include "utils\MemoryUtils.h"
 #include <chrono>
 #include <iostream>
@@ -29,9 +29,9 @@ int test_shared_flag() {
 	};
 
 	auto function2 = [flag]() {
-		curan::utils::console->info("started waiting for the flag");
+		curan::utils::cout << "started waiting for the flag";
 		flag->wait();
-		curan::utils::console->info("stopped waiting for the flag");
+		curan::utils::cout << "stopped waiting for the flag";
 	};
 
 	const std::chrono::time_point<std::chrono::system_clock> start =
@@ -43,9 +43,9 @@ int test_shared_flag() {
 		std::chrono::system_clock::now();
 
 	if (std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <= number_of_min_miliseconds)
-		curan::utils::console->error("the total amount of time waited for the flag was smaller than what was expected");
+		curan::utils::cout << "the total amount of time waited for the flag was smaller than what was expected";
 	else 
-		curan::utils::console->info("the obtained result is in accordance with what was expected");
+		curan::utils::cout << "the obtained result is in accordance with what was expected";
 
 	return 0;
 }
@@ -82,29 +82,29 @@ int test_job_and_thread_pool() {
 	int number_of_tasks_in_queue = 0;
 	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
 	std::string message = "Number of tasks (pending + execution): (" +std::to_string(number_of_tasks) +" + "+ std::to_string(number_of_tasks_in_queue) + ") (expected 0) ";
-	curan::utils::console->info(message);
+	curan::utils::cout << message;
 	pool->Submit(job1);
 	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 1) ";
-	curan::utils::console->info(message);
+	curan::utils::cout << message;
 	pool->Submit(job2);
 	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 2) ";
-	curan::utils::console->info(message);
+	curan::utils::cout << message;
 	pool->Submit(job3);
 	pool->Submit(job4);
 	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 4) ";
-	curan::utils::console->info(message);
+	curan::utils::cout << message;
 	flag1->set();
 	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4) ";
-	curan::utils::console->info(message);
+	curan::utils::cout << message;
 	flag2->set();
 	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4) ";
-	curan::utils::console->info(message);
-	curan::utils::console->info("the thread pool has been stopped");
+	curan::utils::cout << message;
+	curan::utils::cout << message;
 	return 0;
 }
 
@@ -127,15 +127,15 @@ void test_thread_safe_queue() {
 	auto function_to_execute = [&safe_queue]() {
 		try {
 			PoPable temp;
-			curan::utils::console->info("starting to wait for popable");
+			curan::utils::cout << "starting to wait for popable";
 			while (!safe_queue.is_invalid()) {
 				if(safe_queue.wait_and_pop(temp))
-					curan::utils::console->info("Received a poopable! yeye = {}", temp.val);
+					curan::utils::cout << "Received a poopable! yeye = " << temp.val;
 			}
-			curan::utils::console->info("finished to wait for popable");
+			curan::utils::cout << "finished to wait for popable";
 		}
 		catch (...) {
-			curan::utils::console->error("something very wrong happened");
+			curan::utils::cout << "something very wrong happened";
 		}
 	};
 	
@@ -150,10 +150,10 @@ void test_thread_safe_queue() {
 			auto duration = std::chrono::milliseconds(number_of_min_miliseconds);
 			std::this_thread::sleep_for(duration);
 		}
-		curan::utils::console->info("setting boolean variable to false");
+		curan::utils::cout << "setting boolean variable to false";
 		safe_queue.invalidate();
 	} catch (...) {
-		curan::utils::console->error("something very wrong in the main thread");
+		curan::utils::cout << "something very wrong in the main thread";
 	}
 	thread_to_run.join();
 }
