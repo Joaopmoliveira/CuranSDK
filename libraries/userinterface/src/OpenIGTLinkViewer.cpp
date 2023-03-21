@@ -171,8 +171,18 @@ drawablefunction OpenIGTLinkViewer::draw() {
 
 				},
 				[canvas,widget_rect](ImageMessage message) {
-					SkSamplingOptions options;
-					canvas->drawImage(message.skia_image, widget_rect.x() + (widget_rect.width() - message.skia_image->width()) / 2.0, widget_rect.y() + (widget_rect.height() - message.skia_image->height()) / 2.0);
+					SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0 / 3, 1.0 / 3 });
+					float image_width = message.skia_image->width();
+					float image_height = message.skia_image->height();
+					float current_selected_width = widget_rect.width();
+					float current_selected_height = widget_rect.height();
+
+					float scale_factor = std::min(current_selected_width * 0.9f / image_width, current_selected_height * 0.95f / image_height);
+
+					float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
+					float init_y = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
+					SkRect current_selected_image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, scale_factor * image_height);
+					canvas->drawImageRect(message.skia_image, current_selected_image_rectangle, opt);
 				}},mess
 			);
 		}
@@ -295,6 +305,18 @@ drawablefunction OpenIGTLinkViewer::draw() {
 				},
 				[&clicked,canvas,this,number_of_cells,y_init,widget_rect](ImageMessage& message) {
 					SkScalar y = y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
+					float image_width = message.skia_image->width();
+					float image_height = message.skia_image->height();
+					float current_selected_width = widget_rect.width();
+					float current_selected_height = widget_rect.height()- (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
+
+					float scale_factor = std::min(current_selected_width * 0.9f / image_width, current_selected_height * 0.95f / image_height);
+
+					float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
+					float init_y = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
+					SkRect current_selected_image_rectangle = SkRect::MakeXYWH(init_x, y, scale_factor * image_width, scale_factor * image_height);
+
+					
 					SkSamplingOptions options;
 					canvas->drawImage(message.skia_image, widget_rect.x() + (widget_rect.width() - message.skia_image->width()) / 2.0, y);
 				}
