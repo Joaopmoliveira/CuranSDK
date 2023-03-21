@@ -3,6 +3,7 @@
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/Container.h"
 #include "userinterface/widgets/SingletonIconResources.h"
+#include "userinterface/widgets/Page.h"
 #include <iostream>
 
 int main() {
@@ -50,24 +51,55 @@ int main() {
 		infor.icon_identifier = "";
 		infor.paintButton = paint_square;
 		infor.paintText = paint_text;
-		infor.size = SkRect::MakeLTRB(20, 20, 200, 300);
+		infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
 		infor.textFont = text_font;
 		std::shared_ptr<Button> button = Button::make(infor);
-		SkRect rect = SkRect::MakeLTRB(100, 100, 200, 200);
-		button->set_position(rect);
-		auto caldraw = button->draw();
-		auto calsignal = button->call();
+
+		infor.button_text = "Touch 2!";
+		std::shared_ptr<Button> button2 = Button::make(infor);
+
+		infor.button_text = "Touch 3!";
+		std::shared_ptr<Button> button3 = Button::make(infor);
+
+		infor.button_text = "Touch 4!";
+		std::shared_ptr<Button> button4 = Button::make(infor);
+
+		Container::InfoLinearContainer info;
+		info.arrangement = curan::ui::Arrangement::VERTICAL;
+		info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
+		info.layouts = { button ,button2 , button3 };
+		info.paint_layout = paint_square2;
+		std::shared_ptr<Container> container = Container::make(info);
+
+		info.arrangement = curan::ui::Arrangement::HORIZONTAL;
+		info.divisions = { 0.0 , 0.5 , 1.0 };
+		info.layouts = { container , button4 };
+		std::shared_ptr<Container> container2 = Container::make(info);
+
+		auto rec = viewer->get_size();
+		std::shared_ptr<Page> page = Page::make(container2);
+		page->propagate_size_change(rec);
+
+		int width = rec.width();
+		int height = rec.height();
 
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
+			auto temp_height = pointer_to_surface->height();
+			auto temp_width = pointer_to_surface->width();
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
 			canvas->drawColor(SK_ColorWHITE);
-			caldraw(canvas);
-			glfwPollEvents();
+			if (temp_height != height || temp_width != width) {
+				rec = SkRect::MakeWH(temp_width, temp_height);
+				page->propagate_size_change(rec);
+			}
+			page->draw(canvas);
 			auto signals = viewer->process_pending_signals();
 			if (!signals.empty())
-				calsignal(signals.back());
+				page->propagate_signal(signals.back());
+			glfwPollEvents();
+	
 			bool val = viewer->swapBuffers();
 			if (!val)
 				std::cout << "failed to swap buffers\n";

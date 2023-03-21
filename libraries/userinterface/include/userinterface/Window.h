@@ -80,6 +80,11 @@ namespace curan {
 			[[nodiscard]] bool initialize();
 			void destroy();
 
+			inline SkRect get_size() {
+				SkRect rec = SkRect::MakeXYWH(0,0,width,height);
+				return rec;
+			}
+
 			std::vector<Signal> process_pending_signals();
 			[[nodiscard]] bool recreateDisplay();
 			BackbufferInfo* getAvailableBackBuffer();

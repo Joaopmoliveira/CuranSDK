@@ -484,7 +484,6 @@ std::vector<Signal> Window::process_pending_signals()
 
 bool Window::recreateDisplay()
 {
-	int width = 0, height = 0;
 	glfwGetFramebufferSize(window, &width, &height);
 	while (width == 0 || height == 0) {
 		glfwGetFramebufferSize(window, &width, &height);

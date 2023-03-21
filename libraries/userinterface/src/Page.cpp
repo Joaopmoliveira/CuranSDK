@@ -30,5 +30,13 @@ void Page::propagate_signal(Signal sig) {
 	};
 }
 
+void Page::propagate_size_change(SkRect& new_size) {
+	if (scene) {
+		scene->set_position(new_size);
+		scene->framebuffer_resize();
+	}
+		
+}
+
 }
 }

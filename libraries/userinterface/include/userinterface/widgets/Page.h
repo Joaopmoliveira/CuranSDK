@@ -27,6 +27,8 @@ namespace curan {
 			void draw(SkCanvas* canvas);
 
 			void propagate_signal(Signal sig);
+
+			void propagate_size_change(SkRect& new_size);
 		};
 	}
 }

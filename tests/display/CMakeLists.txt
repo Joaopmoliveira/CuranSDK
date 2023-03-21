@@ -28,3 +28,10 @@ add_executable(test_container_logic test_container_logic.cpp)
 target_link_libraries(test_container_logic PUBLIC
 userinterface
 )
+
+add_executable(test_page test_container_with_window.cpp)
+
+target_link_libraries(test_page PUBLIC
+userinterface
+)
+
