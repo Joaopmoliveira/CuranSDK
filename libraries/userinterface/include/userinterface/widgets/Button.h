@@ -5,12 +5,19 @@
 #include "Lockable.h"
 #include "definitions/UIdefinitions.h"
 #include "utils/Cancelable.h"
+#include <optional>
 
 namespace curan {
 	namespace ui {
+
+		class Button;
+
+		using buttoncallback = std::function<void(std::shared_ptr<Button> val)>;
+
 		class Button : public  Drawable , Lockable<Button>, utils::Connectable<Button> {
 		public:
 			struct Info {
+				std::optional<buttoncallback> callback;
 				SkColor hover_color;
 				SkColor waiting_color;
 				SkColor click_color;

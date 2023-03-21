@@ -7,7 +7,10 @@ src/Window.cpp
 src/Button.cpp
 src/SingletonIconResources.cpp 
 src/OpenIGTLinkViewer.cpp
-src/Container.cpp)
+src/Container.cpp 
+src/Drawable.cpp
+src/Page.cpp
+)
 
 target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/

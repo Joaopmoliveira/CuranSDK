@@ -484,26 +484,13 @@ void create_nested_layout_propagate(){
 	std::shared_ptr<Button> button = Button::make(infor);
 
 	infor.button_text = "Touch 2!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
 	std::shared_ptr<Button> button2 = Button::make(infor);
 
 	infor.button_text = "Touch 3!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
 	std::shared_ptr<Button> button3 = Button::make(infor);
+
+	infor.button_text = "Touch 4!";
+	std::shared_ptr<Button> button4 = Button::make(infor);
 
 	Container::InfoLinearContainer info;
 	info.arrangement = curan::ui::Arrangement::VERTICAL;
@@ -512,16 +499,23 @@ void create_nested_layout_propagate(){
 	info.paint_layout = paint_square2;
 	std::shared_ptr<Container> container = Container::make(info);
 
+
+	info.arrangement = curan::ui::Arrangement::HORIZONTAL;
+	info.divisions = { 0.0 , 0.5 , 1.0 };
+	info.layouts = { container , button4 };
+	std::shared_ptr<Container> container2 = Container::make(info);
+
 	SkRect window = SkRect::MakeLTRB(0, 0, 1000, 1000);
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
-	container->set_position(my_small_window);
-	container->framebuffer_resize();
+	container2->set_position(my_small_window);
+	container2->framebuffer_resize();
 
 	std::cout << "Container layout";
 	std::cout << "Expected:\n";
-	std::cout << "Button1 left: 50 top:  50  right: 950 bottom: 350 \n";
-	std::cout << "Button2 left: 50 top: 350  right: 950 bottom: 650 \n";
-	std::cout << "Button3 left: 50 top: 650  right: 950 bottom: 950 \n";
+	std::cout << "Button1 left:  50 top:  50  right: 450 bottom: 350 \n";
+	std::cout << "Button2 left:  50 top: 350  right: 450 bottom: 650 \n";
+	std::cout << "Button3 left:  50 top: 650  right: 450 bottom: 950 \n";
+	std::cout << "Button4 left: 450 top:  50  right: 950 bottom: 950 \n";
 
 	std::cout << "Real:\n";
 	auto pos1 = button->get_position();
@@ -530,7 +524,87 @@ void create_nested_layout_propagate(){
 	std::cout << "Button2 left: " << pos2.fLeft << " top: " << pos2.fTop << " right: " << pos2.fRight << " bottom: " << pos2.fBottom << "\n";
 	auto pos3 = button3->get_position();
 	std::cout << "Button3 left: " << pos3.fLeft << " top: " << pos3.fTop << " right: " << pos3.fRight << " bottom: " << pos3.fBottom << "\n";
+	auto pos4 = button4->get_position();
+	std::cout << "Button4 left: " << pos4.fLeft << " top: " << pos4.fTop << " right: " << pos4.fRight << " bottom: " << pos4.fBottom << "\n";
 };
+
+void test_linearization() {
+	using namespace curan::ui;
+	SkColor colbuton = { SK_ColorWHITE };
+	SkColor coltext = { SK_ColorBLACK };
+
+	SkPaint paint_square;
+	paint_square.setStyle(SkPaint::kFill_Style);
+	paint_square.setAntiAlias(true);
+	paint_square.setStrokeWidth(4);
+	paint_square.setColor(colbuton);
+
+	SkPaint paint_text;
+	paint_text.setStyle(SkPaint::kFill_Style);
+	paint_text.setAntiAlias(true);
+	paint_text.setStrokeWidth(4);
+	paint_text.setColor(coltext);
+
+	const char* fontFamily = nullptr;
+	SkFontStyle fontStyle;
+	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+
+	SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
+	text_font.setEdging(SkFont::Edging::kAntiAlias);
+
+	SkPaint paint_square2;
+	paint_square2.setStyle(SkPaint::kFill_Style);
+	paint_square2.setAntiAlias(true);
+	paint_square2.setStrokeWidth(4);
+	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
+
+	Button::Info infor;
+	infor.button_text = "Touch!";
+	infor.click_color = SK_ColorRED;
+	infor.hover_color = SK_ColorCYAN;
+	infor.waiting_color = SK_ColorGRAY;
+	infor.icon_identifier = "";
+	infor.paintButton = paint_square;
+	infor.paintText = paint_text;
+	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
+	infor.textFont = text_font;
+	std::shared_ptr<Button> button = Button::make(infor);
+
+	infor.button_text = "Touch 2!";
+	std::shared_ptr<Button> button2 = Button::make(infor);
+
+	infor.button_text = "Touch 3!";
+	std::shared_ptr<Button> button3 = Button::make(infor);
+
+	infor.button_text = "Touch 4!";
+	std::shared_ptr<Button> button4 = Button::make(infor);
+
+	Container::InfoLinearContainer info;
+	info.arrangement = curan::ui::Arrangement::VERTICAL;
+	info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
+	info.layouts = { button ,button2 , button3 };
+	info.paint_layout = paint_square2;
+	std::shared_ptr<Container> container = Container::make(info);
+
+
+	info.arrangement = curan::ui::Arrangement::HORIZONTAL;
+	info.divisions = { 0.0 , 0.5 , 1.0 };
+	info.layouts = { container , button4 };
+	std::shared_ptr<Container> container2 = Container::make(info);
+
+	SkRect window = SkRect::MakeLTRB(0, 0, 1000, 1000);
+	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
+	container2->set_position(my_small_window);
+	container2->framebuffer_resize();
+
+	std::vector<drawablefunction> temp_draw;
+	std::vector<callablefunction> temp_call;
+	container2->linearize_container(temp_draw,temp_call);
+
+	std::cout << "expected size drawable: (6) real size: (" << temp_draw.size() << ")\n";
+	std::cout << "expected size callable: (6) real size: (" << temp_call.size() << ")\n";
+}
 
 int main() {
 	try {
@@ -541,6 +615,8 @@ int main() {
 		create_variable_layout();
 		create_horizontal_layout_propagate();
 		create_vertical_layout_propagate();
+		create_nested_layout_propagate();
+		test_linearization();
 	}
 	catch (...) {
 		std::cout << "Failed";

@@ -93,5 +93,38 @@ void Container::framebuffer_resize() {
 	}
 }
 
+bool Container::is_leaf() {
+	return false;
+}
+
+void Container::linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal) {
+	std::vector<drawablefunction> linearized_draw;
+	std::vector<callablefunction> linearized_call;
+
+	auto tempdraw = draw();
+	auto tempcall = call();
+	linearized_draw.push_back(tempdraw);
+	linearized_call.push_back(tempcall);
+
+	for (auto& drawble : contained_layouts) {
+		if (drawble->is_leaf()) {
+			auto tempdraw = drawble->draw();
+			auto tempcall = drawble->call();
+			linearized_draw.push_back(tempdraw);
+			linearized_call.push_back(tempcall);
+		} else {
+			auto interpreted = std::dynamic_pointer_cast<Container>(drawble);
+			std::vector<drawablefunction> temp_linearized_draw;
+			std::vector<callablefunction> temp_linearized_call;
+			interpreted->linearize_container(temp_linearized_draw, temp_linearized_call);
+			linearized_draw.insert(linearized_draw.end(), temp_linearized_draw.begin(), temp_linearized_draw.end());
+			linearized_call.insert(linearized_call.end(), temp_linearized_call.begin(), temp_linearized_call.end());
+		}
+	}
+
+	callable_draw = linearized_draw;
+	callable_signal = linearized_call;
+}
+
 }
 }

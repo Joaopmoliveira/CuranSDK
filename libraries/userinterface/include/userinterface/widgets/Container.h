@@ -35,7 +35,9 @@ namespace curan {
 
 			drawablefunction draw() override;
 			callablefunction call() override;
+			bool is_leaf() override;
 			void framebuffer_resize() override;
+			void linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
 
 			inline std::vector<SkRect>& get_positioning() {
 				return rectangles_of_contained_layouts;

@@ -13,7 +13,6 @@ namespace curan {
 
 		enum class Arrangement {
 			VERTICAL,
-
 			HORIZONTAL,
 		};
 
@@ -24,10 +23,9 @@ namespace curan {
 
 			callablefunction virtual call() = 0;
 
-			/*
-			
-			*/
 			void virtual framebuffer_resize() = 0;
+
+			bool virtual is_leaf();
 
 			inline void set_position(SkRect pos) {
 				widget_rect = pos;
