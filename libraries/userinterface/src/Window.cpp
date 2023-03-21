@@ -2,204 +2,198 @@
 #include "utils/Logger.h"
 
 namespace curan {
-	namespace ui {
+namespace ui {
 
-		const int MAX_FRAMES_IN_FLIGHT = 2;
-		const int EXTRA_BACK_BUFFER = 1;
+const int MAX_FRAMES_IN_FLIGHT = 2;
+const int EXTRA_BACK_BUFFER = 1;
 
-		Window::Window(DisplayParams&& pars) : params{ std::move(pars) }, width{ pars.width }, height{ pars.height }, windowName{pars.windowName} {
-			context = std::move(params.cxt);
-			params.cxt = nullptr;
-			bool val = initialize();
-			connect_handler();
-		};
+Window::Window(DisplayParams&& pars) : params{ std::move(pars) }, width{ pars.width }, height{ pars.height }, windowName{pars.windowName} {
+	context = std::move(params.cxt);
+	params.cxt = nullptr;
+	bool val = initialize();
+	connect_handler();
+};
 
-		Window::~Window()
-		{
-			destroy();
-		};
+Window::~Window()
+{
+	destroy();
+};
 
-		bool Window::swapBuffers()
-		{
-			BackbufferInfo* backbuffer = fBackbuffers.get() + fCurrentBackbufferIndex;
-			SkSurface* surface = swapSurface[backbuffer->fImageIndex];
+bool Window::swapBuffers()
+{
+	BackbufferInfo* backbuffer = fBackbuffers.get() + fCurrentBackbufferIndex;
+	SkSurface* surface = swapSurface[backbuffer->fImageIndex];
 
-			GrBackendSemaphore beSemaphore;
-			beSemaphore.initVulkan(backbuffer->fRenderSemaphore);
+	GrBackendSemaphore beSemaphore;
+	beSemaphore.initVulkan(backbuffer->fRenderSemaphore);
 
-			GrFlushInfo info;
-			info.fNumSemaphores = 1;
-			info.fSignalSemaphores = &beSemaphore;
-			GrBackendSurfaceMutableState presentState(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, context->indices.presentFamily.value());
-			if (surface->flush(info, &presentState) != GrSemaphoresSubmitted::kYes) {
-				return false;
-			}
-			if (surface->recordingContext()->asDirectContext()->submit() != true)
-				return false;
+	GrFlushInfo info;
+	info.fNumSemaphores = 1;
+	info.fSignalSemaphores = &beSemaphore;
+	GrBackendSurfaceMutableState presentState(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, context->indices.presentFamily.value());
+	if (surface->flush(info, &presentState) != GrSemaphoresSubmitted::kYes) {
+		return false;
+	}
+	if (surface->recordingContext()->asDirectContext()->submit() != true)
+		return false;
 
-			// Submit present operation to present queue
-			const VkPresentInfoKHR presentInfo =
-			{
-				VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, // sType
-				nullptr, // pNext
-				1, // waitSemaphoreCount
-				&backbuffer->fRenderSemaphore, // pWaitSemaphores
-				1, // swapchainCount
-				&swapChain, // pSwapchains
-				&backbuffer->fImageIndex, // pImageIndices
-				nullptr // pResults
-			};
+	// Submit present operation to present queue
+	const VkPresentInfoKHR presentInfo =
+	{
+		VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, // sType
+		nullptr, // pNext
+		1, // waitSemaphoreCount
+		&backbuffer->fRenderSemaphore, // pWaitSemaphores
+		1, // swapchainCount
+		&swapChain, // pSwapchains
+		&backbuffer->fImageIndex, // pImageIndices
+		nullptr // pResults
+	};
 
-			vkQueuePresentKHR(presentQueue, &presentInfo);
-			return true;
+	vkQueuePresentKHR(presentQueue, &presentInfo);
+	return true;
+}
+
+SkSurface* Window::getBackbufferSurface()
+{
+	BackbufferInfo* backbuffer = getAvailableBackBuffer();
+	SkASSERT(backbuffer);
+
+	// semaphores should be in unsignaled state
+	VkSemaphoreCreateInfo semaphoreInfo;
+	memset(&semaphoreInfo, 0, sizeof(VkSemaphoreCreateInfo));
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreInfo.pNext = nullptr;
+	semaphoreInfo.flags = 0;
+	VkSemaphore semaphore;
+	if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+		throw std::runtime_error("Failed creating a semaphore");
+
+	// acquire the image
+	VkResult res = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &backbuffer->fImageIndex);
+
+	if (VK_ERROR_SURFACE_LOST_KHR == res) {
+		// need to figure out how to create a new vkSurface without the platformData*
+		// maybe use attach somehow? but need a Window
+		vkDestroySemaphore(device, semaphore, nullptr);
+		return nullptr;
+	}
+
+	if (VK_ERROR_OUT_OF_DATE_KHR == res || res == VK_SUBOPTIMAL_KHR || framebufferResized) {
+		framebufferResized = false;
+		// tear swapchain down and try again
+		recreateDisplay();
+		backbuffer = getAvailableBackBuffer();
+
+		// acquire the image
+		res = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
+			semaphore, VK_NULL_HANDLE, &backbuffer->fImageIndex);
+
+		if (VK_SUCCESS != res) {
+			vkDestroySemaphore(device, semaphore, nullptr);
+			return nullptr;
 		}
+	}
+	SkSurface* surface = swapSurface[backbuffer->fImageIndex];
+	GrBackendSemaphore beSemaphore;
+	beSemaphore.initVulkan(semaphore);
+	surface->wait(1, &beSemaphore);
+	return surface;
+}
 
-		SkSurface* Window::getBackbufferSurface()
+void Window::connect_handler() {
+	glfwSetCursorPosCallback(this->window, cursor_position_callback);
+	glfwSetMouseButtonCallback(this->window, cursor_position_click_callback);
+	glfwSetScrollCallback(this->window, scroll_callback);
+	glfwSetDropCallback(this->window, item_droped_callback);
+}
+
+bool Window::initialize()
+{
+	VkResult res;
+	// create a glfw window
+	window = glfwCreateWindow(width, height, windowName.c_str(), nullptr, nullptr);
+	glfwSetWindowUserPointer(window, this);
+	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
+	// create a KHR surface
+	if (glfwCreateWindowSurface(context->instance, window, nullptr, &surface) != VK_SUCCESS) {
+		return false;
+	}
+
+	VkPhysicalDeviceFeatures deviceFeatures{};
+
+	VkDeviceQueueCreateFlags flags = 0;
+	float queuePriorities[1] = { 0.0 };
+	// Here we assume no need for swapchain queue
+	// If one is needed, the client will need its own setup code
+	const VkDeviceQueueCreateInfo queueInfo[2] = {
 		{
-			BackbufferInfo* backbuffer = getAvailableBackBuffer();
-			SkASSERT(backbuffer);
-
-			// semaphores should be in unsignaled state
-			VkSemaphoreCreateInfo semaphoreInfo;
-			memset(&semaphoreInfo, 0, sizeof(VkSemaphoreCreateInfo));
-			semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-			semaphoreInfo.pNext = nullptr;
-			semaphoreInfo.flags = 0;
-			VkSemaphore semaphore;
-			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
-				throw std::runtime_error("Failed creating a semaphore");
-
-			// acquire the image
-			VkResult res = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &backbuffer->fImageIndex);
-
-			if (VK_ERROR_SURFACE_LOST_KHR == res) {
-				// need to figure out how to create a new vkSurface without the platformData*
-				// maybe use attach somehow? but need a Window
-				vkDestroySemaphore(device, semaphore, nullptr);
-				return nullptr;
-			}
-
-			if (VK_ERROR_OUT_OF_DATE_KHR == res || res == VK_SUBOPTIMAL_KHR || framebufferResized) {
-				framebufferResized = false;
-				// tear swapchain down and try again
-				recreateDisplay();
-				backbuffer = getAvailableBackBuffer();
-
-				// acquire the image
-				res = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
-					semaphore, VK_NULL_HANDLE, &backbuffer->fImageIndex);
-
-				if (VK_SUCCESS != res) {
-					vkDestroySemaphore(device, semaphore, nullptr);
-					return nullptr;
-				}
-			}
-
-			SkSurface* surface = swapSurface[backbuffer->fImageIndex];
-
-			GrBackendSemaphore beSemaphore;
-			beSemaphore.initVulkan(semaphore);
-
-			surface->wait(1, &beSemaphore);
-
-			return surface;
+			VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // sType
+			nullptr,                                    // pNext
+			flags,                                      // VkDeviceQueueCreateFlags
+			context->indices.graphicsFamily.value(),                         // queueFamilyIndex
+			1,                                          // queueCount
+			queuePriorities,                            // pQueuePriorities
+		},{
+			VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // sType
+			nullptr,                                    // pNext
+			0,                                          // VkDeviceQueueCreateFlags
+			context->indices.presentFamily.value(),                          // queueFamilyIndex
+			1,                                          // queueCount
+			queuePriorities,                            // pQueuePriorities
 		}
+	};
+	uint32_t queueInfoCount = (context->indices.graphicsFamily.value() != context->indices.presentFamily.value()) ? 2 : 1;
 
-		void Window::connect_handler() {
-			glfwSetCursorPosCallback(this->window, cursor_position_callback);
-			glfwSetMouseButtonCallback(this->window, cursor_position_click_callback);
-			glfwSetScrollCallback(this->window, scroll_callback);
-			glfwSetDropCallback(this->window, item_droped_callback);
-		}
+	VkDeviceCreateInfo createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	createInfo.queueCreateInfoCount = queueInfoCount;
+	createInfo.pQueueCreateInfos = queueInfo;
+	createInfo.pEnabledFeatures = &deviceFeatures;
+	createInfo.enabledExtensionCount = (uint32_t)context->deviceExtensionNames.size();
+	createInfo.ppEnabledExtensionNames = context->deviceExtensionNames.data();
+	createInfo.enabledLayerCount = 0;
 
-		bool Window::initialize()
-		{
-			VkResult res;
-			// create a glfw window
-			window = glfwCreateWindow(width, height, windowName.c_str(), nullptr, nullptr);
-			glfwSetWindowUserPointer(window, this);
-			glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+	res = vkCreateDevice(context->physicalDevice, &createInfo, nullptr, &device);
 
-			// create a KHR surface
-			if (glfwCreateWindowSurface(context->instance, window, nullptr, &surface) != VK_SUCCESS) {
-				return false;
-			}
+	if (res != VK_SUCCESS)
+		return false;
 
-			VkPhysicalDeviceFeatures deviceFeatures{};
+	vkGetDeviceQueue(device, context->indices.graphicsFamily.value(), 0, &graphicsQueue);
+	vkGetDeviceQueue(device, context->indices.presentFamily.value(), 0, &presentQueue);
 
-			VkDeviceQueueCreateFlags flags = 0;
-			float queuePriorities[1] = { 0.0 };
-			// Here we assume no need for swapchain queue
-			// If one is needed, the client will need its own setup code
-			const VkDeviceQueueCreateInfo queueInfo[2] = {
-				{
-					VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // sType
-					nullptr,                                    // pNext
-					flags,                                      // VkDeviceQueueCreateFlags
-					context->indices.graphicsFamily.value(),                         // queueFamilyIndex
-					1,                                          // queueCount
-					queuePriorities,                            // pQueuePriorities
+	if (vkContext == nullptr)
+		vkContext = std::make_unique<GrVkBackendContext>();
 
-				},
-				{
-					VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // sType
-					nullptr,                                    // pNext
-					0,                                          // VkDeviceQueueCreateFlags
-					context->indices.presentFamily.value(),                          // queueFamilyIndex
-					1,                                          // queueCount
-					queuePriorities,                            // pQueuePriorities
-				}
-			};
-			uint32_t queueInfoCount = (context->indices.graphicsFamily.value() != context->indices.presentFamily.value()) ? 2 : 1;
+	vkContext->fInstance = context->instance;
+	vkContext->fPhysicalDevice = context->physicalDevice;
+	vkContext->fDevice = device;
+	vkContext->fQueue = graphicsQueue;
+	vkContext->fGraphicsQueueIndex = context->indices.graphicsFamily.value();
+	vkContext->fMaxAPIVersion = VK_API_VERSION_1_0;
+	vkContext->fVkExtensions = context->extensions.get();
+	vkContext->fDeviceFeatures = nullptr;
+	vkContext->fGetProc = context->vulkan_pointer;
+	vkContext->fOwnsInstanceAndDevice = false;
+	vkContext->fProtectedContext = GrProtected::kNo;
 
-			VkDeviceCreateInfo createInfo{};
-			createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-			createInfo.queueCreateInfoCount = queueInfoCount;
-			createInfo.pQueueCreateInfos = queueInfo;
-			createInfo.pEnabledFeatures = &deviceFeatures;
-			createInfo.enabledExtensionCount = (uint32_t)context->deviceExtensionNames.size();
-			createInfo.ppEnabledExtensionNames = context->deviceExtensionNames.data();
-			createInfo.enabledLayerCount = 0;
+	// so far i dont think we have any special needs,
+	// but this might change in the future
+	GrContextOptions options;
 
-			res = vkCreateDevice(context->physicalDevice, &createInfo, nullptr, &device);
+	skia_context = std::unique_ptr<GrDirectContext>(GrDirectContext::MakeVulkan(*vkContext, options).release());
+	if (skia_context == nullptr)
+		return false;
 
-			if (res != VK_SUCCESS)
-				return false;
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> presentModes;
 
-			vkGetDeviceQueue(device, context->indices.graphicsFamily.value(), 0, &graphicsQueue);
-			vkGetDeviceQueue(device, context->indices.presentFamily.value(), 0, &presentQueue);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->physicalDevice, surface, &capabilities);
 
-			if (vkContext == nullptr)
-				vkContext = std::make_unique<GrVkBackendContext>();
-
-			vkContext->fInstance = context->instance;
-			vkContext->fPhysicalDevice = context->physicalDevice;
-			vkContext->fDevice = device;
-			vkContext->fQueue = graphicsQueue;
-			vkContext->fGraphicsQueueIndex = context->indices.graphicsFamily.value();
-			vkContext->fMaxAPIVersion = VK_API_VERSION_1_0;
-			vkContext->fVkExtensions = context->extensions.get();
-			vkContext->fDeviceFeatures = nullptr;
-			vkContext->fGetProc = context->vulkan_pointer;
-			vkContext->fOwnsInstanceAndDevice = false;
-			vkContext->fProtectedContext = GrProtected::kNo;
-
-			// so far i dont think we have any special needs,
-			// but this might change in the future
-			GrContextOptions options;
-
-			skia_context = std::unique_ptr<GrDirectContext>(GrDirectContext::MakeVulkan(*vkContext, options).release());
-			if (skia_context == nullptr)
-				return false;
-
-			VkSurfaceCapabilitiesKHR capabilities;
-			std::vector<VkSurfaceFormatKHR> formats;
-			std::vector<VkPresentModeKHR> presentModes;
-
-			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->physicalDevice, surface, &capabilities);
-
-			uint32_t formatCount;
-			vkGetPhysicalDeviceSurfaceFormatsKHR(context->physicalDevice, surface, &formatCount, nullptr);
+	uint32_t formatCount;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(context->physicalDevice, surface, &formatCount, nullptr);
 
 			if (formatCount != 0) {
 				formats.resize(formatCount);
@@ -448,52 +442,52 @@ namespace curan {
 			fCurrentBackbufferIndex = imageCount;
 		}
 
-		void Window::destroy()
-		{
-			vkDeviceWaitIdle(device);
+void Window::destroy()
+{
+	vkDeviceWaitIdle(device);
 
-			if (fBackbuffers) {
-				for (uint32_t i = 0; i < swapSurface.size() + EXTRA_BACK_BUFFER; ++i) {
-					fBackbuffers[i].fImageIndex = -1;
-					vkDestroySemaphore(device, fBackbuffers[i].fRenderSemaphore, nullptr);
-				}
-			}
-
-			for (auto& pointer_to_surface : swapSurface)
-				if (pointer_to_surface != nullptr)
-					delete pointer_to_surface;
-			swapSurface.clear();
-
-			if (skia_context) {
-				skia_context->abandonContext();
-				skia_context.reset();
-			}
-			curan::utils::cout << "destroying swapchain";
-			vkDestroySwapchainKHR(device, swapChain, nullptr);
-			vkDestroyDevice(device, nullptr);
-			vkDestroySurfaceKHR(context->instance, surface, nullptr);
-			curan::utils::cout << "destroyed swapchain";
-			curan::utils::cout << "destroying window";
-			glfwDestroyWindow(window);
-			curan::utils::cout << "destroyed window";
-			return;
+	if (fBackbuffers) {
+		for (uint32_t i = 0; i < swapSurface.size() + EXTRA_BACK_BUFFER; ++i) {
+			fBackbuffers[i].fImageIndex = -1;
+			vkDestroySemaphore(device, fBackbuffers[i].fRenderSemaphore, nullptr);
 		}
+	}
 
-		std::vector<Signal> Window::process_pending_signals()
-		{
-			std::vector<Signal> received_signals;
-			int size = signal_queue.size();
-			received_signals.reserve(size);
-			for (int index = 0; index < size; ++index) {
-				Signal signal;
-				bool val = signal_queue.try_pop(signal);
-				if(val)
-					received_signals.push_back(signal);
-			}
-			return received_signals;
-		}
+	for (auto& pointer_to_surface : swapSurface)
+		if (pointer_to_surface != nullptr)
+			delete pointer_to_surface;
+	swapSurface.clear();
 
-		bool Window::recreateDisplay()
+	if (skia_context) {
+		skia_context->abandonContext();
+		skia_context.reset();
+	}
+	curan::utils::cout << "destroying swapchain";
+	vkDestroySwapchainKHR(device, swapChain, nullptr);
+	vkDestroyDevice(device, nullptr);
+	vkDestroySurfaceKHR(context->instance, surface, nullptr);
+	curan::utils::cout << "destroyed swapchain";
+	curan::utils::cout << "destroying window";
+	glfwDestroyWindow(window);
+	curan::utils::cout << "destroyed window";
+	return;
+}
+
+std::vector<Signal> Window::process_pending_signals()
+{
+	std::vector<Signal> received_signals;
+	int size = signal_queue.size();
+	received_signals.reserve(size);
+	for (int index = 0; index < size; ++index) {
+		Signal signal;
+		bool val = signal_queue.try_pop(signal);
+		if(val)
+			received_signals.push_back(signal);
+	}
+	return received_signals;
+}
+
+bool Window::recreateDisplay()
 		{
 			int width = 0, height = 0;
 			glfwGetFramebufferSize(window, &width, &height);
@@ -774,7 +768,7 @@ namespace curan {
 			fCurrentBackbufferIndex = imageCount;
 		}
 
-		BackbufferInfo* Window::getAvailableBackBuffer()
+BackbufferInfo* Window::getAvailableBackBuffer()
 		{
 			if (fBackbuffers == nullptr)
 				throw std::runtime_error("Pointer to back buffers is lost");
@@ -787,11 +781,11 @@ namespace curan {
 			return backbuffer;
 		}
 
-		void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height)
-		{
-			auto app = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
-			app->framebufferResized = true;
-		}
+void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+{
+	auto app = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+	app->framebufferResized = true;
+}
 
-	}
+}
 }

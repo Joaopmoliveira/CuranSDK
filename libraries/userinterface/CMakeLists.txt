@@ -7,7 +7,6 @@ src/Window.cpp
 src/Button.cpp
 src/SingletonIconResources.cpp 
 src/OpenIGTLinkViewer.cpp
-src/ConvertCoordinate.cpp
 src/Container.cpp)
 
 target_include_directories(userinterface

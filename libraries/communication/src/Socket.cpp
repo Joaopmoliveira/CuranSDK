@@ -42,27 +42,27 @@ void Socket::post(std::shared_ptr<curan::utils::MemoryBuffer> buff) {
 };
 
 void Socket::do_write(){
-			assert(to_send.size()>0);
-			assert(to_send.front()->begin()->data()!=nullptr);
-			asio::async_write(get_underlying_socket(),
-				asio::buffer(to_send.front()->begin()->data(), to_send.front()->begin()->size()), asio::transfer_all(),
-				[this](std::error_code ec, std::size_t /*length*/) {
-					if (!ec) {
-						if(!to_send.empty())
-							to_send.pop_front();
-						if (!to_send.empty())
-							do_write();
-					}
-					else {
-						get_underlying_socket().close();
-						curan::utils::cout << "failed";
-					}
-						
-				});
-		};
+	assert(to_send.size()>0);
+	assert(to_send.front()->begin()->data()!=nullptr);
+	asio::async_write(get_underlying_socket(),
+		asio::buffer(to_send.front()->begin()->data(), to_send.front()->begin()->size()), asio::transfer_all(),
+		[this](std::error_code ec, std::size_t /*length*/) {
+			if (!ec) {
+				if(!to_send.empty())
+					to_send.pop_front();
+				if (!to_send.empty())
+					do_write();
+				}
+			else {
+				get_underlying_socket().close();
+				curan::utils::cout << "failed";
+			}
+		});
+};
 
-		void Socket::close() {
-			asio::post(_cxt, [this]() { get_underlying_socket().close(); });
-		};
-	}
+void Socket::close() {
+	asio::post(_cxt, [this]() { get_underlying_socket().close(); });
+};
+
+}
 }
