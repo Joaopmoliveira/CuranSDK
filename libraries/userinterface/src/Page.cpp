@@ -3,31 +3,36 @@
 namespace curan {
 namespace ui {
 
-Page::Page(std::shared_ptr<Container> contained) : scene{ contained } {
+	Page::Page(Info info) : scene{ info.contained }, backgroundcolor{ info.backgroundcolor}, is_dirty{ true } {
 
 }
 
-std::shared_ptr<Page> Page::make(std::shared_ptr<Container> drawables) {
+std::shared_ptr<Page> Page::make(Info info) {
 	compilation_results results;
-	drawables->linearize_container(results.callable_draw,results.callable_signal);
-	std::shared_ptr<Page> page = std::shared_ptr<Page>(new Page{ drawables });
+	info.contained->linearize_container(results.callable_draw,results.callable_signal);
+	std::shared_ptr<Page> page = std::shared_ptr<Page>(new Page{ info });
 	page->compiled_scene = results;
 	return page;
 }
 
 void Page::draw(SkCanvas* canvas) {
-	if (is_dirty)
+	if (is_dirty) {
+		canvas->drawColor(backgroundcolor);
 		for (auto& drawcall : compiled_scene.callable_draw)
 			drawcall(canvas);
+	}
+
 }
 
-void Page::propagate_signal(Signal sig) {
+bool Page::propagate_signal(Signal sig) {
+	bool local = false;
 	for (auto& sigcall : compiled_scene.callable_signal) {
 		if (sigcall(sig)) {
-			is_dirty = true;
+			local = true;
 			break;
 		}
 	};
+	return local;
 }
 
 void Page::propagate_size_change(SkRect& new_size) {

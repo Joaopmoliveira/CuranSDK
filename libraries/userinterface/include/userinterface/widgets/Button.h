@@ -42,7 +42,6 @@ namespace curan {
 			SkPaint paint;
 			SkPaint paint_text;
 			SkRect widget_rect_text;
-			SkRect size;
 			SkFont text_font;
 			sk_sp<SkTextBlob> text;
 			sk_sp<SkImage> icon_data;

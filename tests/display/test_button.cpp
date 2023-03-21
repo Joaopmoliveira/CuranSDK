@@ -49,10 +49,10 @@ int main() {
 		infor.icon_identifier = "";
 		infor.paintButton = paint_square;
 		infor.paintText = paint_text;
-		infor.size = SkRect::MakeLTRB(20, 20, 200, 300);
+		infor.size = SkRect::MakeWH(200, 90);
 		infor.textFont = text_font;
 		std::shared_ptr<Button> button = Button::make(infor);
-		SkRect rect = SkRect::MakeLTRB(100, 100, 200, 200);
+		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 200);
 		button->set_position(rect);
 		auto caldraw = button->draw();
 		auto calsignal = button->call();

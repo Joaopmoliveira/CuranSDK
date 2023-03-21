@@ -3,7 +3,7 @@
 namespace curan {
 namespace ui {
 
-Container::Container(InfoLinearContainer& info) {
+Container::Container(InfoLinearContainer& info) : Drawable{ SkRect::MakeWH(0,0)} {
 	paint_layout = info.paint_layout;
 	contained_layouts = info.layouts;
 
@@ -44,7 +44,7 @@ Container::Container(InfoLinearContainer& info) {
 	}
 }
 
-Container::Container(InfoVariableContainer& info) {
+Container::Container(InfoVariableContainer& info) : Drawable{ SkRect::MakeWH(0,0) } {
 	paint_layout = info.paint_layout;
 	contained_layouts = info.layouts;
 	rectangles_of_contained_layouts = info.rectangles_of_contained_layouts;

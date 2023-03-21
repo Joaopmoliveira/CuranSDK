@@ -94,6 +94,7 @@ int main() {
 
 			OpenIGTLinkViewer::Info infor;
 			infor.text_font = text_font;
+			infor.size = SkRect::MakeWH(500,500);
 			std::shared_ptr<OpenIGTLinkViewer> open_viwer = OpenIGTLinkViewer::make(infor);
 			auto caldraw = open_viwer->draw();
 			auto calsignal = open_viwer->call();

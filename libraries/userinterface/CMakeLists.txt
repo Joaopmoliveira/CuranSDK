@@ -10,7 +10,7 @@ src/OpenIGTLinkViewer.cpp
 src/Container.cpp 
 src/Drawable.cpp
 src/Page.cpp
-)
+ "include/userinterface/widgets/ImageDisplay.h")
 
 target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/

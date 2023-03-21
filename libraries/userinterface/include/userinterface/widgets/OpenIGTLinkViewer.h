@@ -54,6 +54,7 @@ namespace curan {
 		public:
 			struct Info {
 				SkFont text_font;
+				SkRect size;
 			};
 
 			OpenIGTLinkViewer(Info& info);

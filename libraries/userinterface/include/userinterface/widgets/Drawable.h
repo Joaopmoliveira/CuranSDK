@@ -18,7 +18,12 @@ namespace curan {
 
 		class Drawable {
 			SkRect widget_rect = SkRect::MakeLTRB(10,10,100,100);
+			SkRect size = SkRect::MakeWH(100, 100);
+
 		public:
+
+			Drawable(SkRect size);
+
 			drawablefunction virtual draw() = 0;
 
 			callablefunction virtual call() = 0;
@@ -35,8 +40,14 @@ namespace curan {
 				return widget_rect;
 			}
 
+			inline SkRect get_size() {
+				return size;
+			}
+
 			inline bool interacts(double x, double y) {
-				return (widget_rect.fLeft < x && widget_rect.fRight > x && widget_rect.fTop < y && widget_rect.fBottom > y) ? true : false;
+				SkRect drawable = size;
+				drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
+				return (drawable.fLeft < x && drawable.fRight > x && drawable.fTop < y && drawable.fBottom > y) ? true : false;
 			}
 		};
 	}

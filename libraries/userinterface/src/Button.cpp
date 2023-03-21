@@ -6,13 +6,12 @@
 namespace curan {
 namespace ui {
 		
-Button::Button(Info& info) {
+Button::Button(Info& info) : Drawable{ info.size } {
 	hover_color = info.hover_color;
 	waiting_color = info.waiting_color;
 	click_color = info.click_color;
 	paint = info.paintButton;
 	paint_text = info.paintText;
-	size = info.size;
 	text_font = info.textFont;
 	text_font.measureText(info.button_text.data(), info.button_text.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(info.button_text.c_str(), text_font);
@@ -43,22 +42,27 @@ drawablefunction Button::draw() {
 			break;
 		}
 		auto widget_rect = get_position();
-		float text_offset_x = widget_rect.centerX() - widget_rect_text.width() / 2.0f;
-		float text_offset_y = widget_rect.centerY() + widget_rect_text.height() / 2.0f;
+		auto size = get_size();
+
+		SkRect drawable = size;
+		drawable.offsetTo(widget_rect.centerX()- drawable.width()/2.0, widget_rect.centerY()- drawable.height() / 2.0);
+
+		float text_offset_x = drawable.centerX() - widget_rect_text.width() / 2.0f;
+		float text_offset_y = drawable.centerY() + widget_rect_text.height() / 2.0f;
 				
-		canvas->drawRect(widget_rect, paint);
+		canvas->drawRect(drawable, paint);
 		canvas->drawTextBlob(text, text_offset_x, text_offset_y, paint_text);
 
 		if (icon_data.get() != nullptr) {
 			float image_width = icon_data->width();
 			float image_height = icon_data->height();
-			float current_selected_width = widget_rect.width();
-			float current_selected_height = widget_rect.height() - widget_rect_text.height();
+			float current_selected_width = drawable.width();
+			float current_selected_height = drawable.height() - widget_rect_text.height();
 
 			float scale_factor = std::min(current_selected_width * 0.9f / image_width, current_selected_height * 0.95f / image_height);
 
-			float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-			float init_y = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
+			float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + drawable.x();
+			float init_y = (current_selected_height - image_height * scale_factor) / 2.0f + drawable.y();
 
 			SkRect current_selected_image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, scale_factor * image_height);
 

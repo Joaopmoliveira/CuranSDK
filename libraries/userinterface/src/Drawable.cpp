@@ -3,6 +3,10 @@
 namespace curan {
 namespace ui {
 
+Drawable::Drawable(SkRect size) : size{size} {
+
+}
+
 bool Drawable::is_leaf() {
 	return true;
 }

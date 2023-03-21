@@ -35,3 +35,10 @@ target_link_libraries(test_page PUBLIC
 userinterface
 )
 
+add_executable(test_page_juntion test_openigtlink_viewer_with_button.cpp)
+
+target_link_libraries(test_page_juntion PUBLIC
+userinterface
+)
+
+

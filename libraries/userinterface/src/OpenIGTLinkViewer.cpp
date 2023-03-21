@@ -43,7 +43,7 @@ void set_skia_image(ImageMessage& message) {
 	}
 };
 
-OpenIGTLinkViewer::OpenIGTLinkViewer(Info& info) : last_pressed_position{ -20000.0,-20000.0 } {
+OpenIGTLinkViewer::OpenIGTLinkViewer(Info& info) : Drawable{ info.size }, last_pressed_position{ -20000.0,-20000.0 } {
 	text_font = info.text_font;
 
 	std::string type = "Type";
@@ -153,7 +153,11 @@ drawablefunction OpenIGTLinkViewer::draw() {
 	paint.setColor(SK_ColorWHITE);
 	paint.setStrokeWidth(1);
 	SkAutoCanvasRestore restore(canvas, true);
-	SkRect widget_rect = get_position();
+	SkRect current_area = get_position();
+	auto size = get_size();
+	SkRect widget_rect = size;
+	widget_rect.offsetTo(current_area.centerX() - widget_rect.width() / 2.0, current_area.centerY() - widget_rect.height() / 2.0);
+
 	auto container = get_container();
 	canvas->clipRect(widget_rect);
 	canvas->clear(SK_ColorBLACK);
@@ -285,7 +289,7 @@ drawablefunction OpenIGTLinkViewer::draw() {
 						row += "]";
 						SkRect bound_individual_name;
 						text_font.measureText(row.c_str(), row.size(), SkTextEncoding::kUTF8, &bound_individual_name);
-						canvas->drawSimpleText(row.c_str(), row.size(), SkTextEncoding::kUTF8, (widget_rect.width() - bound_individual_name.width()) / 2, y + bound_individual_name.height(), text_font, paint_text);
+						canvas->drawSimpleText(row.c_str(), row.size(), SkTextEncoding::kUTF8, (widget_rect.width() - bound_individual_name.width()) / 2+ widget_rect.x(), y + bound_individual_name.height(), text_font, paint_text);
 						y += bound_individual_name.height() + 5;
 					}
 				},
