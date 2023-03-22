@@ -4,7 +4,8 @@
 #include <mutex>
 
 namespace curan {
-	namespace ui {
+	namespace utils {
+
 		template<typename Derived>
 		class Lockable {
 			std::mutex mut;

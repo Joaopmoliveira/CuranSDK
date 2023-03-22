@@ -11,7 +11,7 @@
 #include "igtlTransformMessage.h"
 #include "igtlImageMessage.h"
 #include "Drawable.h"
-#include "Lockable.h"
+#include "utils/Lockable.h"
 #include "utils/Cancelable.h"
 
 namespace curan {
@@ -45,7 +45,7 @@ namespace curan {
 			std::list<Message> received_messages;
 		};
 
-		class OpenIGTLinkViewer : public Drawable, Lockable<OpenIGTLinkViewer>, utils::Connectable<OpenIGTLinkViewer> {
+		class OpenIGTLinkViewer : public Drawable, utils::Lockable<OpenIGTLinkViewer>, utils::Connectable<OpenIGTLinkViewer> {
 			MessageContainer container;
 			Press last_pressed_position;
 			SkRect widget_rect;

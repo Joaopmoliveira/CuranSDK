@@ -2,9 +2,9 @@
 #define CURAN_BUTTON_HEADER_FILE_
 
 #include "Drawable.h"
-#include "Lockable.h"
 #include "definitions/UIdefinitions.h"
 #include "utils/Cancelable.h"
+#include "utils/Lockable.h"
 #include <optional>
 
 namespace curan {
@@ -14,7 +14,7 @@ namespace curan {
 
 		using buttoncallback = std::function<void(std::shared_ptr<Button> val)>;
 
-		class Button : public  Drawable , Lockable<Button>, utils::Connectable<Button> {
+		class Button : public  Drawable , utils::Lockable<Button>, utils::Connectable<Button> {
 		public:
 			struct Info {
 				std::optional<buttoncallback> callback;

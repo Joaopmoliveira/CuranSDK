@@ -4,7 +4,7 @@
 #include <functional>
 #include "definitions/UIdefinitions.h"
 #include "Drawable.h"
-#include "Lockable.h"
+#include "utils/Lockable.h"
 #include "definitions/UIdefinitions.h"
 #include "utils/Cancelable.h"
 
@@ -13,7 +13,7 @@ namespace curan {
 
 		using image_provider = std::function<SkPixmap*()>;
 
-		class ImageDisplay : public  Drawable, Lockable<ImageDisplay>, utils::Connectable<ImageDisplay> {
+		class ImageDisplay : public  Drawable, utils::Lockable<ImageDisplay>, utils::Connectable<ImageDisplay> {
 			int width;
 			int height;
 			sk_sp<SkSurface> image_display_surface;

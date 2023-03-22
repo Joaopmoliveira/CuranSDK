@@ -1,3 +1,6 @@
+#ifndef CURAN_VOLUME_RECONSTRUCTOR_HEADER_FILE_
+#define CURAN_VOLUME_RECONSTRUCTOR_HEADER_FILE_
+
 #include "ImageProcessingDefinitions.h"
 #include "Mathematics/ConvexHull3.h"
 #include "Mathematics/ArbitraryPrecision.h"
@@ -179,3 +182,5 @@ namespace curan{
 		};
     }
 }
+
+#endif

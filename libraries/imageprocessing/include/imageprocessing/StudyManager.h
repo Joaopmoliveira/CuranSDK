@@ -1,3 +1,6 @@
+#ifndef CURAN_STUDY_MANAGER_HEADER_FILE_
+#define CURAN_STUDY_MANAGER_HEADER_FILE_
+
 #include <mutex>
 #include <filesystem>
 #include <map>
@@ -31,3 +34,5 @@ namespace curan{
 		};
     }
 }
+
+#endif

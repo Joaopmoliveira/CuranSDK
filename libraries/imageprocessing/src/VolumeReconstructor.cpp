@@ -133,7 +133,7 @@ void VolumeReconstructor::update()
 	Eigen::Matrix4d output_to_ref = ref_to_output_origin.inverse();
 
 	unsigned int accOverflow = 20;
-	int inputFrameExtentForCurrentThread[6] = { 0, clipRectangleSize[0] - 1, 0, clipRectangleSize[1] - 1, 0, 0 };
+	int inputFrameExtentForCurrentThread[6] = { 0, (int)std::ceil(clipRectangleSize[0]) - 1, 0, (int)std::ceil(clipRectangleSize[1]) - 1, 0, 0 };
 
 	reconstruction::PasteSliceIntoVolumeInsertSliceParams paste_slice_info;
 	paste_slice_info.outData = out_volume;
