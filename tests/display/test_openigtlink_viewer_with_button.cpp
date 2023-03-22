@@ -3,6 +3,7 @@
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/Container.h"
 #include "userinterface/widgets/OpenIGTLinkViewer.h"
+#include "userinterface/widgets/ImageDisplay.h"
 #include "userinterface/widgets/SingletonIconResources.h"
 #include "userinterface/widgets/Page.h"
 #include <iostream>
@@ -12,7 +13,7 @@ int main() {
 		using namespace curan::ui;
 		IconResources* resources = IconResources::Load("C:/dev/Curan/resources");
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
-		DisplayParams param{ std::move(context),1200,800 };
+		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 		SkColor colbuton = { SK_ColorWHITE };
@@ -64,12 +65,17 @@ int main() {
 
 		OpenIGTLinkViewer::Info infoviewer;
 		infoviewer.text_font = text_font;
-		infoviewer.size = SkRect::MakeWH(500, 500);
+		infoviewer.size = SkRect::MakeWH(600, 500);
 		std::shared_ptr<OpenIGTLinkViewer> open_viwer = OpenIGTLinkViewer::make(infoviewer);
 
+		ImageDisplay::Info processed_viwer_info;
+		processed_viwer_info.height = 500;
+		processed_viwer_info.width = 600;
+		std::shared_ptr<ImageDisplay> processed_viwer = ImageDisplay::make(processed_viwer_info);
+
 		info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-		info.divisions = { 0.0 , 0.2 , 1.0 };
-		info.layouts = { container , open_viwer };
+		info.divisions = { 0.0 , 0.2 ,0.6 , 1.0 };
+		info.layouts = { container ,open_viwer,processed_viwer };
 		std::shared_ptr<Container> container2 = Container::make(info);
 
 		auto rec = viewer->get_size();

@@ -111,13 +111,11 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 	igtl::TimeStamp::Pointer ts;
 	ts = igtl::TimeStamp::New();
 
-	//------------------------------------------------------------
-	// size parameters
-	int   size[] = { img.width(), img.height(), 1};       // image dimension
-	float spacing[] = { 1.0, 1.0, 5.0 };     // spacing (mm/pixel)
-	int   svsize[] = { img.width(), img.height(), 1};       // sub-volume size
-	int   svoffset[] = { 0, 0, 0 };           // sub-volume offset
-	int   scalarType = igtl::ImageMessage::TYPE_UINT8;// scalar type
+	int   size[] = { img.width(), img.height(), 1}; 
+	float spacing[] = { 1.0, 1.0, 5.0 };  
+	int   svsize[] = { img.width(), img.height(), 1};   
+	int   svoffset[] = { 0, 0, 0 };  
+	int   scalarType = igtl::ImageMessage::TYPE_UINT8;
 
 	size_t counter = 0;
 	auto genesis = std::chrono::high_resolution_clock::now();
@@ -127,8 +125,6 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 		img = update_texture(std::move(img), 1.0+time);
 		ts->GetTime();
 
-		//------------------------------------------------------------
-		// Create a new IMAGE type message
 		igtl::ImageMessage::Pointer imgMsg = igtl::ImageMessage::New();
 		imgMsg->SetDimensions(size);
 		imgMsg->SetSpacing(spacing);
@@ -139,8 +135,6 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 
 		std::memcpy(imgMsg->GetScalarPointer(), img.get_scalar_pointer(), img.size());
 
-		//------------------------------------------------------------
-		// Get random orientation matrix and set it.
 		igtl::Matrix4x4 matrix;
 		GetRandomTestMatrix(matrix);
 		imgMsg->SetMatrix(matrix);
@@ -211,56 +205,52 @@ void GLFW_error(int error, const char* description)
 
 int main() {
 	try {
-		{
-			glfwSetErrorCallback(GLFW_error);
-			using namespace curan::ui;
-			std::unique_ptr<Context> context = std::make_unique<Context>();;
-			DisplayParams param{ std::move(context),1200,800 };
-			std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+		glfwSetErrorCallback(GLFW_error);
+		using namespace curan::ui;
+		std::unique_ptr<Context> context = std::make_unique<Context>();;
+		DisplayParams param{ std::move(context),1200,800 };
+		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-			const char* fontFamily = nullptr;
-			SkFontStyle fontStyle;
-			sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-			sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+		const char* fontFamily = nullptr;
+		SkFontStyle fontStyle;
+		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 
-			SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-			text_font.setEdging(SkFont::Edging::kAntiAlias);
+		SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
+		text_font.setEdging(SkFont::Edging::kAntiAlias);
 
-			OpenIGTLinkViewer::Info infor;
-			infor.text_font = text_font;
-			infor.size = SkRect::MakeWH(600,600);
-			std::shared_ptr<OpenIGTLinkViewer> open_viwer = OpenIGTLinkViewer::make(infor);
-			auto caldraw = open_viwer->draw();
-			auto calsignal = open_viwer->call();
-			SkRect rect = SkRect::MakeLTRB(0, 0, 1200, 800);
-			open_viwer->set_position(rect);
+		OpenIGTLinkViewer::Info infor;
+		infor.text_font = text_font;
+		infor.size = SkRect::MakeWH(600,600);
+		std::shared_ptr<OpenIGTLinkViewer> open_viwer = OpenIGTLinkViewer::make(infor);
+		auto caldraw = open_viwer->draw();
+		auto calsignal = open_viwer->call();
+		SkRect rect = SkRect::MakeLTRB(0, 0, 1200, 800);
+		open_viwer->set_position(rect);
 
-			auto lamd = [open_viwer]() {
-				generate_image_message(open_viwer);
-			};
-			std::thread message_generator{ lamd };
+		auto lamd = [open_viwer]() {
+			generate_image_message(open_viwer);
+		};
+		std::thread message_generator{ lamd };
 
-			//generate_image_message(open_viwer);
-
-			while (!glfwWindowShouldClose(viewer->window)) {
-				auto start = std::chrono::high_resolution_clock::now();
-				SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
-				SkCanvas* canvas = pointer_to_surface->getCanvas();
-				canvas->drawColor(SK_ColorWHITE);
-				caldraw(canvas);
-				glfwPollEvents();
-				auto signals = viewer->process_pending_signals();
-				if (!signals.empty())
-					calsignal(signals.back());
-				bool val = viewer->swapBuffers();
-				if (!val)
-					curan::utils::cout << "failed to swap buffers\n";
-				auto end = std::chrono::high_resolution_clock::now();
-				std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-			}
-			curan::utils::cout << "stopped window";
-			message_generator.join();
+		while (!glfwWindowShouldClose(viewer->window)) {
+			auto start = std::chrono::high_resolution_clock::now();
+			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
+			SkCanvas* canvas = pointer_to_surface->getCanvas();
+			canvas->drawColor(SK_ColorWHITE);
+			caldraw(canvas);
+			glfwPollEvents();
+			auto signals = viewer->process_pending_signals();
+			if (!signals.empty())
+				calsignal(signals.back());
+			bool val = viewer->swapBuffers();
+			if (!val)
+				curan::utils::cout << "failed to swap buffers\n";
+			auto end = std::chrono::high_resolution_clock::now();
+			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
+		curan::utils::cout << "stopped window";
+		message_generator.join();
 		return 0;
 	}
 	catch (...) {

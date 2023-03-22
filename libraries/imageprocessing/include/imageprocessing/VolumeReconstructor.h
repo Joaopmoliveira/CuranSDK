@@ -1,8 +1,8 @@
-#include "Definitions.h"
+#include "ImageProcessingDefinitions.h"
 
 namespace curan{
     namespace image{
-        		/*
+        /*
 		This class of code is a copy of the code provided by
 		IGSIO repository on youtube. Becase we do not wish to
 		introduce
@@ -10,10 +10,11 @@ namespace curan{
 		class VolumeReconstructor
 		{
 		public:
-			using OutputType = itk::Image<CharPixelType, Dimension3D>;
-			using AccumulatorType = itk::Image<ShortPixelType, Dimension3D>;
-			using ResamplerOutput = itk::ResampleImageFilter<OutputType, OutputType>;
-			using ResamplerAccumulator = itk::ResampleImageFilter<AccumulatorType, AccumulatorType>;
+			using output_type = itk::Image<CharPixelType, Dimension3D>;
+			using accumulator_type = itk::Image<ShortPixelType, Dimension3D>;
+			using resampler_output = itk::ResampleImageFilter<OutputType, OutputType>;
+			using resampler_accumulator = itk::ResampleImageFilter<AccumulatorType, AccumulatorType>;
+
 			// With this code we always assume 
 			// that the images are greyscale
 			// therefore there is a single value
@@ -23,21 +24,11 @@ namespace curan{
 			VolumeReconstructor();
 			~VolumeReconstructor();
 
-			/*
-			Strategy used to aproximate the values 
-			of voxels according to the surrounding 
-			pixels
-			*/
 			enum Interpolation{
 				NEAREST_NEIGHBOR_INTERPOLATION,
 				LINEAR_INTERPOLATION
 			};
 
-			/*
-			Strategy used to accumulate the previous 
-			pixel values already inserted in the
-			buffer
-			*/
 			enum Compounding{
 				UNDEFINED_COMPOUNDING_MODE,
 				LATEST_COMPOUNDING_MODE,
@@ -45,9 +36,6 @@ namespace curan{
 				MEAN_COMPOUNDING_MODE,
 			};
 
-			/*
-			The fill strategy is used 
-			*/
 			enum FillingStrategy
 			{
 				GAUSSIAN,
@@ -57,21 +45,6 @@ namespace curan{
 				STICK
 			};
 
-			/*
-			The kernel descriptor is used to pass 
-			information to the filling algorithms which
-			require specific information to function 
-			properlly. Namelly the functions:
-			-ApplyNearestNeighbor
-			-ApplyDistanceWeightInverse
-			-ApplyGaussian
-			-ApplyGaussianAccumulation
-			-ApplySticks
-			Since a number of kernels can be used to 
-			fill the empty values, we use this struct to
-			aglomerate information specific to each 
-			kernel.
-			*/
 			struct KernelDescriptor
 			{
 				//constructor
@@ -107,14 +80,7 @@ namespace curan{
 				void Allocate();
 			};
 
-			/*
-			* If this algorithm is supposed to run in
-			real time, we should allow the developer to
-			control when we wishes to update the current
-			reconstructed volume with the new ultrasound
-			images introduced with the add frame method.
-			*/
-			void Update();
+			void update();
 
 			/*
 			When you start adding frames, make sure they
@@ -126,7 +92,7 @@ namespace curan{
 			enough volume to contain the missplaced images
 			in space.
 			*/
-			void AddFrame(OutputType::Pointer);
+			void add_frame(output_type::Pointer);
 
 			/*
 			When one has all the frames which will be used to
@@ -134,7 +100,7 @@ namespace curan{
 			images at once, thus removing needless time spent submitting 
 			the images.
 			*/
-			void AddFrames(std::vector<OutputType::Pointer>&);
+			void add_frames(std::vector<output_type::Pointer>&);
 
 			/*
 			One should always specify the output spacing 
@@ -142,32 +108,32 @@ namespace curan{
 			else it will be initialized with a default spacing 
 			of {1.0 mm, 1.0 mm, 1.0 mmm} os spacing.
 			*/
-			void SetOutputSpacing(OutputType::SpacingType in_output_spacing);
+			void set_output_spacing(output_type::SpacingType in_output_spacing);
 
 			/*
 			Define the clipping bounds of the input images. 
 			By default the clipping bounds are set to zero.
 			*/
-			void SetClippingBounds(std::array<double, 2> inclipRectangleOrigin, std::array<double, 2> inclipRectangleSize);
+			void set_clipping_bounds(std::array<double, 2> inclipRectangleOrigin, std::array<double, 2> inclipRectangleSize);
 
 			/*
 			Obtain the pointer to the 3D itk volume reconstructed
 			and filled under the hood with this class.
 			*/
-			void GetOutputPointer(OutputType::Pointer& pointer_to_be_changed);
+			void get_output_pointer(output_type::Pointer& pointer_to_be_changed);
 
 			/*
 			The fill strategy to be used when the FillHoles
 			method is called.
 			*/
-			void SetFillStrategy(FillingStrategy strategy);
+			void set_fill_strategy(FillingStrategy strategy);
 
 			/*
 			The kernel descriptor is the structure which defines
 			the kernel used to fill the empty voxels left in the 
 			output volume.
 			*/
-			void AddKernelDescritor(KernelDescriptor descriptor);
+			void add_kernel_descritor(KernelDescriptor descriptor);
 
 			/*
 			Once all the data has been inserted into the
@@ -176,7 +142,7 @@ namespace curan{
 			the output volume which were set with the
 			default value.
 			*/
-			void FillHoles();
+			void fill_holes();
 
 		private:
 
@@ -188,18 +154,18 @@ namespace curan{
 			and reshape the current buffer into the new allocated buffer, 
 			if required.
 			*/
-			bool UpdateInternalBuffers();
+			bool update_internal_buffers();
 
 			Interpolation interpolation_strategy = Interpolation::NEAREST_NEIGHBOR_INTERPOLATION;
 			Compounding compounding_strategy = Compounding::LATEST_COMPOUNDING_MODE;
 
 			std::array<double, 2> clipRectangleOrigin = { 0.0,0.0 }; // array size 2
 			std::array<double, 2> clipRectangleSize = { 0.0,0.0 };; // array size 2
-			std::vector<OutputType::Pointer> frame_data;
+			std::vector<output_type::Pointer> frame_data;
 
-			OutputType::SpacingType output_spacing;
-			OutputType::Pointer out_volume;
-			AccumulatorType::Pointer acummulation_buffer;
+			output_type::SpacingType output_spacing;
+			output_type::Pointer out_volume;
+			accumulator_type::Pointer acummulation_buffer;
 
 			bool volumes_initiated = false;
 			gte::OrientedBox3<double> volumetric_bounding_box;

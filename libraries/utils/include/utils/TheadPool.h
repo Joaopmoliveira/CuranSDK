@@ -21,17 +21,24 @@ namespace curan {
 			SafeQueue<Job> job_queue;
 			int number_of_tasks_executing = 0;
 			int number_of_pending_tasks = 0;
-			ThreadPool();
-			~ThreadPool();
 			void infinite_loop();
 
 		public:
-			static ThreadPool* Get();
-			void GetNumberTasks(int& tasks_executing, int& tasks_in_queue);
-			void Submit(Job task);
-			void Shutdown();
+
+			ThreadPool(int number_of_threads);
+			~ThreadPool();
+
+			void get_number_tasks(int& tasks_executing, int& tasks_in_queue);
+			void submit(Job task);
+			void shutdown();
 		};
-	}
+
+		extern std::unique_ptr<ThreadPool> pool;
+
+		void initialize_thread_pool(int number_of_threads);
+
+		void terminate_thread_pool();
+}
 }
 
 #endif

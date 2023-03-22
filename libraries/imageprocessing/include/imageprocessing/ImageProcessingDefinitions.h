@@ -54,7 +54,6 @@ namespace curan{
 			std::vector<InternalImageType::Pointer> study_img;
 			std::string individual_name;
 			std::string image_number;
-			sk_sp<SkImage> image;
 		};
 
 		/*

@@ -29,9 +29,9 @@ int test_shared_flag() {
 	};
 
 	auto function2 = [flag]() {
-		curan::utils::cout << "started waiting for the flag";
+		std::cout << "started waiting for the flag\n";
 		flag->wait();
-		curan::utils::cout << "stopped waiting for the flag";
+		std::cout << "stopped waiting for the flag\n";
 	};
 
 	const std::chrono::time_point<std::chrono::system_clock> start =
@@ -43,19 +43,20 @@ int test_shared_flag() {
 		std::chrono::system_clock::now();
 
 	if (std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <= number_of_min_miliseconds)
-		curan::utils::cout << "the total amount of time waited for the flag was smaller than what was expected";
+		std::cout << "the total amount of time waited for the flag was smaller than what was expected\n";
 	else 
-		curan::utils::cout << "the obtained result is in accordance with what was expected";
+		std::cout << "the obtained result is in accordance with what was expected\n";
 
 	return 0;
 }
 
 int test_job_and_thread_pool() {
+	using namespace curan::utils;
 	auto flag1 = curan::utils::Flag::make_shared_flag();
 	flag1->clear();
 	auto flag2 = curan::utils::Flag::make_shared_flag();
 	flag2->clear();
-	curan::utils::ThreadPool* pool = curan::utils::ThreadPool::Get();
+
 	curan::utils::Job job1;
 	job1.description = "This is a test to make sure that the thread pool works";
 	job1.function_to_execute = [flag1]() {
@@ -80,31 +81,31 @@ int test_job_and_thread_pool() {
 	//expected behavior once we submit the first job we expect the number of tasks to increment by 1, then 2 ...
 	int number_of_tasks = 0;
 	int number_of_tasks_in_queue = 0;
-	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
-	std::string message = "Number of tasks (pending + execution): (" +std::to_string(number_of_tasks) +" + "+ std::to_string(number_of_tasks_in_queue) + ") (expected 0) ";
-	curan::utils::cout << message;
-	pool->Submit(job1);
-	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
-	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 1) ";
-	curan::utils::cout << message;
-	pool->Submit(job2);
-	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
-	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 2) ";
-	curan::utils::cout << message;
-	pool->Submit(job3);
-	pool->Submit(job4);
-	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
-	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 4) ";
-	curan::utils::cout << message;
+	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	std::string message = "Number of tasks (pending + execution): (" +std::to_string(number_of_tasks) +" + "+ std::to_string(number_of_tasks_in_queue) + ") (expected 0) \n";
+	std::cout << message;
+	pool->submit(job1);
+	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 1) \n";
+	std::cout << message;
+	pool->submit(job2);
+	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 2) \n";
+	std::cout << message;
+	pool->submit(job3);
+	pool->submit(job4);
+	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 4) \n";
+	std::cout << message;
 	flag1->set();
-	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
-	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4) ";
-	curan::utils::cout << message;
+	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4)\n ";
+	std::cout << message;
 	flag2->set();
-	pool->GetNumberTasks(number_of_tasks, number_of_tasks_in_queue);
-	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4) ";
-	curan::utils::cout << message;
-	curan::utils::cout << message;
+	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4) \n";
+	std::cout << message;
+	std::cout << message;
 	return 0;
 }
 
@@ -127,15 +128,15 @@ void test_thread_safe_queue() {
 	auto function_to_execute = [&safe_queue]() {
 		try {
 			PoPable temp;
-			curan::utils::cout << "starting to wait for popable";
+			std::cout << "starting to wait for popable\n";
 			while (!safe_queue.is_invalid()) {
 				if(safe_queue.wait_and_pop(temp))
-					curan::utils::cout << "Received a poopable! yeye = " << temp.val;
+					std::cout << "Received a poopable! yeye = " << temp.val << "\n";
 			}
-			curan::utils::cout << "finished to wait for popable";
+			std::cout << "finished to wait for popable\n";
 		}
 		catch (...) {
-			curan::utils::cout << "something very wrong happened";
+			std::cout << "something very wrong happened\n";
 		}
 	};
 	
@@ -150,10 +151,10 @@ void test_thread_safe_queue() {
 			auto duration = std::chrono::milliseconds(number_of_min_miliseconds);
 			std::this_thread::sleep_for(duration);
 		}
-		curan::utils::cout << "setting boolean variable to false";
+		std::cout << "setting boolean variable to false\n";
 		safe_queue.invalidate();
 	} catch (...) {
-		curan::utils::cout << "something very wrong in the main thread";
+		std::cout << "something very wrong in the main thread\n";
 	}
 	thread_to_run.join();
 }
@@ -230,7 +231,7 @@ void test_memory_buffers() {
 		//value to constrol is deleted but the memory has already been copied into the memory_buffer class
 	}
 	
-	std::cout << "First buffer is: " << buff_of_interest;
+	std::cout << "First buffer is: " << buff_of_interest << "\n";
 	
 	{
 		std::string value_to_control = "1_2_3_4_5_6_7_8_9_10_12";
@@ -245,15 +246,21 @@ void test_memory_buffers() {
 		//stored into the lamda which is then copied into the capture memory buffer
 	}
 	
-	std::cout << "Second buffer is: " << buff_of_interest;
+	std::cout << "Second buffer is: " << buff_of_interest << "\n";
 }
 
 int main() {
+	//initualize the thread pool;
+	curan::utils::initialize_thread_pool(10);
+
 	test_shared_flag();
 	test_job_and_thread_pool();
 	test_thread_safe_queue();
 	test_calling_mechanism_used_in_code();
 	test_memory_buffers();
+
+	//terminate the thread pool;
+	curan::utils::terminate_thread_pool();
 	return 0;
 }
 

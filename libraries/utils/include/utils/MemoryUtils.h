@@ -11,12 +11,8 @@
 namespace curan {
 	namespace utils {
 
-		/*
-		Parent class which definies the characteristics required to obey the ConstBufferSequence
-		*/
 		class MemoryBuffer {
 		public:
-			// Implement the ConstBufferSequence requirements.
 			typedef asio::const_buffer value_type;
 			typedef const asio::const_buffer* const_iterator;
 
@@ -28,23 +24,10 @@ namespace curan {
 
 		std::ostream& operator << (std::ostream& os, const  std::shared_ptr<MemoryBuffer>& val);
 
-		/*
-		Typically a binding will capture the object we wish to send (to guarantee the lifetime of the object)
-		and it returns a const_buffer to whichever memory we wish to send to an external socket. When dealing with
-		variables which do not behave as a shared pointer use the copy memory buffer instead of the capture memory
-		buffer.
-		*/
-		//using binding = std::function<asio::const_buffer()>;
 		typedef std::function<asio::const_buffer()> binding;
 
-		/*
-		The capture memory buffer takes a lamda which constructs the view of a buffer and returns it.
-		This type of object should be used when one wishes to avoid uncessary copies, and instead wishes
-		send a lambda which captures the object (because it is shared) and it constructs it when required
-		by the assyncronous operation.
-		*/
 		class CaptureBuffer : public MemoryBuffer {
-			// Construct from a std::string.
+
 			explicit CaptureBuffer(std::function<asio::const_buffer()>&& val);
 
 		public:
@@ -58,14 +41,7 @@ namespace curan {
 			asio::const_buffer buffer_;
 		};
 
-		/*
-		The copy memory buffer takes a pointer and a size of a pointer, internaly makes
-		a copy of said region of memory, and then it takes ownership of said memory.
-		Because we
-		*/
 		class CopyBuffer : public MemoryBuffer {
-
-			// Construct from a std::string.
 			explicit CopyBuffer(char* data, size_t size);
 		public:
 			static std::shared_ptr<MemoryBuffer> make_shared(char* data, size_t size);

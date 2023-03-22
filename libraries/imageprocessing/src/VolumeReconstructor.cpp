@@ -1,13 +1,13 @@
-#include "PkLibrary.h"
+#include "imageprocessing/VolumeReconstructor.h"
 
 namespace curan {
 	namespace image {
-		Result DeleteVolume()
+		bool DeleteVolume()
 		{
-			return Result::PK_SUCCESS;
+			return true;
 		}
 
-		Result GetObliqueSlice(Volume& in_vol, InternalImageType::Pointer& out_vol, itk::Matrix<double, 4, 4> transformation)
+		bool GetObliqueSlice(Volume& in_vol, InternalImageType::Pointer& out_vol, itk::Matrix<double, 4, 4> transformation)
 		{
 			using LinearInterpolatorType = itk::LinearInterpolateImageFunction<InternalImageType, double>;
 			typename LinearInterpolatorType::Pointer interpolator = LinearInterpolatorType::New();
@@ -24,7 +24,7 @@ namespace curan {
 			return Result::PK_VOLUME_NOT_PRESENT;
 		}
 
-		Result GetPerpendicularSlice(Volume& in_vol, InternalImageType::Pointer& out_vol, uint8_t direction, uint32_t slice_number)
+		bool GetPerpendicularSlice(Volume& in_vol, InternalImageType::Pointer& out_vol, uint8_t direction, uint32_t slice_number)
 		{
 			using FilterType = itk::RegionOfInterestImageFilter<InternalImageType, InternalImageType>;
 			FilterType::Pointer filter = FilterType::New();
