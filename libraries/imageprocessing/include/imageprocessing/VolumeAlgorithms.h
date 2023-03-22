@@ -1,7 +1,8 @@
-#ifndef CURAN_IMAGE_ALGORITHMS_HEADER_FILE_
-#define CURAN_IMAGE_ALGORITHMS_HEADER_FILE_
+#ifndef CURAN_VOLUME_ALGORITHMS_HEADER_FILE_
+#define CURAN_VOLUME_ALGORITHMS_HEADER_FILE_
 
-
+#include "ImageProcessingDefinitions.h"
+#include "VolumeReconstructor.h"
 
 namespace curan {
 	namespace image {
@@ -44,8 +45,8 @@ namespace curan {
 			The number of scalar components in the data is 'numscalars'
 			*/
 			int TrilinearInterpolation(const Eigen::Vector4d point,
-				CharPixelType* inPtr,
-				CharPixelType* outPtr,
+				char_pixel_type* inPtr,
+				char_pixel_type* outPtr,
 				unsigned short* accPtr,
 				int numscalars,
 				VolumeReconstructor::Compounding compoundingMode,
@@ -75,8 +76,8 @@ namespace curan {
 			The number of scalar components in the data is 'numscalars'
 			*/
 			int NearestNeighborInterpolation(const Eigen::Vector4d point,
-				CharPixelType* inPtr,
-				CharPixelType* outPtr,
+				char_pixel_type* inPtr,
+				char_pixel_type* outPtr,
 				unsigned short* accPtr,
 				int numscalars,
 				VolumeReconstructor::Compounding compoundingMode,
@@ -84,8 +85,34 @@ namespace curan {
 				uint64_t outInc[3],
 				unsigned int* accOverflowCount);
 
-#define PIXEL_REJECTION_DISABLED (-DBL_MAX)
+			#define PIXEL_REJECTION_DISABLED (-DBL_MAX)
 			bool PixelRejectionEnabled(double threshold);
+
+			struct PasteSliceIntoVolumeInsertSliceParams
+			{
+				// information on the volume
+				InternalImageType::Pointer outData;            // the output volume
+				void* outPtr;                     // scalar pointer to the output volume over the output extent
+				unsigned short* accPtr;           // scalar pointer to the accumulation buffer over the output extent
+				InternalImageType::Pointer inData;             // input slice
+				void* inPtr;                      // scalar pointer to the input volume over the input slice extent
+				int* inExt;                       // array size 6, input slice extent (could have been split for threading)
+				unsigned int* accOverflowCount;   // the number of voxels that may have error due to accumulation overflow
+
+				// transform matrix for images -> volume
+				Eigen::Matrix4d matrix;
+
+				// details specified by the user RE: how the voxels should be computed
+				VolumeReconstructor::Interpolation interpolationMode;   // linear or nearest neighbor
+				VolumeReconstructor::Compounding compoundingMode;
+
+				// parameters for clipping
+				double* clipRectangleOrigin; // array size 2
+				double* clipRectangleSize; // array size 2
+
+				double pixelRejectionThreshold;
+				int image_number;
+			};
 
 			/*
 			Actually inserts the slice - executes the filter for any type of data, without optimization
@@ -96,53 +123,53 @@ namespace curan {
 			void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionParams);
 
 
-			bool ApplyNearestNeighbor(CharPixelType* inputData,            // contains the dataset being interpolated between
+			bool ApplyNearestNeighbor(char_pixel_type* inputData,            // contains the dataset being interpolated between
 				unsigned short* accData, // contains the weights of each voxel
 				uint64_t* inputOffsets, // contains the indexing offsets between adjacent x,y,z
 				uint64_t* bounds,             // the boundaries of the thread
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
-				CharPixelType& returnVal,
+				char_pixel_type& returnVal,
 				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 
 
-			bool ApplyDistanceWeightInverse(CharPixelType* inputData,            // contains the dataset being interpolated between
+			bool ApplyDistanceWeightInverse(char_pixel_type* inputData,            // contains the dataset being interpolated between
 				unsigned short* accData, // contains the weights of each voxel
 				uint64_t* inputOffsets, // contains the indexing offsets between adjacent x,y,z
 				uint64_t* bounds,             // the boundaries of the thread
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
-				CharPixelType& returnVal,
+				char_pixel_type& returnVal,
 				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 
 
-			bool ApplyGaussian(CharPixelType* inputData,            // contains the dataset being interpolated between
+			bool ApplyGaussian(char_pixel_type* inputData,            // contains the dataset being interpolated between
 				unsigned short* accData, // contains the weights of each voxel
 				uint64_t* inputOffsets, // contains the indexing offsets between adjacent x,y,z
 				uint64_t* bounds,             // the boundaries of the thread
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
-				CharPixelType& returnVal,
+				char_pixel_type& returnVal,
 				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 
 
-			bool ApplyGaussianAccumulation(CharPixelType* inputData,            // contains the dataset being interpolated between
+			bool ApplyGaussianAccumulation(char_pixel_type* inputData,            // contains the dataset being interpolated between
 				unsigned short* accData, // contains the weights of each voxel
 				uint64_t* inputOffsets, // contains the indexing offsets between adjacent x,y,z
 				uint64_t* bounds,             // the boundaries of the thread
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
-				CharPixelType& returnVal,
+				char_pixel_type& returnVal,
 				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 
 
-			bool ApplySticks(CharPixelType* inputData,            // contains the dataset being interpolated between
+			bool ApplySticks(char_pixel_type* inputData,            // contains the dataset being interpolated between
 				unsigned short* accData, // contains the weights of each voxel
 				uint64_t* inputOffsets, // contains the indexing offsets between adjacent x,y,z
 				uint64_t* bounds,             // the boundaries of the thread
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
-				CharPixelType& returnVal,
+				char_pixel_type& returnVal,
 				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 		}
 	}
