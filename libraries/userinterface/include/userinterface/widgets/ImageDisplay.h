@@ -11,7 +11,7 @@
 namespace curan {
 	namespace ui {
 
-		using image_provider = std::function<SkPixmap*()>;
+		using image_provider = std::function<void(SkPixmap&)>;
 
 		class ImageDisplay : public  Drawable, utils::Lockable<ImageDisplay>, utils::Connectable<ImageDisplay> {
 			int width;

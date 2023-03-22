@@ -154,7 +154,6 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(500) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		++counter;
-		
 	}
 	curan::utils::cout << "stopped to send data";
 

@@ -2,13 +2,13 @@
   "environments": [ { "BuildDir": "${projectDir}/build" } ],
   "configurations": [
     {
-      "name": "x86-Debug",
+      "name": "x64-Release",
       "generator": "Ninja",
-      "configurationType": "Debug",
-      "inheritEnvironments": [ "msvc_x86" ],
+      "configurationType": "Release",
+      "inheritEnvironments": [ "msvc_x64" ],
       "buildRoot": "${env.BuildDir}\\${name}",
       "buildCommandArgs": "-v",
-      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Static -DSKIA_SOURCE_DIR:PATH=C:/Dev/depot_tools/skia -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_SHARED_LIBS:BOOL=OFF -DITK_BUILD_DEFAULT_MODULES:BOOL=ON"
+      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Release -DSKIA_SOURCE_DIR:PATH=C:\\Dev\\depot_tools\\skia -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_SHARED_LIBS:BOOL=OFF -DITK_BUILD_DEFAULT_MODULES:BOOL=ON"
     },
     {
       "name": "x64-Debug",
@@ -16,7 +16,7 @@
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64" ],
       "buildRoot": "${env.BuildDir}\\${name}",
-      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Static -DSKIA_SOURCE_DIR:PATH=C:/Dev/depot_tools/skia -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_SHARED_LIBS:BOOL=OFF -DITK_BUILD_DEFAULT_MODULES:BOOL=ON"
+      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Debug -DSKIA_SOURCE_DIR:PATH=C:\\Dev\\depot_tools\\skia -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_SHARED_LIBS:BOOL=OFF -DITK_BUILD_DEFAULT_MODULES:BOOL=ON"
     }
   ]
 }

@@ -8,6 +8,8 @@
 
 namespace curan {
 	namespace ui {
+
+
 		struct DisplayParams {
 			DisplayParams(std::unique_ptr<Context> cxt, int width, int height)
 				: fColorType(kN32_SkColorType)

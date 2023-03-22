@@ -30,7 +30,9 @@ bool Window::swapBuffers()
 	GrFlushInfo info;
 	info.fNumSemaphores = 1;
 	info.fSignalSemaphores = &beSemaphore;
+	//GrBackendSurfaceMutableState hi;
 	GrBackendSurfaceMutableState presentState(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, context->indices.presentFamily.value());
+	//skgpu::MutableTextureState presentState(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, context->indices.presentFamily.value());
 	if (surface->flush(info, &presentState) != GrSemaphoresSubmitted::kYes) {
 		return false;
 	}

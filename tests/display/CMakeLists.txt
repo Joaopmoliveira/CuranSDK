@@ -1,5 +1,7 @@
 add_executable(test_user_interface test_user_interface.cpp)
 
+target_compile_definitions(test_user_interface PUBLIC SK_VULKAN)
+
 target_link_libraries(test_user_interface PUBLIC
 utils
 userinterface

@@ -313,7 +313,6 @@ drawablefunction OpenIGTLinkViewer::draw() {
 					float scale_factor = std::min(current_selected_width * 0.9f / image_width, current_selected_height * 0.95f / image_height);
 
 					float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-					float init_y = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
 					SkRect current_selected_image_rectangle = SkRect::MakeXYWH(init_x, y, scale_factor * image_width, scale_factor * image_height);
 
 					
