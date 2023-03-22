@@ -1,7 +1,8 @@
 add_library(imageprocessing
 src/StudyManager.cpp
 src/VolumeReconstructor.cpp
-  "include/imageprocessing/VolumeAlgorithms.h")
+src/VolumeAlgorithms.cpp
+)
 
 find_package(ITK CONFIG REQUIRED PATHS ${CMAKE_BINARY_DIR}/third_party/lib_ITK/ITK/)
 
@@ -14,4 +15,5 @@ target_include_directories(imageprocessing
 target_link_libraries(imageprocessing PUBLIC
 ${ITK_LIBRARIES}
 utils
+GeometricTools
 )

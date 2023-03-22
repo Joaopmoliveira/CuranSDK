@@ -1,5 +1,5 @@
 #include "imageprocessing/StudyManager.h"
-
+#include "utils/Logger.h"
 
 namespace curan {
 namespace image {
@@ -18,14 +18,13 @@ StudyManager::~StudyManager()
 {
 }
 
-
 uint32_t StudyManager::identifier = 0;
 
 bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 	std::lock_guard guard{ mut };
 	for (auto received_path : paths) {
 		ImageIOType::Pointer gdcmImageOI = ImageIOType::New();
-		using ReaderType = itk::ImageSeriesReader< itk::Image<ShortPixelType, Dimension3D>>;
+		using ReaderType = itk::ImageSeriesReader< itk::Image<short_pixel_type, Dimension3D>>;
 		ReaderType::Pointer reader = ReaderType::New();
 		reader->SetImageIO(gdcmImageOI);
 
@@ -53,12 +52,12 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 			for (auto filename : filenames) {
 				reader->SetFileName(filename);
 				InternalImageType::Pointer image2D = InternalImageType::New();
-				itk::CastImageFilter<itk::Image<ShortPixelType, Dimension3D>, InternalImageType>::Pointer filter = itk::CastImageFilter<itk::Image<ShortPixelType, Dimension3D>, InternalImageType>::New();
+				itk::CastImageFilter<itk::Image<short_pixel_type, Dimension3D>, InternalImageType>::Pointer filter = itk::CastImageFilter<itk::Image<short_pixel_type, Dimension3D>, InternalImageType>::New();
 
-				itk::RescaleIntensityImageFilter<itk::Image<ShortPixelType, Dimension3D>, itk::Image<ShortPixelType, Dimension3D>>::Pointer rescale = itk::RescaleIntensityImageFilter<itk::Image<ShortPixelType, Dimension3D>, itk::Image<ShortPixelType, Dimension3D>>::New();
+				itk::RescaleIntensityImageFilter<itk::Image<short_pixel_type, Dimension3D>, itk::Image<short_pixel_type, Dimension3D>>::Pointer rescale = itk::RescaleIntensityImageFilter<itk::Image<short_pixel_type, Dimension3D>, itk::Image<short_pixel_type, Dimension3D>>::New();
 				rescale->SetInput(reader->GetOutput());
 				rescale->SetOutputMinimum(0);
-				rescale->SetOutputMaximum(itk::NumericTraits<CharPixelType>::max());
+				rescale->SetOutputMaximum(itk::NumericTraits<char_pixel_type>::max());
 
 				filter->SetInput(rescale->GetOutput());
 				image2D = filter->GetOutput();
@@ -99,20 +98,12 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 			int image_preview_index = study.study_img.size() / 2;
 			auto preview_image = study.study_img[image_preview_index];
 
-			// we need to build the preview which will be used by other portions of the code
-			SkAlphaType alpha_channel = kOpaque_SkAlphaType;
-			SkColorType color_type = kGray_8_SkColorType;
-			auto size = preview_image->GetLargestPossibleRegion().GetSize();
 			study.individual_name = tagvalue;
 
 			if (study.study_img.size() != 1)
 				study.image_number = std::to_string(study.study_img.size()) + " Images";
 			else
 				study.image_number = std::to_string(study.study_img.size()) + " Image";
-
-			SkImageInfo information = SkImageInfo::Make(size[0], size[1], color_type, alpha_channel);
-			SkPixmap image_data = SkPixmap(information, preview_image->GetBufferPointer(), size[0]);
-			study.image = SkImage::MakeRasterCopy(image_data);
 
 			study_container.emplace(identifier, study);
 
@@ -126,12 +117,12 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 		reader->SetFileName(received_path.string());
 
 		InternalImageType::Pointer image2D = InternalImageType::New();
-		itk::CastImageFilter<itk::Image<ShortPixelType, Dimension3D>, InternalImageType>::Pointer filter = itk::CastImageFilter<itk::Image<ShortPixelType, Dimension3D>, InternalImageType>::New();
+		itk::CastImageFilter<itk::Image<short_pixel_type, Dimension3D>, InternalImageType>::Pointer filter = itk::CastImageFilter<itk::Image<short_pixel_type, Dimension3D>, InternalImageType>::New();
 
-		itk::RescaleIntensityImageFilter<itk::Image<ShortPixelType, Dimension3D>, itk::Image<ShortPixelType, Dimension3D>>::Pointer rescale = itk::RescaleIntensityImageFilter<itk::Image<ShortPixelType, Dimension3D>, itk::Image<ShortPixelType, Dimension3D>>::New();
+		itk::RescaleIntensityImageFilter<itk::Image<short_pixel_type, Dimension3D>, itk::Image<short_pixel_type, Dimension3D>>::Pointer rescale = itk::RescaleIntensityImageFilter<itk::Image<short_pixel_type, Dimension3D>, itk::Image<short_pixel_type, Dimension3D>>::New();
 		rescale->SetInput(reader->GetOutput());
 		rescale->SetOutputMinimum(0);
-		rescale->SetOutputMaximum(itk::NumericTraits<CharPixelType>::max());
+		rescale->SetOutputMaximum(itk::NumericTraits<char_pixel_type>::max());
 
 		filter->SetInput(rescale->GetOutput());
 
@@ -173,19 +164,12 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 		auto preview_image = study.study_img[image_preview_index];
 
 		// we need to build the preview which will be used by other portions of the code
-		SkAlphaType alpha_channel = kOpaque_SkAlphaType;
-		SkColorType color_type = kGray_8_SkColorType;
-		auto size = preview_image->GetLargestPossibleRegion().GetSize();
 		study.individual_name = tagvalue;
 
 		if (study.study_img.size() != 1)
 			study.image_number = std::to_string(study.study_img.size()) + " Images";
 		else
 			study.image_number = std::to_string(study.study_img.size()) + " Image";
-
-		SkImageInfo information = SkImageInfo::Make(size[0], size[1], color_type, alpha_channel);
-		SkPixmap image_data = SkPixmap(information, preview_image->GetBufferPointer(), size[0]);
-		study.image = SkImage::MakeRasterCopy(image_data);
 
 		study_container.emplace(identifier, study);
 		identifier += 1;

@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <map>
 #include <string>
-#include "Study.h"
+#include "ImageProcessingDefinitions.h"
 
 namespace curan{
     namespace image{

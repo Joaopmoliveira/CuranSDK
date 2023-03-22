@@ -21,11 +21,11 @@
 
 namespace curan{
     namespace image{
-		using ShortPixelType = unsigned short;
-		using CharPixelType = unsigned char;
+		using short_pixel_type = unsigned short;
+		using char_pixel_type = unsigned char;
 
 		constexpr unsigned int Dimension3D = 3;
-		using InputDICOMImageType = itk::Image<ShortPixelType, Dimension3D>;
+		using input_DICOM_image_type = itk::Image<short_pixel_type, Dimension3D>;
 
 		// The dimensions of the Internal image type are 3, 
 		// not because it is required by the image itself,
@@ -35,9 +35,9 @@ namespace curan{
 		// to some algorithms we wish to implement such as 
 		// volume reconstruction, volume mapping between 
 		// two images and so on)
-		using InternalImageType = itk::Image<CharPixelType, Dimension3D>;
-		using RescaleType = itk::RescaleIntensityImageFilter<InputDICOMImageType, InputDICOMImageType>;
-		using FilterType = itk::CastImageFilter<InputDICOMImageType, InternalImageType>;
+		using InternalImageType = itk::Image<char_pixel_type, Dimension3D>;
+		using RescaleType = itk::RescaleIntensityImageFilter<input_DICOM_image_type, input_DICOM_image_type>;
+		using FilterType = itk::CastImageFilter<input_DICOM_image_type, InternalImageType>;
 		using ImageIOType = itk::GDCMImageIO;
 		using SlicerType = itk::ResampleImageFilter<InternalImageType, InternalImageType>;
 		using IterateType = itk::ExtractImageFilter<InternalImageType, InternalImageType>;

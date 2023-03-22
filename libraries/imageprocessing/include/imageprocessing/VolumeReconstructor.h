@@ -1,4 +1,7 @@
 #include "ImageProcessingDefinitions.h"
+#include "Mathematics/ConvexHull3.h"
+#include "Mathematics/ArbitraryPrecision.h"
+#include "Mathematics/MinimumVolumeBox3.h"
 
 namespace curan{
     namespace image{
@@ -10,10 +13,10 @@ namespace curan{
 		class VolumeReconstructor
 		{
 		public:
-			using output_type = itk::Image<CharPixelType, Dimension3D>;
-			using accumulator_type = itk::Image<ShortPixelType, Dimension3D>;
-			using resampler_output = itk::ResampleImageFilter<OutputType, OutputType>;
-			using resampler_accumulator = itk::ResampleImageFilter<AccumulatorType, AccumulatorType>;
+			using output_type = itk::Image<char_pixel_type, Dimension3D>;
+			using accumulator_type = itk::Image<short_pixel_type, Dimension3D>;
+			using resampler_output = itk::ResampleImageFilter<output_type, output_type>;
+			using resampler_accumulator = itk::ResampleImageFilter<accumulator_type, accumulator_type>;
 
 			// With this code we always assume 
 			// that the images are greyscale
