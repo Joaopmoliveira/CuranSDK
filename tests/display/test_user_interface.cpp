@@ -5,7 +5,6 @@
 #include <vulkan/vulkan.h>
 
 #include "include/core/SkTypes.h"
-
 #define SK_VULKAN
 
 #include "include\core\SkAlphaType.h"

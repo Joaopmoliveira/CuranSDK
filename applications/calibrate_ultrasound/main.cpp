@@ -31,7 +31,38 @@ void message_callback(size_t protocol_defined_val, std::error_code er, igtl::Mes
 	}
 }
 
-int communication_proc(std::shared_ptr<ImageDisplay> processed_viwer, std::shared_ptr<OpenIGTLinkViewer> open_viwer) {
+struct ProcessingMessage {
+	std::shared_ptr<curan::ui::ImageDisplay> processed_viwer;
+	std::shared_ptr<curan::ui::OpenIGTLinkViewer> open_viwer;
+	bool should_contiue;
+
+	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer, std::shared_ptr<curan::ui::OpenIGTLinkViewer> in_open_viwer) : processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer } {}
+
+	void process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
+		curan::utils::cout << "received message";
+		assert(val.IsNotNull());
+		std::string tmp = val->GetMessageType();
+		std::string transform = "TRANSFORM";
+		std::string image = "IMAGE";
+		if (!er) {
+			if (!tmp.compare(transform)) {
+				std::cout << "Receiving TRANSFORM data type\n";
+			}
+			else if (!tmp.compare(image)) {
+				std::cout << "Not Receiving TRANSFORM data type\n";
+			}
+			else {
+				std::cout << "Unknown Message\n";
+			}
+		}
+	};
+
+	bool continue_running() {
+	
+	}
+};
+
+int communication_proc(std::shared_ptr<curan::ui::ImageDisplay> processed_viwer, std::shared_ptr<curan::ui::OpenIGTLinkViewer> open_viwer) {
 	using namespace curan::communication;
 	short port = 50000;
 	asio::io_context io_context;
@@ -127,11 +158,6 @@ int main() {
 		int width = rec.width();
 		int height = rec.height();
 
-		auto lamd = [open_viwer, processed_viwer]() {
-			generate_image_message(open_viwer, processed_viwer);
-		};
-		std::thread message_generator{ lamd };
-
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
@@ -154,7 +180,6 @@ int main() {
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
-		message_generator.join();
 		return 0;
 	}
 	catch (...) {

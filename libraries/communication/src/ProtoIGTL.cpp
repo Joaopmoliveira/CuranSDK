@@ -23,7 +23,7 @@ void read_header_first_time(IgtlinkClientConnection val) {
 		if (!ec) {
 			read_body(val, ec);
 		} else {
-			curan::utils::cout << "failed to read first header";
+			val.owner->transverse_callables<interface_igtl>(0, ec, val.message_to_receive);
 			val.owner->get_socket().get_underlying_socket().close();
 		}				
 		}
@@ -47,7 +47,7 @@ void read_header(IgtlinkClientConnection val, std::error_code ec) {
 		if (!ec) {
 			read_body(val, ec);
 		} else {
-			curan::utils::cout << "failed to read header";
+			val.owner->transverse_callables<interface_igtl>(0, ec, val.message_to_receive);
 			val.owner->get_socket().get_underlying_socket().close();
 		}}
 	);
@@ -65,7 +65,7 @@ void read_body(IgtlinkClientConnection val, std::error_code ec) {
 		if (!ec)
 			read_header(val, ec);
 		else {
-			curan::utils::cout << "failed to read body";
+			val.owner->transverse_callables<interface_igtl>(0, ec, val.message_to_receive);
 			val.owner->get_socket().get_underlying_socket().close();
 		}}
 	);
