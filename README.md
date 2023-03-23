@@ -109,27 +109,29 @@ the arguments passed to cmake automatically. You just need to create the file in
 
 and fill this file with the following contents.
 
->{
->  "environments": [ { "BuildDir": "${projectDir}/build" } ],
->  "configurations": [
->    {
->      "name": "x64-Release",
->      "generator": "Ninja",
->      "configurationType": "Release",
->      "inheritEnvironments": [ "msvc_x64" ],
->      "buildRoot": "${env.BuildDir}\\${name}",
->      "buildCommandArgs": "-v",
->      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DSKIA_SOURCE_DIR:PATH=C:\\Dev\\depot_tools\\skia -DCMAKE_PREFIX_PATH=\"C:/Dev/InsightToolkit/Build/release\""
->    },
->    {
-v      "name": "x64-Debug",
->      "generator": "Ninja",
->      "configurationType": "Debug",
->      "inheritEnvironments": [ "msvc_x64" ],
->      "buildRoot": "${env.BuildDir}\\${name}",
->      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Debug -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug -DSKIA_SOURCE_DIR:PATH=C:\\\\Dev\\\\depot_tools\\\\skia -DCMAKE_PREFIX_PATH=\"C:/Dev/InsightToolkit/Build/debug\""
->    }
->  ]
->}
+```json
+{
+  "environments": [ { "BuildDir": "${projectDir}/build" } ],
+  "configurations": [
+    {
+      "name": "x64-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "inheritEnvironments": [ "msvc_x64" ],
+      "buildRoot": "${env.BuildDir}\\${name}",
+      "buildCommandArgs": "-v",
+      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DSKIA_SOURCE_DIR:PATH=C:\\Dev\\depot_tools\\skia -DCMAKE_PREFIX_PATH=\"C:/Dev/InsightToolkit/Build/release\""
+    },
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "inheritEnvironments": [ "msvc_x64" ],
+      "buildRoot": "${env.BuildDir}\\${name}",
+      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Debug -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug -DSKIA_SOURCE_DIR:PATH=C:\\\\Dev\\\\depot_tools\\\\skia -DCMAKE_PREFIX_PATH=\"C:/Dev/InsightToolkit/Build/debug\""
+    }
+  ]
+}
+```
 
 what we are doing is specifiyng where cmake can find skia and the ITK library, whilst also setting other flags which are required for a succefull compilation stage
