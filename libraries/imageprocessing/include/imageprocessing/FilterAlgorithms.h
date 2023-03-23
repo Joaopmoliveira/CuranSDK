@@ -13,7 +13,8 @@ namespace curan {
             class Filter {
 
                 virtual bool update() = 0;
-
+                virtual void get_output() = 0;
+                virtual void set_input() = 0;
             };
 
             class CompositFilter {
@@ -32,7 +33,6 @@ namespace curan {
             private:
 
                 using FilterType = itk::ThresholdImageFilter<InternalImageType>;
-                Image output;
                 FilterType::Pointer filter;
                 char_pixel_type lower_bound = 0;
                 char_pixel_type upper_bound = 255;
@@ -62,7 +62,6 @@ namespace curan {
                 using CastToRealFilterType = itk::CastImageFilter<char_pixel_type, real_pixel_type>;
                 using CannyFilterType = itk::CannyEdgeDetectionImageFilter<real_pixel_type, real_pixel_type>;
                 using RescaleFilterType = itk::RescaleIntensityImageFilter<real_pixel_type, char_pixel_type>;
-                Image output;
 
                 CannyFilter(Info& info);
 
@@ -87,7 +86,6 @@ namespace curan {
 
             private:
 
-                Image output;
                 char_pixel_type lower_bound = 0;
                 char_pixel_type upper_bound = 255;
                 using FilterType = itk::BinaryThresholdImageFilter<InternalImageType, InternalImageType>;

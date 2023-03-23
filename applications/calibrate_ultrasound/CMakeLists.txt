@@ -1,0 +1,5 @@
+add_executable(ultrasoundcalibration main.cpp)
+
+target_link_libraries(ultrasoundcalibration PUBLIC
+userinterface
+)
