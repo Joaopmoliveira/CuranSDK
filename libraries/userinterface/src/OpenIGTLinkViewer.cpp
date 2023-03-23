@@ -156,7 +156,12 @@ drawablefunction OpenIGTLinkViewer::draw() {
 	SkRect current_area = get_position();
 	auto size = get_size();
 	SkRect widget_rect = size;
-	widget_rect.offsetTo(current_area.centerX() - widget_rect.width() / 2.0, current_area.centerY() - widget_rect.height() / 2.0);
+
+	if (size.width() < 0.01 || size.height() < 0.01) {
+		widget_rect = current_area;
+	} else {
+		widget_rect.offsetTo(current_area.centerX() - widget_rect.width() / 2.0, current_area.centerY() - widget_rect.height() / 2.0);
+	}
 
 	auto container = get_container();
 	canvas->clipRect(widget_rect);

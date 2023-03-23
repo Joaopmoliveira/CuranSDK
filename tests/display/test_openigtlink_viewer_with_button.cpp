@@ -222,8 +222,8 @@ int main() {
 		std::shared_ptr<OpenIGTLinkViewer> open_viwer = OpenIGTLinkViewer::make(infoviewer);
 
 		ImageDisplay::Info processed_viwer_info;
-		processed_viwer_info.height = 500;
-		processed_viwer_info.width = 600;
+		processed_viwer_info.height = 0;
+		processed_viwer_info.width = 0;
 		std::shared_ptr<ImageDisplay> processed_viwer = ImageDisplay::make(processed_viwer_info);
 
 		Container::InfoLinearContainer info;
