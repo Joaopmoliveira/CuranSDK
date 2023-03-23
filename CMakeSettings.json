@@ -16,7 +16,7 @@
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64" ],
       "buildRoot": "${env.BuildDir}\\${name}",
-      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Debug -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug -DSKIA_SOURCE_DIR:PATH=C:\\\\Dev\\\\depot_tools\\\\skia -DCMAKE_PREFIX_PATH=\"C:/Dev/InsightToolkit/Build/debug\""
+      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Debug -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug -DSKIA_SOURCE_DIR:PATH=C:\\Dev\\depot_tools\\skia -DCMAKE_PREFIX_PATH=\"C:/Dev/InsightToolkit/Build/debug\""
     }
   ]
 }
