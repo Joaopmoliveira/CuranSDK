@@ -7,6 +7,7 @@
 #include "utils/Lockable.h"
 #include "definitions/UIdefinitions.h"
 #include "utils/Cancelable.h"
+#include <list>
 
 namespace curan {
 	namespace ui {
@@ -14,9 +15,11 @@ namespace curan {
 		using image_provider = std::function<void(SkPixmap&)>;
 
 		class ImageDisplay : public  Drawable, utils::Lockable<ImageDisplay>, utils::Connectable<ImageDisplay> {
-			int width;
-			int height;
-			sk_sp<SkSurface> image_display_surface;
+			int width = 100;
+			int height = 100;
+			using skia_image_producer = std::function<sk_sp<SkImage>(void)>;
+
+			std::list<skia_image_producer> images_to_render;
 
 		public:
 			struct Info {

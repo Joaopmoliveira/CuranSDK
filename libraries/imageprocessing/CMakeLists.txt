@@ -5,7 +5,7 @@ src/VolumeAlgorithms.cpp
 src/FilterAlgorithms.cpp 
 )
 
-find_package(ITK CONFIG REQUIRED PATHS ${CMAKE_BINARY_DIR}/third_party/lib_ITK/ITK/ COMPONENTS ITKEigen3)
+find_package(ITK CONFIG REQUIRED)
 
 include(${ITK_USE_FILE})
 

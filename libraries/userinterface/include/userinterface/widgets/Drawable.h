@@ -19,7 +19,6 @@ namespace curan {
 		class Drawable {
 			SkRect widget_rect = SkRect::MakeLTRB(10,10,100,100);
 			SkRect size = SkRect::MakeWH(100, 100);
-
 		public:
 
 			Drawable(SkRect size);

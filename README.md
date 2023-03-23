@@ -85,21 +85,13 @@ And how we have SKIA compiled. To install ITK go back to the command line and wr
 ~path\development\ITK >> git clone https://github.com/InsightSoftwareConsortium/ITK
 ```
 
-Which will create a folder with the version of the library.
+Which will create a folder with the version of the library like "~path\development\ITK\InsightToolkit5.4.1".
+Once this is done do the following
 
-If you are using Visual Studio Code or Visual Studio, you can specify a file in your source directory
-arguments to be passed to cmake. 
-
-To build and install SKIA on windows follow the steps described in.
-Here is a snipit of the installation procedure
-
-https://skia.org/docs/user/download/
-
-First we install depot_tools by 
-
-Once you have downloaded depot_tools, download skia. To compile the following is the command line 
-argument which was used by me to compile. 
-
-Because ITK is a huge library with a lot of source code, and to avoid spending uncessary 
-time with build steps we also build this library out of source.  
-
+```sh
+~path\development\ITK >> mkdir build
+~path\development\ITK\build >> mkdir debug
+~path\development\ITK\build\debug >> 
+```
+Now on Linux we dont have a lot of concerns but on Windows we need to link to the correct C runtime library
+For that we need to pass some options to ITK

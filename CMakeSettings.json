@@ -8,7 +8,7 @@
       "inheritEnvironments": [ "msvc_x64" ],
       "buildRoot": "${env.BuildDir}\\${name}",
       "buildCommandArgs": "-v",
-      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Release -DSKIA_SOURCE_DIR:PATH=C:\\Dev\\depot_tools\\skia -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_SHARED_LIBS:BOOL=OFF -DITK_BUILD_DEFAULT_MODULES:BOOL=ON -DITK_USE_SYSTEM_EIGEN:BOOl=ON"
+      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Release -DSKIA_SOURCE_DIR:PATH=C:\\Dev\\depot_tools\\skia -DCMAKE_PREFIX_PATH=\"C:/Dev/InsightToolkit/Build/release\""
     },
     {
       "name": "x64-Debug",
@@ -16,7 +16,7 @@
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64" ],
       "buildRoot": "${env.BuildDir}\\${name}",
-      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Debug -DSKIA_SOURCE_DIR:PATH=C:\\Dev\\depot_tools\\skia -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_SHARED_LIBS:BOOL=OFF -DITK_BUILD_DEFAULT_MODULES:BOOL=ON -DITK_USE_SYSTEM_EIGEN:BOOl=ON"
+      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH=C:/Dev/depot_tools/skia/out/Debug -DSKIA_SOURCE_DIR:PATH=C:\\\\Dev\\\\depot_tools\\\\skia -DCMAKE_PREFIX_PATH=\"C:/Dev/InsightToolkit/Build/debug\""
     }
   ]
 }

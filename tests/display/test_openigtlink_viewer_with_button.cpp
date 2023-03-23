@@ -125,8 +125,9 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 
 	size_t counter = 0;
 	auto genesis = std::chrono::high_resolution_clock::now();
-	while (counter < 10) {
-		auto start = std::chrono::high_resolution_clock::now();
+	auto start = std::chrono::high_resolution_clock::now();
+	while (std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count() < 10.0) {
+		start = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 
 		img = update_texture(std::move(img), 1.0 + time);
@@ -186,8 +187,8 @@ int main() {
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		SkColor colbuton = { SK_ColorWHITE };
-		SkColor coltext = { SK_ColorBLACK };
+		SkColor colbuton = { SK_ColorBLACK };
+		SkColor coltext = { SK_ColorWHITE };
 
 		SkPaint paint_square;
 		paint_square.setStyle(SkPaint::kFill_Style);
@@ -215,24 +216,6 @@ int main() {
 		paint_square2.setStrokeWidth(4);
 		paint_square2.setColor(SK_ColorBLACK);
 
-		Button::Info infor;
-		infor.button_text = "Connect";
-		infor.click_color = SK_ColorRED;
-		infor.hover_color = SK_ColorCYAN;
-		infor.waiting_color = SK_ColorGRAY;
-		infor.icon_identifier = "";
-		infor.paintButton = paint_square;
-		infor.paintText = paint_text;
-		infor.size = SkRect::MakeWH(100, 80);
-		infor.textFont = text_font;
-		std::shared_ptr<Button> button = Button::make(infor);
-
-		Container::InfoLinearContainer info;
-		info.arrangement = curan::ui::Arrangement::VERTICAL;
-		info.layouts = { button};
-		info.paint_layout = paint_square2;
-		std::shared_ptr<Container> container = Container::make(info);
-
 		OpenIGTLinkViewer::Info infoviewer;
 		infoviewer.text_font = text_font;
 		infoviewer.size = SkRect::MakeWH(600, 500);
@@ -243,15 +226,34 @@ int main() {
 		processed_viwer_info.width = 600;
 		std::shared_ptr<ImageDisplay> processed_viwer = ImageDisplay::make(processed_viwer_info);
 
+		Container::InfoLinearContainer info;
+		info.paint_layout = paint_square2;
 		info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-		info.divisions = { 0.0 , 0.2 ,0.6 , 1.0 };
-		info.layouts = { container ,open_viwer,processed_viwer };
+		info.divisions = { 0.0 , 0.5 , 1.0 };
+		info.layouts = { open_viwer,processed_viwer };
 		std::shared_ptr<Container> container2 = Container::make(info);
+
+		Button::Info infor;
+		infor.button_text = "Connect";
+		infor.click_color = SK_ColorGRAY;
+		infor.hover_color = SK_ColorDKGRAY;
+		infor.waiting_color = SK_ColorBLACK;
+		infor.icon_identifier = "";
+		infor.paintButton = paint_square;
+		infor.paintText = paint_text;
+		infor.size = SkRect::MakeWH(100, 80);
+		infor.textFont = text_font;
+		std::shared_ptr<Button> button = Button::make(infor);
+
+		info.arrangement = curan::ui::Arrangement::VERTICAL;
+		info.divisions = { 0.0 , 0.1 , 1.0 };
+		info.layouts = { button,container2 };
+		std::shared_ptr<Container> container = Container::make(info);
 
 		auto rec = viewer->get_size();
 		Page::Info information;
 		information.backgroundcolor = SK_ColorBLACK;
-		information.contained = container2;
+		information.contained = container;
 		std::shared_ptr<Page> page = Page::make(information);
 		page->propagate_size_change(rec);
 
@@ -284,7 +286,6 @@ int main() {
 				std::cout << "failed to swap buffers\n";
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-			std::cout << "took: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "\n";
 		}
 		message_generator.join();
 		return 0;

@@ -12,7 +12,8 @@ namespace curan {
 			SkPaint paint_layout;
 			std::vector<std::shared_ptr<Drawable>> contained_layouts;
 			std::vector<SkRect> rectangles_of_contained_layouts;
-
+			bool horizontaly_fixed = false;
+			bool vertically_fixed = false;
 		public:
 			struct InfoLinearContainer {
 				Arrangement arrangement;
@@ -25,6 +26,13 @@ namespace curan {
 				std::vector<std::shared_ptr<Drawable>> layouts;
 				std::vector<SkRect> rectangles_of_contained_layouts;
 				SkPaint paint_layout;
+			};
+
+			struct InfoPartiallyFixedContainer {
+				std::vector<SkRect> rectangles_of_contained_layouts;
+				std::vector<std::shared_ptr<Drawable>> layouts;
+				bool horizontaly_fixed = false;
+				bool vertically_fixed = false;
 			};
 
 			Container(InfoLinearContainer& info);
