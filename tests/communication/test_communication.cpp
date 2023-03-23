@@ -80,11 +80,12 @@ void foo(asio::io_context& cxt, short port) {
 void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
 	curan::utils::cout << "received message";
 	assert(val.IsNotNull());
-	std::string tmp = val->GetMessageType();
-	std::string desired = "TRANSFORM";
-	if (!tmp.compare(desired)) {
-		curan::utils::cout << "Receiving TRANSFORM data type";
-		igtl::TransformMessage::Pointer transMsg = igtl::TransformMessage::New();
+	if (!er) {
+		std::string tmp = val->GetMessageType();
+		std::string desired = "TRANSFORM";
+		if (!tmp.compare(desired)) {
+			curan::utils::cout << "Receiving TRANSFORM data type";
+			igtl::TransformMessage::Pointer transMsg = igtl::TransformMessage::New();
 			//transMsg->Copy(val);
 			//int c = transMsg->Unpack(1);
 
@@ -94,10 +95,15 @@ void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Poin
 			//	igtl::Matrix4x4 matrix;
 			//	transMsg->GetMatrix(matrix);
 			//}
+		}
+		else {
+			curan::utils::cout << "Not Receiving TRANSFORM data type";
+		}
 	}
 	else {
-		curan::utils::cout << "Not Receiving TRANSFORM data type";
+		curan::utils::cout << "failed";
 	}
+
 }
 
 int main() {

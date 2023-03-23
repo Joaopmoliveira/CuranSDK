@@ -28,8 +28,10 @@ namespace curan{
 		using char_pixel_type = unsigned char;
 
 		constexpr unsigned int Dimension3D = 3;
+		constexpr unsigned int Dimension2D = 2;
 		using input_DICOM_image_type = itk::Image<short_pixel_type, Dimension3D>;
 
+		using Internal2DImageType = itk::Image<char_pixel_type, Dimension2D>;
 		using InternalImageType = itk::Image<char_pixel_type, Dimension3D>;
 		using RescaleType = itk::RescaleIntensityImageFilter<input_DICOM_image_type, input_DICOM_image_type>;
 		using FilterType = itk::CastImageFilter<input_DICOM_image_type, InternalImageType>;
@@ -51,7 +53,7 @@ namespace curan{
 		};
 
 		struct Image {
-			InternalImageType::Pointer image;
+			Internal2DImageType::Pointer image;
 		};
     }
 }

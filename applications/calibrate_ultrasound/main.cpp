@@ -34,9 +34,9 @@ void message_callback(size_t protocol_defined_val, std::error_code er, igtl::Mes
 struct ProcessingMessage {
 	std::shared_ptr<curan::ui::ImageDisplay> processed_viwer;
 	std::shared_ptr<curan::ui::OpenIGTLinkViewer> open_viwer;
-	bool should_contiue;
+	bool should_continue = true;
 
-	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer, std::shared_ptr<curan::ui::OpenIGTLinkViewer> in_open_viwer) : processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer } {}
+	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer, std::shared_ptr<curan::ui::OpenIGTLinkViewer> in_open_viwer) : should_continue{ true }, processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer } {}
 
 	void process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 		curan::utils::cout << "received message";
@@ -55,10 +55,13 @@ struct ProcessingMessage {
 				std::cout << "Unknown Message\n";
 			}
 		}
+		else {
+			should_continue = false;
+		}
 	};
 
 	bool continue_running() {
-	
+		return should_continue;
 	}
 };
 
@@ -74,9 +77,31 @@ int communication_proc(std::shared_ptr<curan::ui::ImageDisplay> processed_viwer,
 	Client client{ construction };
 	auto connectionstatus = client.connect(message_callback);
 	auto val = io_context.run();
+	return 1;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+	if (argc != 2) {
+		std::cout << "the ultrasound calibration app only parses one argument, the port of the server to connect to\n";
+		return 1;
+	}
+
+	std::string val = { argv[1] };
+	size_t pos = 0;
+	int port = 0;
+	try{
+		port = std::stoi(val, &pos);
+	} catch (...) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 3;
+	}
+	if (pos != val.size()) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 2;
+	}
+
+	std::cout << "the received port is: " << port << "\n";
+
 	try {
 		using namespace curan::ui;
 
