@@ -21,7 +21,7 @@ struct ProcessingMessage {
 	std::shared_ptr<curan::ui::OpenIGTLinkViewer> open_viwer;
 	std::shared_ptr<curan::utils::Flag> connection_status;
 	std::shared_ptr<curan::ui::Button> button;
-	curan::communication::Client* client_pointer = nullptr;
+	asio::io_context* client_pointer = nullptr;
 	short port = 10000;
 
 	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer, 
@@ -31,44 +31,41 @@ struct ProcessingMessage {
 	}
 
 	bool process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
-		if (!er) {
-			assert(val.IsNotNull());
-			std::string tmp = val->GetMessageType();
-			std::string transform = "TRANSFORM";
-			std::string image = "IMAGE";
-			if (!tmp.compare(transform)) {
-				open_viwer->process_message(val);
+		if (er)
+			return true;
+
+		assert(val.IsNotNull());
+		std::string tmp = val->GetMessageType();
+		std::string transform = "TRANSFORM";
+		std::string image = "IMAGE";
+		if (!tmp.compare(transform)) {
+			open_viwer->process_message(val);
+		}
+		else if (!tmp.compare(image)) {
+			open_viwer->process_message(val);
+			igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
+			message_body->Copy(val);
+			int c = message_body->Unpack(1);
+			if (c & igtl::MessageHeader::UNPACK_BODY) {
+				auto lam = [message_body](SkPixmap& requested) {
+					int x, y, z;
+					message_body->GetDimensions(x,y,z);
+					auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+					size_t row_size = x * sizeof(char);
+					SkPixmap map{ inf,message_body->GetScalarPointer(),row_size };
+					requested = map;
+					return;
+				};
+				processed_viwer->update_image(lam);
 			}
-			else if (!tmp.compare(image)) {
-				open_viwer->process_message(val);
-				igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
-				message_body->Copy(val);
-				int c = message_body->Unpack(1);
-				if (c & igtl::MessageHeader::UNPACK_BODY) {
-					auto lam = [message_body](SkPixmap& requested) {
-						int x, y, z;
-						message_body->GetDimensions(x,y,z);
-						auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-						size_t row_size = x * sizeof(char);
-						SkPixmap map{ inf,message_body->GetScalarPointer(),row_size };
-						requested = map;
-						return;
-					};
-					processed_viwer->update_image(lam);
-				}
-			}
-			else {
-				std::cout << "Unknown Message\n";
-			}
-			return false;
 		}
 		else {
-			return true;
+			std::cout << "Unknown Message\n";
 		}
+		return false;
 	};
 
 	void communicate() {
-		
 		using namespace curan::communication;
 		button->update_color(SK_ColorGREEN);
 		asio::io_context io_context;
@@ -79,7 +76,7 @@ struct ProcessingMessage {
 		construction.endpoints = endpoints;
 		Client client{ construction };
 		connection_status->set();
-		client_pointer = &client;
+		client_pointer = &io_context;
 
 		auto lam = [this, &io_context](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 			if (process_message(protocol_defined_val,er,val))
@@ -98,8 +95,11 @@ struct ProcessingMessage {
 	}
 
 	void attempt_stop() {
-		if (client_pointer)
-			client_pointer->get_socket().close();
+		if (client_pointer) {
+			std::cout << "attempting to close the io context";
+			client_pointer->stop();
+		}
+			
 	}
 };
 
