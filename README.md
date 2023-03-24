@@ -21,7 +21,9 @@ can be added at will without any effort.
 3. The userinferface library contains higher level abstractions over the Skia library
 to render 2D entities in real time. 
 
-# Compilation
+# Build intructions
+## Windows
+
 
 Most third party requirments are included directly in the source code to guarantee
  as streamlined a building procedure as possible. There are three main exceptions, namely:
