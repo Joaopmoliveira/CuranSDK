@@ -98,6 +98,8 @@ Once this is done do the following
 Now on Linux we dont have a lot of concerns but on Windows we need to link to the correct C runtime library
 For that we need to pass some options to ITK
 
+## Linux
+
 # Recomended IDE 
 
 When using the library it is necessary to feed into cmake certain variables which change depending on the build type. 
