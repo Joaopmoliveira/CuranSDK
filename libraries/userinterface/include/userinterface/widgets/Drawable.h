@@ -44,7 +44,11 @@ namespace curan {
 			}
 
 			inline bool interacts(double x, double y) {
-				SkRect drawable = size;
+				SkRect drawable;
+				if (size.width() < 0.01 || size.height() < 0.01)
+					drawable = widget_rect;
+				else
+					drawable = size;
 				drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
 				return (drawable.fLeft < x && drawable.fRight > x && drawable.fTop < y && drawable.fBottom > y) ? true : false;
 			}

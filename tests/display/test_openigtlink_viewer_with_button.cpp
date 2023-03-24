@@ -126,7 +126,7 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 	size_t counter = 0;
 	auto genesis = std::chrono::high_resolution_clock::now();
 	auto start = std::chrono::high_resolution_clock::now();
-	while (std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count() < 10.0) {
+	while (std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count() < 20.0) {
 		start = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 
@@ -160,10 +160,10 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 
 		button->process_message(message_to_receive);
 
-		auto lam = [message_to_receive, width = img.width(), height = img.height()](SkPixmap& requested) {
+		auto lam = [message_to_receive, imgMsg,width = img.width(), height = img.height()](SkPixmap& requested) {
 			auto inf = SkImageInfo::Make(width, height, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
 			size_t row_size = width * sizeof(char);
-			SkPixmap map{inf,message_to_receive->GetPackBodyPointer(),row_size};
+			SkPixmap map{inf,imgMsg->GetScalarPointer(),row_size};
 			requested = map;
 			return;
 		};
@@ -207,7 +207,7 @@ int main() {
 		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
 		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 
-		SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
+		SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
 		text_font.setEdging(SkFont::Edging::kAntiAlias);
 
 		SkPaint paint_square2;

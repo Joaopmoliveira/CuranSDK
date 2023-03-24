@@ -54,6 +54,12 @@ namespace curan {
 			drawablefunction draw() override;
 			callablefunction call() override;
 			void framebuffer_resize() override;
+
+			inline void update_color(SkColor new_waiting_color) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				waiting_color = new_waiting_color;
+			}
+
 		};
 	}
 }

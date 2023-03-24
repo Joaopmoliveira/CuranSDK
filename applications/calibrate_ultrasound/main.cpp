@@ -9,6 +9,7 @@
 #include "utils/Logger.h"
 #include "utils/Flag.h"
 #include "utils/Job.h"
+#include "utils/TheadPool.h"
 #include "communication/Client.h"
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
@@ -19,6 +20,8 @@ struct ProcessingMessage {
 	std::shared_ptr<curan::ui::ImageDisplay> processed_viwer;
 	std::shared_ptr<curan::ui::OpenIGTLinkViewer> open_viwer;
 	std::shared_ptr<curan::utils::Flag> connection_status;
+	std::shared_ptr<curan::ui::Button> button;
+	curan::communication::Client* client_pointer = nullptr;
 	short port = 10000;
 
 	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer, 
@@ -29,16 +32,30 @@ struct ProcessingMessage {
 
 	bool process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 		if (!er) {
-			curan::utils::cout << "received message";
 			assert(val.IsNotNull());
 			std::string tmp = val->GetMessageType();
 			std::string transform = "TRANSFORM";
 			std::string image = "IMAGE";
 			if (!tmp.compare(transform)) {
-				std::cout << "Receiving TRANSFORM data type\n";
+				open_viwer->process_message(val);
 			}
 			else if (!tmp.compare(image)) {
-				std::cout << "Not Receiving TRANSFORM data type\n";
+				open_viwer->process_message(val);
+				igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
+				message_body->Copy(val);
+				int c = message_body->Unpack(1);
+				if (c & igtl::MessageHeader::UNPACK_BODY) {
+					auto lam = [message_body](SkPixmap& requested) {
+						int x, y, z;
+						message_body->GetDimensions(x,y,z);
+						auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+						size_t row_size = x * sizeof(char);
+						SkPixmap map{ inf,message_body->GetScalarPointer(),row_size };
+						requested = map;
+						return;
+					};
+					processed_viwer->update_image(lam);
+				}
 			}
 			else {
 				std::cout << "Unknown Message\n";
@@ -51,8 +68,9 @@ struct ProcessingMessage {
 	};
 
 	void communicate() {
-		std::cout << "started communication thread\n";
+		
 		using namespace curan::communication;
+		button->update_color(SK_ColorGREEN);
 		asio::io_context io_context;
 		interface_igtl igtlink_interface;
 		Client::Info construction{ io_context,igtlink_interface };
@@ -60,6 +78,8 @@ struct ProcessingMessage {
 		auto endpoints = resolver.resolve("localhost", std::to_string(port));
 		construction.endpoints = endpoints;
 		Client client{ construction };
+		connection_status->set();
+		client_pointer = &client;
 
 		auto lam = [this, &io_context](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 			if (process_message(protocol_defined_val,er,val))
@@ -71,14 +91,23 @@ struct ProcessingMessage {
 		};
 		auto connectionstatus = client.connect(lam);
 		auto val = io_context.run();
-		std::cout << "stopped communicating\n";
+		button->update_color(SK_ColorRED);
+		client_pointer = nullptr;
+
 		return;
+	}
+
+	void attempt_stop() {
+		if (client_pointer)
+			client_pointer->get_socket().close();
 	}
 };
 
 
 
 int main(int argc, char* argv[]) {
+	//initualize the thread pool;
+	curan::utils::initialize_thread_pool(10);
 	if (argc != 2) {
 		std::cout << "the ultrasound calibration app only parses one argument, the port of the server to connect to\n";
 		return 1;
@@ -165,6 +194,10 @@ int main(int argc, char* argv[]) {
 			val.function_to_execute = [processing]() {
 				processing->communicate();
 			};
+			curan::utils::pool->submit(val);
+		}
+		else {
+			processing->attempt_stop();
 		}
 	};
 
@@ -172,7 +205,7 @@ int main(int argc, char* argv[]) {
 	infor.button_text = "Connect";
 	infor.click_color = SK_ColorGRAY;
 	infor.hover_color = SK_ColorDKGRAY;
-	infor.waiting_color = SK_ColorBLACK;
+	infor.waiting_color = SK_ColorRED;
 	infor.icon_identifier = "";
 	infor.paintButton = paint_square;
 	infor.paintText = paint_text;
@@ -180,6 +213,9 @@ int main(int argc, char* argv[]) {
 	infor.textFont = text_font;
 	infor.callback = lam;
 	std::shared_ptr<Button> button = Button::make(infor);
+
+	processing->button = button;
+	button->update_color(SK_ColorRED);
 
 	info.arrangement = curan::ui::Arrangement::VERTICAL;
 	info.divisions = { 0.0 , 0.1 , 1.0 };
@@ -218,5 +254,7 @@ int main(int argc, char* argv[]) {
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
+	processing->attempt_stop();
+	curan::utils::terminate_thread_pool();
 	return 0;
 }
