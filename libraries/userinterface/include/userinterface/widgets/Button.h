@@ -12,7 +12,7 @@ namespace curan {
 
 		class Button;
 
-		using buttoncallback = std::function<void(std::shared_ptr<Button> val)>;
+		using buttoncallback = std::function<void()>;
 
 		class Button : public  Drawable , utils::Lockable<Button>, utils::Connectable<Button> {
 		public:
@@ -46,6 +46,7 @@ namespace curan {
 			sk_sp<SkTextBlob> text;
 			sk_sp<SkImage> icon_data;
 			ButtonStates current_state = ButtonStates::WAITING;
+			std::optional<buttoncallback> callback;
 
 		public:
 			Button(Info& info);

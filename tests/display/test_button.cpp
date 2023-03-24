@@ -41,6 +41,10 @@ int main() {
 		paint_square2.setStrokeWidth(4);
 		paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
 
+		auto callback = []() {
+			std::cout << "received signal!\n";
+		};
+
 		Button::Info infor;
 		infor.button_text = "Touch!";
 		infor.click_color = SK_ColorRED;
@@ -51,6 +55,7 @@ int main() {
 		infor.paintText = paint_text;
 		infor.size = SkRect::MakeWH(200, 90);
 		infor.textFont = text_font;
+		infor.callback = callback;
 		std::shared_ptr<Button> button = Button::make(infor);
 		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 200);
 		button->set_position(rect);

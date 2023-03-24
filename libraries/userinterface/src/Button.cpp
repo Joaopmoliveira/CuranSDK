@@ -13,6 +13,7 @@ Button::Button(Info& info) : Drawable{ info.size } {
 	paint = info.paintButton;
 	paint_text = info.paintText;
 	text_font = info.textFont;
+	callback = info.callback;
 	text_font.measureText(info.button_text.data(), info.button_text.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(info.button_text.c_str(), text_font);
 
@@ -94,6 +95,10 @@ callablefunction Button::call() {
 				auto previous_state = current_state;
 				if (interacts(arg.xpos,arg.ypos)) {
 					current_state = ButtonStates::PRESSED;
+					if (callback) {
+						auto val = *callback;
+						val();
+					}
 				}
 				else
 					current_state = ButtonStates::WAITING;
