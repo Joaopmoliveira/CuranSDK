@@ -11,7 +11,7 @@ src/Container.cpp
 src/Drawable.cpp
 src/Page.cpp
 src/ImageDisplay.cpp
-)
+ "include/userinterface/widgets/RadioButton.h" "src/RadioButton.cpp")
 
 target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/

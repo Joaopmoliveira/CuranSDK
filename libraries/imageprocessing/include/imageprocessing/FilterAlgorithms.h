@@ -3,6 +3,13 @@
 
 #include "ImageProcessingDefinitions.h"
 #include "itkBinaryThresholdImageFilter.h"
+#include "itkImportImageFilter.h"
+#include "itkHoughTransform2DCirclesImageFilter.h"
+#include "itkImageRegionIterator.h"
+#include "itkThresholdImageFilter.h"
+#include "itkMinimumMaximumImageCalculator.h"
+#include "itkGradientMagnitudeImageFilter.h"
+#include "itkDiscreteGaussianImageFilter.h"
 #include <vector>
 #include "utils/Lockable.h"
 #include <memory>
@@ -20,16 +27,72 @@ namespace curan {
 
             class Filter : utils::Lockable<Filter> {
 
+                bool is_updated = true;
                 Internal2DImageType::Pointer input;
-
                 std::list<std::shared_ptr<Implementation>> filters;
 
             public:
 
                 void operator<< (std::shared_ptr<Implementation>);
-            
-                Internal2DImageType::Pointer get_input();
+                Filter();
+                bool set_input(Internal2DImageType::Pointer val);
                 Internal2DImageType::Pointer get_output();
+            };
+
+            class ImportFilter : public Implementation, utils::Lockable<ImportFilter> {
+            public:
+
+                using ImportFilterType = itk::ImportImageFilter<char_pixel_type, 2>;
+
+                struct Info {
+                    std::array<double, 2> origin;
+                    std::array<double, 2> spacing;
+                    unsigned char* buffer = nullptr;
+                    bool memory_owner = false;
+                    long number_of_pixels = 0;
+                    ImportFilterType::SizeType size;
+                    ImportFilterType::IndexType start;
+                };
+
+            private:
+                
+                ImportFilterType::Pointer filter;
+
+                ImportFilter(Info& info);
+
+            public:
+                static std::shared_ptr<ImportFilter> make(Info& info);
+
+                void updateinfo(Info& info);
+
+                Internal2DImageType* get_output() override;
+
+                void set_input(const Internal2DImageType*) override;
+                Internal2DImageType::Pointer update_and_return_out() override;
+            };
+
+            class CircleFilter : public Implementation, utils::Lockable<CircleFilter> {
+            public:
+
+                struct Info {
+
+                };
+            private:
+                Filter* owner = nullptr;
+                using HoughTransformFilterType = itk::HoughTransform2DCirclesImageFilter<unsigned char,unsigned int, double>;
+
+                CircleFilter(Info& info);
+
+                friend Filter;
+            public:
+
+                static std::shared_ptr<CircleFilter> make(Info& info);
+
+                void updateinfo(Info& info);
+
+                Internal2DImageType* get_output() override;
+                void set_input(const Internal2DImageType*) override;
+                Internal2DImageType::Pointer update_and_return_out() override;
             };
             
             class ThreholdFilter : public Implementation, utils::Lockable<ThreholdFilter> {
@@ -56,7 +119,7 @@ namespace curan {
 
             public:
 
-                std::shared_ptr<ThreholdFilter> make(Info& info);
+                static std::shared_ptr<ThreholdFilter> make(Info& info);
 
                 void updateinfo(Info& info);
 
@@ -94,7 +157,7 @@ namespace curan {
 
             public:
 
-                std::shared_ptr<CannyFilter> make(Info& info);
+                static std::shared_ptr<CannyFilter> make(Info& info);
 
                 void updateinfo(Info& info);
                
@@ -128,7 +191,7 @@ namespace curan {
 
             public:
 
-                std::shared_ptr<BinarizeFilter> make(Info& info);
+                static std::shared_ptr<BinarizeFilter> make(Info& info);
 
                 void updateinfo(Info& info);
 

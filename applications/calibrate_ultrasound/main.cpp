@@ -10,6 +10,7 @@
 #include "utils/Flag.h"
 #include "utils/Job.h"
 #include "utils/TheadPool.h"
+#include "imageprocessing/FilterAlgorithms.h"
 #include "communication/Client.h"
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
@@ -21,7 +22,7 @@ struct ProcessingMessage {
 	std::shared_ptr<curan::ui::OpenIGTLinkViewer> open_viwer;
 	std::shared_ptr<curan::utils::Flag> connection_status;
 	std::shared_ptr<curan::ui::Button> button;
-	asio::io_context* client_pointer = nullptr;
+	asio::io_context io_context;
 	short port = 10000;
 
 	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer, 
@@ -47,12 +48,41 @@ struct ProcessingMessage {
 			message_body->Copy(val);
 			int c = message_body->Unpack(1);
 			if (c & igtl::MessageHeader::UNPACK_BODY) {
-				auto lam = [message_body](SkPixmap& requested) {
-					int x, y, z;
-					message_body->GetDimensions(x,y,z);
+				
+				int x, y, z;
+				message_body->GetDimensions(x, y, z);
+
+				curan::image::filtering::ImportFilter::ImportFilterType::SizeType size;
+				size[0] = x; // size along X
+				size[1] = y; // size along Y
+				curan::image::filtering::ImportFilter::ImportFilterType::IndexType start;
+				start.Fill(0);
+
+				curan::image::filtering::ImportFilter::Info info_intro;
+				info_intro.buffer = (unsigned char*)message_body->GetScalarPointer();
+				info_intro.memory_owner = false;
+				info_intro.number_of_pixels = x * y;
+				info_intro.origin = { 0.0, 0.0 };
+				info_intro.size = size;
+				info_intro.spacing = { 1.0, 1.0 };
+				info_intro.start = start;
+				auto import_filer = curan::image::filtering::ImportFilter::make(info_intro);
+
+				curan::image::filtering::CannyFilter::Info info;
+				info.lower_bound = 100;
+				info.upper_bound = 0;
+				info.variance = 5;
+				auto binarizer = curan::image::filtering::CannyFilter::make(info);
+
+				curan::image::filtering::Filter filter;
+				filter << import_filer;
+				filter << binarizer;
+
+				auto filtered_auto = filter.get_output();
+				auto lam = [filtered_auto,x,y](SkPixmap& requested) {
 					auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
 					size_t row_size = x * sizeof(char);
-					SkPixmap map{ inf,message_body->GetScalarPointer(),row_size };
+					SkPixmap map{ inf,filtered_auto->GetBufferPointer(),row_size };
 					requested = map;
 					return;
 				};
@@ -68,7 +98,7 @@ struct ProcessingMessage {
 	void communicate() {
 		using namespace curan::communication;
 		button->update_color(SK_ColorGREEN);
-		asio::io_context io_context;
+		io_context.reset();
 		interface_igtl igtlink_interface;
 		Client::Info construction{ io_context,igtlink_interface };
 		asio::ip::tcp::resolver resolver(io_context);
@@ -76,37 +106,29 @@ struct ProcessingMessage {
 		construction.endpoints = endpoints;
 		Client client{ construction };
 		connection_status->set();
-		client_pointer = &io_context;
 
-		auto lam = [this, &io_context](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
+		auto lam = [this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 			if (process_message(protocol_defined_val,er,val))
 			{
 				connection_status->clear();
-				io_context.stop();
-
+				attempt_stop();
 			}
 		};
 		auto connectionstatus = client.connect(lam);
 		auto val = io_context.run();
 		button->update_color(SK_ColorRED);
-		client_pointer = nullptr;
-
 		return;
 	}
 
 	void attempt_stop() {
-		if (client_pointer) {
-			std::cout << "attempting to close the io context";
-			client_pointer->stop();
-		}
-			
+		io_context.stop();	
 	}
 };
 
 
 
 int main(int argc, char* argv[]) {
-	//initualize the thread pool;
+	using namespace curan::ui;
 	curan::utils::initialize_thread_pool(10);
 	if (argc != 2) {
 		std::cout << "the ultrasound calibration app only parses one argument, the port of the server to connect to\n";
@@ -128,8 +150,6 @@ int main(int argc, char* argv[]) {
 	}
 
 	std::cout << "the received port is: " << port << "\n";
-
-	using namespace curan::ui;
 
 	IconResources* resources = IconResources::Load("C:/dev/Curan/resources");
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
@@ -255,6 +275,12 @@ int main(int argc, char* argv[]) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
 	processing->attempt_stop();
+	std::cout << "trying to stop everything" << std::endl;
+
+	int tasks_n = 0;
+	int tasks_queue = 0;
+	curan::utils::pool->get_number_tasks(tasks_n, tasks_queue);
+	std::cout << "Number of tasks executing: " << tasks_n << " number of tasks in queue" << tasks_queue << "\n";
 	curan::utils::terminate_thread_pool();
 	return 0;
 }
