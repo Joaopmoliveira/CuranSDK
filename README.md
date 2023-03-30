@@ -20,6 +20,11 @@ Currently only the OpenIGTlink protocol is implemented in the library. More prot
 can be added at will without any effort.
 3. The userinferface library contains higher level abstractions over the Skia library
 to render 2D entities in real time. 
+4. The imageprocessing library contains the simplified wrappers around ITK which 
+should simplify the development speed whilst implementing sequencial filters.
+5. The optimization library contains classes dedicated to particular optimization problems
+which are usefull to us (for now only in the medical context, but this can be extended
+to other types of optimizations).
 
 # Build intructions
 ## Windows
