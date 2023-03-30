@@ -91,29 +91,54 @@ Internal2DImageType::Pointer ImportFilter::update_and_return_out() {
 
 
 CircleFilter::CircleFilter(Info& info) {
-
+	filter = HoughTransformFilterType::New();
+	updateinfo(info);
 }
 
 std::shared_ptr<CircleFilter> CircleFilter::make(Info& info) {
-
+	return std::shared_ptr<CircleFilter>(new CircleFilter{ info });
 }
 
 void CircleFilter::updateinfo(Info& info) {
-
+	if (info.disk_radius_ratio) {
+		filter->SetDiscRadiusRatio(*info.disk_radius_ratio);
+	}
+	if (info.number_of_wires) {
+		filter->SetNumberOfCircles(*info.number_of_wires);
+	}
+	if (info.sigma_gradient) {
+		filter->SetSigmaGradient(*info.sigma_gradient);
+	}
+	if (info.variance) {
+		filter->SetVariance(*info.variance);
+	}
+	if (info.min_radius) {
+		filter->SetMinimumRadius(*info.min_radius);
+	}
+	if (info.max_radius) {
+		filter->SetMaximumRadius(*info.max_radius);
+	}
 }
 
 Internal2DImageType* CircleFilter::get_output() {
-
-
+	return filter->GetOutput();
 }
 
-void CircleFilter::set_input(const Internal2DImageType*){
-
+void CircleFilter::set_input(const Internal2DImageType* image){
+	filter->SetInput(image);
 }
 
 Internal2DImageType::Pointer CircleFilter::update_and_return_out()
 {
-
+	try
+	{
+		filter->Update();
+	}
+	catch (const itk::ExceptionObject& err)
+	{
+		return nullptr;
+	}
+	return filter->GetOutput();
 }
 
 ThreholdFilter::ThreholdFilter(Info& info) {

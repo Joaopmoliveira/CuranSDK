@@ -13,6 +13,7 @@
 #include <vector>
 #include "utils/Lockable.h"
 #include <memory>
+#include <optional>
 
 namespace curan {
     namespace image {
@@ -69,21 +70,33 @@ namespace curan {
 
                 void set_input(const Internal2DImageType*) override;
                 Internal2DImageType::Pointer update_and_return_out() override;
+                inline ImportFilterType::Pointer get_filter() {
+                    return filter;
+                }
             };
 
             class CircleFilter : public Implementation, utils::Lockable<CircleFilter> {
             public:
 
+                using HoughTransformFilterType = itk::HoughTransform2DCirclesImageFilter<char_pixel_type, char_pixel_type, double>;
+
                 struct Info {
-
+                    std::optional<int> number_of_wires;
+                    std::optional<double> variance;
+                    std::optional<double> disk_radius_ratio;
+                    std::optional<double> sigma_gradient;
+                    std::optional<double> min_radius;
+                    std::optional<double> max_radius;
                 };
-            private:
-                Filter* owner = nullptr;
-                using HoughTransformFilterType = itk::HoughTransform2DCirclesImageFilter<unsigned char,unsigned int, double>;
 
+            private:
+
+                Filter* owner = nullptr;
+                HoughTransformFilterType::Pointer filter;
                 CircleFilter(Info& info);
 
                 friend Filter;
+
             public:
 
                 static std::shared_ptr<CircleFilter> make(Info& info);
@@ -93,6 +106,9 @@ namespace curan {
                 Internal2DImageType* get_output() override;
                 void set_input(const Internal2DImageType*) override;
                 Internal2DImageType::Pointer update_and_return_out() override;
+                inline HoughTransformFilterType::Pointer get_filter() {
+                    return filter;
+                }
             };
             
             class ThreholdFilter : public Implementation, utils::Lockable<ThreholdFilter> {
@@ -126,6 +142,9 @@ namespace curan {
                 Internal2DImageType* get_output() override;
                 void set_input(const Internal2DImageType*) override;
                 Internal2DImageType::Pointer update_and_return_out() override;
+                inline FilterType::Pointer get_filter() {
+                    return filter;
+                }
             };
 
             class CannyFilter : public Implementation, utils::Lockable<CannyFilter> {
@@ -164,6 +183,9 @@ namespace curan {
                 Internal2DImageType* get_output() override;
                 void set_input(const Internal2DImageType*) override;
                 Internal2DImageType::Pointer update_and_return_out() override;
+                inline RescaleFilterType::Pointer get_filter() {
+                    return cast_to_char;
+                }
             };
 
             class BinarizeFilter : public Implementation, utils::Lockable<BinarizeFilter> {
@@ -198,6 +220,9 @@ namespace curan {
                 Internal2DImageType* get_output() override;
                 void set_input(const Internal2DImageType*) override;
                 Internal2DImageType::Pointer update_and_return_out() override;
+                inline FilterType::Pointer get_filter() {
+                    return filter;
+                }
             };
 
 

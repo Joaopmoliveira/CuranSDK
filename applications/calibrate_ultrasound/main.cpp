@@ -16,6 +16,14 @@
 #include "communication/ProtoIGTL.h"
 #include <iostream>
 
+
+struct Point {
+	double x;
+	double y;
+};
+
+float s[3];
+
 struct ProcessingMessage {
 
 	std::shared_ptr<curan::ui::ImageDisplay> processed_viwer;
@@ -23,6 +31,7 @@ struct ProcessingMessage {
 	std::shared_ptr<curan::utils::Flag> connection_status;
 	std::shared_ptr<curan::ui::Button> button;
 	asio::io_context io_context;
+	std::list<std::vector<Point>> list_of_recorded_points;
 	short port = 10000;
 
 	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer, 
@@ -52,6 +61,8 @@ struct ProcessingMessage {
 				int x, y, z;
 				message_body->GetDimensions(x, y, z);
 
+				message_body->GetSpacing(s);
+
 				curan::image::filtering::ImportFilter::ImportFilterType::SizeType size;
 				size[0] = x; // size along X
 				size[1] = y; // size along Y
@@ -68,21 +79,85 @@ struct ProcessingMessage {
 				info_intro.start = start;
 				auto import_filer = curan::image::filtering::ImportFilter::make(info_intro);
 
-				curan::image::filtering::CannyFilter::Info info;
-				info.lower_bound = 100;
-				info.upper_bound = 0;
-				info.variance = 5;
-				auto binarizer = curan::image::filtering::CannyFilter::make(info);
+				curan::image::filtering::CircleFilter::Info info;
+				info.number_of_wires = 9;
+				info.variance = 10;
+				info.sigma_gradient = 10;
+				info.min_radius = 5;
+				info.disk_radius_ratio = 10;
+				info.max_radius = 8;
+				auto circle = curan::image::filtering::CircleFilter::make(info);
 
 				curan::image::filtering::Filter filter;
 				filter << import_filer;
-				filter << binarizer;
+				filter << circle;
 
-				auto filtered_auto = filter.get_output();
-				auto lam = [filtered_auto,x,y](SkPixmap& requested) {
+				auto hough_filter = circle->get_filter();
+				try {
+					hough_filter->Update();
+				}
+				catch (...) {
+					return false;
+				}
+				
+				auto image = import_filer->get_output();
+
+				
+				using OutputPixelType = unsigned char;
+				using OutputImageType = itk::Image<OutputPixelType, 2>;
+				OutputImageType::Pointer localOutputImage = OutputImageType::New();
+				OutputImageType::RegionType region;
+				region.SetSize(image->GetLargestPossibleRegion().GetSize());
+				region.SetIndex(image->GetLargestPossibleRegion().GetIndex());
+				localOutputImage->SetRegions(region);
+				localOutputImage->SetOrigin(image->GetOrigin());
+				localOutputImage->SetSpacing(image->GetSpacing());
+				localOutputImage->Allocate(true);
+
+				auto circles = hough_filter->GetCircles();
+
+				std::vector<Point> local_centers;
+				local_centers.reserve(circles.size());
+
+				using CirclesListType = curan::image::filtering::CircleFilter::HoughTransformFilterType::CirclesListType;
+				CirclesListType::const_iterator itCircles = circles.begin();
+				OutputImageType::IndexType localIndex;
+				while (itCircles != circles.end())
+				{
+					const curan::image::filtering::CircleFilter::HoughTransformFilterType::CircleType::PointType centerPoint =
+						(*itCircles)->GetCenterInObjectSpace();
+					Point p;
+					p.x = centerPoint[0];
+					p.y = centerPoint[1];
+					local_centers.push_back(p);
+					for (double angle = 0; angle <= itk::Math::twopi;
+						angle += itk::Math::pi / 60.0)
+					{
+
+						using IndexValueType = OutputImageType::IndexType::IndexValueType;
+						localIndex[0] = itk::Math::Round<IndexValueType>(
+							centerPoint[0] +
+							(*itCircles)->GetRadiusInObjectSpace()[0] * std::cos(angle));
+						localIndex[1] = itk::Math::Round<IndexValueType>(
+							centerPoint[1] +
+							(*itCircles)->GetRadiusInObjectSpace()[0] * std::sin(angle));
+						OutputImageType::RegionType outputRegion =
+							localOutputImage->GetLargestPossibleRegion();
+
+						if (outputRegion.IsInside(localIndex))
+						{
+							localOutputImage->SetPixel(localIndex, 255);
+						}
+					}
+					itCircles++;
+				}
+
+				list_of_recorded_points.push_back(local_centers);
+
+				auto lam = [localOutputImage,x,y](SkPixmap& requested) {
 					auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
 					size_t row_size = x * sizeof(char);
-					SkPixmap map{ inf,filtered_auto->GetBufferPointer(),row_size };
+					SkPixmap map{ inf,localOutputImage->GetBufferPointer(),row_size };
 					requested = map;
 					return;
 				};
@@ -282,5 +357,10 @@ int main(int argc, char* argv[]) {
 	curan::utils::pool->get_number_tasks(tasks_n, tasks_queue);
 	std::cout << "Number of tasks executing: " << tasks_n << " number of tasks in queue" << tasks_queue << "\n";
 	curan::utils::terminate_thread_pool();
+	std::cout << "Number of frame recordings: " << processing->list_of_recorded_points.size() << "\n";
+	std::cout << "Received spacing: \n";
+	for (const auto& f : s)
+		std::cout << " s :" << f;
+	std::cout << "\n";
 	return 0;
 }

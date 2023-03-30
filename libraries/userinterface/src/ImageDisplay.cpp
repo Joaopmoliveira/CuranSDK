@@ -45,6 +45,11 @@ drawablefunction ImageDisplay::draw() {
 			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0 / 3, 1.0 / 3 });
 
 			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt);
+
+			if (custom_drawing_call) {
+				auto special = *custom_drawing_call;
+				special(canvas, init_x, init_y);
+			}
 		}
 		if (images_to_render.size() > 1) {
 			images_to_render.pop_front();

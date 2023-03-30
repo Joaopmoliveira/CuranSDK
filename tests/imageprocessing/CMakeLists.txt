@@ -22,3 +22,10 @@ target_link_libraries(test_itk_circle_extraction PUBLIC
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_wrapped_circle test_wrapped_circle.cpp)
+
+target_link_libraries(test_wrapped_circle PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
