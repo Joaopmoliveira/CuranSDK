@@ -76,46 +76,52 @@ drawablefunction Button::draw() {
 
 callablefunction Button::call() {
 	auto lamb = [this](Signal sig) {
-		std::lock_guard<std::mutex> g{ get_mutex() };
 		bool interacted = false;
 		std::visit(utils::overloaded{
 			[this](Empty arg) {
 
 			},
 			[this,&interacted](Move arg) {
-				auto previous_state = current_state;
+				auto previous_state = get_current_state();
+				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos,arg.ypos))
-					current_state = ButtonStates::HOVER;
+					current_state_local = ButtonStates::HOVER;
 				else
-					current_state = ButtonStates::WAITING;
-				if (previous_state != current_state)
+					current_state_local = ButtonStates::WAITING;
+				if (previous_state != current_state_local)
 					interacted = true;
+				set_current_state(current_state_local);
 			},
 			[this,&interacted](Press arg) {
-				auto previous_state = current_state;
+				auto previous_state = get_current_state();
+				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos,arg.ypos)) {
-					current_state = ButtonStates::PRESSED;
+					current_state_local = ButtonStates::PRESSED;
 					if (callback) {
 						auto val = *callback;
 						val();
 					}
+					
 				}
 				else
-					current_state = ButtonStates::WAITING;
-				if (previous_state != current_state)
+					current_state_local = ButtonStates::WAITING;
+				if (previous_state != current_state_local)
 					interacted = true;
+				set_current_state(current_state_local);
 			},
 			[this](Scroll arg) {;
 
 			},
 			[this,&interacted](Unpress arg) {
-				auto previous_state = current_state;
+				auto previous_state = get_current_state();
+				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos, arg.ypos))
-					current_state = ButtonStates::HOVER;
+					current_state_local = ButtonStates::HOVER;
 				else
-					current_state = ButtonStates::WAITING;
-				if (previous_state != current_state)
+					current_state_local = ButtonStates::WAITING;
+				if (previous_state != current_state_local)
 					interacted = true;
+				set_current_state(current_state_local);
 			},
 			[this](Key arg) {
 

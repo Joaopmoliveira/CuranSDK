@@ -98,6 +98,7 @@ bool Container::is_leaf() {
 }
 
 void Container::linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal) {
+	std::lock_guard<std::mutex> g{ get_mutex() };
 	std::vector<drawablefunction> linearized_draw;
 	std::vector<callablefunction> linearized_call;
 

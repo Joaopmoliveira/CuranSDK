@@ -55,9 +55,34 @@ namespace curan {
 			callablefunction call() override;
 			void framebuffer_resize() override;
 
-			inline void update_color(SkColor new_waiting_color) {
+			inline SkColor get_hover_color() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return hover_color;
+			}
+
+			inline void set_hover_color(SkColor color) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				hover_color = color;
+			}
+
+			inline SkColor get_waiting_color() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return waiting_color;
+			}
+
+			inline void set_waiting_color(SkColor new_waiting_color) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				waiting_color = new_waiting_color;
+			}
+
+			inline ButtonStates get_current_state() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return current_state;
+			}
+
+			inline void set_current_state(ButtonStates state) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				current_state = state;
 			}
 
 		};

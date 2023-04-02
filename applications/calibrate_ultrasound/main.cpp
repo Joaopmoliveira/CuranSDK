@@ -24,6 +24,17 @@ struct Point {
 
 float s[3];
 
+
+struct ConfigurationData {
+	double minimum_radius = 10;
+	double maximum_radius = 25;
+	double sweep_angle = 0;
+	double sigma_gradient = 1;
+	double variance = 1;
+	double disk_ratio = 1;
+	unsigned char threshold = 100;
+};
+
 struct ProcessingMessage {
 
 	std::shared_ptr<curan::ui::ImageDisplay> processed_viwer;
@@ -31,6 +42,7 @@ struct ProcessingMessage {
 	std::shared_ptr<curan::utils::Flag> connection_status;
 	std::shared_ptr<curan::ui::Button> button;
 	asio::io_context io_context;
+	ConfigurationData configuration;
 	std::list<std::vector<Point>> list_of_recorded_points;
 	short port = 10000;
 
@@ -63,78 +75,119 @@ struct ProcessingMessage {
 
 				message_body->GetSpacing(s);
 
-				curan::image::filtering::ImportFilter::ImportFilterType::SizeType size;
-				size[0] = x; // size along X
-				size[1] = y; // size along Y
-				curan::image::filtering::ImportFilter::ImportFilterType::IndexType start;
+				using PixelType = unsigned char;
+				constexpr unsigned int Dimension = 2;
+				using ImageType = itk::Image<PixelType, Dimension>;
+
+				using FloatImageType = itk::Image<float, Dimension>;
+				using ImportFilterType = itk::ImportImageFilter<PixelType, Dimension>;
+				auto importFilter = ImportFilterType::New();
+
+				ImportFilterType::SizeType size;
+				size[0] = x;
+				size[1] = y;
+				ImportFilterType::IndexType start;
 				start.Fill(0);
+				ImportFilterType::RegionType region;
+				region.SetIndex(start);
+				region.SetSize(size);
 
-				curan::image::filtering::ImportFilter::Info info_intro;
-				info_intro.buffer = (unsigned char*)message_body->GetScalarPointer();
-				info_intro.memory_owner = false;
-				info_intro.number_of_pixels = x * y;
-				info_intro.origin = { 0.0, 0.0 };
-				info_intro.size = size;
-				info_intro.spacing = { 1.0, 1.0 };
-				info_intro.start = start;
-				auto import_filer = curan::image::filtering::ImportFilter::make(info_intro);
+				importFilter->SetRegion(region);
+				const itk::SpacePrecisionType origin[Dimension] = { 0.0, 0.0 };
+				importFilter->SetOrigin(origin);
+				const itk::SpacePrecisionType spacing[Dimension] = { 1.0, 1.0 };
+				importFilter->SetSpacing(spacing);
 
-				curan::image::filtering::CircleFilter::Info info;
-				info.number_of_wires = 9;
-				info.variance = 10;
-				info.sigma_gradient = 10;
-				info.min_radius = 5;
-				info.disk_radius_ratio = 10;
-				info.max_radius = 8;
-				auto circle = curan::image::filtering::CircleFilter::make(info);
+				const bool importImageFilterWillOwnTheBuffer = false;
+				importFilter->SetImportPointer((PixelType*)message_body->GetScalarPointer(), message_body->GetScalarSize(), importImageFilterWillOwnTheBuffer);
 
-				curan::image::filtering::Filter filter;
-				filter << import_filer;
-				filter << circle;
+				using FilterType = itk::ThresholdImageFilter<ImageType>;
+				auto filter = FilterType::New();
+				unsigned char lowerThreshold = configuration.threshold;
+				unsigned char upperThreshold = 255;
+				filter->SetInput(importFilter->GetOutput());
+				filter->ThresholdOutside(lowerThreshold, upperThreshold);
+				filter->SetOutsideValue(0);
 
-				auto hough_filter = circle->get_filter();
+				using RescaleTypeToFloat = itk::RescaleIntensityImageFilter<ImageType, FloatImageType>;
+				auto rescaletofloat = RescaleTypeToFloat::New();
+				rescaletofloat->SetInput(filter->GetOutput());
+				rescaletofloat->SetOutputMinimum(0.0);
+				rescaletofloat->SetOutputMaximum(1.0);
+
+				using FilterTypeBlur = itk::DiscreteGaussianImageFilter<FloatImageType, FloatImageType>;
+				auto blurfilter = FilterTypeBlur::New();
+				blurfilter->SetInput(rescaletofloat->GetOutput());
+				blurfilter->SetVariance(10);
+				blurfilter->SetMaximumKernelWidth(10);
+
+				using RescaleTypeToImageType = itk::RescaleIntensityImageFilter<FloatImageType,ImageType>;
+				auto rescaletochar = RescaleTypeToImageType::New();
+				rescaletochar->SetInput(blurfilter->GetOutput());
+				rescaletochar->SetOutputMinimum(0);
+				rescaletochar->SetOutputMaximum(255);
+
+				using AccumulatorPixelType = unsigned int;
+				using RadiusPixelType = double;
+				ImageType::IndexType localIndex;
+				using AccumulatorImageType = itk::Image<AccumulatorPixelType, Dimension>;
+
+
+				using HoughTransformFilterType =
+					itk::HoughTransform2DCirclesImageFilter<PixelType,
+					AccumulatorPixelType,
+					RadiusPixelType>;
+				auto houghFilter = HoughTransformFilterType::New();
+
+				houghFilter->SetNumberOfCircles(3);
+				houghFilter->SetMinimumRadius(configuration.minimum_radius);
+				houghFilter->SetMaximumRadius(configuration.maximum_radius);
+				houghFilter->SetSweepAngle(configuration.sweep_angle);
+				houghFilter->SetSigmaGradient(configuration.sigma_gradient);
+				houghFilter->SetVariance(configuration.variance);
+				houghFilter->SetDiscRadiusRatio(configuration.disk_ratio);
+
+
+				using RescaleType = itk::RescaleIntensityImageFilter<AccumulatorImageType, ImageType>;
+				auto rescale = RescaleType::New();
+				rescale->SetInput(houghFilter->GetOutput());
+				rescale->SetOutputMinimum(0);
+				rescale->SetOutputMaximum(itk::NumericTraits<PixelType>::max());
+
+				houghFilter->SetInput(rescaletochar->GetOutput());
+
 				try {
-					hough_filter->Update();
+					rescale->Update();
 				}
 				catch (...) {
 					return false;
 				}
-				
-				auto image = import_filer->get_output();
 
-				
+				auto localImage = rescale->GetOutput();
+				HoughTransformFilterType::CirclesListType circles;
+				circles = houghFilter->GetCircles();
 				using OutputPixelType = unsigned char;
-				using OutputImageType = itk::Image<OutputPixelType, 2>;
-				OutputImageType::Pointer localOutputImage = OutputImageType::New();
-				OutputImageType::RegionType region;
-				region.SetSize(image->GetLargestPossibleRegion().GetSize());
-				region.SetIndex(image->GetLargestPossibleRegion().GetIndex());
+				using OutputImageType = itk::Image<OutputPixelType, Dimension>;
+
+				auto localOutputImage = OutputImageType::New();
+				region.SetSize(localImage->GetLargestPossibleRegion().GetSize());
+				region.SetIndex(localImage->GetLargestPossibleRegion().GetIndex());
 				localOutputImage->SetRegions(region);
-				localOutputImage->SetOrigin(image->GetOrigin());
-				localOutputImage->SetSpacing(image->GetSpacing());
-				localOutputImage->Allocate(true);
+				localOutputImage->SetOrigin(localImage->GetOrigin());
+				localOutputImage->SetSpacing(localImage->GetSpacing());
+				localOutputImage->Allocate(true); // initializes buffer to zero
 
-				auto circles = hough_filter->GetCircles();
-
-				std::vector<Point> local_centers;
-				local_centers.reserve(circles.size());
-
-				using CirclesListType = curan::image::filtering::CircleFilter::HoughTransformFilterType::CirclesListType;
+				using CirclesListType = HoughTransformFilterType::CirclesListType;
 				CirclesListType::const_iterator itCircles = circles.begin();
-				OutputImageType::IndexType localIndex;
+
 				while (itCircles != circles.end())
 				{
-					const curan::image::filtering::CircleFilter::HoughTransformFilterType::CircleType::PointType centerPoint =
-						(*itCircles)->GetCenterInObjectSpace();
-					Point p;
-					p.x = centerPoint[0];
-					p.y = centerPoint[1];
-					local_centers.push_back(p);
 					for (double angle = 0; angle <= itk::Math::twopi;
 						angle += itk::Math::pi / 60.0)
 					{
-
-						using IndexValueType = OutputImageType::IndexType::IndexValueType;
+						const HoughTransformFilterType::CircleType::PointType centerPoint =
+							(*itCircles)->GetCenterInObjectSpace();
+						using IndexValueType = ImageType::IndexType::IndexValueType;
 						localIndex[0] = itk::Math::Round<IndexValueType>(
 							centerPoint[0] +
 							(*itCircles)->GetRadiusInObjectSpace()[0] * std::cos(angle));
@@ -152,7 +205,7 @@ struct ProcessingMessage {
 					itCircles++;
 				}
 
-				list_of_recorded_points.push_back(local_centers);
+				//list_of_recorded_points.push_back(local_centers);
 
 				auto lam = [localOutputImage,x,y](SkPixmap& requested) {
 					auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
@@ -172,7 +225,7 @@ struct ProcessingMessage {
 
 	void communicate() {
 		using namespace curan::communication;
-		button->update_color(SK_ColorGREEN);
+		button->set_waiting_color(SK_ColorGREEN);
 		io_context.reset();
 		interface_igtl igtlink_interface;
 		Client::Info construction{ io_context,igtlink_interface };
@@ -191,7 +244,7 @@ struct ProcessingMessage {
 		};
 		auto connectionstatus = client.connect(lam);
 		auto val = io_context.run();
-		button->update_color(SK_ColorRED);
+		button->set_waiting_color(SK_ColorRED);
 		return;
 	}
 
@@ -205,12 +258,12 @@ struct ProcessingMessage {
 int main(int argc, char* argv[]) {
 	using namespace curan::ui;
 	curan::utils::initialize_thread_pool(10);
-	if (argc != 2) {
-		std::cout << "the ultrasound calibration app only parses one argument, the port of the server to connect to\n";
+	if (argc != 9) { //-port -minimum_radius -maximum_radius -sweep_angle -sigma_gradient -variance -disk_ratio -threshold
+		std::cout << "the ultrasound calibration app only parses one argument, the port of the server to connect to\n the minimum radius, maximum radius, the sweep angle, the sigma gradient and the disk ratio";
 		return 1;
 	}
 
-	std::string val = { argv[1] };
+	std::string val = { argv[1] }; //port
 	size_t pos = 0;
 	int port = 0;
 	try{
@@ -224,6 +277,112 @@ int main(int argc, char* argv[]) {
 		return 2;
 	}
 
+	val = { argv[2] }; //minimum radius
+	double minimum_radius = 0;
+	try {
+		minimum_radius = std::stod(val, &pos);
+	}
+	catch (...) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 3;
+	}
+	if (pos != val.size()) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 2;
+	}
+
+	val = { argv[3] }; //maximum radius
+	double maximum_radius = 0;
+	try {
+		maximum_radius = std::stod(val, &pos);
+	}
+	catch (...) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 3;
+	}
+	if (pos != val.size()) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 2;
+	}
+
+	val = { argv[4] }; //minimum radius
+	double sweep_angle = 0;
+	try {
+		sweep_angle = std::stod(val, &pos);
+	}
+	catch (...) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 3;
+	}
+	if (pos != val.size()) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 2;
+	}
+
+	val = { argv[5] }; //minimum radius
+	double sigma_gradient = 0;
+	try {
+		sigma_gradient = std::stod(val, &pos);
+	}
+	catch (...) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 3;
+	}
+	if (pos != val.size()) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 2;
+	}
+
+	val = { argv[6] }; //minimum radius
+	double variance = 0;
+	try {
+		variance = std::stod(val, &pos);
+	}
+	catch (...) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 3;
+	}
+	if (pos != val.size()) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 2;
+	}
+
+	val = { argv[7] }; //minimum radius
+	double disk_ratio = 0;
+	try {
+		disk_ratio = std::stod(val, &pos);
+	}
+	catch (...) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 3;
+	}
+	if (pos != val.size()) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 2;
+	}
+
+	val = { argv[8] }; //minimum radius
+	int threshold = 0;
+	try {
+		threshold = std::stoi(val, &pos);
+	}
+	catch (...) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 3;
+	}
+	if (pos != val.size()) {
+		std::cout << "the parsed port is not valid, please try again\n";
+		return 2;
+	}
+
+	ConfigurationData data;
+	data.disk_ratio = disk_ratio;
+	data.maximum_radius = maximum_radius;
+	data.minimum_radius = minimum_radius;
+	data.sigma_gradient = sigma_gradient;
+	data.sweep_angle = sweep_angle;
+	data.variance = variance;
+	data.threshold = (unsigned char)threshold;
 	std::cout << "the received port is: " << port << "\n";
 
 	IconResources* resources = IconResources::Load("C:/dev/Curan/resources");
@@ -281,6 +440,7 @@ int main(int argc, char* argv[]) {
 
 	std::shared_ptr<ProcessingMessage> processing = std::make_shared<ProcessingMessage>(processed_viwer, open_viwer,flag);
 	processing->port = port;
+	processing->configuration = data;
 
 	auto lam = [processing]() {
 		if (!processing->connection_status->value()) {
@@ -310,7 +470,7 @@ int main(int argc, char* argv[]) {
 	std::shared_ptr<Button> button = Button::make(infor);
 
 	processing->button = button;
-	button->update_color(SK_ColorRED);
+	button->set_waiting_color(SK_ColorRED);
 
 	info.arrangement = curan::ui::Arrangement::VERTICAL;
 	info.divisions = { 0.0 , 0.1 , 1.0 };
