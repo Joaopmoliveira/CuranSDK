@@ -1,12 +1,15 @@
 #include "userinterface/widgets/Button.h"
-#include "userinterface/widgets/SingletonIconResources.h"
 #include "utils/Overloading.h"
 #include <variant>
 
 namespace curan {
 namespace ui {
+
+	Button::Info::Info(IconResources& in_system_icons) : system_icons{ in_system_icons } {
+	
+	}
 		
-Button::Button(Info& info) : Drawable{ info.size } {
+Button::Button(Info& info) : Drawable{ info.size }, system_icons{ info.system_icons } {
 	hover_color = info.hover_color;
 	waiting_color = info.waiting_color;
 	click_color = info.click_color;
@@ -17,11 +20,11 @@ Button::Button(Info& info) : Drawable{ info.size } {
 	text_font.measureText(info.button_text.data(), info.button_text.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(info.button_text.c_str(), text_font);
 
-	IconResources* resources = IconResources::Get();
-
-	sk_sp<SkImage> image;
-		resources->GetIcon(image, info.icon_identifier);
+	if (system_icons.is_loaded()) {
+		sk_sp<SkImage> image;
+		system_icons.get_icon(image, info.icon_identifier);
 		icon_data = image;
+	}
 }
 
 std::shared_ptr<Button> Button::make(Info& info) {

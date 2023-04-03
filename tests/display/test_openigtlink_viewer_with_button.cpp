@@ -4,7 +4,7 @@
 #include "userinterface/widgets/Container.h"
 #include "userinterface/widgets/OpenIGTLinkViewer.h"
 #include "userinterface/widgets/ImageDisplay.h"
-#include "userinterface/widgets/SingletonIconResources.h"
+#include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Page.h"
 #include "utils/Logger.h"
 #include <iostream>
@@ -182,7 +182,7 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 int main() {
 	try {
 		using namespace curan::ui;
-		IconResources* resources = IconResources::Load("C:/dev/Curan/resources");
+		IconResources resources{ "C:/dev/Curan/resources" };
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
@@ -233,7 +233,7 @@ int main() {
 		info.layouts = { open_viwer,processed_viwer };
 		std::shared_ptr<Container> container2 = Container::make(info);
 
-		Button::Info infor;
+		Button::Info infor{ resources };
 		infor.button_text = "Connect";
 		infor.click_color = SK_ColorGRAY;
 		infor.hover_color = SK_ColorDKGRAY;

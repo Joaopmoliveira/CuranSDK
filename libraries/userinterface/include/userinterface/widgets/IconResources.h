@@ -1,5 +1,5 @@
-#ifndef CURAN_SINGLETONICONRESOURCES_HEADER_FILE_
-#define CURAN_SINGLETONICONRESOURCES_HEADER_FILE_
+#ifndef CURAN_ICONRESOURCES_HEADER_FILE_
+#define CURAN_ICONRESOURCES_HEADER_FILE_
 
 #include <string>
 #include <map>
@@ -17,18 +17,21 @@ namespace curan {
 			SkPixmap pixmap;
 			sk_sp<SkImage> image_to_display;
 
-			static Icon read(const char* s);
+			bool read(const char* s);
 		};
 
-		struct IconResources
+		class IconResources
 		{
-			static IconResources* Get();
-			static IconResources* Load(std::string path_to_resources);
-			void GetIcon(sk_sp<SkImage>& image, std::string icon_string);
-		private:
-			static bool is_initialized;
+			bool is_initialized = false;
 			std::map<std::string, Icon> icon_map;
+
+		public:
 			IconResources(std::string path_to_resources);
+			bool load(std::string path_to_resources);
+			void get_icon(sk_sp<SkImage>& image, std::string icon_string);
+			inline bool is_loaded() {
+				return is_initialized;
+			}
 		};
 	}
 }

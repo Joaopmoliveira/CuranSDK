@@ -6,6 +6,7 @@
 #include "utils/Cancelable.h"
 #include "utils/Lockable.h"
 #include <optional>
+#include "IconResources.h"
 
 namespace curan {
 	namespace ui {
@@ -27,6 +28,9 @@ namespace curan {
 				SkRect size;
 				std::string button_text;
 				std::string icon_identifier;
+				IconResources& system_icons;
+
+				Info(IconResources& in_system_icons);
 			};
 
 		enum class ButtonStates {
@@ -47,6 +51,7 @@ namespace curan {
 			sk_sp<SkImage> icon_data;
 			ButtonStates current_state = ButtonStates::WAITING;
 			std::optional<buttoncallback> callback;
+			IconResources& system_icons;
 
 		public:
 			Button(Info& info);

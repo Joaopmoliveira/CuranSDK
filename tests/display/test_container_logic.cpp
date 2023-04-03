@@ -1,11 +1,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "userinterface/Window.h"
-#include "userinterface/widgets/SingletonIconResources.h"
+#include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/Container.h"
 #include <iostream>
 
-void create_horizontal_layout() {
+void create_horizontal_layout(curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 	SkColor colbuton = { SK_ColorWHITE };
 	SkColor coltext = { SK_ColorBLACK };
@@ -36,7 +36,7 @@ void create_horizontal_layout() {
 	paint_square2.setStrokeWidth(4);
 	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
 
-	Button::Info infor;
+	Button::Info infor{ resources };
 	infor.button_text = "Touch!";
 	infor.click_color = SK_ColorRED;
 	infor.hover_color = SK_ColorCYAN;
@@ -88,7 +88,7 @@ void create_horizontal_layout() {
 		std::cout << "Rect left: " << rec.fLeft << " top: " << rec.fTop << " right: " << rec.fRight << " bottom: " << rec.fBottom << "\n";
 }
 
-void create_vertical_layout() {
+void create_vertical_layout(curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 	SkColor colbuton = { SK_ColorWHITE };
 	SkColor coltext = { SK_ColorBLACK };
@@ -119,7 +119,7 @@ void create_vertical_layout() {
 	paint_square2.setStrokeWidth(4);
 	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
 
-	Button::Info infor;
+	Button::Info infor{ resources };
 	infor.button_text = "Touch!";
 	infor.click_color = SK_ColorRED;
 	infor.hover_color = SK_ColorCYAN;
@@ -171,7 +171,7 @@ void create_vertical_layout() {
 		std::cout << "Rect left: " << rec.fLeft << " top: " << rec.fTop << " right: " << rec.fRight << " bottom: " << rec.fBottom << "\n";
 }
 
-void create_variable_layout() {
+void create_variable_layout(curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 	SkColor colbuton = { SK_ColorWHITE };
 	SkColor coltext = { SK_ColorBLACK };
@@ -202,7 +202,7 @@ void create_variable_layout() {
 	paint_square2.setStrokeWidth(4);
 	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
 
-	Button::Info infor;
+	Button::Info infor{ resources };
 	infor.button_text = "Touch!";
 	infor.click_color = SK_ColorRED;
 	infor.hover_color = SK_ColorCYAN;
@@ -254,7 +254,7 @@ void create_variable_layout() {
 }
 
 
-void create_horizontal_layout_propagate() {
+void create_horizontal_layout_propagate(curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 	SkColor colbuton = { SK_ColorWHITE };
 	SkColor coltext = { SK_ColorBLACK };
@@ -285,7 +285,7 @@ void create_horizontal_layout_propagate() {
 	paint_square2.setStrokeWidth(4);
 	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
 
-	Button::Info infor;
+	Button::Info infor{ resources };
 	infor.button_text = "Touch!";
 	infor.click_color = SK_ColorRED;
 	infor.hover_color = SK_ColorCYAN;
@@ -347,7 +347,7 @@ void create_horizontal_layout_propagate() {
 }
 
 
-void create_vertical_layout_propagate() {
+void create_vertical_layout_propagate(curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 	SkColor colbuton = { SK_ColorWHITE };
 	SkColor coltext = { SK_ColorBLACK };
@@ -378,7 +378,7 @@ void create_vertical_layout_propagate() {
 	paint_square2.setStrokeWidth(4);
 	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
 
-	Button::Info infor;
+	Button::Info infor{ resources };
 	infor.button_text = "Touch!";
 	infor.click_color = SK_ColorRED;
 	infor.hover_color = SK_ColorCYAN;
@@ -440,7 +440,7 @@ void create_vertical_layout_propagate() {
 }
 
 
-void create_nested_layout_propagate(){
+void create_nested_layout_propagate(curan::ui::IconResources& resources){
 	using namespace curan::ui;
 	SkColor colbuton = { SK_ColorWHITE };
 	SkColor coltext = { SK_ColorBLACK };
@@ -471,7 +471,7 @@ void create_nested_layout_propagate(){
 	paint_square2.setStrokeWidth(4);
 	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
 
-	Button::Info infor;
+	Button::Info infor{ resources };
 	infor.button_text = "Touch!";
 	infor.click_color = SK_ColorRED;
 	infor.hover_color = SK_ColorCYAN;
@@ -528,7 +528,7 @@ void create_nested_layout_propagate(){
 	std::cout << "Button4 left: " << pos4.fLeft << " top: " << pos4.fTop << " right: " << pos4.fRight << " bottom: " << pos4.fBottom << "\n";
 };
 
-void test_linearization() {
+void test_linearization(curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 	SkColor colbuton = { SK_ColorWHITE };
 	SkColor coltext = { SK_ColorBLACK };
@@ -559,7 +559,7 @@ void test_linearization() {
 	paint_square2.setStrokeWidth(4);
 	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
 
-	Button::Info infor;
+	Button::Info infor{ resources };
 	infor.button_text = "Touch!";
 	infor.click_color = SK_ColorRED;
 	infor.hover_color = SK_ColorCYAN;
@@ -609,14 +609,14 @@ void test_linearization() {
 int main() {
 	try {
 		using namespace curan::ui;
-		IconResources* resources = IconResources::Load("C:/dev/Curan/resources");
-		create_horizontal_layout();
-		create_vertical_layout();
-		create_variable_layout();
-		create_horizontal_layout_propagate();
-		create_vertical_layout_propagate();
-		create_nested_layout_propagate();
-		test_linearization();
+		IconResources resources{ "C:/dev/Curan/resources" };
+		create_horizontal_layout(resources);
+		create_vertical_layout(resources);
+		create_variable_layout(resources);
+		create_horizontal_layout_propagate(resources);
+		create_vertical_layout_propagate(resources);
+		create_nested_layout_propagate(resources);
+		test_linearization(resources);
 	}
 	catch (...) {
 		std::cout << "Failed";

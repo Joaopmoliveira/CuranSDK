@@ -4,7 +4,7 @@
 #include "userinterface/widgets/Container.h"
 #include "userinterface/widgets/OpenIGTLinkViewer.h"
 #include "userinterface/widgets/ImageDisplay.h"
-#include "userinterface/widgets/SingletonIconResources.h"
+#include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Page.h"
 #include "utils/Logger.h"
 #include "utils/Flag.h"
@@ -26,6 +26,7 @@ float s[3];
 
 
 struct ConfigurationData {
+	int port = 0;
 	double minimum_radius = 10;
 	double maximum_radius = 25;
 	double sweep_angle = 0;
@@ -254,21 +255,28 @@ struct ProcessingMessage {
 };
 
 
-
-int main(int argc, char* argv[]) {
-	using namespace curan::ui;
-	curan::utils::initialize_thread_pool(10);
+int parse_arguments(const int& argc, char* argv[], ConfigurationData& data) {
 	if (argc != 9) { //-port -minimum_radius -maximum_radius -sweep_angle -sigma_gradient -variance -disk_ratio -threshold
-		std::cout << "the ultrasound calibration app only parses one argument, the port of the server to connect to\n the minimum radius, maximum radius, the sweep angle, the sigma gradient and the disk ratio";
+		std::cout << "the ultrasound calibration app only parses nine arguments: \n"
+			"- the port of the server to connect to\n"
+			"- the minimum radius\n"
+			"- maximum radius\n"
+			"- the sweep angle\n"
+			"- the sigma gradient\n"
+			"- variance\n"
+			"- disk_ratio\n"
+			"- threshold\n"
+			"and the disk ratio";
 		return 1;
 	}
 
 	std::string val = { argv[1] }; //port
 	size_t pos = 0;
 	int port = 0;
-	try{
+	try {
 		port = std::stoi(val, &pos);
-	} catch (...) {
+	}
+	catch (...) {
 		std::cout << "the parsed port is not valid, please try again\n";
 		return 3;
 	}
@@ -283,11 +291,11 @@ int main(int argc, char* argv[]) {
 		minimum_radius = std::stod(val, &pos);
 	}
 	catch (...) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed minimum radius is not valid, please try again\n";
 		return 3;
 	}
 	if (pos != val.size()) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed minimum radius is not valid, please try again\n";
 		return 2;
 	}
 
@@ -297,85 +305,85 @@ int main(int argc, char* argv[]) {
 		maximum_radius = std::stod(val, &pos);
 	}
 	catch (...) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed maximum radius is not valid, please try again\n";
 		return 3;
 	}
 	if (pos != val.size()) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed maximum radius is not valid, please try again\n";
 		return 2;
 	}
 
-	val = { argv[4] }; //minimum radius
+	val = { argv[4] }; //sweep angle
 	double sweep_angle = 0;
 	try {
 		sweep_angle = std::stod(val, &pos);
 	}
 	catch (...) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed sweep angle is not valid, please try again\n";
 		return 3;
 	}
 	if (pos != val.size()) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed sweep angle is not valid, please try again\n";
 		return 2;
 	}
 
-	val = { argv[5] }; //minimum radius
+	val = { argv[5] }; //sigma gradient 
 	double sigma_gradient = 0;
 	try {
 		sigma_gradient = std::stod(val, &pos);
 	}
 	catch (...) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed sigma gradient is not valid, please try again\n";
 		return 3;
 	}
 	if (pos != val.size()) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed sigma gradient is not valid, please try again\n";
 		return 2;
 	}
 
-	val = { argv[6] }; //minimum radius
+	val = { argv[6] }; //variance
 	double variance = 0;
 	try {
 		variance = std::stod(val, &pos);
 	}
 	catch (...) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed variance is not valid, please try again\n";
 		return 3;
 	}
 	if (pos != val.size()) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed variance is not valid, please try again\n";
 		return 2;
 	}
 
-	val = { argv[7] }; //minimum radius
+	val = { argv[7] }; //disk ratio
 	double disk_ratio = 0;
 	try {
 		disk_ratio = std::stod(val, &pos);
 	}
 	catch (...) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed disk ratio is not valid, please try again\n";
 		return 3;
 	}
 	if (pos != val.size()) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed disk ratio is not valid, please try again\n";
 		return 2;
 	}
 
-	val = { argv[8] }; //minimum radius
+	val = { argv[8] }; //threshold
 	int threshold = 0;
 	try {
 		threshold = std::stoi(val, &pos);
 	}
 	catch (...) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed threshold is not valid, please try again\n";
 		return 3;
 	}
 	if (pos != val.size()) {
-		std::cout << "the parsed port is not valid, please try again\n";
+		std::cout << "the parsed threshold is not valid, please try again\n";
 		return 2;
 	}
 
-	ConfigurationData data;
+	data.port = port;
 	data.disk_ratio = disk_ratio;
 	data.maximum_radius = maximum_radius;
 	data.minimum_radius = minimum_radius;
@@ -383,9 +391,19 @@ int main(int argc, char* argv[]) {
 	data.sweep_angle = sweep_angle;
 	data.variance = variance;
 	data.threshold = (unsigned char)threshold;
-	std::cout << "the received port is: " << port << "\n";
+	return 0;
+}
 
-	IconResources* resources = IconResources::Load("C:/dev/Curan/resources");
+
+int main(int argc, char* argv[]) {
+	using namespace curan::ui;
+	curan::utils::initialize_thread_pool(10);
+
+	ConfigurationData data;
+	parse_arguments(argc,argv,data);
+	std::cout << "the received port is: " << data.port << "\n";
+
+	IconResources resources{ "C:/dev/Curan/resources" };
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
 	DisplayParams param{ std::move(context),2200,1800 };
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
@@ -439,7 +457,7 @@ int main(int argc, char* argv[]) {
 	auto flag = curan::utils::Flag::make_shared_flag();
 
 	std::shared_ptr<ProcessingMessage> processing = std::make_shared<ProcessingMessage>(processed_viwer, open_viwer,flag);
-	processing->port = port;
+	processing->port = data.port;
 	processing->configuration = data;
 
 	auto lam = [processing]() {
@@ -456,7 +474,7 @@ int main(int argc, char* argv[]) {
 		}
 	};
 
-	Button::Info infor;
+	Button::Info infor{ resources };
 	infor.button_text = "Connect";
 	infor.click_color = SK_ColorGRAY;
 	infor.hover_color = SK_ColorDKGRAY;

@@ -1,13 +1,13 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "userinterface/Window.h"
 #include "userinterface/widgets/Button.h"
-#include "userinterface/widgets/SingletonIconResources.h"
+#include "userinterface/widgets/IconResources.h"
 #include <iostream>
 
 int main() {
 	try {
 		using namespace curan::ui;
-		IconResources* resources = IconResources::Load("C:/dev/Curan/resources");
+		IconResources resources{"C:/dev/Curan/resources"};
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
@@ -45,7 +45,7 @@ int main() {
 			std::cout << "received signal!\n";
 		};
 
-		Button::Info infor;
+		Button::Info infor{ resources };
 		infor.button_text = "Touch!";
 		infor.click_color = SK_ColorRED;
 		infor.hover_color = SK_ColorCYAN;
