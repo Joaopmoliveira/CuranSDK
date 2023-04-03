@@ -12,23 +12,20 @@ bool RadioButton::Info::validate() {
 }
 
 RadioButton::RadioButton(Info& info) {
-	color = info.color;
+	hover_color = info.hover_color;
+	click_color = info.click_color;
+	waiting_color = info.waiting_color;
 	text_font = info.text_font;
-	size = info.size;
-	background_color = info.background_color;
 	is_exclusive = info.is_exclusive;
 
 	paint.setStyle(SkPaint::kStroke_Style);
 	paint.setAntiAlias(true);
 	paint.setStrokeWidth(1);
-	paint.setColor(color);
+	paint.setColor(waiting_color);
 
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(0.5);
-	paint_text.setColor(color);
+	paint_text = info.paintText;
 
-	switch (info.layout) {
+	switch (info.arrangement) {
 	case Arrangement::HORIZONTAL:
 	{
 		double normalized_dimensions = 1.0 / info.options.size();

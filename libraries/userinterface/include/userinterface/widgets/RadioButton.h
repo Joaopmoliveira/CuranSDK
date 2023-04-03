@@ -32,8 +32,9 @@ namespace curan {
 				SkColor click_color;
 				SkPaint paintButton;
 				SkPaint paintText;
-				SkFont textFont;
+				SkFont text_font;
 				SkRect size;
+				bool is_exclusive = false;
 				std::vector<std::string> options;
 
 				Info();
