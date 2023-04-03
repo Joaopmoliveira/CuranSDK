@@ -19,10 +19,14 @@ namespace curan {
 				HORIZONTAL
 			};
 
+			struct RadioItem {
+				SkRect normalized_position;
+				sk_sp<SkTextBlob> text;
+				bool is_selected = false;
+			};
 
 			struct Info {
 				Arrangement arrangement = Arrangement::VERTICAL;
-				std::optional<buttoncallback> callback;
 				SkColor hover_color;
 				SkColor waiting_color;
 				SkColor click_color;
@@ -54,8 +58,10 @@ namespace curan {
 			SkFont text_font;
 			sk_sp<SkTextBlob> text;
 			sk_sp<SkImage> icon_data;
-			ButtonStates current_state = ButtonStates::WAITING;
-			std::optional<buttoncallback> callback;
+			RadioButtonStates current_state = RadioButtonStates::WAITING;
+			std::vector<RadioItem> radio_items;
+			bool is_exclusive = false;
+			int current_selected_index = -1;
 
 		public:
 			RadioButton(Info& info);
@@ -84,12 +90,12 @@ namespace curan {
 				waiting_color = new_waiting_color;
 			}
 
-			inline ButtonStates get_current_state() {
+			inline RadioButtonStates get_current_state() {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				return current_state;
 			}
 
-			inline void set_current_state(ButtonStates state) {
+			inline void set_current_state(RadioButtonStates state) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				current_state = state;
 			}

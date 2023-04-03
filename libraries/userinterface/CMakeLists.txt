@@ -11,6 +11,7 @@ src/Container.cpp
 src/Drawable.cpp
 src/Page.cpp
 src/ImageDisplay.cpp
+src/RadioButton.cpp
 )
 
 target_include_directories(userinterface
