@@ -43,6 +43,7 @@ struct ProcessingMessage {
 	std::shared_ptr<curan::ui::OpenIGTLinkViewer> open_viwer;
 	std::shared_ptr<curan::utils::Flag> connection_status;
 	std::shared_ptr<curan::ui::Button> button;
+	std::shared_ptr<curan::ui::Button> button_start_collection;
 	asio::io_context io_context;
 	ConfigurationData configuration;
 	std::list<std::vector<Point>> list_of_recorded_points;
@@ -214,7 +215,7 @@ struct ProcessingMessage {
 					itCircles++;
 				}
 
-				if (should_record.load()) {
+				if (should_record.load() && local_centers.size()>0) {
 					list_of_recorded_points.push_back(local_centers);
 				}
 
@@ -498,11 +499,18 @@ int main(int argc, char* argv[]) {
 	infor.callback = lam;
 	std::shared_ptr<Button> start_connection = Button::make(infor);
 
+	auto change_recording_status = [processing]() {
+		auto val = !processing->should_record.load();
+		processing->should_record.store(val);
+		SkColor color = (val) ? SK_ColorCYAN : SK_ColorBLACK;
+		processing->button_start_collection->set_waiting_color(color);
+	};
+
 	infor.button_text = "Data Collection";
 	infor.click_color = SK_ColorGRAY;
 	infor.hover_color = SK_ColorDKGRAY;
 	infor.waiting_color = SK_ColorBLACK;
-	infor.callback = std::nullopt;
+	infor.callback = change_recording_status;
 	infor.size = SkRect::MakeWH(200, 80);
 	std::shared_ptr<Button> button_start_collection = Button::make(infor);
 
@@ -510,6 +518,7 @@ int main(int argc, char* argv[]) {
 	std::shared_ptr<Container> button_container = Container::make(info);
 
 	processing->button = start_connection;
+	processing->button_start_collection = button_start_collection;
 	start_connection->set_waiting_color(SK_ColorRED);
 
 	info.arrangement = curan::ui::Arrangement::VERTICAL;
