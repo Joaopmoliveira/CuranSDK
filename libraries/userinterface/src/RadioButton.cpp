@@ -10,7 +10,7 @@ RadioButton::Info::Info() {
 }
 
 bool RadioButton::Info::validate() {
-
+	return true;
 }
 
 RadioButton::RadioButton(Info& info) : Drawable{ info.size }{
@@ -32,7 +32,6 @@ RadioButton::RadioButton(Info& info) : Drawable{ info.size }{
 			RadioItem item;
 			item.normalized_position = SkRect::MakeXYWH(left_coordinate, 0, normalized_dimensions, 1);
 			item.text = SkTextBlob::MakeFromString(info.options[index].c_str(), text_font);;
-			text_font.measureText(info.options[index].data(), info.options[index].size(), SkTextEncoding::kUTF8, &item.text_size);;
 			radio_items.push_back(item);
 			left_coordinate += normalized_dimensions;
 		}
@@ -45,8 +44,7 @@ RadioButton::RadioButton(Info& info) : Drawable{ info.size }{
 		for (int index = 0; index < info.options.size(); ++index) {
 			RadioItem item;
 			item.normalized_position = SkRect::MakeXYWH(0, left_coordinate, 1, normalized_dimensions);
-			item.text = SkTextBlob::MakeFromString(info.options[index].c_str(), text_font);;
-			text_font.measureText(info.options[index].data(), info.options[index].size(), SkTextEncoding::kUTF8, &item.text_size);;
+			item.text = SkTextBlob::MakeFromString(info.options[index].c_str(), text_font);
 			radio_items.push_back(item);
 			left_coordinate += normalized_dimensions;
 		}
@@ -75,11 +73,11 @@ drawablefunction RadioButton::draw() {
 			canvas->drawRect(component.item_position, paint_button);
 
 			if (component.is_selected) {
-				canvas->drawLine({ component.item_position.fLeft,component.item_position.fTop }, { component.item_position.fRight,component.item_position.fBottom }, paint);
-				canvas->drawLine({ component.item_position.fRight,component.item_position.fTop }, { component.item_position.fLeft,component.item_position.fBottom }, paint);
+				canvas->drawLine({ component.item_position.fLeft,component.item_position.fTop }, { component.item_position.fRight,component.item_position.fBottom }, paint_button);
+				canvas->drawLine({ component.item_position.fRight,component.item_position.fTop }, { component.item_position.fLeft,component.item_position.fBottom }, paint_button);
 			}
-
-			canvas->drawTextBlob(component.text, component.item_position.fRight + RADIO_BUTTON_DIMENSION, component.item_position.centerY() + component.text_size.height() / 2, paint_text);
+			auto textbounds = component.text->bounds();
+			canvas->drawTextBlob(component.text, component.item_position.fRight + RADIO_BUTTON_DIMENSION, component.item_position.centerY() + textbounds.height() / 2, paint_text);
 		}
 	};
 	return lamb;
@@ -98,16 +96,17 @@ callablefunction RadioButton::call() {
 			},
 			[this,&interacted](Press arg) {
 				if (interacts(arg.xpos, arg.ypos)) {
+					bool was_item_clicked = false;
 					for (auto& component : radio_items) {
 						if (((arg.xpos > component.item_position.fLeft) && (arg.xpos < component.item_position.fRight))
 							&& ((arg.ypos > component.item_position.fTop) && (arg.ypos < component.item_position.fBottom)))
 						{
+							was_item_clicked = true;
 							component.is_selected = !component.is_selected;
-							if (current_selected_index >= 0 && current_selected_index != index && is_exclusive) {
-								RadioItem* selected_item = radio_components.data() + current_selected_index;
-								selected_item->is_selected = false;
-							}
 						}
+						if (is_exclusive && !was_item_clicked)
+							component.is_selected = false;
+						was_item_clicked = false;
 				}
 			};
 			},
@@ -143,6 +142,7 @@ void RadioButton::framebuffer_resize() {
 			temp.centerY() - (RADIO_BUTTON_DIMENSION) / 2.0,
 			RADIO_BUTTON_DIMENSION,
 			RADIO_BUTTON_DIMENSION);
+}
 }
 
 }
