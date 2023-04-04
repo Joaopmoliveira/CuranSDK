@@ -129,7 +129,7 @@ and fill this file with the following contents.
       "inheritEnvironments": [ "msvc_x64" ],
       "buildRoot": "${env.BuildDir}\\${name}",
       "buildCommandArgs": "-v",
-      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH="~path/development/depot_tools/skia/out/Release" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DSKIA_SOURCE_DIR:PATH="~path/development/depot_tools/skia" -DCMAKE_PREFIX_PATH=\"~path/development/ITK/build/release""
+      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH='~path/development/depot_tools/skia/out/Release' -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DSKIA_SOURCE_DIR:PATH='~path/development/depot_tools/skia' -DCMAKE_PREFIX_PATH='~path/development/ITK/build/release'"
     },
     {
       "name": "x64-Debug",
@@ -137,7 +137,7 @@ and fill this file with the following contents.
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64" ],
       "buildRoot": "${env.BuildDir}\\${name}",
-      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH="~path/development/depot_tools/skia/out/Debug" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug -DSKIA_SOURCE_DIR:PATH="~path/development/depot_tools/skia" -DCMAKE_PREFIX_PATH=\"~path/development/ITK/build/debug""
+      "cmakeCommandArgs": "-DSKIA_BINARY_DIR:PATH='~path/development/depot_tools/skia/out/Debug' -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug -DSKIA_SOURCE_DIR:PATH='~path/development/depot_tools/skia' -DCMAKE_PREFIX_PATH='~path/development/ITK/build/debug'"
     }
   ]
 }
