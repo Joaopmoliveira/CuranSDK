@@ -34,6 +34,7 @@ struct ConfigurationData {
 	double variance = 1;
 	double disk_ratio = 1;
 	unsigned char threshold = 100;
+
 };
 
 struct ProcessingMessage {
@@ -45,6 +46,7 @@ struct ProcessingMessage {
 	asio::io_context io_context;
 	ConfigurationData configuration;
 	std::list<std::vector<Point>> list_of_recorded_points;
+	std::atomic<bool> should_record = false;
 	short port = 10000;
 
 	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer, 
@@ -181,13 +183,19 @@ struct ProcessingMessage {
 				using CirclesListType = HoughTransformFilterType::CirclesListType;
 				CirclesListType::const_iterator itCircles = circles.begin();
 
+				std::vector<Point> local_centers;
+				local_centers.reserve(circles.size());
 				while (itCircles != circles.end())
 				{
+					const HoughTransformFilterType::CircleType::PointType centerPoint =
+						(*itCircles)->GetCenterInObjectSpace();
+					Point p;
+					p.x = centerPoint[0];
+					p.y = centerPoint[1];
+					local_centers.push_back(p);
 					for (double angle = 0; angle <= itk::Math::twopi;
 						angle += itk::Math::pi / 60.0)
 					{
-						const HoughTransformFilterType::CircleType::PointType centerPoint =
-							(*itCircles)->GetCenterInObjectSpace();
 						using IndexValueType = ImageType::IndexType::IndexValueType;
 						localIndex[0] = itk::Math::Round<IndexValueType>(
 							centerPoint[0] +
@@ -206,7 +214,9 @@ struct ProcessingMessage {
 					itCircles++;
 				}
 
-				//list_of_recorded_points.push_back(local_centers);
+				if (should_record.load()) {
+					list_of_recorded_points.push_back(local_centers);
+				}
 
 				auto lam = [localOutputImage,x,y](SkPixmap& requested) {
 					auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
@@ -257,7 +267,7 @@ struct ProcessingMessage {
 
 int parse_arguments(const int& argc, char* argv[], ConfigurationData& data) {
 	if (argc != 9) { //-port -minimum_radius -maximum_radius -sweep_angle -sigma_gradient -variance -disk_ratio -threshold
-		std::cout << "the ultrasound calibration app only parses nine arguments: \n"
+		std::cout << "the ultrasound calibration app parses nine arguments: \n"
 			"- the port of the server to connect to\n"
 			"- the minimum radius\n"
 			"- maximum radius\n"
@@ -266,7 +276,8 @@ int parse_arguments(const int& argc, char* argv[], ConfigurationData& data) {
 			"- variance\n"
 			"- disk_ratio\n"
 			"- threshold\n"
-			"and the disk ratio";
+			"and the disk ratio\n"
+			"If the nine are not supplied default values will be used";
 		return 1;
 	}
 
@@ -452,7 +463,7 @@ int main(int argc, char* argv[]) {
 	info.arrangement = curan::ui::Arrangement::HORIZONTAL;
 	info.divisions = { 0.0 , 0.5 , 1.0 };
 	info.layouts = { open_viwer,processed_viwer };
-	std::shared_ptr<Container> container2 = Container::make(info);
+	std::shared_ptr<Container> viwers_container = Container::make(info);
 
 	auto flag = curan::utils::Flag::make_shared_flag();
 
@@ -485,14 +496,25 @@ int main(int argc, char* argv[]) {
 	infor.size = SkRect::MakeWH(100, 80);
 	infor.textFont = text_font;
 	infor.callback = lam;
-	std::shared_ptr<Button> button = Button::make(infor);
+	std::shared_ptr<Button> start_connection = Button::make(infor);
 
-	processing->button = button;
-	button->set_waiting_color(SK_ColorRED);
+	infor.button_text = "Data Collection";
+	infor.click_color = SK_ColorGRAY;
+	infor.hover_color = SK_ColorDKGRAY;
+	infor.waiting_color = SK_ColorBLACK;
+	infor.callback = std::nullopt;
+	infor.size = SkRect::MakeWH(200, 80);
+	std::shared_ptr<Button> button_start_collection = Button::make(infor);
+
+	info.layouts = { start_connection,button_start_collection };
+	std::shared_ptr<Container> button_container = Container::make(info);
+
+	processing->button = start_connection;
+	start_connection->set_waiting_color(SK_ColorRED);
 
 	info.arrangement = curan::ui::Arrangement::VERTICAL;
 	info.divisions = { 0.0 , 0.1 , 1.0 };
-	info.layouts = { button,container2 };
+	info.layouts = { button_container,viwers_container };
 	std::shared_ptr<Container> container = Container::make(info);
 	
 	auto rec = viewer->get_size();
