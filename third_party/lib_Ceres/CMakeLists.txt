@@ -6,4 +6,6 @@ SET(PROVIDE_UNINSTALL_TARGET OFF CACHE BOOL "Add a custom target to ease removal
 SET(MSVC_USE_STATIC_CRT ON CACHE BOOL "MS Visual Studio: Use static C-Run Time Library in place of shared." FORCE)
 SET(MINIGLOG ON CACHE BOOL "Use a stripped down version of glog." FORCE)
 SET(GFLAGS OFF CACHE BOOL "Enable Google Flags." FORCE)
+
 add_subdirectory(ceres_solver)
+

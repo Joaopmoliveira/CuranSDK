@@ -2,11 +2,7 @@
 #define CURAN_WIRE_CALIBRATION_HEADER_FILE_
 
 #include <vector>
-#include <itkeigen/Eigen/Core>
-#include <charconv>
-#include <cassert>
-#include <cmath>
-#include <nlohmann/json.hpp>
+#include <Eigen/Core>
 
 // Use (void) to silence unused warnings.
 #define assertm(exp, msg) assert(((void)msg, exp))

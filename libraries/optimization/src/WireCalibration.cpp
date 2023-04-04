@@ -1,4 +1,7 @@
 #include "optimization/WireCalibration.h"
+#include <charconv>
+#include <cassert>
+#include <nlohmann/json.hpp>
 
 namespace curan {
 namespace optim {
