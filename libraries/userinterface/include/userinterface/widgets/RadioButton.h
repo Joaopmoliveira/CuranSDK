@@ -21,6 +21,7 @@ namespace curan {
 
 			struct RadioItem {
 				SkRect normalized_position;
+				SkRect item_position;
 				sk_sp<SkTextBlob> text;
 				bool is_selected = false;
 			};
@@ -53,7 +54,7 @@ namespace curan {
 			SkColor hover_color;
 			SkColor waiting_color;
 			SkColor click_color;
-			SkPaint paint;
+			SkPaint paint_button;
 			SkPaint paint_text;
 			SkRect widget_rect_text;
 			SkFont text_font;
@@ -62,7 +63,6 @@ namespace curan {
 			RadioButtonStates current_state = RadioButtonStates::WAITING;
 			std::vector<RadioItem> radio_items;
 			bool is_exclusive = false;
-			int current_selected_index = -1;
 
 		public:
 			RadioButton(Info& info);
