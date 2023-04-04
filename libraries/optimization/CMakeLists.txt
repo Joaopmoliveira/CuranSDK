@@ -13,5 +13,7 @@ target_include_directories(optimization
 target_link_libraries(optimization PUBLIC
 utils
 Ceres::ceres
-${ITK_LIBRARIES}
+ITKInternalEigen3::Eigen
+nlohmann_json 
+nlohmann_json::nlohmann_json 
 )
