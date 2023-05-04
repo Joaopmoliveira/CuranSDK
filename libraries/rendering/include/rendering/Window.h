@@ -3,6 +3,8 @@
 
 #include <vsg/all.h>
 #include <vsgXchange/all.h>
+#include <variant>
+#include "Renderable.h"
 
 namespace curan {
     namespace renderable {

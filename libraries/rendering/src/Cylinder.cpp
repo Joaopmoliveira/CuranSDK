@@ -1,4 +1,4 @@
-#include "renderable/Cylinder.h"
+#include "rendering/Cylinder.h"
 
 namespace curan {
 namespace renderable {

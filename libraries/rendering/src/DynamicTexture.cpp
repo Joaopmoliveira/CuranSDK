@@ -1,4 +1,4 @@
-#include "renderable/DynamicTexture.h"
+#include "rendering/DynamicTexture.h"
 
 namespace curan {
 namespace renderable {

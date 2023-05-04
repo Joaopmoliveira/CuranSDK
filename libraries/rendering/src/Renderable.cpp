@@ -1,4 +1,4 @@
-#include "renderable/Renderable.h"
+#include "rendering/Renderable.h"
 
 namespace curan {
 namespace renderable {

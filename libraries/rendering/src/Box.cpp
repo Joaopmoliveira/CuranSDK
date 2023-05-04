@@ -1,4 +1,4 @@
-#include "renderable/Box.h"
+#include "rendering/Box.h"
 
 namespace curan {
 namespace renderable {

@@ -1,4 +1,4 @@
-#include "renderable/Capsule.h"
+#include "rendering/Capsule.h"
 
 namespace curan {
 namespace renderable {

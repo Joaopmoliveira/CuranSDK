@@ -1,4 +1,4 @@
-#include "renderable/Window.h"
+#include "rendering/Window.h"
 
 namespace curan {
 namespace renderable {

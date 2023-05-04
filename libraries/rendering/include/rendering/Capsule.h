@@ -1,6 +1,11 @@
 #ifndef CURAN_CAPSULE_RENDERABLE_HEADER_FILE_
 #define CURAN_CAPSULE_RENDERABLE_HEADER_FILE_
 
+#include <vsg/all.h>
+#include <vsgXchange/all.h>
+#include "Renderable.h"
+#include <optional>
+
 namespace curan {
     namespace renderable {
         struct Capsule : public vsg::Inherit<Renderable, Capsule> {

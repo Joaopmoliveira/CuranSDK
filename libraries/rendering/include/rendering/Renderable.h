@@ -1,6 +1,10 @@
 #ifndef CURAN_RENDERABLE_RENDERABLE_HEADER_FILE_
 #define CURAN_RENDERABLE_RENDERABLE_HEADER_FILE_
 
+#include <vsg/all.h>
+#include <vsgXchange/all.h>
+#include <string>
+
 namespace curan {
     namespace renderable {
 
