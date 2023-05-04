@@ -47,7 +47,9 @@ namespace curan {
 
             using tranverser = std::function<void(const std::unordered_map<std::string, vsg::ref_ptr<Renderable>>&)>;
 
-            void transverse_identifiers(tranverser&& transv);
+            inline void transverse_identifiers(tranverser&& transv) {
+                transv(contained_objects);
+            }
 
             friend Window& operator<<(Window& ref, vsg::ref_ptr<Renderable> renderable);
         };
