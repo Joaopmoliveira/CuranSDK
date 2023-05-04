@@ -277,7 +277,6 @@ struct DynamicTexture : public vsg::Inherit<Renderable, DynamicTexture> {
         async_updater->update_operation.set_execution_data(std::move(update), textureData);
         viewer->addUpdateOperation(async_updater);        
     }
-
 };
 
 vsg::ref_ptr<vsg::Node> create_bottom()
