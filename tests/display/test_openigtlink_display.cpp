@@ -228,7 +228,7 @@ int main() {
 		open_viwer->set_position(rect);
 
 		auto lamd = [open_viwer]() {
-			generate_image_message(open_viwer);
+			generate_transform_message(open_viwer);
 		};
 		std::thread message_generator{ lamd };
 

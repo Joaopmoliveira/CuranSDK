@@ -26,14 +26,14 @@ float s[3];
 
 
 struct ConfigurationData {
-	int port = 0;
-	double minimum_radius = 10;
-	double maximum_radius = 25;
-	double sweep_angle = 0;
-	double sigma_gradient = 1;
-	double variance = 1;
+	int port = 18944;
+	double minimum_radius = 8;
+	double maximum_radius = 10;
+	double sweep_angle = 0.06;
+	double sigma_gradient = 10;
+	double variance = 10;
 	double disk_ratio = 1;
-	unsigned char threshold = 100;
+	unsigned char threshold = 110;
 
 };
 
@@ -150,15 +150,13 @@ struct ProcessingMessage {
 				houghFilter->SetSigmaGradient(configuration.sigma_gradient);
 				houghFilter->SetVariance(configuration.variance);
 				houghFilter->SetDiscRadiusRatio(configuration.disk_ratio);
-
+				houghFilter->SetInput(rescaletochar->GetOutput());
 
 				using RescaleType = itk::RescaleIntensityImageFilter<AccumulatorImageType, ImageType>;
 				auto rescale = RescaleType::New();
 				rescale->SetInput(houghFilter->GetOutput());
 				rescale->SetOutputMinimum(0);
 				rescale->SetOutputMaximum(itk::NumericTraits<PixelType>::max());
-
-				houghFilter->SetInput(rescaletochar->GetOutput());
 
 				try {
 					rescale->Update();
@@ -167,62 +165,62 @@ struct ProcessingMessage {
 					return false;
 				}
 
-				auto localImage = rescale->GetOutput();
-				HoughTransformFilterType::CirclesListType circles;
-				circles = houghFilter->GetCircles();
-				using OutputPixelType = unsigned char;
-				using OutputImageType = itk::Image<OutputPixelType, Dimension>;
+				ImageType::Pointer localImage = rescale->GetOutput();
+				//HoughTransformFilterType::CirclesListType circles;
+				//circles = houghFilter->GetCircles();
+				//using OutputPixelType = unsigned char;
+				//using OutputImageType = itk::Image<OutputPixelType, Dimension>;
 
-				auto localOutputImage = OutputImageType::New();
-				region.SetSize(localImage->GetLargestPossibleRegion().GetSize());
-				region.SetIndex(localImage->GetLargestPossibleRegion().GetIndex());
-				localOutputImage->SetRegions(region);
-				localOutputImage->SetOrigin(localImage->GetOrigin());
-				localOutputImage->SetSpacing(localImage->GetSpacing());
-				localOutputImage->Allocate(true); // initializes buffer to zero
+				//auto localOutputImage = OutputImageType::New();
+				//region.SetSize(localImage->GetLargestPossibleRegion().GetSize());
+				//region.SetIndex(localImage->GetLargestPossibleRegion().GetIndex());
+				//localOutputImage->SetRegions(region);
+				//localOutputImage->SetOrigin(localImage->GetOrigin());
+				//localOutputImage->SetSpacing(localImage->GetSpacing());
+				//localOutputImage->Allocate(true); // initializes buffer to zero
 
-				using CirclesListType = HoughTransformFilterType::CirclesListType;
-				CirclesListType::const_iterator itCircles = circles.begin();
+				//using CirclesListType = HoughTransformFilterType::CirclesListType;
+				//CirclesListType::const_iterator itCircles = circles.begin();
 
-				std::vector<Point> local_centers;
-				local_centers.reserve(circles.size());
-				while (itCircles != circles.end())
-				{
-					const HoughTransformFilterType::CircleType::PointType centerPoint =
-						(*itCircles)->GetCenterInObjectSpace();
-					Point p;
-					p.x = centerPoint[0];
-					p.y = centerPoint[1];
-					local_centers.push_back(p);
-					for (double angle = 0; angle <= itk::Math::twopi;
-						angle += itk::Math::pi / 60.0)
-					{
-						using IndexValueType = ImageType::IndexType::IndexValueType;
-						localIndex[0] = itk::Math::Round<IndexValueType>(
-							centerPoint[0] +
-							(*itCircles)->GetRadiusInObjectSpace()[0] * std::cos(angle));
-						localIndex[1] = itk::Math::Round<IndexValueType>(
-							centerPoint[1] +
-							(*itCircles)->GetRadiusInObjectSpace()[0] * std::sin(angle));
-						OutputImageType::RegionType outputRegion =
-							localOutputImage->GetLargestPossibleRegion();
+				//std::vector<Point> local_centers;
+				//local_centers.reserve(circles.size());
+				//while (itCircles != circles.end())
+				//{
+				//	const HoughTransformFilterType::CircleType::PointType centerPoint =
+				//		(*itCircles)->GetCenterInObjectSpace();
+				//	Point p;
+				//	p.x = centerPoint[0];
+				//	p.y = centerPoint[1];
+				//	local_centers.push_back(p);
+				//	for (double angle = 0; angle <= itk::Math::twopi;
+				//		angle += itk::Math::pi / 60.0)
+				//	{
+				//		using IndexValueType = ImageType::IndexType::IndexValueType;
+				//		localIndex[0] = itk::Math::Round<IndexValueType>(
+				//			centerPoint[0] +
+				//			(*itCircles)->GetRadiusInObjectSpace()[0] * std::cos(angle));
+				//		localIndex[1] = itk::Math::Round<IndexValueType>(
+				//			centerPoint[1] +
+				//			(*itCircles)->GetRadiusInObjectSpace()[0] * std::sin(angle));
+				//		OutputImageType::RegionType outputRegion =
+				//			localOutputImage->GetLargestPossibleRegion();
 
-						if (outputRegion.IsInside(localIndex))
-						{
-							localOutputImage->SetPixel(localIndex, 255);
-						}
-					}
-					itCircles++;
-				}
+				//		if (outputRegion.IsInside(localIndex))
+				//		{
+				//			localOutputImage->SetPixel(localIndex, 255);
+				//		}
+				//	}
+				//	itCircles++;
+				//}
 
-				if (should_record.load() && local_centers.size()>0) {
-					list_of_recorded_points.push_back(local_centers);
-				}
+				//if (should_record.load() && local_centers.size()>0) {
+				//	list_of_recorded_points.push_back(local_centers);
+				//}
 
-				auto lam = [localOutputImage,x,y](SkPixmap& requested) {
+				auto lam = [localImage,x,y](SkPixmap& requested) {
 					auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-					size_t row_size = x * sizeof(char);
-					SkPixmap map{ inf,localOutputImage->GetBufferPointer(),row_size };
+					size_t row_size = x * sizeof(unsigned char);
+					SkPixmap map{ inf,localImage->GetBufferPointer(),row_size };
 					requested = map;
 					return;
 				};
@@ -440,7 +438,7 @@ int main(int argc, char* argv[]) {
 	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
 	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 
-	SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
+	SkFont text_font = SkFont(typeface, 15, 1.0f, 0.0f);
 	text_font.setEdging(SkFont::Edging::kAntiAlias);
 
 	SkPaint paint_square2;
@@ -568,8 +566,18 @@ int main(int argc, char* argv[]) {
 	curan::utils::terminate_thread_pool();
 	std::cout << "Number of frame recordings: " << processing->list_of_recorded_points.size() << "\n";
 	std::cout << "Received spacing: \n";
-	for (const auto& f : s)
-		std::cout << " s :" << f;
+	
+	int counter_f = 1;
+	for (const auto& f : processing->list_of_recorded_points) {
+		int counter_p = 0;
+		std::cout << "slice : ";
+		for (const auto& p : f) {
+			std::cout << "	point(" << counter_p << ") -> (" << p.x << ", " << p.y << ")\n";
+			++counter_p;
+		}
+		++counter_f;
+	}
+
 	std::cout << "\n";
 	return 0;
 }
