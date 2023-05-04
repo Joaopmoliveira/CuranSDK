@@ -1,7 +1,27 @@
 #include "rendering/Window.h"
+#include "utils/Overloading.h"
+#include "utils/Logger.h"
 
 namespace curan {
 namespace renderable {
+
+vsg::ref_ptr<vsg::Node> create_bottom()
+{
+    auto builder = vsg::Builder::create();
+
+    auto scene = vsg::Group::create();
+
+    vsg::GeometryInfo geomInfo;
+    vsg::StateInfo stateInfo;
+    stateInfo.two_sided = true;
+    geomInfo.position.set(0.0, 0.0, 0);
+    geomInfo.dx.set(3, 0.0, 0.0);
+    geomInfo.dy.set(0.0, 3, 0.0);
+
+    scene->addChild(builder->createQuad(geomInfo, stateInfo));
+
+    return scene;
+}
 
 Window::Window(Info& info) {
     traits = vsg::WindowTraits::create();
@@ -9,7 +29,7 @@ Window::Window(Info& info) {
     traits->debugLayer = info.is_debug;
     traits->apiDumpLayer = info.api_dump;
 
-    std::visit(overloaded{
+    std::visit(utils::overloaded{
                 [this](bool arg) { traits->fullscreen = true; },
                 [this](WindowSize size) { traits->width, traits->height; traits->fullscreen = false; }
         }, info.window_size);
@@ -81,7 +101,7 @@ void Window::run() {
         viewer->recordAndSubmit();
         viewer->present();
         auto end = std::chrono::steady_clock::now();
-        std::printf("Elapsed time in mili: %d\n", (int)std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+       // utils::cout << "Elapsed time in mili: " << (int)std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() <<"\n";
     }
 }
 
@@ -89,7 +109,7 @@ Window& operator<<(Window& ref, vsg::ref_ptr<Renderable> renderable) {
     if (!renderable->obj_contained)
         return ref;
     if (!ref.window) {
-        std::cout << "failed to get window\n";
+        utils::cout << "failed to get window\n";
         return ref;
     }
     vsg::observer_ptr<vsg::Viewer> observer_viewer(ref.viewer);
