@@ -32,7 +32,7 @@ drawablefunction Slider::draw() {
         drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
 
         paint.setColor(slider_color);
-        canvas->drawRect(drawable, paint);
+		canvas->drawRoundRect(drawable, drawable.height() / 2.0, drawable.height() / 2.0, paint);
 
         switch (current_state) {
         case SliderStates::WAITING:
@@ -47,7 +47,7 @@ drawablefunction Slider::draw() {
         }
 
         SkRect dragable = SkRect::MakeXYWH(drawable.x()+ drawable.width() * current_value, drawable.y(), drawable.width() * dragable_percent_size, drawable.height());
-        canvas->drawRect(dragable, paint);
+		canvas->drawRoundRect(dragable, drawable.height() / 2.0, drawable.height() / 2.0,paint);
     };
     return lamb;
 }
