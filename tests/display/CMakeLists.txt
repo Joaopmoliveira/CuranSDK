@@ -25,6 +25,12 @@ target_link_libraries(test_slider PUBLIC
 userinterface
 )
 
+add_executable(test_textblob test_textblob.cpp)
+
+target_link_libraries(test_textblob PUBLIC
+userinterface
+)
+
 add_executable(test_openigtlinkviewer test_openigtlink_display.cpp)
 
 target_link_libraries(test_openigtlinkviewer PUBLIC

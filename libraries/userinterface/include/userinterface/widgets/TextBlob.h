@@ -18,8 +18,6 @@ namespace curan {
 				SkFont textFont;
 				SkRect size;
 				std::string button_text;
-
-				Info();
 			};
 
 		private:
