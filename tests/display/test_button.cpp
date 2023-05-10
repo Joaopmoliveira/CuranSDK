@@ -35,12 +35,6 @@ int main() {
 		SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
 		text_font.setEdging(SkFont::Edging::kAntiAlias);
 
-		SkPaint paint_square2;
-		paint_square2.setStyle(SkPaint::kFill_Style);
-		paint_square2.setAntiAlias(true);
-		paint_square2.setStrokeWidth(4);
-		paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
-
 		auto callback = []() {
 			std::cout << "received signal!\n";
 		};

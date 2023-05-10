@@ -15,25 +15,28 @@ int main() {
 		SkColor colbuton = { SK_ColorWHITE };
 
 		SkPaint paint_square;
-		paint_square.setStyle(SkPaint::kFill_Style);
+		paint_square.setStyle(SkPaint::kStrokeAndFill_Style);
 		paint_square.setAntiAlias(true);
-		paint_square.setStrokeWidth(4);
+		paint_square.setStrokeWidth(20);
 		paint_square.setColor(colbuton);
+		paint_square.setStrokeJoin(SkPaint::kRound_Join);
+		paint_square.setStrokeCap(SkPaint::kRound_Cap);
 
 		auto callback = []() {
 			std::cout << "received signal!\n";
 		};
 
 		Slider::Info infor{};
-		infor.click_color = SK_ColorRED;
+		infor.click_color = SK_ColorLTGRAY;
 		infor.hover_color = SK_ColorCYAN;
-		infor.waiting_color = SK_ColorGRAY;
+		infor.waiting_color = SK_ColorDKGRAY;
+		infor.sliderColor = SK_ColorGRAY;
 		infor.paintButton = paint_square;
-		infor.size = SkRect::MakeWH(200, 90);
+		infor.size = SkRect::MakeWH(200, 40);
 		infor.callback = callback;
 		infor.limits = { 0.0f, 300.0f };
 		std::shared_ptr<Slider> button = Slider::make(infor);
-		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 200);
+		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 40);
 		button->set_position(rect);
 		auto caldraw = button->draw();
 		auto calsignal = button->call();

@@ -54,6 +54,16 @@ namespace curan {
 			callablefunction call() override;
 			void framebuffer_resize() override;
 
+			inline void set_current_value(float in_current_value) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				current_value = in_current_value;
+			}
+
+			inline float get_current_value() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return current_value;
+			}
+
 			inline SkColor get_hover_color() {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				return hover_color;
