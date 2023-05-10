@@ -21,13 +21,11 @@ namespace curan {
 				SkColor waiting_color;
 				SkColor click_color;
 				SkPaint paintButton;
-				SkPaint slicerColor;
-				SkPaint paintText;
-				SkFont textFont;
+				SkColor sliderColor;
 				SkRect size;
-				std::array<double, 2> limits = { 0.0,100.0 };
-
-				Info(IconResources& in_system_icons);
+				std::array<float, 2> limits = { 0.0f,100.0f };
+				float current_value;
+				float dragable_percent_size = 0.1f;
 			};
 
 			enum class SliderStates {
@@ -42,11 +40,12 @@ namespace curan {
 			SkColor click_color;
 			SkColor slider_color;
 			SkPaint paint;
-			SkPaint paint_text;
 			SkRect widget_rect_text;
 			SliderStates current_state = SliderStates::WAITING;
 			std::optional<buttoncallback> callback;
-			std::array<double, 2> limits = { 0.0,100.0 };
+			std::array<float, 2> limits = { 0.0f,100.0f };
+			float current_value = 0.5;
+			float dragable_percent_size = 0.1f;
 
 		public:
 			Slider(Info& info);

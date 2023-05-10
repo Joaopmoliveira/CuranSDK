@@ -11,8 +11,10 @@ Slider::Slider(Info& info) : Drawable{ info.size } {
     waiting_color = info.waiting_color;
     click_color = info.click_color;
     paint = info.paintButton;
-    paint_text = info.paintText;
     callback = info.callback;
+    slider_color = info.sliderColor;
+    limits = info.limits;
+    dragable_percent_size = info.dragable_percent_size;
 }
 
 std::shared_ptr<Slider> Slider::make(Info& info) {
@@ -22,6 +24,19 @@ std::shared_ptr<Slider> Slider::make(Info& info) {
 drawablefunction Slider::draw() {
     auto lamb = [this](SkCanvas* canvas) {
         std::lock_guard<std::mutex> g{ get_mutex() };
+
+        auto widget_rect = get_position();
+        auto size = get_size();
+
+        SkRect drawable = size;
+        drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
+
+        float text_offset_x = drawable.centerX() - widget_rect_text.width() / 2.0f;
+        float text_offset_y = drawable.centerY() + widget_rect_text.height() / 2.0f;
+
+        paint.setColor(slider_color);
+        canvas->drawRect(drawable, paint);
+
         switch (current_state) {
         case SliderStates::WAITING:
             paint.setColor(waiting_color);
@@ -33,16 +48,9 @@ drawablefunction Slider::draw() {
             paint.setColor(click_color);
             break;
         }
-        auto widget_rect = get_position();
-        auto size = get_size();
 
-        SkRect drawable = size;
-        drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
-
-        float text_offset_x = drawable.centerX() - widget_rect_text.width() / 2.0f;
-        float text_offset_y = drawable.centerY() + widget_rect_text.height() / 2.0f;
-
-        canvas->drawRect(drawable, paint);
+        SkRect dragable = SkRect::MakeXYWH(drawable.x()+ drawable.width() * (current_value- dragable_percent_size/2.0), drawable.y(), drawable.width() * dragable_percent_size, drawable.height());
+        canvas->drawRect(dragable, paint);
     };
     return lamb;
 }

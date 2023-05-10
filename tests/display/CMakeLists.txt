@@ -19,6 +19,12 @@ target_link_libraries(test_button PUBLIC
 userinterface
 )
 
+add_executable(test_slider test_slider.cpp)
+
+target_link_libraries(test_slider PUBLIC
+userinterface
+)
+
 add_executable(test_openigtlinkviewer test_openigtlink_display.cpp)
 
 target_link_libraries(test_openigtlinkviewer PUBLIC
