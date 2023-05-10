@@ -5,9 +5,9 @@
 namespace curan {
 namespace ui {
 
-	Button::Info::Info(IconResources& in_system_icons) : system_icons{ in_system_icons } {
+Button::Info::Info(IconResources& in_system_icons) : system_icons{ in_system_icons } {
 	
-	}
+}
 		
 Button::Button(Info& info) : Drawable{ info.size }, system_icons{ info.system_icons } {
 	hover_color = info.hover_color;

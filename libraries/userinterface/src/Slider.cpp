@@ -1,0 +1,116 @@
+#include "userinterface/widgets/Slider.h"
+#include "utils/Overloading.h"
+#include <variant>
+
+namespace curan {
+namespace ui {
+
+
+Slider::Slider(Info& info) : Drawable{ info.size } {
+    hover_color = info.hover_color;
+    waiting_color = info.waiting_color;
+    click_color = info.click_color;
+    paint = info.paintButton;
+    paint_text = info.paintText;
+    callback = info.callback;
+}
+
+std::shared_ptr<Slider> Slider::make(Info& info) {
+    return std::make_shared<Slider>(info);
+}
+
+drawablefunction Slider::draw() {
+    auto lamb = [this](SkCanvas* canvas) {
+        std::lock_guard<std::mutex> g{ get_mutex() };
+        switch (current_state) {
+        case SliderStates::WAITING:
+            paint.setColor(waiting_color);
+            break;
+        case SliderStates::HOVER:
+            paint.setColor(hover_color);
+            break;
+        case SliderStates::PRESSED:
+            paint.setColor(click_color);
+            break;
+        }
+        auto widget_rect = get_position();
+        auto size = get_size();
+
+        SkRect drawable = size;
+        drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
+
+        float text_offset_x = drawable.centerX() - widget_rect_text.width() / 2.0f;
+        float text_offset_y = drawable.centerY() + widget_rect_text.height() / 2.0f;
+
+        canvas->drawRect(drawable, paint);
+    };
+    return lamb;
+}
+
+callablefunction Slider::call() {
+    auto lamb = [this](Signal sig) {
+        bool interacted = false;
+        std::visit(utils::overloaded{
+            [this](Empty arg) {
+
+            },
+            [this,&interacted](Move arg) {
+                auto previous_state = get_current_state();
+                auto current_state_local = get_current_state();
+                if (interacts(arg.xpos,arg.ypos))
+                    current_state_local = SliderStates::HOVER;
+                else
+                    current_state_local = SliderStates::WAITING;
+                if (previous_state != current_state_local)
+                    interacted = true;
+                set_current_state(current_state_local);
+            },
+            [this,&interacted](Press arg) {
+                auto previous_state = get_current_state();
+                auto current_state_local = get_current_state();
+                if (interacts(arg.xpos,arg.ypos)) {
+                    current_state_local = SliderStates::PRESSED;
+                    if (callback) {
+                        auto val = *callback;
+                        val();
+                    }
+
+                }
+                else
+                    current_state_local = SliderStates::WAITING;
+                if (previous_state != current_state_local)
+                    interacted = true;
+                set_current_state(current_state_local);
+            },
+            [this](Scroll arg) {;
+
+            },
+            [this,&interacted](Unpress arg) {
+                auto previous_state = get_current_state();
+                auto current_state_local = get_current_state();
+                if (interacts(arg.xpos, arg.ypos))
+                    current_state_local = SliderStates::HOVER;
+                else
+                    current_state_local = SliderStates::WAITING;
+                if (previous_state != current_state_local)
+                    interacted = true;
+                set_current_state(current_state_local);
+            },
+            [this](Key arg) {
+
+            },
+            [this](ItemDropped arg) {;
+
+            } },
+            sig);
+        return interacted;
+    };
+    return lamb;
+}
+
+void Slider::framebuffer_resize() {
+
+}
+
+}
+}
