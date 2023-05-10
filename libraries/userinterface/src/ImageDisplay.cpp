@@ -1,6 +1,7 @@
 #include "userinterface/widgets/ImageDisplay.h"
 #include "utils/TheadPool.h"
 #include <iostream>
+#include "userinterface/widgets/ConfigDraw.h"
 
 namespace curan {
 namespace ui {

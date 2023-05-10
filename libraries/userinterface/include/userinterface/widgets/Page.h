@@ -33,7 +33,7 @@ namespace curan {
 
 			void draw(SkCanvas* canvas);
 
-			bool propagate_signal(Signal sig);
+			bool propagate_signal(Signal sig, ConfigDraw* config);
 
 			void propagate_size_change(SkRect& new_size);
 

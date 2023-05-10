@@ -1,4 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
+#include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/Window.h"
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/Container.h"
@@ -534,6 +535,8 @@ int main(int argc, char* argv[]) {
 	int width = rec.width();
 	int height = rec.height();
 
+	ConfigDraw config;
+
 	while (!glfwWindowShouldClose(viewer->window)) {
 		auto start = std::chrono::high_resolution_clock::now();
 		SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
@@ -547,7 +550,7 @@ int main(int argc, char* argv[]) {
 		page->draw(canvas);
 		auto signals = viewer->process_pending_signals();
 		if (!signals.empty())
-			page->propagate_signal(signals.back());
+			page->propagate_signal(signals.back(), &config);
 		glfwPollEvents();
 
 		bool val = viewer->swapBuffers();

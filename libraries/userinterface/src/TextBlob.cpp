@@ -1,3 +1,4 @@
+#include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/widgets/TextBlob.h"
 #include "utils/Overloading.h"
 #include <variant>

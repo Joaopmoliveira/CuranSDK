@@ -1,8 +1,10 @@
 #define STB_IMAGE_IMPLEMENTATION
+#include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/Window.h"
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/Container.h"
 #include "userinterface/widgets/OpenIGTLinkViewer.h"
+#include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/widgets/ImageDisplay.h"
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Page.h"
@@ -265,6 +267,8 @@ int main() {
 		};
 		std::thread message_generator{ lamd };
 
+		ConfigDraw config_draw;
+
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
@@ -278,7 +282,7 @@ int main() {
 			page->draw(canvas);
 			auto signals = viewer->process_pending_signals();
 			if (!signals.empty())
-				page->propagate_signal(signals.back());
+				page->propagate_signal(signals.back(),&config_draw);
 			glfwPollEvents();
 
 			bool val = viewer->swapBuffers();

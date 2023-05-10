@@ -1,4 +1,5 @@
 #include "userinterface/widgets/Container.h"
+#include "userinterface/widgets/ConfigDraw.h"
 
 namespace curan {
 namespace ui {

@@ -1,6 +1,7 @@
 #include "userinterface/Window.h"
 #include "userinterface/widgets/OpenIGTLinkViewer.h"
 #include <csignal>
+#include "userinterface/widgets/ConfigDraw.h"
 #include "utils/Logger.h"
 
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
@@ -232,6 +233,8 @@ int main() {
 		};
 		std::thread message_generator{ lamd };
 
+		ConfigDraw config_draw;
+
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
@@ -241,7 +244,7 @@ int main() {
 			glfwPollEvents();
 			auto signals = viewer->process_pending_signals();
 			if (!signals.empty())
-				calsignal(signals.back());
+				calsignal(signals.back(),&config_draw);
 			bool val = viewer->swapBuffers();
 			if (!val)
 				curan::utils::cout << "failed to swap buffers\n";

@@ -24,10 +24,10 @@ void Page::draw(SkCanvas* canvas) {
 
 }
 
-bool Page::propagate_signal(Signal sig) {
+bool Page::propagate_signal(Signal sig, ConfigDraw* config_draw) {
 	bool local = false;
 	for (auto& sigcall : compiled_scene.callable_signal) {
-		if (sigcall(sig)) {
+		if (sigcall(sig, config_draw)) {
 			local = true;
 			break;
 		}

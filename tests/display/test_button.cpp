@@ -1,4 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
+#include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/Window.h"
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/IconResources.h"
@@ -56,6 +57,8 @@ int main() {
 		auto caldraw = button->draw();
 		auto calsignal = button->call();
 
+		ConfigDraw config_draw;
+
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
@@ -65,7 +68,7 @@ int main() {
 			glfwPollEvents();
 			auto signals = viewer->process_pending_signals();
 			if (!signals.empty())
-				calsignal(signals.back());
+				calsignal(signals.back(),&config_draw);
 			bool val = viewer->swapBuffers();
 			if (!val)
 				std::cout << "failed to swap buffers\n";

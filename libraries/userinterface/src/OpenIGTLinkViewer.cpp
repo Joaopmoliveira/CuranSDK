@@ -1,5 +1,5 @@
 #include "userinterface/widgets/OpenIGTLinkViewer.h"
-
+#include "userinterface/widgets/ConfigDraw.h"
 #include <variant>
 #include "utils/Overloading.h"
 #include "utils/StringManipulation.h"
