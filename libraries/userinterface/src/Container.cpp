@@ -68,7 +68,7 @@ drawablefunction Container::draw() {
 }
 
 callablefunction Container::call() {
-	auto lamb = [this](Signal canvas) {
+	auto lamb = [this](Signal canvas, ConfigDraw* config) {
 		return false;
 	};
 	return lamb;

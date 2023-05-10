@@ -59,7 +59,7 @@ drawablefunction ImageDisplay::draw() {
 }
 
 callablefunction ImageDisplay::call() {
-	auto lamb = [this](Signal canvas) {
+	auto lamb = [this](Signal canvas, ConfigDraw* config) {
 
 		return false;
 	};

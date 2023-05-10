@@ -8,8 +8,10 @@
 namespace curan {
 	namespace ui {
 
+		struct ConfigDraw;
+
 		using drawablefunction = std::function<void(SkCanvas* canvas)>;
-		using callablefunction = std::function<bool(Signal sig)>;
+		using callablefunction = std::function<bool(Signal sig, ConfigDraw*)>;
 
 		enum class Arrangement {
 			VERTICAL,

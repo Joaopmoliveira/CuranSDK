@@ -332,7 +332,7 @@ drawablefunction OpenIGTLinkViewer::draw() {
 }
 
 callablefunction OpenIGTLinkViewer::call() {
-	auto lamb = [this](Signal sig) {
+	auto lamb = [this](Signal sig, ConfigDraw* config) {
 		std::lock_guard<std::mutex> g{ get_mutex() };
 		bool interacted = false;
 		std::visit(utils::overloaded{

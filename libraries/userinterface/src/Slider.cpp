@@ -53,7 +53,7 @@ drawablefunction Slider::draw() {
 }
 
 callablefunction Slider::call() {
-	auto lamb = [this](Signal sig) {
+	auto lamb = [this](Signal sig, ConfigDraw* config) {
 		bool interacted = false;
 		std::visit(utils::overloaded{
 			[this](Empty arg) {
