@@ -3,15 +3,17 @@
 namespace curan {
 namespace ui {
 
-	Page::Page(Info info) : scene{ info.contained }, backgroundcolor{ info.backgroundcolor}, is_dirty{ true } {
-
+Page::Page(Info info) {
+	LightWeightPage::Info info_core;
+	info_core.backgroundcolor = info.backgroundcolor;
+	info_core.contained = info.contained;
+	info_core.post_sig = [](Signal sig) {
+	};
+	main_page = LightWeightPage::make(info_core);
 }
 
 std::shared_ptr<Page> Page::make(Info info) {
-	compilation_results results;
-	info.contained->linearize_container(results.callable_draw,results.callable_signal);
 	std::shared_ptr<Page> page = std::shared_ptr<Page>(new Page{ info });
-	page->compiled_scene = results;
 	return page;
 }
 

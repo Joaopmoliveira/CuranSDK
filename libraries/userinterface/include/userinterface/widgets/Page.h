@@ -3,16 +3,10 @@
 
 #include <vector>
 #include <atomic>
-#include "Container.h"
+#include "LightWeightPage.h"
 
 namespace curan {
 	namespace ui {
-
-		struct compilation_results {
-			std::vector<drawablefunction> callable_draw;
-			std::vector<callablefunction> callable_signal;
-		};
-
 		class Page {
 		public:
 			struct Info {
@@ -21,11 +15,9 @@ namespace curan {
 			};
 
 		private:	
+			std::shared_ptr<LightWeightPage> main_page;
+			std::stack<std::shared_ptr<LightWeightPage>> page_stack;
 
-			std::shared_ptr<Container> scene;
-			std::atomic<bool> is_dirty = false;
-			compilation_results compiled_scene;
-			SkColor backgroundcolor = SK_ColorWHITE;
 			Page(Info drawables);
 
 		public:
@@ -38,7 +30,10 @@ namespace curan {
 			void propagate_size_change(SkRect& new_size);
 
 			inline void set_dirtyness(bool var) {
-				is_dirty = var;
+				if (page_stack.empty())
+					main_page->set_dirtyness(var);
+				else
+					page_stack.top()->set_dirtyness(var);
 			}
 		};
 	}

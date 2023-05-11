@@ -13,7 +13,7 @@ src/Page.cpp
 src/ImageDisplay.cpp
 src/RadioButton.cpp
 src/Slider.cpp 
-src/TextBlob.cpp)
+src/TextBlob.cpp "include/userinterface/widgets/LightWeightPage.h" "src/LightWeightPage.cpp")
 
 target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
