@@ -18,12 +18,12 @@ std::shared_ptr<Page> Page::make(Info info) {
 }
 
 void Page::draw(SkCanvas* canvas) {
-	if (is_dirty) {
-		canvas->drawColor(backgroundcolor);
-		for (auto& drawcall : compiled_scene.callable_draw)
-			drawcall(canvas);
+	main_page->draw(canvas);
+	if (!page_stack.empty()) {
+		auto image = canvas->getSurface()->makeImageSnapshot();
+		canvas->drawImage(image, 0, 0, options, &bluring_paint);
+		page_stack.front()->draw(canvas);
 	}
-
 }
 
 bool Page::propagate_signal(Signal sig, ConfigDraw* config_draw) {
@@ -38,11 +38,9 @@ bool Page::propagate_signal(Signal sig, ConfigDraw* config_draw) {
 }
 
 void Page::propagate_size_change(SkRect& new_size) {
-	if (scene) {
-		scene->set_position(new_size);
-		scene->framebuffer_resize();
-	}
-		
+	main_page->propagate_size_change(new_size);
+	for (auto& pag : page_stack)
+		pag->propagate_size_change(new_size);
 }
 
 }

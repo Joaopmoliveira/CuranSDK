@@ -4,6 +4,7 @@
 #include <vector>
 #include <atomic>
 #include "LightWeightPage.h"
+#include <deque>
 
 namespace curan {
 	namespace ui {
@@ -16,7 +17,10 @@ namespace curan {
 
 		private:	
 			std::shared_ptr<LightWeightPage> main_page;
-			std::stack<std::shared_ptr<LightWeightPage>> page_stack;
+			std::deque<std::shared_ptr<LightWeightPage>> page_stack;
+			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
+			SkPaint bluring_paint;
+			SkSamplingOptions options;
 
 			Page(Info drawables);
 
@@ -33,7 +37,7 @@ namespace curan {
 				if (page_stack.empty())
 					main_page->set_dirtyness(var);
 				else
-					page_stack.top()->set_dirtyness(var);
+					page_stack.front()->set_dirtyness(var);
 			}
 		};
 	}
