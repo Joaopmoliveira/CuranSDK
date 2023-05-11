@@ -377,7 +377,6 @@ int main() {
 
 							},
 						[&config_draw](Press arg) {
-								std::cout << "press detected\n";
 								config_draw.stack_page.pop();
 							},
 						[](Scroll arg) {;
