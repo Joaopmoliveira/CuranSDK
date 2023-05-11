@@ -55,4 +55,8 @@ target_link_libraries(test_page_juntion PUBLIC
 userinterface
 )
 
+add_executable(test_overlay test_overlay.cpp)
 
+target_link_libraries(test_overlay PUBLIC
+userinterface
+)

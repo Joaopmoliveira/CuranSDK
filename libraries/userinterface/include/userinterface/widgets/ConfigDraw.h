@@ -7,7 +7,7 @@
 namespace curan {
 	namespace ui {
 		struct ConfigDraw {
-			std::stack<Page> stack_page;
+			std::stack<std::shared_ptr<Page>> stack_page;
 		};
 	}
 }
