@@ -60,3 +60,9 @@ add_executable(test_overlay test_overlay.cpp)
 target_link_libraries(test_overlay PUBLIC
 userinterface
 )
+
+add_executable(test_overlay_api test_overlay_api.cpp)
+
+target_link_libraries(test_overlay_api PUBLIC
+userinterface
+)

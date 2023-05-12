@@ -58,6 +58,10 @@ namespace curan {
 			callablefunction call() override;
 			void framebuffer_resize() override;
 
+			inline void set_callback(buttoncallback in) {
+				callback = in;
+			}
+
 			inline SkColor get_hover_color() {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				return hover_color;
