@@ -1,0 +1,25 @@
+#include "userinterface/widgets/Overlay.h"
+
+namespace curan {
+namespace ui {
+
+Overlay::Overlay(Info info) {
+	LightWeightPage::Info info_core;
+	info_core.backgroundcolor = info.backgroundcolor;
+	info_core.contained = info.contained;
+	info_core.post_sig = info.post_sig;
+	main_page = LightWeightPage::make(info_core);
+}
+
+std::shared_ptr<Overlay> Overlay::make(Info info) {
+	std::shared_ptr<Overlay> page = std::shared_ptr<Overlay>(new Overlay{ info });
+	return page;
+}
+
+std::unique_ptr<LightWeightPage> Overlay::take_ownership() {
+	return std::move(main_page);
+}
+
+
+}
+}

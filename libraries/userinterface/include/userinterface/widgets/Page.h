@@ -8,6 +8,9 @@
 
 namespace curan {
 	namespace ui {
+
+		class Overlay;
+
 		class Page {
 		public:
 			struct Info {
@@ -16,8 +19,8 @@ namespace curan {
 			};
 
 		private:	
-			std::shared_ptr<LightWeightPage> main_page;
-			std::deque<std::shared_ptr<LightWeightPage>> page_stack;
+			std::unique_ptr<LightWeightPage> main_page;
+			std::deque<std::unique_ptr<LightWeightPage>> page_stack;
 			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 			SkPaint bluring_paint;
 			SkSamplingOptions options;
@@ -33,12 +36,18 @@ namespace curan {
 
 			void propagate_size_change(SkRect& new_size);
 
+			void pop();
+
+			void stack(std::shared_ptr<Overlay> overlay);
+
 			inline void set_dirtyness(bool var) {
 				if (page_stack.empty())
 					main_page->set_dirtyness(var);
 				else
 					page_stack.front()->set_dirtyness(var);
 			}
+
+
 		};
 	}
 }

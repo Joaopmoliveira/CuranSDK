@@ -6,7 +6,7 @@
 namespace curan {
 	namespace ui {
 
-		using post_signal_callback = std::function<void(Signal sig)>;
+		using post_signal_callback = std::function<void(Signal sig, bool page_interaction, ConfigDraw* config)>;
 
 		struct compilation_results {
 			std::vector<drawablefunction> callable_draw;
@@ -19,6 +19,8 @@ namespace curan {
 				post_signal_callback post_sig;
 				std::shared_ptr<Container> contained;
 				SkColor backgroundcolor = SK_ColorWHITE;
+
+				Info();
 			};
 
 		private:
@@ -27,10 +29,11 @@ namespace curan {
 			std::atomic<bool> is_dirty = false;
 			compilation_results compiled_scene;
 			SkColor backgroundcolor = SK_ColorWHITE;
+			post_signal_callback post_signal_processing;
 			LightWeightPage(Info drawables);
 
 		public:
-			static std::shared_ptr<LightWeightPage> make(Info);
+			static std::unique_ptr<LightWeightPage> make(Info);
 
 			void draw(SkCanvas* canvas);
 
