@@ -34,4 +34,7 @@ achieve good results we must wrap VSG in a good independent logic. For now we do
 so we can focus our testing on utilities which work independently. 
 
 1. In terms of priorities we need to finish the Communication - mostly done.
-2. Reimplement the 2D library in proper cpp fashion, multiple header files and so on.
+2. Reimplement the 2D library in proper cpp fashion, multiple header files and so on - mostly done.
+3. Implement the 3D library - mostly done.
+
+
