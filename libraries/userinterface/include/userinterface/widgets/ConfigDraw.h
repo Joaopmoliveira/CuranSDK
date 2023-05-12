@@ -8,6 +8,7 @@ namespace curan {
 		struct ConfigDraw {
 			Page* stack_page;
 			ConfigDraw(Page* in_stack_page) : stack_page{ in_stack_page } {};
+			ConfigDraw() : stack_page{ nullptr } {};
 		};
 	}
 }

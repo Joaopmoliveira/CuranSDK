@@ -51,7 +51,7 @@ int main() {
 		auto caldraw = button->draw();
 		auto calsignal = button->call();
 
-		ConfigDraw config_draw;
+		ConfigDraw config_draw{};
 
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();

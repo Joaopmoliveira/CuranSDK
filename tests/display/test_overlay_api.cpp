@@ -8,6 +8,7 @@
 #include "userinterface/widgets/ImageDisplay.h"
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Page.h"
+#include "userinterface/widgets/Overlay.h"
 #include "utils/Logger.h"
 #include "utils/Overloading.h"
 #include <variant>

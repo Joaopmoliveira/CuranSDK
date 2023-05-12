@@ -8,30 +8,7 @@ namespace ui {
 
 LightWeightPage::Info::Info() {
 	post_sig = [](Signal sig, bool page_interaction, ConfigDraw* config) {
-		std::visit(curan::utils::overloaded{
-		[](Empty arg) {
-
-			},
-		[](Move arg) {
-
-			},
-		[config,page_interaction](Press arg) {
-				if(!page_interaction)
-					config->stack_page.pop();
-			},
-		[](Scroll arg) {;
-
-			},
-		[](Unpress arg) {
-
-			},
-		[](Key arg) {
-
-			},
-		[](ItemDropped arg) {;
-
-		} },
-		sig);
+		return;
 	};
 }
 

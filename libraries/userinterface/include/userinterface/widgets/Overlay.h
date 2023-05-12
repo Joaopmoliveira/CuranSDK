@@ -16,6 +16,8 @@ namespace curan {
 				post_signal_callback post_sig;
 				std::shared_ptr<Container> contained;
 				SkColor backgroundcolor = SK_ColorWHITE;
+
+				Info();
 			};
 
 		private:

@@ -1,7 +1,39 @@
 #include "userinterface/widgets/Overlay.h"
+#include <variant>
+#include "utils/Overloading.h"
+#include "userinterface/widgets/ConfigDraw.h"
 
 namespace curan {
 namespace ui {
+
+Overlay::Info::Info(){
+	post_sig = [](Signal sig, bool page_interaction, ConfigDraw* config) {
+		std::visit(curan::utils::overloaded{
+		[](Empty arg) {
+
+			},
+		[](Move arg) {
+
+			},
+		[config,page_interaction](Press arg) {
+				if (!page_interaction && config->stack_page != nullptr)
+					config->stack_page->pop();
+			},
+		[](Scroll arg) {;
+
+			},
+		[](Unpress arg) {
+
+			},
+		[](Key arg) {
+
+			},
+		[](ItemDropped arg) {;
+
+		} },
+		sig);
+	};
+}
 
 Overlay::Overlay(Info info) {
 	LightWeightPage::Info info_core;

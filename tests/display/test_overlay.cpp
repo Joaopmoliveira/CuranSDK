@@ -311,13 +311,6 @@ int main() {
 		std::shared_ptr<Button> button = Button::make(infor);
 
 		infor.button_text = "Options";
-		ConfigDraw config_draw;
-
-		auto page_option = create_option_page();
-
-		infor.callback = [&config_draw, &page_option]() {
-			config_draw.stack_page.push(page_option);
-		};
 		std::shared_ptr<Button> buttonoptions = Button::make(infor);
 
 		info.arrangement = curan::ui::Arrangement::HORIZONTAL;
@@ -343,6 +336,10 @@ int main() {
 		auto lamd = [open_viwer, processed_viwer]() {
 			generate_image_message(open_viwer, processed_viwer);
 		};
+
+		ConfigDraw config_draw;
+		auto page_option = create_option_page();
+
 		std::thread message_generator{ lamd };
 
 		auto blur = SkImageFilters::Blur(10, 10, nullptr);
