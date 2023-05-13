@@ -68,9 +68,14 @@ callablefunction Slider::call() {
 					if (previous_state != SliderStates::PRESSED)
 						current_state_local = SliderStates::HOVER;
 					else {
-						auto offset_x = (arg.xpos - previous_arg.xpos)/ get_size().width();
+						auto widget_rect = get_position();
+						auto size = get_size();
+						SkRect drawable = size;
+						drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
+						auto offset_x = (arg.xpos - drawable.x()) / size.width();
 						auto current_val = get_current_value();
-						current_val += offset_x;
+						current_val += offset_x-read_trigger();
+						trigger(offset_x);
 						if (current_val < 0.0) current_val = 0.0;
 						if (current_val > 1.0) current_val = 1.0;
 						set_current_value(current_val);
@@ -88,6 +93,11 @@ callablefunction Slider::call() {
 				auto previous_state = get_current_state();
 				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos,arg.ypos)) {
+					auto widget_rect = get_position();
+					auto size = get_size();
+					SkRect drawable = size;
+					drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
+					trigger((arg.xpos - drawable.x()) / size.width());
 					current_state_local = SliderStates::PRESSED;
 					if (callback) {
 						auto val = *callback;

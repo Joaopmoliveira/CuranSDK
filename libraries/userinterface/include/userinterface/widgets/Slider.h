@@ -45,7 +45,8 @@ namespace curan {
 			std::optional<buttoncallback> callback;
 			std::array<float, 2> limits = { 0.0f,100.0f };
 			float current_value = 0.5;
-			float dragable_percent_size = 0.1f;
+			float value_pressed = 0.5;
+			float dragable_percent_size = 0.1f;;
 
 		public:
 			Slider(Info& info);
@@ -53,6 +54,14 @@ namespace curan {
 			drawablefunction draw() override;
 			callablefunction call() override;
 			void framebuffer_resize() override;
+
+			inline void trigger(float in_current_value) {
+				value_pressed = in_current_value;
+			}
+
+			inline float read_trigger() {
+				return value_pressed;
+			}
 
 			inline void set_current_value(float in_current_value) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
