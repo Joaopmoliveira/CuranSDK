@@ -7,6 +7,9 @@
 #include "userinterface/widgets/ImageDisplay.h"
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Page.h"
+#include "userinterface/widgets/Overlay.h"
+#include "userinterface/widgets/TextBlob.h"
+#include "userinterface/widgets/Slider.h"
 #include "utils/Logger.h"
 #include "utils/Flag.h"
 #include "utils/Job.h"
@@ -23,11 +26,17 @@ struct Point {
 	double y;
 };
 
-float s[3];
-
-
 struct ConfigurationData {
 	int port = 18944;
+
+	std::array<double, 2> minimum_radius_limit;
+	std::array<double, 2> maximum_radius_limit;
+	std::array<double, 2> sweep_angle_limit;
+	std::array<double, 2> sigma_gradient_limit;
+	std::array<double, 2> variance_limit;
+	std::array<double, 2> disk_ratio_limit;
+	std::array<char, 2>  threshold_limit;
+
 	double minimum_radius = 8;
 	double maximum_radius = 10;
 	double sweep_angle = 0.06;
@@ -51,9 +60,9 @@ struct ProcessingMessage {
 	std::atomic<bool> should_record = false;
 	short port = 10000;
 
-	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer, 
-					  std::shared_ptr<curan::ui::OpenIGTLinkViewer> in_open_viwer, 
-					  std::shared_ptr<curan::utils::Flag> flag) : connection_status{ flag }, processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer } 
+	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer,
+		std::shared_ptr<curan::ui::OpenIGTLinkViewer> in_open_viwer,
+		std::shared_ptr<curan::utils::Flag> flag) : connection_status{ flag }, processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer }
 	{
 	}
 
@@ -74,11 +83,9 @@ struct ProcessingMessage {
 			message_body->Copy(val);
 			int c = message_body->Unpack(1);
 			if (c & igtl::MessageHeader::UNPACK_BODY) {
-				
+
 				int x, y, z;
 				message_body->GetDimensions(x, y, z);
-
-				message_body->GetSpacing(s);
 
 				using PixelType = unsigned char;
 				constexpr unsigned int Dimension = 2;
@@ -126,7 +133,7 @@ struct ProcessingMessage {
 				blurfilter->SetVariance(10);
 				blurfilter->SetMaximumKernelWidth(10);
 
-				using RescaleTypeToImageType = itk::RescaleIntensityImageFilter<FloatImageType,ImageType>;
+				using RescaleTypeToImageType = itk::RescaleIntensityImageFilter<FloatImageType, ImageType>;
 				auto rescaletochar = RescaleTypeToImageType::New();
 				rescaletochar->SetInput(blurfilter->GetOutput());
 				rescaletochar->SetOutputMinimum(0);
@@ -218,7 +225,7 @@ struct ProcessingMessage {
 				//	list_of_recorded_points.push_back(local_centers);
 				//}
 
-				auto lam = [localImage,x,y](SkPixmap& requested) {
+				auto lam = [localImage, x, y](SkPixmap& requested) {
 					auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
 					size_t row_size = x * sizeof(unsigned char);
 					SkPixmap map{ inf,localImage->GetBufferPointer(),row_size };
@@ -247,7 +254,7 @@ struct ProcessingMessage {
 		connection_status->set();
 
 		auto lam = [this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
-			if (process_message(protocol_defined_val,er,val))
+			if (process_message(protocol_defined_val, er, val))
 			{
 				connection_status->clear();
 				attempt_stop();
@@ -260,164 +267,118 @@ struct ProcessingMessage {
 	}
 
 	void attempt_stop() {
-		io_context.stop();	
+		io_context.stop();
 	}
 };
 
 
-int parse_arguments(const int& argc, char* argv[], ConfigurationData& data) {
-	if (argc != 9) { //-port -minimum_radius -maximum_radius -sweep_angle -sigma_gradient -variance -disk_ratio -threshold
-		std::cout << "the ultrasound calibration app parses nine arguments: \n"
-			"- the port of the server to connect to\n"
-			"- the minimum radius\n"
-			"- maximum radius\n"
-			"- the sweep angle\n"
-			"- the sigma gradient\n"
-			"- variance\n"
-			"- disk_ratio\n"
-			"- threshold\n"
-			"and the disk ratio\n"
-			"If the nine are not supplied default values will be used";
-		return 1;
-	}
+std::shared_ptr<curan::ui::Overlay> create_options_overlay() {
+		using namespace curan::ui;
+		IconResources resources{ "C:/dev/Curan/resources" };
 
-	std::string val = { argv[1] }; //port
-	size_t pos = 0;
-	int port = 0;
-	try {
-		port = std::stoi(val, &pos);
-	}
-	catch (...) {
-		std::cout << "the parsed port is not valid, please try again\n";
-		return 3;
-	}
-	if (pos != val.size()) {
-		std::cout << "the parsed port is not valid, please try again\n";
-		return 2;
-	}
+		SkColor colbuton = { SK_ColorBLACK };
+		SkColor coltext = { SK_ColorWHITE };
 
-	val = { argv[2] }; //minimum radius
-	double minimum_radius = 0;
-	try {
-		minimum_radius = std::stod(val, &pos);
-	}
-	catch (...) {
-		std::cout << "the parsed minimum radius is not valid, please try again\n";
-		return 3;
-	}
-	if (pos != val.size()) {
-		std::cout << "the parsed minimum radius is not valid, please try again\n";
-		return 2;
-	}
+		SkPaint paint_square;
+		paint_square.setStyle(SkPaint::kFill_Style);
+		paint_square.setAntiAlias(true);
+		paint_square.setStrokeWidth(4);
+		paint_square.setColor(colbuton);
 
-	val = { argv[3] }; //maximum radius
-	double maximum_radius = 0;
-	try {
-		maximum_radius = std::stod(val, &pos);
-	}
-	catch (...) {
-		std::cout << "the parsed maximum radius is not valid, please try again\n";
-		return 3;
-	}
-	if (pos != val.size()) {
-		std::cout << "the parsed maximum radius is not valid, please try again\n";
-		return 2;
-	}
+		SkPaint paint_text;
+		paint_text.setStyle(SkPaint::kFill_Style);
+		paint_text.setAntiAlias(true);
+		paint_text.setStrokeWidth(4);
+		paint_text.setColor(coltext);
 
-	val = { argv[4] }; //sweep angle
-	double sweep_angle = 0;
-	try {
-		sweep_angle = std::stod(val, &pos);
-	}
-	catch (...) {
-		std::cout << "the parsed sweep angle is not valid, please try again\n";
-		return 3;
-	}
-	if (pos != val.size()) {
-		std::cout << "the parsed sweep angle is not valid, please try again\n";
-		return 2;
-	}
+		SkPaint paint_square2;
+		paint_square2.setStyle(SkPaint::kFill_Style);
+		paint_square2.setAntiAlias(true);
+		paint_square2.setStrokeWidth(4);
+		paint_square2.setColor(SK_ColorTRANSPARENT);
 
-	val = { argv[5] }; //sigma gradient 
-	double sigma_gradient = 0;
-	try {
-		sigma_gradient = std::stod(val, &pos);
-	}
-	catch (...) {
-		std::cout << "the parsed sigma gradient is not valid, please try again\n";
-		return 3;
-	}
-	if (pos != val.size()) {
-		std::cout << "the parsed sigma gradient is not valid, please try again\n";
-		return 2;
-	}
+		const char* fontFamily = nullptr;
+		SkFontStyle fontStyle;
+		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 
-	val = { argv[6] }; //variance
-	double variance = 0;
-	try {
-		variance = std::stod(val, &pos);
-	}
-	catch (...) {
-		std::cout << "the parsed variance is not valid, please try again\n";
-		return 3;
-	}
-	if (pos != val.size()) {
-		std::cout << "the parsed variance is not valid, please try again\n";
-		return 2;
-	}
+		SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
+		text_font.setEdging(SkFont::Edging::kAntiAlias);
 
-	val = { argv[7] }; //disk ratio
-	double disk_ratio = 0;
-	try {
-		disk_ratio = std::stod(val, &pos);
-	}
-	catch (...) {
-		std::cout << "the parsed disk ratio is not valid, please try again\n";
-		return 3;
-	}
-	if (pos != val.size()) {
-		std::cout << "the parsed disk ratio is not valid, please try again\n";
-		return 2;
-	}
+		Container::InfoLinearContainer infocontainer;
+		infocontainer.paint_layout = paint_square2;
+		infocontainer.arrangement = curan::ui::Arrangement::HORIZONTAL;
 
-	val = { argv[8] }; //threshold
-	int threshold = 0;
-	try {
-		threshold = std::stoi(val, &pos);
-	}
-	catch (...) {
-		std::cout << "the parsed threshold is not valid, please try again\n";
-		return 3;
-	}
-	if (pos != val.size()) {
-		std::cout << "the parsed threshold is not valid, please try again\n";
-		return 2;
-	}
+		Slider::Info infor{};
+		infor.click_color = SK_ColorLTGRAY;
+		infor.hover_color = SK_ColorCYAN;
+		infor.waiting_color = SK_ColorDKGRAY;
+		infor.sliderColor = SK_ColorGRAY;
+		infor.paintButton = paint_square;
+		infor.size = SkRect::MakeWH(200, 40);
+		infor.limits = { 0.0f, 300.0f };
+		std::shared_ptr<Slider> button = Slider::make(infor);
 
-	data.port = port;
-	data.disk_ratio = disk_ratio;
-	data.maximum_radius = maximum_radius;
-	data.minimum_radius = minimum_radius;
-	data.sigma_gradient = sigma_gradient;
-	data.sweep_angle = sweep_angle;
-	data.variance = variance;
-	data.threshold = (unsigned char)threshold;
-	return 0;
+		TextBlob::Info infotext;
+		infotext.button_text = "Minimum Radius";
+		infotext.paint = paint_square;
+		infotext.paintText = paint_text;
+		infotext.size = SkRect::MakeWH(200, 40);
+		infotext.textFont = text_font;
+		std::shared_ptr<TextBlob> text = TextBlob::make(infotext);
+
+		infocontainer.layouts = { text,button };
+		std::shared_ptr<Container> container = Container::make(infocontainer);
+
+		infotext.button_text = "Maximum Radius";
+		std::shared_ptr<TextBlob> text1 = TextBlob::make(infotext);
+		std::shared_ptr<Slider> button1 = Slider::make(infor);
+		infocontainer.layouts = { text1,button1 };
+		std::shared_ptr<Container> container1 = Container::make(infocontainer);
+
+		infotext.button_text = "Sweep Angle";
+		std::shared_ptr<TextBlob> text2 = TextBlob::make(infotext);
+		std::shared_ptr<Slider> button2 = Slider::make(infor);
+		infocontainer.layouts = { text2,button2 };
+		std::shared_ptr<Container> container2 = Container::make(infocontainer);
+
+		infotext.button_text = "Sigma Gradient";
+		std::shared_ptr<TextBlob> text3 = TextBlob::make(infotext);
+		std::shared_ptr<Slider> button3 = Slider::make(infor);
+		infocontainer.layouts = { text3,button3 };
+		std::shared_ptr<Container> container3 = Container::make(infocontainer);
+
+		infotext.button_text = "Variance";
+		std::shared_ptr<TextBlob> text4 = TextBlob::make(infotext);
+		std::shared_ptr<Slider> button4 = Slider::make(infor);
+		infocontainer.layouts = { text4,button4 };
+		std::shared_ptr<Container> container4 = Container::make(infocontainer);
+
+		infotext.button_text = "Disk Ratio";
+		std::shared_ptr<TextBlob> text5 = TextBlob::make(infotext);
+		std::shared_ptr<Slider> button5 = Slider::make(infor);
+		infocontainer.layouts = { text5,button5 };
+		std::shared_ptr<Container> container5 = Container::make(infocontainer);
+
+		infotext.button_text = "Threshold";
+		std::shared_ptr<TextBlob> text6 = TextBlob::make(infotext);
+		std::shared_ptr<Slider> button6 = Slider::make(infor);
+		infocontainer.layouts = { text6,button6 };
+		std::shared_ptr<Container> container6 = Container::make(infocontainer);
+
+		infocontainer.arrangement = curan::ui::Arrangement::VERTICAL;
+		infocontainer.layouts = { container,container1,container2,container3,container4,container5,container6 };
+		std::shared_ptr<Container> containerotions = Container::make(infocontainer);
+
+		Overlay::Info information;
+		information.backgroundcolor = SK_ColorTRANSPARENT;
+		information.contained = containerotions;
+		return Overlay::make(information);
 }
 
-
-int main(int argc, char* argv[]) {
+std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data,std::shared_ptr<ProcessingMessage>& processing,std::shared_ptr<curan::ui::Button>& button_options) {
 	using namespace curan::ui;
-	curan::utils::initialize_thread_pool(10);
-
-	ConfigurationData data;
-	parse_arguments(argc,argv,data);
-	std::cout << "the received port is: " << data.port << "\n";
-
 	IconResources resources{ "C:/dev/Curan/resources" };
-	std::unique_ptr<Context> context = std::make_unique<Context>();;
-	DisplayParams param{ std::move(context),2200,1800 };
-	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 	SkColor colbuton = { SK_ColorBLACK };
 	SkColor coltext = { SK_ColorWHITE };
@@ -467,7 +428,7 @@ int main(int argc, char* argv[]) {
 
 	auto flag = curan::utils::Flag::make_shared_flag();
 
-	std::shared_ptr<ProcessingMessage> processing = std::make_shared<ProcessingMessage>(processed_viwer, open_viwer,flag);
+	processing = std::make_shared<ProcessingMessage>(processed_viwer, open_viwer, flag);
 	processing->port = data.port;
 	processing->configuration = data;
 
@@ -513,7 +474,14 @@ int main(int argc, char* argv[]) {
 	infor.size = SkRect::MakeWH(200, 80);
 	std::shared_ptr<Button> button_start_collection = Button::make(infor);
 
-	info.layouts = { start_connection,button_start_collection };
+	infor.button_text = "Options";
+	infor.click_color = SK_ColorGRAY;
+	infor.hover_color = SK_ColorDKGRAY;
+	infor.waiting_color = SK_ColorBLACK;
+	infor.size = SkRect::MakeWH(200, 80);
+	button_options = Button::make(infor);
+
+	info.layouts = { start_connection,button_start_collection,button_options };
 	std::shared_ptr<Container> button_container = Container::make(info);
 
 	processing->button = start_connection;
@@ -524,18 +492,42 @@ int main(int argc, char* argv[]) {
 	info.divisions = { 0.0 , 0.1 , 1.0 };
 	info.layouts = { button_container,viwers_container };
 	std::shared_ptr<Container> container = Container::make(info);
-	
-	auto rec = viewer->get_size();
+
 	Page::Info information;
 	information.backgroundcolor = SK_ColorBLACK;
 	information.contained = container;
 	std::shared_ptr<Page> page = Page::make(information);
+	return page;
+}
+
+
+int main(int argc, char* argv[]) {
+	using namespace curan::ui;
+	curan::utils::initialize_thread_pool(10);
+
+	ConfigurationData data;
+	std::cout << "the received port is: " << data.port << "\n";
+	std::unique_ptr<Context> context = std::make_unique<Context>();;
+	DisplayParams param{ std::move(context),2200,1800 };
+	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+
+	std::shared_ptr<ProcessingMessage> processing;
+	std::shared_ptr<Button> button_options;
+	auto overlay = create_options_overlay();
+	auto page = create_main_page(data,processing, button_options);
+	auto over_superposition = [&page, &overlay]() {
+		std::cout << "adding stack\n";
+		page->stack(overlay);
+	};
+
+	auto rec = viewer->get_size();
+	button_options->set_callback(over_superposition);
 	page->propagate_size_change(rec);
-	
+
 	int width = rec.width();
 	int height = rec.height();
 
-	ConfigDraw config;
+	ConfigDraw config{page.get()};
 
 	while (!glfwWindowShouldClose(viewer->window)) {
 		auto start = std::chrono::high_resolution_clock::now();

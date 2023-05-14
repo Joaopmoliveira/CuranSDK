@@ -1,5 +1,5 @@
-#ifndef CURAN_BUTTON_HEADER_FILE_
-#define CURAN_BUTTON_HEADER_FILE_
+#ifndef CURAN_TEXTBLOB_HEADER_FILE_
+#define CURAN_TEXTBLOB_HEADER_FILE_
 
 #include "Drawable.h"
 #include "definitions/UIdefinitions.h"

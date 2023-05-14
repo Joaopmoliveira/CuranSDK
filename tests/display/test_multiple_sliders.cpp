@@ -8,6 +8,7 @@
 #include "userinterface/widgets/ImageDisplay.h"
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Slider.h"
+#include "userinterface/widgets/TextBlob.h"
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Overlay.h"
 #include "utils/Logger.h"
@@ -21,7 +22,7 @@ std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	IconResources resources{ "C:/dev/Curan/resources" };
 
 	SkColor colbuton = { SK_ColorBLACK };
-	SkColor coltext = { SK_ColorBLACK };
+	SkColor coltext = { SK_ColorWHITE };
 
 	SkPaint paint_square;
 	paint_square.setStyle(SkPaint::kFill_Style);
@@ -49,6 +50,10 @@ std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
 	text_font.setEdging(SkFont::Edging::kAntiAlias);
 
+	Container::InfoLinearContainer infocontainer;
+	infocontainer.paint_layout = paint_square2;
+	infocontainer.arrangement = curan::ui::Arrangement::HORIZONTAL;
+
 	Slider::Info infor{};
 	infor.click_color = SK_ColorLTGRAY;
 	infor.hover_color = SK_ColorCYAN;
@@ -58,20 +63,44 @@ std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	infor.size = SkRect::MakeWH(200, 40);
 	infor.limits = { 0.0f, 300.0f };
 	std::shared_ptr<Slider> button = Slider::make(infor);
-	std::shared_ptr<Slider> button1 = Slider::make(infor);
-	std::shared_ptr<Slider> button2 = Slider::make(infor);
-	std::shared_ptr<Slider> button3 = Slider::make(infor);
 
-	Container::InfoLinearContainer info;
-	info.paint_layout = paint_square2;
-	info.arrangement = curan::ui::Arrangement::VERTICAL;
-	info.divisions = { 0.0 , 0.25 , 0.5 , 0.75 , 1.0 };
-	info.layouts = { button,button1,button2,button3 };
-	std::shared_ptr<Container> container = Container::make(info);
+	TextBlob::Info infotext;
+	infotext.button_text = "Option 1";
+	infotext.paint = paint_square;
+	infotext.paintText = paint_text;
+	infotext.size = SkRect::MakeWH(200, 40);
+	infotext.textFont = text_font;
+	std::shared_ptr<TextBlob> text = TextBlob::make(infotext);
+
+	infocontainer.layouts = {text,button};
+	std::shared_ptr<Container> container = Container::make(infocontainer);
+
+	infotext.button_text = "Option 2";
+	std::shared_ptr<TextBlob> text1 = TextBlob::make(infotext);
+	std::shared_ptr<Slider> button1 = Slider::make(infor);
+	infocontainer.layouts = { text1,button1 };
+	std::shared_ptr<Container> container1 = Container::make(infocontainer);
+
+	infotext.button_text = "Option 3";
+	std::shared_ptr<TextBlob> text2 = TextBlob::make(infotext);
+	std::shared_ptr<Slider> button2 = Slider::make(infor);
+	infocontainer.layouts = { text2,button2 };
+	std::shared_ptr<Container> container2 = Container::make(infocontainer);
+
+	infotext.button_text = "Option 4";
+	std::shared_ptr<TextBlob> text3 = TextBlob::make(infotext);
+	std::shared_ptr<Slider> button3 = Slider::make(infor);
+	infocontainer.layouts = { text3,button3 };
+	std::shared_ptr<Container> container3 = Container::make(infocontainer);
+
+	infocontainer.arrangement = curan::ui::Arrangement::VERTICAL;
+	infocontainer.divisions = { 0.0 , 0.25 , 0.5 , 0.75 , 1.0 };
+	infocontainer.layouts = { container,container1,container2,container3};
+	std::shared_ptr<Container> containerotions = Container::make(infocontainer);
 
 	Overlay::Info information;
 	information.backgroundcolor = SK_ColorTRANSPARENT;
-	information.contained = container;
+	information.contained = containerotions;
 	return Overlay::make(information);
 }
 
