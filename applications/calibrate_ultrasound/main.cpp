@@ -37,13 +37,13 @@ struct ConfigurationData {
 	std::array<double, 2> disk_ratio_limit = {0.1,10.0};
 	std::array<double, 2>  threshold_limit = {50.0,150.0};
 
-	double minimum_radius = 8;
-	double maximum_radius = 12.0;
-	double sweep_angle = 0.1;
-	double sigma_gradient = 10;
-	double variance = 10;
-	double disk_ratio = 1;
-	double threshold = 110;
+	std::atomic<double> minimum_radius = 8;
+	std::atomic<double> maximum_radius = 12.0;
+	std::atomic<double> sweep_angle = 0.1;
+	std::atomic<double> sigma_gradient = 10;
+	std::atomic<double> variance = 10;
+	std::atomic<double> disk_ratio = 1;
+	std::atomic<double> threshold = 110;
 
 };
 
@@ -55,14 +55,14 @@ struct ProcessingMessage {
 	std::shared_ptr<curan::ui::Button> button;
 	std::shared_ptr<curan::ui::Button> button_start_collection;
 	asio::io_context io_context;
-	ConfigurationData configuration;
+	ConfigurationData& configuration;
 	std::list<std::vector<Point>> list_of_recorded_points;
 	std::atomic<bool> should_record = false;
 	short port = 10000;
 
 	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer,
 		std::shared_ptr<curan::ui::OpenIGTLinkViewer> in_open_viwer,
-		std::shared_ptr<curan::utils::Flag> flag) : connection_status{ flag }, processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer }
+		std::shared_ptr<curan::utils::Flag> flag, ConfigurationData& in_configuration) : connection_status{ flag }, processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer }, configuration{in_configuration}
 	{
 	}
 
@@ -463,9 +463,8 @@ std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data,std::s
 
 	auto flag = curan::utils::Flag::make_shared_flag();
 
-	processing = std::make_shared<ProcessingMessage>(processed_viwer, open_viwer, flag);
+	processing = std::make_shared<ProcessingMessage>(processed_viwer, open_viwer, flag, data);
 	processing->port = data.port;
-	processing->configuration = data;
 
 	auto lam = [processing](Button* button,ConfigDraw* config) {
 		if (!processing->connection_status->value()) {
