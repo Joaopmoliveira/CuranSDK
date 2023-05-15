@@ -330,9 +330,10 @@ int main() {
 		std::shared_ptr<Page> page = Page::make(information);
 		page->propagate_size_change(rec);
 
-		auto button_callback = [&page]() {
+		auto button_callback = [](Button* button,ConfigDraw* config) {
 			auto temp_optional_page = create_option_page();
-			page->stack(temp_optional_page);
+			if(config->stack_page!=nullptr)
+				config->stack_page->stack(temp_optional_page);
 		};
 		buttonoptions->set_callback(button_callback);
 

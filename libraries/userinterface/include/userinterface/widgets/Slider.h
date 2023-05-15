@@ -11,12 +11,14 @@
 namespace curan {
 	namespace ui {
 
-		using buttoncallback = std::function<void()>;
+		class Slider;
+
+		using slidercallback = std::function<void(Slider*, ConfigDraw*)>;
 
 		class Slider : public  Drawable, utils::Lockable<Slider>, utils::Connectable<Slider> {
 		public:
 			struct Info {
-				std::optional<buttoncallback> callback;
+				std::optional<slidercallback> callback;
 				SkColor hover_color;
 				SkColor waiting_color;
 				SkColor click_color;
@@ -42,7 +44,7 @@ namespace curan {
 			SkPaint paint;
 			SkRect widget_rect_text;
 			SliderStates current_state = SliderStates::WAITING;
-			std::optional<buttoncallback> callback;
+			std::optional<slidercallback> callback;
 			std::array<float, 2> limits = { 0.0f,100.0f };
 			float current_value = 0.5;
 			float value_pressed = 0.5;

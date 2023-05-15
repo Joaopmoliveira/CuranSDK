@@ -29,17 +29,17 @@ struct Point {
 struct ConfigurationData {
 	int port = 18944;
 
-	std::array<double, 2> minimum_radius_limit;
-	std::array<double, 2> maximum_radius_limit;
-	std::array<double, 2> sweep_angle_limit;
-	std::array<double, 2> sigma_gradient_limit;
-	std::array<double, 2> variance_limit;
-	std::array<double, 2> disk_ratio_limit;
-	std::array<char, 2>  threshold_limit;
+	std::array<double, 2> minimum_radius_limit = {5.0,10.0};
+	std::array<double, 2> maximum_radius_limit = {11.0,30.0};
+	std::array<double, 2> sweep_angle_limit = {0.1,0.8};
+	std::array<double, 2> sigma_gradient_limit = {1.0,20.0};
+	std::array<double, 2> variance_limit = {1.0,20.0};
+	std::array<double, 2> disk_ratio_limit = {0.1,10.0};
+	std::array<char, 2>  threshold_limit = {(char)50,(char)150};
 
 	double minimum_radius = 8;
 	double maximum_radius = 10;
-	double sweep_angle = 0.06;
+	double sweep_angle = 0.1;
 	double sigma_gradient = 10;
 	double variance = 10;
 	double disk_ratio = 1;
@@ -272,7 +272,7 @@ struct ProcessingMessage {
 };
 
 
-std::shared_ptr<curan::ui::Overlay> create_options_overlay() {
+std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<ProcessingMessage> processing) {
 		using namespace curan::ui;
 		IconResources resources{ "C:/dev/Curan/resources" };
 
@@ -317,7 +317,12 @@ std::shared_ptr<curan::ui::Overlay> create_options_overlay() {
 		infor.paintButton = paint_square;
 		infor.size = SkRect::MakeWH(200, 40);
 		infor.limits = { 0.0f, 300.0f };
+		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+			processing->configuration.minimum_radius = processing->configuration.minimum_radius_limit[0] + slider->get_current_value()*(processing->configuration.minimum_radius_limit[1] - processing->configuration.minimum_radius_limit[0]);
+		};
 		std::shared_ptr<Slider> button = Slider::make(infor);
+		double current_val = (processing->configuration.minimum_radius - processing->configuration.minimum_radius_limit[0]) / (processing->configuration.minimum_radius_limit[1] - processing->configuration.minimum_radius_limit[0]);
+		button->set_current_value(current_val);
 
 		TextBlob::Info infotext;
 		infotext.button_text = "Minimum Radius";
@@ -332,37 +337,67 @@ std::shared_ptr<curan::ui::Overlay> create_options_overlay() {
 
 		infotext.button_text = "Maximum Radius";
 		std::shared_ptr<TextBlob> text1 = TextBlob::make(infotext);
+		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+			processing->configuration.maximum_radius = processing->configuration.maximum_radius_limit[0] + slider->get_current_value() * (processing->configuration.maximum_radius_limit[1] - processing->configuration.maximum_radius_limit[0]);
+		};
 		std::shared_ptr<Slider> button1 = Slider::make(infor);
+		double current_val1 = (processing->configuration.maximum_radius - processing->configuration.maximum_radius_limit[0]) / (processing->configuration.maximum_radius_limit[1] - processing->configuration.maximum_radius_limit[0]);
+		button1->set_current_value(current_val1);
 		infocontainer.layouts = { text1,button1 };
 		std::shared_ptr<Container> container1 = Container::make(infocontainer);
 
 		infotext.button_text = "Sweep Angle";
 		std::shared_ptr<TextBlob> text2 = TextBlob::make(infotext);
+		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+			processing->configuration.sweep_angle = processing->configuration.sweep_angle_limit[0] + slider->get_current_value() * (processing->configuration.sweep_angle_limit[1] - processing->configuration.sweep_angle_limit[0]);
+		};
 		std::shared_ptr<Slider> button2 = Slider::make(infor);
+		double current_val2 = (processing->configuration.sweep_angle - processing->configuration.sweep_angle_limit[0]) / (processing->configuration.sweep_angle_limit[1] - processing->configuration.sweep_angle_limit[0]);
+		button1->set_current_value(current_val2);
 		infocontainer.layouts = { text2,button2 };
 		std::shared_ptr<Container> container2 = Container::make(infocontainer);
 
 		infotext.button_text = "Sigma Gradient";
 		std::shared_ptr<TextBlob> text3 = TextBlob::make(infotext);
+		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+			processing->configuration.sigma_gradient = processing->configuration.sigma_gradient_limit[0] + slider->get_current_value() * (processing->configuration.sigma_gradient_limit[1] - processing->configuration.sigma_gradient_limit[0]);
+		};
 		std::shared_ptr<Slider> button3 = Slider::make(infor);
+		double current_val3 = (processing->configuration.sigma_gradient - processing->configuration.sigma_gradient_limit[0]) / (processing->configuration.sigma_gradient_limit[1] - processing->configuration.sigma_gradient_limit[0]);
+		button1->set_current_value(current_val3);
 		infocontainer.layouts = { text3,button3 };
 		std::shared_ptr<Container> container3 = Container::make(infocontainer);
 
 		infotext.button_text = "Variance";
 		std::shared_ptr<TextBlob> text4 = TextBlob::make(infotext);
+		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+			processing->configuration.variance = processing->configuration.variance_limit[0] + slider->get_current_value() * (processing->configuration.variance_limit[1] - processing->configuration.variance_limit[0]);
+		};
 		std::shared_ptr<Slider> button4 = Slider::make(infor);
+		double current_val4 = (processing->configuration.variance - processing->configuration.variance_limit[0]) / (processing->configuration.variance_limit[1] - processing->configuration.variance_limit[0]);
+		button1->set_current_value(current_val4);
 		infocontainer.layouts = { text4,button4 };
 		std::shared_ptr<Container> container4 = Container::make(infocontainer);
 
 		infotext.button_text = "Disk Ratio";
 		std::shared_ptr<TextBlob> text5 = TextBlob::make(infotext);
+		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+			processing->configuration.disk_ratio = processing->configuration.disk_ratio_limit[0] + slider->get_current_value() * (processing->configuration.disk_ratio_limit[1] - processing->configuration.disk_ratio_limit[0]);
+		};
 		std::shared_ptr<Slider> button5 = Slider::make(infor);
+		double current_val5 = (processing->configuration.disk_ratio - processing->configuration.disk_ratio_limit[0]) / (processing->configuration.disk_ratio_limit[1] - processing->configuration.disk_ratio_limit[0]);
+		button1->set_current_value(current_val5);
 		infocontainer.layouts = { text5,button5 };
 		std::shared_ptr<Container> container5 = Container::make(infocontainer);
 
 		infotext.button_text = "Threshold";
 		std::shared_ptr<TextBlob> text6 = TextBlob::make(infotext);
+		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+			processing->configuration.threshold = processing->configuration.threshold_limit[0] + slider->get_current_value() * (processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
+		};
 		std::shared_ptr<Slider> button6 = Slider::make(infor);
+		double current_val6 = (processing->configuration.threshold - processing->configuration.threshold_limit[0]) / (processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
+		button1->set_current_value(current_val6);
 		infocontainer.layouts = { text6,button6 };
 		std::shared_ptr<Container> container6 = Container::make(infocontainer);
 
@@ -432,7 +467,7 @@ std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data,std::s
 	processing->port = data.port;
 	processing->configuration = data;
 
-	auto lam = [processing]() {
+	auto lam = [processing](Button* button,ConfigDraw* config) {
 		if (!processing->connection_status->value()) {
 			curan::utils::Job val;
 			val.description = "connection thread";
@@ -459,11 +494,11 @@ std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data,std::s
 	infor.callback = lam;
 	std::shared_ptr<Button> start_connection = Button::make(infor);
 
-	auto change_recording_status = [processing]() {
+	auto change_recording_status = [processing](Button* button, ConfigDraw* config) {
 		auto val = !processing->should_record.load();
 		processing->should_record.store(val);
 		SkColor color = (val) ? SK_ColorCYAN : SK_ColorBLACK;
-		processing->button_start_collection->set_waiting_color(color);
+		button->set_waiting_color(color);
 	};
 
 	infor.button_text = "Data Collection";
@@ -513,15 +548,18 @@ int main(int argc, char* argv[]) {
 
 	std::shared_ptr<ProcessingMessage> processing;
 	std::shared_ptr<Button> button_options;
-	auto overlay = create_options_overlay();
+	
 	auto page = create_main_page(data,processing, button_options);
-	auto over_superposition = [&page, &overlay]() {
+	
+	
+	auto over_superposition = [&processing](Button* button,ConfigDraw* config) {
+		auto overlay = create_options_overlay(processing);
 		std::cout << "adding stack\n";
-		page->stack(overlay);
+		config->stack_page->stack(overlay);
 	};
 
-	auto rec = viewer->get_size();
 	button_options->set_callback(over_superposition);
+	auto rec = viewer->get_size();
 	page->propagate_size_change(rec);
 
 	int width = rec.width();

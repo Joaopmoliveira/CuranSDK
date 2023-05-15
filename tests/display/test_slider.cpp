@@ -23,7 +23,7 @@ int main() {
 		paint_square.setStrokeJoin(SkPaint::kRound_Join);
 		paint_square.setStrokeCap(SkPaint::kRound_Cap);
 
-		auto callback = []() {
+		auto callback = [](Slider* slider, ConfigDraw* config) {
 			std::cout << "received signal!\n";
 		};
 

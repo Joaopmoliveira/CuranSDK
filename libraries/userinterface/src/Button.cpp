@@ -82,10 +82,10 @@ callablefunction Button::call() {
 	auto lamb = [this](Signal sig, ConfigDraw* config) {
 		bool interacted = false;
 		std::visit(utils::overloaded{
-			[this](Empty arg) {
+			[this,config](Empty arg) {
 
 			},
-			[this,&interacted](Move arg) {
+			[this,&interacted,config](Move arg) {
 				auto previous_state = get_current_state();
 				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos, arg.ypos)) {
@@ -99,14 +99,14 @@ callablefunction Button::call() {
 					interacted = true;
 				set_current_state(current_state_local);
 			},
-			[this,&interacted](Press arg) {
+			[this,&interacted,config](Press arg) {
 				auto previous_state = get_current_state();
 				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos,arg.ypos)) {
 					current_state_local = ButtonStates::PRESSED;
 					if (callback) {
 						auto val = *callback;
-						val();
+						val(this, config);
 					}
 					
 				}
@@ -116,10 +116,10 @@ callablefunction Button::call() {
 					interacted = true;
 				set_current_state(current_state_local);
 			},
-			[this](Scroll arg) {;
+			[this,config](Scroll arg) {;
 
 			},
-			[this,&interacted](Unpress arg) {
+			[this,&interacted,config](Unpress arg) {
 				auto previous_state = get_current_state();
 				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos, arg.ypos))

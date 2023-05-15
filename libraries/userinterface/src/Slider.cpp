@@ -89,7 +89,7 @@ callablefunction Slider::call() {
 				previous_arg = arg;
 				set_current_state(current_state_local);
 			},
-			[this,&interacted](Press arg) {
+			[this,&interacted,config](Press arg) {
 				auto previous_state = get_current_state();
 				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos,arg.ypos)) {
@@ -101,7 +101,7 @@ callablefunction Slider::call() {
 					current_state_local = SliderStates::PRESSED;
 					if (callback) {
 						auto val = *callback;
-						val();
+						val(this,config);
 					}
 
 				}

@@ -170,7 +170,7 @@ int main() {
 		std::shared_ptr<Page> page = Page::make(information);
 		page->propagate_size_change(rec);
 
-		auto button_callback = [&page]() {
+		auto button_callback = [&page](Button* slider,ConfigDraw* config) {
 			auto temp_optional_page = create_option_page();
 			page->stack(temp_optional_page);
 		};

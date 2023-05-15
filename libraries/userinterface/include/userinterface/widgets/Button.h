@@ -11,7 +11,9 @@
 namespace curan {
 	namespace ui {
 
-		using buttoncallback = std::function<void()>;
+		class Button;
+		struct ConfigDraw;
+		using buttoncallback = std::function<void(Button*, ConfigDraw*)>;
 
 		class Button : public  Drawable , utils::Lockable<Button>, utils::Connectable<Button> {
 		public:

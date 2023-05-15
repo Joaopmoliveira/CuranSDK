@@ -36,7 +36,7 @@ int main() {
 		SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
 		text_font.setEdging(SkFont::Edging::kAntiAlias);
 
-		auto callback = []() {
+		auto callback = [](Button* button, ConfigDraw* config) {
 			std::cout << "received signal!\n";
 		};
 
