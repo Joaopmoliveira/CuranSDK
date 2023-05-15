@@ -35,15 +35,15 @@ struct ConfigurationData {
 	std::array<double, 2> sigma_gradient_limit = {1.0,20.0};
 	std::array<double, 2> variance_limit = {1.0,20.0};
 	std::array<double, 2> disk_ratio_limit = {0.1,10.0};
-	std::array<char, 2>  threshold_limit = {(char)50,(char)150};
+	std::array<double, 2>  threshold_limit = {50.0,150.0};
 
 	double minimum_radius = 8;
-	double maximum_radius = 10;
+	double maximum_radius = 12.0;
 	double sweep_angle = 0.1;
 	double sigma_gradient = 10;
 	double variance = 10;
 	double disk_ratio = 1;
-	unsigned char threshold = 110;
+	double threshold = 110;
 
 };
 
@@ -115,7 +115,7 @@ struct ProcessingMessage {
 
 				using FilterType = itk::ThresholdImageFilter<ImageType>;
 				auto filter = FilterType::New();
-				unsigned char lowerThreshold = configuration.threshold;
+				unsigned char lowerThreshold = (unsigned int)configuration.threshold;
 				unsigned char upperThreshold = 255;
 				filter->SetInput(importFilter->GetOutput());
 				filter->ThresholdOutside(lowerThreshold, upperThreshold);
@@ -272,7 +272,7 @@ struct ProcessingMessage {
 };
 
 
-std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<ProcessingMessage> processing) {
+std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<ProcessingMessage>& processing) {
 		using namespace curan::ui;
 		IconResources resources{ "C:/dev/Curan/resources" };
 
@@ -353,7 +353,7 @@ std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 		};
 		std::shared_ptr<Slider> button2 = Slider::make(infor);
 		double current_val2 = (processing->configuration.sweep_angle - processing->configuration.sweep_angle_limit[0]) / (processing->configuration.sweep_angle_limit[1] - processing->configuration.sweep_angle_limit[0]);
-		button1->set_current_value(current_val2);
+		button2->set_current_value(current_val2);
 		infocontainer.layouts = { text2,button2 };
 		std::shared_ptr<Container> container2 = Container::make(infocontainer);
 
@@ -364,7 +364,7 @@ std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 		};
 		std::shared_ptr<Slider> button3 = Slider::make(infor);
 		double current_val3 = (processing->configuration.sigma_gradient - processing->configuration.sigma_gradient_limit[0]) / (processing->configuration.sigma_gradient_limit[1] - processing->configuration.sigma_gradient_limit[0]);
-		button1->set_current_value(current_val3);
+		button3->set_current_value(current_val3);
 		infocontainer.layouts = { text3,button3 };
 		std::shared_ptr<Container> container3 = Container::make(infocontainer);
 
@@ -375,7 +375,7 @@ std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 		};
 		std::shared_ptr<Slider> button4 = Slider::make(infor);
 		double current_val4 = (processing->configuration.variance - processing->configuration.variance_limit[0]) / (processing->configuration.variance_limit[1] - processing->configuration.variance_limit[0]);
-		button1->set_current_value(current_val4);
+		button4->set_current_value(current_val4);
 		infocontainer.layouts = { text4,button4 };
 		std::shared_ptr<Container> container4 = Container::make(infocontainer);
 
@@ -386,18 +386,18 @@ std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 		};
 		std::shared_ptr<Slider> button5 = Slider::make(infor);
 		double current_val5 = (processing->configuration.disk_ratio - processing->configuration.disk_ratio_limit[0]) / (processing->configuration.disk_ratio_limit[1] - processing->configuration.disk_ratio_limit[0]);
-		button1->set_current_value(current_val5);
+		button5->set_current_value(current_val5);
 		infocontainer.layouts = { text5,button5 };
 		std::shared_ptr<Container> container5 = Container::make(infocontainer);
 
 		infotext.button_text = "Threshold";
 		std::shared_ptr<TextBlob> text6 = TextBlob::make(infotext);
 		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
-			processing->configuration.threshold = processing->configuration.threshold_limit[0] + slider->get_current_value() * (processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
+			processing->configuration.threshold = (double)processing->configuration.threshold_limit[0] + slider->get_current_value() * (processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
 		};
 		std::shared_ptr<Slider> button6 = Slider::make(infor);
-		double current_val6 = (processing->configuration.threshold - processing->configuration.threshold_limit[0]) / (processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
-		button1->set_current_value(current_val6);
+		double current_val6 = (processing->configuration.threshold - processing->configuration.threshold_limit[0]) / (double)(processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
+		button6->set_current_value(current_val6);
 		infocontainer.layouts = { text6,button6 };
 		std::shared_ptr<Container> container6 = Container::make(infocontainer);
 
@@ -411,7 +411,7 @@ std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 		return Overlay::make(information);
 }
 
-std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data,std::shared_ptr<ProcessingMessage>& processing,std::shared_ptr<curan::ui::Button>& button_options) {
+std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data,std::shared_ptr<ProcessingMessage>& processing) {
 	using namespace curan::ui;
 	IconResources resources{ "C:/dev/Curan/resources" };
 
@@ -514,7 +514,12 @@ std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data,std::s
 	infor.hover_color = SK_ColorDKGRAY;
 	infor.waiting_color = SK_ColorBLACK;
 	infor.size = SkRect::MakeWH(200, 80);
-	button_options = Button::make(infor);
+
+	infor.callback = [&processing](Button* button, ConfigDraw* config) {
+		auto overlay = create_options_overlay(processing);
+		config->stack_page->stack(overlay);
+	};
+	std::shared_ptr<Button> button_options = Button::make(infor);
 
 	info.layouts = { start_connection,button_start_collection,button_options };
 	std::shared_ptr<Container> button_container = Container::make(info);
@@ -547,18 +552,8 @@ int main(int argc, char* argv[]) {
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 	std::shared_ptr<ProcessingMessage> processing;
-	std::shared_ptr<Button> button_options;
-	
-	auto page = create_main_page(data,processing, button_options);
-	
-	
-	auto over_superposition = [&processing](Button* button,ConfigDraw* config) {
-		auto overlay = create_options_overlay(processing);
-		std::cout << "adding stack\n";
-		config->stack_page->stack(overlay);
-	};
+	auto page = create_main_page(data,processing);
 
-	button_options->set_callback(over_superposition);
 	auto rec = viewer->get_size();
 	page->propagate_size_change(rec);
 

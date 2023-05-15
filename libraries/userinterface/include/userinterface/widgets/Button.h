@@ -84,6 +84,16 @@ namespace curan {
 				waiting_color = new_waiting_color;
 			}
 
+			inline void set_click_color(SkColor new_click_color) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				click_color = new_click_color;
+			}
+
+			inline SkColor get_click_color() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return click_color;
+			}
+
 			inline ButtonStates get_current_state() {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				return current_state;

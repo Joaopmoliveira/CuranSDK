@@ -24,26 +24,25 @@ std::shared_ptr<Slider> Slider::make(Info& info) {
 
 drawablefunction Slider::draw() {
     auto lamb = [this](SkCanvas* canvas) {
-        std::lock_guard<std::mutex> g{ get_mutex() };
-
         auto widget_rect = get_position();
         auto size = get_size();
 
         SkRect drawable = size;
         drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
 
+		
         paint.setColor(slider_color);
 		canvas->drawRoundRect(drawable, drawable.height() / 2.0, drawable.height() / 2.0, paint);
 
         switch (current_state) {
         case SliderStates::WAITING:
-            paint.setColor(waiting_color);
+            paint.setColor(get_waiting_color());
             break;
         case SliderStates::HOVER:
-            paint.setColor(hover_color);
+            paint.setColor(get_hover_color());
             break;
         case SliderStates::PRESSED:
-            paint.setColor(click_color);
+            paint.setColor(get_click_color());
             break;
         }
 
@@ -103,7 +102,6 @@ callablefunction Slider::call() {
 						auto val = *callback;
 						val(this,config);
 					}
-
 				}
 				else
 					current_state_local = SliderStates::WAITING;
@@ -114,7 +112,7 @@ callablefunction Slider::call() {
 			[this](Scroll arg) {;
 
 			},
-			[this,&interacted](Unpress arg) {
+			[this,&interacted,config](Unpress arg) {
 				auto previous_state = get_current_state();
 				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos, arg.ypos))
@@ -123,6 +121,10 @@ callablefunction Slider::call() {
 					current_state_local = SliderStates::WAITING;
 				if (previous_state != current_state_local)
 					interacted = true;
+				if (callback) {
+					auto val = *callback;
+					val(this, config);
+				}
 				set_current_state(current_state_local);
 			},
 			[this](Key arg) {

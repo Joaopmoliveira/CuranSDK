@@ -34,16 +34,15 @@ std::shared_ptr<Button> Button::make(Info& info) {
 
 drawablefunction Button::draw() {
 	auto lamb = [this](SkCanvas* canvas) {
-		std::lock_guard<std::mutex> g{ get_mutex() };
 		switch (current_state) {
 		case ButtonStates::WAITING:
-			paint.setColor(waiting_color);
+			paint.setColor(get_waiting_color());
 			break;
 		case ButtonStates::HOVER:
-			paint.setColor(hover_color);
+			paint.setColor(get_hover_color());
 			break;
 		case ButtonStates::PRESSED:
-			paint.setColor(click_color);
+			paint.setColor(get_click_color());
 			break;
 		}
 		auto widget_rect = get_position();

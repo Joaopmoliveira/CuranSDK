@@ -9,6 +9,7 @@ namespace curan {
 		template<typename Derived>
 		class Lockable {
 			std::mutex mut;
+
 		public:
 			std::mutex& get_mutex() {
 				return mut;

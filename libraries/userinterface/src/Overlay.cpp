@@ -17,10 +17,6 @@ Overlay::Info::Info(){
 
 			},
 		[config,page_interaction](Press arg) {
-				if(page_interaction)
-					std::cout << "Pressed\nPage interaction: true \n";
-				else
-					std::cout << "Pressed\nPage interaction: false \n";
 				if (!page_interaction && config->stack_page != nullptr)
 					config->stack_page->pop();
 			},
