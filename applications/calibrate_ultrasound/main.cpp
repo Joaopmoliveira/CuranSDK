@@ -58,6 +58,7 @@ struct ProcessingMessage {
 	ConfigurationData& configuration;
 	std::list<std::vector<Point>> list_of_recorded_points;
 	std::atomic<bool> should_record = false;
+	std::atomic<bool> show_circles = false;
 	short port = 10000;
 
 	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer,
@@ -174,52 +175,54 @@ struct ProcessingMessage {
 				}
 
 				ImageType::Pointer localImage = rescale->GetOutput();
-				//HoughTransformFilterType::CirclesListType circles;
-				//circles = houghFilter->GetCircles();
-				//using OutputPixelType = unsigned char;
-				//using OutputImageType = itk::Image<OutputPixelType, Dimension>;
 
-				//auto localOutputImage = OutputImageType::New();
-				//region.SetSize(localImage->GetLargestPossibleRegion().GetSize());
-				//region.SetIndex(localImage->GetLargestPossibleRegion().GetIndex());
-				//localOutputImage->SetRegions(region);
-				//localOutputImage->SetOrigin(localImage->GetOrigin());
-				//localOutputImage->SetSpacing(localImage->GetSpacing());
-				//localOutputImage->Allocate(true); // initializes buffer to zero
+				std::vector<Point> local_centers;
 
-				//using CirclesListType = HoughTransformFilterType::CirclesListType;
-				//CirclesListType::const_iterator itCircles = circles.begin();
+				if (show_circles.load()) {
+					HoughTransformFilterType::CirclesListType circles;
+					circles = houghFilter->GetCircles();
+					using OutputPixelType = unsigned char;
+					using OutputImageType = itk::Image<OutputPixelType, Dimension>;
 
-				//std::vector<Point> local_centers;
-				//local_centers.reserve(circles.size());
-				//while (itCircles != circles.end())
-				//{
-				//	const HoughTransformFilterType::CircleType::PointType centerPoint =
-				//		(*itCircles)->GetCenterInObjectSpace();
-				//	Point p;
-				//	p.x = centerPoint[0];
-				//	p.y = centerPoint[1];
-				//	local_centers.push_back(p);
-				//	for (double angle = 0; angle <= itk::Math::twopi;
-				//		angle += itk::Math::pi / 60.0)
-				//	{
-				//		using IndexValueType = ImageType::IndexType::IndexValueType;
-				//		localIndex[0] = itk::Math::Round<IndexValueType>(
-				//			centerPoint[0] +
-				//			(*itCircles)->GetRadiusInObjectSpace()[0] * std::cos(angle));
-				//		localIndex[1] = itk::Math::Round<IndexValueType>(
-				//			centerPoint[1] +
-				//			(*itCircles)->GetRadiusInObjectSpace()[0] * std::sin(angle));
-				//		OutputImageType::RegionType outputRegion =
-				//			localOutputImage->GetLargestPossibleRegion();
+					auto localOutputImage = OutputImageType::New();
+					region.SetSize(localImage->GetLargestPossibleRegion().GetSize());
+					region.SetIndex(localImage->GetLargestPossibleRegion().GetIndex());
+					localOutputImage->SetRegions(region);
+					localOutputImage->SetOrigin(localImage->GetOrigin());
+					localOutputImage->SetSpacing(localImage->GetSpacing());
+					localOutputImage->Allocate(true); // initializes buffer to zero
 
-				//		if (outputRegion.IsInside(localIndex))
-				//		{
-				//			localOutputImage->SetPixel(localIndex, 255);
-				//		}
-				//	}
-				//	itCircles++;
-				//}
+					using CirclesListType = HoughTransformFilterType::CirclesListType;
+					CirclesListType::const_iterator itCircles = circles.begin();
+
+					std::vector<Point> local_centers;
+					local_centers.reserve(circles.size());
+					while (itCircles != circles.end())
+					{
+						const HoughTransformFilterType::CircleType::PointType centerPoint =
+						(*itCircles)->GetCenterInObjectSpace();
+						Point p;
+						p.x = centerPoint[0];
+						p.y = centerPoint[1];
+						local_centers.push_back(p);
+						for (double angle = 0; angle <= itk::Math::twopi;
+							angle += itk::Math::pi / 60.0)
+						{
+							using IndexValueType = ImageType::IndexType::IndexValueType;
+							localIndex[0] = itk::Math::Round<IndexValueType>(
+								centerPoint[0] +
+							(*itCircles)->GetRadiusInObjectSpace()[0] * std::cos(angle));
+							localIndex[1] = itk::Math::Round<IndexValueType>(
+								centerPoint[1] +
+							(*itCircles)->GetRadiusInObjectSpace()[0] * std::sin(angle));
+							OutputImageType::RegionType outputRegion = localOutputImage->GetLargestPossibleRegion();
+
+							if (outputRegion.IsInside(localIndex))
+								localOutputImage->SetPixel(localIndex, 255);
+						}
+						itCircles++;
+					}
+				}
 
 				//if (should_record.load() && local_centers.size()>0) {
 				//	list_of_recorded_points.push_back(local_centers);
@@ -232,11 +235,41 @@ struct ProcessingMessage {
 					requested = map;
 					return;
 				};
+
+
+				auto localimage2 = filter->GetOutput();
+				auto special_custom = [circles](SkCanvas* canvas, SkRect allowed_region) {
+					while (itCircles != circles.end())
+					{
+						const HoughTransformFilterType::CircleType::PointType centerPoint =
+							(*itCircles)->GetCenterInObjectSpace();
+						Point p;
+						p.x = centerPoint[0];
+						p.y = centerPoint[1];
+						local_centers.push_back(p);
+						for (double angle = 0; angle <= itk::Math::twopi;
+							angle += itk::Math::pi / 60.0)
+						{
+							using IndexValueType = ImageType::IndexType::IndexValueType;
+							localIndex[0] = itk::Math::Round<IndexValueType>(
+								centerPoint[0] +
+								(*itCircles)->GetRadiusInObjectSpace()[0] * std::cos(angle));
+							localIndex[1] = itk::Math::Round<IndexValueType>(
+								centerPoint[1] +
+								(*itCircles)->GetRadiusInObjectSpace()[0] * std::sin(angle));
+							OutputImageType::RegionType outputRegion = localOutputImage->GetLargestPossibleRegion();
+
+							if (outputRegion.IsInside(localIndex))
+								localOutputImage->SetPixel(localIndex, 255);
+						}
+						itCircles++;
+					}
+				};
 				processed_viwer->update_image(lam);
 			}
 		}
 		else {
-			std::cout << "Unknown Message\n";
+			std::cout << "Unknown Message: " << tmp << "\n";
 		}
 		return false;
 	};
@@ -272,144 +305,231 @@ struct ProcessingMessage {
 };
 
 
+std::shared_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_ptr<ProcessingMessage>& processing) {
+	using namespace curan::ui;
+	IconResources resources{ "C:/dev/Curan/resources" };
+
+	SkColor colbuton = { SK_ColorBLACK };
+	SkColor coltext = { SK_ColorWHITE };
+
+	SkPaint paint_square;
+	paint_square.setStyle(SkPaint::kFill_Style);
+	paint_square.setAntiAlias(true);
+	paint_square.setStrokeWidth(4);
+	paint_square.setColor(colbuton);
+
+	SkPaint paint_text;
+	paint_text.setStyle(SkPaint::kFill_Style);
+	paint_text.setAntiAlias(true);
+	paint_text.setStrokeWidth(4);
+	paint_text.setColor(coltext);
+
+	SkPaint paint_square2;
+	paint_square2.setStyle(SkPaint::kFill_Style);
+	paint_square2.setAntiAlias(true);
+	paint_square2.setStrokeWidth(4);
+	paint_square2.setColor(SK_ColorTRANSPARENT);
+
+	const char* fontFamily = nullptr;
+	SkFontStyle fontStyle;
+	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+
+	SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
+	text_font.setEdging(SkFont::Edging::kAntiAlias);
+
+	Container::InfoLinearContainer infocontainer;
+	infocontainer.paint_layout = paint_square2;
+	infocontainer.arrangement = curan::ui::Arrangement::HORIZONTAL;
+
+	Slider::Info infor{};
+	infor.click_color = SK_ColorLTGRAY;
+	infor.hover_color = SK_ColorCYAN;
+	infor.waiting_color = SK_ColorDKGRAY;
+	infor.sliderColor = SK_ColorGRAY;
+	infor.paintButton = paint_square;
+	infor.size = SkRect::MakeWH(200, 40);
+	infor.limits = { 0.0f, 300.0f };
+	infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+		processing->configuration.minimum_radius = processing->configuration.minimum_radius_limit[0] + slider->get_current_value() * (processing->configuration.minimum_radius_limit[1] - processing->configuration.minimum_radius_limit[0]);
+	};
+	std::shared_ptr<Slider> button = Slider::make(infor);
+	double current_val = (processing->configuration.minimum_radius - processing->configuration.minimum_radius_limit[0]) / (processing->configuration.minimum_radius_limit[1] - processing->configuration.minimum_radius_limit[0]);
+	button->set_current_value(current_val);
+
+	TextBlob::Info infotext;
+	infotext.button_text = "Minimum Radius";
+	infotext.paint = paint_square;
+	infotext.paintText = paint_text;
+	infotext.size = SkRect::MakeWH(200, 40);
+	infotext.textFont = text_font;
+	std::shared_ptr<TextBlob> text = TextBlob::make(infotext);
+
+	infocontainer.layouts = { text,button };
+	std::shared_ptr<Container> container = Container::make(infocontainer);
+
+	infotext.button_text = "Maximum Radius";
+	std::shared_ptr<TextBlob> text1 = TextBlob::make(infotext);
+	infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+		processing->configuration.maximum_radius = processing->configuration.maximum_radius_limit[0] + slider->get_current_value() * (processing->configuration.maximum_radius_limit[1] - processing->configuration.maximum_radius_limit[0]);
+	};
+	std::shared_ptr<Slider> button1 = Slider::make(infor);
+	double current_val1 = (processing->configuration.maximum_radius - processing->configuration.maximum_radius_limit[0]) / (processing->configuration.maximum_radius_limit[1] - processing->configuration.maximum_radius_limit[0]);
+	button1->set_current_value(current_val1);
+	infocontainer.layouts = { text1,button1 };
+	std::shared_ptr<Container> container1 = Container::make(infocontainer);
+
+	infotext.button_text = "Sweep Angle";
+	std::shared_ptr<TextBlob> text2 = TextBlob::make(infotext);
+	infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+		processing->configuration.sweep_angle = processing->configuration.sweep_angle_limit[0] + slider->get_current_value() * (processing->configuration.sweep_angle_limit[1] - processing->configuration.sweep_angle_limit[0]);
+	};
+	std::shared_ptr<Slider> button2 = Slider::make(infor);
+	double current_val2 = (processing->configuration.sweep_angle - processing->configuration.sweep_angle_limit[0]) / (processing->configuration.sweep_angle_limit[1] - processing->configuration.sweep_angle_limit[0]);
+	button2->set_current_value(current_val2);
+	infocontainer.layouts = { text2,button2 };
+	std::shared_ptr<Container> container2 = Container::make(infocontainer);
+
+	infotext.button_text = "Sigma Gradient";
+	std::shared_ptr<TextBlob> text3 = TextBlob::make(infotext);
+	infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+		processing->configuration.sigma_gradient = processing->configuration.sigma_gradient_limit[0] + slider->get_current_value() * (processing->configuration.sigma_gradient_limit[1] - processing->configuration.sigma_gradient_limit[0]);
+	};
+	std::shared_ptr<Slider> button3 = Slider::make(infor);
+	double current_val3 = (processing->configuration.sigma_gradient - processing->configuration.sigma_gradient_limit[0]) / (processing->configuration.sigma_gradient_limit[1] - processing->configuration.sigma_gradient_limit[0]);
+	button3->set_current_value(current_val3);
+	infocontainer.layouts = { text3,button3 };
+	std::shared_ptr<Container> container3 = Container::make(infocontainer);
+
+	infotext.button_text = "Variance";
+	std::shared_ptr<TextBlob> text4 = TextBlob::make(infotext);
+	infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+		processing->configuration.variance = processing->configuration.variance_limit[0] + slider->get_current_value() * (processing->configuration.variance_limit[1] - processing->configuration.variance_limit[0]);
+	};
+	std::shared_ptr<Slider> button4 = Slider::make(infor);
+	double current_val4 = (processing->configuration.variance - processing->configuration.variance_limit[0]) / (processing->configuration.variance_limit[1] - processing->configuration.variance_limit[0]);
+	button4->set_current_value(current_val4);
+	infocontainer.layouts = { text4,button4 };
+	std::shared_ptr<Container> container4 = Container::make(infocontainer);
+
+	infotext.button_text = "Disk Ratio";
+	std::shared_ptr<TextBlob> text5 = TextBlob::make(infotext);
+	infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+		processing->configuration.disk_ratio = processing->configuration.disk_ratio_limit[0] + slider->get_current_value() * (processing->configuration.disk_ratio_limit[1] - processing->configuration.disk_ratio_limit[0]);
+	};
+	std::shared_ptr<Slider> button5 = Slider::make(infor);
+	double current_val5 = (processing->configuration.disk_ratio - processing->configuration.disk_ratio_limit[0]) / (processing->configuration.disk_ratio_limit[1] - processing->configuration.disk_ratio_limit[0]);
+	button5->set_current_value(current_val5);
+	infocontainer.layouts = { text5,button5 };
+	std::shared_ptr<Container> container5 = Container::make(infocontainer);
+
+	infotext.button_text = "Threshold";
+	std::shared_ptr<TextBlob> text6 = TextBlob::make(infotext);
+	infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
+		processing->configuration.threshold = (double)processing->configuration.threshold_limit[0] + slider->get_current_value() * (processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
+	};
+	std::shared_ptr<Slider> button6 = Slider::make(infor);
+	double current_val6 = (processing->configuration.threshold - processing->configuration.threshold_limit[0]) / (double)(processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
+	button6->set_current_value(current_val6);
+	infocontainer.layouts = { text6,button6 };
+	std::shared_ptr<Container> container6 = Container::make(infocontainer);
+
+	infocontainer.arrangement = curan::ui::Arrangement::VERTICAL;
+	infocontainer.layouts = { container,container1,container2,container3,container4,container5,container6 };
+	std::shared_ptr<Container> containerotions = Container::make(infocontainer);
+
+	Overlay::Info information;
+	information.backgroundcolor = SK_ColorTRANSPARENT;
+	information.contained = containerotions;
+	return Overlay::make(information);
+}
+
+
 std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<ProcessingMessage>& processing) {
-		using namespace curan::ui;
-		IconResources resources{ "C:/dev/Curan/resources" };
+	using namespace curan::ui;
+	IconResources resources{ "C:/dev/Curan/resources" };
 
-		SkColor colbuton = { SK_ColorBLACK };
-		SkColor coltext = { SK_ColorWHITE };
+	SkColor colbuton = { SK_ColorBLACK };
+	SkColor coltext = { SK_ColorWHITE };
 
-		SkPaint paint_square;
-		paint_square.setStyle(SkPaint::kFill_Style);
-		paint_square.setAntiAlias(true);
-		paint_square.setStrokeWidth(4);
-		paint_square.setColor(colbuton);
+	SkPaint paint_square;
+	paint_square.setStyle(SkPaint::kFill_Style);
+	paint_square.setAntiAlias(true);
+	paint_square.setStrokeWidth(4);
+	paint_square.setColor(colbuton);
 
-		SkPaint paint_text;
-		paint_text.setStyle(SkPaint::kFill_Style);
-		paint_text.setAntiAlias(true);
-		paint_text.setStrokeWidth(4);
-		paint_text.setColor(coltext);
+	SkPaint paint_text;
+	paint_text.setStyle(SkPaint::kFill_Style);
+	paint_text.setAntiAlias(true);
+	paint_text.setStrokeWidth(4);
+	paint_text.setColor(coltext);
 
-		SkPaint paint_square2;
-		paint_square2.setStyle(SkPaint::kFill_Style);
-		paint_square2.setAntiAlias(true);
-		paint_square2.setStrokeWidth(4);
-		paint_square2.setColor(SK_ColorTRANSPARENT);
+	SkPaint paint_square2;
+	paint_square2.setStyle(SkPaint::kFill_Style);
+	paint_square2.setAntiAlias(true);
+	paint_square2.setStrokeWidth(4);
+	paint_square2.setColor(SK_ColorTRANSPARENT);
 
-		const char* fontFamily = nullptr;
-		SkFontStyle fontStyle;
-		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+	const char* fontFamily = nullptr;
+	SkFontStyle fontStyle;
+	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 
-		SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
-		text_font.setEdging(SkFont::Edging::kAntiAlias);
+	SkFont text_font = SkFont(typeface, 15, 1.0f, 0.0f);
+	text_font.setEdging(SkFont::Edging::kAntiAlias);
 
-		Container::InfoLinearContainer infocontainer;
-		infocontainer.paint_layout = paint_square2;
-		infocontainer.arrangement = curan::ui::Arrangement::HORIZONTAL;
-
-		Slider::Info infor{};
+	std::shared_ptr<Button> display_type;
+	{
+		Button::Info infor{ resources };
+		infor.button_text = "Display Circles";
 		infor.click_color = SK_ColorLTGRAY;
 		infor.hover_color = SK_ColorCYAN;
 		infor.waiting_color = SK_ColorDKGRAY;
-		infor.sliderColor = SK_ColorGRAY;
+		infor.icon_identifier = "";
 		infor.paintButton = paint_square;
-		infor.size = SkRect::MakeWH(200, 40);
-		infor.limits = { 0.0f, 300.0f };
-		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
-			processing->configuration.minimum_radius = processing->configuration.minimum_radius_limit[0] + slider->get_current_value()*(processing->configuration.minimum_radius_limit[1] - processing->configuration.minimum_radius_limit[0]);
+		infor.paintText = paint_text;
+		infor.size = SkRect::MakeWH(200, 80);
+		infor.textFont = text_font;
+		infor.callback = [&processing](Button* button, ConfigDraw* config) {
+			processing-
 		};
-		std::shared_ptr<Slider> button = Slider::make(infor);
-		double current_val = (processing->configuration.minimum_radius - processing->configuration.minimum_radius_limit[0]) / (processing->configuration.minimum_radius_limit[1] - processing->configuration.minimum_radius_limit[0]);
-		button->set_current_value(current_val);
+		display_type = Button::make(infor);
+	}
 
-		TextBlob::Info infotext;
-		infotext.button_text = "Minimum Radius";
-		infotext.paint = paint_square;
-		infotext.paintText = paint_text;
-		infotext.size = SkRect::MakeWH(200, 40);
-		infotext.textFont = text_font;
-		std::shared_ptr<TextBlob> text = TextBlob::make(infotext);
+	std::shared_ptr<Button> options;
 
-		infocontainer.layouts = { text,button };
-		std::shared_ptr<Container> container = Container::make(infocontainer);
-
-		infotext.button_text = "Maximum Radius";
-		std::shared_ptr<TextBlob> text1 = TextBlob::make(infotext);
-		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
-			processing->configuration.maximum_radius = processing->configuration.maximum_radius_limit[0] + slider->get_current_value() * (processing->configuration.maximum_radius_limit[1] - processing->configuration.maximum_radius_limit[0]);
+	{
+		Button::Info infor{ resources };
+		infor.button_text = "Options";
+		infor.click_color = SK_ColorLTGRAY;
+		infor.hover_color = SK_ColorCYAN;
+		infor.waiting_color = SK_ColorDKGRAY;
+		infor.icon_identifier = "";
+		infor.paintButton = paint_square;
+		infor.paintText = paint_text;
+		infor.size = SkRect::MakeWH(200, 80);
+		infor.textFont = text_font;
+		infor.callback = [&processing](Button* button, ConfigDraw* config) {
+			auto overlay = create_filtercontroler_overlay(processing);
+			config->stack_page->stack(overlay);
 		};
-		std::shared_ptr<Slider> button1 = Slider::make(infor);
-		double current_val1 = (processing->configuration.maximum_radius - processing->configuration.maximum_radius_limit[0]) / (processing->configuration.maximum_radius_limit[1] - processing->configuration.maximum_radius_limit[0]);
-		button1->set_current_value(current_val1);
-		infocontainer.layouts = { text1,button1 };
-		std::shared_ptr<Container> container1 = Container::make(infocontainer);
+		options = Button::make(infor);
+	}
 
-		infotext.button_text = "Sweep Angle";
-		std::shared_ptr<TextBlob> text2 = TextBlob::make(infotext);
-		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
-			processing->configuration.sweep_angle = processing->configuration.sweep_angle_limit[0] + slider->get_current_value() * (processing->configuration.sweep_angle_limit[1] - processing->configuration.sweep_angle_limit[0]);
-		};
-		std::shared_ptr<Slider> button2 = Slider::make(infor);
-		double current_val2 = (processing->configuration.sweep_angle - processing->configuration.sweep_angle_limit[0]) / (processing->configuration.sweep_angle_limit[1] - processing->configuration.sweep_angle_limit[0]);
-		button2->set_current_value(current_val2);
-		infocontainer.layouts = { text2,button2 };
-		std::shared_ptr<Container> container2 = Container::make(infocontainer);
 
-		infotext.button_text = "Sigma Gradient";
-		std::shared_ptr<TextBlob> text3 = TextBlob::make(infotext);
-		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
-			processing->configuration.sigma_gradient = processing->configuration.sigma_gradient_limit[0] + slider->get_current_value() * (processing->configuration.sigma_gradient_limit[1] - processing->configuration.sigma_gradient_limit[0]);
-		};
-		std::shared_ptr<Slider> button3 = Slider::make(infor);
-		double current_val3 = (processing->configuration.sigma_gradient - processing->configuration.sigma_gradient_limit[0]) / (processing->configuration.sigma_gradient_limit[1] - processing->configuration.sigma_gradient_limit[0]);
-		button3->set_current_value(current_val3);
-		infocontainer.layouts = { text3,button3 };
-		std::shared_ptr<Container> container3 = Container::make(infocontainer);
+	Container::InfoLinearContainer info;
+	info.paint_layout = paint_square2;
+	info.arrangement = curan::ui::Arrangement::HORIZONTAL;
+	info.divisions = { 0.0 , 0.5 , 1.0 };
+	info.layouts = { display_type,options };
+	std::shared_ptr<Container> viwers_container = Container::make(info);
 
-		infotext.button_text = "Variance";
-		std::shared_ptr<TextBlob> text4 = TextBlob::make(infotext);
-		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
-			processing->configuration.variance = processing->configuration.variance_limit[0] + slider->get_current_value() * (processing->configuration.variance_limit[1] - processing->configuration.variance_limit[0]);
-		};
-		std::shared_ptr<Slider> button4 = Slider::make(infor);
-		double current_val4 = (processing->configuration.variance - processing->configuration.variance_limit[0]) / (processing->configuration.variance_limit[1] - processing->configuration.variance_limit[0]);
-		button4->set_current_value(current_val4);
-		infocontainer.layouts = { text4,button4 };
-		std::shared_ptr<Container> container4 = Container::make(infocontainer);
-
-		infotext.button_text = "Disk Ratio";
-		std::shared_ptr<TextBlob> text5 = TextBlob::make(infotext);
-		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
-			processing->configuration.disk_ratio = processing->configuration.disk_ratio_limit[0] + slider->get_current_value() * (processing->configuration.disk_ratio_limit[1] - processing->configuration.disk_ratio_limit[0]);
-		};
-		std::shared_ptr<Slider> button5 = Slider::make(infor);
-		double current_val5 = (processing->configuration.disk_ratio - processing->configuration.disk_ratio_limit[0]) / (processing->configuration.disk_ratio_limit[1] - processing->configuration.disk_ratio_limit[0]);
-		button5->set_current_value(current_val5);
-		infocontainer.layouts = { text5,button5 };
-		std::shared_ptr<Container> container5 = Container::make(infocontainer);
-
-		infotext.button_text = "Threshold";
-		std::shared_ptr<TextBlob> text6 = TextBlob::make(infotext);
-		infor.callback = [&processing](Slider* slider, ConfigDraw* config) {
-			processing->configuration.threshold = (double)processing->configuration.threshold_limit[0] + slider->get_current_value() * (processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
-		};
-		std::shared_ptr<Slider> button6 = Slider::make(infor);
-		double current_val6 = (processing->configuration.threshold - processing->configuration.threshold_limit[0]) / (double)(processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
-		button6->set_current_value(current_val6);
-		infocontainer.layouts = { text6,button6 };
-		std::shared_ptr<Container> container6 = Container::make(infocontainer);
-
-		infocontainer.arrangement = curan::ui::Arrangement::VERTICAL;
-		infocontainer.layouts = { container,container1,container2,container3,container4,container5,container6 };
-		std::shared_ptr<Container> containerotions = Container::make(infocontainer);
-
-		Overlay::Info information;
-		information.backgroundcolor = SK_ColorTRANSPARENT;
-		information.contained = containerotions;
-		return Overlay::make(information);
+	Overlay::Info information;
+	information.backgroundcolor = SK_ColorTRANSPARENT;
+	information.contained = viwers_container;
+	return Overlay::make(information);
 }
+
 
 std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data,std::shared_ptr<ProcessingMessage>& processing) {
 	using namespace curan::ui;

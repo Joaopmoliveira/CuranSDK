@@ -49,7 +49,7 @@ drawablefunction ImageDisplay::draw() {
 
 			if (custom_drawing_call) {
 				auto special = *custom_drawing_call;
-				special(canvas, init_x, init_y);
+				special(canvas, current_selected_image_rectangle);
 			}
 		}
 		if (images_to_render.size() > 1) {

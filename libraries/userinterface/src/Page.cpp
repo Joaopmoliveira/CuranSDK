@@ -27,13 +27,13 @@ void Page::draw(SkCanvas* canvas) {
 	if (!page_stack.empty()) {
 		auto image = canvas->getSurface()->makeImageSnapshot();
 		canvas->drawImage(image, 0, 0, options, &bluring_paint);
-		page_stack.front()->draw(canvas);
+		page_stack.back()->draw(canvas);
 	}
 }
 
 bool Page::propagate_signal(Signal sig, ConfigDraw* config_draw) {
 	if (!page_stack.empty())
-		return page_stack.front()->propagate_signal(sig, config_draw);
+		return page_stack.back()->propagate_signal(sig, config_draw);
 	else 
 		return main_page->propagate_signal(sig, config_draw);
 }

@@ -13,7 +13,7 @@ namespace curan {
 	namespace ui {
 
 		using image_provider = std::function<void(SkPixmap&)>;
-		using custom_step = std::function<void(SkCanvas*,double,double)>;
+		using custom_step = std::function<void(SkCanvas*, SkRect)>;
 
 		class ImageDisplay : public  Drawable, utils::Lockable<ImageDisplay>, utils::Connectable<ImageDisplay> {
 			int width = 100;
@@ -35,9 +35,15 @@ namespace curan {
 			drawablefunction draw() override;
 			callablefunction call() override;
 			void framebuffer_resize() override;
+
 			inline void update_custom_drawingcall(custom_step call){
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				custom_drawing_call = call;
+			}
+
+			inline void clear_custom_drawingcall() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				custom_drawing_call = std::nullopt;
 			}
 		};
 	}
