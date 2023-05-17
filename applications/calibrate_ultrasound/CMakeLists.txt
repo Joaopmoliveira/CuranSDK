@@ -1,4 +1,4 @@
-add_executable(ultrasoundcalibration main.cpp)
+add_executable(ultrasoundcalibration main.cpp "CalibratePages.h" "MessageProcessing.h" "MessageProcessing.cpp" "CalibratePages.cpp")
 
 find_package(ITK CONFIG REQUIRED)
 
