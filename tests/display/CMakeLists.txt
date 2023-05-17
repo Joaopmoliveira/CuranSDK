@@ -55,12 +55,6 @@ target_link_libraries(test_page_juntion PUBLIC
 userinterface
 )
 
-#add_executable(test_overlay test_overlay.cpp)
-
-#target_link_libraries(test_overlay PUBLIC
-#userinterface
-#)
-
 add_executable(test_overlay_api test_overlay_api.cpp)
 
 target_link_libraries(test_overlay_api PUBLIC
@@ -70,5 +64,12 @@ userinterface
 add_executable(test_multiple_sliders test_multiple_sliders.cpp)
 
 target_link_libraries(test_multiple_sliders PUBLIC
+userinterface
+)
+
+
+add_executable(skia_playground skia_playground.cpp)
+
+target_link_libraries(skia_playground PUBLIC
 userinterface
 )

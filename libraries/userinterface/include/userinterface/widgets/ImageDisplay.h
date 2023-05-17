@@ -20,8 +20,8 @@ namespace curan {
 			int height = 100;
 			using skia_image_producer = std::function<sk_sp<SkImage>(void)>;
 
-			std::list<skia_image_producer> images_to_render;
-			std::optional<custom_step> custom_drawing_call;
+			std::optional<skia_image_producer> images_to_render = std::nullopt;
+			std::optional<custom_step> custom_drawing_call = std::nullopt;
 		public:
 			struct Info {
 				int width;
@@ -36,6 +36,11 @@ namespace curan {
 			callablefunction call() override;
 			void framebuffer_resize() override;
 
+			inline std::optional<skia_image_producer> get_image_wrapper() {
+				std::lock_guard<std::mutex> g(get_mutex());
+				return images_to_render;
+			}
+
 			inline void update_custom_drawingcall(custom_step call){
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				custom_drawing_call = call;
@@ -44,6 +49,11 @@ namespace curan {
 			inline void clear_custom_drawingcall() {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				custom_drawing_call = std::nullopt;
+			}
+
+			inline std::optional<custom_step> get_custom_drawingcall() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return custom_drawing_call;
 			}
 		};
 	}

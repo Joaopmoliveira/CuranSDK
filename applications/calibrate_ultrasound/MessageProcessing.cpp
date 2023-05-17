@@ -149,7 +149,10 @@ else if (!tmp.compare(image)) {
 				paint_square.setStrokeWidth(4);
 				paint_square.setColor(SK_ColorGREEN);
 				for (const auto& circles : local_centers) {
-					SkPoint center{ (float)(allowed_region.left()+allowed_region.height() - scalling_factor_y * circles.y),(float)(allowed_region.top()+scalling_factor_x * circles.x) };
+					float xloc = allowed_region.left()+ scalling_factor_x * circles.x;
+					float yloc = allowed_region.top()+ scalling_factor_y*(y-circles.y);
+					//SkPoint center{ (float)(allowed_region.left()+allowed_region.height() - scalling_factor_y * circles.y),(float)(allowed_region.top()+scalling_factor_x * circles.x) };
+					SkPoint center{xloc,yloc};
 					canvas->drawCircle(center,radius, paint_square);
 				}
 			};

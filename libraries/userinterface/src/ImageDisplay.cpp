@@ -23,17 +23,18 @@ void ImageDisplay::update_image(image_provider provider) {
 		return image;
 	};
 	std::lock_guard<std::mutex> g{ get_mutex() };
-	images_to_render.push_back(lam);
+	images_to_render = lam;
 }
 
 drawablefunction ImageDisplay::draw() {
 	auto lamb = [this](SkCanvas* canvas) {
-		std::lock_guard<std::mutex> g{ get_mutex() };
 		auto widget_rect = get_position();
-		if (images_to_render.size() != 0) {
-			auto val = images_to_render.front();
-			auto image_display_surface = val();
+		SkRect current_selected_image_rectangle = widget_rect;
 
+		auto image = get_image_wrapper();
+		if (image) {
+			auto val = *image;
+			auto image_display_surface = val();
 			float image_width = image_display_surface->width();
 			float image_height = image_display_surface->height();
 			float current_selected_width = widget_rect.width();
@@ -42,18 +43,17 @@ drawablefunction ImageDisplay::draw() {
 			float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
 			float init_y = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
 
-			SkRect current_selected_image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, scale_factor * image_height);
+			current_selected_image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, scale_factor * image_height);
 			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0 / 3, 1.0 / 3 });
 
 			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt);
-
-			if (custom_drawing_call) {
-				auto special = *custom_drawing_call;
-				special(canvas, current_selected_image_rectangle);
-			}
 		}
-		if (images_to_render.size() > 1) {
-			images_to_render.pop_front();
+
+		auto custom_drawing = get_custom_drawingcall();
+
+		if (custom_drawing) {
+			auto special = *custom_drawing;
+			special(canvas, current_selected_image_rectangle);
 		}
 	};
 	return lamb;
