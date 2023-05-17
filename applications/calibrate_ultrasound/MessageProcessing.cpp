@@ -116,7 +116,7 @@ else if (!tmp.compare(image)) {
 				requested = map;
 				return;
 			};
-			processed_viwer->update_image(lam);
+			
 
 			HoughTransformFilterType::CirclesListType circles;
 			circles = houghFilter->GetCircles();
@@ -149,12 +149,12 @@ else if (!tmp.compare(image)) {
 				paint_square.setStrokeWidth(4);
 				paint_square.setColor(SK_ColorGREEN);
 				for (const auto& circles : local_centers) {
-					SkPoint center{circles.x,circles.y};
-					center.fX = (allowed_region.height()- scalling_factor_y*circles.y);
-					center.fY = (scalling_factor_x*circles.x);
+					SkPoint center{ (float)(allowed_region.left()+allowed_region.height() - scalling_factor_y * circles.y),(float)(allowed_region.top()+scalling_factor_x * circles.x) };
 					canvas->drawCircle(center,radius, paint_square);
 				}
 			};
+
+			processed_viwer->update_image(lam);
 			processed_viwer->update_custom_drawingcall(special_custom);
 		}
 		else {

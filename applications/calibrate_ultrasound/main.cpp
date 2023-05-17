@@ -1,3 +1,5 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include "CalibratePages.h"
 
 int main(int argc, char* argv[]) {

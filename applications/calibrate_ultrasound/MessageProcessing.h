@@ -1,7 +1,6 @@
 #ifndef CURAN_MESSAGEPROCESSING_HEADER_FILE_
 #define CURAN_MESSAGEPROCESSING_HEADER_FILE_
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/Window.h"
 #include "userinterface/widgets/Button.h"
