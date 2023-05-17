@@ -147,5 +147,5 @@ what we are doing is specifiyng where cmake can find skia and the ITK library, w
 
 ## Contributions 
 
--João Oliveira (Lead developer)
--Filipe Varela (3D rendering patch of the library)
+> -João Oliveira (Lead developer)
+> -Filipe Varela (3D rendering patch of the library)
