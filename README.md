@@ -6,7 +6,7 @@ supplied to create higher level abstraction until a fully usable UI with
 proper functioning is supplied. 
 
 Curan is a medical viewer, developed by IST, with contribution from
-Jo�o Oliveira (more to come?). The library provides interfaces which
+the contribution list and the end of the file. The library provides interfaces which
 simplify the implementation of medical demos with real time
 capabilities. 
 
@@ -144,3 +144,8 @@ and fill this file with the following contents.
 ```
 
 what we are doing is specifiyng where cmake can find skia and the ITK library, whilst also setting other flags which are required for a succefull compilation stage
+
+## Contributions 
+
+João Oliveira (Lead developer)
+Filipe Varela (3D rendering patch of the library)
