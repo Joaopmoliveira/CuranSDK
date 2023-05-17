@@ -107,6 +107,17 @@ else if (!tmp.compare(image)) {
 		std::vector<Point> local_centers;
 
 		if (show_circles.load()) {
+
+			ImageType::Pointer localImage = importFilter->GetOutput();
+			auto lam = [localImage, x, y](SkPixmap& requested) {
+				auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+				size_t row_size = x * sizeof(unsigned char);
+				SkPixmap map{ inf,localImage->GetBufferPointer(),row_size };
+				requested = map;
+				return;
+			};
+			processed_viwer->update_image(lam);
+
 			HoughTransformFilterType::CirclesListType circles;
 			circles = houghFilter->GetCircles();
 
@@ -115,6 +126,7 @@ else if (!tmp.compare(image)) {
 
 			std::vector<Point> local_centers;
 			local_centers.reserve(circles.size());
+
 			while (itCircles != circles.end())
 			{
 				const HoughTransformFilterType::CircleType::PointType centerPoint =
@@ -123,26 +135,30 @@ else if (!tmp.compare(image)) {
 				p.x = centerPoint[0];
 				p.y = centerPoint[1];
 				local_centers.push_back(p);
-				for (double angle = 0; angle <= itk::Math::twopi;
-					angle += itk::Math::pi / 60.0)
-				{
-					using IndexValueType = ImageType::IndexType::IndexValueType;
-					localIndex[0] = itk::Math::Round<IndexValueType>(
-						centerPoint[0] +
-						(*itCircles)->GetRadiusInObjectSpace()[0] * std::cos(angle));
-					localIndex[1] = itk::Math::Round<IndexValueType>(
-						centerPoint[1] +
-						(*itCircles)->GetRadiusInObjectSpace()[0] * std::sin(angle));
-					OutputImageType::RegionType outputRegion = localOutputImage->GetLargestPossibleRegion();
 
-					if (outputRegion.IsInside(localIndex))
-						localOutputImage->SetPixel(localIndex, 255);
-					
-				}
 				itCircles++;
 			}
+
+			auto special_custom = [local_centers,x,y](SkCanvas* canvas, SkRect allowed_region) {
+				float scalling_factor_x = allowed_region.width()/x;
+				float scalling_factor_y = allowed_region.height()/y;
+				float radius = 5;
+				SkPaint paint_square;
+				paint_square.setStyle(SkPaint::kFill_Style);
+				paint_square.setAntiAlias(true);
+				paint_square.setStrokeWidth(4);
+				paint_square.setColor(SK_ColorGREEN);
+				for (const auto& circles : local_centers) {
+					SkPoint center{circles.x,circles.y};
+					center.fX = (allowed_region.height()- scalling_factor_y*circles.y);
+					center.fY = (scalling_factor_x*circles.x);
+					canvas->drawCircle(center,radius, paint_square);
+				}
+			};
+			processed_viwer->update_custom_drawingcall(special_custom);
 		}
 		else {
+			processed_viwer->clear_custom_drawingcall();
 			ImageType::Pointer localImage = rescale->GetOutput();
 			auto lam = [localImage, x, y](SkPixmap& requested) {
 				auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
@@ -157,45 +173,6 @@ else if (!tmp.compare(image)) {
 			//if (should_record.load() && local_centers.size()>0) {
 			//	list_of_recorded_points.push_back(local_centers);
 			//}
-
-			auto lam = [localImage, x, y](SkPixmap& requested) {
-				auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-				size_t row_size = x * sizeof(unsigned char);
-				SkPixmap map{ inf,localImage->GetBufferPointer(),row_size };
-				requested = map;
-				return;
-			};
-
-
-			auto localimage2 = filter->GetOutput();
-			auto special_custom = [circles](SkCanvas* canvas, SkRect allowed_region) {
-				while (itCircles != circles.end())
-				{
-					const HoughTransformFilterType::CircleType::PointType centerPoint =
-						(*itCircles)->GetCenterInObjectSpace();
-					Point p;
-					p.x = centerPoint[0];
-					p.y = centerPoint[1];
-					local_centers.push_back(p);
-					for (double angle = 0; angle <= itk::Math::twopi;
-						angle += itk::Math::pi / 60.0)
-					{
-						using IndexValueType = ImageType::IndexType::IndexValueType;
-						localIndex[0] = itk::Math::Round<IndexValueType>(
-							centerPoint[0] +
-							(*itCircles)->GetRadiusInObjectSpace()[0] * std::cos(angle));
-						localIndex[1] = itk::Math::Round<IndexValueType>(
-							centerPoint[1] +
-							(*itCircles)->GetRadiusInObjectSpace()[0] * std::sin(angle));
-						OutputImageType::RegionType outputRegion = localOutputImage->GetLargestPossibleRegion();
-
-						if (outputRegion.IsInside(localIndex))
-							localOutputImage->SetPixel(localIndex, 255);
-					}
-					itCircles++;
-				}
-			};
-			processed_viwer->update_image(lam);
 		}
 	}
 	else {

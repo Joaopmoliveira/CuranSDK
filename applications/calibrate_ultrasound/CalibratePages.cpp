@@ -186,7 +186,8 @@ std::shared_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 		infor.size = SkRect::MakeWH(200, 80);
 		infor.textFont = text_font;
 		infor.callback = [&processing](Button* button, ConfigDraw* config) {
-			processing -
+			bool temp = processing->show_circles.load();
+			processing->show_circles.store(!temp);
 		};
 		display_type = Button::make(infor);
 	}
