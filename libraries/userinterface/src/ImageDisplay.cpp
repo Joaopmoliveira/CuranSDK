@@ -16,13 +16,13 @@ std::shared_ptr<ImageDisplay> ImageDisplay::make(Info& info) {
 }
 
 void ImageDisplay::update_image(image_provider provider) {
+	std::lock_guard<std::mutex> g{ get_mutex() };
 	SkPixmap pixelmap;
 	provider(pixelmap);
 	auto image = SkImage::MakeFromRaster(pixelmap, nullptr, nullptr);
 	auto lam = [image, provider, pixelmap]() {
 		return image;
 	};
-	std::lock_guard<std::mutex> g{ get_mutex() };
 	images_to_render = lam;
 }
 
@@ -32,6 +32,8 @@ drawablefunction ImageDisplay::draw() {
 		SkRect current_selected_image_rectangle = widget_rect;
 
 		auto image = get_image_wrapper();
+		override_image_wrapper(image);
+
 		if (image) {
 			auto val = *image;
 			auto image_display_surface = val();
@@ -69,6 +71,43 @@ callablefunction ImageDisplay::call() {
 
 void ImageDisplay::framebuffer_resize() {
 
+}
+
+std::optional<skia_image_producer> ImageDisplay::get_image_wrapper() {
+	std::lock_guard<std::mutex> g(get_mutex());
+	return images_to_render;
+}
+
+void ImageDisplay::override_image_wrapper(std::optional<skia_image_producer> wrapper) {
+	std::lock_guard<std::mutex> g(get_mutex());
+	old_image = wrapper;
+}
+
+void ImageDisplay::update_custom_drawingcall(custom_step call) {
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	custom_drawing_call = call;
+}
+
+void ImageDisplay::clear_custom_drawingcall() {
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	custom_drawing_call = std::nullopt;
+}
+
+std::optional<custom_step> ImageDisplay::get_custom_drawingcall() {
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	return custom_drawing_call;
+}
+
+void ImageDisplay::update_batch(custom_step call, image_provider provider) {
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	SkPixmap pixelmap;
+	provider(pixelmap);
+	auto image = SkImage::MakeFromRaster(pixelmap, nullptr, nullptr);
+	auto lam = [image, provider, pixelmap]() {
+		return image;
+	};
+	images_to_render = lam;
+	custom_drawing_call = call;
 }
 
 }

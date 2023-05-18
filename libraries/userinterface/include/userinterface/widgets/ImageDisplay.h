@@ -14,14 +14,16 @@ namespace curan {
 
 		using image_provider = std::function<void(SkPixmap&)>;
 		using custom_step = std::function<void(SkCanvas*, SkRect)>;
+		using skia_image_producer = std::function<sk_sp<SkImage>(void)>;
 
 		class ImageDisplay : public  Drawable, utils::Lockable<ImageDisplay>, utils::Connectable<ImageDisplay> {
 			int width = 100;
 			int height = 100;
-			using skia_image_producer = std::function<sk_sp<SkImage>(void)>;
-
+			
+			std::optional<skia_image_producer> old_image = std::nullopt;
 			std::optional<skia_image_producer> images_to_render = std::nullopt;
 			std::optional<custom_step> custom_drawing_call = std::nullopt;
+
 		public:
 			struct Info {
 				int width;
@@ -36,25 +38,17 @@ namespace curan {
 			callablefunction call() override;
 			void framebuffer_resize() override;
 
-			inline std::optional<skia_image_producer> get_image_wrapper() {
-				std::lock_guard<std::mutex> g(get_mutex());
-				return images_to_render;
-			}
+			std::optional<skia_image_producer> get_image_wrapper();
 
-			inline void update_custom_drawingcall(custom_step call){
-				std::lock_guard<std::mutex> g{ get_mutex() };
-				custom_drawing_call = call;
-			}
+			void override_image_wrapper(std::optional<skia_image_producer> wrapper);
 
-			inline void clear_custom_drawingcall() {
-				std::lock_guard<std::mutex> g{ get_mutex() };
-				custom_drawing_call = std::nullopt;
-			}
+			void update_custom_drawingcall(custom_step call);
 
-			inline std::optional<custom_step> get_custom_drawingcall() {
-				std::lock_guard<std::mutex> g{ get_mutex() };
-				return custom_drawing_call;
-			}
+			void clear_custom_drawingcall();
+
+			std::optional<custom_step> get_custom_drawingcall();
+
+			void update_batch(custom_step call, image_provider wrapper);
 		};
 	}
 }

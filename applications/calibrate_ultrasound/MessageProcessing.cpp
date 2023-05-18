@@ -1,5 +1,26 @@
 #include "MessageProcessing.h"
 
+struct hash_of_previous_segmentations {
+	std::optional<std::vector<Point>> previous_points;
+
+	std::vector<Point> compute_distance(std::vector<Point> new_points) {
+		if (!previous_points) {
+			previous_points = new_points;
+			return *previous_points;
+		}
+		auto prev_points = *previous_points;
+		std::vector<std::vector<double>> distance_to_previous_points;
+		distance_to_previous_points.reserve(new_points.size()* prev_points.size());
+		auto iter = distance_to_previous_points.begin();
+		for (const auto& val : prev_points) {
+			for (const auto& new_value : new_points) {
+
+			}
+		}
+		return new_points;
+	}
+};
+
 bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 if (er)
 	return true;
@@ -109,7 +130,7 @@ else if (!tmp.compare(image)) {
 		if (show_circles.load()) {
 
 			ImageType::Pointer localImage = importFilter->GetOutput();
-			auto lam = [localImage, x, y](SkPixmap& requested) {
+			auto lam = [message_body,localImage, x, y](SkPixmap& requested) {
 				auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
 				size_t row_size = x * sizeof(unsigned char);
 				SkPixmap map{ inf,localImage->GetBufferPointer(),row_size };
@@ -123,8 +144,6 @@ else if (!tmp.compare(image)) {
 
 			using CirclesListType = HoughTransformFilterType::CirclesListType;
 			CirclesListType::const_iterator itCircles = circles.begin();
-
-			std::vector<Point> local_centers;
 			local_centers.reserve(circles.size());
 
 			while (itCircles != circles.end())
@@ -139,7 +158,7 @@ else if (!tmp.compare(image)) {
 				itCircles++;
 			}
 
-			auto special_custom = [local_centers,x,y](SkCanvas* canvas, SkRect allowed_region) {
+			auto special_custom = [=](SkCanvas* canvas, SkRect allowed_region) {
 				float scalling_factor_x = allowed_region.width()/x;
 				float scalling_factor_y = allowed_region.height()/y;
 				float radius = 5;
@@ -149,16 +168,13 @@ else if (!tmp.compare(image)) {
 				paint_square.setStrokeWidth(4);
 				paint_square.setColor(SK_ColorGREEN);
 				for (const auto& circles : local_centers) {
-					float xloc = allowed_region.left()+ scalling_factor_x * circles.x;
-					float yloc = allowed_region.top()+ scalling_factor_y*(y-circles.y);
-					//SkPoint center{ (float)(allowed_region.left()+allowed_region.height() - scalling_factor_y * circles.y),(float)(allowed_region.top()+scalling_factor_x * circles.x) };
+					float xloc = allowed_region.x()+ scalling_factor_x * circles.x;
+					float yloc = allowed_region.y()+ scalling_factor_y*(y-circles.y);
 					SkPoint center{xloc,yloc};
 					canvas->drawCircle(center,radius, paint_square);
 				}
 			};
-
-			processed_viwer->update_image(lam);
-			processed_viwer->update_custom_drawingcall(special_custom);
+			processed_viwer->update_batch(special_custom,lam);
 		}
 		else {
 			processed_viwer->clear_custom_drawingcall();
@@ -168,7 +184,6 @@ else if (!tmp.compare(image)) {
 				size_t row_size = x * sizeof(unsigned char);
 				SkPixmap map{ inf,localImage->GetBufferPointer(),row_size };
 				requested = map;
-				return;
 			};
 			processed_viwer->update_image(lam);
 		}
