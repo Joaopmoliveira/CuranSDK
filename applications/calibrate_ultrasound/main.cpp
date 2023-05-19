@@ -61,6 +61,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "Number of frame recordings: " << processing->list_of_recorded_points.size() << "\n";
 	std::cout << "Received spacing: \n";
 
+	return 0;
 
 	constexpr size_t number_of_strings = 3;
 	constexpr size_t number_of_variables = 6 + 4 * number_of_strings;
@@ -70,8 +71,9 @@ int main(int argc, char* argv[]) {
 	optimizationdata.wire_data.reserve(number_of_strings * processing->list_of_recorded_points.size());
 	int counter_f = 1;
 	for (const auto& f : processing->list_of_recorded_points) {
+		size_t wire_number = 1;
 		curan::optim::Observation localobservation;
-		auto temp = *begin_mat_flange_data;
+		Eigen::Matrix<double, 4, 4> temp = Eigen::Matrix<double, 4, 4>::Zero();
 
 		localobservation.flange_configuration.values[0] = temp(0, 0);
 		localobservation.flange_configuration.values[1] = temp(1, 0);
@@ -91,16 +93,16 @@ int main(int argc, char* argv[]) {
 
 		localobservation.wire_number = wire_number;
 
-		auto temp2 = (*begin_mat_wire_data).col(wire_number);
+		Eigen::Matrix<double, 3, 1> temp2 = Eigen::Matrix<double, 3, 1>::Zero();
 
 		localobservation.wire_data.values[0] = temp2(0, 0);
 		localobservation.wire_data.values[1] = temp2(1, 0);
 		localobservation.wire_data.values[2] = temp2(2, 0);
-		data.wire_data.push_back(localobservation);
+		optimizationdata.wire_data.push_back(localobservation);
 		std::cout << "slice : " << counter_f << "\n";
 		for (const auto& p : f) {
-			std::cout << "	point(" << counter_p << ") -> (" << p.x << ", " << p.y << ")\n";
-			++counter_p;
+			std::cout << "	point(" << wire_number << ") -> (" << p.x << ", " << p.y << ")\n";
+			++wire_number;
 		}
 		++counter_f;
 	}
