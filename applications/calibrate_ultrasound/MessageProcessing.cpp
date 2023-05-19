@@ -201,8 +201,8 @@ else if (!tmp.compare(image)) {
 			requested = map;
 			return;
 		};
-			
-		auto special_custom = [x,y,local_segmented_wires](SkCanvas* canvas, SkRect allowed_region) {
+		auto local_colors = colors;
+		auto special_custom = [x,y,local_segmented_wires, local_colors](SkCanvas* canvas, SkRect allowed_region) {
 			float scalling_factor_x = allowed_region.width()/x;
 			float scalling_factor_y = allowed_region.height()/y;
 			float radius = 15;
@@ -211,11 +211,15 @@ else if (!tmp.compare(image)) {
 			paint_square.setAntiAlias(true);
 			paint_square.setStrokeWidth(4);
 			paint_square.setColor(SK_ColorGREEN);
+			assert(local_segmented_wires.cols() == local_colors.size());
+			auto coliter = local_colors.begin();
 			for (const auto& circles : local_segmented_wires.colwise()) {
 				float xloc = allowed_region.x()+ scalling_factor_x * circles(0, 0);
 				float yloc = allowed_region.y()+ scalling_factor_y * circles(1, 0);
 				SkPoint center{xloc,yloc};
+				paint_square.setColor(*coliter);
 				canvas->drawCircle(center,radius, paint_square);
+				++coliter;
 			}
 		};
 		processed_viwer->update_batch(special_custom,lam);
@@ -235,7 +239,7 @@ else if (!tmp.compare(image)) {
 	std::cout << "Unknown Message: " << tmp << "\n";
 }
 ObservationEigenFormat observation;
-if (observation_to_propagete.is_complete(observation)) {
+if (should_record.load() && observation_to_propagete.is_complete(observation)) {
 	list_of_recorded_points.push_back(observation);
 }
 return false;

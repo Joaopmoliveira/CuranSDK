@@ -71,6 +71,7 @@ struct ProcessingMessage {
 	std::shared_ptr<curan::ui::Button> button;
 	std::shared_ptr<curan::ui::Button> button_start_collection;
 	size_t number_of_circles = 3;
+	std::vector<SkColor> colors = { SK_ColorMAGENTA,SK_ColorBLUE,SK_ColorGREEN };
 	asio::io_context io_context;
 	ConfigurationData& configuration;
 	double threshold = 10.0;
