@@ -1,7 +1,46 @@
 #include "MessageProcessing.h"
-#include <cmath>
-#include "ceres/ceres.h"
 #include "optimization/WireCalibration.h"
+
+bool PotentialObservationEigenFormat::is_complete(ObservationEigenFormat& observation) {
+	bool val = flange_data.has_value() && segmented_wires.has_value();
+	if (!val)
+		return val;
+	observation.flange_data = *flange_data;
+	observation.segmented_wires = *segmented_wires;
+	flange_data = std::nullopt;
+	segmented_wires = std::nullopt;
+	return val;
+}
+
+void PotentialObservationEigenFormat::set_flange_data(Eigen::Matrix<double, 4, 4> flange_dat) {
+	flange_data = flange_dat;
+}
+
+void PotentialObservationEigenFormat::set_segmented_wires(Eigen::Matrix<double, 3, Eigen::Dynamic> in_segmented_wires) {
+	segmented_wires = in_segmented_wires;
+}
+
+std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(Eigen::Matrix<double, 3, Eigen::Dynamic>& current, Eigen::Matrix<double, 3, Eigen::Dynamic>& previous, double threshold) {
+	assert(current.cols() == previous.cols());
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> distance_matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(previous.cols(), previous.cols());
+	for (size_t distance_row = 0; distance_row < previous.cols(); ++distance_row) {
+		Eigen::Matrix<double, 3, 1> current_col = current.col(distance_row);
+		for (size_t distance_col = 0; distance_col < previous.cols(); ++distance_col) {
+			Eigen::Matrix<double, 3, 1> previous_col = previous.col(distance_col);
+			distance_matrix(distance_row, distance_col) = (previous_col - current_col).norm();
+		}
+	}
+	Eigen::Matrix<double, 3, Eigen::Dynamic> local_copy = current;
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Index   minIndex;
+	for (const auto& col : distance_matrix.colwise()) {
+		double cost = col.minCoeff(&minIndex);
+		local_copy.col(minIndex) = current.col(minIndex);
+		if (cost > threshold) {
+			return std::nullopt;
+		}
+	}
+	return local_copy;
+}
 
 bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 if (er) {
@@ -18,9 +57,8 @@ if (!tmp.compare(transform)) {
 	igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
 	transform_message->Copy(val);
 	int c = transform_message->Unpack(1);
-	if (!(c & igtl::MessageHeader::UNPACK_BODY)){
-		return false;
-	}
+	if (!(c & igtl::MessageHeader::UNPACK_BODY))
+		return false; //failed to unpack message, therefore returning without doing anything
 	igtl::Matrix4x4 local_mat;
 	transform_message->GetMatrix(local_mat);
 	Eigen::Matrix<double, 4, 4> flange_data;
@@ -35,9 +73,7 @@ else if (!tmp.compare(image)) {
 	message_body->Copy(val);
 	int c = message_body->Unpack(1);
 	if (!(c & igtl::MessageHeader::UNPACK_BODY))
-	{
-		return false;
-	}
+		return false; //failed to unpack message, therefore returning without doing anything
 	int x, y, z;
 	message_body->GetDimensions(x, y, z);
 	using PixelType = unsigned char;
@@ -143,6 +179,19 @@ else if (!tmp.compare(image)) {
 		itCircles++;
 	}
 
+	if (list_of_recorded_points.size() == 0) {
+		observation_to_propagete.set_segmented_wires(local_segmented_wires);
+	}
+	else {
+		auto possible_arrangement = rearrange_wire_geometry(local_segmented_wires, list_of_recorded_points.back().segmented_wires,threshold);
+		if (possible_arrangement) {
+			local_segmented_wires = *possible_arrangement;
+			observation_to_propagete.set_segmented_wires(*possible_arrangement);
+		} else {
+			local_segmented_wires = list_of_recorded_points.back().segmented_wires;
+		}
+	}
+
 	if (show_circles.load()) {
 		ImageType::Pointer localImage = importFilter->GetOutput();
 		auto lam = [message_body,localImage, x, y](SkPixmap& requested) {
@@ -153,7 +202,7 @@ else if (!tmp.compare(image)) {
 			return;
 		};
 			
-		auto special_custom = [=](SkCanvas* canvas, SkRect allowed_region) {
+		auto special_custom = [x,y,local_segmented_wires](SkCanvas* canvas, SkRect allowed_region) {
 			float scalling_factor_x = allowed_region.width()/x;
 			float scalling_factor_y = allowed_region.height()/y;
 			float radius = 15;
@@ -162,10 +211,9 @@ else if (!tmp.compare(image)) {
 			paint_square.setAntiAlias(true);
 			paint_square.setStrokeWidth(4);
 			paint_square.setColor(SK_ColorGREEN);
-			for (const auto& circles : circles) {
-				auto centerPointLocal = circles->GetCenterInObjectSpace();
-				float xloc = allowed_region.x()+ scalling_factor_x * centerPointLocal[0];
-				float yloc = allowed_region.y()+ scalling_factor_y * centerPointLocal[0];
+			for (const auto& circles : local_segmented_wires.colwise()) {
+				float xloc = allowed_region.x()+ scalling_factor_x * circles(0, 0);
+				float yloc = allowed_region.y()+ scalling_factor_y * circles(1, 0);
 				SkPoint center{xloc,yloc};
 				canvas->drawCircle(center,radius, paint_square);
 			}
@@ -183,23 +231,14 @@ else if (!tmp.compare(image)) {
 		};
 		processed_viwer->update_image(lam);
 	}
-
-	if (!should_record.load()) 
-		return false;
-
-	if (list_of_recorded_points.size()==0) {
-
-		return false;
-	}
-	auto possible_arrangement = rearrange_wire_geometry(local_segmented_wires, list_of_recorded_points.back().segmented_wires);
-	if (!possible_arrangement)
-		return false;
-	list_of_recorded_points.push_back();
-	}
-	else {
-		std::cout << "Unknown Message: " << tmp << "\n";
-	}
-	return false;
+} else {
+	std::cout << "Unknown Message: " << tmp << "\n";
+}
+ObservationEigenFormat observation;
+if (observation_to_propagete.is_complete(observation)) {
+	list_of_recorded_points.push_back(observation);
+}
+return false;
 };
 
 void ProcessingMessage::communicate() {

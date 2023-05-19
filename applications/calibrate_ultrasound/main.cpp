@@ -100,10 +100,12 @@ int main(int argc, char* argv[]) {
 		localobservation.wire_data.values[2] = temp2(2, 0);
 		optimizationdata.wire_data.push_back(localobservation);
 		std::cout << "slice : " << counter_f << "\n";
-		for (const auto& p : f) {
-			std::cout << "	point(" << wire_number << ") -> (" << p.x << ", " << p.y << ")\n";
+		std::cout << "->transformation : " << f.flange_data << "\n";
+		for (const auto& p : f.segmented_wires.colwise()) {
+			std::cout << "	point(" << wire_number << ") -> (" << p(0,0) << ", " << p(1,0) << ")\n";
 			++wire_number;
 		}
+
 		++counter_f;
 	}
 	std::cout << "\n";

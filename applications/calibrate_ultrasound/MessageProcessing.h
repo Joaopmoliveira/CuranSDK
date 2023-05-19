@@ -52,37 +52,14 @@ struct PotentialObservationEigenFormat {
 	std::optional<Eigen::Matrix<double, 4, 4>> flange_data;
 	std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> segmented_wires;
 
-	bool is_complete(ObservationEigenFormat& observation) {
-		bool val = flange_data.has_value() && segmented_wires.has_value();
-		if (!val)
-			return val;
-		observation.flange_data = *flange_data;
-		observation.segmented_wires = *segmented_wires;
-		flange_data = std::nullopt;
-		segmented_wires = std::nullopt;
-		return val;
-	}
+	bool is_complete(ObservationEigenFormat& observation);
 
-	void set_flange_data(Eigen::Matrix<double, 4, 4> flange_dat) {
-		flange_data = flange_dat;
-	}
+	void set_flange_data(Eigen::Matrix<double, 4, 4> flange_dat);
 
-	void set_segmented_wires(Eigen::Matrix<double, 3, Eigen::Dynamic> in_segmented_wires) {
-		segmented_wires = in_segmented_wires;
-	}
+	void set_segmented_wires(Eigen::Matrix<double, 3, Eigen::Dynamic> in_segmented_wires);
 };
 
-std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(Eigen::Matrix<double, 3, Eigen::Dynamic> current, Eigen::Matrix<double, 3, Eigen::Dynamic> previous) {
-	assert(current.cols()==previous.cols());
-	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> distance_matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(previous.cols(), previous.cols());
-	for (size_t distance_row = 0; distance_row < previous.cols(); ++distance_row) {
-		Eigen::Matrix<double, 3, 1> current_col = current.col(distance_row);
-		for (size_t distance_col = 0; distance_col < previous.cols(); ++distance_col) {
-			Eigen::Matrix<double, 3, 1> previous_col = previous.col(distance_col);
-			distance_matrix(distance_row, distance_col) = (previous_col - current_col).norm();
-		}
-	}
-}
+std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(Eigen::Matrix<double, 3, Eigen::Dynamic>& current, Eigen::Matrix<double, 3, Eigen::Dynamic>& previous, double threshold);
 
 struct ProcessingMessage {
 	PotentialObservationEigenFormat observation_to_propagete;
@@ -96,7 +73,7 @@ struct ProcessingMessage {
 	size_t number_of_circles = 3;
 	asio::io_context io_context;
 	ConfigurationData& configuration;
-	
+	double threshold = 10.0;
 	std::atomic<bool> should_record = false;
 	std::atomic<bool> show_circles = false;
 	short port = 10000;
