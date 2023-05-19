@@ -32,12 +32,14 @@ std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(
 	}
 	Eigen::Matrix<double, 3, Eigen::Dynamic> local_copy = current;
 	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Index   minIndex;
-	for (const auto& col : distance_matrix.colwise()) {
-		double cost = col.minCoeff(&minIndex);
-		local_copy.col(minIndex) = current.col(minIndex);
+	size_t ordered_indices = 0;
+	for (const auto& row : distance_matrix.rowwise()) {
+		double cost = row.minCoeff(&minIndex);
+		local_copy.col(ordered_indices) = current.col(minIndex);
 		if (cost > threshold) {
 			return std::nullopt;
 		}
+		++ordered_indices;
 	}
 	return local_copy;
 }
@@ -177,6 +179,7 @@ else if (!tmp.compare(image)) {
 		segmented_point(1, 0) = centerPoint[1];
 		local_segmented_wires.col(circle_index) = segmented_point;
 		itCircles++;
+		++circle_index;
 	}
 
 	if (list_of_recorded_points.size() == 0) {

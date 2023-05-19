@@ -74,7 +74,7 @@ struct ProcessingMessage {
 	std::vector<SkColor> colors = { SK_ColorMAGENTA,SK_ColorBLUE,SK_ColorGREEN };
 	asio::io_context io_context;
 	ConfigurationData& configuration;
-	double threshold = 10.0;
+	double threshold = 100.0;
 	std::atomic<bool> should_record = false;
 	std::atomic<bool> show_circles = false;
 	short port = 10000;
