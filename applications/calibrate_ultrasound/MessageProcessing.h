@@ -48,8 +48,16 @@ struct ConfigurationData {
 
 };
 
-struct ProcessingMessage {
+struct hash_of_previous_segmentations {
+	std::optional<std::vector<Point>> previous_points;
 
+	std::vector<Point> compute_distance(std::vector<Point> new_points);
+
+	void clear();
+};
+
+struct ProcessingMessage {
+	hash_of_previous_segmentations hash_previous;
 	std::shared_ptr<curan::ui::ImageDisplay> processed_viwer;
 	std::shared_ptr<curan::ui::OpenIGTLinkViewer> open_viwer;
 	std::shared_ptr<curan::utils::Flag> connection_status;

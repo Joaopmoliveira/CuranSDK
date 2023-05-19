@@ -1,29 +1,18 @@
 #include "MessageProcessing.h"
 
-struct hash_of_previous_segmentations {
-	std::optional<std::vector<Point>> previous_points;
+std::vector<Point> hash_of_previous_segmentations::compute_distance(std::vector<Point> new_points) {
+	return new_points;
+}
 
-	std::vector<Point> compute_distance(std::vector<Point> new_points) {
-		if (!previous_points) {
-			previous_points = new_points;
-			return *previous_points;
-		}
-		auto prev_points = *previous_points;
-		std::vector<std::vector<double>> distance_to_previous_points;
-		distance_to_previous_points.reserve(new_points.size()* prev_points.size());
-		auto iter = distance_to_previous_points.begin();
-		for (const auto& val : prev_points) {
-			for (const auto& new_value : new_points) {
-
-			}
-		}
-		return new_points;
-	}
-};
+void hash_of_previous_segmentations::clear() {
+	previous_points = std::nullopt;
+}
 
 bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
-if (er)
-	return true;
+	if (er) {
+		return true;
+	}
+	
 
 assert(val.IsNotNull());
 std::string tmp = val->GetMessageType();
@@ -83,7 +72,7 @@ else if (!tmp.compare(image)) {
 		using FilterTypeBlur = itk::DiscreteGaussianImageFilter<FloatImageType, FloatImageType>;
 		auto blurfilter = FilterTypeBlur::New();
 		blurfilter->SetInput(rescaletofloat->GetOutput());
-		blurfilter->SetVariance(10);
+		blurfilter->SetVariance(configuration.variance);
 		blurfilter->SetMaximumKernelWidth(10);
 
 		using RescaleTypeToImageType = itk::RescaleIntensityImageFilter<FloatImageType, ImageType>;
@@ -161,7 +150,7 @@ else if (!tmp.compare(image)) {
 			auto special_custom = [=](SkCanvas* canvas, SkRect allowed_region) {
 				float scalling_factor_x = allowed_region.width()/x;
 				float scalling_factor_y = allowed_region.height()/y;
-				float radius = 5;
+				float radius = 15;
 				SkPaint paint_square;
 				paint_square.setStyle(SkPaint::kFill_Style);
 				paint_square.setAntiAlias(true);
@@ -169,7 +158,7 @@ else if (!tmp.compare(image)) {
 				paint_square.setColor(SK_ColorGREEN);
 				for (const auto& circles : local_centers) {
 					float xloc = allowed_region.x()+ scalling_factor_x * circles.x;
-					float yloc = allowed_region.y()+ scalling_factor_y*(y-circles.y);
+					float yloc = allowed_region.y()+ scalling_factor_y*circles.y;
 					SkPoint center{xloc,yloc};
 					canvas->drawCircle(center,radius, paint_square);
 				}
@@ -188,9 +177,9 @@ else if (!tmp.compare(image)) {
 			processed_viwer->update_image(lam);
 		}
 
-			//if (should_record.load() && local_centers.size()>0) {
-			//	list_of_recorded_points.push_back(local_centers);
-			//}
+		if (should_record.load() && local_centers.size()>0) {
+			list_of_recorded_points.push_back(hash_previous.compute_distance(local_centers));
+		}
 		}
 	}
 	else {
@@ -200,6 +189,7 @@ else if (!tmp.compare(image)) {
 };
 
 void ProcessingMessage::communicate() {
+	hash_previous.clear();
 	using namespace curan::communication;
 	button->set_waiting_color(SK_ColorGREEN);
 	io_context.reset();
@@ -221,6 +211,7 @@ void ProcessingMessage::communicate() {
 	auto connectionstatus = client.connect(lam);
 	auto val = io_context.run();
 	button->set_waiting_color(SK_ColorRED);
+	hash_previous.clear();
 	return;
 }
 

@@ -12,4 +12,5 @@ userinterface
 communication
 imageprocessing
 ${ITK_LIBRARIES}
+optimization
 )
