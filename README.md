@@ -27,8 +27,11 @@ which are usefull to us (for now only in the medical context, but this can be ex
 to other types of optimizations).
 
 # Build intructions
-## Windows
+## EXPERIMENTAL
 
+Use vcpkg to build the required third party libraries (currently being tested)
+
+## Windows
 
 Most third party requirments are included directly in the source code to guarantee
  as streamlined a building procedure as possible. There are three main exceptions, namely:
