@@ -5,6 +5,7 @@
     "ceres",
     "openigtlink",
     "asio",
+    "glfw",
     {
       "name": "skia",
       "features": [ "vulkan" ]
