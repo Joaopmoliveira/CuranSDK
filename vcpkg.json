@@ -1,0 +1,13 @@
+{
+  "dependencies": [
+    "eigen3",
+    "itk",
+    "ceres",
+    "openigtlink",
+    "asio",
+    {
+      "name": "skia",
+      "features": [ "vulkan" ]
+    }
+  ]
+}

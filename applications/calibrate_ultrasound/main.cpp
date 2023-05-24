@@ -6,7 +6,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "CalibratePages.h"
 
-
 int main(int argc, char* argv[]) {
 	using namespace curan::ui;
 	curan::utils::initialize_thread_pool(10);

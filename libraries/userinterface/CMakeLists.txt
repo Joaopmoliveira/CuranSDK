@@ -21,13 +21,11 @@ target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 
-target_include_directories(userinterface PUBLIC $<TARGET_PROPERTY:skia,INTERFACE>)
-
 target_link_libraries(userinterface PUBLIC
 asio
 utils
 OpenIGTLink
-skia
+unofficial::skia::skia
 glfw 
 Vulkan::Vulkan 
 )

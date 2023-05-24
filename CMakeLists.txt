@@ -12,6 +12,14 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+#Find all required third parties (this should be moved elsewhere)
+find_package(asio CONFIG REQUIRED)
+find_package(Eigen3 CONFIG REQUIRED)
+find_package(Ceres CONFIG REQUIRED)
+find_package(ITK CONFIG REQUIRED)
+find_package(OpenIGTLink CONFIG REQUIRED)
+find_package(unofficial-skia CONFIG REQUIRED)
+
 #Externally provided targets
 add_subdirectory(third_party)
 
