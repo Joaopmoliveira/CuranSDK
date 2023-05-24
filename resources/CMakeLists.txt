@@ -1,5 +1,5 @@
 
-add_custom_command( OUTPUT resources
+add_custom_command(OUTPUT resources
                COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_LIST_DIR}/images" "${CMAKE_BINARY_DIR}/images"
                DEPENDS "${CMAKE_CURRENT_LIST_DIR}/images"
                COMMENT "Currently copying the widget files to the correct directories"

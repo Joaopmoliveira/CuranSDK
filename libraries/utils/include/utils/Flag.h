@@ -5,7 +5,7 @@
 #include <memory>
 
 namespace curan {
-	namespace utils {
+	namespace utilities {
 		/*
 	*	Thread safe flag which can be used to wait
 	*   for a given event from multiple threads. When

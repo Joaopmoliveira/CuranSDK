@@ -5,7 +5,7 @@
 #include <vector>
 
 namespace curan {
-	namespace utils {
+	namespace utilities {
 
 		class Cancelable : std::enable_shared_from_this<Cancelable> {
 			std::mutex mut;

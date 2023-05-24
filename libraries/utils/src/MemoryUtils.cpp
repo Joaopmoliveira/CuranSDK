@@ -1,7 +1,7 @@
 #include "utils/MemoryUtils.h"
 
 namespace curan {
-namespace utils {
+namespace utilities {
 
 CaptureBuffer::CaptureBuffer(binding&& val) : val_(val) {
 buffer_ = val();

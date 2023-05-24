@@ -3,13 +3,16 @@
 
 #include <functional>
 // Exclude rarely-used stuff from Windows headers
-#define WIN32_LEAN_AND_MEAN             
+#ifdef CURAN_WINDOWS             
 // Windows Header Files
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#endif
+
 #include <asio.hpp>
 
 namespace curan {
-	namespace utils {
+	namespace utilities {
 
 		class MemoryBuffer {
 		public:

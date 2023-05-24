@@ -3,7 +3,7 @@
 #include <mutex>
 
 namespace curan {
-namespace utils {
+namespace utilities {
 std::shared_ptr<Cancelable> Cancelable::make_cancelable() {
 	return std::shared_ptr<Cancelable>(new Cancelable());
 }

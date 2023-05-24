@@ -7,7 +7,7 @@
 #include "Job.h"
 
 namespace curan {
-	namespace utils {
+	namespace utilities {
 		/*
 		A thread pool contains an array of threads which are waiting for
 		jobs to be supplied. Because this thread pool is 

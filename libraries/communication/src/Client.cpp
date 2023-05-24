@@ -13,7 +13,7 @@ Client::Client(ServerInfo& info) : _cxt{ info.io_context },
 	connection_type{ info.connection_type } {
 };
 
-std::optional<std::shared_ptr<utils::Cancelable>> Client::connect(callable c) {
+std::optional<std::shared_ptr<utilities::Cancelable>> Client::connect(callable c) {
 	if (connection_type.index() != c.index())
 		return std::nullopt;
 	auto cancel = utils::Cancelable::make_cancelable();
@@ -22,7 +22,7 @@ std::optional<std::shared_ptr<utils::Cancelable>> Client::connect(callable c) {
 	return cancel;
 };
 
-void Client::write(std::shared_ptr<curan::utils::MemoryBuffer> buffer) {
+void Client::write(std::shared_ptr<utilities::MemoryBuffer> buffer) {
 	socket.post(std::move(buffer));
 };
 

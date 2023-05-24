@@ -1,7 +1,7 @@
 #include "utils/Flag.h"
 
 namespace curan{
-namespace utils{
+namespace utilities{
 std::shared_ptr<Flag> Flag::make_shared_flag() {
 	return std::shared_ptr<Flag>(new Flag());
 }

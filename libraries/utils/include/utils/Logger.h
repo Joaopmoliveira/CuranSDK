@@ -8,7 +8,7 @@
 #include "SafeQueue.h"
 
 namespace curan {
-	namespace utils {
+	namespace utilities {
 
 		constexpr int max_number_of_strings = 50;
 

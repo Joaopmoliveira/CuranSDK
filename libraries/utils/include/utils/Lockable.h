@@ -4,7 +4,7 @@
 #include <mutex>
 
 namespace curan {
-	namespace utils {
+	namespace utilities {
 
 		template<typename Derived>
 		class Lockable {

@@ -6,6 +6,7 @@
     "openigtlink",
     "asio",
     "glfw3",
+    "nlohmann-json",
     {
       "name": "skia",
       "features": [ "vulkan" ]

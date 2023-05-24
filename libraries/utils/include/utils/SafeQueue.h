@@ -5,7 +5,7 @@
 #include <queue>
 
 namespace curan {
-	namespace utils {
+	namespace utilities {
 
 		template<typename T>
 		class SafeQueue {

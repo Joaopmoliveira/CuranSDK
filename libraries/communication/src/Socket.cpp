@@ -31,7 +31,7 @@ Socket::~Socket() {
 	_socket.close();
 };
 
-void Socket::post(std::shared_ptr<curan::utils::MemoryBuffer> buff) {
+void Socket::post(std::shared_ptr<utilities::MemoryBuffer> buff) {
 	asio::post(_cxt,
 		[this, buff](){
 			bool shoud_write = to_send.empty();
@@ -55,7 +55,7 @@ void Socket::do_write(){
 				}
 			else {
 				get_underlying_socket().close();
-				curan::utils::cout << "failed";
+				utilities::cout << "failed";
 			}
 		});
 };

@@ -5,12 +5,12 @@
 #include <functional>
 
 namespace curan {
-	namespace utils {
+	namespace utilities {
 		/*
-A pending task is a request made by the user which
-currently sits in queue which must be terminated.
-It has a description associated with the task to finish.
-*/
+		A pending task is a request made by the user which
+		currently sits in queue which must be terminated.
+		It has a description associated with the task to finish.
+		*/
 		struct Job {
 			/*
 			* Function that actually gets executed by the thread pool of the application

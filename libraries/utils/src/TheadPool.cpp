@@ -1,7 +1,7 @@
 #include "utils/TheadPool.h"
 
 namespace curan{
-namespace utils{
+namespace utilities{
 
 std::unique_ptr<ThreadPool> pool = nullptr;
 

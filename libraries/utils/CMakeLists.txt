@@ -15,4 +15,8 @@ target_link_libraries(utils PUBLIC
 asio
 )
 
+IF (WIN32)
+  add_compile_definitions(utils WIN32_LEAN_AND_MEAN)
+ENDIF()
+
 add_dependencies(utils WIDGETRESOURCES)

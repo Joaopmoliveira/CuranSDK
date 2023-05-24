@@ -7,8 +7,6 @@
 #include <chrono>
 #include <iostream>
 
-#include "sigslot\signal.hpp"
-
 /**
 The utilities library is at the core of curan. All other modules of the 
 medical viewer use the constructs provided by this module. Lets go into the 
@@ -175,52 +173,6 @@ public:
 	}
 };
 
-//for us there are basically two main ways to connect a signal and a slot such that we can use them
-//we can define a lambda and submit it as a slot to the signal. The lambda will exist for as long 
-// as the signal itself exists, the second type is a signal which is connected to an object, here we
-// need to explicitly manage memory. To do this we must check that 
-
-/*
-Assume that we have object of class A, where 
-class A : std::enable_shared_from_this<A> {
-	void f(){
-		std::cout << "hi my name is :" << std::endl;	
-	}
-}
-
-class B{
-	sigslot::signal<int> callable_"descriptive_name_of_job";
-}
-
-int main(){
-	auto p = std::make_shared<A>();
-	sig::signal<void()> sig;
-	sig.connect<>(A::f,p);
-	return 0;
-}
-*/
-
-void test_calling_mechanism_used_in_code() {
-	auto p = TestingCallingMechanism::make_shared();
-
-	sigslot::signal<float> sig;
-	sig.connect(&TestingCallingMechanism::call_functional,p);
-
-	auto lamd = [](float f) {
-		std::printf("now I am executing from the lambda %f\n", f);
-		return;
-	};
-
-	sig.connect(lamd);
-
-	sig(5.0f);
-
-	p.reset();
-
-	sig(3.0f);
-};
-
-
 
 void test_memory_buffers() {
 	std::shared_ptr<curan::utils::MemoryBuffer> buff_of_interest;
@@ -256,7 +208,6 @@ int main() {
 	test_shared_flag();
 	test_job_and_thread_pool();
 	test_thread_safe_queue();
-	test_calling_mechanism_used_in_code();
 	test_memory_buffers();
 
 	//terminate the thread pool;

@@ -73,7 +73,7 @@ void read_body(IgtlinkClientConnection val, std::error_code ec) {
 }
 
 void start(Client* client_pointer) {
-	curan::utils::cout << "starting to:";
+	utilities::cout << "starting to:";
 	implementation::IgtlinkClientConnection val{ client_pointer };
 	implementation::read_header_first_time(std::move(val));	
 }

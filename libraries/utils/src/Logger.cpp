@@ -1,7 +1,7 @@
 #include "utils/Logger.h"
 
 namespace curan{
-namespace utils{
+namespace utilities{
 
 Logger cout{ "debug_information.txt" };
 
