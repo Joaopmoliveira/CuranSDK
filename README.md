@@ -30,6 +30,46 @@ to other types of optimizations).
 ## EXPERIMENTAL
 
 Use vcpkg to build the required third party libraries (currently being tested)
+To use this strategy we can first install vcpkg as:
+
+```sh
+~path >> mkdir development
+~path >> cd development
+~path\development >> git clone https://github.com/Microsoft/vcpkg.git
+~path\development >> .\vcpkg\bootstrap-vcpkg.bat
+```
+
+Now we have two options, the first one is to install universally the dependencies 
+of our project (this is called the classic mode). The second strategy is the manifest
+mode where we define a file, vcpkg.json, with the dependencies of our project. Currently our
+project has the following dependencies
+
+```
+{
+  "dependencies": [
+    "eigen3",
+    "itk",
+    "ceres",
+    "openigtlink",
+    "asio",
+    "glfw3",
+    {
+      "name": "skia",
+      "features": [ "vulkan" ]
+    }
+  ]
+}
+```
+
+Note that the rendering dependencies are still missing, this is because vcpkg still has a tiny bug 
+which is currently being solved in a commit from the team. Now to compile the project execute the 
+following lines in your command line. 
+
+```sh
+~path\development >> cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="~path/development/vcpkg/scripts/buildsystems/vcpkg.cmake"
+```
+
+And the project should just compile out of the box.
 
 ## Windows
 
