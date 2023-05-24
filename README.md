@@ -69,7 +69,8 @@ following lines in your command line.
 ~path\development >> cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="~path/development/vcpkg/scripts/buildsystems/vcpkg.cmake"
 ```
 
-And the project should just compile out of the box.
+And the project should just compile out of the box (this will take a LOOOOONG TIME to compile 
+because ITK and SKIA are huge). Reserve atleast 10Gb of memory for vcpkg to compile all the dynamic libraries.
 
 ## Windows
 
