@@ -12,7 +12,6 @@ IconResources::IconResources(std::string path_to_resources)
 	{
 		std::string s = p.path().string();
 		std::string filename = p.path().filename().string();
-		//auto icon = Icon::read(s.c_str());
 		Icon icon;
 		icon.read(s.c_str());
 		icon_map.emplace(std::make_pair(filename, icon));
@@ -22,6 +21,7 @@ IconResources::IconResources(std::string path_to_resources)
 bool IconResources::load(std::string path_to_resources)
 {
 	static IconResources icon_loader{ path_to_resources };
+	//TODO: this needs further attention, I have no clue what I was thinking
 	return &icon_loader;
 }
 

@@ -7,7 +7,7 @@
 int main() {
 	try {
 		using namespace curan::ui;
-		IconResources resources{ "C:/dev/Curan/resources" };
+		IconResources resources{ CURAN_COPIED_RESOURCE_PATH"/images" };
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));

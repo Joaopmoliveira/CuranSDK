@@ -190,6 +190,7 @@ bool Context::initialize_context() {
 		instanceExtensionNames.data(),
 		(uint32_t)deviceExtensionNames.size(),
 		deviceExtensionNames.data());
+	return true;
 }
 
 bool Context::init_instance_extensions_and_layers(std::vector<VkExtensionProperties>& instanceExtensions, std::vector<VkLayerProperties>& instanceLayers) {

@@ -84,7 +84,9 @@ SkSurface* Window::getBackbufferSurface()
 	if (VK_ERROR_OUT_OF_DATE_KHR == res || res == VK_SUBOPTIMAL_KHR || framebufferResized) {
 		framebufferResized = false;
 		// tear swapchain down and try again
-		recreateDisplay();
+		if(!recreateDisplay()){
+			throw std::runtime_error("failed to recreate the display after a resize request");
+		}
 		backbuffer = getAvailableBackBuffer();
 
 		// acquire the image
@@ -437,6 +439,7 @@ bool Window::initialize()
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 	}
 	fCurrentBackbufferIndex = imageCount;
+	return true;
 }
 
 void Window::destroy()
@@ -755,6 +758,7 @@ bool Window::recreateDisplay()
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 	}
 	fCurrentBackbufferIndex = imageCount;
+	return true;
 }
 
 BackbufferInfo* Window::getAvailableBackBuffer()

@@ -29,7 +29,7 @@ namespace curan {
 
 		typedef std::function<asio::const_buffer()> binding;
 
-		class CaptureBuffer : public MemoryBuffer {
+		class CaptureBuffer final : public MemoryBuffer {
 
 			explicit CaptureBuffer(std::function<asio::const_buffer()>&& val);
 
@@ -44,7 +44,7 @@ namespace curan {
 			asio::const_buffer buffer_;
 		};
 
-		class CopyBuffer : public MemoryBuffer {
+		class CopyBuffer final : public MemoryBuffer {
 			explicit CopyBuffer(char* data, size_t size);
 		public:
 			static std::shared_ptr<MemoryBuffer> make_shared(char* data, size_t size);

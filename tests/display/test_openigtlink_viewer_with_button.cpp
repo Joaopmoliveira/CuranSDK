@@ -125,7 +125,6 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 	int   svoffset[] = { 0, 0, 0 };
 	int   scalarType = igtl::ImageMessage::TYPE_UINT8;
 
-	size_t counter = 0;
 	auto genesis = std::chrono::high_resolution_clock::now();
 	auto start = std::chrono::high_resolution_clock::now();
 	while (std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count() < 20.0) {
@@ -173,10 +172,8 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 		pure_display->update_image(lam);
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-		++counter;
-
 	}
-	curan::utils::cout << "stopped to send data";
+	curan::utilities::cout << "stopped to send data";
 
 }
 
@@ -184,7 +181,7 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 int main() {
 	try {
 		using namespace curan::ui;
-		IconResources resources{ "C:/dev/Curan/resources" };
+		IconResources resources{ CURAN_COPIED_RESOURCE_PATH"/images"};
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));

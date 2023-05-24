@@ -34,8 +34,8 @@ namespace curan {
 			struct Info {
 				asio::io_context& io_context;
 				callable connection_type;
-				short port;
-				Info(asio::io_context& io_context, callable connection_type, short port) :io_context{ io_context }, connection_type{ connection_type }, port{ port }, endpoint{ asio::ip::tcp::v4(),port } {
+				unsigned short port;
+				Info(asio::io_context& io_context, callable connection_type, unsigned short port) :io_context{ io_context }, connection_type{ connection_type }, port{ port }, endpoint{ asio::ip::tcp::v4(),port } {
 
 				}
 

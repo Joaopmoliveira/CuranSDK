@@ -19,4 +19,4 @@ IF (WIN32)
   add_compile_definitions(utils CURAN_WINDOWS)
 ENDIF()
 
-add_dependencies(utils WIDGETRESOURCES)
+add_dependencies(utils curan_resources)

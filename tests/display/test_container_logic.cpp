@@ -326,7 +326,6 @@ void create_horizontal_layout_propagate(curan::ui::IconResources& resources) {
 	info.paint_layout = paint_square2;
 	std::shared_ptr<Container> container = Container::make(info);
 
-	SkRect window = SkRect::MakeLTRB(0, 0, 1000, 1000);
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container->set_position(my_small_window);
 	container->framebuffer_resize();
@@ -419,7 +418,6 @@ void create_vertical_layout_propagate(curan::ui::IconResources& resources) {
 	info.paint_layout = paint_square2;
 	std::shared_ptr<Container> container = Container::make(info);
 
-	SkRect window = SkRect::MakeLTRB(0, 0, 1000, 1000);
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container->set_position(my_small_window);
 	container->framebuffer_resize();
@@ -505,7 +503,6 @@ void create_nested_layout_propagate(curan::ui::IconResources& resources){
 	info.layouts = { container , button4 };
 	std::shared_ptr<Container> container2 = Container::make(info);
 
-	SkRect window = SkRect::MakeLTRB(0, 0, 1000, 1000);
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container2->set_position(my_small_window);
 	container2->framebuffer_resize();
@@ -593,7 +590,6 @@ void test_linearization(curan::ui::IconResources& resources) {
 	info.layouts = { container , button4 };
 	std::shared_ptr<Container> container2 = Container::make(info);
 
-	SkRect window = SkRect::MakeLTRB(0, 0, 1000, 1000);
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container2->set_position(my_small_window);
 	container2->framebuffer_resize();

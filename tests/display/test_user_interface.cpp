@@ -63,7 +63,6 @@
 #include "include\core\SkPathEffect.h"
 #include "include\core\SkPathMeasure.h"
 #include "include\core\SkPathTypes.h"
-#include "include\core\SkPathUtils.h"
 #include "include\core\SkPicture.h"
 #include "include\core\SkPictureRecorder.h"
 #include "include\core\SkPixelRef.h"
@@ -92,7 +91,6 @@
 #include "include\core\SkSurfaceProps.h"
 #include "include\core\SkSwizzle.h"
 #include "include\core\SkTextBlob.h"
-#include "include\core\SkTextureCompressionType.h"
 #include "include\core\SkTileMode.h"
 #include "include\core\SkTime.h"
 #include "include\core\SkTraceMemoryDump.h"
@@ -140,17 +138,12 @@
 #include "include\gpu\GrSurfaceInfo.h"
 #include "include\gpu\GrTypes.h"
 #include "include\gpu\GrYUVABackendTextures.h"
-#include "include\gpu\MutableTextureState.h"
 #include "include\gpu\ShaderErrorHandler.h"
 #include "include\gpu\mock\GrMockTypes.h"
 #include "include\gpu\vk\GrVkBackendContext.h"
 #include "include\gpu\vk\GrVkExtensions.h"
 #include "include\gpu\vk\GrVkMemoryAllocator.h"
 #include "include\gpu\vk\GrVkTypes.h"
-#include "include\gpu\vk\VulkanBackendContext.h"
-#include "include\gpu\vk\VulkanExtensions.h"
-#include "include\gpu\vk\VulkanMemoryAllocator.h"
-#include "include\gpu\vk\VulkanTypes.h"
 #include "include\pathops\SkPathOps.h"
 #include "include\ports\SkTypeface_win.h"
 #include "include\utils\SkAnimCodecPlayer.h"
@@ -770,7 +763,7 @@ private:
 
 public:
 	GLFWwindow* window = nullptr;
-	curan::utils::SafeQueue<Signal> signal_queue;
+	curan::utilities::SafeQueue<Signal> signal_queue;
 
 	Window(DisplayParams&& pars) : params{ std::move(pars) }{
 		context = std::move(params.cxt);

@@ -180,13 +180,13 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 		++counter;
 
 	}
-	curan::utils::cout << "stopped to send data";
+	curan::utilities::cout << "stopped to send data";
 
 }
 
 std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	using namespace curan::ui;
-	IconResources resources{ "C:/dev/Curan/resources" };
+	IconResources resources{ CURAN_COPIED_RESOURCE_PATH"/images" };
 
 	SkColor colbuton = { SK_ColorBLACK };
 	SkColor coltext = { SK_ColorBLACK };

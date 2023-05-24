@@ -67,7 +67,7 @@ struct ProcessingMessage {
 
 	std::shared_ptr<curan::ui::ImageDisplay> processed_viwer;
 	std::shared_ptr<curan::ui::OpenIGTLinkViewer> open_viwer;
-	std::shared_ptr<curan::utils::Flag> connection_status;
+	std::shared_ptr<curan::utilities::Flag> connection_status;
 	std::shared_ptr<curan::ui::Button> button;
 	std::shared_ptr<curan::ui::Button> button_start_collection;
 	size_t number_of_circles = 3;
@@ -81,7 +81,7 @@ struct ProcessingMessage {
 
 	ProcessingMessage(std::shared_ptr<curan::ui::ImageDisplay> in_processed_viwer,
 		std::shared_ptr<curan::ui::OpenIGTLinkViewer> in_open_viwer,
-		std::shared_ptr<curan::utils::Flag> flag, ConfigurationData& in_configuration) : connection_status{ flag }, processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer }, configuration{ in_configuration }
+		std::shared_ptr<curan::utilities::Flag> flag, ConfigurationData& in_configuration) : connection_status{ flag }, processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer }, configuration{ in_configuration }
 	{
 	}
 

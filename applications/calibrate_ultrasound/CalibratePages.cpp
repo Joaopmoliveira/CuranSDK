@@ -277,19 +277,19 @@ std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data, std::
 	info.layouts = { open_viwer,processed_viwer };
 	std::shared_ptr<Container> viwers_container = Container::make(info);
 
-	auto flag = curan::utils::Flag::make_shared_flag();
+	auto flag = curan::utilities::Flag::make_shared_flag();
 
 	processing = std::make_shared<ProcessingMessage>(processed_viwer, open_viwer, flag, data);
 	processing->port = data.port;
 
 	auto lam = [processing](Button* button, ConfigDraw* config) {
 		if (!processing->connection_status->value()) {
-			curan::utils::Job val;
+			curan::utilities::Job val;
 			val.description = "connection thread";
 			val.function_to_execute = [processing]() {
 				processing->communicate();
 			};
-			curan::utils::pool->submit(val);
+			curan::utilities::pool->submit(val);
 		}
 		else {
 			processing->attempt_stop();

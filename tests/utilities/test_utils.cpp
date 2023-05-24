@@ -15,7 +15,7 @@ details!
 */
 
 int test_shared_flag() {
-	auto flag = curan::utils::Flag::make_shared_flag();
+	auto flag = curan::utilities::Flag::make_shared_flag();
 	flag->clear();
 
 	constexpr int number_of_min_miliseconds = 600;
@@ -49,28 +49,28 @@ int test_shared_flag() {
 }
 
 int test_job_and_thread_pool() {
-	using namespace curan::utils;
-	auto flag1 = curan::utils::Flag::make_shared_flag();
+	using namespace curan::utilities;
+	auto flag1 = curan::utilities::Flag::make_shared_flag();
 	flag1->clear();
-	auto flag2 = curan::utils::Flag::make_shared_flag();
+	auto flag2 = curan::utilities::Flag::make_shared_flag();
 	flag2->clear();
 
-	curan::utils::Job job1;
+	curan::utilities::Job job1;
 	job1.description = "This is a test to make sure that the thread pool works";
 	job1.function_to_execute = [flag1]() {
 		flag1->wait();
 	};
-	curan::utils::Job job2;
+	curan::utilities::Job job2;
 	job2.description = "This is a test to make sure that the thread pool works";
 	job2.function_to_execute = [flag1]() {
 		flag1->wait();
 	};
-	curan::utils::Job job3;
+	curan::utilities::Job job3;
 	job3.description = "This is a test to make sure that the thread pool works";
 	job3.function_to_execute = [flag2]() {
 		flag2->wait();
 	};
-	curan::utils::Job job4;
+	curan::utilities::Job job4;
 	job4.description = "This is a test to make sure that the thread pool works";
 	job4.function_to_execute = [flag2]() {
 		flag2->wait();
@@ -119,7 +119,7 @@ struct PoPable {
 
 void test_thread_safe_queue() {
 	PoPable pop;
-	curan::utils::SafeQueue<PoPable> safe_queue;
+	curan::utilities::SafeQueue<PoPable> safe_queue;
 	auto put_in = [&safe_queue](PoPable pop) {
 		safe_queue.push(pop);
 	};
@@ -175,11 +175,11 @@ public:
 
 
 void test_memory_buffers() {
-	std::shared_ptr<curan::utils::MemoryBuffer> buff_of_interest;
+	std::shared_ptr<curan::utilities::MemoryBuffer> buff_of_interest;
 	{
 		std::string value_to_control = "1_2_3_4_5_6_7_8_9_10_11";
 		std::cout << "Expected buffer is: " << value_to_control << "\n";
-		buff_of_interest = curan::utils::CopyBuffer::make_shared(value_to_control.data(), value_to_control.size());
+		buff_of_interest = curan::utilities::CopyBuffer::make_shared(value_to_control.data(), value_to_control.size());
 		//value to constrol is deleted but the memory has already been copied into the memory_buffer class
 	}
 	
@@ -193,7 +193,7 @@ void test_memory_buffers() {
 			return asio::buffer(shared_memory_to_control->data(), shared_memory_to_control->size());
 			
 		};
-		buff_of_interest = curan::utils::CaptureBuffer::make_shared(lambda);
+		buff_of_interest = curan::utilities::CaptureBuffer::make_shared(lambda);
 		//value to constrol is deleted as well as the local copy of the shared_memory_control, but the shared_pointer is
 		//stored into the lamda which is then copied into the capture memory buffer
 	}
@@ -203,7 +203,7 @@ void test_memory_buffers() {
 
 int main() {
 	//initualize the thread pool;
-	curan::utils::initialize_thread_pool(10);
+	curan::utilities::initialize_thread_pool(10);
 
 	test_shared_flag();
 	test_job_and_thread_pool();
@@ -211,7 +211,7 @@ int main() {
 	test_memory_buffers();
 
 	//terminate the thread pool;
-	curan::utils::terminate_thread_pool();
+	curan::utilities::terminate_thread_pool();
 	return 0;
 }
 

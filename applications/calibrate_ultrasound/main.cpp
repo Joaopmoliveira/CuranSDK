@@ -8,7 +8,7 @@
 
 int main(int argc, char* argv[]) {
 	using namespace curan::ui;
-	curan::utils::initialize_thread_pool(10);
+	curan::utilities::initialize_thread_pool(10);
 
 	ConfigurationData data;
 	std::cout << "the received port is: " << data.port << "\n";
@@ -54,9 +54,9 @@ int main(int argc, char* argv[]) {
 
 	int tasks_n = 0;
 	int tasks_queue = 0;
-	curan::utils::pool->get_number_tasks(tasks_n, tasks_queue);
+	curan::utilities::pool->get_number_tasks(tasks_n, tasks_queue);
 	std::cout << "Number of tasks executing: " << tasks_n << " number of tasks in queue" << tasks_queue << "\n";
-	curan::utils::terminate_thread_pool();
+	curan::utilities::terminate_thread_pool();
 	std::cout << "Number of frame recordings: " << processing->list_of_recorded_points.size() << "\n";
 	std::cout << "Received spacing: \n";
 

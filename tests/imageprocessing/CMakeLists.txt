@@ -1,8 +1,8 @@
-add_executable(test_filtering test_filtering_algorithm.cpp )
-
 find_package(ITK CONFIG REQUIRED)
 
 include(${ITK_USE_FILE})
+
+add_executable(test_filtering test_filtering_algorithm.cpp )
 
 target_link_libraries(test_filtering PUBLIC
 imageprocessing

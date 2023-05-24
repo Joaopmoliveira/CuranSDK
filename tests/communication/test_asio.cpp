@@ -260,8 +260,8 @@ public:
 	struct Info {
 		asio::io_context& io_context;
 		callable connection_type;
-		short port;
-		Info(asio::io_context& io_context, callable connection_type, short port) :io_context{ io_context }, connection_type{ connection_type }, port{ port }, endpoint{ asio::ip::tcp::v4(),port } {
+		unsigned short port;
+		Info(asio::io_context& io_context, callable connection_type, unsigned short port) :io_context{ io_context }, connection_type{ connection_type }, port{ port }, endpoint{ asio::ip::tcp::v4(),port } {
 
 		}
 
@@ -407,7 +407,7 @@ std::function<void(Client*)> get_interface(callable callable_type) {
 }
 
 
-void foo(asio::io_context& cxt, short port) {
+void foo(asio::io_context& cxt, unsigned short port) {
 	interface_igtl igtlink_interface;
 	Server::Info construction{ cxt,igtlink_interface ,port};
 	Server server{ construction };
@@ -417,7 +417,7 @@ void foo(asio::io_context& cxt, short port) {
 }
 
 int main() {
-	short port = 50000;
+	unsigned short port = 50000;
 	asio::io_context io_context;
 	auto lauchfunctor = [&io_context,port]() {
 		foo(io_context, port);

@@ -35,7 +35,7 @@ void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 	matrix[2][3] = position[2];
 }
 
-void foo(asio::io_context& cxt, short port) {
+void foo(asio::io_context& cxt, unsigned short port) {
 	using namespace curan::communication;
 	try {
 		interface_igtl igtlink_interface;
@@ -110,7 +110,7 @@ int main() {
 	try {
 		curan::utilities::cout << "started running";
 		using namespace curan::communication;
-		short port = 50000;
+		unsigned short port = 50000;
 		asio::io_context io_context;
 		auto lauchfunctor = [&io_context, port]() {
 			foo(io_context, port);
