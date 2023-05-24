@@ -310,7 +310,7 @@ void VolumeReconstructor::fill_holes()
 	default:
 	{
 		std::string s = "Unknown interpolation mode: " + std::to_string(fillType);
-		utils::cout << s;
+		utilities::cout << s;
 		return;
 	}
 	}

@@ -22,7 +22,7 @@ namespace curan {
 
 			};
 
-			curan::utils::SafeQueue<std::string> outputqueue;
+			SafeQueue<std::string> outputqueue;
 			std::list<std::string> previous_outputs;
 
 			template<class U>

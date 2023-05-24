@@ -7,6 +7,7 @@
 #include "utils/Cancelable.h"
 #include "utils/Overloading.h"
 #include <utility>
+#include <optional>
 
 namespace curan {
 	namespace communication {
@@ -20,8 +21,8 @@ namespace curan {
 		class Client {
 			struct combined {
 				callable lambda;
-				std::shared_ptr<utils::Cancelable> canceled;
-				combined(callable lambda, std::shared_ptr<utils::Cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
+				std::shared_ptr<utilities::Cancelable> canceled;
+				combined(callable lambda, std::shared_ptr<utilities::Cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
 			};
 			asio::io_context& _cxt;
 			Socket socket;
@@ -48,9 +49,9 @@ namespace curan {
 
 			Client(ServerInfo& info);
 
-			[[nodiscard]] std::optional<std::shared_ptr<utils::Cancelable>> connect(callable c);
+			[[nodiscard]] std::optional<std::shared_ptr<utilities::Cancelable>> connect(callable c);
 
-			void write(std::shared_ptr<curan::utils::MemoryBuffer> buffer);
+			void write(std::shared_ptr<curan::utilities::MemoryBuffer> buffer);
 
 			inline Socket& get_socket() {
 				return socket;

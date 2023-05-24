@@ -16,7 +16,7 @@ asio
 )
 
 IF (WIN32)
-  add_compile_definitions(utils WIN32_LEAN_AND_MEAN)
+  add_compile_definitions(utils CURAN_WINDOWS)
 ENDIF()
 
 add_dependencies(utils WIDGETRESOURCES)

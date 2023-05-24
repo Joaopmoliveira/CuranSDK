@@ -26,7 +26,7 @@ namespace curan {
                 virtual Internal2DImageType::Pointer update_and_return_out() = 0;
             };
 
-            class Filter : utils::Lockable<Filter> {
+            class Filter : utilities::Lockable<Filter> {
 
                 bool is_updated = true;
                 Internal2DImageType::Pointer input;
@@ -40,7 +40,7 @@ namespace curan {
                 Internal2DImageType::Pointer get_output();
             };
 
-            class ImportFilter : public Implementation, utils::Lockable<ImportFilter> {
+            class ImportFilter : public Implementation, utilities::Lockable<ImportFilter> {
             public:
 
                 using ImportFilterType = itk::ImportImageFilter<char_pixel_type, 2>;
@@ -75,7 +75,7 @@ namespace curan {
                 }
             };
 
-            class CircleFilter : public Implementation, utils::Lockable<CircleFilter> {
+            class CircleFilter : public Implementation, utilities::Lockable<CircleFilter> {
             public:
 
                 using HoughTransformFilterType = itk::HoughTransform2DCirclesImageFilter<char_pixel_type, char_pixel_type, double>;
@@ -111,7 +111,7 @@ namespace curan {
                 }
             };
             
-            class ThreholdFilter : public Implementation, utils::Lockable<ThreholdFilter> {
+            class ThreholdFilter : public Implementation, utilities::Lockable<ThreholdFilter> {
             public:
 
                 struct Info {
@@ -147,7 +147,7 @@ namespace curan {
                 }
             };
 
-            class CannyFilter : public Implementation, utils::Lockable<CannyFilter> {
+            class CannyFilter : public Implementation, utilities::Lockable<CannyFilter> {
             public:
 
                 using real_pixel_type = double;
@@ -188,7 +188,7 @@ namespace curan {
                 }
             };
 
-            class BinarizeFilter : public Implementation, utils::Lockable<BinarizeFilter> {
+            class BinarizeFilter : public Implementation, utilities::Lockable<BinarizeFilter> {
             public:
 
                 struct Info {

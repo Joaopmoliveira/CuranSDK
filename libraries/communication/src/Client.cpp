@@ -16,7 +16,7 @@ Client::Client(ServerInfo& info) : _cxt{ info.io_context },
 std::optional<std::shared_ptr<utilities::Cancelable>> Client::connect(callable c) {
 	if (connection_type.index() != c.index())
 		return std::nullopt;
-	auto cancel = utils::Cancelable::make_cancelable();
+	auto cancel = utilities::Cancelable::make_cancelable();
 	combined val{ c,cancel };
 	callables.push_back(std::move(val));
 	return cancel;

@@ -28,6 +28,7 @@
 #endif
 
 #include "utils/MemoryUtils.h"
+#include <optional>
 
 /*
 We have three abstractions, the classes that deal with user code,
@@ -66,7 +67,7 @@ the underlying socket of asio.
 class Socket {
 	asio::ip::tcp::socket _socket;
 	asio::io_context& _cxt;
-	std::list<std::shared_ptr<curan::utils::MemoryBuffer>> to_send;
+	std::list<std::shared_ptr<curan::utilities::MemoryBuffer>> to_send;
 	std::function<void(Client*)> start;
 
 public:
@@ -103,7 +104,7 @@ public:
 
 	}
 
-	void post(std::shared_ptr<curan::utils::MemoryBuffer> buff) {
+	void post(std::shared_ptr<curan::utilities::MemoryBuffer> buff) {
 		asio::post(_cxt,
 			[this, buff]()
 			{
@@ -220,7 +221,7 @@ public:
 		return cancel;
 	}
 
-	void write(std::shared_ptr<curan::utils::MemoryBuffer> buffer){
+	void write(std::shared_ptr<curan::utilities::MemoryBuffer> buffer){
 		socket.post(std::move(buffer));
 	}
 
@@ -289,7 +290,7 @@ public:
 		return cancel;
 	}
 
-	void write(std::shared_ptr<curan::utils::MemoryBuffer> buffer) {
+	void write(std::shared_ptr<curan::utilities::MemoryBuffer> buffer) {
 		std::cout << "Writing to all clients\n";
 		for (auto& client : list_of_clients)
 			client->write(buffer);
@@ -421,7 +422,7 @@ int main() {
 	auto lauchfunctor = [&io_context,port]() {
 		foo(io_context, port);
 	};
-	std::jthread laucher(lauchfunctor);
+	std::thread laucher(lauchfunctor);
 	interface_igtl igtlink_interface;
 	Client::Info construction{ io_context,igtlink_interface };
 	Client client{ construction };

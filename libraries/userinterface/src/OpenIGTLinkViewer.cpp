@@ -84,7 +84,7 @@ void OpenIGTLinkViewer::process_message(igtl::MessageBase::Pointer pointer) {
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	bool message_previously_received = false;
 	for (auto& val : container.received_messages) {
-		std::visit(utils::overloaded{
+		std::visit(utilities::overloaded{
 			[pointer,&message_previously_received](TransformMessage& message) {
 				std::string ident = pointer->GetDeviceName() + pointer->GetMessageType();
 				if (!ident.compare(message.identifier)) {
@@ -171,7 +171,7 @@ drawablefunction OpenIGTLinkViewer::draw() {
 		canvas->drawCircle(center_debug_mode, debug_mode_radius, paint);
 		canvas->drawTextBlob(debug_glyph, center_debug_mode.fX, center_debug_mode.fY - debug_glyph->bounds().centerY(), paint_text);
 		for (auto& mess : container.received_messages) {
-			std::visit(utils::overloaded{
+			std::visit(utilities::overloaded{
 				[](TransformMessage message) {
 
 				},
@@ -243,7 +243,7 @@ drawablefunction OpenIGTLinkViewer::draw() {
 				renctangle.offsetTo(renctangle.x(), renctangle.y() + renctangle.height());
 			} else {
 				Message& val = *it;
-				std::visit(utils::overloaded{
+				std::visit(utilities::overloaded{
 					[&renctangle,canvas,this](TransformMessage message) {
 						SkRect rect = renctangle;
 						canvas->drawRect(rect, paint);
@@ -291,7 +291,7 @@ drawablefunction OpenIGTLinkViewer::draw() {
 		canvas->drawSimpleText(preview.data(), preview.size(), SkTextEncoding::kUTF8, x_init, y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5), text_font, paint_text);
 
 		if (clicked != container.received_messages.end()) {
-			std::visit(utils::overloaded{
+			std::visit(utilities::overloaded{
 				[&clicked,canvas,this,number_of_cells,y_init,widget_rect](TransformMessage& message) {
 					SkScalar y = y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
 					// Retrive the transform data
@@ -300,7 +300,7 @@ drawablefunction OpenIGTLinkViewer::draw() {
 					for (int i = 0; i < 4; ++i) {
 						std::string row = "[";
 						for (int j = 0; j < 4; ++j)
-							row += curan::utils::to_string_with_precision(matrix[i][j], 2) + " , ";
+							row += utilities::to_string_with_precision(matrix[i][j], 2) + " , ";
 						row += "]";
 						SkRect bound_individual_name;
 						text_font.measureText(row.c_str(), row.size(), SkTextEncoding::kUTF8, &bound_individual_name);
@@ -335,7 +335,7 @@ callablefunction OpenIGTLinkViewer::call() {
 	auto lamb = [this](Signal sig, ConfigDraw* config) {
 		std::lock_guard<std::mutex> g{ get_mutex() };
 		bool interacted = false;
-		std::visit(utils::overloaded{
+		std::visit(utilities::overloaded{
 			[this](Empty arg) {
 
 			},

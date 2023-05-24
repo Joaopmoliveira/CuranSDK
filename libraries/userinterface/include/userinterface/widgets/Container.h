@@ -9,7 +9,7 @@
 namespace curan {
 	namespace ui {
 
-		class Container : public Drawable , utils::Lockable<Container>{
+		class Container : public Drawable , utilities::Lockable<Container>{
 			SkPaint paint_layout;
 			std::vector<std::shared_ptr<Drawable>> contained_layouts;
 			std::vector<SkRect> rectangles_of_contained_layouts;

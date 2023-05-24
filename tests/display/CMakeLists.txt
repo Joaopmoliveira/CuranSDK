@@ -67,7 +67,6 @@ target_link_libraries(test_multiple_sliders PUBLIC
 userinterface
 )
 
-
 add_executable(skia_playground skia_playground.cpp)
 
 target_link_libraries(skia_playground PUBLIC

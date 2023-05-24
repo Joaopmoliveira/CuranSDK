@@ -63,28 +63,28 @@ void foo(asio::io_context& cxt, short port) {
 			auto callable = [transMsg]() {
 				return asio::buffer(transMsg->GetPackPointer(), transMsg->GetPackSize());
 			};
-			auto to_send = curan::utils::CaptureBuffer::make_shared(std::move(callable));
+			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
 			server.write(to_send);
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(10) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 			++counter;
 		}
-		curan::utils::cout << "Stopping context";
+		curan::utilities::cout << "Stopping context";
 		cxt.stop();
 	}
 	catch (std::exception& e) {
-		curan::utils::cout << "CLient exception was thrown" + std::string(e.what());
+		curan::utilities::cout << "CLient exception was thrown" + std::string(e.what());
 	}
 }
 
 void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
-	curan::utils::cout << "received message";
+	curan::utilities::cout << "received message";
 	assert(val.IsNotNull());
 	if (!er) {
 		std::string tmp = val->GetMessageType();
 		std::string desired = "TRANSFORM";
 		if (!tmp.compare(desired)) {
-			curan::utils::cout << "Receiving TRANSFORM data type";
+			curan::utilities::cout << "Receiving TRANSFORM data type";
 			igtl::TransformMessage::Pointer transMsg = igtl::TransformMessage::New();
 			//transMsg->Copy(val);
 			//int c = transMsg->Unpack(1);
@@ -97,25 +97,25 @@ void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Poin
 			//}
 		}
 		else {
-			curan::utils::cout << "Not Receiving TRANSFORM data type";
+			curan::utilities::cout << "Not Receiving TRANSFORM data type";
 		}
 	}
 	else {
-		curan::utils::cout << "failed";
+		curan::utilities::cout << "failed";
 	}
 
 }
 
 int main() {
 	try {
-		curan::utils::cout << "started running";
+		curan::utilities::cout << "started running";
 		using namespace curan::communication;
 		short port = 50000;
 		asio::io_context io_context;
 		auto lauchfunctor = [&io_context, port]() {
 			foo(io_context, port);
 		};
-		std::jthread laucher(lauchfunctor);
+		std::thread laucher(lauchfunctor);
 		interface_igtl igtlink_interface;
 		Client::Info construction{ io_context,igtlink_interface };
 		asio::ip::tcp::resolver resolver(io_context);
@@ -124,10 +124,11 @@ int main() {
 		Client client{ construction };
 		auto connectionstatus = client.connect(bar);
 		auto val = io_context.run();
-		curan::utils::cout << "stopped running";
+		curan::utilities::cout << "stopped running";
+		laucher.join();
 	}
 	catch (std::exception& e) {
-		curan::utils::cout << "CLient exception was thrown"+std::string(e.what());
+		curan::utilities::cout << "CLient exception was thrown"+std::string(e.what());
 		return 1;
 	}
 

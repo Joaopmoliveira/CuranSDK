@@ -49,7 +49,7 @@ bool GetPerpendicularSlice(Volume& in_vol, InternalImageType::Pointer& out_vol, 
 		filter->Update();
 	}
 	catch (const itk::ExceptionObject& e) {
-		utils::cout << e.what();
+		utilities::cout << e.what();
 		return false;
 	}
 
@@ -286,7 +286,7 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 					break;
 				default:
 					std::string s = "Unknown Compounding operator detected, value " + std::to_string(compoundingMode) + ". Leaving value as-is.";
-					utils::cout << s;
+					utilities::cout << s;
 					break;
 				}
 				inPtrTmp++;
@@ -439,7 +439,7 @@ int NearestNeighborInterpolation(const Eigen::Vector4d point,
 		}
 		default:
 			std::string s = "Unknown Compounding operator detected, value " + std::to_string(compoundingMode) + ". Leaving value as-is.";
-			utils::cout << s;
+			utilities::cout << s;
 			break;
 		}
 		return 1;
@@ -947,7 +947,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 	default:
 	{
 		std::string s = "Unknown interpolation mode: " + std::to_string(interpolationMode);
-		utils::cout << s;
+		utilities::cout << s;
 		return;
 	}
 	}

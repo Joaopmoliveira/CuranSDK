@@ -19,7 +19,7 @@ namespace curan {
 		class Socket {
 			asio::ip::tcp::socket _socket;
 			asio::io_context& _cxt;
-			std::list<std::shared_ptr<utils::MemoryBuffer>> to_send;
+			std::list<std::shared_ptr<utilities::MemoryBuffer>> to_send;
 			std::function<void(Client*)> start;
 
 		public:
@@ -39,7 +39,7 @@ namespace curan {
 
 			void handle_connect(std::error_code ec, asio::ip::tcp::endpoint e);
 
-			void post(std::shared_ptr<utils::MemoryBuffer> buff);
+			void post(std::shared_ptr<utilities::MemoryBuffer> buff);
 
 			void do_write();
 

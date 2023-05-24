@@ -45,7 +45,7 @@ namespace curan {
 			std::list<Message> received_messages;
 		};
 
-		class OpenIGTLinkViewer : public Drawable, utils::Lockable<OpenIGTLinkViewer>, utils::Connectable<OpenIGTLinkViewer> {
+		class OpenIGTLinkViewer : public Drawable, utilities::Lockable<OpenIGTLinkViewer>, utilities::Connectable<OpenIGTLinkViewer> {
 			MessageContainer container;
 			Press last_pressed_position;
 			SkRect widget_rect;

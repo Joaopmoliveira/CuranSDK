@@ -70,7 +70,7 @@ namespace curan {
 			std::string windowName;
 		public:
 			GLFWwindow* window = nullptr;
-			curan::utils::SafeQueue<Signal> signal_queue;
+			utilities::SafeQueue<Signal> signal_queue;
 
 			Window(DisplayParams&& pars);
 

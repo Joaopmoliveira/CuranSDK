@@ -459,14 +459,14 @@ void Window::destroy()
 		skia_context->abandonContext();
 		skia_context.reset();
 	}
-	curan::utils::cout << "destroying swapchain";
+	utilities::cout << "destroying swapchain";
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(context->instance, surface, nullptr);
-	curan::utils::cout << "destroyed swapchain";
-	curan::utils::cout << "destroying window";
+	utilities::cout << "destroyed swapchain";
+	utilities::cout << "destroying window";
 	glfwDestroyWindow(window);
-	curan::utils::cout << "destroyed window";
+	utilities::cout << "destroyed window";
 	return;
 }
 

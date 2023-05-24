@@ -9,7 +9,7 @@ namespace ui {
 
 Overlay::Info::Info(){
 	post_sig = [](Signal sig, bool page_interaction, ConfigDraw* config) {
-		std::visit(curan::utils::overloaded{
+		std::visit(utilities::overloaded{
 		[](Empty arg) {
 
 			},

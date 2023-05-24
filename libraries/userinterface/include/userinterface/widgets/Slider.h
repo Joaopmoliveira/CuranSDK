@@ -15,7 +15,7 @@ namespace curan {
 
 		using slidercallback = std::function<void(Slider*, ConfigDraw*)>;
 
-		class Slider : public  Drawable, utils::Lockable<Slider>, utils::Connectable<Slider> {
+		class Slider : public  Drawable, utilities::Lockable<Slider>, utilities::Connectable<Slider> {
 		public:
 			struct Info {
 				std::optional<slidercallback> callback;

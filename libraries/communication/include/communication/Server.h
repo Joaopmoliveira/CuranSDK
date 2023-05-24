@@ -8,6 +8,7 @@
 #include "utils/Cancelable.h"
 #include "utils/MemoryUtils.h"
 #include "Protocols.h"
+#include <optional>
 
 namespace curan {
 	namespace communication {
@@ -21,9 +22,9 @@ namespace curan {
 
 			struct combined {
 				callable lambda;
-				std::shared_ptr<utils::Cancelable> canceled;
+				std::shared_ptr<utilities::Cancelable> canceled;
 
-				combined(callable lambda, std::shared_ptr<utils::Cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
+				combined(callable lambda, std::shared_ptr<utilities::Cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
 			};
 
 			std::vector<combined> callables;
@@ -50,9 +51,9 @@ namespace curan {
 
 			~Server();
 
-			[[nodiscard]] std::optional<std::shared_ptr<utils::Cancelable>> connect(callable c);
+			[[nodiscard]] std::optional<std::shared_ptr<utilities::Cancelable>> connect(callable c);
 
-			void write(std::shared_ptr<curan::utils::MemoryBuffer> buffer);
+			void write(std::shared_ptr<utilities::MemoryBuffer> buffer);
 
 		private:
 

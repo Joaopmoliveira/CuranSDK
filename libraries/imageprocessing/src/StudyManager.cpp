@@ -66,7 +66,7 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 				}
 				catch (const itk::ExceptionObject& e) {
 					std::string s{ e.what() };
-					curan::utils::cout << "Exception thrown: " + s;
+					utilities::cout << "Exception thrown: " + s;
 					return false;
 				}
 				study.study_img.push_back(image2D);

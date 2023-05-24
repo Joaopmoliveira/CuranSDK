@@ -2,6 +2,8 @@
 #include "communication/Client.h"
 #include "utils/Logger.h"
 
+#include <vector>
+
 namespace curan {
 namespace communication {
 
@@ -25,14 +27,14 @@ std::optional<std::shared_ptr<utilities::Cancelable>> Server::connect(callable c
 void Server::write(std::shared_ptr<utilities::MemoryBuffer> buffer) {
 	if (list_of_clients.size()==0)
 		utilities::cout << "No client to write";
-	std::erase_if(list_of_clients, 
-	[&buffer](std::shared_ptr<Client>& client) {	
-	if (!client->get_socket().get_underlying_socket().is_open())
-		return true;
-	utilities::cout << "wrote to client";
-	client->write(buffer); 
-	return false;
-	}
+	list_of_clients.remove_if(
+		[&buffer](std::shared_ptr<Client>& client) {
+			if (!client->get_socket().get_underlying_socket().is_open())
+				return true;
+			utilities::cout << "wrote to client";
+			client->write(buffer);
+			return false;
+		}
 	);					
 }
 

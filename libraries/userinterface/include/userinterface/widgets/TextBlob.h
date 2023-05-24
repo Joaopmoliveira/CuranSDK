@@ -10,7 +10,7 @@
 
 namespace curan {
 	namespace ui {
-		class TextBlob : public  Drawable, utils::Lockable<TextBlob>, utils::Connectable<TextBlob> {
+		class TextBlob : public  Drawable, utilities::Lockable<TextBlob>, utilities::Connectable<TextBlob> {
 		public:
 			struct Info {
 				SkPaint paint;

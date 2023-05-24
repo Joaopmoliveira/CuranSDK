@@ -12,7 +12,7 @@
 namespace curan {
 	namespace ui {
 
-		class RadioButton : public  Drawable, utils::Lockable<RadioButton>, utils::Connectable<RadioButton> {
+		class RadioButton : public  Drawable, utilities::Lockable<RadioButton>, utilities::Connectable<RadioButton> {
 		public:
 			enum class Arrangement {
 				VERTICAL,

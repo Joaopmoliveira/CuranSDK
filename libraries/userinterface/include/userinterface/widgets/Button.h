@@ -15,7 +15,7 @@ namespace curan {
 		struct ConfigDraw;
 		using buttoncallback = std::function<void(Button*, ConfigDraw*)>;
 
-		class Button : public  Drawable , utils::Lockable<Button>, utils::Connectable<Button> {
+		class Button : public  Drawable , utilities::Lockable<Button>, utilities::Connectable<Button> {
 		public:
 			struct Info {
 				std::optional<buttoncallback> callback;
