@@ -1,3 +1,0 @@
-set(SIGSLOT_COMPILE_TESTS OFF)
-set(SIGSLOT_COMPILE_EXAMPLES OFF)	
-add_subdirectory(sigslot)

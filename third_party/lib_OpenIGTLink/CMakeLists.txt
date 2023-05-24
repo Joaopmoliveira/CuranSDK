@@ -1,7 +1,0 @@
-set(BUILD_TESTING OFF)
-set(BUILD_EXAMPLES OFF)
-set(OpenIGTLink_SUPERBUILD OFF)
-set(OpenIGTLink_PROTOCOL_VERSION_2 OFF)
-set(OpenIGTLink_PROTOCOL_VERSION_3 ON)
-set(OpenIGTLink_USE_VP9 OFF)
-add_subdirectory(OpenIGTLink)

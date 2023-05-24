@@ -1,4 +1,0 @@
-set(SPDLOG_BUILD_EXAMPLE OFF)
-set(SPDLOG_BUILD_TESTS OFF)
-set(SPDLOG_BUILD_BENCH OFF)
-add_subdirectory(spdlog)
