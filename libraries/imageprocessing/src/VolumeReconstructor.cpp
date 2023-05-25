@@ -486,6 +486,7 @@ bool VolumeReconstructor::update_internal_buffers()
 		}
 		return true;
 	}
+	return true;
 };
 
 VolumeReconstructor::KernelDescriptor::KernelDescriptor()
