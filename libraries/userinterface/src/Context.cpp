@@ -4,6 +4,31 @@
 namespace curan {
 namespace ui {
 
+bool checkValidationLayerSupport() {
+	uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+	std::vector<VkLayerProperties> availableLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+    for (const char* layerName : validationLayers) {
+        bool layerFound = false;
+
+        for (const auto& layerProperties : availableLayers) {
+	  		if (strcmp(layerName, layerProperties.layerName) == 0) {
+                layerFound = true;
+                break;
+            }
+        }
+
+        if (!layerFound) {
+        	return false;
+        }
+    }
+
+    return true;
+}
+
 Context::Context() {
 	initialize_context();
 }
@@ -72,7 +97,7 @@ bool Context::initialize_context() {
 		}
 	}
 
-	const VkInstanceCreateInfo instance_create = {
+	VkInstanceCreateInfo instance_create = {
 		VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,    // sType
 		nullptr,                                   // pNext
 		0,                                         // flags
@@ -82,6 +107,19 @@ bool Context::initialize_context() {
 		(uint32_t)instanceExtensionNames.size(), // enabledExtensionNameCount
 		instanceExtensionNames.data(),            // ppEnabledExtensionNames
 	};
+
+	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+    if (enableValidationLayers) {
+            instance_create.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+            instance_create.ppEnabledLayerNames = validationLayers.data();
+
+            populateDebugMessengerCreateInfo(debugCreateInfo);
+            instance_create.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
+        } else {
+            instance_create.enabledLayerCount = 0;
+
+            instance_create.pNext = nullptr;
+	}
 
 	res = vkCreateInstance(&instance_create, nullptr, &instance);
 
@@ -292,7 +330,7 @@ void Context::destroy_context() {
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL Context::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-	//TODO: std::cout << "validation layer: " << pCallbackData->pMessage << std::endl;
+	utilities::cout << "validation layer: " << pCallbackData->pMessage << "\n";
 	return VK_FALSE;
 }
 

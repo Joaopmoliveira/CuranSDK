@@ -403,12 +403,14 @@ bool Window::initialize()
 		info.fLevelCount = 1;
 		info.fCurrentQueueFamily = context->indices.presentFamily.value();
 
+		params.fColorSpace = SkColorSpace::MakeSRGBLinear();
 		if (usageFlags & VK_IMAGE_USAGE_SAMPLED_BIT) {
 			GrBackendTexture backendTexture(swapChainExtent.width, swapChainExtent.height, info);
-			swapSurface[i] = SkSurface::MakeFromBackendTexture(
-			skia_context.get(), backendTexture, kTopLeft_GrSurfaceOrigin,
+			auto localsksurface = SkSurface::MakeFromBackendTexture(
+				skia_context.get(), backendTexture, kTopLeft_GrSurfaceOrigin,
 				params.fMSAASampleCount,
-				colorType, params.fColorSpace, &params.fSurfaceProps).release();
+				colorType, params.fColorSpace, &params.fSurfaceProps);
+			swapSurface[i] = localsksurface.release();
 		} else {
 			if (params.fMSAASampleCount != 1) {
 				throw std::runtime_error("Could not deal with input definitions");

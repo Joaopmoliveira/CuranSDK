@@ -3,7 +3,6 @@
     "eigen3",
     "itk",
     "ceres",
-    "openigtlink",
     "asio",
     "glfw3",
     "nlohmann-json",

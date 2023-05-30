@@ -177,4 +177,14 @@ constexpr SkScalar TASK_PREVIEW_HEIGHT = 150.0f;
 constexpr SkScalar MANIPULATOR_BAR_HEIGHT = 50;
 constexpr SkScalar RADIO_BUTTON_DIMENSION = 20;
 
+const std::vector<const char*> validationLayers = {
+    "VK_LAYER_KHRONOS_validation"
+};
+
+#ifdef NDEBUG
+    const bool enableValidationLayers = false;
+#else
+    const bool enableValidationLayers = true;
+#endif
+
 #endif

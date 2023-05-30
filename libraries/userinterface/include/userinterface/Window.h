@@ -8,12 +8,10 @@
 
 namespace curan {
 	namespace ui {
-
-
 		struct DisplayParams {
 			DisplayParams(std::unique_ptr<Context> cxt, int width, int height)
 				: fColorType(kN32_SkColorType)
-				, fColorSpace(nullptr)
+				, fColorSpace(SkColorSpace::MakeSRGB())
 				, fMSAASampleCount(1)
 				, fSurfaceProps(0, kRGB_H_SkPixelGeometry)
 				, fDisableVsync(false)
