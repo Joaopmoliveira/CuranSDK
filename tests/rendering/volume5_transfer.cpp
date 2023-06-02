@@ -311,7 +311,7 @@ int main(int argc, char** argv) {
     nameGenerator->SetUseSeriesDetails(true);
     nameGenerator->AddSeriesRestriction("0008|0021");
     nameGenerator->SetGlobalWarningDisplay(false);
-    std::string dirName{ "C:/Users/joaom/Downloads/brain_fastMRI_DICOM/fastMRI_brain_DICOM/423275901582" };
+    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/dicom_sample"};
     nameGenerator->SetDirectory(dirName);
 
     ImageType::Pointer image_to_render;
