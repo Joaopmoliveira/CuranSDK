@@ -6,6 +6,7 @@
     "asio",
     "glfw3",
     "nlohmann-json",
+    "assimp",
     {
       "name": "skia",
       "features": [ "vulkan" ]
