@@ -69,7 +69,7 @@ which is currently being solved in a commit from the team. Now to compile the pr
 following lines in your command line. 
 
 ```sh
-~path\development >> cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="~path/development/vcpkg/scripts/buildsystems/vcpkg.cmake"
+~path/development >> cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="~path/development/vcpkg/scripts/buildsystems/vcpkg.cmake"
 ```
 
 And the project should just compile out of the box (this will take a LOOOOONG TIME to compile 
