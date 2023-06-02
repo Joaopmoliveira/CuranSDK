@@ -33,9 +33,54 @@ void create_array_of_rotational_images_around_the_z_axis(std::vector<imageType::
 }
 
 int main(){
-    // this scripts tests the volume reconstruction implementation 
-    imageType::Pointer image_to_insert = imageType::New();
-    curan::image::VolumeReconstructor volume_reconstructor;
-    volume_reconstructor.add_frame(image_to_insert);
+    {
+        curan::image::VolumeReconstructor volume_reconstructor;
+        std::vector<imageType::Pointer> images;
+        create_array_of_linear_images_in_x_direction(images);
+        volume_reconstructor.add_frames(images);
+        volume_reconstructor.update();
+    }
+
+    {
+        curan::image::VolumeReconstructor volume_reconstructor;
+        std::vector<imageType::Pointer> images;
+        create_array_of_linear_images_in_y_direction(images);
+        volume_reconstructor.add_frames(images);
+        volume_reconstructor.update();
+    }
+
+
+    {
+        curan::image::VolumeReconstructor volume_reconstructor;
+        std::vector<imageType::Pointer> images;
+        create_array_of_linear_images_in_z_direction(images);
+        volume_reconstructor.add_frames(images);
+        volume_reconstructor.update();
+    }
+
+
+    {   
+        curan::image::VolumeReconstructor volume_reconstructor;
+        std::vector<imageType::Pointer> images;
+        create_array_of_rotational_images_around_the_x_axis(images);
+        volume_reconstructor.add_frames(images);
+        volume_reconstructor.update();
+    }
+
+    {
+        curan::image::VolumeReconstructor volume_reconstructor;
+        std::vector<imageType::Pointer> images;
+        create_array_of_rotational_images_around_the_y_axis(images);
+        volume_reconstructor.add_frames(images);
+        volume_reconstructor.update();
+    }
+
+    {
+        curan::image::VolumeReconstructor volume_reconstructor;
+        std::vector<imageType::Pointer> images;
+        create_array_of_rotational_images_around_the_z_axis(images);
+        volume_reconstructor.add_frames(images);
+        volume_reconstructor.update();
+    }
     return 0;
 }
