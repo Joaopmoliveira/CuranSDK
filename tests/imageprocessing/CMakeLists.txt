@@ -29,3 +29,10 @@ target_link_libraries(test_wrapped_circle PUBLIC
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_volume_reconstruction test_volume_creation.cpp)
+
+target_link_libraries(test_volume_reconstruction PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
