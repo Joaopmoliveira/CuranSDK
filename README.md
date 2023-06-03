@@ -34,7 +34,8 @@ to other types of optimizations).
 
 3. Install the lattest version of Mycrosoft Visual Studio - Community Edition which integrates C++ compilers in your system. 
 
-4. Search in your system for the command window 
+4. Search in your system for the command window "x64 native tools command prompt for vs 20XX" where XX is whatever version of Visual Studio that you
+installed.
 
 Use vcpkg to build the required third party libraries
 To use this strategy we can first install vcpkg as:
