@@ -43,7 +43,7 @@ ENDIF()
 # Find and use the system's Eigen3 library
 FIND_PACKAGE(Eigen3 REQUIRED)
 
-IF (TARGET Eigen::Eigen)
+IF (TARGET Eigen3::Eigen)
 
 ELSE()
 	MESSAGE (ERROR "Could not find Eigen3 on your system. Install it or use the slower SimpleMath library by enabling RBDL_USE_SIMPLE_MATH.")
@@ -112,6 +112,7 @@ message("rbdl building static")
   target_link_libraries( rbdl-static PUBLIC Eigen3::Eigen)
   target_compile_definitions(rbdl-static PUBLIC RBDL_BUILD_STATIC)
   target_include_directories( rbdl-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+  target_compile_options(rbdl-static PRIVATE /bigobj)
 	IF (RBDL_BUILD_ADDON_LUAMODEL)
 		TARGET_LINK_LIBRARIES ( rbdl-static
 			rbdl_luamodel-static
@@ -124,7 +125,7 @@ message("rbdl building shared")
 		VERSION ${RBDL_VERSION}
 		SOVERSION ${RBDL_SO_VERSION}
 		)
-	target_link_libraries(rbdl PUBLIC Eigen::Eigen)
+	target_link_libraries(rbdl PUBLIC Eigen3::Eigen)
 	target_include_directories(rbdl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 ENDIF (RBDL_BUILD_STATIC)
 
