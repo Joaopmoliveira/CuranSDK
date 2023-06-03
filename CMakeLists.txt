@@ -1,55 +1,104 @@
-cmake_minimum_required(VERSION 3.17)
-cmake_policy(SET CMP0091 NEW)
-project(Curan)
+cmake_minimum_required(VERSION 3.14)
 
-#Language definitions used throught the entire project
+project(CuranSuperBuild)
+
+include(FetchContent)
+set(FETCHCONTENT_QUIET FALSE)
+
+set(DOWNLOADS_DIR ${PROJECT_BINARY_DIR}/downloads)
+set(COMPONENTS_DIR ${PROJECT_BINARY_DIR}/components)
+set(FETCHCONTENT_BASE_DIR ${COMPONENTS_DIR})
+
+# set compilation to use C++17
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED YES)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+find_package(Threads)
 
-set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
-set(CMAKE_INSTALL_LIBDIR "${CMAKE_BINARY_DIR}")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+find_library(DL_LIBRARY dl)
+if(NOT DL_LIBRARY)
+    set(DL_LIBRARY "") # change from NOTFOUND to empty when passed to linker
+endif()
 
-#Find all required third parties (this should be moved elsewhere)
-find_package(asio CONFIG REQUIRED)
-find_package(Eigen3 CONFIG REQUIRED)
-find_package(Ceres CONFIG REQUIRED)
-#find_package(OpenIGTLink CONFIG REQUIRED)
-find_package(unofficial-skia CONFIG REQUIRED)
-find_package(nlohmann_json REQUIRED)
-find_package(glfw3 3.3 REQUIRED)
+##############################################################################################################
+#
+# VulkkanSDK
+#
+if (VULKAN_SDK)
+    set(ENV{VULKAN_SDK} ${VULKAN_SDK})
+endif()
 
-#Externally provided targets
-add_subdirectory(third_party)
+find_package(Vulkan)
 
-cmake_path(SET original_resource_paths "${CMAKE_CURRENT_LIST_DIR}/resources")
-cmake_path(SET post_build_resource_path "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources")
+##############################################################################################################
+#
+# VulkaSceneGraph
+#
+OPTION(BUILD_VulkanSceneGraph "Build VulkanSceneGraph" ON)
+if (${BUILD_VulkanSceneGraph})
+    FetchContent_Declare(vsg
+        GIT_REPOSITORY https://github.com/vsg-dev/VulkanSceneGraph.git
+        GIT_TAG "master"
+        GIT_PROGRESS TRUE
+    )
+    FetchContent_MakeAvailable(vsg ${glslang_DEPENDENCY})
+    set(vsg_DEPENDENCY vsg)
+endif()
 
-#Add resources necessary by the display library
-add_custom_command(OUTPUT resources
-               COMMAND ${CMAKE_COMMAND} -E copy_directory ${original_resource_paths} ${post_build_resource_path}
-               DEPENDS "${original_resource_paths}"
-               COMMENT "Currently copying the widget files to the correct directories"
-               )
+##############################################################################################################
+#
+# assimp
+#
+OPTION(BUILD_assimp "Build assimp" ON)
+if (${BUILD_assimp})
+    FetchContent_Declare(assimp
+        GIT_REPOSITORY "https://github.com/assimp/assimp.git"
+        GIT_TAG "v5.2.5"
+        GIT_PROGRESS TRUE
+    )
+    FetchContent_MakeAvailable(assimp)
 
-# create a target that includes some_file, this gives us a name that we can use later
-add_custom_target(
-  curan_resources
-  DEPENDS resources
+    # add definitions to enable assimp locally built lib to be recognized by vsgXchange
+    add_library(assimp::assimp ALIAS assimp)
+    set(assimp_FOUND TRUE CACHE INTERNAL "assimp found.")
+    set(CMAKE_DISABLE_FIND_PACKAGE_assimp TRUE CACHE INTERNAL "Disable find_package(assimp) as it's not necessary.")
+    set(assimp_VERSION "5.2.5") # use the same version as pulled in the GIT_TAG above.
+
+    set(assimp_DEPENDENCY assimp)
+endif()
+
+##############################################################################################################
+#
+# vsgXchange
+#
+OPTION(BUILD_vsgXchange "Build vsgXchange" ON)
+if (${BUILD_vsgXchange})
+    FetchContent_Declare(vsgxchange
+        GIT_REPOSITORY https://github.com/vsg-dev/vsgXchange.git
+        GIT_TAG master
+        GIT_PROGRESS TRUE
+    )
+    FetchContent_MakeAvailable(vsgxchange ${vsg_DEPENDENCY} ${osg2vsg_DEPENDENCY} ${assimp_DEPENDENCY})
+    set(vsgXchange_DEPENDENCY vsgXchange)
+endif()
+
+##############################################################################################################
+#
+# vsgImGui
+#
+OPTION(BUILD_vsgImGui "Build vsgImGui" ON)
+if (${BUILD_vsgImGui})
+    FetchContent_Declare(vsgimgui
+        GIT_REPOSITORY "https://github.com/vsg-dev/vsgImGui.git"
+        GIT_TAG "master"
+        GIT_SUBMODULES "src/imgui"
+        GIT_PROGRESS TRUE
+    )
+    FetchContent_MakeAvailable(vsgimgui ${vsg_DEPENDENCY} )
+endif()
+
+FetchContent_Declare(Curan
+        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/Curan
 )
-
-message(${original_resource_paths})
-message(${post_build_resource_path})
-
-#Add internal Curan libraries to the list of known targets
-add_subdirectory(libraries)
-
-# Add tests for submodules of curan, i.e. utilities, communication, etc...
-add_subdirectory(tests)
-
-# Add medical applications
-add_subdirectory(applications)
+FetchContent_MakeAvailable(Curan ${vsg_DEPENDENCY} ${vsgXchange_DEPENDENCY} ${vsgImGui_DEPENDENCY})
