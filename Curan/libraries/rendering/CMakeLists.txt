@@ -1,6 +1,5 @@
-find_package(vsg REQUIRED)
-find_package(vsgXchange REQUIRED)
-find_package(Assimp REQUIRED)
+find_package(vsg )
+find_package(vsgXchange )
 
 add_library(renderable STATIC
 src/Box.cpp

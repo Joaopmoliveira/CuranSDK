@@ -29,7 +29,7 @@ Window::Window(Info& info) {
     traits->debugLayer = info.is_debug;
     traits->apiDumpLayer = info.api_dump;
 
-    std::visit(utils::overloaded{
+    std::visit(utilities::overloaded{
                 [this](bool arg) { traits->fullscreen = true; },
                 [this](WindowSize size) { traits->width, traits->height; traits->fullscreen = false; }
         }, info.window_size);
@@ -109,7 +109,7 @@ Window& operator<<(Window& ref, vsg::ref_ptr<Renderable> renderable) {
     if (!renderable->obj_contained)
         return ref;
     if (!ref.window) {
-        utils::cout << "failed to get window\n";
+        utilities::cout << "failed to get window\n";
         return ref;
     }
     vsg::observer_ptr<vsg::Viewer> observer_viewer(ref.viewer);

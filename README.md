@@ -32,6 +32,10 @@ to other types of optimizations).
 
 2. Second install Vulkan from the website https://vulkan.lunarg.com/sdk/home (this is a graphics API to communicate with the GPU of your computer)
 
+3. Install the lattest version of Mycrosoft Visual Studio - Community Edition which integrates C++ compilers in your system. 
+
+4. Search in your system for the command window 
+
 Use vcpkg to build the required third party libraries
 To use this strategy we can first install vcpkg as:
 
@@ -74,6 +78,10 @@ following lines in your command line.
 
 And the project should just compile out of the box (this will take a LOOOOONG TIME to compile 
 because ITK and SKIA are huge). Reserve atleast 30Gb of memory for vcpkg to compile all the dependencies.
+
+## Integration with a proper IDE 
+
+Usualy my IDE of choice is either 
 
 ## Contributions 
 
