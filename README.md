@@ -37,8 +37,8 @@ to other types of optimizations).
 4. Search in your system for the command window "x64 native tools command prompt for vs 20XX" where XX is whatever version of Visual Studio that you
 installed.
 
-Use vcpkg to build the required third party libraries
-To use this strategy we can first install vcpkg as:
+5. Use vcpkg to build the required third party libraries
+To use this strategy we can first install vcpkg as: (this is all done in the x64 native tools command prompt)
 
 ```sh
 ~path >> mkdir development
@@ -61,6 +61,7 @@ project has the following dependencies
     "openigtlink",
     "asio",
     "glfw3",
+    "assimp",
     {
       "name": "skia",
       "features": [ "vulkan" ]
@@ -70,8 +71,8 @@ project has the following dependencies
 ```
 
 Note that the rendering dependencies are still missing, this is because vcpkg still has a tiny bug 
-which is currently being solved in a commit from the team. Now to compile the project execute the 
-following lines in your command line. 
+which is currently being solved in a commit from the team. (To solve this problem we use a super
+build arquitecture to achieve our goals)
 
 ```sh
 ~path/development >> cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="~path/development/vcpkg/scripts/buildsystems/vcpkg.cmake"
