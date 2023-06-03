@@ -35,21 +35,6 @@ FetchContent_Declare(vsg
 FetchContent_MakeAvailable(vsg ${glslang_DEPENDENCY})
 set(vsg_DEPENDENCY vsg)
 
-#FetchContent_Declare(assimp
-#    GIT_REPOSITORY "https://github.com/assimp/assimp.git"
-#    GIT_TAG "v5.2.5"
-#    GIT_PROGRESS TRUE
-#)
-#FetchContent_MakeAvailable(assimp)
-
-# add definitions to enable assimp locally built lib to be recognized by vsgXchange
-#add_library(assimp::assimp ALIAS assimp)
-#set(assimp_FOUND TRUE CACHE INTERNAL "assimp found.")
-#set(CMAKE_DISABLE_FIND_PACKAGE_assimp TRUE CACHE INTERNAL "Disable find_package(assimp) as it's not necessary.")
-#set(assimp_VERSION "5.2.5") # use the same version as pulled in the GIT_TAG above.
-
-#set(assimp_DEPENDENCY assimp)
-
 FetchContent_Declare(vsgxchange
     GIT_REPOSITORY https://github.com/vsg-dev/vsgXchange.git
     GIT_TAG master
@@ -58,17 +43,8 @@ FetchContent_Declare(vsgxchange
 FetchContent_MakeAvailable(vsgxchange ${vsg_DEPENDENCY})
 set(vsgXchange_DEPENDENCY vsgXchange)
 
-#FetchContent_Declare(vsgimgui
-#    GIT_REPOSITORY "https://github.com/vsg-dev/vsgImGui.git"
-#    GIT_TAG "master"
-#    GIT_SUBMODULES "src/imgui"
-#    GIT_PROGRESS TRUE
-#)
-#FetchContent_MakeAvailable(vsgimgui ${vsg_DEPENDENCY} )
-
-
 FetchContent_Declare(Curan
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/Curan
 )
-#FetchContent_MakeAvailable(Curan ${vsg_DEPENDENCY} ${vsgXchange_DEPENDENCY} ${vsgImGui_DEPENDENCY})
+
 FetchContent_MakeAvailable(Curan ${vsg_DEPENDENCY} ${vsgXchange_DEPENDENCY})
