@@ -41,7 +41,7 @@ IF(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 ENDIF()
 
 # Find and use the system's Eigen3 library
-#FIND_PACKAGE (Eigen3 3.0.0)
+FIND_PACKAGE(Eigen3 REQUIRED)
 
 IF (TARGET Eigen::Eigen)
 
@@ -109,7 +109,7 @@ message("rbdl building static")
   ADD_LIBRARY ( rbdl-static STATIC ${RBDL_SOURCES} )
   SET_TARGET_PROPERTIES ( rbdl-static PROPERTIES PREFIX "lib")
   SET_TARGET_PROPERTIES ( rbdl-static PROPERTIES OUTPUT_NAME "rbdl")
-  target_link_libraries( rbdl-static PUBLIC Eigen::Eigen)
+  target_link_libraries( rbdl-static PUBLIC Eigen3::Eigen)
   target_compile_definitions(rbdl-static PUBLIC RBDL_BUILD_STATIC)
   target_include_directories( rbdl-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 	IF (RBDL_BUILD_ADDON_LUAMODEL)
