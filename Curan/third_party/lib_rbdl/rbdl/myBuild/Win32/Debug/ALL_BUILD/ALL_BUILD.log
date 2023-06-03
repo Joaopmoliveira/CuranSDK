@@ -1,0 +1,14 @@
+﻿Der Buildvorgang wurde am 23.04.2015 14:38:29 gestartet.
+     1>Projekt "D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\ALL_BUILD.vcxproj" auf Knoten "2", build Ziel(e).
+     1>InitializeBuildStatus:
+         "Win32\Debug\ALL_BUILD\ALL_BUILD.unsuccessfulbuild" wird erstellt, da "AlwaysCreate" angegeben wurde.
+       CustomBuild:
+         Build all projects
+       FinalizeBuildStatus:
+         Die Datei "Win32\Debug\ALL_BUILD\ALL_BUILD.unsuccessfulbuild" wird gelöscht.
+         Aktualisieren des Timestamps von "Win32\Debug\ALL_BUILD\ALL_BUILD.lastbuildstate".
+     1>Die Erstellung des Projekts "D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\ALL_BUILD.vcxproj" ist abgeschlossen, build Ziel(e).
+
+Das Erstellen war erfolgreich.
+
+Verstrichene Zeit 00:00:00.14

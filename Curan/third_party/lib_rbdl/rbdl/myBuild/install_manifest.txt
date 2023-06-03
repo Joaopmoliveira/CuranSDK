@@ -1,0 +1,17 @@
+C:/Program Files (x86)/RBDL/include/rbdl/Body.h
+C:/Program Files (x86)/RBDL/include/rbdl/compileassert.h
+C:/Program Files (x86)/RBDL/include/rbdl/Contacts.h
+C:/Program Files (x86)/RBDL/include/rbdl/Dynamics.h
+C:/Program Files (x86)/RBDL/include/rbdl/Joint.h
+C:/Program Files (x86)/RBDL/include/rbdl/Kinematics.h
+C:/Program Files (x86)/RBDL/include/rbdl/Logging.h
+C:/Program Files (x86)/RBDL/include/rbdl/Model.h
+C:/Program Files (x86)/RBDL/include/rbdl/Quaternion.h
+C:/Program Files (x86)/RBDL/include/rbdl/rbdl.h
+C:/Program Files (x86)/RBDL/include/rbdl/rbdl_eigenmath.h
+C:/Program Files (x86)/RBDL/include/rbdl/rbdl_math.h
+C:/Program Files (x86)/RBDL/include/rbdl/rbdl_mathutils.h
+C:/Program Files (x86)/RBDL/include/rbdl/rbdl_utils.h
+C:/Program Files (x86)/RBDL/include/rbdl/SpatialAlgebraOperators.h
+C:/Program Files (x86)/RBDL/include/rbdl/rbdl_config.h
+C:/Program Files (x86)/RBDL/lib/pkgconfig/rbdl.pc

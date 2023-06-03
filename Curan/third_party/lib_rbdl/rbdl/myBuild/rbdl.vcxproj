@@ -1,0 +1,321 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|Win32">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|Win32">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGUID>{5E3AD741-18F8-45DF-88BA-3FF1E943769F}</ProjectGUID>
+    <Keyword>Win32Proj</Keyword>
+    <Platform>Win32</Platform>
+    <ProjectName>rbdl</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+    <PropertyGroup>
+      <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+      <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\Debug\</OutDir>
+      <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">rbdl.dir\Debug\</IntDir>
+      <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">rbdl</TargetName>
+      <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.dll</TargetExt>
+      <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+      <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</GenerateManifest>
+      <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\Release\</OutDir>
+      <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">rbdl.dir\Release\</IntDir>
+      <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">rbdl</TargetName>
+      <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.dll</TargetExt>
+      <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+      <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</GenerateManifest>
+      <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\MinSizeRel\</OutDir>
+      <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">rbdl.dir\MinSizeRel\</IntDir>
+      <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">rbdl</TargetName>
+      <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">.dll</TargetExt>
+      <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">false</LinkIncremental>
+      <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">true</GenerateManifest>
+      <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\RelWithDebInfo\</OutDir>
+      <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">rbdl.dir\RelWithDebInfo\</IntDir>
+      <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">rbdl</TargetName>
+      <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">.dll</TargetExt>
+      <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">true</LinkIncremental>
+      <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">true</GenerateManifest>
+    </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Debug/</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;CMAKE_INTDIR="Debug";rbdl_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;CMAKE_INTDIR=\"Debug\";rbdl_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalOptions> /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ImportLibrary>D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild/Debug/rbdl.lib</ImportLibrary>
+      <ProgramDataBaseFile>D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild/Debug/rbdl.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+      <Version></Version>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Release/</AssemblerListingLocation>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat></DebugInformationFormat>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="Release";rbdl_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR=\"Release\";rbdl_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalOptions> /machine:X86 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <ImportLibrary>D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild/Release/rbdl.lib</ImportLibrary>
+      <ProgramDataBaseFile>D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild/Release/rbdl.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+      <Version></Version>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>MinSizeRel/</AssemblerListingLocation>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat></DebugInformationFormat>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="MinSizeRel";rbdl_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR=\"MinSizeRel\";rbdl_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalOptions> /machine:X86 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <ImportLibrary>D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild/MinSizeRel/rbdl.lib</ImportLibrary>
+      <ProgramDataBaseFile>D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild/MinSizeRel/rbdl.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+      <Version></Version>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>RelWithDebInfo/</AssemblerListingLocation>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="RelWithDebInfo";rbdl_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR=\"RelWithDebInfo\";rbdl_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalOptions> /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ImportLibrary>D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild/RelWithDebInfo/rbdl.lib</ImportLibrary>
+      <ProgramDataBaseFile>D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild/RelWithDebInfo/rbdl.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+      <Version></Version>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\CMakeLists.txt">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Building Custom Rule D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">setlocal
+"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HD:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94 -BD:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild --check-stamp-file D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/CMakeLists.txt;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMakeLists.txt;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeSystem.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeCCompiler.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeCXXCompiler.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeGenericSystem.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\WindowsPaths.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeRCCompiler.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeRCInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCXXInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\GNUInstallDirs.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMake\FindEigen3.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CheckCCompilerFlag.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CheckCSourceCompiles.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include\rbdl\rbdl_config.h.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\rbdl.pc.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CPack.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CPackComponent.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Templates\CPackConfig.cmake.in;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Templates\CPackConfig.cmake.in;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\generate.stamp</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building Custom Rule D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">setlocal
+"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HD:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94 -BD:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild --check-stamp-file D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/CMakeLists.txt;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMakeLists.txt;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeSystem.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeCCompiler.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeCXXCompiler.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeGenericSystem.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\WindowsPaths.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeRCCompiler.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeRCInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCXXInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\GNUInstallDirs.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMake\FindEigen3.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CheckCCompilerFlag.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CheckCSourceCompiles.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include\rbdl\rbdl_config.h.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\rbdl.pc.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CPack.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CPackComponent.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Templates\CPackConfig.cmake.in;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Templates\CPackConfig.cmake.in;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\generate.stamp</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">Building Custom Rule D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">setlocal
+"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HD:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94 -BD:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild --check-stamp-file D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/CMakeLists.txt;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMakeLists.txt;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeSystem.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeCCompiler.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeCXXCompiler.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeGenericSystem.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\WindowsPaths.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeRCCompiler.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeRCInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCXXInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\GNUInstallDirs.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMake\FindEigen3.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CheckCCompilerFlag.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CheckCSourceCompiles.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include\rbdl\rbdl_config.h.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\rbdl.pc.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CPack.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CPackComponent.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Templates\CPackConfig.cmake.in;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Templates\CPackConfig.cmake.in;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\generate.stamp</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">Building Custom Rule D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">setlocal
+"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HD:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94 -BD:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild --check-stamp-file D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/CMakeLists.txt;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMakeLists.txt;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeSystem.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeCCompiler.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeCXXCompiler.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeGenericSystem.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\WindowsPaths.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\2.8.12.2\CMakeRCCompiler.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeRCInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCXXInformation.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\Platform\Windows-MSVC.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\GNUInstallDirs.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMake\FindEigen3.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CheckCCompilerFlag.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CheckCSourceCompiles.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\include\rbdl\rbdl_config.h.cmake;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\rbdl.pc.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CPack.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Modules\CPackComponent.cmake;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Templates\CPackConfig.cmake.in;C:\Program Files (x86)\CMake 2.8\share\cmake-2.8\Templates\CPackConfig.cmake.in;D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">D:\1_Projekte\2014_PhysicsEngine\RBDL\rbdl-rbdl-de94c4fadf94\myBuild\CMakeFiles\generate.stamp</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\rbdl_version.cc"  />
+    <ClCompile Include="..\src\rbdl_mathutils.cc"  />
+    <ClCompile Include="..\src\rbdl_utils.cc"  />
+    <ClCompile Include="..\src\Contacts.cc"  />
+    <ClCompile Include="..\src\Dynamics.cc"  />
+    <ClCompile Include="..\src\Logging.cc"  />
+    <ClCompile Include="..\src\Joint.cc"  />
+    <ClCompile Include="..\src\Model.cc"  />
+    <ClCompile Include="..\src\Kinematics.cc"  />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="D:/1_Projekte/2014_PhysicsEngine/RBDL/rbdl-rbdl-de94c4fadf94/myBuild/ZERO_CHECK.vcxproj">
+      <Project>1B40A3BB-23E9-4773-943F-D5F83F8AA4C2</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

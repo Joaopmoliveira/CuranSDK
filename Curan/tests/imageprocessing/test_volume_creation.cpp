@@ -75,7 +75,7 @@ void create_array_of_rotational_images_around_the_z_axis(std::vector<imageType::
 }
 
 int main(){
-    {
+    { // first test creates two stacked images in the x direction and reconstructs the volume
         curan::image::VolumeReconstructor volume_reconstructor;
         std::vector<imageType::Pointer> images;
         create_array_of_linear_images_in_x_direction(images);
@@ -83,7 +83,7 @@ int main(){
         volume_reconstructor.update();
     }
 
-    {
+    {// first test creates two stacked images in the x direction and reconstructs the volume
         curan::image::VolumeReconstructor volume_reconstructor;
         std::vector<imageType::Pointer> images;
         create_array_of_linear_images_in_y_direction(images);
@@ -92,7 +92,7 @@ int main(){
     }
 
 
-    {
+    {// first test creates two stacked images in the x direction and reconstructs the volume
         curan::image::VolumeReconstructor volume_reconstructor;
         std::vector<imageType::Pointer> images;
         create_array_of_linear_images_in_z_direction(images);
@@ -101,7 +101,7 @@ int main(){
     }
 
 
-    {   
+    {  // first test creates two stacked images in the x direction and reconstructs the volume 
         curan::image::VolumeReconstructor volume_reconstructor;
         std::vector<imageType::Pointer> images;
         create_array_of_rotational_images_around_the_x_axis(images);
@@ -109,7 +109,7 @@ int main(){
         volume_reconstructor.update();
     }
 
-    {
+    {// first test creates two stacked images in the x direction and reconstructs the volume
         curan::image::VolumeReconstructor volume_reconstructor;
         std::vector<imageType::Pointer> images;
         create_array_of_rotational_images_around_the_y_axis(images);
@@ -117,7 +117,7 @@ int main(){
         volume_reconstructor.update();
     }
 
-    {
+    {// first test creates two stacked images in the x direction and reconstructs the volume
         curan::image::VolumeReconstructor volume_reconstructor;
         std::vector<imageType::Pointer> images;
         create_array_of_rotational_images_around_the_z_axis(images);
