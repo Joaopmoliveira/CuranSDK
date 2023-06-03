@@ -267,7 +267,7 @@ int main(int argc, char** argv) {
     nameGenerator->SetUseSeriesDetails(true);
     nameGenerator->AddSeriesRestriction("0008|0021");
     nameGenerator->SetGlobalWarningDisplay(false);
-    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/dicom_sample"};
+    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/dicom_sample/mri_brain"};
     nameGenerator->SetDirectory(dirName);
 
     ImageType::Pointer image_to_render;

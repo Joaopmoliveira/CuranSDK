@@ -1,12 +1,12 @@
-find_package(vsg REQUIRED)
-find_package(vsgXchange REQUIRED)
-find_package(Assimp REQUIRED)
+find_package(vsg)
+find_package(vsgXchange)
 
 add_executable(Renderer
 main.cpp
 )
 
 target_compile_definitions(Renderer PRIVATE vsgXchange_FOUND)
+target_compile_definitions(Renderer PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(Renderer
 PUBLIC
 vsg::vsg
@@ -19,6 +19,7 @@ volume.cpp
 )
 
 target_compile_definitions(VolumeAttempt PRIVATE vsgXchange_FOUND)
+target_compile_definitions(VolumeAttempt PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(VolumeAttempt
 PUBLIC
 vsg::vsg
@@ -30,6 +31,7 @@ test_updatable_image.cpp
 )
 
 target_compile_definitions(UpdateSceneAttempt PRIVATE vsgXchange_FOUND)
+target_compile_definitions(UpdateSceneAttempt PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(UpdateSceneAttempt
 PUBLIC
 vsg::vsg
@@ -41,6 +43,7 @@ volume2.cpp
 )
 
 target_compile_definitions(VolumeAttempt2 PRIVATE vsgXchange_FOUND)
+target_compile_definitions(VolumeAttempt2 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(VolumeAttempt2
 PUBLIC
 vsg::vsg
@@ -54,6 +57,7 @@ volume3.cpp
 )
 
 target_compile_definitions(VolumeAttempt3 PRIVATE vsgXchange_FOUND)
+target_compile_definitions(VolumeAttempt3 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(VolumeAttempt3
 PUBLIC
 vsg::vsg
@@ -69,6 +73,7 @@ test_itk_merge_vsg.cpp
 )
 
 target_compile_definitions(ItkIntegration PRIVATE vsgXchange_FOUND)
+target_compile_definitions(ItkIntegration PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(ItkIntegration
 PUBLIC
 ${ITK_LIBRARIES}
@@ -81,6 +86,7 @@ volume4.cpp
 )
 
 target_compile_definitions(VolumeAttempt4 PRIVATE vsgXchange_FOUND)
+target_compile_definitions(VolumeAttempt4 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(VolumeAttempt4
 PUBLIC
 ${ITK_LIBRARIES}
@@ -93,6 +99,7 @@ volume5_transfer.cpp
 )
 
 target_compile_definitions(VolumeAttempt5 PRIVATE vsgXchange_FOUND)
+target_compile_definitions(VolumeAttempt5 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(VolumeAttempt5
 PUBLIC
 ${ITK_LIBRARIES}
