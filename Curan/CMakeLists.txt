@@ -5,9 +5,7 @@ project(Curan)
 #Language definitions used throught the entire project
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
-
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
 set(CMAKE_INSTALL_LIBDIR "${CMAKE_BINARY_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

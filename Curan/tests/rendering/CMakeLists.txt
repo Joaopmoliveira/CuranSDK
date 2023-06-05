@@ -115,6 +115,5 @@ target_compile_definitions(RobotDisplay PRIVATE vsgXchange_FOUND)
 target_compile_definitions(RobotDisplay PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(RobotDisplay
 PUBLIC
-vsg::vsg
-vsgXchange::vsgXchange
+renderable
 )

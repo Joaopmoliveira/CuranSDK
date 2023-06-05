@@ -11,7 +11,6 @@ void Renderable::partial_async_attachment(const Updatable& update) {
     updateinfo = update;
     vsg::ref_ptr<vsg::Viewer> ref_viewer = updateinfo.viewer;
 
-
     if (!updateinfo.attachmentPoint)
         return;
 
