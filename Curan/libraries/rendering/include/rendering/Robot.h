@@ -19,6 +19,7 @@
 
 namespace curan {
 	namespace renderable {
+
         void replaceAll(
             std::string& mainString,
             std::string const findString,
@@ -35,6 +36,7 @@ namespace curan {
             std::array<double, N> q;
             // Array of transformation matrices between each joint
             std::array<vsg::ref_ptr<vsg::MatrixTransform>, N> A;
+            
             RobotArm(std::string jsonPath) {
                 replaceAll(jsonPath, "\\", "/");
                 std::string modelsDir = jsonPath.substr(0, jsonPath.find_last_of("/"));

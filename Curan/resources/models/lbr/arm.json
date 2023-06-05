@@ -1,0 +1,43 @@
+[
+    {
+        "path": "link0.stl",
+        "offset": 0.0,
+        "theta": -1.570796326794896
+    },
+    {
+        "path": "link1.stl",
+        "offset": 0.0,
+        "theta": 1.5707963267948966	
+    },
+    {
+        "path": "link2.stl",
+        "offset": 0.0,
+        "theta": -1.5707963267948966	
+    },
+    {
+        "path": "link3.stl",
+        "offset": 0.4,
+        "theta": -1.5707963267948966	
+    },
+    {
+        "path": "link4.stl",
+        "offset": 0.0,
+        "theta": 1.5707963267948966	
+    },
+    {
+        "path": "link5.stl",
+        "offset": 0.4,
+        "theta": 1.5707963267948966	
+    },
+    {
+        "path": "link6.stl",
+        "offset": 0.0,
+        "theta": -1.5707963267948966	
+    },
+    {
+        "path": "link7.stl",
+        "offset": 0.127,
+        "theta": 0.0	
+    }
+
+]

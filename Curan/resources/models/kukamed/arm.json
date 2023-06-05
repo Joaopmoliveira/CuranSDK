@@ -1,0 +1,43 @@
+[
+    {
+        "path": "Base.step",
+        "offset": 0.0,
+        "theta": -1.570796326794896
+    },
+    {
+        "path": "Link1.step",
+        "offset": 0.0,
+        "theta": 1.5707963267948966	
+    },
+    {
+        "path": "Link2.step",
+        "offset": 0.0,
+        "theta": -1.5707963267948966	
+    },
+    {
+        "path": "Link3.step",
+        "offset": 0.4,
+        "theta": -1.5707963267948966	
+    },
+    {
+        "path": "Link4.step",
+        "offset": 0.0,
+        "theta": 1.5707963267948966	
+    },
+    {
+        "path": "Link5.step",
+        "offset": 0.4,
+        "theta": 1.5707963267948966	
+    },
+    {
+        "path": "Link6.step",
+        "offset": 0.0,
+        "theta": -1.5707963267948966	
+    },
+    {
+        "path": "Link7.step",
+        "offset": 0.127,
+        "theta": 0.0	
+    }
+
+]
