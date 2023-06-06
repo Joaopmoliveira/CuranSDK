@@ -16,82 +16,90 @@
 #include <vsg/nodes/MatrixTransform.h>
 #include <vsg/nodes/Node.h>
 #include <filesystem>
+#include <iostream>
 
 namespace curan {
-	namespace renderable {
+namespace renderable {
 
-        template <size_t NumberOfLinks,size_t MovableOffset>
-        struct RobotArm : public vsg::Inherit<Renderable, RobotArm<NumberOfLinks,MovableOffset>> {
+template <size_t NumberOfLinks>
+struct RobotArm : public vsg::Inherit<Renderable, RobotArm<NumberOfLinks>> {
 
-            // The joints' angles for the robot
-            std::array<double, NumberOfLinks> q;
-            // Array of transformation matrices between each joint
-            std::array<vsg::ref_ptr<vsg::MatrixTransform>, NumberOfLinks> A;
+std::array<double, NumberOfLinks> q;
+std::array<vsg::ref_ptr<vsg::MatrixTransform>, NumberOfLinks> matrix_transform;
             
-            RobotArm(std::filesystem::path jsonPath) {
-                std::filesystem::path modelsDir = jsonPath.parent_path();
-                nlohmann::json tableDH = nlohmann::json::parse(std::ifstream(jsonPath));
+RobotArm(std::filesystem::path json_path) {
+    std::filesystem::path models_dir = json_path.parent_path();
+    nlohmann::json tableDH = nlohmann::json::parse(std::ifstream(json_path));
 
-                transform = vsg::MatrixTransform::create(vsg::translate(vsg::dvec3(0.0, 0.0, 0.0)));
-                obj_contained = vsg::Group::create();
+    transform = vsg::MatrixTransform::create(vsg::translate(vsg::dvec3(0.0, 0.0, 0.0)));
+    obj_contained = vsg::Group::create();
 
-                vsg::ref_ptr<vsg::Options> options = vsg::Options::create();
-                options->add(vsgXchange::all::create());
+    vsg::ref_ptr<vsg::Options> options = vsg::Options::create();
+    options->add(vsgXchange::all::create());
 
-                size_t iter_index = 0;
-                for(const auto& link : tableDH){
-                    link["theta"];
-                    link["path"];
-                    link["offset"];
-                    int is_dinamic = link["dynamic"];
-                    ++iter_index;
-                }
+    vsg::ref_ptr<vsg::MatrixTransform> linkPosition = vsg::MatrixTransform::create();
+    linkPosition->matrix =vsg::rotate((double)tableDH[0]["theta"], 1.0, 0.0, 0.0);
+    std::string relative_path = tableDH[0]["path"];
+    std::filesystem::path local_temp_path = models_dir;
+    local_temp_path += "/" + relative_path;
+    vsg::ref_ptr<vsg::Node> link = vsg::read_cast<vsg::Node>(local_temp_path.string() , options);
 
-                vsg::ref_ptr<vsg::MatrixTransform> linkPosition = vsg::MatrixTransform::create();
-                linkPosition->matrix = vsg::rotate((double)tableDH[0]["theta"], 1.0, 0.0, 0.0);
+    if (!link)
+        throw std::runtime_error("Couldn't load node: " + local_temp_path.string());
 
-                std::string local = tableDH[0]["path"];
-                std::filesystem::path first_node = modelsDir;
-                first_node /= local;
+    if(tableDH.size()!=NumberOfLinks+1)
+        throw std::runtime_error("The number of links in the json file is incorrect");
 
-                vsg::ref_ptr<vsg::Node> link = vsg::read_cast<vsg::Node>(first_node.c_str(), options);
-                if (!link)
-                    throw std::runtime_error("Couldn't load node: " + first_node.string());
-                linkPosition->addChild(link);
-                obj_contained->addChild(linkPosition);
+    linkPosition->addChild(link);
+    obj_contained->addChild(linkPosition);
 
-                assert(tableDH.size()==NumberOfLinks && "The number of parameters in the json file does not correspond to the number of joints compiled in the code");
-                set_identifier("my_robot_friend");
-            }
+    for (auto& local_matrix : matrix_transform) {
+        local_matrix = vsg::MatrixTransform::create();
+        local_matrix->matrix = vsg::rotate(vsg::radians(0.0), 0.0, 1.0, 0.0);
+        linkPosition->addChild(local_matrix);
+        linkPosition = vsg::MatrixTransform::create();
+        linkPosition->matrix = vsg::rotate((double)tableDH[&local_matrix - &matrix_transform[0] + 1]["theta"], 1.0, 0.0, 0.0);
+        linkPosition->matrix = linkPosition->transform(vsg::translate( 0.0, -((double)tableDH[&local_matrix - &matrix_transform[0] + 1]["offset"]), 0.0));
+        local_matrix->addChild(linkPosition);
+        std::string local_relative_path = tableDH[&local_matrix - &matrix_transform[0] + 1]["path"];
+        std::filesystem::path local_temp_path_inner = models_dir;
+        local_temp_path_inner += "/" + local_relative_path;
+        link = vsg::read_cast<vsg::Node>(local_temp_path_inner.string(),options);
+        std::cout << local_temp_path_inner << std::endl;
+        if (!link)
+            throw std::runtime_error("Couldn't load node: " + local_temp_path_inner.string());
+        linkPosition->addChild(link);
+    }
+}
 
-            static vsg::ref_ptr<Renderable> make(std::filesystem::path jsonPath) {
-                vsg::ref_ptr<RobotArm> arm_to_add = RobotArm<NumberOfLinks,MovableOffset>::create(jsonPath);
-                vsg::ref_ptr<Renderable> val = arm_to_add.template cast<Renderable>();
-                return val;
-            }
+static vsg::ref_ptr<Renderable> make(std::filesystem::path json_path) {
+    vsg::ref_ptr<RobotArm> arm = RobotArm<NumberOfLinks>::create(json_path);
+    vsg::ref_ptr<Renderable> val = arm.cast<Renderable>();
+    return val;
+}
 
-            template <size_t n> inline double get() const {
-                static_assert(n < NumberOfLinks);
-                return q[n];
-            }
+template <size_t n> inline double get() const {
+    static_assert(n < NumberOfLinks);
+    return q[n];
+}
 
-            template <size_t n> inline void set(const double& new_q) {
-                static_assert(n < NumberOfLinks);
-                q[n] = new_q;
-                A[n]->matrix = vsg::rotate(new_q, 0.0, 1.0, 0.0);
-            }
+template <size_t n> inline void set(const double& new_q) {
+    static_assert(n < NumberOfLinks);
+    q[n] = new_q;
+    matrix_transform[n]->matrix = vsg::rotate(new_q, 0.0, 1.0, 0.0);
+}
 
-            void set(const std::array<double, NumberOfLinks-MovableOffset>& qs) {
-                static_assert(qd.size()==NumberOfLinks-MovableOffset && "The number of movable links is not the same and the supplied size")
-                for (auto& a : A) {
-                    size_t currentIdx = &a - &A[0];
-                    q[currentIdx] = qs[currentIdx];
-                    a->matrix = vsg::rotate(q[currentIdx], 0.0, 1.0, 0.0);
-                }
-            }
-        };
+void set_bulk(const std::array<double, NumberOfLinks>& qs) {
+    for (auto& local_matrix : matrix_transform) {
+        size_t currentIdx = &local_matrix - &matrix_transform[0];
+        q[currentIdx] = qs[currentIdx];
+        local_matrix->matrix = vsg::rotate(q[currentIdx], 0.0, 1.0, 0.0);
+    }
+}
 
-	}
+};
+
+}
 }
 
 #endif
