@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
         curan::renderable::Window window{info};
 
         auto lamb = [&window]() {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/kukamedobj/arm.json";
             vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::RobotArm<7>::make(robot_path);
             robotRenderable->update_transform(vsg::MatrixTransform::create(

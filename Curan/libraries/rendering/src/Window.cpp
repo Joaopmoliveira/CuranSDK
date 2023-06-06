@@ -44,6 +44,19 @@ Window::Window(Info& info) {
 
     root->addChild(newnode);
 
+    auto ambientLight = vsg::AmbientLight::create();
+    ambientLight->name = "ambient";
+    ambientLight->color.set(1.0, 1.0, 1.0);
+    ambientLight->intensity = 0.01;
+    root->addChild(ambientLight);
+
+    auto directionalLight = vsg::DirectionalLight::create();
+    directionalLight->name = "directional";
+    directionalLight->color.set(1.0, 0.3, 0.3);
+    directionalLight->intensity = 0.4;
+    directionalLight->direction.set(0.0, 0.0, -1.0);
+    root->addChild(directionalLight);
+
     window = vsg::Window::create(traits);
     if (!window)
         throw std::runtime_error("Could not create windows");
