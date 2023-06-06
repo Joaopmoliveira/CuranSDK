@@ -39,6 +39,7 @@ RobotArm(std::filesystem::path json_path) {
 
     vsg::ref_ptr<vsg::MatrixTransform> linkPosition = vsg::MatrixTransform::create();
     linkPosition->matrix =vsg::rotate((double)tableDH[0]["theta"], 1.0, 0.0, 0.0);
+    linkPosition->matrix = linkPosition->transform(vsg::translate( 0.0, 0.0,-((double)tableDH[0]["offset"])));
     std::string relative_path = tableDH[0]["path"];
     std::filesystem::path local_temp_path = models_dir;
     local_temp_path += "/" + relative_path;

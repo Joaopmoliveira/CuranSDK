@@ -1,0 +1,179 @@
+{
+    "asset": {
+        "version": "2.0",
+        "generator": "Open Asset Import Library (assimp v5.0.5eb040c7)"
+    },
+    "accessors": [
+        {
+            "bufferView": 0,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 21458,
+            "type": "VEC3",
+            "max": [
+                0.46799999475479128,
+                -0.20749999582767487,
+                0.40799999237060549
+            ],
+            "min": [
+                0.3319999873638153,
+                -0.45150700211524966,
+                0.24090099334716798
+            ]
+        },
+        {
+            "bufferView": 1,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 21458,
+            "type": "VEC3",
+            "max": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "min": [
+                -1.0,
+                -1.0,
+                -1.0
+            ]
+        },
+        {
+            "bufferView": 2,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 21458,
+            "type": "VEC2",
+            "max": [
+                13.999699592590332,
+                1.208754062652588
+            ],
+            "min": [
+                -23.457199096679689,
+                -0.45254993438720705
+            ]
+        },
+        {
+            "bufferView": 3,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 21458,
+            "type": "VEC4",
+            "max": [
+                0.800000011920929,
+                0.800000011920929,
+                0.800000011920929,
+                1.0
+            ],
+            "min": [
+                0.800000011920929,
+                0.800000011920929,
+                0.800000011920929,
+                1.0
+            ]
+        },
+        {
+            "bufferView": 4,
+            "byteOffset": 0,
+            "componentType": 5125,
+            "count": 113124,
+            "type": "SCALAR",
+            "max": [
+                21457
+            ],
+            "min": [
+                0
+            ]
+        }
+    ],
+    "buffers": [
+        {
+            "byteLength": 1482480,
+            "uri": "result.bin"
+        }
+    ],
+    "bufferViews": [
+        {
+            "buffer": 0,
+            "byteOffset": 0,
+            "byteLength": 257496,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 257496,
+            "byteLength": 257496,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 514992,
+            "byteLength": 171664,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 686656,
+            "byteLength": 343328,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 1029984,
+            "byteLength": 452496,
+            "target": 34963
+        }
+    ],
+    "materials": [
+        {
+            "name": "DefaultMaterial",
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "metallicFactor": 0.0
+            }
+        }
+    ],
+    "meshes": [
+        {
+            "name": "Link_5",
+            "primitives": [
+                {
+                    "mode": 4,
+                    "material": 0,
+                    "indices": 4,
+                    "attributes": {
+                        "POSITION": 0,
+                        "NORMAL": 1,
+                        "TEXCOORD_0": 2,
+                        "COLOR_0": 3
+                    }
+                }
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "name": "input.obj",
+            "children": [
+                1
+            ]
+        },
+        {
+            "name": "Link_5",
+            "mesh": 0
+        }
+    ],
+    "scenes": [
+        {
+            "nodes": [
+                0
+            ]
+        }
+    ],
+    "scene": 0
+}

@@ -11,9 +11,15 @@ vsg::ref_ptr<vsg::Node> create_bottom()
     auto builder = vsg::Builder::create();
 
     auto scene = vsg::Group::create();
+    auto options = vsg::Options::create();
+    options->add(vsgXchange::all::create());
 
     std::filesystem::path path_to_texture = CURAN_COPIED_RESOURCE_PATH"/base_pattern/CheckerBoardSeemlessPattern.jpg";
-    auto textureData = vsg::read_cast<vsg::Data>(path_to_texture.c_str());
+    auto textureData = vsg::read_cast<vsg::Data>(path_to_texture.c_str(),options);
+
+    if(textureData) {
+        utilities::cout <<  "Failed to load the checkered pattern\n";
+    }
 
     vsg::GeometryInfo geomInfo;
     vsg::StateInfo stateInfo;
@@ -57,7 +63,7 @@ Window::Window(Info& info) {
 
     auto directionalLight = vsg::DirectionalLight::create();
     directionalLight->name = "directional";
-    directionalLight->color.set(1.0, 0.3, 0.3);
+    directionalLight->color.set(1.0, 0.8, 1.0);
     directionalLight->intensity = 0.4;
     directionalLight->direction.set(0.0, 0.0, -1.0);
     root->addChild(directionalLight);

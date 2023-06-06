@@ -1,41 +1,41 @@
 [
     {
-        "path": "Base.obj",
+        "path": "Base.gltf",
         "offset": 0.4,
         "theta": -1.57079632679
     },
     {
-        "path": "Link1.obj",
+        "path": "Link1.gltf",
         "offset": 0.0,
         "theta": 0.0	
     },
     {
-        "path": "Link2.obj",
+        "path": "Link2.gltf",
         "offset": 0.0,
         "theta": 0.0	
     },
     {
-        "path": "Link3.obj",
+        "path": "Link3.gltf",
         "offset": 0.0,
         "theta": 0.0	
     },
     {
-        "path": "Link4.obj",
+        "path": "Link4.gltf",
         "offset": 0.0,
         "theta": 0.0	
     },
     {
-        "path": "Link5.obj",
+        "path": "Link5.gltf",
         "offset": 0.0,
         "theta": 0.0	
     },
     {
-        "path": "Link6.obj",
+        "path": "Link6.gltf",
         "offset": 0.0,
         "theta": 0.0
     },
     {
-        "path": "Link7.obj",
+        "path": "Link7.gltf",
         "offset": 0.0,
         "theta": 0.0	
     }
