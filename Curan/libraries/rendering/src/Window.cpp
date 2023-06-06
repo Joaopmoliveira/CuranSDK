@@ -1,6 +1,7 @@
 #include "rendering/Window.h"
 #include "utils/Overloading.h"
 #include "utils/Logger.h"
+#include <filesystem>
 
 namespace curan {
 namespace renderable {
@@ -11,12 +12,16 @@ vsg::ref_ptr<vsg::Node> create_bottom()
 
     auto scene = vsg::Group::create();
 
+    std::filesystem::path path_to_texture = CURAN_COPIED_RESOURCE_PATH"/base_pattern/CheckerBoardSeemlessPattern.jpg";
+    auto textureData = vsg::read_cast<vsg::Data>(path_to_texture.c_str());
+
     vsg::GeometryInfo geomInfo;
     vsg::StateInfo stateInfo;
     stateInfo.two_sided = true;
+    stateInfo.image = textureData;
     geomInfo.position.set(0.0, 0.0, 0);
-    geomInfo.dx.set(3, 0.0, 0.0);
-    geomInfo.dy.set(0.0, 3, 0.0);
+    geomInfo.dx.set(10, 0.0, 0.0);
+    geomInfo.dy.set(0.0, 10, 0.0);
 
     scene->addChild(builder->createQuad(geomInfo, stateInfo));
 

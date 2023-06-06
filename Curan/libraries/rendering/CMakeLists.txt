@@ -20,3 +20,5 @@ vsg::vsg
 vsgXchange::vsgXchange
 utils
 )
+
+target_compile_definitions(renderable PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
