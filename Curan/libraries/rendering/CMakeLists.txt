@@ -9,6 +9,7 @@ src/DynamicTexture.cpp
 src/Renderable.cpp
 src/Sphere.cpp
 src/Window.cpp
+src/SequencialLinks.cpp
 )
 
 target_include_directories(renderable

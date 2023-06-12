@@ -1,0 +1,67 @@
+[
+    {
+        "dynamic" : 0,
+        "path": "Base.glb",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0  
+    },
+    {
+        "dynamic" : 1,
+        "path": "Link1.glb",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0
+    },
+    {
+        "dynamic" : 1,
+        "path": "Link2.glb",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0
+    },
+    {
+        "dynamic" : 1,
+        "path": "Link3.glb",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0
+    },
+    {
+        "dynamic" : 1,
+        "path": "Link4.glb",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0
+    },
+    {
+        "dynamic" : 1,
+        "path": "Link5.glb",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0
+    },
+    {
+        "dynamic" : 1,
+        "path": "Link6.glb",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0	
+    },
+    {
+        "dynamic" : 1,
+        "path": "Link7.glb",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0
+    }
+
+]

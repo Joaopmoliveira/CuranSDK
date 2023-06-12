@@ -1,0 +1,18 @@
+[
+    {
+        "dynamic" : 0,
+        "path": "Base.gltf",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0  
+    },
+    {
+        "dynamic" : 1,
+        "path": "Link1.gltf",
+        "alpha" : 0,
+        "x_offset" : 0 ,
+        "phi" : 0,
+        "d_offset" : 0
+    }
+]
