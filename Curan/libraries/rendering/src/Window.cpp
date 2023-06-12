@@ -55,10 +55,16 @@ Window::Window(Info& info) {
 
     root->addChild(newnode);
 
+    auto ambientLight = vsg::AmbientLight::create();
+    ambientLight->name = "ambient";
+    ambientLight->color.set(1.0, 1.0, 1.0);
+    ambientLight->intensity = 0.01;
+    root->addChild(ambientLight);
+
     auto directionalLight = vsg::DirectionalLight::create();
     directionalLight->name = "directional";
-    directionalLight->color.set(1.0, 1.0, 1.0);
-    directionalLight->intensity = 1.0f;
+    directionalLight->color.set(1.0, 0.8, 1.0);
+    directionalLight->intensity = 0.4;
     directionalLight->direction.set(0.0, 0.0, -1.0);
     root->addChild(directionalLight);
 

@@ -1,67 +1,51 @@
 [
     {
-        "dynamic" : 0,
         "path": "link0.stl",
-        "alpha" : 0,
-        "x_offset" : 0 ,
-        "phi" : 0,
-        "d_offset" : 0  
+        "offset": 0.0,
+        "theta": -1.570796326794896,
+        "dynamic" : 0
     },
     {
-        "dynamic" : 1,
         "path": "link1.stl",
-        "alpha" : 0,
-        "x_offset" : 0 ,
-        "phi" : 0,
-        "d_offset" : 0
+        "offset": 0.0,
+        "theta": 1.5707963267948966,
+        "dynamic" : 1
     },
     {
-        "dynamic" : 1,
         "path": "link2.stl",
-        "alpha" : 0,
-        "x_offset" : 0 ,
-        "phi" : 0,
-        "d_offset" : 0
+        "offset": 0.0,
+        "theta": -1.5707963267948966,
+        "dynamic" : 1	
     },
     {
-        "dynamic" : 1,
         "path": "link3.stl",
-        "alpha" : 0,
-        "x_offset" : 0 ,
-        "phi" : 0,
-        "d_offset" : 0
+        "offset": 0.4,
+        "theta": -1.5707963267948966,
+        "dynamic" : 1		
     },
     {
-        "dynamic" : 1,
         "path": "link4.stl",
-        "alpha" : 0,
-        "x_offset" : 0 ,
-        "phi" : 0,
-        "d_offset" : 0
+        "offset": 0.0,
+        "theta": 1.5707963267948966	,
+        "dynamic" : 1	
     },
     {
-        "dynamic" : 1,
         "path": "link5.stl",
-        "alpha" : 0,
-        "x_offset" : 0 ,
-        "phi" : 0,
-        "d_offset" : 0
+        "offset": 0.4,
+        "theta": 1.5707963267948966	,
+        "dynamic" : 1	
     },
     {
-        "dynamic" : 1,
         "path": "link6.stl",
-        "alpha" : 0,
-        "x_offset" : 0 ,
-        "phi" : 0,
-        "d_offset" : 0	
+        "offset": 0.0,
+        "theta": -1.5707963267948966,
+        "dynamic" : 1		
     },
     {
-        "dynamic" : 1,
         "path": "link7.stl",
-        "alpha" : 0,
-        "x_offset" : 0 ,
-        "phi" : 0,
-        "d_offset" : 0
+        "offset": 0.127,
+        "theta": 0.0,
+        "dynamic" : 1	
     }
 
 ]

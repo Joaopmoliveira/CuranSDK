@@ -41,12 +41,6 @@ namespace curan {
             void partial_async_attachment(const Updatable& update);
 
             void run() override;
-
-            /*
-            The method groups the supplied renderable object to the homogeneous transformation
-            of this object
-            */
-            virtual void append(vsg::ref_ptr<Renderable> link_to_join, vsg::ref_ptr<vsg::MatrixTransform> relative_transformation);
         };
 
     }
