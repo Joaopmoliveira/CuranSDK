@@ -1,10 +1,10 @@
 [
     {
         "dynamic" : 0,
-        "path": "model.vsgt",
-        "alpha" : 0,
-        "x_offset" : 0 ,
-        "phi" : 0,
-        "d_offset" : 0  
+        "path": "BaseModified.obj",
+        "alpha" : 90,
+        "x_offset" : 1 ,
+        "phi" : -90,
+        "d_offset" : 1  
     }
 ]

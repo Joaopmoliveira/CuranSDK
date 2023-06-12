@@ -7,34 +7,36 @@ SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_o
     std::filesystem::path models_dir = json_path.parent_path();
     nlohmann::json tableDH = nlohmann::json::parse(std::ifstream(json_path));
 
-    this->transform = vsg::MatrixTransform::create(vsg::translate(vsg::vec3(0.0f, 0.0f, 0.0f)));
+    this->transform = vsg::MatrixTransform::create(vsg::translate(0.0,0.0,0.0));
     this->obj_contained = vsg::Group::create();
 
     vsg::ref_ptr<vsg::Options> options = vsg::Options::create();
     options->add(vsgXchange::all::create());
+    options->shaderSets["pbr"] = vsg::createPhysicsBasedRenderingShaderSet(options);
 
     size_t transform_index = 0;
     assert(tableDH.size()>=number_of_links && "The number of links is larger then the number of links configured in the json file");
     
-    this->sequencial_base_transform = vsg::MatrixTransform::create(vsg::translate(vsg::vec3(0.0, 0.0, 0.0)));
+    this->sequencial_base_transform = vsg::MatrixTransform::create(vsg::translate(0.0,0.0,0.0));
     vsg::ref_ptr<vsg::MatrixTransform> previous_object = this->sequencial_base_transform;
     obj_contained->addChild(this->sequencial_base_transform);
 
     for (auto& denavit_parameter : tableDH) {
         int is_dynamic = denavit_parameter["dynamic"];
         std::string relative_path = denavit_parameter["path"];
-        float alpha = denavit_parameter["alpha"];
-        float x_offset = denavit_parameter["x_offset"];
-        float phi = denavit_parameter["phi"];
-        float d_offset = denavit_parameter["d_offset"];
+        double alpha = denavit_parameter["alpha"];
+        double x_offset = denavit_parameter["x_offset"];
+        double phi = denavit_parameter["phi"];
+        double d_offset = denavit_parameter["d_offset"];
 
         std::filesystem::path local_temp_path = models_dir;
         local_temp_path += "/" + relative_path;
         std::cout << local_temp_path << std::endl;
         vsg::ref_ptr<vsg::Node> link_mesh = vsg::read_cast<vsg::Node>(local_temp_path.string() , options);
-        vsg::ref_ptr<vsg::MatrixTransform> denavit_offset = vsg::MatrixTransform::create(vsg::translate(vsg::vec3(0.0f,0.0f,0.0f)));
-        //denavit_offset->matrix = vsg::rotate(vsg::radians(alpha), 1.0f, 0.0f, 0.0f)*vsg::translate(vsg::vec3(x_offset,0.0,0.0)) * vsg::rotate(vsg::radians(phi), 0.0f, 0.0f, 1.0f)*vsg::translate(vsg::vec3(d_offset,0.0,0.0));
         
+        vsg::ref_ptr<vsg::MatrixTransform> denavit_offset = vsg::MatrixTransform::create(vsg::translate(0.0,0.0,0.0));
+        denavit_offset->matrix = vsg::translate(vsg::dvec3(0.0,0.0,x_offset)) * vsg::rotate(vsg::radians(alpha), 0.0, 0.0, 1.0) * vsg::translate(vsg::dvec3(d_offset,0.0,0.0)) * vsg::rotate(vsg::radians(phi), 1.0, 0.0, 0.0);
+        std::cout << denavit_offset->matrix << std::endl;
         if(!link_mesh)
             throw std::runtime_error("failed to load one of the links");
         denavit_offset->addChild(link_mesh);
@@ -43,7 +45,7 @@ SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_o
 
         if(is_dynamic) {
             assert(transform_index<number_of_links && "the number of dynamic links is larger than what was compiled");
-            vsg::ref_ptr<vsg::MatrixTransform> dynamic_angle = vsg::MatrixTransform::create(vsg::rotate(vsg::radians(0.0), 0.0, 0.0, 1.0));
+            vsg::ref_ptr<vsg::MatrixTransform> dynamic_angle = vsg::MatrixTransform::create();
             previous_object->addChild(dynamic_angle);
             previous_object = dynamic_angle;
             links_matrix_transform[transform_index] = dynamic_angle;

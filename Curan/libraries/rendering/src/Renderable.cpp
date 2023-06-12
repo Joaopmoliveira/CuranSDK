@@ -34,6 +34,10 @@ void Renderable::run() {
     updateinfo.attachmentPoint->addChild(transform);
 }
 
+void Renderable::append(vsg::ref_ptr<Renderable> link_to_join, vsg::ref_ptr<vsg::MatrixTransform> relative_transformation){
+
+}
+
 size_t Renderable::number = 0;
 
 }
