@@ -23,9 +23,8 @@ namespace renderable {
 
 struct SequencialLinks : public vsg::Inherit<Renderable, SequencialLinks> {
 
-    std::vector<double> q;
+    std::vector<double> link_angles;
     std::vector<vsg::ref_ptr<vsg::MatrixTransform>> links_matrix_transform;
-    vsg::ref_ptr<vsg::MatrixTransform> sequencial_base_transform;
     size_t number_of_links = 0;
     
     SequencialLinks(std::filesystem::path json_path,size_t number_of_links);
@@ -33,12 +32,12 @@ struct SequencialLinks : public vsg::Inherit<Renderable, SequencialLinks> {
     static vsg::ref_ptr<Renderable> make(std::filesystem::path json_path,size_t number_of_links);
 
     inline double get(const size_t& index) const{
-        return q.at(index);
+        return link_angles.at(index);
     }
 
     inline void set(size_t index, const double& new_q) {
         assert(index < number_of_links);
-        q[index] = new_q;
+        link_angles[index] = new_q;
         links_matrix_transform[index]->matrix = vsg::rotate(new_q, 0.0, 0.0, 1.0);
     }
 

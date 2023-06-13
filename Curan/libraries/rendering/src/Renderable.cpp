@@ -14,15 +14,7 @@ void Renderable::partial_async_attachment(const Updatable& update) {
     if (!updateinfo.attachmentPoint)
         return;
 
-    vsg::ComputeBounds computeBounds;
-    obj_contained->accept(computeBounds);
-
-    vsg::dvec3 centre = (computeBounds.bounds.min + computeBounds.bounds.max) * 0.5;
-    double radius = vsg::length(computeBounds.bounds.max - computeBounds.bounds.min) * 0.5;
-    auto scale = vsg::MatrixTransform::create(vsg::scale(1.0 / radius, 1.0 / radius, 1.0 / radius) * vsg::translate(-centre));
-
-    scale->addChild(obj_contained);
-    transform->addChild(scale);
+    transform->addChild(obj_contained);
 
     result = ref_viewer->compileManager->compile(obj_contained);
 }

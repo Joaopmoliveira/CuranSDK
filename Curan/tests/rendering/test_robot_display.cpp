@@ -1,4 +1,4 @@
-#include "rendering/Robot.h"
+#include "rendering/SequencialLinks.h"
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "rendering/Sphere.h"
@@ -18,17 +18,32 @@ int main(int argc, char **argv) {
         curan::renderable::Window window{info};
 
         std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/testing/arm.json";
-        vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(robot_path,0);
-        robotRenderable->update_transform(vsg::MatrixTransform::create());
+        vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(robot_path,8);
         window << robotRenderable;
 
+        std::atomic<bool> continue_updating = true;
+
+        auto updater = [robotRenderable,&continue_updating](){
+            double angle = 0.0;
+            while(continue_updating.load()){
+                auto robot = robotRenderable->cast<curan::renderable::SequencialLinks>();
+                robot->set(1,angle);
+                angle += 0.05;
+            }
+        };
+        std::thread local_thread{updater};
+
         window.run();
+        continue_updating.store(false);
+        local_thread.join();
 
         window.transverse_identifiers(
             [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
                    &map) {
-                for (auto &p : map)
+                for (auto &p : map){
                     std::cout << "Object contained: " << p.first << '\n';
+                }
+
             });
 
     } catch (...) {
