@@ -27,8 +27,9 @@ int main(int argc, char **argv) {
             double angle = 0.0;
             while(continue_updating.load()){
                 auto robot = robotRenderable->cast<curan::renderable::SequencialLinks>();
-                robot->set(1,angle);
+                robot->set(0,angle);
                 angle += 0.05;
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
             }
         };
         std::thread local_thread{updater};
