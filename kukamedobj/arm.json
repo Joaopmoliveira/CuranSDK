@@ -1,0 +1,42 @@
+[
+    {
+        "path": "Base.obj",
+        "offset": 0.4,
+        "theta": -1.57079632679
+    },
+    {
+        "path": "Link1.obj",
+        "offset": 0.0,
+        "theta": 0.0	
+    },
+    {
+        "path": "Link2.obj",
+        "offset": 0.0,
+        "theta": 0.0	
+    },
+    {
+        "path": "Link3.obj",
+        "offset": 0.0,
+        "theta": 0.0	
+    },
+    {
+        "path": "Link4.obj",
+        "offset": 0.0,
+        "theta": 0.0	
+    },
+    {
+        "path": "Link5.obj",
+        "offset": 0.0,
+        "theta": 0.0	
+    },
+    {
+        "path": "Link6.obj",
+        "offset": 0.0,
+        "theta": 0.0
+    },
+    {
+        "path": "Link7.obj",
+        "offset": 0.0,
+        "theta": 0.0	
+    }
+]

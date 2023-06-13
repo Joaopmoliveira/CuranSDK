@@ -4,7 +4,7 @@
         "d_offset" : 0,
         "theta" : 0 ,
         "a_offset" : 0,
-        "alpha" : -90
+        "alpha" : 0
     },
     {
         "path": "Link1Modified.obj",

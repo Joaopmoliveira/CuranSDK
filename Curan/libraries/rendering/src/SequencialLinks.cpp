@@ -45,9 +45,10 @@ SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_o
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(theta), 0.0, 0.0, 1.0));
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::translate(a_offset,0.0,0.0));
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
-            
-            previousLinkPosition->addChild(link_mesh);
-            obj_contained->addChild(previousLinkPosition);
+            auto meshTransform = vsg::MatrixTransform::create();
+            meshTransform->addChild(link_mesh);
+            meshTransform->addChild(previousLinkPosition);
+            obj_contained->addChild(meshTransform);
             rotational_matrix->addChild(previousLinkPosition);
         } else {
             previousLinkPosition->addChild(rotational_matrix);
@@ -56,8 +57,10 @@ SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_o
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(theta), 0.0, 0.0, 1.0));
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::translate(a_offset,0.0,0.0));
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
-            rotational_matrix->addChild(previousLinkPosition);
-            previousLinkPosition->addChild(link_mesh);
+            auto meshTransform = vsg::MatrixTransform::create();
+            meshTransform->addChild(link_mesh);
+            meshTransform->addChild(previousLinkPosition);
+            rotational_matrix->addChild(meshTransform);
         }
         ++iterator;
     }

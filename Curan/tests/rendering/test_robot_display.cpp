@@ -19,6 +19,7 @@ int main(int argc, char **argv) {
 
         std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/testing/arm.json";
         vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(robot_path,8);
+        robotRenderable->update_transform(vsg::MatrixTransform::create(vsg::rotate(vsg::radians(90.0),1.0,0.0,0.0)));
         window << robotRenderable;
 
         std::atomic<bool> continue_updating = true;
