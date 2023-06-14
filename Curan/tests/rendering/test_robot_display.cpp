@@ -18,8 +18,8 @@ int main(int argc, char **argv) {
         curan::renderable::Window window{info};
 
         std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/testing/arm.json";
-        vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(robot_path,8);
-        robotRenderable->update_transform(vsg::MatrixTransform::create(vsg::rotate(vsg::radians(90.0),1.0,0.0,0.0)));
+        vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(robot_path,2);
+        //robotRenderable->update_transform(vsg::MatrixTransform::create(vsg::rotate(vsg::radians(-90.0),1.0,0.0,0.0)));
         window << robotRenderable;
 
         std::atomic<bool> continue_updating = true;
@@ -28,8 +28,8 @@ int main(int argc, char **argv) {
             double angle = 0.0;
             while(continue_updating.load()){
                 auto robot = robotRenderable->cast<curan::renderable::SequencialLinks>();
-                robot->set(0,angle);
-                angle += 0.05;
+                robot->set(1,angle);
+                angle += 0.0;
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
             }
         };

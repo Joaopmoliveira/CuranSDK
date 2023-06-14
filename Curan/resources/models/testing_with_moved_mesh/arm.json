@@ -1,0 +1,28 @@
+[
+    {
+        "path": "BaseModified.obj",
+        "d_offset" : 0.0,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : 0,
+        "mesh_x" : 0,
+        "mesh_y" : 0,
+        "mesh_z" : 0,
+        "mesh_rot_x" : 0,
+        "mesh_rot_y" : 0,
+        "mesh_rot_z" : 0
+    },
+    {
+        "path": "Link1Modified.obj",
+        "d_offset" : 0,
+        "theta" : 0 ,
+        "a_offset" : 0.0,
+        "alpha" : 0,
+        "mesh_x" : 0,
+        "mesh_y" : 0,
+        "mesh_z" : 0,
+        "mesh_rot_x" : 0,
+        "mesh_rot_y" : 0,
+        "mesh_rot_z" : 0
+    }
+]

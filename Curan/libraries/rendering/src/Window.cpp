@@ -63,7 +63,7 @@ Window::Window(Info& info) {
 
     auto directionalLight = vsg::DirectionalLight::create();
     directionalLight->name = "directional";
-    directionalLight->color.set(1.0, 0.8, 1.0);
+    directionalLight->color.set(1.0, 1.0, 1.0);
     directionalLight->intensity = 0.4;
     directionalLight->direction.set(0.0, 0.0, -1.0);
     root->addChild(directionalLight);
