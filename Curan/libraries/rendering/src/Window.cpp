@@ -1,7 +1,9 @@
 #include "rendering/Window.h"
 #include "utils/Overloading.h"
 #include "utils/Logger.h"
+#include "rendering/Floor.h"
 #include <filesystem>
+
 
 namespace curan {
 namespace renderable {
@@ -50,7 +52,7 @@ Window::Window(Info& info) {
     resourceHints = vsg::ResourceHints::create();
 
     root = vsg::Group::create();
-    auto newnode = create_bottom();
+    auto newnode = create_wired_floor();
 
     root->addChild(newnode);
 

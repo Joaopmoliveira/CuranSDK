@@ -5,9 +5,9 @@
 #include <vsgXchange/all.h>
 
 namespace curan{
-    namespace rendering{
+    namespace renderable{
 
-        vsg::ref_ptr<vsg::Node> create_wired_floor(vsg::ref_ptr<vsg::Builder> builder);
+        vsg::ref_ptr<vsg::Node> create_wired_floor();
 
     }
 }
