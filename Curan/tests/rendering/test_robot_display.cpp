@@ -31,11 +31,17 @@ int main(int argc, char **argv) {
         sphere2->update_transform(sphere_scalling2);
         window << sphere2;
 
-        std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/testing/arm.json";
+        auto sphere3 = curan::renderable::Sphere::make(infosphere);
+        auto sphere_scalling3 = vsg::MatrixTransform::create(vsg::scale(0.01,0.01,0.01));
+        sphere_scalling3->matrix = sphere_scalling3->transform(vsg::translate(1.0,0.0,0.0));
+        sphere3->update_transform(sphere_scalling3);
+        window << sphere3;
+
+        std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/testing_with_moved_mesh/arm.json";
         curan::renderable::SequencialLinks::Info create_info;
-        create_info.convetion = vsg::CoordinateConvention::Z_UP;
+        create_info.convetion = vsg::CoordinateConvention::X_UP;
         create_info.json_path = robot_path;
-        create_info.number_of_links = 1;
+        create_info.number_of_links = 3;
         vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
         window << robotRenderable;
 

@@ -14,11 +14,11 @@ SequencialLinks::SequencialLinks(const Info& create_info) : number_of_links{crea
     vsg::ref_ptr<vsg::Options> options = vsg::Options::create();
     options->add(vsgXchange::all::create());
     options->formatCoordinateConventions[".obj"] = create_info.convetion;
-
+    options->sceneCoordinateConvention = create_info.convetion;
     assert(tableDH.size() == number_of_links && "The number of links is from the number of links configured in the json file");
     assert(number_of_links>0 && "The number of links must be larger than 0");
     
-    vsg::ref_ptr<vsg::MatrixTransform> previousLinkPosition; 
+    vsg::ref_ptr<vsg::MatrixTransform> previousFramePose; 
 
     links_matrix_transform.resize(number_of_links);
     link_angles.resize(number_of_links);
@@ -48,35 +48,25 @@ SequencialLinks::SequencialLinks(const Info& create_info) : number_of_links{crea
         rotational_matrix = vsg::MatrixTransform::create();
 
         if(iterator == tableDH.begin()){
-            previousLinkPosition = vsg::MatrixTransform::create();
-            previousLinkPosition->matrix = vsg::translate(0.0,0.0,d_offset);
-            previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(theta), 0.0, 0.0, 1.0));
-            previousLinkPosition->matrix = previousLinkPosition->transform(vsg::translate(a_offset,0.0,0.0));
-            previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
-            auto meshTransformation = vsg::MatrixTransform::create();;
-            meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_x), 1.0, 0.0, 0.0));
-            meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_y), 0.0, 1.0, 0.0));
-            meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_z), 0.0, 0.0, 1.0));
-            meshTransformation->matrix = meshTransformation->transform(vsg::translate(mesh_x,mesh_y,mesh_z));
-            meshTransformation->addChild(link_mesh);
-            previousLinkPosition->addChild(meshTransformation);
-            obj_contained->addChild(previousLinkPosition);
-            rotational_matrix->addChild(previousLinkPosition);
+            auto denavit_transformation = vsg::MatrixTransform::create();
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(a_offset,0.0,0.0)); 
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(0.0,0.0,d_offset));
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::rotate(vsg::radians(theta), 0.0, 0.0, 1.0));
+            denavit_transformation->addChild(rotational_matrix);
+            obj_contained->addChild(link_mesh);
+            obj_contained->addChild(denavit_transformation);
+            previousFramePose = rotational_matrix;
         } else {
-            previousLinkPosition->addChild(rotational_matrix);
-            previousLinkPosition = vsg::MatrixTransform::create();
-            previousLinkPosition->matrix = vsg::translate(0.0,0.0,d_offset);
-            previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(theta), 0.0, 0.0, 1.0));
-            previousLinkPosition->matrix = previousLinkPosition->transform(vsg::translate(a_offset,0.0,0.0));
-            previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
-            auto meshTransformation = vsg::MatrixTransform::create();;
-            meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_x), 1.0, 0.0, 0.0));
-            meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_y), 0.0, 1.0, 0.0));
-            meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_z), 0.0, 0.0, 1.0));
-            meshTransformation->matrix = meshTransformation->transform(vsg::translate(mesh_x,mesh_y,mesh_z));
-            meshTransformation->addChild(link_mesh);
-            previousLinkPosition->addChild(meshTransformation);
-            rotational_matrix->addChild(previousLinkPosition);
+            auto denavit_transformation = vsg::MatrixTransform::create();
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(a_offset,0.0,0.0)); 
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(0.0,0.0,d_offset));
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::rotate(vsg::radians(theta), 0.0, 0.0, 1.0));
+            denavit_transformation->addChild(rotational_matrix);
+            previousFramePose->addChild(link_mesh);
+            previousFramePose->addChild(denavit_transformation);
+            previousFramePose = rotational_matrix;
         }
         ++iterator;
     }
