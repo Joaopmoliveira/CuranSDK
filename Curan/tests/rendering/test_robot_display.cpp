@@ -17,26 +17,6 @@ int main(int argc, char **argv) {
         info.window_size = size;
         curan::renderable::Window window{info};
 
-        auto builder = vsg::Builder::create();
-        curan::renderable::Sphere::Info infosphere;
-        infosphere.builder = builder;
-        auto sphere = curan::renderable::Sphere::make(infosphere);
-        auto sphere_scalling = vsg::MatrixTransform::create(vsg::scale(0.01,0.01,0.01));
-        sphere->update_transform(sphere_scalling);
-        window << sphere;
-
-        auto sphere2 = curan::renderable::Sphere::make(infosphere);
-        auto sphere_scalling2 = vsg::MatrixTransform::create(vsg::scale(0.01,0.01,0.01));
-        sphere_scalling2->matrix = sphere_scalling2->transform(vsg::translate(0.0,0.0,1.0));
-        sphere2->update_transform(sphere_scalling2);
-        window << sphere2;
-
-        auto sphere3 = curan::renderable::Sphere::make(infosphere);
-        auto sphere_scalling3 = vsg::MatrixTransform::create(vsg::scale(0.01,0.01,0.01));
-        sphere_scalling3->matrix = sphere_scalling3->transform(vsg::translate(1.0,0.0,0.0));
-        sphere3->update_transform(sphere_scalling3);
-        window << sphere3;
-
         std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/testing_with_moved_mesh/arm.json";
         curan::renderable::SequencialLinks::Info create_info;
         create_info.convetion = vsg::CoordinateConvention::Y_UP;
@@ -49,11 +29,14 @@ int main(int argc, char **argv) {
 
         auto updater = [robotRenderable,&continue_updating](){
             double angle = 0.0;
+            double time = 0.0;
             while(continue_updating.load()){
                 auto robot = robotRenderable->cast<curan::renderable::SequencialLinks>();
-                robot->set(5,angle);
-                angle += 0.01;
+                for(size_t index = 0; index < 7 ; ++index)
+                    robot->set(index,angle);
+                angle = std::sin(time)*1.5;
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                time += 0.016;
             }
         };
         std::thread local_thread{updater};

@@ -10,6 +10,7 @@ src/Renderable.cpp
 src/Sphere.cpp
 src/Window.cpp
 src/SequencialLinks.cpp
+src/Floor.cpp
 )
 
 target_include_directories(renderable

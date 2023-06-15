@@ -14,20 +14,19 @@ vsg::ref_ptr<vsg::Node> create_bottom()
     auto options = vsg::Options::create();
     options->add(vsgXchange::all::create());
 
-    std::filesystem::path path_to_texture = CURAN_COPIED_RESOURCE_PATH"/base_pattern/CheckerBoardSeemlessPattern.jpg";
+    std::filesystem::path path_to_texture = CURAN_COPIED_RESOURCE_PATH"/base_pattern/CheckerBoardSeemlessPattern2.jpg";
     auto textureData = vsg::read_cast<vsg::Data>(path_to_texture.c_str(),options);
 
-    if(textureData) {
+    if(textureData) 
         utilities::cout <<  "Failed to load the checkered pattern\n";
-    }
 
-    vsg::GeometryInfo geomInfo;
     vsg::StateInfo stateInfo;
     stateInfo.two_sided = true;
     stateInfo.image = textureData;
+    vsg::GeometryInfo geomInfo;
     geomInfo.position.set(0.0, 0.0, 0);
-    geomInfo.dx.set(10, 0.0, 0.0);
-    geomInfo.dy.set(0.0, 10, 0.0);
+    geomInfo.dx.set(2, 0.0, 0.0);
+    geomInfo.dy.set(0.0, 2, 0.0);
 
     scene->addChild(builder->createQuad(geomInfo, stateInfo));
 

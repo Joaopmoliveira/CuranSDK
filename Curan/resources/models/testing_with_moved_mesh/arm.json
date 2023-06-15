@@ -50,9 +50,9 @@
     },
     {
         "path": "Link7Modified.obj",
-        "d_offset" : 0.0,
-        "theta" : 90 ,
+        "d_offset" : 0,
+        "theta" : 0 ,
         "a_offset" : 0,
-        "alpha" : 90
+        "alpha" : 0
     }
 ]
