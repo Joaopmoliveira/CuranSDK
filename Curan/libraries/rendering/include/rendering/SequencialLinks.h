@@ -23,13 +23,19 @@ namespace renderable {
 
 struct SequencialLinks : public vsg::Inherit<Renderable, SequencialLinks> {
 
+    struct Info{
+        std::filesystem::path json_path;
+        size_t number_of_links;
+        vsg::CoordinateConvention convetion = vsg::CoordinateConvention::Z_UP;
+    };
+
     std::vector<double> link_angles;
     std::vector<vsg::ref_ptr<vsg::MatrixTransform>> links_matrix_transform;
     size_t number_of_links = 0;
     
-    SequencialLinks(std::filesystem::path json_path,size_t number_of_links);
+    SequencialLinks(const Info& create_info);
 
-    static vsg::ref_ptr<Renderable> make(std::filesystem::path json_path,size_t number_of_links);
+    static vsg::ref_ptr<Renderable> make(const Info& create_info);
 
     inline double get(const size_t& index) const{
         return link_angles.at(index);

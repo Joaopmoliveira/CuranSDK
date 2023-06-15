@@ -3,7 +3,8 @@
 namespace curan {
 namespace renderable {
 
-SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_of_links) : number_of_links{number_of_links} {
+SequencialLinks::SequencialLinks(const Info& create_info) : number_of_links{create_info.number_of_links} {
+    auto json_path = create_info.json_path;
     std::filesystem::path models_dir = json_path.parent_path();
     nlohmann::json tableDH = nlohmann::json::parse(std::ifstream(json_path));
 
@@ -12,6 +13,7 @@ SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_o
 
     vsg::ref_ptr<vsg::Options> options = vsg::Options::create();
     options->add(vsgXchange::all::create());
+    options->formatCoordinateConventions[".obj"] = create_info.convetion;
 
     assert(tableDH.size() == number_of_links && "The number of links is from the number of links configured in the json file");
     assert(number_of_links>0 && "The number of links must be larger than 0");
@@ -44,7 +46,6 @@ SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_o
             throw std::runtime_error("failed to load one of the links");
         
         rotational_matrix = vsg::MatrixTransform::create();
-        rotational_matrix->matrix = vsg::rotate(0.0, 0.0, 0.0, 1.0);
 
         if(iterator == tableDH.begin()){
             previousLinkPosition = vsg::MatrixTransform::create();
@@ -53,11 +54,10 @@ SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_o
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::translate(a_offset,0.0,0.0));
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
             auto meshTransformation = vsg::MatrixTransform::create();;
-            meshTransformation->matrix = vsg::translate(mesh_x,mesh_y,mesh_z);
             meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_x), 1.0, 0.0, 0.0));
             meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_y), 0.0, 1.0, 0.0));
             meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_z), 0.0, 0.0, 1.0));
-            meshTransformation->matrix = vsg::inverse(meshTransformation->matrix);
+            meshTransformation->matrix = meshTransformation->transform(vsg::translate(mesh_x,mesh_y,mesh_z));
             meshTransformation->addChild(link_mesh);
             previousLinkPosition->addChild(meshTransformation);
             obj_contained->addChild(previousLinkPosition);
@@ -70,11 +70,10 @@ SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_o
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::translate(a_offset,0.0,0.0));
             previousLinkPosition->matrix = previousLinkPosition->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
             auto meshTransformation = vsg::MatrixTransform::create();;
-            meshTransformation->matrix = vsg::translate(mesh_x,mesh_y,mesh_z);
             meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_x), 1.0, 0.0, 0.0));
             meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_y), 0.0, 1.0, 0.0));
             meshTransformation->matrix = meshTransformation->transform(vsg::rotate(vsg::radians(mesh_rot_z), 0.0, 0.0, 1.0));
-            meshTransformation->matrix = vsg::inverse(meshTransformation->matrix);
+            meshTransformation->matrix = meshTransformation->transform(vsg::translate(mesh_x,mesh_y,mesh_z));
             meshTransformation->addChild(link_mesh);
             previousLinkPosition->addChild(meshTransformation);
             rotational_matrix->addChild(previousLinkPosition);
@@ -83,8 +82,8 @@ SequencialLinks::SequencialLinks(std::filesystem::path json_path,size_t number_o
     }
 }
 
-vsg::ref_ptr<Renderable> SequencialLinks::make(std::filesystem::path json_path,size_t number_of_links) {
-    vsg::ref_ptr<SequencialLinks> arm = SequencialLinks::create(json_path,number_of_links);
+vsg::ref_ptr<Renderable> SequencialLinks::make(const Info& create_info) {
+    vsg::ref_ptr<SequencialLinks> arm = SequencialLinks::create(create_info);
     vsg::ref_ptr<Renderable> val = arm.cast<Renderable>();
     return val;
 }
