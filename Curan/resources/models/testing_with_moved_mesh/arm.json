@@ -1,41 +1,58 @@
 [
     {
         "path": "BaseModified.obj",
-        "d_offset" : 0.1575,
+        "d_offset" : 0.0,
         "theta" : 0 ,
         "a_offset" : 0,
-        "alpha" : 0,
-        "mesh_x" : 0,
-        "mesh_y" : 0,
-        "mesh_z" : 0,
-        "mesh_rot_x" : 0,
-        "mesh_rot_y" : 0,
-        "mesh_rot_z" : 0
+        "alpha" : 0
     },
     {
         "path": "Link1Modified.obj",
-        "d_offset" : 0.1825,
+        "d_offset" : 0.34,
         "theta" : 0 ,
         "a_offset" : 0,
-        "alpha" : 90,
-        "mesh_x" : 0,
-        "mesh_y" : 0,
-        "mesh_z" : 0,
-        "mesh_rot_x" : 0,
-        "mesh_rot_y" : 0,
-        "mesh_rot_z" : 0
+        "alpha" : -90
     },
     {
         "path": "Link2Modified.obj",
         "d_offset" : 0.0,
         "theta" : 0 ,
         "a_offset" : 0,
-        "alpha" : 0,
-        "mesh_x" : 0,
-        "mesh_y" : 0,
-        "mesh_z" : 0,
-        "mesh_rot_x" : 0,
-        "mesh_rot_y" : 0,
-        "mesh_rot_z" : 0
+        "alpha" : 90
+    },
+    {
+        "path": "Link3Modified.obj",
+        "d_offset" : 0.4,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : -90
+    },
+    {
+        "path": "Link4Modified.obj",
+        "d_offset" : 0.0,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : 90
+    },
+    {
+        "path": "Link5Modified.obj",
+        "d_offset" : 0.4,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : -90
+    },
+    {
+        "path": "Link6Modified.obj",
+        "d_offset" : 0.0,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : 90
+    },
+    {
+        "path": "Link7Modified.obj",
+        "d_offset" : 0.0,
+        "theta" : 90 ,
+        "a_offset" : 0,
+        "alpha" : 90
     }
 ]

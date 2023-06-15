@@ -32,37 +32,32 @@ SequencialLinks::SequencialLinks(const Info& create_info) : number_of_links{crea
         double a_offset = (*iterator)["a_offset"];
         double alpha = (*iterator)["alpha"];
 
-        double mesh_x = (*iterator)["mesh_x"];
-        double mesh_y = (*iterator)["mesh_y"];
-        double mesh_z = (*iterator)["mesh_z"];
-        double mesh_rot_x = (*iterator)["mesh_rot_x"];
-        double mesh_rot_y = (*iterator)["mesh_rot_y"];
-        double mesh_rot_z = (*iterator)["mesh_rot_z"];
-
         std::filesystem::path local_temp_path = models_dir;
         local_temp_path += "/" + relative_path;
+
+        std::cout << "loading... " << local_temp_path << std::endl;
         vsg::ref_ptr<vsg::Node> link_mesh = vsg::read_cast<vsg::Node>(local_temp_path.string() , options);
         if(!link_mesh)
             throw std::runtime_error("failed to load one of the links");
-        
+        std::cout << "loaded " << std::endl;
         rotational_matrix = vsg::MatrixTransform::create();
 
         if(iterator == tableDH.begin()){
             auto denavit_transformation = vsg::MatrixTransform::create();
-            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(a_offset,0.0,0.0)); 
             denavit_transformation->matrix = denavit_transformation->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
-            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(0.0,0.0,d_offset));
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(a_offset,0.0,0.0)); 
             denavit_transformation->matrix = denavit_transformation->transform(vsg::rotate(vsg::radians(theta), 0.0, 0.0, 1.0));
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(0.0,0.0,d_offset));
             denavit_transformation->addChild(rotational_matrix);
             obj_contained->addChild(link_mesh);
             obj_contained->addChild(denavit_transformation);
             previousFramePose = rotational_matrix;
         } else {
             auto denavit_transformation = vsg::MatrixTransform::create();
-            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(a_offset,0.0,0.0)); 
             denavit_transformation->matrix = denavit_transformation->transform(vsg::rotate(vsg::radians(alpha), 1.0, 0.0, 0.0));
-            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(0.0,0.0,d_offset));
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(a_offset,0.0,0.0)); 
             denavit_transformation->matrix = denavit_transformation->transform(vsg::rotate(vsg::radians(theta), 0.0, 0.0, 1.0));
+            denavit_transformation->matrix = denavit_transformation->transform(vsg::translate(0.0,0.0,d_offset));
             denavit_transformation->addChild(rotational_matrix);
             previousFramePose->addChild(link_mesh);
             previousFramePose->addChild(denavit_transformation);
@@ -84,7 +79,7 @@ void SequencialLinks::set(const std::vector<double>& new_angles) {
     auto iterator_matrices = links_matrix_transform.begin();
     for (const auto& link_angle : new_angles) {
         *iterator_angles = link_angle;
-        (*iterator_matrices)->matrix = vsg::rotate(link_angle, 0.0, 1.0, 0.0);
+        (*iterator_matrices)->matrix = vsg::rotate(link_angle, 0.0, 0.0, 1.0);
         ++iterator_matrices;
         ++iterator_angles;
     }

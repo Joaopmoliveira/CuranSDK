@@ -39,9 +39,9 @@ int main(int argc, char **argv) {
 
         std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/testing_with_moved_mesh/arm.json";
         curan::renderable::SequencialLinks::Info create_info;
-        create_info.convetion = vsg::CoordinateConvention::X_UP;
+        create_info.convetion = vsg::CoordinateConvention::Y_UP;
         create_info.json_path = robot_path;
-        create_info.number_of_links = 3;
+        create_info.number_of_links = 8;
         vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
         window << robotRenderable;
 
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
             double angle = 0.0;
             while(continue_updating.load()){
                 auto robot = robotRenderable->cast<curan::renderable::SequencialLinks>();
-                robot->set(2,angle);
+                robot->set(5,angle);
                 angle += 0.01;
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
             }
@@ -71,8 +71,8 @@ int main(int argc, char **argv) {
 
             });
 
-    } catch (...) {
-        std::cerr << "Exception thrown" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Exception thrown : " << e.what() << std::endl;
         return 1;
     }
     return 0;
