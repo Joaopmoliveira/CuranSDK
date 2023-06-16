@@ -86,8 +86,16 @@ void SequencialLinks::set(const std::vector<double>& new_angles) {
 }
 
 void SequencialLinks::append(vsg::ref_ptr<Renderable> link_to_join) {
-    assert(links_matrix_transform.size() > 0 && "The size of the links is not larger than zero as required");
-    links_matrix_transform.back()->addChild(link_to_join->transform);
+    if(links_matrix_transform.size() == 0)
+        throw std::runtime_error("The size of the links is not larger than zero as required");
+    if (!link_to_join->obj_contained)
+        throw std::runtime_error("Does not contain any object to attach");
+    vsg::observer_ptr<vsg::Viewer> observer_viewer(owner_viewer);
+    vsg::ref_ptr<vsg::Group> group_to_attach = vsg::Group::create();
+    links_matrix_transform.back()->addChild(group_to_attach);
+    link_to_join->partial_async_attachment({ observer_viewer,group_to_attach });
+    owner_viewer->addUpdateOperation(link_to_join);
+
 }
 
 }

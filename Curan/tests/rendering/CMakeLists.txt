@@ -139,3 +139,14 @@ target_link_libraries(test_append_dynamic_ultrasound
 PUBLIC
 renderable
 )
+
+add_executable(test_robot_with_ultrasound
+test_robot_with_ultrasound.cpp
+)
+
+target_compile_definitions(test_robot_with_ultrasound PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_robot_with_ultrasound PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_robot_with_ultrasound
+PUBLIC
+renderable
+)
