@@ -17,6 +17,10 @@ int main(int argc, char **argv) {
         curan::renderable::Window window{info};
 
         curan::renderable::Box::Info create_info;
+        create_info.geomInfo.dx = vsg::vec3(0.5,0.0,0.0);
+        create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
+        create_info.geomInfo.dz = vsg::vec3(0.0,0.0,0.5);
+        create_info.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
         vsg::ref_ptr<curan::renderable::Renderable> box = curan::renderable::Box::make(create_info);
         window << box;
 
@@ -27,6 +31,7 @@ int main(int argc, char **argv) {
             while(continue_updating.load()){
                 box->update_transform(local_mat);
                 local_mat->matrix = local_mat->transform(vsg::rotate(vsg::radians(2.0),0.0,0.0,1.0));
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
             }
         };
         std::thread local_thread{updater};
@@ -34,6 +39,10 @@ int main(int argc, char **argv) {
         auto async_attacher = [box](){
             std::this_thread::sleep_for(std::chrono::seconds(2));
             curan::renderable::Box::Info create_info;
+            create_info.geomInfo.dx = vsg::vec3(0.5,0.0,0.0);
+            create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
+            create_info.geomInfo.dz = vsg::vec3(0.0,0.0,0.5);
+            create_info.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
             vsg::ref_ptr<curan::renderable::Renderable> box2 = curan::renderable::Box::make(create_info);
             box2->update_transform(vsg::MatrixTransform::create(vsg::translate(1.0,1.0,1.0)));
             box->append(box2);

@@ -6,13 +6,9 @@ namespace renderable {
 Box::Box(Info& info) {
     vsg::dvec3 position(0.0, 0.0, 0.0);
     transform = vsg::MatrixTransform::create(vsg::translate(position));
-
     obj_contained = vsg::Group::create();
-    vsg::GeometryInfo geomInfo;
-    vsg::StateInfo stateInfo;
-    auto node = info.builder->createBox(geomInfo, stateInfo);
+    auto node = info.builder->createBox(info.geomInfo, info.stateInfo);
     obj_contained->addChild(node);
-
     if (info.identifier)
         set_identifier(*info.identifier);
 }
