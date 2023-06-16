@@ -17,6 +17,8 @@ namespace curan {
             struct Info {
                 size_t width = 100;
                 size_t height = 100;
+                vsg::GeometryInfo geomInfo;
+                vsg::StateInfo stateInfo;
                 vsg::ref_ptr<vsg::Builder> builder;
                 std::optional<std::string> identifier;
             };

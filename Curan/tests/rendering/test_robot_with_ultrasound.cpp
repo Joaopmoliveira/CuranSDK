@@ -46,10 +46,15 @@ int main(int argc, char **argv) {
             curan::renderable::DynamicTexture::Info infotexture;
             infotexture.height = 100;
             infotexture.width = 100;
+            infotexture.geomInfo.dx = vsg::vec3(0.2f,0.0f,0.0f);
+            infotexture.geomInfo.dy = vsg::vec3(0.0f,.2f,0.0f);
+            infotexture.geomInfo.dz = vsg::vec3(0.0f,0.0f,0.0f);
+            infotexture.geomInfo.position = vsg::vec3(0.0f,0.1f,0.0f);
             infotexture.builder = vsg::Builder::create();
             auto dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
-            dynamic_texture->update_transform(vsg::translate(0.0,0.0,0.126));
+            dynamic_texture->update_transform(vsg::rotate<double>(vsg::radians(90.0),1.0,0.0,0.0)*vsg::translate<double>(0.0,0.126,0.0));
             robotRenderable->append(dynamic_texture);
+            std::cout << "appended" << std::endl;
             float value = 1.0;
             auto updateBaseTexture = [value](vsg::vec4Array2D& image)
             {

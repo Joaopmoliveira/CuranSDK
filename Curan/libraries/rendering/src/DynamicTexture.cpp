@@ -13,13 +13,11 @@ DynamicTexture::DynamicTexture(Info& info) : width{ info.width }, height{ info.h
     textureData->properties.dataVariance = vsg::DYNAMIC_DATA;
     textureData->properties.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
-    vsg::GeometryInfo geomInfo;
-    vsg::StateInfo stateInfo;
-    stateInfo.two_sided = true;
-    stateInfo.greyscale = true;
-    stateInfo.image = textureData;
-    stateInfo.lighting = true;
-    auto node = info.builder->createQuad(geomInfo, stateInfo);
+    info.stateInfo.two_sided = true;
+    info.stateInfo.greyscale = true;
+    info.stateInfo.image = textureData;
+    info.stateInfo.lighting = true;
+    auto node = info.builder->createQuad(info.geomInfo, info.stateInfo);
 
     obj_contained->addChild(node);
 
