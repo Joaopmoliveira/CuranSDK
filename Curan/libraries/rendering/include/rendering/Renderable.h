@@ -35,8 +35,8 @@ namespace curan {
                 identifier = ident;
             }
 
-            inline void update_transform(const vsg::ref_ptr<vsg::MatrixTransform>& new_transform) {
-                transform = new_transform;
+            inline void update_transform(const vsg::dmat4& in_matrix) {
+                transform->matrix = in_matrix;
             }
 
             void partial_async_attachment(const Updatable& update);

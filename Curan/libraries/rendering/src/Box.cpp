@@ -4,8 +4,7 @@ namespace curan {
 namespace renderable {
 
 Box::Box(Info& info) {
-    vsg::dvec3 position(0.0, 0.0, 0.0);
-    transform = vsg::MatrixTransform::create(vsg::translate(position));
+    transform = vsg::MatrixTransform::create();
     obj_contained = vsg::Group::create();
     auto node = info.builder->createBox(info.geomInfo, info.stateInfo);
     obj_contained->addChild(node);

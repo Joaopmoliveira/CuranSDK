@@ -21,16 +21,18 @@ int main(int argc, char **argv) {
         create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
         create_info.geomInfo.dz = vsg::vec3(0.0,0.0,0.5);
         create_info.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
+        create_info.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+        create_info.stateInfo.two_sided = true;
+        create_info.builder = vsg::Builder::create();
         vsg::ref_ptr<curan::renderable::Renderable> box = curan::renderable::Box::make(create_info);
         window << box;
-
         std::atomic<bool> continue_updating = true;
 
         auto updater = [box,&continue_updating](){
-            auto local_mat = vsg::MatrixTransform::create(vsg::rotate(vsg::radians(0.0),0.0,0.0,1.0));
+            double angle = 0.0;
             while(continue_updating.load()){
-                box->update_transform(local_mat);
-                local_mat->matrix = local_mat->transform(vsg::rotate(vsg::radians(2.0),0.0,0.0,1.0));
+                box->update_transform(vsg::rotate(vsg::radians(angle),0.0,0.0,1.0));
+                angle += 1;
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
             }
         };
@@ -43,8 +45,9 @@ int main(int argc, char **argv) {
             create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
             create_info.geomInfo.dz = vsg::vec3(0.0,0.0,0.5);
             create_info.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
+            create_info.builder = vsg::Builder::create();
             vsg::ref_ptr<curan::renderable::Renderable> box2 = curan::renderable::Box::make(create_info);
-            box2->update_transform(vsg::MatrixTransform::create(vsg::translate(1.0,1.0,1.0)));
+            box2->update_transform(vsg::translate(1.0,1.0,1.0));
             box->append(box2);
         };
         std::thread local_thread_attacher{async_attacher};
