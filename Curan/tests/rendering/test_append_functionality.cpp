@@ -16,24 +16,34 @@ int main(int argc, char **argv) {
         info.window_size = size;
         curan::renderable::Window window{info};
 
-        std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
-        curan::renderable::SequencialLinks::Info create_info;
-        create_info.convetion = vsg::CoordinateConvention::Y_UP;
-        create_info.json_path = robot_path;
-        create_info.number_of_links = 8;
-        vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
-        window << robotRenderable;
+        curan::renderable::Box::Info create_info;
+        vsg::ref_ptr<curan::renderable::Renderable> box = curan::renderable::Box::make(create_info);
+        window << box;
 
         std::atomic<bool> continue_updating = true;
 
-        auto updater = [robotRenderable,&continue_updating](){
-
+        auto updater = [box,&continue_updating](){
+            auto local_mat = vsg::MatrixTransform::create(vsg::rotate(vsg::radians(0.0),0.0,0.0,1.0));
+            while(continue_updating.load()){
+                box->update_transform(local_mat);
+                local_mat->matrix = local_mat->transform(vsg::rotate(vsg::radians(2.0),0.0,0.0,1.0));
+            }
         };
         std::thread local_thread{updater};
+
+        auto async_attacher = [box](){
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            curan::renderable::Box::Info create_info;
+            vsg::ref_ptr<curan::renderable::Renderable> box2 = curan::renderable::Box::make(create_info);
+            box2->update_transform(vsg::MatrixTransform::create(vsg::translate(1.0,1.0,1.0)));
+            box->append(box2);
+        };
+        std::thread local_thread_attacher{async_attacher};
 
         window.run();
         continue_updating.store(false);
         local_thread.join();
+        local_thread_attacher.join();
 
         window.transverse_identifiers(
             [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
