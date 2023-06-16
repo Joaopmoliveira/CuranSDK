@@ -85,9 +85,9 @@ void SequencialLinks::set(const std::vector<double>& new_angles) {
     }
 }
 
-void SequencialLinks::append(vsg::ref_ptr<Renderable> link_to_join, vsg::ref_ptr<vsg::MatrixTransform> relative_transformation) {
-    relative_transformation->addChild(link_to_join->transform);
-    links_matrix_transform.back()->addChild(relative_transformation);
+void SequencialLinks::append(vsg::ref_ptr<Renderable> link_to_join) {
+    assert(links_matrix_transform.size() > 0 && "The size of the links is not larger than zero as required");
+    links_matrix_transform.back()->addChild(link_to_join->transform);
 }
 
 }
