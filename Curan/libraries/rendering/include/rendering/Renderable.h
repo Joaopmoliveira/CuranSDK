@@ -24,6 +24,7 @@ namespace curan {
             std::string identifier;
             vsg::ref_ptr<vsg::Group> obj_contained;
             vsg::ref_ptr<vsg::MatrixTransform> transform;
+            vsg::ref_ptr<vsg::Viewer> owner_viewer;
             vsg::CompileResult result = vsg::CompileResult{};
             static size_t number;
             Updatable updateinfo;
