@@ -117,3 +117,14 @@ target_link_libraries(RobotDisplay
 PUBLIC
 renderable
 )
+
+add_executable(test_append_functionality
+test_append_functionality.cpp
+)
+
+target_compile_definitions(test_append_functionality PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_append_functionality PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_append_functionality
+PUBLIC
+renderable
+)

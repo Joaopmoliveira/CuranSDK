@@ -43,7 +43,7 @@ namespace curan {
 
             void run() override;
 
-            virtual void append(vsg::ref_ptr<Renderable> link_to_join, vsg::ref_ptr<vsg::MatrixTransform> relative_transformation);
+            virtual void append(vsg::ref_ptr<Renderable> link_to_join);
         };
 
     }

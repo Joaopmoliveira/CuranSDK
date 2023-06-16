@@ -26,11 +26,11 @@ void Renderable::run() {
     updateinfo.attachmentPoint->addChild(transform);
 }
 
-void Renderable::append(vsg::ref_ptr<Renderable> link_to_join, vsg::ref_ptr<vsg::MatrixTransform> relative_transformation){
+void Renderable::append(vsg::ref_ptr<Renderable> link_to_join){
     if (!link_to_join->obj_contained)
         return ;
     vsg::observer_ptr<vsg::Viewer> observer_viewer(owner_viewer);
-    partial_async_attachment({ observer_viewer,obj_contained });
+    link_to_join->partial_async_attachment({ observer_viewer,obj_contained });
     owner_viewer->addUpdateOperation(link_to_join);
 }
 
