@@ -5,10 +5,14 @@
 #include "Robot.h"
 #include "ToolData.h"
 #include "robotParameters.h"
+#include "rendering/Window.h"
+#include "rendering/Renderable.h"
+#include "rendering/SequencialLinks.h"
+#include "rendering/DynamicTexture.h"
 
 int render(std::shared_ptr<SharedRobotState> state)
 {
-     curan::renderable::Window::Info info;
+    curan::renderable::Window::Info info;
     info.api_dump = false;
     info.display = "";
     info.full_screen = false;
@@ -89,14 +93,16 @@ int render(std::shared_ptr<SharedRobotState> state)
     Vector3d p_0_cur = Vector3d(0, 0, 0.045);
     RigidBodyDynamics::Math::MatrixNd Jacobian = RigidBodyDynamics::Math::MatrixNd::Zero(6, NUMBER_OF_JOINTS);
 
-    while(window->run_once() && !state->should_kill_myself()) {
+    auto robotRenderableCasted = robotRenderable->cast<curan::renderable::SequencialLinks>();
+
+    while(window.run_once() && !state->should_kill_myself()) {
         auto current_reading = state->read();
         auto q_current = current_reading.getMeasuredJointPosition();
         auto tau_current = current_reading.getExternalTorque();
 
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
 		    iiwa->q[i] = q_current[i];
-            robotRenderable->set(i,q_current[i]);
+            robotRenderableCasted->set(i,q_current[i]);
 		    measured_torque[i] = tau_current[i];
 	    }
         static RigidBodyDynamics::Math::VectorNd q_old = iiwa->q;

@@ -68,6 +68,7 @@ cost of any service and repair.
 #include <iostream>
 
 #ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #include <Ws2tcpip.h>
 #ifdef _MSC_VER
