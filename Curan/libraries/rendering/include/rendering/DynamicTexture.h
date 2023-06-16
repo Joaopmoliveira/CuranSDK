@@ -27,7 +27,7 @@ namespace curan {
 
             using updater = std::function<void(vsg::vec4Array2D& image)>;
 
-            void update_texture(updater&& update, vsg::ref_ptr<vsg::Viewer> viewer);
+            void update_texture(updater&& update);
         };
 
     }

@@ -33,7 +33,7 @@ vsg::ref_ptr<Renderable> DynamicTexture::make(Info& info) {
     return val;
 }
 
-void DynamicTexture::update_texture(updater&& update, vsg::ref_ptr<vsg::Viewer> viewer) {
+void DynamicTexture::update_texture(updater&& update) {
     struct execute_update : public vsg::Visitor {
         updater update;
         vsg::ref_ptr<vsg::Data> data;
@@ -74,7 +74,7 @@ void DynamicTexture::update_texture(updater&& update, vsg::ref_ptr<vsg::Viewer> 
 
     vsg::ref_ptr<async_execute> async_updater = async_execute::create();
     async_updater->update_operation.set_execution_data(std::move(update), textureData);
-    viewer->addUpdateOperation(async_updater);
+    owner_viewer->addUpdateOperation(async_updater);
 }
 
 }
