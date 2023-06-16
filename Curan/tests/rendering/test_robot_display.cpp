@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
         info.window_size = size;
         curan::renderable::Window window{info};
 
-        std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/testing_with_moved_mesh/arm.json";
+        std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
         curan::renderable::SequencialLinks::Info create_info;
         create_info.convetion = vsg::CoordinateConvention::Y_UP;
         create_info.json_path = robot_path;

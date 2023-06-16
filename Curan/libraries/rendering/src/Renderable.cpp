@@ -27,7 +27,11 @@ void Renderable::run() {
 }
 
 void Renderable::append(vsg::ref_ptr<Renderable> link_to_join, vsg::ref_ptr<vsg::MatrixTransform> relative_transformation){
-
+    if (!link_to_join->obj_contained)
+        return ;
+    vsg::observer_ptr<vsg::Viewer> observer_viewer(ref.viewer);
+    partial_async_attachment({ observer_viewer,obj_contained });
+    ref.viewer->addUpdateOperation(link_to_join);
 }
 
 size_t Renderable::number = 0;
