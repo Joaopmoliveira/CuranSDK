@@ -63,13 +63,13 @@ Window::Window(Info& info) {
     auto ambientLight = vsg::AmbientLight::create();
     ambientLight->name = "ambient";
     ambientLight->color.set(1.0, 1.0, 1.0);
-    ambientLight->intensity = 0.01;
+    ambientLight->intensity = 0.01f;
     root->addChild(ambientLight);
 
     auto directionalLight = vsg::DirectionalLight::create();
     directionalLight->name = "directional";
     directionalLight->color.set(1.0, 1.0, 1.0);
-    directionalLight->intensity = 0.4;
+    directionalLight->intensity = 0.4f;
     directionalLight->direction.set(0.0, 0.0, -1.0);
     root->addChild(directionalLight);
 
@@ -130,7 +130,7 @@ void Window::run() {
         viewer->recordAndSubmit();
         viewer->present();
         auto end = std::chrono::steady_clock::now();
-       // utils::cout << "Elapsed time in mili: " << (int)std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() <<"\n";
+        //std::printf("Elapsed time in mili: %d \n",(int)std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
     }
 }
 
