@@ -14,6 +14,7 @@ namespace curan {
             vsg::ref_ptr<vsg::WindowTraits> traits;
             vsg::ref_ptr<vsg::ResourceHints> resourceHints;
             vsg::ref_ptr<vsg::Group> root;
+            vsg::ref_ptr<vsg::Group> root_plus_floor;
             vsg::ref_ptr<vsg::Viewer> viewer;
             vsg::ref_ptr<vsg::Camera> camera;
             vsg::ref_ptr<vsg::CommandGraph> commandGraph;

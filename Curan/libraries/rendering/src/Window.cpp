@@ -48,13 +48,17 @@ Window::Window(Info& info) {
 
     traits->screenNum = info.screen_number;
     traits->display = info.display;
+    traits->samples = VK_SAMPLE_COUNT_8_BIT;
+    traits->vulkanVersion = VK_API_VERSION_1_2;
 
     resourceHints = vsg::ResourceHints::create();
 
     root = vsg::Group::create();
+    root_plus_floor = vsg::Group::create();
+    
     auto newnode = create_wired_floor();
-
-    root->addChild(newnode);
+    root_plus_floor->addChild(newnode);
+    root_plus_floor->addChild(root);
 
     auto ambientLight = vsg::AmbientLight::create();
     ambientLight->name = "ambient";
@@ -79,11 +83,11 @@ Window::Window(Info& info) {
     vsg::ComputeBounds computeBounds;
     root->accept(computeBounds);
 
-    vsg::dvec3 centre = (computeBounds.bounds.min + computeBounds.bounds.max) * 0.5;
-    double radius = vsg::length(computeBounds.bounds.max - computeBounds.bounds.min) * 0.6;
+    vsg::dvec3 centre = vsg::dvec3(0.0,0.0,0.0);
+    double radius = 10;
     double nearFarRatio = 0.001;
 
-    auto lookAt = vsg::LookAt::create(centre + vsg::dvec3(0.0, -radius * 3.5, 0.0), centre, vsg::dvec3(0.0, 0.0, 1.0));
+    auto lookAt = vsg::LookAt::create(centre + vsg::dvec3(3.5, -3.5, 3.5), centre, vsg::dvec3(.0, .0, 1.0));
     perspective = vsg::Perspective::create(30.0, static_cast<double>(window->extent2D().width) / static_cast<double>(window->extent2D().height), nearFarRatio * radius, radius * 4.5);
 
     viewportState = vsg::ViewportState::create(window->extent2D());
@@ -91,7 +95,7 @@ Window::Window(Info& info) {
 
     viewer->addEventHandler(vsg::CloseHandler::create(viewer));
     viewer->addEventHandler(vsg::Trackball::create(camera));
-    commandGraph = vsg::createCommandGraphForView(window, camera, root);
+    commandGraph = vsg::createCommandGraphForView(window, camera, root_plus_floor);
     viewer->assignRecordAndSubmitTaskAndPresentation({ commandGraph });
 
     if (!resourceHints)
