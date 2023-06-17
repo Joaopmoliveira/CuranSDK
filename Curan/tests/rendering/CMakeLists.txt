@@ -150,3 +150,14 @@ target_link_libraries(test_robot_with_ultrasound
 PUBLIC
 renderable
 )
+
+add_executable(test_creation_of_wired_box
+test_creation_of_wired_box.cpp
+)
+
+target_compile_definitions(test_creation_of_wired_box PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_creation_of_wired_box PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_creation_of_wired_box
+PUBLIC
+renderable
+)

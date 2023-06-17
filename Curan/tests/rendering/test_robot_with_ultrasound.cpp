@@ -17,32 +17,20 @@ int main(int argc, char **argv) {
         info.window_size = size;
         curan::renderable::Window window{info};
 
-        std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
-        curan::renderable::SequencialLinks::Info create_info;
-        create_info.convetion = vsg::CoordinateConvention::Y_UP;
-        create_info.json_path = robot_path;
-        create_info.number_of_links = 8;
-        vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
-        window << robotRenderable;
-
         std::atomic<bool> continue_updating = true;
 
-        auto updater = [robotRenderable,&continue_updating](){
-            double angle = 0.0;
-            double time = 0.0;
-            while(continue_updating.load()){
-                auto robot = robotRenderable->cast<curan::renderable::SequencialLinks>();
-                for(size_t index = 0; index < 7 ; ++index)
-                    robot->set(index,angle);
-                angle = std::sin(time)*1.5;
-                std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                time += 0.016;
-            }
-        };
-        std::thread local_thread{updater};
+        auto async_attacher = [&window,&continue_updating](){
+            std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
+            curan::renderable::SequencialLinks::Info create_info;
+            create_info.convetion = vsg::CoordinateConvention::Y_UP;
+            create_info.json_path = robot_path;
+            create_info.number_of_links = 8;
+            vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
+            window << robotRenderable;
 
-        auto async_attacher = [robotRenderable](){
-            std::this_thread::sleep_for(std::chrono::seconds(10));
+            if(!continue_updating.load())
+                return;
+
             curan::renderable::DynamicTexture::Info infotexture;
             infotexture.height = 100;
             infotexture.width = 100;
@@ -54,7 +42,10 @@ int main(int argc, char **argv) {
             auto dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
             dynamic_texture->update_transform(vsg::rotate<double>(vsg::radians(90.0),1.0,0.0,0.0)*vsg::translate<double>(0.0,0.126,0.0));
             robotRenderable->append(dynamic_texture);
-            std::cout << "appended" << std::endl;
+
+            if(!continue_updating.load())
+                return;
+
             float value = 1.0;
             auto updateBaseTexture = [value](vsg::vec4Array2D& image)
             {
@@ -86,12 +77,21 @@ int main(int argc, char **argv) {
             };
             dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
 
+            double angle = 0.0;
+            double time = 0.0;
+            while(continue_updating.load()){
+                auto robot = robotRenderable->cast<curan::renderable::SequencialLinks>();
+                for(size_t index = 0; index < 7 ; ++index)
+                    robot->set(index,angle);
+                angle = std::sin(time)*1.5;
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                time += 0.016;
+            }
         };
         std::thread local_thread_attacher{async_attacher};
 
         window.run();
         continue_updating.store(false);
-        local_thread.join();
         local_thread_attacher.join();
 
         window.transverse_identifiers(
