@@ -10,6 +10,7 @@ struct PhaseCreatedBox : public vsg::Inherit<curan::renderable::Renderable, Phas
     vsg::ref_ptr<vsg::vec2Array> texcoords;
     vsg::ref_ptr<vsg::ushortArray> indices;
     vsg::ref_ptr<vsg::vec4Array> color;
+    static constexpr float epsilon = 0.0001f;
 
     PhaseCreatedBox(){
         auto node = vsg::Group::create();
@@ -18,9 +19,9 @@ struct PhaseCreatedBox : public vsg::Inherit<curan::renderable::Renderable, Phas
         obj_contained = vsg::Group::create();
 
         vsg::vec3 v000(vsg::vec3(0.0,0.0,0.0));
-        vsg::vec3 v100(vsg::vec3(0.0001f,0.0,0.0));
-        vsg::vec3 v010(vsg::vec3(0.0,0.0001f,0.0));
-        vsg::vec3 v001(vsg::vec3(0.0,0.0,0.0001f));
+        vsg::vec3 v100(vsg::vec3(epsilon,0.0,0.0));
+        vsg::vec3 v010(vsg::vec3(0.0,epsilon,0.0));
+        vsg::vec3 v001(vsg::vec3(0.0,0.0,epsilon));
 
         vsg::vec3 v110 = v100 + v010;
         vsg::vec3 v101 = v100 + v001;
@@ -91,6 +92,42 @@ struct PhaseCreatedBox : public vsg::Inherit<curan::renderable::Renderable, Phas
         return val;
     }
 
+    void update_frame(vsg::vec3 origin){
+        update_frame_config(origin);
+    }
+
+    void update_frame(vsg::vec3 origin,vsg::vec3 xdiroffset){
+        vsg::vec3 xdir = xdiroffset-origin;
+        vsg::vec3 ydir_first_comp = vsg::vec3(xdir.y,-xdir.y,0.0);
+        vsg::vec3 ydir_second_comp = vsg::vec3(xdir.z,0.0,xdir.x);
+        vsg::vec3 ydir = ydir_first_comp+ydir_second_comp;
+        ydir = vsg::normalize(ydir)*epsilon;
+        vsg::vec3 zdir = vsg::normalize(vsg::cross(xdir,ydir))*epsilon;
+        update_frame_config(origin,xdir,ydir,zdir);
+    }
+
+    void update_frame(vsg::vec3 origin,vsg::vec3 xdiroffset,vsg::vec3 ydiroffset){
+        vsg::vec3 xdir = xdiroffset-origin;
+        vsg::vec3 ydir_diff = ydiroffset-xdiroffset;
+        auto yprojected = vsg::normalize(vsg::cross(ydir_diff,xdir));
+        vsg::vec3 ydir = vsg::normalize(vsg::cross(xdir,yprojected));
+        ydir = ydir*vsg::dot(ydir_diff,ydir);
+        vsg::vec3 zdir = vsg::normalize(vsg::cross(xdir,ydir))*epsilon;
+        update_frame_config(origin,xdir,ydir,zdir);
+    }
+
+    void update_frame(vsg::vec3 origin,vsg::vec3 xdiroffset,vsg::vec3 ydiroffset, vsg::vec3 zdiroffset){
+        vsg::vec3 xdir = xdiroffset-origin;
+        vsg::vec3 ydir_diff = ydiroffset-xdiroffset;
+        vsg::vec3 zdir_diff = zdiroffset-ydiroffset;
+        auto yprojected = vsg::normalize(vsg::cross(ydir_diff,xdir));
+        vsg::vec3 ydir = vsg::normalize(vsg::cross(xdir,yprojected));
+        ydir = ydir*vsg::dot(ydir_diff,ydir);
+        vsg::vec3 zdir = vsg::normalize(vsg::cross(xdir,ydir));
+        zdir = zdir*vsg::dot(zdir_diff,zdir);
+        update_frame_config(origin,xdir,ydir,zdir);
+    }
+
     void update_frame_config(vsg::vec3 origin,vsg::vec3 xdir = {0.001f,0.0f,0.0f},vsg::vec3 ydir = {0.0f,0.001f,0.0f},vsg::vec3 zdir = {0.0f,0.0f,0.001f}){
         vsg::vec3 v000 = origin;
         vsg::vec3 v100 = origin + xdir;
@@ -131,7 +168,7 @@ int main(int argc, char **argv) {
         curan::renderable::Window::Info info;
         info.api_dump = false;
         info.display = "";
-        info.full_screen = false;
+        info.full_screen = true;
         info.is_debug = false;
         info.screen_number = 0;
         info.title = "myviewer";
@@ -139,10 +176,10 @@ int main(int argc, char **argv) {
         info.window_size = size;
         curan::renderable::Window window{info};
 
-        auto attach_special_box = [&window](){
+        auto attach_special_box1 = [&window](){
             auto box = PhaseCreatedBox::make();
             window << box;
-            double time = 0.0;
+            float time = 0.0;
             vsg::vec3 origin = vsg::vec3(0,0,1);
             vsg::vec3 xdir = vsg::vec3(std::cos(time),0,0);
             auto casted_box = box->cast<PhaseCreatedBox>();
@@ -150,7 +187,7 @@ int main(int argc, char **argv) {
 
             while(time < 5){
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                time += 0.016;
+                time += 0.016f;
                 xdir = vsg::vec3(std::cos(time),0,0);
                 casted_box->update_frame_config(origin,xdir);
             }
@@ -160,7 +197,7 @@ int main(int argc, char **argv) {
 
             while(time < 10){
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                time += 0.016;
+                time += 0.016f;
                 ydir = vsg::vec3(0,std::cos(time),0);
                 casted_box->update_frame_config(origin,xdir,ydir);
             }
@@ -170,9 +207,44 @@ int main(int argc, char **argv) {
 
             while(time < 15){
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                time += 0.016;
+                time += 0.016f;
                 zdir = vsg::vec3(0,0,std::cos(time));
                 casted_box->update_frame_config(origin,xdir,ydir,zdir);
+            }
+        };
+
+        auto attach_special_box = [&window](){
+            auto box = PhaseCreatedBox::make();
+            window << box;
+            float time = 0.0;
+            vsg::vec3 origin = vsg::vec3(std::cos(time),std::sin(time),0.1*time);
+            auto casted_box = box->cast<PhaseCreatedBox>();
+            casted_box->update_frame(origin);
+            vsg::vec3 origin_fixed = origin;
+
+            while(time < 5){
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                time += 0.016f;
+                origin = vsg::vec3(std::cos(time),std::sin(time),0.1*time);
+                casted_box->update_frame(origin_fixed,origin);
+            }
+
+            auto xdir = origin;
+
+            while(time < 10){
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                time += 0.016f;
+                origin = vsg::vec3(std::cos(time),std::sin(time),0.1*time);
+                casted_box->update_frame(origin_fixed,xdir,origin);
+            }
+
+            auto ydir = origin;
+
+            while(time < 15){
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                time += 0.016f;
+                origin = vsg::vec3(std::cos(time),std::sin(time),0.1*time);
+                casted_box->update_frame(origin_fixed,xdir,ydir,origin);
             }
         };
         std::thread attach_lines{attach_special_box};
