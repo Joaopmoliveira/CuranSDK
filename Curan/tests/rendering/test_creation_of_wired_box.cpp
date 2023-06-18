@@ -176,43 +176,6 @@ int main(int argc, char **argv) {
         info.window_size = size;
         curan::renderable::Window window{info};
 
-        auto attach_special_box1 = [&window](){
-            auto box = PhaseCreatedBox::make();
-            window << box;
-            float time = 0.0;
-            vsg::vec3 origin = vsg::vec3(0,0,1);
-            vsg::vec3 xdir = vsg::vec3(std::cos(time),0,0);
-            auto casted_box = box->cast<PhaseCreatedBox>();
-            casted_box->update_frame_config(origin,xdir);
-
-            while(time < 5){
-                std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                time += 0.016f;
-                xdir = vsg::vec3(std::cos(time),0,0);
-                casted_box->update_frame_config(origin,xdir);
-            }
-
-            xdir = vsg::vec3(std::cos(time),0,0);
-            vsg::vec3 ydir = vsg::vec3(0,std::cos(time),0);
-
-            while(time < 10){
-                std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                time += 0.016f;
-                ydir = vsg::vec3(0,std::cos(time),0);
-                casted_box->update_frame_config(origin,xdir,ydir);
-            }
-
-            ydir = vsg::vec3(0,std::cos(time),0);
-            vsg::vec3 zdir = vsg::vec3(0,0,std::cos(time));
-
-            while(time < 15){
-                std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                time += 0.016f;
-                zdir = vsg::vec3(0,0,std::cos(time));
-                casted_box->update_frame_config(origin,xdir,ydir,zdir);
-            }
-        };
-
         auto attach_special_box = [&window](){
             auto box = PhaseCreatedBox::make();
             window << box;
