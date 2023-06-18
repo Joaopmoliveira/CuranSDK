@@ -55,8 +55,10 @@ int main(){
 
     double q_current [NUMBER_OF_JOINTS] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     double sampletime = 0.001;
+    double time = 0.0;
     while(window.run_once()) {
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+            q_current[i] = 0.1*time;
 		    iiwa->q[i] = q_current[i];
             robotRenderableCasted->set(i,q_current[i]);
 	    }
@@ -74,6 +76,7 @@ int main(){
         robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
 
         q_old = iiwa->q;
+        time += sampletime;
     }
 
     return 0;
