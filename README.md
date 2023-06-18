@@ -121,7 +121,7 @@ project called .vscode) with a file inside it called settings.json with the foll
 }
 ```
 
-Notice that we are forcing the cmake extension to pass the arguments of where vcpkg is installed in the line ""CMAKE_TOOLCHAIN_FILE": "path to your vcpkg instalation directory". This should compile out of the box once all the steps are solved.
+Notice that we are forcing the cmake extension to pass the arguments of where vcpkg is installed in the line --CMAKE_TOOLCHAIN_FILE: "path to your vcpkg instalation directory"--. This should compile out of the box once all the steps are solved.
 
 ## Contributions 
 
