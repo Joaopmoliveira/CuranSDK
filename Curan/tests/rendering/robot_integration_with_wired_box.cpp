@@ -213,7 +213,6 @@ int main(){
         auto box = PhaseCreatedBox::make();
         window << box;
         auto casted_box = box->cast<PhaseCreatedBox>();
-
         auto flag1 = curan::utilities::Flag::make_shared_flag();
         flag1->clear();
         curan::utilities::Job key_reader;
@@ -226,11 +225,12 @@ int main(){
             flag1->set();
         };
         curan::utilities::pool->submit(key_reader); //we must click on a key before advancing with or test
+        flag1->wait();
         flag1->clear();
         curan::utilities::pool->submit(key_reader);
         std::cout << "fixing first vertex\n";
         std::array<float,3> temp_pos = current_position.load();
-        std::printf("x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
+        std::printf("first vertex - x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
         casted_box->update_frame(vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
         vsg::vec3 origin_fixed = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
 
@@ -242,7 +242,7 @@ int main(){
         }
         flag1->clear();
         auto xdir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
-        std::printf("x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
+        std::printf("second vertex - x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
         curan::utilities::pool->submit(key_reader);
         std::cout << "fixing third vertex\n";
         while(!flag1->value()){
@@ -252,7 +252,7 @@ int main(){
         }
         flag1->clear();
         auto ydir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
-        std::printf("x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
+        std::printf("third vertex - x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
         curan::utilities::pool->submit(key_reader);
         std::cout << "fixing fourth vertex\n";
         while(!flag1->value()){
@@ -260,7 +260,7 @@ int main(){
             temp_pos = current_position.load();
             casted_box->update_frame(origin_fixed,xdir,ydir,vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
         }
-        std::printf("x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
+        std::printf("fourth vertex - x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
 	};
     curan::utilities::pool->submit(append_box);
 
@@ -308,7 +308,9 @@ int main(){
         mat = vsg::translate(p_0_cur(0,0),p_0_cur(1,0),p_0_cur(2,0));
         sphere->update_transform(mat);
 
-        temp_pos = {(float)p_0_cur(0,0),(float)p_0_cur(1,0),(float)p_0_cur(2,0)};
+        temp_pos[0] = (float)p_0_cur(0,0);
+        temp_pos[1] = (float)p_0_cur(1,0);
+        temp_pos[2] = (float)p_0_cur(2,0);
         current_position.store(temp_pos);
 
         robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
