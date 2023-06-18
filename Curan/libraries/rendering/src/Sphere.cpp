@@ -8,9 +8,7 @@ Sphere::Sphere(Info& info) {
     transform = vsg::MatrixTransform::create(vsg::translate(position));
 
     obj_contained = vsg::Group::create();
-    vsg::GeometryInfo geomInfo;
-    vsg::StateInfo stateInfo;
-    auto node = info.builder->createSphere(geomInfo, stateInfo);
+    auto node = info.builder->createSphere(info.geomInfo, info.stateInfo);
     obj_contained->addChild(node);
 
     if (info.identifier)

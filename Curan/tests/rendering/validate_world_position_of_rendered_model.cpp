@@ -30,12 +30,15 @@ int main(){
 
     curan::renderable::Sphere::Info infosphere;
     infosphere.builder = vsg::Builder::create();
+    infosphere.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+    infosphere.geomInfo.dx = vsg::vec3(0.01,0.0,0.0);
+    infosphere.geomInfo.dy = vsg::vec3(0.0,0.01,0.0);
+    infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.01);
     auto sphere = curan::renderable::Sphere::make(infosphere);
-    auto mat = vsg::scale(0.01,0.01,0.01);
+    auto mat = vsg::translate(0.0,0.0,0.0);
     sphere->update_transform(mat);
     window << sphere;
     
-
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
 	
 	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
@@ -49,7 +52,6 @@ int main(){
 
 	robot->attachToolToRobotModel(myTool.get());
 
-
     RigidBodyDynamics::Math::VectorNd measured_torque = RigidBodyDynamics::Math::VectorNd::Zero(7,1);
     Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
     Vector3d p_0_cur = Vector3d(0, 0, 0.045);
@@ -60,15 +62,16 @@ int main(){
     double q_current [NUMBER_OF_JOINTS] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     double sampletime = 0.001;
     double time = 0.0;
+
     while(window.run_once()) {
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-            q_current[i] = 10*time;
+            q_current[i] = std::sin(time);
 		    iiwa->q[i] = q_current[i];
             robotRenderableCasted->set(i,q_current[i]);
 	    }
         static RigidBodyDynamics::Math::VectorNd q_old = iiwa->q;
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-		    iiwa->qDot[i] = (q_current[i] - q_old[i]) / sampletime;
+		    iiwa->qDot[i] = (iiwa->q[i] - q_old[i]) / sampletime;
 	    }   
 
         robot->getMassMatrix(iiwa->M,iiwa->q);
@@ -77,13 +80,13 @@ int main(){
 	    robot->getCoriolisAndGravityVector(iiwa->c,iiwa->g,iiwa->q,iiwa->qDot);
 	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,7);              // 3x1 position of flange (body = 7), expressed in base coordinates
         
-        mat = mat * vsg::translate(p_0_cur(0,0),p_0_cur(1,0),p_0_cur(2,0));
+        mat = vsg::translate(p_0_cur(0,0),p_0_cur(1,0),p_0_cur(2,0));
         sphere->update_transform(mat);
 
         robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
 
         q_old = iiwa->q;
-        time += sampletime;
+        time += 0.0;
     }
 
     return 0;

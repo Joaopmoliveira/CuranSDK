@@ -12,6 +12,8 @@ namespace curan {
             struct Info {
                 vsg::ref_ptr<vsg::Builder> builder;
                 std::optional<std::string> identifier;
+                vsg::GeometryInfo geomInfo;
+                vsg::StateInfo stateInfo;
             };
 
             Sphere(Info& info);
