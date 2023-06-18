@@ -30,6 +30,10 @@ int main(){
 
     curan::renderable::Sphere::Info infosphere;
     infosphere.builder = vsg::Builder::create();
+    auto sphere = curan::renderable::Sphere::make(infosphere);
+    auto mat = vsg::scale(0.01,0.01,0.01);
+    sphere->update_transform(mat);
+    window << sphere;
     
 
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
@@ -58,7 +62,7 @@ int main(){
     double time = 0.0;
     while(window.run_once()) {
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-            q_current[i] = 0.1*time;
+            q_current[i] = 10*time;
 		    iiwa->q[i] = q_current[i];
             robotRenderableCasted->set(i,q_current[i]);
 	    }
@@ -72,6 +76,9 @@ int main(){
 	    iiwa->Minv = iiwa->M.inverse();
 	    robot->getCoriolisAndGravityVector(iiwa->c,iiwa->g,iiwa->q,iiwa->qDot);
 	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,7);              // 3x1 position of flange (body = 7), expressed in base coordinates
+        
+        mat = mat * vsg::translate(p_0_cur(0,0),p_0_cur(1,0),p_0_cur(2,0));
+        sphere->update_transform(mat);
 
         robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
 
