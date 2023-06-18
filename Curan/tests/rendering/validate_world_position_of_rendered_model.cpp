@@ -3,7 +3,7 @@
 #include <iostream>
 #include "rendering/Window.h"
 #include "rendering/SequencialLinks.h"
-#include "rendering/Box.h"
+#include "rendering/Sphere.h"
 #include "Robot.h"
 #include "ToolData.h"
 #include "robotParameters.h"
@@ -29,13 +29,13 @@ int main(){
     vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
     window << robotRenderable;
 
-    curan::renderable::Box::Info infosphere;
+    curan::renderable::Sphere::Info infosphere;
     infosphere.builder = vsg::Builder::create();
     infosphere.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
-    infosphere.geomInfo.dx = vsg::vec3(0.1f,0.0,0.0);
-    infosphere.geomInfo.dy = vsg::vec3(0.0,0.1f,0.0);
-    infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.1f);
-    auto sphere = curan::renderable::Box::make(infosphere);
+    infosphere.geomInfo.dx = vsg::vec3(0.02f,0.0,0.0);
+    infosphere.geomInfo.dy = vsg::vec3(0.0,0.02f,0.0);
+    infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.02f);
+    auto sphere = curan::renderable::Sphere::make(infosphere);
     auto mat = vsg::translate(0.0,0.0,0.0);
     sphere->update_transform(mat);
     window << sphere;
@@ -66,8 +66,8 @@ int main(){
 
     while(window.run_once()) {
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-            q_current[i] = std::sin(time);
-		    iiwa->q[i] = 2*q_current[i];
+            q_current[i] = std::sin(10*time)*1.57;
+		    iiwa->q[i] = q_current[i];
             robotRenderableCasted->set(i,q_current[i]);
 	    }
         static RigidBodyDynamics::Math::VectorNd q_old = iiwa->q;
@@ -82,7 +82,6 @@ int main(){
 	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,NUMBER_OF_JOINTS);              // 3x1 position of flange (body = 7), expressed in base coordinates
         
         mat = vsg::translate(p_0_cur(0,0),p_0_cur(1,0),p_0_cur(2,0));
-        std::cout << mat << std::endl;
         sphere->update_transform(mat);
 
         robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
