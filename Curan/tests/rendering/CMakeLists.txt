@@ -161,3 +161,24 @@ target_link_libraries(test_creation_of_wired_box
 PUBLIC
 renderable
 )
+
+add_executable(test_world_position
+validate_world_position_of_rendered_model.cpp
+)
+
+target_compile_definitions(test_world_position PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_world_position PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+if(WIN32) #FRILibrary pulls in macros which cause vsg to fail its compilation step thus we must define this macro when compiling for windows
+    target_compile_definitions(test_world_position PRIVATE NOMINMAX=1)
+endif(WIN32)
+
+target_link_libraries(test_world_position
+PUBLIC
+KukaRobotLibrary 
+FRILibrary
+robotParameters
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+)

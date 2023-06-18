@@ -180,7 +180,7 @@ int main(int argc, char **argv) {
             auto box = PhaseCreatedBox::make();
             window << box;
             float time = 0.0;
-            vsg::vec3 origin = vsg::vec3(std::cos(time),std::sin(time),0.1*time);
+            vsg::vec3 origin = vsg::vec3(std::cos(time),std::sin(time),0.1f*time);
             auto casted_box = box->cast<PhaseCreatedBox>();
             casted_box->update_frame(origin);
             vsg::vec3 origin_fixed = origin;
@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
             while(time < 5){
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
                 time += 0.016f;
-                origin = vsg::vec3(std::cos(time),std::sin(time),0.1*time);
+                origin = vsg::vec3(std::cos(time),std::sin(time),0.1f*time);
                 casted_box->update_frame(origin_fixed,origin);
             }
 
@@ -197,7 +197,7 @@ int main(int argc, char **argv) {
             while(time < 10){
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
                 time += 0.016f;
-                origin = vsg::vec3(std::cos(time),std::sin(time),0.1*time);
+                origin = vsg::vec3(std::cos(time),std::sin(time),0.1f*time);
                 casted_box->update_frame(origin_fixed,xdir,origin);
             }
 
@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
             while(time < 15){
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
                 time += 0.016f;
-                origin = vsg::vec3(std::cos(time),std::sin(time),0.1*time);
+                origin = vsg::vec3(std::cos(time),std::sin(time),0.1f*time);
                 casted_box->update_frame(origin_fixed,xdir,ydir,origin);
             }
         };
