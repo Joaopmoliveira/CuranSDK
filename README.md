@@ -75,7 +75,8 @@ which is currently being solved in a commit from the team. (To solve this proble
 build arquitecture to achieve our goals)
 
 ```sh
-~path/development >> cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="~path/development/vcpkg/scripts/buildsystems/vcpkg.cmake"
+~path/development >> cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="~path/development/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>
+~path/development >> cmake --build build
 ```
 
 And the project should just compile out of the box (this will take a LOOOOONG TIME to compile 
@@ -83,7 +84,44 @@ because ITK and SKIA are huge). Reserve atleast 30Gb of memory for vcpkg to comp
 
 ## Integration with a proper IDE 
 
-Usualy my IDE of choice is either 
+Usualy my IDE of choice is either vscode or visual studio. I will prove the instructions for vscode.
+Follow the following steps 
+
+1. First install Git in your system it you do not have it installed yet.
+
+2. Second install Vulkan from the website https://vulkan.lunarg.com/sdk/home (this is a graphics API to communicate with the GPU of your computer)
+
+3. Install the lattest version of Mycrosoft Visual Studio - Community Edition which integrates C++ compilers in your system. 
+
+4. Now you can install vscode by downloading it from the website https://code.visualstudio.com/
+
+Once the download is finished you can open the vscode IDE, go to the extensions tab, install the c++ extension from windows, the cmake extension
+and also install the vcpkg extension. Once this is done go to the page of the vcpkg extension and enable it (this should create a folder in your 
+project called .vscode) with a file inside it called settings.json with the following contents
+
+```
+{
+    "cmake.configureArgs": [
+        "-DVCPKG_APPLOCAL_DEPS=ON",
+        "-DX_VCPKG_APPLOCAL_DEPS_INSTALL=ON",
+        "-DVCPKG_MANIFEST_MODE=ON",
+        "-DVCPKG_TARGET_TRIPLET=x64-windows-static"
+    ],
+    "vcpkg.general.enable": true,
+    "vcpkg.target.hostTriplet": "x64-windows-static",
+    "vcpkg.target.defaultTriplet": "x64-windows-static",
+    "vcpkg.target.useStaticLib": true,
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "path to your vcpkg instalation directory",
+        "CMAKE_MSVC_RUNTIME_LIBRARY" : "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+    },
+    "vcpkg.target.installDependencies": true,
+    "vcpkg.target.preferSystemLibs": false,
+    "vcpkg.target.useManifest": true
+}
+```
+
+Notice that we are forcing the cmake extension to pass the arguments of where vcpkg is installed in the line ""CMAKE_TOOLCHAIN_FILE": "path to your vcpkg instalation directory". This should compile out of the box once all the steps are solved.
 
 ## Contributions 
 
