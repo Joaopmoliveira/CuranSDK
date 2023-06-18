@@ -203,8 +203,8 @@ int main(){
     sphere->update_transform(mat);
     window << sphere;
 
-    std::array<double,3> temp_pos = {0.0,0.0,0.0};
-    std::atomic<std::array<double,3>> current_position;
+    std::array<float,3> temp_pos = {0.0,0.0,0.0};
+    std::atomic<std::array<float,3>> current_position;
     current_position.store(temp_pos);
     
     curan::utilities::Job append_box;
@@ -213,7 +213,7 @@ int main(){
         auto box = PhaseCreatedBox::make();
         window << box;
         auto casted_box = box->cast<PhaseCreatedBox>();
-        std::array<double,3> temp_pos = current_position.load();
+        std::array<float,3> temp_pos = current_position.load();
         casted_box->update_frame(vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
         vsg::vec3 origin_fixed = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
 
@@ -226,8 +226,9 @@ int main(){
             std::cin >> c;
             flag1->set();
         };
+        curan::utilities::pool->submit(key_reader); //we must click on a key before advancing with or test
+        flag1->clear();
         curan::utilities::pool->submit(key_reader);
-
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
             temp_pos = current_position.load();
@@ -299,6 +300,9 @@ int main(){
         
         mat = vsg::translate(p_0_cur(0,0),p_0_cur(1,0),p_0_cur(2,0));
         sphere->update_transform(mat);
+
+        temp_pos = {(float)p_0_cur(0,0),(float)p_0_cur(1,0),(float)p_0_cur(2,0)};
+        current_position.store(temp_pos);
 
         robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
 
