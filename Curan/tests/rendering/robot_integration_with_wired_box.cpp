@@ -213,9 +213,6 @@ int main(){
         auto box = PhaseCreatedBox::make();
         window << box;
         auto casted_box = box->cast<PhaseCreatedBox>();
-        std::array<float,3> temp_pos = current_position.load();
-        casted_box->update_frame(vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
-        vsg::vec3 origin_fixed = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
 
         auto flag1 = curan::utilities::Flag::make_shared_flag();
         flag1->clear();
@@ -223,12 +220,21 @@ int main(){
         key_reader.description = "read the keys";
         key_reader.function_to_execute = [&flag1](){
             char c;
+            std::cout << "reading key\n";
             std::cin >> c;
+            std::cout << "key read\n";
             flag1->set();
         };
         curan::utilities::pool->submit(key_reader); //we must click on a key before advancing with or test
         flag1->clear();
         curan::utilities::pool->submit(key_reader);
+        std::cout << "fixing first vertex\n";
+        std::array<float,3> temp_pos = current_position.load();
+        std::printf("x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
+        casted_box->update_frame(vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
+        vsg::vec3 origin_fixed = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
+
+        std::cout << "fixing second vertex\n";
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
             temp_pos = current_position.load();
@@ -236,9 +242,9 @@ int main(){
         }
         flag1->clear();
         auto xdir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
-
+        std::printf("x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
         curan::utilities::pool->submit(key_reader);
-
+        std::cout << "fixing third vertex\n";
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
             temp_pos = current_position.load();
@@ -246,14 +252,15 @@ int main(){
         }
         flag1->clear();
         auto ydir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
-
+        std::printf("x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
         curan::utilities::pool->submit(key_reader);
-
+        std::cout << "fixing fourth vertex\n";
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
             temp_pos = current_position.load();
             casted_box->update_frame(origin_fixed,xdir,ydir,vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
         }
+        std::printf("x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
 	};
     curan::utilities::pool->submit(append_box);
 
