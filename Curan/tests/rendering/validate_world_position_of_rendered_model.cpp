@@ -1,4 +1,12 @@
-
+#include <vsg/all.h>
+#include <vsgXchange/all.h>
+#include <iostream>
+#include "rendering/Window.h"
+#include "rendering/SequencialLinks.h"
+#include "Robot.h"
+#include "ToolData.h"
+#include "robotParameters.h"
+#include "rendering/Sphere.h"
 
 int main(){
     curan::renderable::Window::Info info;
@@ -20,48 +28,9 @@ int main(){
     vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
     window << robotRenderable;
 
-    curan::renderable::DynamicTexture::Info infotexture;
-    infotexture.height = 100;
-    infotexture.width = 100;
-    infotexture.geomInfo.dx = vsg::vec3(0.2f,0.0f,0.0f);
-    infotexture.geomInfo.dy = vsg::vec3(0.0f,.2f,0.0f);
-    infotexture.geomInfo.dz = vsg::vec3(0.0f,0.0f,0.0f);
-    infotexture.geomInfo.position = vsg::vec3(0.0f,0.1f,0.0f);
-    infotexture.builder = vsg::Builder::create();
-    auto dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
-    dynamic_texture->update_transform(vsg::rotate<double>(vsg::radians(90.0),1.0,0.0,0.0)*vsg::translate<double>(0.0,0.126,0.0));
-    robotRenderable->append(dynamic_texture);
-
-    float value = 1.0;
-    auto updateBaseTexture = [value](vsg::vec4Array2D& image)
-    {
-        using value_type = typename vsg::vec4Array2D::value_type;
-        for (size_t r = 0; r < image.height(); ++r)
-        {
-            float r_ratio = static_cast<float>(r) / static_cast<float>(image.height() - 1);
-            value_type* ptr = &image.at(0, r);
-            for (size_t c = 0; c < image.width(); ++c)
-            {
-                float c_ratio = static_cast<float>(c) / static_cast<float>(image.width() - 1);
-
-                vsg::vec2 delta((r_ratio - 0.5f), (c_ratio - 0.5f));
-
-                float angle = atan2(delta.x, delta.y);
-
-                float distance_from_center = vsg::length(delta);
-
-                float intensity = (sin(1.0 * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
-
-                ptr->r = intensity;
-                ptr->g = intensity;
-                ptr->b = intensity;
-                ptr->a = 1.0f;
-
-                ++ptr;
-            }
-        }
-    };
-    dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+    curan::renderable::Sphere::Info infosphere;
+    infosphere.builder = vsg::Builder::create();
+    
 
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
 	
@@ -84,19 +53,16 @@ int main(){
 
     auto robotRenderableCasted = robotRenderable->cast<curan::renderable::SequencialLinks>();
 
-    while(window.run_once() && !state->should_kill_myself()) {
-        auto current_reading = state->read();
-        auto q_current = current_reading.getMeasuredJointPosition();
-        auto tau_current = current_reading.getExternalTorque();
-
+    double q_current [NUMBER_OF_JOINTS] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+    double sampletime = 0.001;
+    while(window.run_once()) {
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
 		    iiwa->q[i] = q_current[i];
             robotRenderableCasted->set(i,q_current[i]);
-		    measured_torque[i] = tau_current[i];
 	    }
         static RigidBodyDynamics::Math::VectorNd q_old = iiwa->q;
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-		    iiwa->qDot[i] = (q_current[i] - q_old[i]) / current_reading.getSampleTime();
+		    iiwa->qDot[i] = (q_current[i] - q_old[i]) / sampletime;
 	    }   
 
         robot->getMassMatrix(iiwa->M,iiwa->q);
