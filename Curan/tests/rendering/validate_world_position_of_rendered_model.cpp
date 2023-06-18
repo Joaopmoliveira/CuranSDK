@@ -31,9 +31,9 @@ int main(){
     curan::renderable::Sphere::Info infosphere;
     infosphere.builder = vsg::Builder::create();
     infosphere.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
-    infosphere.geomInfo.dx = vsg::vec3(0.01,0.0,0.0);
-    infosphere.geomInfo.dy = vsg::vec3(0.0,0.01,0.0);
-    infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.01);
+    infosphere.geomInfo.dx = vsg::vec3(0.01f,0.0,0.0);
+    infosphere.geomInfo.dy = vsg::vec3(0.0,0.01f,0.0);
+    infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.01f);
     auto sphere = curan::renderable::Sphere::make(infosphere);
     auto mat = vsg::translate(0.0,0.0,0.0);
     sphere->update_transform(mat);
@@ -67,7 +67,7 @@ int main(){
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
             q_current[i] = std::sin(time);
 		    iiwa->q[i] = q_current[i];
-            robotRenderableCasted->set(i,q_current[i]);
+            robotRenderableCasted->set(i,iiwa->q[i]);
 	    }
         static RigidBodyDynamics::Math::VectorNd q_old = iiwa->q;
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
@@ -78,7 +78,7 @@ int main(){
 	    iiwa->M(6,6) = 45 * iiwa->M(6,6);                                       // Correct mass of last body to avoid large accelerations
 	    iiwa->Minv = iiwa->M.inverse();
 	    robot->getCoriolisAndGravityVector(iiwa->c,iiwa->g,iiwa->q,iiwa->qDot);
-	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,7);              // 3x1 position of flange (body = 7), expressed in base coordinates
+	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,NUMBER_OF_JOINTS);              // 3x1 position of flange (body = 7), expressed in base coordinates
         
         mat = vsg::translate(p_0_cur(0,0),p_0_cur(1,0),p_0_cur(2,0));
         sphere->update_transform(mat);
@@ -86,7 +86,7 @@ int main(){
         robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
 
         q_old = iiwa->q;
-        time += 0.0;
+        time += sampletime;
     }
 
     return 0;
