@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
         auto attach_special_box = [&window](){
             auto box = curan::renderable::PhaseWiredBox::make();
             window << box;
-            float time = 0.0;
+            float time = 0.4;
             vsg::vec3 origin = vsg::vec3(std::cos(time),std::sin(time),0.1f*time);
             auto casted_box = box->cast<curan::renderable::PhaseWiredBox>();
             casted_box->update_frame(origin);

@@ -65,8 +65,6 @@ PhaseWiredBox::PhaseWiredBox(){
     vsg::DataList arrays;
     arrays.push_back(vertices);
     arrays.push_back(normals);
-    arrays.push_back(texcoords);
-    arrays.push_back(color);
     vid->assignArrays(arrays);
 
     vid->assignIndices(indices);
@@ -84,7 +82,10 @@ vsg::ref_ptr<Renderable> PhaseWiredBox::make() {
 }
 
 void PhaseWiredBox::update_frame(vsg::vec3 origin){
-    update_frame_config(origin);
+    auto xdir = vsg::vec3(epsilon,0.0,0.0);
+    auto ydir = vsg::vec3(0.0,epsilon,0.0);
+    auto zdir = vsg::vec3(0.0,0.0,epsilon);
+    update_frame_config(origin,xdir,ydir,zdir);
 }
 
 void PhaseWiredBox::update_frame(vsg::vec3 origin,vsg::vec3 xdiroffset){
@@ -152,6 +153,21 @@ void PhaseWiredBox::update_frame_config(vsg::vec3 origin,vsg::vec3 xdir,vsg::vec
         (*iterator_dst) = (*iterator_src);
     vertices->dirty();
 };
+
+void PhaseWiredBox::print(vsg::vec3 origin,vsg::vec3 xdiroffset,vsg::vec3 ydiroffset, vsg::vec3 zdiroffset){
+    vsg::vec3 xdir = xdiroffset-origin;
+    vsg::vec3 ydir_diff = ydiroffset-xdiroffset;
+    vsg::vec3 zdir_diff = zdiroffset-ydiroffset;
+    auto yprojected = vsg::normalize(vsg::cross(ydir_diff,xdir));
+    vsg::vec3 ydir = vsg::normalize(vsg::cross(xdir,yprojected));
+    ydir = ydir*vsg::dot(ydir_diff,ydir);
+    vsg::vec3 zdir = vsg::normalize(vsg::cross(xdir,ydir));
+    zdir = zdir*vsg::dot(zdir_diff,zdir);
+    std::printf("fist index x(%f) y(%f) z(%f) \n",origin[0],origin[1],origin[2]);
+    std::printf("x direction x(%f) y(%f) z(%f) \n",xdir[0],xdir[1],xdir[2]);
+    std::printf("y direction x(%f) y(%f) z(%f) \n",ydir[0],ydir[1],ydir[2]);
+    std::printf("z direction x(%f) y(%f) z(%f) \n",zdir[0],zdir[1],zdir[2]);
+}
 
 }
 }

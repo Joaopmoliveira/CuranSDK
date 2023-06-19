@@ -72,7 +72,8 @@ int main(){
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
             temp_pos = current_position.load();
-            casted_box->update_frame(vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
+            vsg::vec3 origin(temp_pos[0],temp_pos[1],temp_pos[2]);
+            casted_box->update_frame(origin);
         }
         flag1->clear();
         vsg::vec3 origin_fixed = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
@@ -82,7 +83,8 @@ int main(){
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
             temp_pos = current_position.load();
-            casted_box->update_frame(origin_fixed,vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
+            vsg::vec3 origin(temp_pos[0],temp_pos[1],temp_pos[2]);
+            casted_box->update_frame(origin_fixed,origin);
         }
         flag1->clear();
         auto xdir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
@@ -92,7 +94,8 @@ int main(){
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
             temp_pos = current_position.load();
-            casted_box->update_frame(origin_fixed,xdir,vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
+            vsg::vec3 origin(temp_pos[0],temp_pos[1],temp_pos[2]);
+            casted_box->update_frame(origin_fixed,xdir,origin);
         }
         flag1->clear();
         auto ydir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
@@ -102,9 +105,12 @@ int main(){
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
             temp_pos = current_position.load();
-            casted_box->update_frame(origin_fixed,xdir,ydir,vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]));
+            vsg::vec3 origin(temp_pos[0],temp_pos[1],temp_pos[2]);
+            casted_box->update_frame(origin_fixed,xdir,ydir,origin);
         }
+        auto zdir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
         std::printf("fourth vertex - x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
+        casted_box->print(origin_fixed,xdir,ydir,zdir);
 	};
     curan::utilities::pool->submit(append_box);
 
@@ -134,7 +140,7 @@ int main(){
 
     while(window.run_once()) {
 	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-            q_current[i] = std::sin(10*time)*1.57;
+            q_current[i] = std::sin(5*time)*1.57;
 		    iiwa->q[i] = q_current[i];
             robotRenderableCasted->set(i,q_current[i]);
 	    }

@@ -27,7 +27,9 @@ namespace curan{
 
             void update_frame(vsg::vec3 origin,vsg::vec3 xdiroffset,vsg::vec3 ydiroffset, vsg::vec3 zdiroffset);
 
-            void update_frame_config(vsg::vec3 origin,vsg::vec3 xdir = {0.001f,0.0f,0.0f},vsg::vec3 ydir = {0.0f,0.001f,0.0f},vsg::vec3 zdir = {0.0f,0.0f,0.001f});
+            void update_frame_config(vsg::vec3 origin,vsg::vec3 xdir,vsg::vec3 ydir,vsg::vec3 zdir);
+            
+            void print(vsg::vec3 origin,vsg::vec3 xdiroffset,vsg::vec3 ydiroffset, vsg::vec3 zdiroffset);
         };
 
     }
