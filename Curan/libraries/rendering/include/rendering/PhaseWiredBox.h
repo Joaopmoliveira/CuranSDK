@@ -13,6 +13,8 @@ namespace curan{
             vsg::ref_ptr<vsg::vec2Array> texcoords;
             vsg::ref_ptr<vsg::ushortArray> indices;
             vsg::ref_ptr<vsg::vec4Array> color;
+            vsg::ref_ptr<vsg::StateGroup> group;
+
             static constexpr float epsilon = 0.0001f;
 
             PhaseWiredBox();

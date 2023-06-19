@@ -1,6 +1,16 @@
 find_package(vsg)
 find_package(vsgXchange)
 
+add_executable(test_builder_wired_callsequence test_builder_wired_callsequence.cpp)
+target_compile_definitions(test_builder_wired_callsequence PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_builder_wired_callsequence PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_builder_wired_callsequence
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+)
+
+
 add_executable(Renderer
 main.cpp
 )
@@ -193,3 +203,4 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 )
+

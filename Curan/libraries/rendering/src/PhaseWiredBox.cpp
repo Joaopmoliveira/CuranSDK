@@ -4,7 +4,7 @@ namespace curan{
 namespace renderable{
 
 PhaseWiredBox::PhaseWiredBox(){
-    auto node = createStateGroup();
+    group = createStateGroup();
     transform = vsg::MatrixTransform::create();
     obj_contained = vsg::Group::create();
 
@@ -70,8 +70,8 @@ PhaseWiredBox::PhaseWiredBox(){
     vid->indexCount = static_cast<uint32_t>(indices->size());
     vid->instanceCount = 1;
 
-    node->addChild(vid);
-    obj_contained->addChild(node);
+    group->addChild(vid);
+    obj_contained->addChild(group);
 }
 
 vsg::ref_ptr<Renderable> PhaseWiredBox::make() {
