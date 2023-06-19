@@ -12,7 +12,7 @@ layout(push_constant) uniform PushConstants {
 layout(location = 0) in vec3 inPosition;
 
 layout(location = 0) out vec4 cameraPos;
-layout(location = 1) out vec4 vertexPos;
+layout(location = 1) out vec4 texturePos;
 layout(location = 2) out mat4 texgen;
 
 out gl_PerVertex{
@@ -22,7 +22,7 @@ out gl_PerVertex{
 void main() {
     gl_Position = (pc.projection * pc.modelview) * vec4(inPosition, 1.0);
     cameraPos = inverse(pc.modelview) * vec4(0,0,0,1);
-    vertexPos = vec4(inPosition, 1.0);
+    texturePos = vec4(inPosition, 1.0);
     mat4 temporary = pc.projection * pc.modelview;
     texgen = mat4(1.0);
 })";
@@ -38,13 +38,13 @@ layout(constant_id = 2) const float SampleDensityValue = 0.005;
 layout(binding = 0) uniform sampler3D volume;
 
 layout(location = 0) in vec4 cameraPos;
-layout(location = 1) in vec4 vertexPos;
+layout(location = 1) in vec4 texturePos;
 layout(location = 2) in mat4 texgen;
 
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    vec4 t0 = vertexPos;
+    vec4 t0 = texturePos;
     vec4 te = cameraPos;
     if( te.x>=0.0 && te.x<=1.0 &&
         te.y>=0.0 && te.y<=1.0 &&
@@ -252,27 +252,27 @@ Volume::Volume(Info& info){
 
     vsg::dvec3 position(0.0f, 0.0f, 0.0f);
 
-    double largest_spacing = (info.spacing_x> info.spacing_y) ? info.spacing_x : info.spacing_y;
-    largest_spacing = (largest_spacing > info.spacing_z) ? largest_spacing : info.spacing_z;
-    vsg::dvec3 scale_spacing(info.spacing_x / largest_spacing, info.spacing_y / largest_spacing, info.spacing_z / largest_spacing);
+    //double largest_spacing = (info.spacing_x> info.spacing_y) ? info.spacing_x : info.spacing_y;
+    //largest_spacing = (largest_spacing > info.spacing_z) ? largest_spacing : info.spacing_z;
+    //vsg::dvec3 scale_spacing(info.spacing_x / largest_spacing, info.spacing_y / largest_spacing, info.spacing_z / largest_spacing);
     
+    //double largest = (info.width > info.height) ? (double)info.width : (double)info.height;
+    //largest = (largest> info.depth) ? largest : info.depth;
+    //vsg::dvec3 scale(info.width/ largest, info.height / largest, info.depth / largest);
 
-    double largest = (info.width > info.height) ? (double)info.width : (double)info.height;
-    largest = (largest> info.depth) ? largest : info.depth;
-    vsg::dvec3 scale(info.width/ largest, info.height / largest, info.depth / largest);
-
-    vsg::dvec3 mixture(scale_spacing.x* scale.x, scale_spacing.y* scale.y, scale_spacing.z* scale.z);
-    normalize(mixture);
-
+    //vsg::dvec3 mixture(scale_spacing.x* scale.x, scale_spacing.y* scale.y, scale_spacing.z* scale.z);
+    vsg::dvec3 mixture(info.width* info.spacing_x * 0.001,info.height* info.spacing_y* 0.001, info.depth* info.spacing_z* 0.001);
+    //std::printf("mixture scalling x(%f) y(%f) z(%f)\n",mixture.x,mixture.y,mixture.z);
+    //std::printf("spacing x(%f) y(%f) z(%f)\n",info.spacing_x,info.spacing_y,info.spacing_z);
     auto scalling_transform = vsg::MatrixTransform::create(vsg::scale(mixture));
     transform = vsg::MatrixTransform::create(vsg::translate(position));
     
     // add geometry
-    scalling_transform->addChild(vid);
-    scenegraph->addChild(scalling_transform);
+    scenegraph->addChild(vid);
+    scalling_transform->addChild(scenegraph);
 
     obj_contained = vsg::Group::create();
-    obj_contained->addChild(scenegraph);
+    obj_contained->addChild(scalling_transform);
 
     if (info.identifier)
         set_identifier(*info.identifier);

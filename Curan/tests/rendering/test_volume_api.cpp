@@ -145,7 +145,7 @@ try{
     };
     casted_volume->update_texture(updater);
 
-    std::atomic<bool> continue_moving = true;
+    std::atomic<bool> continue_moving = false;
     auto mover = [&continue_moving,volume](){
         double time = 0.0;
         while(continue_moving.load()){
@@ -174,4 +174,5 @@ try{
 }
 // clean up done automatically thanks to ref_ptr<>
 return 0;
+
 }
