@@ -128,3 +128,5 @@ Notice that we are forcing the cmake extension to pass the arguments of where vc
 > -João Oliveira (Lead developer)
 > 
 > -Filipe Varela (3D rendering patch of the library)
+> 
+> -Manuel Carvalho (Implementation of registration algorithms)
