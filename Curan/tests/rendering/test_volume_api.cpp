@@ -149,7 +149,7 @@ try{
     auto mover = [&continue_moving,volume](){
         double time = 0.0;
         while(continue_moving.load()){
-            volume->update_transform(vsg::translate(std::sin(time),std::sin(time),std::sin(time)));
+            volume->update_transform(vsg::translate(std::cos(time)*0.2,std::sin(time)*0.2,0.2));
             time += 0.016;
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
@@ -159,7 +159,7 @@ try{
     window.run();
     continue_moving.store(false);
     mover_thread.join();
-    
+
     window.transverse_identifiers(
             [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
                    &map) {
