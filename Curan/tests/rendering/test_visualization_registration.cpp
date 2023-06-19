@@ -173,8 +173,7 @@ try{
     volumeinfo.spacing_x = spacing[0];
     volumeinfo.spacing_y = spacing[1];
     volumeinfo.spacing_z = spacing[2];
-    std::printf("spacing x(%f) y(%f) z(%f)\n",volumeinfo.spacing_x,volumeinfo.spacing_y,volumeinfo.spacing_z);
-    std::printf("size x(%f) y(%f) z(%f)\n",(double)volumeinfo.width,(double)volumeinfo.height,(double)volumeinfo.depth);
+
     auto volume_fixed = curan::renderable::Volume::make(volumeinfo);
     window << volume_fixed;
 
@@ -194,8 +193,7 @@ try{
     volumeinfo.spacing_x = spacing_moving[0];
     volumeinfo.spacing_y = spacing_moving[1];
     volumeinfo.spacing_z = spacing_moving[2];
-    std::printf("spacing x(%f) y(%f) z(%f)\n",volumeinfo.spacing_x,volumeinfo.spacing_y,volumeinfo.spacing_z);
-    std::printf("size x(%f) y(%f) z(%f)\n",(double)volumeinfo.width,(double)volumeinfo.height,(double)volumeinfo.depth);
+
     auto volume_moving = curan::renderable::Volume::make(volumeinfo);
     window << volume_moving;
 

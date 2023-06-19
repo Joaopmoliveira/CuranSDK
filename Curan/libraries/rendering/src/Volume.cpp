@@ -252,18 +252,7 @@ Volume::Volume(Info& info){
 
     vsg::dvec3 position(0.0f, 0.0f, 0.0f);
 
-    //double largest_spacing = (info.spacing_x> info.spacing_y) ? info.spacing_x : info.spacing_y;
-    //largest_spacing = (largest_spacing > info.spacing_z) ? largest_spacing : info.spacing_z;
-    //vsg::dvec3 scale_spacing(info.spacing_x / largest_spacing, info.spacing_y / largest_spacing, info.spacing_z / largest_spacing);
-    
-    //double largest = (info.width > info.height) ? (double)info.width : (double)info.height;
-    //largest = (largest> info.depth) ? largest : info.depth;
-    //vsg::dvec3 scale(info.width/ largest, info.height / largest, info.depth / largest);
-
-    //vsg::dvec3 mixture(scale_spacing.x* scale.x, scale_spacing.y* scale.y, scale_spacing.z* scale.z);
     vsg::dvec3 mixture(info.width* info.spacing_x * 0.001,info.height* info.spacing_y* 0.001, info.depth* info.spacing_z* 0.001);
-    //std::printf("mixture scalling x(%f) y(%f) z(%f)\n",mixture.x,mixture.y,mixture.z);
-    //std::printf("spacing x(%f) y(%f) z(%f)\n",info.spacing_x,info.spacing_y,info.spacing_z);
 
     auto scalling_transform = vsg::MatrixTransform::create(vsg::scale(mixture));
     transform = vsg::MatrixTransform::create(vsg::translate(position));

@@ -13,9 +13,9 @@ namespace curan {
                 size_t width = 100; //(in pixels)
                 size_t height = 100; //(in pixels)
                 size_t depth = 100; //(in pixels)
-                double spacing_x = 0.001; //(in meters)
-                double spacing_y = 0.001; //(in meters)
-                double spacing_z = 0.001; //(in meters)
+                double spacing_x = 1; //(in milimeters)
+                double spacing_y = 1; //(in milimeters)
+                double spacing_z = 1; //(in milimeters)
                 std::optional<std::string> identifier;
             };
 
