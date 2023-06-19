@@ -128,6 +128,7 @@ PUBLIC
 ${ITK_LIBRARIES}
 vsg::vsg
 vsgXchange::vsgXchange
+renderable
 )
 
 add_executable(RobotDisplay

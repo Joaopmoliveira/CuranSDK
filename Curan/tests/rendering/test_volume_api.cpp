@@ -7,6 +7,8 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkCastImageFilter.h"
 #include "rendering/Volume.h"
+#include "rendering/Window.h"
+#include "rendering/Renderable.h"
 
 using PixelType = signed short;
 constexpr unsigned int Dimension = 3;
@@ -64,41 +66,26 @@ try{
         auto  seriesItr = seriesUID.begin();
         auto  seriesEnd = seriesUID.end();
 
-        if (seriesItr != seriesEnd)
-        {
-            //std::cout << "The directory: ";
-            //std::cout << dirName << std::endl;
-            //std::cout << "Contains the following DICOM Series: ";
-            //std::cout << std::endl;
-        }
-        else
+        if (seriesItr == seriesEnd)
         {
             std::cout << "No DICOMs in: " << dirName << std::endl;
             return EXIT_SUCCESS;
-        }
-
-        while (seriesItr != seriesEnd)
-        {
-            //std::cout << seriesItr->c_str() << std::endl;
-            ++seriesItr;
         }
 
         seriesItr = seriesUID.begin();
         while (seriesItr != seriesUID.end())
         {
             std::string seriesIdentifier;
-            if (argc > 3) // If seriesIdentifier given convert only that
+            if (argc > 3)
             {
                 seriesIdentifier = argv[3];
                 seriesItr = seriesUID.end();
             }
-            else // otherwise convert everything
+            else 
             {
                 seriesIdentifier = seriesItr->c_str();
                 seriesItr++;
             }
-            //std::cout << "\nReading: ";
-            //std::cout << seriesIdentifier << std::endl;
             using FileNamesContainer = std::vector<std::string>;
             FileNamesContainer fileNames = nameGenerator->GetFileNames(seriesIdentifier);
 
@@ -158,15 +145,28 @@ try{
     };
     casted_volume->update_texture(updater);
 
+    std::atomic<bool> continue_moving = true;
+    auto mover = [&continue_moving,volume](){
+        double time = 0.0;
+        while(continue_moving.load()){
+            volume->update_transform(vsg::translate(std::sin(time),std::sin(time),std::sin(time)));
+            time += 0.016;
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        }
+    };
+    std::thread mover_thread{mover};
+
     window.run();
+    continue_moving.store(false);
+    mover_thread.join();
+    
     window.transverse_identifiers(
-            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
+            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
                    &map) {
                 for (auto &p : map){
                     std::cout << "Object contained: " << p.first << '\n';
                 }
-
-            });
+    });
 
 } catch (const std::exception& e) {
      std::cerr << "Exception thrown : " << e.what() << std::endl;
