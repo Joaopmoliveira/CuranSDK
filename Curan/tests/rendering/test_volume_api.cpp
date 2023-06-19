@@ -12,7 +12,7 @@ using PixelType = signed short;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 
-void updateBaseTexture3D(vsg::floatArray3D& image, float value, ImageType::Pointer image_to_render)
+void updateBaseTexture3D(vsg::floatArray3D& image, ImageType::Pointer image_to_render)
 {
     using OutputPixelType = float;
     using InputImageType = itk::Image<PixelType, Dimension>;
@@ -129,6 +129,7 @@ try{
     }
     ImageType::RegionType region = image_to_render->GetLargestPossibleRegion();
     ImageType::SizeType size_itk = region.GetSize();
+    ImageType::SpacingType spacing = image_to_render->GetSpacing();
     
     curan::renderable::Window::Info info;
     info.api_dump = false;
@@ -142,15 +143,21 @@ try{
     curan::renderable::Window window{info};
 
     curan::renderable::Volume::Info volumeinfo;
-    volumeinfo.width = ;
-    volumeinfo.height = ;
-    volumeinfo.depth = ;
-    volumeinfo.spacing_x = ;
-    volumeinfo.spacing_y = ;
-    volumeinfo.spacing_z = ;
+    volumeinfo.width = size_itk.GetSize()[0]; 
+    volumeinfo.height = size_itk.GetSize()[1];
+    volumeinfo.depth = size_itk.GetSize()[2];
+    volumeinfo.spacing_x = spacing[0];
+    volumeinfo.spacing_y = spacing[1];
+    volumeinfo.spacing_z = spacing[2];
     auto volume = curan::renderable::Volume::make(volumeinfo);
     window << volume;
-    
+
+    auto casted_volume = volume->cast<curan::renderable::Volume>();
+    auto updater = [image_to_render](vsg::floatArray3D& image){
+        updateBaseTexture3D(image, image_to_render);
+    };
+    casted_volume->update_texture(updater);
+
     window.run();
     window.transverse_identifiers(
             [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
