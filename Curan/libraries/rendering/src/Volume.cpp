@@ -264,6 +264,7 @@ Volume::Volume(Info& info){
     vsg::dvec3 mixture(info.width* info.spacing_x * 0.001,info.height* info.spacing_y* 0.001, info.depth* info.spacing_z* 0.001);
     //std::printf("mixture scalling x(%f) y(%f) z(%f)\n",mixture.x,mixture.y,mixture.z);
     //std::printf("spacing x(%f) y(%f) z(%f)\n",info.spacing_x,info.spacing_y,info.spacing_z);
+
     auto scalling_transform = vsg::MatrixTransform::create(vsg::scale(mixture));
     transform = vsg::MatrixTransform::create(vsg::translate(position));
     

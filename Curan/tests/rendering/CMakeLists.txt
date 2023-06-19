@@ -131,6 +131,20 @@ vsgXchange::vsgXchange
 renderable
 )
 
+add_executable(test_visualization_registration
+test_visualization_registration.cpp
+)
+
+target_compile_definitions(test_visualization_registration PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_visualization_registration PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_visualization_registration
+PUBLIC
+${ITK_LIBRARIES}
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+)
+
 add_executable(RobotDisplay
 test_robot_display.cpp
 )
