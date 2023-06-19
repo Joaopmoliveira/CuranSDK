@@ -78,7 +78,7 @@ PhaseWiredBox::PhaseWiredBox(){
 }
 
 vsg::ref_ptr<Renderable> PhaseWiredBox::make() {
-    vsg::ref_ptr<PhaseCreatedBox> sphere_to_add = PhaseCreatedBox::create();
+    vsg::ref_ptr<PhaseWiredBox> sphere_to_add = PhaseWiredBox::create();
     vsg::ref_ptr<Renderable> val = sphere_to_add.cast<Renderable>();
     return val;
 }
