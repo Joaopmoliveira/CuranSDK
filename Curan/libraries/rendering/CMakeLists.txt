@@ -12,6 +12,7 @@ src/Window.cpp
 src/SequencialLinks.cpp
 src/Floor.cpp
 src/PhaseWiredBox.cpp
+src/Volume.cpp
 )
 
 target_include_directories(renderable
