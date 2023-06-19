@@ -89,6 +89,7 @@ protected:
 public:
   using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
   using OptimizerPointer = const OptimizerType *;
+
   void
   Execute(itk::Object * caller, const itk::EventObject & event) override
   {
@@ -110,6 +111,7 @@ public:
       std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
       std::cout << optimizer->GetCurrentPosition() << std::endl;
+
     } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
     {
       std::cout << "aaaa" << std::endl;
@@ -330,6 +332,9 @@ main(int argc, char * argv[])
   optimizer->AddObserver(itk::IterationEvent(), observer);
   optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
   optimizer->AddObserver(itk::EndEvent(), observer);
+
+
+  /* registration->AddObserver(itk::IterationEvent(), observer); */
 
 
  /*  using CommandType = RegistrationInterfaceCommand<RegistrationType>;
