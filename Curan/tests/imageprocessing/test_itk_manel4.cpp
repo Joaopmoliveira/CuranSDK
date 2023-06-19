@@ -110,6 +110,9 @@ public:
       std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
       std::cout << optimizer->GetCurrentPosition() << std::endl;
+    } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
+    {
+      std::cout << "aaaa" << std::endl;
     } else if (itk::EndEvent().CheckEvent(&event))
     {
       std::cout << "Finish" << std::endl;
@@ -315,7 +318,7 @@ main(int argc, char * argv[])
   optimizer->SetLearningRate(1);
   optimizer->SetMinimumStepLength(0.001);
   optimizer->SetReturnBestParametersAndValue(true);
-  optimizer->SetNumberOfThreads(10);
+  optimizer->SetNumberOfThreads(8);
   itk::SizeValueType value{10};
   optimizer->SetConvergenceWindowSize(value);
     optimizer->SetRelaxationFactor(0.8);
@@ -323,8 +326,9 @@ main(int argc, char * argv[])
   // Create the Command observer and register it with the optimizer.
   //
   auto observer = CommandIterationUpdate::New();
-  optimizer->AddObserver(itk::IterationEvent(), observer);
   optimizer->AddObserver(itk::StartEvent(), observer);
+  optimizer->AddObserver(itk::IterationEvent(), observer);
+  optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
   optimizer->AddObserver(itk::EndEvent(), observer);
 
 
@@ -470,7 +474,7 @@ registration->MetricSamplingReinitializeSeed(121213);
   // Software Guide : BeginCodeSnippet
   TransformType::MatrixType matrix = finalTransform->GetMatrix();
   TransformType::OffsetType offset = finalTransform->GetOffset();
-  std::cout << "Matrix = " << std::endl << matrix << std::endl;
+  std::cout << std::endl << "Matrix = " << std::endl << matrix << std::endl;
   std::cout << "Offset = " << std::endl << offset << std::endl;
   // Software Guide : EndCodeSnippet
 
@@ -596,7 +600,7 @@ registration->MetricSamplingReinitializeSeed(121213);
       minimum_value = iterator.Get();
   }
 
-  std::cout << "minimum value is : " << minimum_value << "\nmaximum value is: " << maximum_value << std::endl; 
+  std::cout << std::endl << "minimum value is : " << minimum_value << "\nmaximum value is: " << maximum_value << std::endl; 
 
   FixedImageType::Pointer fixedImage = fixedImageReader->GetOutput();
 
