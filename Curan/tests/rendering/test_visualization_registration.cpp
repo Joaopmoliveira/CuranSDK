@@ -204,7 +204,7 @@ try{
         updateBaseTexture3D(image, pointer2movingimage);
     };
     casted_volume_moving->update_texture(updater_moving);
-    casted_volume_moving->update_transform(vsg::translate(0.0,0.0,0.0));
+    casted_volume_moving->update_transform(vsg::translate(0.3,0.0,0.0));
     window.run();
     window.transverse_identifiers(
             [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
