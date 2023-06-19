@@ -13,11 +13,16 @@ namespace curan {
                 size_t width = 100;
                 size_t height = 100;
                 size_t depth = 100;
+                double spacing_x = 0.001; //(in meters)
+                double spacing_y = 0.001; //(in meters)
+                double spacing_z = 0.001; //(in meters)
                 vsg::GeometryInfo geomInfo;
                 vsg::StateInfo stateInfo;
                 vsg::ref_ptr<vsg::Builder> builder;
                 std::optional<std::string> identifier;
             };
+
+            vsg::ref_ptr<vsg::floatArray3D> textureData;
 
             Volume(Info& info);
 
@@ -26,7 +31,7 @@ namespace curan {
             using updater = std::function<void(vsg::vec4Array2D& image)>;
 
             void update_texture(updater&& update);
-        }
+        };
     }
 }
 

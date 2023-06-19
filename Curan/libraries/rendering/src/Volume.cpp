@@ -119,7 +119,7 @@ namespace curan {
 namespace renderable {
 
 Volume::Volume(Info& info){
-    vsg::vec3 origin = vsg::vec3(position.x, position.y, position.z);
+    vsg::vec3 origin = vsg::vec3(0.0,0.0,0.0);
     vsg::vec3 dx = vsg::vec3(1.0, 0.0, 0.0);
     vsg::vec3 dy = vsg::vec3(0.0, 1.0, 0.0);
     vsg::vec3 dz = vsg::vec3(0.0, 0.0, 1.0);
@@ -193,7 +193,7 @@ Volume::Volume(Info& info){
     vertexShader->specializationConstants = specializationVertexContexts;
 
     // read texture image
-    auto textureData = vsg::floatArray3D::create(info.width, info.height, info.depth);
+    textureData = vsg::floatArray3D::create(info.width, info.height, info.depth);
     textureData->properties.format = VK_FORMAT_R32_SFLOAT;
     textureData->properties.dataVariance = vsg::DYNAMIC_DATA;
 
@@ -252,32 +252,33 @@ Volume::Volume(Info& info){
 
     vsg::dvec3 position(0.0f, 0.0f, 0.0f);
 
-    ImageType::SpacingType spacing = image_to_render->GetSpacing();
-    double largest_spacing = (spacing[0] > spacing[1]) ? spacing[0] : spacing[1];
-    largest_spacing = (largest_spacing > spacing[2]) ? largest_spacing : spacing[2];
-    vsg::dvec3 scale_spacing(spacing[0] / largest_spacing, spacing[1] / largest_spacing, spacing[2] / largest_spacing);
-
+    double largest_spacing = (info.spacing_x> info.spacing_y) ? info.spacing_x : info.spacing_y;
+    largest_spacing = (largest_spacing > info.spacing_z) ? largest_spacing : info.spacing_z;
+    vsg::dvec3 scale_spacing(info.spacing_x / largest_spacing, info.spacing_y / largest_spacing, info.spacing_z / largest_spacing);
     
 
-    double largest = (size_itk.GetSize()[0] > size_itk.GetSize()[1]) ? size_itk.GetSize()[0] : size_itk.GetSize()[1];
-    largest = (largest> size_itk.GetSize()[2]) ? largest : size_itk.GetSize()[2];
-    vsg::dvec3 scale(size_itk.GetSize()[0]/ largest, size_itk.GetSize()[1] / largest, size_itk.GetSize()[2] / largest);
+    double largest = (info.width > info.height) ? info.width : info.height;
+    largest = (largest> info.depth) ? largest : info.depth;
+    vsg::dvec3 scale(info.width/ largest, info.height / largest, info.depth / largest);
 
     vsg::dvec3 mixture(scale_spacing.x* scale.x, scale_spacing.y* scale.y, scale_spacing.z* scale.z);
     normalize(mixture);
 
-    auto geometry = get_volume_rendering(position);
     auto scalling_transform = vsg::MatrixTransform::create(vsg::scale(mixture));
-    auto transform = vsg::MatrixTransform::create(vsg::translate(position));
+    transform = vsg::MatrixTransform::create(vsg::translate(position));
     
     // add geometry
-    scalling_transform->addChild(geometry);
-    transform->addChild(scalling_transform);
-    scenegraph->addChild(transform);
+    scalling_transform->addChild(vid);
+    scenegraph->addChild(scalling_transform);
+
+    obj_contained = vsg::Group::create();
+    obj_contained->addChild(scenegraph);
 }
 
 vsg::ref_ptr<Renderable> Volume::make(Info& info){
-
+    vsg::ref_ptr<Volume> sphere_to_add = Volume::create(info);
+    vsg::ref_ptr<Renderable> val = sphere_to_add.cast<Renderable>();
+    return val;
 }
 
 void Volume::update_texture(updater&& update){
