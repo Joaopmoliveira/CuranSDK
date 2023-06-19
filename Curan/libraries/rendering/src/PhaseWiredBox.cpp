@@ -169,36 +169,47 @@ void PhaseWiredBox::print(vsg::vec3 origin,vsg::vec3 xdiroffset,vsg::vec3 ydirof
 }
 
 vsg::ref_ptr<vsg::StateGroup> PhaseWiredBox::createStateGroup(){
-    vsg::ref_ptr<vsg::ShaderSet> activeShaderSet;
     vsg::ref_ptr<vsg::Options> options;
+
+    vsg::ref_ptr<vsg::ShaderSet> activeShaderSet;
     if (!activeShaderSet)
     {
-        auto _flatShadedShaderSet = vsg::createFlatShadedShaderSet(options);
-        activeShaderSet = _flatShadedShaderSet;
+            activeShaderSet = vsg::createPhongShaderSet(options);
     }
 
     auto graphicsPipelineConfig = vsg::GraphicsPipelineConfigurator::create(activeShaderSet);
+
     auto& defines = graphicsPipelineConfig->shaderHints->defines;
 
     // set up graphics pipeline
     vsg::Descriptors descriptors;
+
     // set up graphics pipeline
     vsg::DescriptorSetLayoutBindings descriptorBindings;
 
+    if (auto& materialBinding = activeShaderSet->getUniformBinding("material"))
+    {
+        vsg::ref_ptr<vsg::Data> mat = materialBinding.data;
+        if (!mat) mat = vsg::PhongMaterialValue::create();
+        graphicsPipelineConfig->assignUniform(descriptors, "material", mat);
+    }
+
     // set up ViewDependentState
-    vsg::ref_ptr<vsg::ViewDescriptorSetLayout> vdsl;
-    vdsl = vsg::ViewDescriptorSetLayout::create();
+    vsg::ref_ptr<vsg::ViewDescriptorSetLayout> vdsl = vsg::ViewDescriptorSetLayout::create();
     graphicsPipelineConfig->additionalDescriptorSetLayout = vdsl;
 
     graphicsPipelineConfig->enableArray("vsg_Vertex", VK_VERTEX_INPUT_RATE_VERTEX, 12);
     graphicsPipelineConfig->enableArray("vsg_Normal", VK_VERTEX_INPUT_RATE_VERTEX, 12);
     graphicsPipelineConfig->enableArray("vsg_TexCoord0", VK_VERTEX_INPUT_RATE_VERTEX, 8);
-
+    graphicsPipelineConfig->enableArray("vsg_Color", VK_VERTEX_INPUT_RATE_INSTANCE, 16);
+    graphicsPipelineConfig->enableArray("vsg_position", VK_VERTEX_INPUT_RATE_INSTANCE, 12);
 
     graphicsPipelineConfig->colorBlendState->attachments = vsg::ColorBlendState::ColorBlendAttachments{
-        {VK_TRUE, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_SUBTRACT, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}};
+        {false, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_SUBTRACT, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}};
+
     graphicsPipelineConfig->inputAssemblyState->topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
+    graphicsPipelineConfig->init();
 
     auto descriptorSet = vsg::DescriptorSet::create(graphicsPipelineConfig->descriptorSetLayout, descriptors);
 
@@ -213,6 +224,7 @@ vsg::ref_ptr<vsg::StateGroup> PhaseWiredBox::createStateGroup(){
     stateGroup->prototypeArrayState = activeShaderSet->getSuitableArrayState(graphicsPipelineConfig->shaderHints->defines);
 
     auto bindViewDescriptorSets = vsg::BindViewDescriptorSets::create(VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineConfig->layout, 1);
+
     stateGroup->add(bindViewDescriptorSets);
 
     //if (sharedObjects) vsg::debug_stream([&](auto& fout) { sharedObjects->report(fout); });
