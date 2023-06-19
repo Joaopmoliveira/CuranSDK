@@ -35,6 +35,7 @@ int main(){
     infosphere.geomInfo.dx = vsg::vec3(0.02f,0.0,0.0);
     infosphere.geomInfo.dy = vsg::vec3(0.0,0.02f,0.0);
     infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.02f);
+    infosphere.stateInfo.blending = true;
     auto sphere = curan::renderable::Sphere::make(infosphere);
     auto mat = vsg::translate(0.0,0.0,0.0);
     sphere->update_transform(mat);

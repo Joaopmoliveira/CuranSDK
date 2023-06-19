@@ -30,6 +30,8 @@ namespace curan{
             void update_frame_config(vsg::vec3 origin,vsg::vec3 xdir,vsg::vec3 ydir,vsg::vec3 zdir);
             
             void print(vsg::vec3 origin,vsg::vec3 xdiroffset,vsg::vec3 ydiroffset, vsg::vec3 zdiroffset);
+
+            vsg::ref_ptr<vsg::StateGroup> createStateGroup();
         };
 
     }

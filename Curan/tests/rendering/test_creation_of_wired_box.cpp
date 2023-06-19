@@ -3,6 +3,7 @@
 #include "rendering/SequencialLinks.h"
 #include "rendering/DynamicTexture.h"
 #include "rendering/PhaseWiredBox.h"
+#include "rendering/Sphere.h"
 #include <iostream>
 
 int main(int argc, char **argv) {
@@ -11,12 +12,23 @@ int main(int argc, char **argv) {
         info.api_dump = false;
         info.display = "";
         info.full_screen = true;
-        info.is_debug = false;
+        info.is_debug = true;
         info.screen_number = 0;
         info.title = "myviewer";
         curan::renderable::Window::WindowSize size{1000, 800};
         info.window_size = size;
         curan::renderable::Window window{info};
+
+        curan::renderable::Sphere::Info infosphere;
+        infosphere.builder = vsg::Builder::create();
+        infosphere.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+        infosphere.geomInfo.dx = vsg::vec3(0.02f,0.0,0.0);
+        infosphere.geomInfo.dy = vsg::vec3(0.0,0.02f,0.0);
+        infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.02f);
+        auto sphere = curan::renderable::Sphere::make(infosphere);
+        auto mat = vsg::translate(0.0,0.0,0.0);
+        sphere->update_transform(mat);
+        window << sphere;
 
         auto attach_special_box = [&window](){
             auto box = curan::renderable::PhaseWiredBox::make();
