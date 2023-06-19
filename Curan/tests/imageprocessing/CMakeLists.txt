@@ -36,3 +36,42 @@ target_link_libraries(test_volume_reconstruction PUBLIC
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_manel_itk test_itk_manel.cpp)
+
+target_compile_definitions(test_manel_itk PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_manel_itk PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+
+add_executable(test_manel_itk2 test_itk_manel2.cpp)
+
+target_compile_definitions(test_manel_itk2 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_manel_itk2 PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+
+add_executable(test_manel_itk3 test_itk_manel3.cpp)
+
+target_compile_definitions(test_manel_itk3 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_manel_itk3 PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+
+add_executable(test_manel_itk4 test_itk_manel4.cpp)
+
+target_compile_definitions(test_manel_itk4 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_manel_itk4 PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
