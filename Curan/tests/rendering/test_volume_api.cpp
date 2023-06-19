@@ -149,7 +149,7 @@ try{
     auto mover = [&continue_moving,volume](){
         double time = 0.0;
         while(continue_moving.load()){
-            volume->update_transform(vsg::translate(std::cos(time)*0.2,std::sin(time)*0.2,0.2));
+            volume->update_transform(vsg::translate(std::cos(time)*0.2,std::sin(time)*0.2,0.2)*vsg::rotate(std::sin(time)*0.2,1.0,0.0,0.0));
             time += 0.016;
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
