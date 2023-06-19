@@ -162,9 +162,9 @@ Volume::Volume(Info& info){
     uint32_t instanceCount = 1;
     vid->instanceCount = instanceCount;
 
-    float TransparencyValue = 0.3;
-    float AlphaFuncValue = 0.1;
-    float SampleDensityValue = 0.005;
+    float TransparencyValue = 0.3f;
+    float AlphaFuncValue = 0.1f;
+    float SampleDensityValue = 0.005f;
 
     float size_x = 1.0;
     float size_y = 1.0;
@@ -257,7 +257,7 @@ Volume::Volume(Info& info){
     vsg::dvec3 scale_spacing(info.spacing_x / largest_spacing, info.spacing_y / largest_spacing, info.spacing_z / largest_spacing);
     
 
-    double largest = (info.width > info.height) ? info.width : info.height;
+    double largest = (info.width > info.height) ? (double)info.width : (double)info.height;
     largest = (largest> info.depth) ? largest : info.depth;
     vsg::dvec3 scale(info.width/ largest, info.height / largest, info.depth / largest);
 
@@ -273,6 +273,9 @@ Volume::Volume(Info& info){
 
     obj_contained = vsg::Group::create();
     obj_contained->addChild(scenegraph);
+
+    if (info.identifier)
+        set_identifier(*info.identifier);
 }
 
 vsg::ref_ptr<Renderable> Volume::make(Info& info){
@@ -282,7 +285,8 @@ vsg::ref_ptr<Renderable> Volume::make(Info& info){
 }
 
 void Volume::update_texture(updater&& update){
-
+    update(*(textureData.get()));
+    textureData->dirty();
 }
 
 }

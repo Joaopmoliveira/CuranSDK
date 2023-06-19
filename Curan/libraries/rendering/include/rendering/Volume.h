@@ -10,15 +10,12 @@ namespace curan {
     namespace renderable {
         struct Volume : public vsg::Inherit<Renderable, Volume>{
             struct Info {
-                size_t width = 100;
-                size_t height = 100;
-                size_t depth = 100;
+                size_t width = 100; //(in pixels)
+                size_t height = 100; //(in pixels)
+                size_t depth = 100; //(in pixels)
                 double spacing_x = 0.001; //(in meters)
                 double spacing_y = 0.001; //(in meters)
                 double spacing_z = 0.001; //(in meters)
-                vsg::GeometryInfo geomInfo;
-                vsg::StateInfo stateInfo;
-                vsg::ref_ptr<vsg::Builder> builder;
                 std::optional<std::string> identifier;
             };
 
@@ -28,7 +25,7 @@ namespace curan {
 
             static vsg::ref_ptr<Renderable> make(Info& info);
 
-            using updater = std::function<void(vsg::vec4Array2D& image)>;
+            using updater = std::function<void(vsg::floatArray3D& image)>;
 
             void update_texture(updater&& update);
         };
