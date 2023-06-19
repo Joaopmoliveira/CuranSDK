@@ -1,7 +1,7 @@
 #include "rendering/PhaseWiredBox.h"
 
 namespace curan{
-namespace rendering{
+namespace renderable{
 
 PhaseWiredBox::PhaseWiredBox(){
     auto node = vsg::Group::create();
@@ -119,7 +119,7 @@ void PhaseWiredBox::update_frame(vsg::vec3 origin,vsg::vec3 xdiroffset,vsg::vec3
     update_frame_config(origin,xdir,ydir,zdir);
 }
 
-void PhaseWiredBox::update_frame_config(vsg::vec3 origin,vsg::vec3 xdir = {0.001f,0.0f,0.0f},vsg::vec3 ydir = {0.0f,0.001f,0.0f},vsg::vec3 zdir = {0.0f,0.0f,0.001f}){
+void PhaseWiredBox::update_frame_config(vsg::vec3 origin,vsg::vec3 xdir,vsg::vec3 ydir ,vsg::vec3 zdir ){
     vsg::vec3 v000 = origin;
     vsg::vec3 v100 = origin + xdir;
     vsg::vec3 v010 = origin + ydir;

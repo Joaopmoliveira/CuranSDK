@@ -6,7 +6,7 @@
 #include "Renderable.h"
 
 namespace curan{
-    namespace rendering{
+    namespace renderable{
         struct PhaseWiredBox : public vsg::Inherit<curan::renderable::Renderable, PhaseWiredBox>{
             vsg::ref_ptr<vsg::vec3Array> vertices;
             vsg::ref_ptr<vsg::vec3Array> normals;
