@@ -34,7 +34,7 @@ int render(std::shared_ptr<SharedRobotState> state)
     vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
     window << robotRenderable;
 
-        std::array<float,3> temp_pos = {0.0,0.0,0.0};
+    std::array<float,3> temp_pos = {0.0,0.0,0.0};
     std::atomic<std::array<float,3>> current_position;
     current_position.store(temp_pos);
     
@@ -144,6 +144,11 @@ int render(std::shared_ptr<SharedRobotState> state)
 	    iiwa->Minv = iiwa->M.inverse();
 	    robot->getCoriolisAndGravityVector(iiwa->c,iiwa->g,iiwa->q,iiwa->qDot);
 	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,7);              // 3x1 position of flange (body = 7), expressed in base coordinates
+
+        temp_pos[0] = (float)p_0_cur(0,0);
+        temp_pos[1] = (float)p_0_cur(1,0);
+        temp_pos[2] = (float)p_0_cur(2,0);
+        current_position.store(temp_pos);
 
         robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
 
