@@ -49,7 +49,7 @@
 #include "itkExtractImageFilter.h"
 
 #include "itkCommand.h"
-template <typename TRegistration>
+/* template <typename TRegistration>
 class RegistrationInterfaceCommand : public itk::Command
 {
 public:
@@ -69,13 +69,13 @@ public:
 
   void
   Execute(itk::Object * object, const itk::EventObject & event) override
-  {
+  { */
     /* if (!(itk::MultiResolutionIterationEvent().CheckEvent(&event)))
     {
       return;
     } */
 
-    auto registration = static_cast<RegistrationPointer>(object);
+  /*   auto registration = static_cast<RegistrationPointer>(object);
     auto optimizer =
       static_cast<OptimizerPointer>(registration->GetModifiableOptimizer());
 
@@ -106,9 +106,9 @@ public:
   {
     return;
   }
-};
+}; */
 
-template <typename TRegistration>
+/* template <typename TRegistration> */
 class CommandIterationUpdate : public itk::Command
 {
 public:
@@ -121,8 +121,8 @@ protected:
   CommandIterationUpdate() = default;
 
 public:
-  using RegistrationType = TRegistration;
-  using RegistrationPointer = RegistrationType *;
+  /* using RegistrationType = TRegistration;
+  using RegistrationPointer = RegistrationType *; */
   using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
   using OptimizerPointer = const OptimizerType *;
 
@@ -134,6 +134,7 @@ public:
   void
   Execute(const itk::Object * object, const itk::EventObject & event) override
   {
+    //auto registration = static_cast<RegistrationPointer>(object);
     auto optimizer = static_cast<OptimizerPointer>(object);
     /* if (!itk::IterationEvent().CheckEvent(&event))
     {
@@ -146,6 +147,8 @@ public:
     {
       std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
+      std::cout << optimizer->GetCurrentPosition() << std::endl;
+      //std::cout << "current level: " << registration->GetCurrentLevel() << std::endl;
       std::cout << optimizer->GetCurrentPosition() << std::endl;
 
     } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
@@ -276,16 +279,18 @@ main(int argc, char * argv[])
 
   // Create the Command observer and register it with the optimizer.
   //
-  auto observer = CommandIterationUpdate<RegistrationType>::New();
+  using CommanddType2 = CommandIterationUpdate;
+  auto observer = CommanddType2::New();
   optimizer->AddObserver(itk::StartEvent(), observer);
-  // optimizer->AddObserver(itk::IterationEvent(), observer);
+  optimizer->AddObserver(itk::IterationEvent(), observer);
   optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
   optimizer->AddObserver(itk::EndEvent(), observer);
+ // registration->AddObserver(itk::IterationEvent(), observer);
 
-  using CommandType = RegistrationInterfaceCommand<RegistrationType>;
+/*   using CommandType = RegistrationInterfaceCommand<RegistrationType>;
   auto command = CommandType::New();
   // registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
-  registration->AddObserver(itk::IterationEvent(), command);
+  registration->AddObserver(itk::IterationEvent(), command); */
 
   //
   constexpr unsigned int numberOfLevels = 4;
