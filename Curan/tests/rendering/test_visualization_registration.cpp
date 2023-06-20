@@ -194,10 +194,10 @@ axis[2] = 0.0;
 constexpr double angle = 3.141592;
 rotation.Set(axis, angle);
 VectorType translation;
-translation[0] = 70.0;
-translation[1] = 70.0;
-translation[2] = 70.0;
-//initialTransform->SetRotation(rotation);
+translation[0] = 0.0;
+translation[1] = 0.0;
+translation[2] = 0.0;
+initialTransform->SetRotation(rotation);
 initialTransform->SetTranslation(translation);
 
 registration->SetInitialTransform(initialTransform);
