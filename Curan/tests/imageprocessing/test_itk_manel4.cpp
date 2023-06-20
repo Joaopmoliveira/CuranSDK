@@ -1,22 +1,3 @@
-/*=========================================================================
- *
- *  Copyright NumFOCUS
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *         https://www.apache.org/licenses/LICENSE-2.0.txt
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- *=========================================================================*/
-
-//  Software Guide : BeginCommandLineArgs
 //    INPUTS: brainweb1e1a10f20.mha
 //    INPUTS: brainweb1e1a10f20Rot10Tx15.mha
 //    ARGUMENTS: ImageRegistration8Output.mhd
@@ -26,7 +7,6 @@
 //    OUTPUTS: {ImageRegistration8DifferenceBefore.png}
 //    OUTPUTS: {ImageRegistration8DifferenceAfter.png}
 //    OUTPUTS: {ImageRegistration8RegisteredSlice.png}
-//  Software Guide : EndCommandLineArgs
 
 
 #include "itkImageRegistrationMethodv4.h"
@@ -49,9 +29,11 @@
 #include "itkExtractImageFilter.h"
 
 #include "itkCommand.h"
-/* template <typename TRegistration>
+
+template <typename TRegistration>
 class RegistrationInterfaceCommand : public itk::Command
 {
+
 public:
   using Self = RegistrationInterfaceCommand;
   using Superclass = itk::Command;
@@ -69,46 +51,50 @@ public:
 
   void
   Execute(itk::Object * object, const itk::EventObject & event) override
-  { */
-    /* if (!(itk::MultiResolutionIterationEvent().CheckEvent(&event)))
+  {
+
+    if (!(itk::MultiResolutionIterationEvent().CheckEvent(&event)))
     {
       return;
-    } */
+    }
 
-  /*   auto registration = static_cast<RegistrationPointer>(object);
+    auto registration = static_cast<RegistrationPointer>(object);
     auto optimizer =
       static_cast<OptimizerPointer>(registration->GetModifiableOptimizer());
 
-    if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
-    {
-      unsigned int currentLevel = registration->GetCurrentLevel();
-      typename RegistrationType::ShrinkFactorsPerDimensionContainerType
-        shrinkFactors =
-          registration->GetShrinkFactorsPerDimension(currentLevel);
-      typename RegistrationType::SmoothingSigmasArrayType smoothingSigmas =
-        registration->GetSmoothingSigmasPerLevel();
+    unsigned int currentLevel = registration->GetCurrentLevel();
+    typename RegistrationType::ShrinkFactorsPerDimensionContainerType
+      shrinkFactors =
+        registration->GetShrinkFactorsPerDimension(currentLevel);
+    typename RegistrationType::SmoothingSigmasArrayType smoothingSigmas =
+      registration->GetSmoothingSigmasPerLevel();
 
-      std::cout << "-------------------------------------" << std::endl;
-      std::cout << " Current level = " << currentLevel << std::endl;
-      std::cout << "    shrink factor = " << shrinkFactors << std::endl;
-      std::cout << "    smoothing sigma = ";
-      std::cout << smoothingSigmas[currentLevel] << std::endl;
-      std::cout << std::endl;
-    } else if (itk::IterationEvent().CheckEvent(&event))
+    std::cout << "-------------------------------------" << std::endl;
+    std::cout << " Current level = " << currentLevel << std::endl;
+    std::cout << "    shrink factor = " << shrinkFactors << std::endl;
+    std::cout << "    smoothing sigma = ";
+    std::cout << smoothingSigmas[currentLevel] << std::endl;
+    std::cout << std::endl;
+
+    /* if (registration->GetCurrentLevel() == 0)
     {
-      std::cout << "bbbb" << std::endl;
+      optimizer->SetLearningRate(16.00);
+      optimizer->SetMinimumStepLength(2.5);
     }
-
+    else
+    {
+      optimizer->SetLearningRate(optimizer->GetCurrentStepLength());
+      optimizer->SetMinimumStepLength(optimizer->GetMinimumStepLength() *
+                                      0.2);
+    } */
   }
 
-  void
-  Execute(const itk::Object *, const itk::EventObject &) override
+  void Execute(const itk::Object *, const itk::EventObject &) override
   {
     return;
   }
-}; */
+};
 
-/* template <typename TRegistration> */
 class CommandIterationUpdate : public itk::Command
 {
 public:
@@ -180,87 +166,90 @@ main(int argc, char * argv[])
     std::cerr << " [sliceAfterRegistration] " << std::endl;
     return EXIT_FAILURE;
   } */
-  constexpr unsigned int Dimension = 3;
-  using PixelType = float;
-  using FixedImageType = itk::Image<PixelType, Dimension>;
-  using MovingImageType = itk::Image<PixelType, Dimension>;
+constexpr unsigned int Dimension = 3;
+using PixelType = float;
+using FixedImageType = itk::Image<PixelType, Dimension>;
+using MovingImageType = itk::Image<PixelType, Dimension>;
 
-  using TransformType = itk::VersorRigid3DTransform<double>;
+using TransformType = itk::VersorRigid3DTransform<double>;
 
-  using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
-  using MetricType =
-    itk::MattesMutualInformationImageToImageMetricv4<FixedImageType, MovingImageType>;
-  using RegistrationType = itk::
-    ImageRegistrationMethodv4<FixedImageType, MovingImageType, TransformType>;
+using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+using MetricType =
+  itk::MattesMutualInformationImageToImageMetricv4<FixedImageType, MovingImageType>;
+using RegistrationType = itk::
+  ImageRegistrationMethodv4<FixedImageType, MovingImageType, TransformType>;
 
-  auto metric = MetricType::New();
-  auto optimizer = OptimizerType::New();
-  auto registration = RegistrationType::New();
+auto metric = MetricType::New();
+auto optimizer = OptimizerType::New();
+auto registration = RegistrationType::New();
 
-  registration->SetMetric(metric);
-  registration->SetOptimizer(optimizer);
-
-
-  unsigned int numberOfBins = 50;
-
-  metric->SetNumberOfHistogramBins(numberOfBins);
-
-  metric->SetUseMovingImageGradientFilter(false);
-  metric->SetUseFixedImageGradientFilter(false);
-
-  auto initialTransform = TransformType::New();
-  auto initialTransform_2 = TransformType::New();
-
-  using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
-  using MovingImageReaderType = itk::ImageFileReader<MovingImageType>;
-  auto fixedImageReader = FixedImageReaderType::New();
-  auto movingImageReader = MovingImageReaderType::New();
+registration->SetMetric(metric);
+registration->SetOptimizer(optimizer);
 
 
-  //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
-  std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/ct_fixed.mha"};
-  fixedImageReader->SetFileName(dirName);
+unsigned int numberOfBins = 50;
 
-  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
-  std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
-  movingImageReader->SetFileName(dirName2);
+metric->SetNumberOfHistogramBins(numberOfBins);
 
+metric->SetUseMovingImageGradientFilter(false);
+metric->SetUseFixedImageGradientFilter(false);
 
-  registration->SetFixedImage(fixedImageReader->GetOutput());
-  registration->SetMovingImage(movingImageReader->GetOutput());
+auto initialTransform = TransformType::New();
+auto initialTransform_2 = TransformType::New();
 
-
-
-  using TransformInitializerType =
-    itk::CenteredTransformInitializer<TransformType,
-                                      FixedImageType,
-                                      MovingImageType>;
-  auto initializer = TransformInitializerType::New();
-
-  initializer->SetTransform(initialTransform);
-  initializer->SetFixedImage(fixedImageReader->GetOutput());
-  initializer->SetMovingImage(movingImageReader->GetOutput());
+using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
+using MovingImageReaderType = itk::ImageFileReader<MovingImageType>;
+auto fixedImageReader = FixedImageReaderType::New();
+auto movingImageReader = MovingImageReaderType::New();
 
 
-  initializer->MomentsOn();
+std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
+//std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/ct_fixed.mha"};
+fixedImageReader->SetFileName(dirName);
 
-  initializer->InitializeTransform();
+std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
+//std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
+movingImageReader->SetFileName(dirName2);
 
-  using VersorType = TransformType::VersorType;
+
+registration->SetFixedImage(fixedImageReader->GetOutput());
+registration->SetMovingImage(movingImageReader->GetOutput());
+
+
+
+using TransformInitializerType =
+  itk::CenteredTransformInitializer<TransformType,
+                                    FixedImageType,
+                                    MovingImageType>;
+auto initializer = TransformInitializerType::New();
+
+initializer->SetTransform(initialTransform);
+initializer->SetFixedImage(fixedImageReader->GetOutput());
+initializer->SetMovingImage(movingImageReader->GetOutput());
+
+
+initializer->MomentsOn();
+
+initializer->InitializeTransform();
+
+using VersorType = TransformType::VersorType;
 using VectorType = VersorType::VectorType;
 VersorType rotation;
 VectorType axis;
-axis[0] = 0.0;
-axis[1] = 1.0;
+axis[0] = 1.0;
+axis[1] = 0.0;
 axis[2] = 0.0;
-constexpr double angle = 0.0;
+constexpr double angle = 1.0;
 rotation.Set(axis, angle);
 VectorType translation;
-translation[0] = 10.0;
-translation[1] = 10.0;
-translation[2] = 10.0;
+translation[0] = 0.0;
+translation[1] = 0.0;
+translation[2] = 0.0;
 initialTransform->SetRotation(rotation);
-initialTransform->SetTranslation(translation);
+//initialTransform->SetTranslation(translation);
+
+std::cout << "initial translaction: " << initialTransform->GetTranslation() << std::endl;
+std::cout << "initial rotation: " << initialTransform->GetVersor() << std::endl;
 
 initialTransform_2 = initialTransform;
 registration->SetInitialTransform(initialTransform);
@@ -276,7 +265,7 @@ registration->SetInitialTransform(initialTransform);
   optimizerScales[4] = translationScale;
   optimizerScales[5] = translationScale;
   optimizer->SetScales(optimizerScales);
-  optimizer->SetNumberOfIterations(500);
+  optimizer->SetNumberOfIterations(2000);
   optimizer->SetLearningRate(1);
   optimizer->SetMinimumStepLength(0.001);
   optimizer->SetReturnBestParametersAndValue(true);
@@ -293,12 +282,10 @@ registration->SetInitialTransform(initialTransform);
   optimizer->AddObserver(itk::IterationEvent(), observer);
   optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
   optimizer->AddObserver(itk::EndEvent(), observer);
- // registration->AddObserver(itk::IterationEvent(), observer);
 
-/*   using CommandType = RegistrationInterfaceCommand<RegistrationType>;
+  using CommandType = RegistrationInterfaceCommand<RegistrationType>;
   auto command = CommandType::New();
-  // registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
-  registration->AddObserver(itk::IterationEvent(), command); */
+  registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
 
   //
   constexpr unsigned int numberOfLevels = 4;
