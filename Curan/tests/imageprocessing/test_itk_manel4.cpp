@@ -239,7 +239,7 @@ VectorType axis;
 axis[0] = 1.0;
 axis[1] = 0.0;
 axis[2] = 0.0;
-constexpr double angle = 1.0;
+constexpr double angle = 0.0;
 rotation.Set(axis, angle);
 VectorType translation;
 translation[0] = 5.3317;
@@ -249,6 +249,7 @@ initialTransform->SetRotation(rotation);
 //initialTransform->SetTranslation(translation);
 initialTransform_2->SetRotation(rotation);
 initialTransform_2->SetTranslation(translation);
+std::cout << "initial transform matrix: " << initialTransform_2->GetOffset() << std::endl;
 
 std::cout << "initial translaction: " << initialTransform->GetTranslation() << std::endl;
 std::cout << "initial rotation: " << initialTransform->GetVersor() << std::endl;
