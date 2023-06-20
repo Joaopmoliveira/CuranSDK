@@ -98,10 +98,14 @@ public:
     } else if (itk::IterationEvent().CheckEvent(&event))
     {
       auto pos = optimizer->GetCurrentPosition();
-      moving_pointer_to_volume->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(vsg::radians(-pos[0]),1.0,0.0,0.0)*vsg::rotate(vsg::radians(-pos[1]),0.0,1.0,0.0)*vsg::rotate(vsg::radians(-pos[2]),0.0,0.0,1.0));
+      if(moving_pointer_to_volume!=nullptr){
+        moving_pointer_to_volume->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(vsg::radians(-pos[0]),1.0,0.0,0.0)*vsg::rotate(vsg::radians(-pos[1]),0.0,1.0,0.0)*vsg::rotate(vsg::radians(-pos[2]),0.0,0.0,1.0));
+      }
+  
       std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
       std::cout << optimizer->GetCurrentPosition() << std::endl;
+      std::this_thread::sleep_for(std::chrono::milliseconds(0));
 
     } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
     {
@@ -139,9 +143,12 @@ int main(int argc, char** argv) {
 
 
   std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
+  //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/ct_fixed.mha"};
   fixedImageReader->SetFileName(dirName);
 
   std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
+  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move.mha"};
+  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
   movingImageReader->SetFileName(dirName2);
 
   try{
@@ -153,9 +160,14 @@ int main(int argc, char** argv) {
 
 ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
 ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
+//ImageType::PointType newOrigin;
+//newOrigin.Fill(1.0);
+//pointer2movingimage->SetOrigin(newOrigin);
 
-registration->SetFixedImage(fixedImageReader->GetOutput());
-registration->SetMovingImage(movingImageReader->GetOutput());
+//std::printf("fixed position x(%f) y(%f) z(%f)\n",pointer2fixedimage->GetOrigin()[0],pointer2fixedimage->GetOrigin()[1],pointer2fixedimage->GetOrigin()[2]);
+//std::printf("moving position x(%f) y(%f) z(%f)\n",pointer2movingimage->GetOrigin()[0],pointer2movingimage->GetOrigin()[1],pointer2movingimage->GetOrigin()[2]);
+registration->SetFixedImage(pointer2fixedimage);
+registration->SetMovingImage(pointer2movingimage);
 
 using TransformInitializerType =
 itk::CenteredTransformInitializer<TransformType,
@@ -177,11 +189,16 @@ using VectorType = VersorType::VectorType;
 VersorType rotation;
 VectorType axis;
 axis[0] = 0.0;
-axis[1] = 0.0;
-axis[2] = 1.0;
-constexpr double angle = 0;
+axis[1] = 1.0;
+axis[2] = 0.0;
+constexpr double angle = 3.141592;
 rotation.Set(axis, angle);
-initialTransform->SetRotation(rotation);
+VectorType translation;
+translation[0] = 70.0;
+translation[1] = 70.0;
+translation[2] = 70.0;
+//initialTransform->SetRotation(rotation);
+initialTransform->SetTranslation(translation);
 
 registration->SetInitialTransform(initialTransform);
 
@@ -196,8 +213,8 @@ optimizerScales[3] = translationScale;
 optimizerScales[4] = translationScale;
 optimizerScales[5] = translationScale;
 optimizer->SetScales(optimizerScales);
-optimizer->SetNumberOfIterations(500);
-optimizer->SetLearningRate(1);
+optimizer->SetNumberOfIterations(2000);
+optimizer->SetLearningRate(5);
 optimizer->SetMinimumStepLength(0.001);
 optimizer->SetReturnBestParametersAndValue(true);
 optimizer->SetNumberOfThreads(8);
@@ -295,13 +312,13 @@ try{
     optimizer->AddObserver(itk::StartEvent(), observer);
     optimizer->AddObserver(itk::IterationEvent(), observer);
     
-    auto mover = [registration,casted_volume_moving,optimizer](){
+    auto mover = [&registration](){
         registration->Update();
     };
     std::thread mover_thread{mover};
-
     window.run();
     mover_thread.join();
+    
     window.transverse_identifiers(
             [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
                    &map) {

@@ -149,7 +149,6 @@ public:
       std::cout << optimizer->GetValue() << "   ";
       std::cout << optimizer->GetCurrentPosition() << std::endl;
       //std::cout << "current level: " << registration->GetCurrentLevel() << std::endl;
-      std::cout << optimizer->GetCurrentPosition() << std::endl;
 
     } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
     {
@@ -210,6 +209,7 @@ main(int argc, char * argv[])
   metric->SetUseFixedImageGradientFilter(false);
 
   auto initialTransform = TransformType::New();
+  auto initialTransform_2 = TransformType::New();
 
   using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
   using MovingImageReaderType = itk::ImageFileReader<MovingImageType>;
@@ -217,10 +217,12 @@ main(int argc, char * argv[])
   auto movingImageReader = MovingImageReaderType::New();
 
 
-  std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
+  //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
+  std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/ct_fixed.mha"};
   fixedImageReader->SetFileName(dirName);
 
-  std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
+  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
+  std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
   movingImageReader->SetFileName(dirName2);
 
 
@@ -245,17 +247,23 @@ main(int argc, char * argv[])
   initializer->InitializeTransform();
 
   using VersorType = TransformType::VersorType;
-  using VectorType = VersorType::VectorType;
-  VersorType rotation;
-  VectorType axis;
-  axis[0] = 0.0;
-  axis[1] = 0.0;
-  axis[2] = 1.0;
-  constexpr double angle = 0;
-  rotation.Set(axis, angle);
-  initialTransform->SetRotation(rotation);
+using VectorType = VersorType::VectorType;
+VersorType rotation;
+VectorType axis;
+axis[0] = 0.0;
+axis[1] = 1.0;
+axis[2] = 0.0;
+constexpr double angle = 0.0;
+rotation.Set(axis, angle);
+VectorType translation;
+translation[0] = 10.0;
+translation[1] = 10.0;
+translation[2] = 10.0;
+initialTransform->SetRotation(rotation);
+initialTransform->SetTranslation(translation);
 
-  registration->SetInitialTransform(initialTransform);
+initialTransform_2 = initialTransform;
+registration->SetInitialTransform(initialTransform);
 
   using OptimizerScalesType = OptimizerType::ScalesType;
   OptimizerScalesType optimizerScales(
