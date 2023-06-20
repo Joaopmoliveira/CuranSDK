@@ -13,12 +13,9 @@
 #include "itkMeanSquaresImageToImageMetricv4.h"
 #include "itkEuler3DTransform.h"
 #include "itkMattesMutualInformationImageToImageMetricv4.h"
-
 #include "itkVersorRigid3DTransform.h"
 #include "itkCenteredTransformInitializer.h"
-
 #include "itkRegularStepGradientDescentOptimizerv4.h"
-
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkResampleImageFilter.h"
@@ -26,7 +23,6 @@
 #include "itkSubtractImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkExtractImageFilter.h"
-
 #include "itkCommand.h"
 
 double pi = std::atan(1)*4;
@@ -269,7 +265,7 @@ try{
     auto updater = [pointer2fixedimage](vsg::floatArray3D& image){
         updateBaseTexture3D(image, pointer2fixedimage);
     };
-    casted_volume_fixed->update_texture(updater);
+    casted_volume_fixed->update_volume(updater);
 
     ImageType::RegionType region_moving = pointer2movingimage->GetLargestPossibleRegion();
     ImageType::SizeType size_itk_moving = region_moving.GetSize();
@@ -289,8 +285,9 @@ try{
     auto updater_moving = [pointer2movingimage](vsg::floatArray3D& image){
         updateBaseTexture3D(image, pointer2movingimage);
     };
-    casted_volume_moving->update_texture(updater_moving);
-    casted_volume_moving->update_transform(vsg::translate(0.0,0.0,0.0));
+
+    casted_volume_moving->update_volume(updater_moving);
+    casted_volume_moving->update_transform(vsg::translate(0.3,0.0,0.0));
 
     using CommanddType2 = CommandIterationUpdate;
     auto observer = CommanddType2::New();
@@ -302,6 +299,7 @@ try{
         registration->Update();
     };
     std::thread mover_thread{mover};
+
     window.run();
     mover_thread.join();
     window.transverse_identifiers(

@@ -143,7 +143,7 @@ try{
     auto updater = [image_to_render](vsg::floatArray3D& image){
         updateBaseTexture3D(image, image_to_render);
     };
-    casted_volume->update_texture(updater);
+    casted_volume->update_volume(updater);
 
     std::atomic<bool> continue_moving = false;
     auto mover = [&continue_moving,volume](){

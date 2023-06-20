@@ -199,7 +199,6 @@ void create_transfer_function(std::vector<ColorPair>& pairs_of_colors, vsg::vec4
         }
         
         for (const auto& color : pairs_of_colors) {
-            
             vsg::vec3 scalled_color(color.color.r* color.scalling_pos_computed, color.color.g * color.scalling_pos_computed, color.color.b * color.scalling_pos_computed);
             //scalled_color = vsg::mix(scalled_color, , (float)iter->scalling_pre_computed);
             separate_rgb += scalled_color;

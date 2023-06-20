@@ -27,7 +27,7 @@ namespace curan {
 
             using updater = std::function<void(vsg::floatArray3D& image)>;
 
-            void update_texture(updater&& update);
+            void update_volume(updater&& update);
         };
     }
 }
