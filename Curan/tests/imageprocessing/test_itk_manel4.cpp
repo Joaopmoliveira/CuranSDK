@@ -242,11 +242,13 @@ axis[2] = 0.0;
 constexpr double angle = 1.0;
 rotation.Set(axis, angle);
 VectorType translation;
-translation[0] = 0.0;
-translation[1] = 0.0;
-translation[2] = 0.0;
+translation[0] = 5.3317;
+translation[1] = -5.93364;
+translation[2] = -15.0983;
 initialTransform->SetRotation(rotation);
 //initialTransform->SetTranslation(translation);
+initialTransform_2->SetRotation(rotation);
+initialTransform_2->SetTranslation(translation);
 
 std::cout << "initial translaction: " << initialTransform->GetTranslation() << std::endl;
 std::cout << "initial rotation: " << initialTransform->GetVersor() << std::endl;
@@ -278,10 +280,10 @@ registration->SetInitialTransform(initialTransform);
   //
   using CommanddType2 = CommandIterationUpdate;
   auto observer = CommanddType2::New();
-  optimizer->AddObserver(itk::StartEvent(), observer);
+/*   optimizer->AddObserver(itk::StartEvent(), observer);
   optimizer->AddObserver(itk::IterationEvent(), observer);
   optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
-  optimizer->AddObserver(itk::EndEvent(), observer);
+  optimizer->AddObserver(itk::EndEvent(), observer); */
 
   using CommandType = RegistrationInterfaceCommand<RegistrationType>;
   auto command = CommandType::New();
@@ -498,13 +500,13 @@ registration->MetricSamplingReinitializeSeed(121213);
   sliceWriter->SetInput(extractor->GetOutput());
 
   extractor->SetInput(rescaleFilter->GetOutput());
-  resampler->SetTransform(identity);
+  resampler->SetTransform(initialTransform_2);
   std::string Output4{"newmovedimage4.png"};
   sliceWriter->SetFileName(Output4);
   sliceWriter->Update();
 
   extractor->SetInput(intensityRescaler->GetOutput());
-  resampler->SetTransform(identity);
+  resampler->SetTransform(initialTransform_2);
   std::string Output5{"newmovedimage5.png"};
   sliceWriter->SetFileName(Output5);
   sliceWriter->Update();
