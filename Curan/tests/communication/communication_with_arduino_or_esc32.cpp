@@ -7,7 +7,11 @@ int main(int argc, char* argv[]){
     if(argc<2){
         std::cout << "To use this service please provide the port number of the serial connection \neg. windows will be COM ports, linux will use /dev/ttyS* or /dev/ttyUSB*, etc\n" ;
     }
-    std::string serial_connection_name = std::string(argv[1]);
+
+    std::string serial_connection_name = std::string(CURAN_SERIAL_PORT);
+    if(serial_connection_name.size()==0)
+        serial_connection_name = std::string(argv[1]);
+    
     asio::io_context context;
     asio::serial_port serial(context);
     serial.open(serial_connection_name);
