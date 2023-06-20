@@ -79,14 +79,17 @@ protected:
 public:
   using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
   using OptimizerPointer = const OptimizerType *;
+  curan::renderable::Volume* moving_pointer_to_volume = nullptr;
 
-  void
-  Execute(itk::Object * caller, const itk::EventObject & event) override
+  void set_pointer(curan::renderable::Volume* in_moving_pointer_to_volume){
+    moving_pointer_to_volume = in_moving_pointer_to_volume;
+  }
+
+  void Execute(itk::Object * caller, const itk::EventObject & event) override
   {
     Execute((const itk::Object *)caller, event);
   }
-  void
-  Execute(const itk::Object * object, const itk::EventObject & event) override
+  void Execute(const itk::Object * object, const itk::EventObject & event) override
   {
     auto optimizer = static_cast<OptimizerPointer>(object);
     if (itk::StartEvent().CheckEvent(&event))
@@ -94,6 +97,8 @@ public:
       std::cout << "Iteration     Value          Position" << std::endl;
     } else if (itk::IterationEvent().CheckEvent(&event))
     {
+      auto pos = optimizer->GetCurrentPosition();
+      moving_pointer_to_volume->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(vsg::radians(-pos[0]),1.0,0.0,0.0)*vsg::rotate(vsg::radians(-pos[1]),0.0,1.0,0.0)*vsg::rotate(vsg::radians(-pos[2]),0.0,0.0,1.0));
       std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
       std::cout << optimizer->GetCurrentPosition() << std::endl;
@@ -286,22 +291,16 @@ try{
 
     using CommanddType2 = CommandIterationUpdate;
     auto observer = CommanddType2::New();
+    observer->set_pointer(casted_volume_moving);
     optimizer->AddObserver(itk::StartEvent(), observer);
     optimizer->AddObserver(itk::IterationEvent(), observer);
     
-    std::atomic<bool> continue_moving = true;
-    auto mover = [&continue_moving,registration,casted_volume_moving,optimizer](){
+    auto mover = [registration,casted_volume_moving,optimizer](){
         registration->Update();
-        //std::this_thread::sleep_for(std::chrono::milliseconds(15000));
-        auto pos = optimizer->GetCurrentPosition();
-        //casted_volume_moving->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000));//*vsg::rotate(pos[0],pos[1],pos[2]));
-        casted_volume_moving->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(-pos[0]*pi/180,1.0,0.0,0.0)*vsg::rotate(-pos[1]*pi/180,0.0,1.0,0.0)*vsg::rotate(-pos[2]*pi/180,0.0,0.0,1.0));
-        //casted_volume_moving->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(90.0*3.141592/180,1.0,0.0,0.0)*vsg::rotate(0.0,0.0,1.0,0.0)*vsg::rotate(0.0,0.0,0.0,1.0));
     };
     std::thread mover_thread{mover};
 
     window.run();
-    continue_moving.store(false);
     mover_thread.join();
     window.transverse_identifiers(
             [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
