@@ -1,2 +1,3 @@
 add_subdirectory(calibrate_ultrasound)
 add_subdirectory(robot_ultrasound_visualization)
+add_subdirectory(robot_box_specification)
