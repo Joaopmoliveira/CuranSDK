@@ -29,6 +29,8 @@
 
 #include "itkCommand.h"
 
+double pi = std::atan(1)*4;
+
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
@@ -150,6 +152,87 @@ int main(int argc, char** argv) {
 
 ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
 ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
+
+registration->SetFixedImage(fixedImageReader->GetOutput());
+registration->SetMovingImage(movingImageReader->GetOutput());
+
+using TransformInitializerType =
+itk::CenteredTransformInitializer<TransformType,
+                                    ImageType,
+                                    ImageType>;
+auto initializer = TransformInitializerType::New();
+
+initializer->SetTransform(initialTransform);
+initializer->SetFixedImage(fixedImageReader->GetOutput());
+initializer->SetMovingImage(movingImageReader->GetOutput());
+
+
+initializer->MomentsOn();
+
+initializer->InitializeTransform();
+
+using VersorType = TransformType::VersorType;
+using VectorType = VersorType::VectorType;
+VersorType rotation;
+VectorType axis;
+axis[0] = 0.0;
+axis[1] = 0.0;
+axis[2] = 1.0;
+constexpr double angle = 0;
+rotation.Set(axis, angle);
+initialTransform->SetRotation(rotation);
+
+registration->SetInitialTransform(initialTransform);
+
+using OptimizerScalesType = OptimizerType::ScalesType;
+OptimizerScalesType optimizerScales(
+initialTransform->GetNumberOfParameters());
+const double translationScale = 1.0 / 1000.0;
+optimizerScales[0] = 1.0;
+optimizerScales[1] = 1.0;
+optimizerScales[2] = 1.0;
+optimizerScales[3] = translationScale;
+optimizerScales[4] = translationScale;
+optimizerScales[5] = translationScale;
+optimizer->SetScales(optimizerScales);
+optimizer->SetNumberOfIterations(500);
+optimizer->SetLearningRate(1);
+optimizer->SetMinimumStepLength(0.001);
+optimizer->SetReturnBestParametersAndValue(true);
+optimizer->SetNumberOfThreads(8);
+itk::SizeValueType value{10};
+optimizer->SetConvergenceWindowSize(value);
+optimizer->SetRelaxationFactor(0.8);
+
+constexpr unsigned int numberOfLevels = 4;
+
+RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
+shrinkFactorsPerLevel.SetSize(numberOfLevels);
+shrinkFactorsPerLevel[0] = 4;
+shrinkFactorsPerLevel[1] = 3;
+shrinkFactorsPerLevel[2] = 2;
+shrinkFactorsPerLevel[3] = 1;
+
+RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+smoothingSigmasPerLevel.SetSize(numberOfLevels);
+smoothingSigmasPerLevel[0] = 2;
+smoothingSigmasPerLevel[1] = 1;
+smoothingSigmasPerLevel[2] = 0;
+smoothingSigmasPerLevel[3] = 0;
+
+registration->SetNumberOfLevels(numberOfLevels);
+registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
+registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
+
+RegistrationType::MetricSamplingStrategyEnum samplingStrategy =
+RegistrationType::MetricSamplingStrategyEnum::RANDOM;
+
+double samplingPercentage = 0.01;
+
+registration->SetMetricSamplingStrategy(samplingStrategy);
+registration->SetMetricSamplingPercentage(samplingPercentage);
+registration->MetricSamplingReinitializeSeed(121213);
+
 try{
     ImageType::RegionType region = pointer2fixedimage->GetLargestPossibleRegion();
     ImageType::SizeType size_itk = region.GetSize();
@@ -202,8 +285,27 @@ try{
         updateBaseTexture3D(image, pointer2movingimage);
     };
     casted_volume_moving->update_texture(updater_moving);
-    casted_volume_moving->update_transform(vsg::translate(0.3,0.0,0.0));
+    casted_volume_moving->update_transform(vsg::translate(0.0,0.0,0.0));
+
+    using CommanddType2 = CommandIterationUpdate;
+    auto observer = CommanddType2::New();
+    optimizer->AddObserver(itk::StartEvent(), observer);
+    optimizer->AddObserver(itk::IterationEvent(), observer);
+    
+    std::atomic<bool> continue_moving = true;
+    auto mover = [&continue_moving,registration,casted_volume_moving,optimizer](){
+        registration->Update();
+        //std::this_thread::sleep_for(std::chrono::milliseconds(15000));
+        auto pos = optimizer->GetCurrentPosition();
+        //casted_volume_moving->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000));//*vsg::rotate(pos[0],pos[1],pos[2]));
+        casted_volume_moving->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(-pos[0]*pi/180,1.0,0.0,0.0)*vsg::rotate(-pos[1]*pi/180,0.0,1.0,0.0)*vsg::rotate(-pos[2]*pi/180,0.0,0.0,1.0));
+        //casted_volume_moving->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(90.0*3.141592/180,1.0,0.0,0.0)*vsg::rotate(0.0,0.0,1.0,0.0)*vsg::rotate(0.0,0.0,0.0,1.0));
+
+    };
+    std::thread mover_thread{mover};
     window.run();
+    continue_moving.store(false);
+    mover_thread.join();
     window.transverse_identifiers(
             [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
                    &map) {
