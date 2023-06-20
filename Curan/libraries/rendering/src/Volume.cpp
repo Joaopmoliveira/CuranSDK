@@ -274,7 +274,7 @@ vsg::ref_ptr<Renderable> Volume::make(Info& info){
     return val;
 }
 
-void Volume::update_texture(updater&& update){
+void Volume::update_volume(updater&& update){
     update(*(textureData.get()));
     textureData->dirty();
 }
