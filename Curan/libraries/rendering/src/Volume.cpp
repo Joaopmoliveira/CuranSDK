@@ -162,7 +162,7 @@ Volume::Volume(Info& info){
     uint32_t instanceCount = 1;
     vid->instanceCount = instanceCount;
 
-    float TransparencyValue = 0.3f;
+    float TransparencyValue = 0.5f;
     float AlphaFuncValue = 0.1f;
     float SampleDensityValue = 0.005f;
 

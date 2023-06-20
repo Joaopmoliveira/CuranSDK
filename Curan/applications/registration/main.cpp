@@ -126,7 +126,6 @@ int main(int argc, char** argv) {
   registration->SetMetric(metric);
   registration->SetOptimizer(optimizer);
 
-
   unsigned int numberOfBins = 50;
 
   metric->SetNumberOfHistogramBins(numberOfBins);
@@ -194,9 +193,9 @@ axis[2] = 0.0;
 constexpr double angle = 3.141592;
 rotation.Set(axis, angle);
 VectorType translation;
-translation[0] = 70.0;
-translation[1] = 70.0;
-translation[2] = 70.0;
+translation[0] = 0.0;
+translation[1] = 0.0;
+translation[2] = 0.0;
 //initialTransform->SetRotation(rotation);
 initialTransform->SetTranslation(translation);
 
@@ -214,7 +213,7 @@ optimizerScales[4] = translationScale;
 optimizerScales[5] = translationScale;
 optimizer->SetScales(optimizerScales);
 optimizer->SetNumberOfIterations(2000);
-optimizer->SetLearningRate(5);
+optimizer->SetLearningRate(1);
 optimizer->SetMinimumStepLength(0.001);
 optimizer->SetReturnBestParametersAndValue(true);
 optimizer->SetNumberOfThreads(8);
@@ -304,13 +303,15 @@ try{
     };
 
     casted_volume_moving->update_volume(updater_moving);
-    casted_volume_moving->update_transform(vsg::translate(0.3,0.0,0.0));
 
     using CommanddType2 = CommandIterationUpdate;
     auto observer = CommanddType2::New();
     observer->set_pointer(casted_volume_moving);
     optimizer->AddObserver(itk::StartEvent(), observer);
     optimizer->AddObserver(itk::IterationEvent(), observer);
+    optimizer->AddObserver(itk::EndEvent(), observer);
+
+    //registration->AddObserver(itk::MultiResolutionIterationEvent(), observer);
     
     auto mover = [&registration](){
         registration->Update();
