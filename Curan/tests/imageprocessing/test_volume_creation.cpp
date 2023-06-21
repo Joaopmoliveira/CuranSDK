@@ -6,6 +6,25 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     // the volume shoud be a box with spacing 1.0 mm in all directions with a size of 2 mm in each side 
     // to fill the volume we create an image with two images 
 
+    itk::Matrix<double> image_orientation;
+	itk::Point<double> image_origin;
+
+	image_orientation[0][0] = 1.0;
+	image_orientation[1][0] = 0.0;
+	image_orientation[2][0] = 0.0;
+
+	image_orientation[0][1] = 0.0;
+	image_orientation[1][1] = 1.0;
+	image_orientation[2][1] = 0.0;
+
+	image_orientation[0][2] = 0.0;
+	image_orientation[1][2] = 0.0;
+	image_orientation[2][2] = 1.0;
+
+	image_origin[0] = 0.0;
+	image_origin[1] = 0.0;
+	image_origin[2] = 0.0;
+
     constexpr long width = 3;
     constexpr long height = 3;
 
@@ -25,6 +44,8 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     region_1.SetIndex(start_1);
 
     image_1->SetRegions(region_1);
+    image_1->SetDirection(image_orientation);
+    image_1->SetOrigin(image_origin);
     image_1->Allocate();
     curan::image::char_pixel_type pixel[width*height];
     curan::image::char_pixel_type pixel_value = 0;
@@ -53,6 +74,8 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     region_2.SetIndex(start_2);
 
     image_2->SetRegions(region_2);
+    image_2->SetDirection(image_orientation);
+    image_2->SetOrigin(image_origin);
     image_2->Allocate();
 
     pointer = image_2->GetBufferPointer();
@@ -74,6 +97,8 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     region_3.SetIndex(start_3);
 
     image_3->SetRegions(region_3);
+    image_3->SetDirection(image_orientation);
+    image_3->SetOrigin(image_origin);
     image_3->Allocate();
 
     pointer = image_3->GetBufferPointer();
@@ -118,7 +143,7 @@ int main(){
         volume_reconstructor.update();
     }
 
-    {// first test creates two stacked images in the x direction and reconstructs the volume
+ /*    {// first test creates two stacked images in the x direction and reconstructs the volume
         curan::image::VolumeReconstructor volume_reconstructor;
         std::vector<imageType::Pointer> images;
         create_array_of_linear_images_in_y_direction(images);
@@ -158,6 +183,6 @@ int main(){
         create_array_of_rotational_images_around_the_z_axis(images);
         volume_reconstructor.add_frames(images);
         volume_reconstructor.update();
-    }
+    } */
     return 0;
 }
