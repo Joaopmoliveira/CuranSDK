@@ -123,6 +123,10 @@ project called .vscode) with a file inside it called settings.json with the foll
 
 Notice that we are forcing the cmake extension to pass the arguments of where vcpkg is installed in the line --CMAKE_TOOLCHAIN_FILE: "path to your vcpkg instalation directory"--. This should compile out of the box once all the steps are solved.
 
+## Build Problems
+
+When using VScode to compile the project, if the previous order of the build instructions is not followed properly, the build fails due to incorrect configurations. When you find yourself faced with these problems the simplest solution is to delete the .vscode folder and the build folder and reconfigure the project, this usually solves all the problems. 
+
 ## Contributions 
 
 > -João Oliveira (Lead developer)
