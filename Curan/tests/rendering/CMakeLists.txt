@@ -246,6 +246,15 @@ robotParameters
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+asio
 )
 
-
+if(SERIAL_RECEIVE_ARGUMENT)
+    if(WIN32)
+        target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="COM5")
+    else(WIN32)
+        target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="/dev/ttyUSB0")
+    endif(WIN32)
+else(SERIAL_RECEIVE_ARGUMENT)
+    target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="COM5")
+endif(SERIAL_RECEIVE_ARGUMENT)

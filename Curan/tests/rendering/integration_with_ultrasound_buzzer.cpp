@@ -10,10 +10,30 @@
 #include "utils/Flag.h"
 #include "utils/TheadPool.h"
 #include "rendering/PhaseWiredBox.h"
+#include <asio.hpp>
+#include <cassert>
+#include <charconv>
+#include <iomanip>
+#include <iostream>
+#include <optional>
+#include <string_view>
+#include <system_error>
 
-int main(){
+int main(int argc, char* argv[]){
     //initualize the thread pool;
 	curan::utilities::initialize_thread_pool(4);
+
+    std::string serial_connection_name = std::string(CURAN_SERIAL_PORT);
+    if(serial_connection_name.size()==0){
+        if(argc<2){
+            std::cout << "To use this service please provide the port number of the serial connection \neg. windows will be COM ports, linux will use /dev/ttyS* or /dev/ttyUSB*, etc\n" ;
+            return 1;
+        }
+        serial_connection_name = std::string(argv[1]);
+    }
+    asio::io_context context;
+    asio::serial_port serial(context);
+    serial.open(serial_connection_name);
 
     curan::renderable::Window::Info info;
     info.api_dump = false;
@@ -37,22 +57,41 @@ int main(){
     curan::renderable::Sphere::Info infosphere;
     infosphere.builder = vsg::Builder::create();
     infosphere.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
-    infosphere.geomInfo.dx = vsg::vec3(0.02f,0.0,0.0);
-    infosphere.geomInfo.dy = vsg::vec3(0.0,0.02f,0.0);
-    infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.02f);
+    infosphere.geomInfo.dx = vsg::vec3(0.3f,0.0,0.0);
+    infosphere.geomInfo.dy = vsg::vec3(0.0,0.3f,0.0);
+    infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.3f);
     auto sphere = curan::renderable::Sphere::make(infosphere);
-    auto mat = vsg::translate(0.0,0.0,0.0);
+    auto mat = vsg::translate(1.0,1.0,0.0);
     sphere->update_transform(mat);
     window << sphere;
-
-    std::array<float,3> temp_pos = {0.0,0.0,0.0};
-    std::atomic<std::array<float,3>> current_position;
-    current_position.store(temp_pos);
     
     curan::utilities::Job append_box;
 	append_box.description = "function that adds the wired box on screen";
-	append_box.function_to_execute = [&sphere]() {
-        
+	append_box.function_to_execute = [&sphere,&serial]() {
+        char to_send = 10;
+        size_t nread = 0;
+        for (;;) {
+            asio::write(serial,asio::buffer(&to_send,1));
+            asio::streambuf input_buffer;
+            nread = asio::read_until(
+                serial, input_buffer, 'e'
+            );
+            std::istream is(&input_buffer);
+            std::string line;
+            std::getline(is, line);
+            if(line.size()>0){
+                line.pop_back();
+            }
+            if(line.size()>0){
+                int result{};
+                auto [ptr, ec] = std::from_chars(line.data(), line.data() + line.size(), result);
+                if (ec == std::errc()){
+                    double distance = result*0.1;
+                    auto mat = vsg::translate(1.0,1.0,distance);
+                    sphere->update_transform(mat);
+                }
+            }
+        }
 	};
     curan::utilities::pool->submit(append_box);
 
@@ -96,21 +135,13 @@ int main(){
 	    iiwa->Minv = iiwa->M.inverse();
 	    robot->getCoriolisAndGravityVector(iiwa->c,iiwa->g,iiwa->q,iiwa->qDot);
 	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,NUMBER_OF_JOINTS);              // 3x1 position of flange (body = 7), expressed in base coordinates
-        
-        mat = vsg::translate(p_0_cur(0,0),p_0_cur(1,0),p_0_cur(2,0));
-        sphere->update_transform(mat);
-
-        temp_pos[0] = (float)p_0_cur(0,0);
-        temp_pos[1] = (float)p_0_cur(1,0);
-        temp_pos[2] = (float)p_0_cur(2,0);
-        current_position.store(temp_pos);
 
         robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
 
         q_old = iiwa->q;
         time += sampletime;
     }
-
+    serial.close();
     //terminate the thread pool;
 	curan::utilities::terminate_thread_pool();
     return 0;
