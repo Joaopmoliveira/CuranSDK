@@ -232,3 +232,20 @@ vsgXchange::vsgXchange
 renderable
 )
 
+add_executable(test_robot_and_ultrasound_buzzer
+integration_with_ultrasound_buzzer.cpp
+)
+
+target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_robot_and_ultrasound_buzzer
+PUBLIC
+KukaRobotLibrary 
+robotParameters
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+)
+
+
