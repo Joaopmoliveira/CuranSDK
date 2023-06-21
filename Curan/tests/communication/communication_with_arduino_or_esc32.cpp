@@ -13,7 +13,6 @@ try{
         }
         serial_connection_name = std::string(argv[1]);
     }
-    
     asio::io_context context;
     asio::serial_port serial(context);
     serial.open(serial_connection_name);
@@ -31,8 +30,6 @@ try{
     char data[maximum_length_of_message];
 
     for (int counter = 0;value.load();++counter) {
-        // read bytes from the serial port
-        // asio::read will read bytes until the buffer is filled
         size_t nread = asio::read(
             serial, asio::buffer(data, 2)
         );
