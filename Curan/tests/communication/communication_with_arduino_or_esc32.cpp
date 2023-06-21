@@ -19,27 +19,27 @@ try{
     serial.open(serial_connection_name);
 
     std::atomic<bool> value = true;
-    auto stopper = [&value](){
+    auto stopper = [&value,&serial](){
         std::string input;
         std::cout << "Enter Message: ";
         std::cin >> input;
         value.store(false);
+        serial.close();
     };
     std::thread to_stop{stopper};
 
     char data[maximum_length_of_message];
 
-    for (;value.load();) {
+    for (int counter = 0;value.load();++counter) {
         // read bytes from the serial port
         // asio::read will read bytes until the buffer is filled
         size_t nread = asio::read(
             serial, asio::buffer(data, 2)
         );
         std::string message(data, nread);
-        std::cout << "Recieved: (";
-        std::cout << message << ")\n";
+        std::cout << "Received: (";
+        std::cout << message << ") pressed: " << counter << "\n";
     }
-    serial.close();
     to_stop.join();
     return 0; 
 } catch(std::exception & e){
