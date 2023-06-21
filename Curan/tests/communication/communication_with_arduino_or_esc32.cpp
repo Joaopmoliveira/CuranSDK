@@ -4,6 +4,7 @@
 constexpr size_t maximum_length_of_message = 1000; 
 
 int main(int argc, char* argv[]){
+try{
     std::string serial_connection_name = std::string(CURAN_SERIAL_PORT);
     if(serial_connection_name.size()==0){
         if(argc<2){
@@ -43,4 +44,9 @@ int main(int argc, char* argv[]){
     }
     serial.close();
     return 0; 
+} catch(std::exception & e){
+    std::cout << "exception thrown while reading the serial stream\n";
+    return 1;
+}
+
 }
