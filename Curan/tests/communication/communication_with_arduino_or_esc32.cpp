@@ -1,6 +1,42 @@
 #include <asio.hpp>
 #include <iostream>
 
+char code_corresponding_in_arduino[] = R"(
+// constants won't change. They're used here to set pin numbers:
+const int buttonPin = 2;  // the number of the pushbutton pin
+const int ledPin = 13;    // the number of the LED pin
+
+// variables will change:
+int buttonState = 0;  // variable for reading the pushbutton status
+int previousbuttonState = buttonState;
+
+void setup() {
+  // initialize the LED pin as an output:
+  pinMode(ledPin, OUTPUT);
+  // initialize the pushbutton pin as an input:
+  pinMode(buttonPin, INPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  // read the state of the pushbutton value:
+  buttonState = digitalRead(buttonPin);
+  if (buttonState == HIGH) {
+    if(previousbuttonState!=buttonState){
+        if (Serial.available() > 0) {
+          int incomingByte = Serial.read();
+          Serial.write("up");
+        }     
+    }
+    digitalWrite(ledPin, HIGH);
+  } else {
+    digitalWrite(ledPin, LOW);
+  }
+  previousbuttonState = buttonState;
+  delay(100);
+}
+})";
+
 constexpr size_t maximum_length_of_message = 1000; 
 
 int main(int argc, char* argv[]){
