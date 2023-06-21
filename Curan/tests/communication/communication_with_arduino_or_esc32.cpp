@@ -3,18 +3,6 @@
 
 constexpr size_t maximum_length_of_message = 1000; 
 
-class SerialButton{
-    struct Info{
-        std::string serial_connection_name;
-    };
-
-    char data[maximum_length_of_message];
-
-    SerialButton(Info& info){
-
-    }
-};
-
 int main(int argc, char* argv[]){
 try{
     std::string serial_connection_name = std::string(CURAN_SERIAL_PORT);
@@ -40,9 +28,11 @@ try{
     std::thread to_stop{stopper};
 
     char data[maximum_length_of_message];
-
+    char byte = 10;
+    size_t nread = 0;
     for (int counter = 0;value.load();++counter) {
-        size_t nread = asio::read(
+        asio::write(serial,asio::buffer(&byte,1));
+        nread = asio::read(
             serial, asio::buffer(data, 2)
         );
         std::string message(data, nread);

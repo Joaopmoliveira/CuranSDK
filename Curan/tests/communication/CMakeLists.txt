@@ -29,3 +29,20 @@ if(SERIAL_RECEIVE_ARGUMENT)
 else(SERIAL_RECEIVE_ARGUMENT)
     target_compile_definitions(communication_with_arduino_or_esc32 PRIVATE CURAN_SERIAL_PORT="COM5")
 endif(SERIAL_RECEIVE_ARGUMENT)
+
+
+add_executable(communication_with_ultrasound_arduino communication_with_arduino_or_esc32_ultrasound.cpp)
+
+target_link_libraries(communication_with_ultrasound_arduino PUBLIC
+asio
+)
+
+if(SERIAL_RECEIVE_ARGUMENT)
+    if(WIN32)
+        target_compile_definitions(communication_with_ultrasound_arduino PRIVATE CURAN_SERIAL_PORT="COM5")
+    else(WIN32)
+        target_compile_definitions(communication_with_ultrasound_arduino PRIVATE CURAN_SERIAL_PORT="/dev/ttyUSB0")
+    endif(WIN32)
+else(SERIAL_RECEIVE_ARGUMENT)
+    target_compile_definitions(communication_with_ultrasound_arduino PRIVATE CURAN_SERIAL_PORT="COM5")
+endif(SERIAL_RECEIVE_ARGUMENT)

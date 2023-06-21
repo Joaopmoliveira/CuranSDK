@@ -1,19 +1,7 @@
 #include <asio.hpp>
 #include <iostream>
 
-constexpr size_t maximum_length_of_message = 1000; 
-
-class SerialButton{
-    struct Info{
-        std::string serial_connection_name;
-    };
-
-    char data[maximum_length_of_message];
-
-    SerialButton(Info& info){
-
-    }
-};
+constexpr size_t maximum_length_of_message = 4; 
 
 int main(int argc, char* argv[]){
 try{
@@ -32,22 +20,25 @@ try{
     std::atomic<bool> value = true;
     auto stopper = [&value,&serial](){
         std::string input;
-        std::cout << "Enter Message: ";
         std::cin >> input;
         value.store(false);
         serial.close();
     };
     std::thread to_stop{stopper};
 
-    char data[maximum_length_of_message];
-
+ 
+    char to_send = 10;
+    size_t nread = 0;
     for (int counter = 0;value.load();++counter) {
-        size_t nread = asio::read(
-            serial, asio::buffer(data, 2)
+        asio::write(serial,asio::buffer(&to_send,1));
+        asio::streambuf input_buffer;
+        nread = asio::read_until(
+            serial, input_buffer, 'e'
         );
-        std::string message(data, nread);
-        std::cout << "Received: (";
-        std::cout << message << ") pressed: " << counter << "\n";
+        std::istream is(&input_buffer);
+        std::string line;
+        std::getline(is, line);
+        std::cout << "Received: (" << line << ") cm pressed: " << counter << "\n";
     }
     to_stop.join();
     return 0; 
