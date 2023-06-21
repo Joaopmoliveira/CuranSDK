@@ -18,6 +18,11 @@
 #include <optional>
 #include <string_view>
 #include <system_error>
+#include "rendering/Box.h"
+
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
 
 int main(int argc, char* argv[]){
     //initualize the thread pool;
@@ -54,20 +59,19 @@ int main(int argc, char* argv[]){
     vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
     window << robotRenderable;
 
-    curan::renderable::Sphere::Info infosphere;
-    infosphere.builder = vsg::Builder::create();
-    infosphere.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
-    infosphere.geomInfo.dx = vsg::vec3(0.3f,0.0,0.0);
-    infosphere.geomInfo.dy = vsg::vec3(0.0,0.3f,0.0);
-    infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.3f);
-    auto sphere = curan::renderable::Sphere::make(infosphere);
-    auto mat = vsg::translate(1.0,1.0,0.0);
-    sphere->update_transform(mat);
-    window << sphere;
-    
+    curan::renderable::Box::Info infobox;
+    infobox.builder = vsg::Builder::create();
+    infobox.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+    infobox.geomInfo.dx = vsg::vec3(.1f,0.0,0.0);
+    infobox.geomInfo.dy = vsg::vec3(0.0,.1f,0.0);
+    infobox.geomInfo.dz = vsg::vec3(0.0,0.0,.1f);
+    infobox.geomInfo.position = vsg::vec3(1.0,1.0,0.05f);
+    auto box = curan::renderable::Box::make(infobox);
+    window << box;
+
     curan::utilities::Job append_box;
 	append_box.description = "function that adds the wired box on screen";
-	append_box.function_to_execute = [&sphere,&serial]() {
+	append_box.function_to_execute = [&box,&serial]() {
         char to_send = 10;
         size_t nread = 0;
         for (;;) {
@@ -86,9 +90,15 @@ int main(int argc, char* argv[]){
                 int result{};
                 auto [ptr, ec] = std::from_chars(line.data(), line.data() + line.size(), result);
                 if (ec == std::errc()){
-                    double distance = result*0.1;
-                    auto mat = vsg::translate(1.0,1.0,distance);
-                    sphere->update_transform(mat);
+                    double distance = result;
+                    if(distance<40){
+                        auto mat = vsg::scale(1.0,1.0,(distance/10.0)+1.0);
+                        box->update_transform(mat);
+                    }else {
+                        auto mat = vsg::scale(1.0,1.0,(40/10.0)+1.0);
+                        box->update_transform(mat);
+                    }
+                    std::cout << distance << '\n';
                 }
             }
         }
