@@ -17,32 +17,30 @@ try{
     asio::io_context context;
     asio::serial_port serial(context);
     serial.open(serial_connection_name);
-    for (;;) {
-        // get a string from the user, sentiel is exit
+
+    std::atomic<bool> value = true;
+    auto stopper = [&value](){
         std::string input;
         std::cout << "Enter Message: ";
         std::cin >> input;
+        value.store(false);
+    };
+    std::thread to_stop{stopper};
 
-        if (input == "exit") break;
+    char data[maximum_length_of_message];
 
-        // write to the port
-        // asio::write guarantees that the entire buffer is written to the serial port
-        asio::write(serial, asio::buffer(input));
-
-        char data[maximum_length_of_message];
-
+    for (;value.load();) {
         // read bytes from the serial port
         // asio::read will read bytes until the buffer is filled
         size_t nread = asio::read(
-            serial, asio::buffer(data, input.length())
+            serial, asio::buffer(data, 2)
         );
-
         std::string message(data, nread);
-
-        std::cout << "Recieved: ";
-        std::cout << message << std::endl;
+        std::cout << "Recieved: (";
+        std::cout << message << ")\n";
     }
     serial.close();
+    to_stop.join();
     return 0; 
 } catch(std::exception & e){
     std::cout << "exception thrown while reading the serial stream\n";
