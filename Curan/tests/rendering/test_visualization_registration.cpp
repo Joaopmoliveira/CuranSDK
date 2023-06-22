@@ -65,6 +65,70 @@ void updateBaseTexture3D(vsg::floatArray3D& image, ImageType::Pointer image_to_r
     }
 }
 
+template <typename TRegistration>
+class RegistrationInterfaceCommand : public itk::Command
+{
+
+public:
+  using Self = RegistrationInterfaceCommand;
+  using Superclass = itk::Command;
+  using Pointer = itk::SmartPointer<Self>;
+  itkNewMacro(Self);
+
+protected:
+  RegistrationInterfaceCommand() = default;
+
+public:
+  using RegistrationType = TRegistration;
+  using RegistrationPointer = RegistrationType *;
+  using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+  using OptimizerPointer = OptimizerType *;
+
+  void
+  Execute(itk::Object * object, const itk::EventObject & event) override
+  {
+
+    /* if (!(itk::MultiResolutionIterationEvent().CheckEvent(&event)))
+    {
+      return;
+    } */
+
+    auto registration = static_cast<RegistrationPointer>(object);
+    auto optimizer =
+      static_cast<OptimizerPointer>(registration->GetModifiableOptimizer());
+
+    unsigned int currentLevel = registration->GetCurrentLevel();
+    typename RegistrationType::ShrinkFactorsPerDimensionContainerType
+      shrinkFactors =
+        registration->GetShrinkFactorsPerDimension(currentLevel);
+    typename RegistrationType::SmoothingSigmasArrayType smoothingSigmas =
+      registration->GetSmoothingSigmasPerLevel();
+
+    std::cout << "-------------------------------------" << std::endl;
+    std::cout << " Current level = " << currentLevel +1 << std::endl;
+    std::cout << "    shrink factor = " << shrinkFactors << std::endl;
+    std::cout << "    smoothing sigma = ";
+    std::cout << smoothingSigmas[currentLevel] << std::endl;
+    std::cout << std::endl;
+
+    /* if (registration->GetCurrentLevel() == 0)
+    {
+      optimizer->SetLearningRate(16.00);
+      optimizer->SetMinimumStepLength(2.5);
+    }
+    else
+    {
+      optimizer->SetLearningRate(optimizer->GetCurrentStepLength());
+      optimizer->SetMinimumStepLength(optimizer->GetMinimumStepLength() * 0.2);
+    } */
+  }
+
+  void Execute(const itk::Object *, const itk::EventObject &) override
+  {
+    return;
+  }
+};
+
 class CommandIterationUpdate : public itk::Command
 {
 public:
@@ -94,7 +158,7 @@ public:
     auto optimizer = static_cast<OptimizerPointer>(object);
     if (itk::StartEvent().CheckEvent(&event))
     {
-      std::cout << "Iteration     Value          Position" << std::endl;
+      std::cout << "Iter     Value          Position" << std::endl;
     } else if (itk::IterationEvent().CheckEvent(&event))
     {
       auto pos = optimizer->GetCurrentPosition();
@@ -105,7 +169,7 @@ public:
       std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
       std::cout << optimizer->GetCurrentPosition() << std::endl;
-      std::this_thread::sleep_for(std::chrono::milliseconds(0));
+      std::this_thread::sleep_for(std::chrono::milliseconds(8));
 
     } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
     {
@@ -135,6 +199,7 @@ int main(int argc, char** argv) {
   metric->SetUseFixedImageGradientFilter(false);
 
   auto initialTransform = TransformType::New();
+  auto initialTransform_2 = TransformType::New();
 
   using FixedImageReaderType = itk::ImageFileReader<ImageType>;
   using MovingImageReaderType = itk::ImageFileReader<ImageType>;
@@ -188,17 +253,24 @@ using VersorType = TransformType::VersorType;
 using VectorType = VersorType::VectorType;
 VersorType rotation;
 VectorType axis;
-axis[0] = 0.0;
-axis[1] = 1.0;
-axis[2] = 0.0;
-constexpr double angle = 3.141592;
+axis[0] = 0.0137631;
+axis[1] =  -0.000711808;
+axis[2] = -0.0410878;
+constexpr double angle = 1.0*(3.1415926535/180);
 rotation.Set(axis, angle);
 VectorType translation;
-translation[0] = 0.0;
-translation[1] = 0.0;
-translation[2] = 0.0;
+translation[0] = 5.3317+4.64537 +40; //+17.165       +00;
+translation[1] = -5.93364-17.4216; //-33.6491    +00;
+translation[2] = -15.0983-25.9184; //-21.472       ;
 initialTransform->SetRotation(rotation);
 initialTransform->SetTranslation(translation);
+initialTransform_2->SetRotation(rotation);
+initialTransform_2->SetTranslation(translation);
+std::cout << "initial transform matrix: " << initialTransform->GetMatrix() << std::endl;
+std::cout << "initial transform offset: " << initialTransform->GetOffset() << std::endl << std::endl;
+
+std::cout << "initial translaction: " << initialTransform->GetTranslation() << std::endl;
+std::cout << "initial rotation: " << initialTransform->GetVersor() << std::endl;
 
 registration->SetInitialTransform(initialTransform);
 
@@ -284,6 +356,8 @@ try{
     };
     casted_volume_fixed->update_volume(updater);
 
+    //std::printf("fixed image dimension x(%i) y(%i) z(%i)\n",volumeinfo.width,volumeinfo.height,volumeinfo.depth);
+
     ImageType::RegionType region_moving = pointer2movingimage->GetLargestPossibleRegion();
     ImageType::SizeType size_itk_moving = region_moving.GetSize();
     ImageType::SpacingType spacing_moving = pointer2movingimage->GetSpacing();
@@ -295,6 +369,10 @@ try{
     volumeinfo.spacing_y = spacing_moving[1];
     volumeinfo.spacing_z = spacing_moving[2];
 
+    //std::printf("moving image dimension x(%i) y(%i) z(%i)\n",volumeinfo.width,volumeinfo.height,volumeinfo.depth);
+
+   
+
     auto volume_moving = curan::renderable::Volume::make(volumeinfo);
     window << volume_moving;
 
@@ -304,13 +382,19 @@ try{
     };
 
     casted_volume_moving->update_volume(updater_moving);
-    casted_volume_moving->update_transform(vsg::translate(0.3,0.0,0.0));
+    //casted_volume_moving->update_transform(vsg::translate(0.3,0.0,0.0));
 
     using CommanddType2 = CommandIterationUpdate;
     auto observer = CommanddType2::New();
     observer->set_pointer(casted_volume_moving);
     optimizer->AddObserver(itk::StartEvent(), observer);
-    optimizer->AddObserver(itk::IterationEvent(), observer);
+  optimizer->AddObserver(itk::IterationEvent(), observer);
+  optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
+  optimizer->AddObserver(itk::EndEvent(), observer);
+
+  using CommandType = RegistrationInterfaceCommand<RegistrationType>;
+  auto command = CommandType::New();
+  registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
     
     auto mover = [&registration](){
         registration->Update();
@@ -331,6 +415,200 @@ try{
      std::cerr << "Exception thrown : " << e.what() << std::endl;
     return 1;
 }
+const TransformType::ParametersType finalParameters =
+    registration->GetOutput()->Get()->GetParameters();
+
+  const double       versorX = finalParameters[0];
+  const double       versorY = finalParameters[1];
+  const double       versorZ = finalParameters[2];
+  const double       finalTranslationX = finalParameters[3];
+  const double       finalTranslationY = finalParameters[4];
+  const double       finalTranslationZ = finalParameters[5];
+  const unsigned int numberOfIterations = optimizer->GetCurrentIteration();
+  const double       bestValue = optimizer->GetValue();
+
+  // Print out results
+  //
+  std::cout << std::endl << std::endl;
+  std::cout << "Result = " << std::endl;
+  std::cout << " versor X      = " << versorX << std::endl;
+  std::cout << " versor Y      = " << versorY << std::endl;
+  std::cout << " versor Z      = " << versorZ << std::endl;
+  std::cout << " Translation X = " << finalTranslationX << std::endl;
+  std::cout << " Translation Y = " << finalTranslationY << std::endl;
+  std::cout << " Translation Z = " << finalTranslationZ << std::endl;
+  std::cout << " Iterations    = " << numberOfIterations << std::endl;
+  std::cout << " Metric value  = " << bestValue << std::endl;
+
+  auto finalTransform = TransformType::New();
+
+  finalTransform->SetFixedParameters(
+    registration->GetOutput()->Get()->GetFixedParameters());
+  finalTransform->SetParameters(finalParameters);
+
+
+  TransformType::MatrixType matrix = finalTransform->GetMatrix();
+  TransformType::OffsetType offset = finalTransform->GetOffset();
+  std::cout << std::endl << "Matrix = " << std::endl << matrix << std::endl;
+  std::cout << "Offset = " << std::endl << offset << std::endl;
+ 
+  using ResampleFilterType =
+    itk::ResampleImageFilter<ImageType, ImageType>;
+
+  auto resampler = ResampleFilterType::New();
+
+  resampler->SetTransform(finalTransform);
+  resampler->SetInput(movingImageReader->GetOutput());
+
+  auto outputtemporary = movingImageReader->GetOutput();
+  using ConstIteratorType = itk::ImageRegionConstIterator<ImageType>;
+  using IteratorType = itk::ImageRegionIterator<ImageType>;
+
+  ImageType::Pointer image = movingImageReader->GetOutput();
+  ConstIteratorType constIterator(image,image->GetRequestedRegion());
+  IteratorType iterator(image,image->GetRequestedRegion());
+
+  double maximum_value = -10000;
+  double minimum_value = 10000;
+  for( iterator.GoToBegin(); !iterator.IsAtEnd() ; ++iterator){
+    if(iterator.Get()>maximum_value)
+      maximum_value = iterator.Get();
+    if(iterator.Get() < minimum_value)
+      minimum_value = iterator.Get();
+  }
+
+  std::cout << std::endl << "minimum value is : " << minimum_value << "\nmaximum value is: " << maximum_value << std::endl; 
+
+  ImageType::Pointer fixedImage = fixedImageReader->GetOutput();
+
+  resampler->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
+  resampler->SetOutputOrigin(fixedImage->GetOrigin());
+  resampler->SetOutputSpacing(fixedImage->GetSpacing());
+  resampler->SetOutputDirection(fixedImage->GetDirection());
+  resampler->SetDefaultPixelValue(1);
+
+  using OutputPixelType = unsigned char;
+  using OutputImageType = itk::Image<OutputPixelType, Dimension>;
+  using CastFilterType =
+    itk::CastImageFilter<ImageType, OutputImageType>;
+  using RescaleFilterType =
+    itk::RescaleIntensityImageFilter<ImageType, OutputImageType>;
+  using WriterType = itk::ImageFileWriter<OutputImageType>;
+
+  auto writer = WriterType::New();
+  auto caster = CastFilterType::New();
+  auto rescaleFilter = RescaleFilterType::New();
+
+  std::string Output1{"outputImagefile.mha"};
+  writer->SetFileName(Output1);
+
+  caster->SetInput(resampler->GetOutput());
+  rescaleFilter->SetInput(resampler->GetOutput());
+  writer->SetInput(rescaleFilter->GetOutput());
+
+  rescaleFilter->SetOutputMinimum(0);
+  rescaleFilter->SetOutputMaximum(255);
+  
+  writer->Update();
+
+  using DifferenceFilterType =
+    itk::SubtractImageFilter<ImageType, ImageType, ImageType>;
+  auto difference = DifferenceFilterType::New();
+
+  using RescalerType =
+    itk::RescaleIntensityImageFilter<ImageType, OutputImageType>;
+  auto intensityRescaler = RescalerType::New();
+
+  intensityRescaler->SetInput(difference->GetOutput());
+  intensityRescaler->SetOutputMinimum(0);
+  intensityRescaler->SetOutputMaximum(255);
+
+  difference->SetInput1(fixedImageReader->GetOutput());
+  difference->SetInput2(resampler->GetOutput());
+
+  resampler->SetDefaultPixelValue(1);
+
+  auto writer2 = WriterType::New();
+  writer2->SetInput(intensityRescaler->GetOutput());
+
+  // Compute the difference image between the
+  // fixed and resampled moving image.
+
+  std::string Output2{"differenceAfterRegistration.mha"};
+  writer2->SetFileName(Output2);
+  writer2->Update();
+
+
+  using IdentityTransformType = itk::IdentityTransform<double, Dimension>;
+  auto identity = IdentityTransformType::New();
+  // Compute the difference image between the
+  // fixed and moving image before registration.
+
+  resampler->SetTransform(initialTransform_2);
+  std::string Output3{"differenceBeforeRegistration.mha"};
+  writer2->SetFileName(Output3);
+  writer2->Update();
+
+  //
+  //  Here we extract slices from the input volume, and the difference volumes
+  //  produced before and after the registration.  These slices are presented
+  //  as figures in the Software Guide.
+  //
+  //
+  using OutputSliceType = itk::Image<OutputPixelType, 2>;
+  using ExtractFilterType =
+    itk::ExtractImageFilter<OutputImageType, OutputSliceType>;
+  auto extractor = ExtractFilterType::New();
+  extractor->SetDirectionCollapseToSubmatrix();
+  extractor->InPlaceOn();
+
+  ImageType::RegionType inputRegion =
+    fixedImage->GetLargestPossibleRegion();
+  ImageType::SizeType  size = inputRegion.GetSize();
+  ImageType::IndexType start = inputRegion.GetIndex();
+
+  // Select one slice as output
+  /* size[2] = 0;
+  start[2] = 20; */
+  size[1] = 0;
+  start[1] = 256;
+  ImageType::RegionType desiredRegion;
+  desiredRegion.SetSize(size);
+  desiredRegion.SetIndex(start);
+  extractor->SetExtractionRegion(desiredRegion);
+  using SliceWriterType = itk::ImageFileWriter<OutputSliceType>;
+  auto sliceWriter = SliceWriterType::New();
+  sliceWriter->SetInput(extractor->GetOutput());
+
+
+  std::cout << "initial transform matrix: " << initialTransform_2->GetMatrix() << std::endl;
+  std::cout << "initial transform offset: " << initialTransform_2->GetOffset() << std::endl << std::endl;
+
+  std::cout << "initial translaction: " << initialTransform_2->GetTranslation() << std::endl;
+  std::cout << "initial rotation: " << initialTransform_2->GetVersor() << std::endl;
+
+  extractor->SetInput(rescaleFilter->GetOutput());
+  resampler->SetTransform(initialTransform_2);
+  std::string Output4{"sliceBeforeRegistration.png"};
+  sliceWriter->SetFileName(Output4);
+  sliceWriter->Update();
+
+  extractor->SetInput(intensityRescaler->GetOutput());
+  resampler->SetTransform(initialTransform_2);
+  std::string Output5{"sliceDifferenceBeforeRegistration.png"};
+  sliceWriter->SetFileName(Output5);
+  sliceWriter->Update();
+
+  resampler->SetTransform(finalTransform);
+  std::string Output6{"sliceDifferenceAfterRegistration.png"};
+  sliceWriter->SetFileName(Output6);
+  sliceWriter->Update();
+
+  extractor->SetInput(rescaleFilter->GetOutput());
+  resampler->SetTransform(finalTransform);
+  std::string Output7{"sliceAfterRegistration.png"};
+  sliceWriter->SetFileName(Output7);
+  sliceWriter->Update();
 // clean up done automatically thanks to ref_ptr<>
 return 0;
 }

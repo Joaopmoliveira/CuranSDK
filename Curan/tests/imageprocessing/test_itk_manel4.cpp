@@ -53,10 +53,10 @@ public:
   Execute(itk::Object * object, const itk::EventObject & event) override
   {
 
-    if (!(itk::MultiResolutionIterationEvent().CheckEvent(&event)))
+    /* if (!(itk::MultiResolutionIterationEvent().CheckEvent(&event)))
     {
       return;
-    }
+    } */
 
     auto registration = static_cast<RegistrationPointer>(object);
     auto optimizer =
@@ -70,7 +70,7 @@ public:
       registration->GetSmoothingSigmasPerLevel();
 
     std::cout << "-------------------------------------" << std::endl;
-    std::cout << " Current level = " << currentLevel << std::endl;
+    std::cout << " Current level = " << currentLevel +1 << std::endl;
     std::cout << "    shrink factor = " << shrinkFactors << std::endl;
     std::cout << "    smoothing sigma = ";
     std::cout << smoothingSigmas[currentLevel] << std::endl;
@@ -84,8 +84,7 @@ public:
     else
     {
       optimizer->SetLearningRate(optimizer->GetCurrentStepLength());
-      optimizer->SetMinimumStepLength(optimizer->GetMinimumStepLength() *
-                                      0.2);
+      optimizer->SetMinimumStepLength(optimizer->GetMinimumStepLength() * 0.2);
     } */
   }
 
@@ -107,8 +106,6 @@ protected:
   CommandIterationUpdate() = default;
 
 public:
-  /* using RegistrationType = TRegistration;
-  using RegistrationPointer = RegistrationType *; */
   using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
   using OptimizerPointer = const OptimizerType *;
 
@@ -117,25 +114,19 @@ public:
   {
     Execute((const itk::Object *)caller, event);
   }
+
   void
   Execute(const itk::Object * object, const itk::EventObject & event) override
   {
-    //auto registration = static_cast<RegistrationPointer>(object);
     auto optimizer = static_cast<OptimizerPointer>(object);
-    /* if (!itk::IterationEvent().CheckEvent(&event))
-    {
-      return;
-    } */
     if (itk::StartEvent().CheckEvent(&event))
     {
-      std::cout << "Iteration     Value          Position" << std::endl;
+      std::cout << "Iter     Value          Position" << std::endl;
     } else if (itk::IterationEvent().CheckEvent(&event))
     {
       std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
       std::cout << optimizer->GetCurrentPosition() << std::endl;
-      //std::cout << "current level: " << registration->GetCurrentLevel() << std::endl;
-
     } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
     {
       std::cout << "aaaa" << std::endl;
@@ -144,9 +135,6 @@ public:
       std::cout << "Finish" << std::endl;
       std::cout << std::endl << std::endl;
     }
-    /* std::cout << optimizer->GetCurrentIteration() << "   ";
-    std::cout << optimizer->GetValue() << "   ";
-    std::cout << optimizer->GetCurrentPosition() << std::endl; */
   }
 };
 
@@ -236,25 +224,25 @@ using VersorType = TransformType::VersorType;
 using VectorType = VersorType::VectorType;
 VersorType rotation;
 VectorType axis;
-axis[0] = 1.0;
-axis[1] = 0.0;
-axis[2] = 0.0;
-constexpr double angle = 0.0;
+axis[0] = 0.0137631;
+axis[1] =  -0.000711808;
+axis[2] = -0.0410878;
+constexpr double angle = 1.0*(3.1415926535/180);
 rotation.Set(axis, angle);
 VectorType translation;
-translation[0] = 5.3317;
-translation[1] = -5.93364;
-translation[2] = -15.0983;
+translation[0] = 5.3317+17.165       +20;
+translation[1] = -5.93364-33.6491      ;
+translation[2] = -15.0983-21.472       ;
 initialTransform->SetRotation(rotation);
-//initialTransform->SetTranslation(translation);
+initialTransform->SetTranslation(translation);
 initialTransform_2->SetRotation(rotation);
 initialTransform_2->SetTranslation(translation);
-std::cout << "initial transform matrix: " << initialTransform_2->GetOffset() << std::endl;
+std::cout << "initial transform matrix: " << initialTransform->GetMatrix() << std::endl;
+std::cout << "initial transform offset: " << initialTransform->GetOffset() << std::endl << std::endl;
 
 std::cout << "initial translaction: " << initialTransform->GetTranslation() << std::endl;
 std::cout << "initial rotation: " << initialTransform->GetVersor() << std::endl;
 
-initialTransform_2 = initialTransform;
 registration->SetInitialTransform(initialTransform);
 
   using OptimizerScalesType = OptimizerType::ScalesType;
@@ -278,17 +266,16 @@ registration->SetInitialTransform(initialTransform);
     optimizer->SetRelaxationFactor(0.8);
 
   // Create the Command observer and register it with the optimizer.
-  //
   using CommanddType2 = CommandIterationUpdate;
   auto observer = CommanddType2::New();
-/*   optimizer->AddObserver(itk::StartEvent(), observer);
+  /* optimizer->AddObserver(itk::StartEvent(), observer);
   optimizer->AddObserver(itk::IterationEvent(), observer);
   optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
   optimizer->AddObserver(itk::EndEvent(), observer); */
 
   using CommandType = RegistrationInterfaceCommand<RegistrationType>;
   auto command = CommandType::New();
-  registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
+ // registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
 
   //
   constexpr unsigned int numberOfLevels = 4;
@@ -419,7 +406,7 @@ registration->MetricSamplingReinitializeSeed(121213);
   auto caster = CastFilterType::New();
   auto rescaleFilter = RescaleFilterType::New();
 
-  std::string Output1{"newmovedimage1.mha"};
+  std::string Output1{"outputImagefile.mha"};
   writer->SetFileName(Output1);
 
   caster->SetInput(resampler->GetOutput());
@@ -454,7 +441,7 @@ registration->MetricSamplingReinitializeSeed(121213);
   // Compute the difference image between the
   // fixed and resampled moving image.
 
-  std::string Output2{"newmovedimage2.mha"};
+  std::string Output2{"differenceAfterRegistration.mha"};
   writer2->SetFileName(Output2);
   writer2->Update();
 
@@ -464,8 +451,8 @@ registration->MetricSamplingReinitializeSeed(121213);
   // Compute the difference image between the
   // fixed and moving image before registration.
 
-  resampler->SetTransform(identity);
-  std::string Output3{"newmovedimage3.mha"};
+  resampler->SetTransform(initialTransform_2);
+  std::string Output3{"differenceBeforeRegistration.mha"};
   writer2->SetFileName(Output3);
   writer2->Update();
 
@@ -500,26 +487,33 @@ registration->MetricSamplingReinitializeSeed(121213);
   auto sliceWriter = SliceWriterType::New();
   sliceWriter->SetInput(extractor->GetOutput());
 
+
+  std::cout << "initial transform matrix: " << initialTransform_2->GetMatrix() << std::endl;
+  std::cout << "initial transform offset: " << initialTransform_2->GetOffset() << std::endl << std::endl;
+
+  std::cout << "initial translaction: " << initialTransform_2->GetTranslation() << std::endl;
+  std::cout << "initial rotation: " << initialTransform_2->GetVersor() << std::endl;
+
   extractor->SetInput(rescaleFilter->GetOutput());
   resampler->SetTransform(initialTransform_2);
-  std::string Output4{"newmovedimage4.png"};
+  std::string Output4{"sliceBeforeRegistration.png"};
   sliceWriter->SetFileName(Output4);
   sliceWriter->Update();
 
   extractor->SetInput(intensityRescaler->GetOutput());
   resampler->SetTransform(initialTransform_2);
-  std::string Output5{"newmovedimage5.png"};
+  std::string Output5{"sliceDifferenceBeforeRegistration.png"};
   sliceWriter->SetFileName(Output5);
   sliceWriter->Update();
 
   resampler->SetTransform(finalTransform);
-  std::string Output6{"newmovedimage6.png"};
+  std::string Output6{"sliceDifferenceAfterRegistration.png"};
   sliceWriter->SetFileName(Output6);
   sliceWriter->Update();
 
   extractor->SetInput(rescaleFilter->GetOutput());
   resampler->SetTransform(finalTransform);
-  std::string Output7{"newmovedimage7.png"};
+  std::string Output7{"sliceAfterRegistration.png"};
   sliceWriter->SetFileName(Output7);
   sliceWriter->Update();
 
