@@ -14,7 +14,17 @@ int main(int argc, char **argv) {
         info.title = "myviewer";
         curan::renderable::Window::WindowSize size{1000, 800};
         info.window_size = size;
-        curan::renderable::Window window{info};
+        curan::renderable::Window window{info}; 
+
+        curan::renderable::Box::Info create_info;
+        create_info.geomInfo.dx = vsg::vec3(0.5,0.0,0.0);
+        create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
+        create_info.geomInfo.dz = vsg::vec3(0.0,0.0,0.5);
+        create_info.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
+        create_info.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+        create_info.builder = vsg::Builder::create();
+        vsg::ref_ptr<curan::renderable::Renderable> box = curan::renderable::Box::make(create_info);
+        window << box;
 
         window.run();
 

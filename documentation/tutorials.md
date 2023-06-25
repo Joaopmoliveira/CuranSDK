@@ -655,7 +655,11 @@ int main(int argc, char **argv) {
 
 ```
 
-This source code will create an empty window which we can rotate and move. The wired floor is automatically added to the scene to facilitate the visualization by inexperienced personell viewing our demos (simmilar to the background of blender). The code blocks once the window.run() method is called. Now assume that we add a function in a thread that goes to do something like waiting for a connection to be established and once this connection is established we want to add a sphere to the scene. This is how you would achieve this behavior.
+This source code will create an empty window which we can rotate and move.
+
+<img src="{{site.baseurl}}/images/empty_world.png">
+
+The wired floor is automatically added to the scene to facilitate the visualization by inexperienced personell viewing our demos (simmilar to the background of blender). The code blocks once the window.run() method is called. Now assume that we add a function in a thread that goes to do something like waiting for a connection to be established and once this connection is established we want to add a sphere to the scene. This is how you would achieve this behavior.
 
 ```cpp
 #include "rendering/SequencialLinks.h"
@@ -712,7 +716,11 @@ int main(int argc, char **argv) {
 
 ```
 
-This code adds objects to our scene asyncrounously, which means that we never block the entire scene while waiting for our object. For a reference of objects that you can add to the scene look and the classes available inside the renderer library. There are two special objects which need a bit more attention. How to create a robot and how to create 
+This code adds objects to our scene asyncrounously, which means that we never block the entire scene while waiting for our object. The scene is now 
+
+<img src="{{site.baseurl}}/images/world_with_box.png">
+
+For a reference of objects that you can add to the scene look and the classes available inside the renderer library. There are two special objects which need a bit more attention. How to create a robot and how to create 
 
 ### Optimization
 
