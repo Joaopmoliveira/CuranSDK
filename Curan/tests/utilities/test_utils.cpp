@@ -11,7 +11,6 @@
 The utilities library is at the core of curan. All other modules of the 
 medical viewer use the constructs provided by this module. Lets go into the 
 details!
-
 */
 
 int test_shared_flag() {
