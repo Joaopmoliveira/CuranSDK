@@ -27,7 +27,7 @@ int main() {
 			std::cout << "received signal!\n";
 		};
 
-		Slider::Info infor{};
+		Slider::Info infor{};	
 		infor.click_color = SK_ColorLTGRAY;
 		infor.hover_color = SK_ColorCYAN;
 		infor.waiting_color = SK_ColorDKGRAY;

@@ -510,6 +510,21 @@ while (!glfwWindowShouldClose(viewer->window)) {
 return 0;
 ```
 
+This is the result of all of our hard work
+
+<img src="{{site.baseurl}}/images/buttons_container.png">
+
+Altough its a bit anoying that the lettering type is too small. Well no problem, in our Button::Info struct there is a field that controls the size of the font we are using to render our buttons, lets change that from 15 to 30 as follows
+
+```cpp
+SkFont text_font = SkFont(typeface, 30, 1.0f, 0.0f);
+text_font.setEdging(SkFont::Edging::kAntiAlias);
+```
+
+This results in the following 
+
+<img src="{{site.baseurl}}/images/buttons_larger_letter_type.png">
+
 Now finaly we want to add the callback behavior to our window. This is done through a [lambda](https://en.cppreference.com/w/cpp/language/lambda) and [variants](https://en.cppreference.com/w/cpp/utility/variant). Lambdas are blocks of code which capture variables as desired and variants are a special safe kind of [unions](https://en.cppreference.com/w/c/language/union). Don't worry about the names, you just need to know how to implement the behavior you desire.
 
 This is how you define a lambda which can be called by your button.

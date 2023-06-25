@@ -16,7 +16,7 @@ int main() {
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 		SkColor colbuton = { SK_ColorWHITE };
-		SkColor coltext = { SK_ColorBLACK };
+		SkColor coltext = { SK_ColorWHITE };
 
 		SkPaint paint_square;
 		paint_square.setStyle(SkPaint::kFill_Style);
@@ -35,7 +35,7 @@ int main() {
 		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
 		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 
-		SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
+		SkFont text_font = SkFont(typeface, 30, 1.0f, 0.0f);
 		text_font.setEdging(SkFont::Edging::kAntiAlias);
 
 		SkPaint paint_square2;
@@ -45,36 +45,33 @@ int main() {
 		paint_square2.setColor(SK_ColorBLACK);
 
 		Button::Info infor{ resources };
-		infor.button_text = "Touch!";
+		infor.button_text = "print name";
 		infor.click_color = SK_ColorRED;
 		infor.hover_color = SK_ColorCYAN;
 		infor.waiting_color = SK_ColorGRAY;
 		infor.icon_identifier = "";
 		infor.paintButton = paint_square;
 		infor.paintText = paint_text;
-		infor.size = SkRect::MakeWH(100, 80);
+		infor.size = SkRect::MakeWH(200, 120);
 		infor.textFont = text_font;
 		std::shared_ptr<Button> button = Button::make(infor);
 
-		infor.button_text = "Touch 2!";
+		infor.button_text = "print age";
 		std::shared_ptr<Button> button2 = Button::make(infor);
 
-		infor.button_text = "Touch 3!";
+		infor.button_text = "print Eureka";
 		std::shared_ptr<Button> button3 = Button::make(infor);
-
-		infor.button_text = "Touch 4!";
-		std::shared_ptr<Button> button4 = Button::make(infor);
 
 		Container::InfoLinearContainer info;
 		info.arrangement = curan::ui::Arrangement::VERTICAL;
-		info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
-		info.layouts = { button ,button2 , button3 };
+		info.divisions = { 0.0 , 0.5 , 1.0 };
+		info.layouts = { button ,button2};
 		info.paint_layout = paint_square2;
 		std::shared_ptr<Container> container = Container::make(info);
 
 		info.arrangement = curan::ui::Arrangement::HORIZONTAL;
 		info.divisions = { 0.0 , 0.5 , 1.0 };
-		info.layouts = { container , button4 };
+		info.layouts = { container , button3 };
 		std::shared_ptr<Container> container2 = Container::make(info);
 
 		auto rec = viewer->get_size();

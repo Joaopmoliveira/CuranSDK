@@ -258,3 +258,18 @@ if(SERIAL_RECEIVE_ARGUMENT)
 else(SERIAL_RECEIVE_ARGUMENT)
     target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="COM6")
 endif(SERIAL_RECEIVE_ARGUMENT)
+
+
+add_executable(test_empty_window
+test_window_api.cpp
+)
+
+target_compile_definitions(test_empty_window PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_empty_window PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_empty_window
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+)
