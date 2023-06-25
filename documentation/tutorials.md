@@ -353,7 +353,19 @@ Internally this code uses condition variables to force threads to sleep. This sa
 
 ### User-Interface
 
-The user interface library is build upon [SKIA](https://skia.org/). This is a great library in cpp which renders geometries, images, paths, and many other geometries. Check the SKIA [API](https://skia.org/docs/user/api/) to see what is possible. The main thing you need to understand is that Curan only executes the connection between the GPU and your CPU, all other things are taken care of by SKIA. This is a snipeat of code which shows how you can create an empty canvas
+The user interface library is build upon [SKIA](https://skia.org/). This is a great library in cpp which renders geometries, images, paths, and many other geometries. Check the SKIA [API](https://skia.org/docs/user/api/) to see what is possible. The main thing you need to understand is that Curan only executes the connection between the GPU and your CPU, all other things are taken care of by SKIA. 
+
+The first step in all our programming is to properly link our executable to the user interface library, we can achieve this through.
+
+```cmake
+add_executable(myexecutable main.cpp)
+
+
+target_link_libraries(myexecutable PUBLIC
+userinterface
+)
+```
+Now the compiler can link safely to our library. This is a snipeat of code which shows how you can create an empty canvas
 
 ```cpp
 #define STB_IMAGE_IMPLEMENTATION
@@ -376,6 +388,8 @@ try {
 	paint_square.setAntiAlias(true);
 	paint_square.setStrokeWidth(4);
 	paint_square.setColor(colbuton);
+
+    //Things that we will add in the next portion of the tutorial
 
 	while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
@@ -408,15 +422,17 @@ This source code creates a window through the [GLFW library](https://www.glfw.or
 This while loop runs until the window is closed. Now obviously you don't want to program all types of objects like buttons and so on, everytime you want this type of behavior. Curan has a light Widget implementation which you can use for your goals. Lets see how curan goes about defining this widget behavior
 
 Assume that you want three buttons all with distict behavior:
-1. Button 1 - name "print" execution "prints a name when clicked"
+1. Button 1 - name "print name" execution "prints a name when clicked"
 
-2. Button 2 - name "draw circle" execution 
+2. Button 2 - name "print age" execution "prints an age when clicked"
 
-3. Button 3 - name "" execution
+3. Button 3 - name "print Eureka" execution "prints Eureka when clicked"
+
+Further notice that we would like to control the colors when we are hovering with the mouse, when we click the button and while nothing is interacting with the button. This is controlled through the Button::Info structure feed into the constructor of Button. We would also like Button 1 to be above button 2 and these two are on the left side of button 3. To achieve this we must first create the buttons as follows
 
 ```cpp
 Button::Info infor{ resources };
-infor.button_text = "Touch!";
+infor.button_text = "print name";
 infor.click_color = SK_ColorRED;
 infor.hover_color = SK_ColorCYAN;
 infor.waiting_color = SK_ColorGRAY;
@@ -425,34 +441,32 @@ infor.paintButton = paint_square;
 infor.paintText = paint_text;
 infor.size = SkRect::MakeWH(100, 80);
 infor.textFont = text_font;
-std::shared_ptr<Button> button = Button::make(infor);
+std::shared_ptr<Button> button1 = Button::make(infor);
 
-infor.button_text = "Touch 2!";
+infor.button_text = "print age";
 std::shared_ptr<Button> button2 = Button::make(infor);
 
-infor.button_text = "Touch 3!";
+infor.button_text = "print Eureka";
 std::shared_ptr<Button> button3 = Button::make(infor);
-
-infor.button_text = "Touch 4!";
-std::shared_ptr<Button> button4 = Button::make(infor);
 ```
-Now we need to tell curan how we want our objects placed. To do this we must create a container. A container is basically a set of drawable objects we wish to draw at certain locations on our window. 
+Notice that the Button::Info structure contains all these things we desire to control. Later we will show how we can specify the behaviour of the button once it is clicked 
+
+Now the buttons have some of the desired behavior we desire, but some things are still missing, such as their layout. To control the layout Curan has the concept of a container. Containers are objects which contain other objects, be them widgets, or other containers. Given the specification of the buttons we defined we need two containers. One which is a vertical container which contains button 1 and 2 and an horizontal container which contains the first container and button 3. This is done as follows
 
 ```cpp
 Container::InfoLinearContainer info;
 info.arrangement = curan::ui::Arrangement::VERTICAL;
-info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
-info.layouts = { button ,button2 , button3 };
+info.divisions = { 0.0 , 0.5 , 1.0 };
+info.layouts = { button1 ,button2 };
 info.paint_layout = paint_square2;
 std::shared_ptr<Container> container = Container::make(info);
 
 info.arrangement = curan::ui::Arrangement::HORIZONTAL;
 info.divisions = { 0.0 , 0.5 , 1.0 };
-info.layouts = { container , button4 };
+info.layouts = { container , button2 };
 std::shared_ptr<Container> container2 = Container::make(info);
  ```
-
- Now we need to draw the containers somehow. We do this by creating a page. A page contains one container which can itself contain containers recursivelly. This allows us to create a tree structure of things to draw on screen. 
+Notice the divisions vector. This allows us to control the relative spacing between widgets. Now we need to draw the containers somehow. We do this by creating a page. A page contains one container which can itself contain containers recursivelly. This allows us to create a tree structure of things to draw on screen. Because our containers are already completly defined we just need to tell the page that it must draw container2
 
 ```cpp
 auto rec = viewer->get_size();
@@ -496,7 +510,49 @@ while (!glfwWindowShouldClose(viewer->window)) {
 return 0;
 ```
 
-Now obviously there are more widgets which are usefull in this context. For example in the context of Curan, it is extremelly important to draw an image which we received from a peripheral at a constant framerate. To do this we developed the ImageDisplay class. This is how one can use the class
+Now finaly we want to add the callback behavior to our window. This is done through a [lambda](https://en.cppreference.com/w/cpp/language/lambda) and [variants](https://en.cppreference.com/w/cpp/utility/variant). Lambdas are blocks of code which capture variables as desired and variants are a special safe kind of [unions](https://en.cppreference.com/w/c/language/union). Don't worry about the names, you just need to know how to implement the behavior you desire.
+
+This is how you define a lambda which can be called by your button.
+
+```cpp
+auto button_callback = [](Button* slider,ConfigDraw* config) {
+    std::cout << "print Vlad\n"; 
+};
+```
+Now lets change the code that creates the buttons to obtain the behavior we want 
+
+```cpp
+Button::Info infor{ resources };
+infor.button_text = "print name";
+infor.click_color = SK_ColorRED;
+infor.hover_color = SK_ColorCYAN;
+infor.waiting_color = SK_ColorGRAY;
+infor.icon_identifier = "";
+infor.callback = [](Button* slider,ConfigDraw* config) {
+    std::cout << "print Vlad\n"; 
+};
+infor.paintButton = paint_square;
+infor.paintText = paint_text;
+infor.size = SkRect::MakeWH(100, 80);
+infor.textFont = text_font;
+std::shared_ptr<Button> button1 = Button::make(infor);
+
+infor.button_text = "print age";
+infor.callback = [](Button* slider,ConfigDraw* config) {
+    std::cout << "print 42\n"; 
+};
+std::shared_ptr<Button> button2 = Button::make(infor);
+
+infor.button_text = "print Eureka";
+infor.callback = [](Button* slider,ConfigDraw* config) {
+    std::cout << "Eureka\n"; 
+};
+std::shared_ptr<Button> button3 = Button::make(infor);
+```
+
+With this you have the widget behavior you desire. Because the lambdas can capture anything if your imagination if powerfull you can create quite complex things.
+
+Now obviously there are more widgets which are usefull in this context. For example in the context of Curan, it is extremelly important to draw an image which we received from a peripheral at a constant framerate. To do this we developed the ImageDisplay class. Assume that you are testing an algorithm and just want to see how the image looks. Well for that we can define the ImageDisplay class and a single container which completly fills our Page as follows.
 
 ```cpp
 int main(){
@@ -523,25 +579,206 @@ int main(){
 }
 ```
 
-For astetic propouses we can also had an overlay over our custom page. This is usefull when we have options but we dont want them to be visible at all time cluterring the screen. 
-
 ### 3D-Rendering
+
+One very interesting tools which is always usefull while using robots and other sensors which can interact in real time is to be able to render 3D scenes. As always we first see how we can link our executable to the 3D rendering library.
+
+```cmake
+find_package(vsg)
+find_package(vsgXchange)
+
+add_executable(myexecutable main.cpp)
+target_compile_definitions(myexecutable PRIVATE vsgXchange_FOUND)
+target_compile_definitions(myexecutable PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(myexecutable
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+)
+```
 
 To render a 3D scene we have a couple of requirments in our lab. We must have the flexibility do add objects at runtime, we must be able to delete objects from a scene, add objects whilst the program is running. This is how you can create a basic empty scene. 
 
 ```cpp
-int main(){
+#include "rendering/SequencialLinks.h"
+#include "rendering/Window.h"
+#include "rendering/Renderable.h"
+#include "rendering/Sphere.h"
+#include <iostream>
 
+int main(int argc, char **argv) {
+    try {
+        curan::renderable::Window::Info info;
+        info.api_dump = false;
+        info.display = "";
+        info.full_screen = false;
+        info.is_debug = false;
+        info.screen_number = 0;
+        info.title = "myviewer";
+        curan::renderable::Window::WindowSize size{1000, 800};
+        info.window_size = size;
+        curan::renderable::Window window{info};
+
+        window.run();
+
+        window.transverse_identifiers(
+            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
+                   &map) {
+                for (auto &p : map){
+                    std::cout << "Object contained: " << p.first << '\n';
+                }
+
+            });
+
+    } catch (const std::exception& e) {
+        std::cerr << "Exception thrown : " << e.what() << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
+```
+
+This source code will create an empty window which we can rotate and move. The wired floor is automatically added to the scene to facilitate the visualization by inexperienced personell viewing our demos (simmilar to the background of blender). The code blocks once the window.run() method is called. Now assume that we add a function in a thread that goes to do something like waiting for a connection to be established and once this connection is established we want to add a sphere to the scene. This is how you would achieve this behavior.
+
+```cpp
+#include "rendering/SequencialLinks.h"
+#include "rendering/Window.h"
+#include "rendering/Renderable.h"
+#include "rendering/Sphere.h"
+#include <iostream>
+#include <chrono>
+
+int mimic_waiting_for_connection(curan::renderable::Window& window){
+    std::this_thread::sleep_for(std::chrono::seconds(10)); //mimic waiting for a connection that takes 10 seconds
+    curan::renderable::Box::Info create_info;
+    create_info.geomInfo.dx = vsg::vec3(0.5,0.0,0.0);
+    create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
+    create_info.geomInfo.dz = vsg::vec3(0.0,0.0,0.5);
+    create_info.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
+    create_info.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+    create_info.builder = vsg::Builder::create();
+    vsg::ref_ptr<curan::renderable::Renderable> box = curan::renderable::Box::make(create_info);
+    window << box;
+};
+
+int main(int argc, char **argv) {
+    try {
+        curan::renderable::Window::Info info;
+        info.api_dump = false;
+        info.display = "";
+        info.full_screen = false;
+        info.is_debug = false;
+        info.screen_number = 0;
+        info.title = "myviewer";
+        curan::renderable::Window::WindowSize size{1000, 800};
+        info.window_size = size;
+        curan::renderable::Window window{info};
+        std::thread connect_thread(mimic_waiting_for_connection(window));
+        window.run();
+        connect_thread.join();
+
+        window.transverse_identifiers(
+            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
+                   &map) {
+                for (auto &p : map){
+                    std::cout << "Object contained: " << p.first << '\n';
+                }
+
+            });
+
+    } catch (const std::exception& e) {
+        std::cerr << "Exception thrown : " << e.what() << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
+```
+
+This code adds objects to our scene asyncrounously, which means that we never block the entire scene while waiting for our object. For a reference of objects that you can add to the scene look and the classes available inside the renderer library. There are two special objects which need a bit more attention. How to create a robot and how to create 
+
+### Optimization
+
+```cmake
+add_executable(myexecutable main.cpp)
+
+
+target_link_libraries(myexecutable PUBLIC
+userinterface
+)
+```
+
+```cpp
+#include "optimization/WireCalibration.h"
+
+int main() {
+    constexpr size_t number_of_strings = 3;
+    constexpr size_t number_of_variables = 6 + 4 * number_of_strings;
+    double variables[number_of_variables];
+
+    for (auto& val : variables)
+        val = 0.0;
+
+    curan::optim::WireData data;
+
+    std::string s{ model_parameters };
+    std::stringstream stream;
+
+    stream << s;
+    stream >> data;
+
+    auto val = *data.wire_data.begin();
+
+    double residual[2] = { 0.0,0.0 };
+    curan::optim::PlaneInfo<double> local_plane;
+    local_plane.update(&val, variables);
+    curan::optim::compute_cost<double>(local_plane, val, residual);
+    std::cout << "the cost of the wire geometry is: residual 1" << residual[0] << " residual 2 " << residual[1] << std::endl;
+
+    ceres::Problem problem;
+    for (const auto& data : data.wire_data) {
+        ceres::CostFunction* cost_function =
+            new ceres::AutoDiffCostFunction<curan::optim::WiredResidual, 2, number_of_variables>(
+                new curan::optim::WiredResidual(data));
+        problem.AddResidualBlock(cost_function, nullptr, variables);
+    }
+
+    ceres::Solver::Options options;
+    options.max_num_iterations = 25;
+    options.linear_solver_type = ceres::DENSE_QR;
+    options.minimizer_progress_to_stdout = true;
+
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    std::cout << summary.BriefReport() << "\n";
+    std::cout << "Initial: \n";
+
+    for (const auto& val : variables)
+        std::cout << 0.0 << " , ";
+    std::cout << "\n";
+    std::cout << "Final: \n";
+    for (const auto& val : variables)
+        std::cout << val << " , ";
     return 0;
 }
 ```
 
-### Optimization
-
 ### Communication
+
+```cmake
+add_executable(myexecutable main.cpp)
+
+
+target_link_libraries(myexecutable PUBLIC
+userinterface
+)
+```
 
 ### Image-Processing
 
 This portion is still in development... TODO
 
+<img src="{{site.baseurl}}/images/website.jpg">
 
