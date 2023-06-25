@@ -156,7 +156,7 @@ int main(){
 
 ```
 
-This almost works, there is a bug hidden in the example. Because we are acessing the control_law double memory location from both threads we have a race condition (one thread could be stopped whilst we were writing to the double and in the meantime we read this value which contains nonsense until the writing operation is finished). To avoid this, the double variable should also be atomic to guarantee that changes are updated in a single shot. As you can see, designing memory safe code is dificult and requires constant attention. 
+This almost works, there is a bug hidden in the example. Because we are acessing the control_law double memory location from both threads we have a [race condition](https://en.wikipedia.org/wiki/Race_condition) (to understand the read the [cpp memory model](https://en.cppreference.com/w/cpp/language/memory_model)) (one thread could be stopped whilst we were writing to the double and in the meantime we read this value which contains nonsense until the writing operation is finished). To avoid this, the double variable should also be atomic to guarantee that changes are updated in a single shot. As you can see, designing memory safe code is dificult and requires constant attention. 
 
 To deal with these problems curan proposes the class 'SafeQueue' which is basically a queue which we can put things into and request to pull things out of as needeed with guaranteed memory safety. 
 
@@ -255,7 +255,48 @@ int main(){
     return 0;
 }
 ```
-We keep looping and getting more images and our slow filter takes these images and is started on a parallel thread which runs our task. This solution has several problems, namely, 
+We keep looping and getting more images and our slow filter takes these images and is started on a parallel thread which runs our task. This solution has several problems, namely, the number of threads we create is unlimited, which is not always want we want. Remember that your core has a finite number of cores and at some point you will create too many threads which the kernel of the operating system might need to switch between (which takes time). The other drawback of the tecnique is that creating a thread is an "expensive" operation. This is where thread pools come into play.
+What if you create a pool of prealocated threads and give them the task you wish to execute? This number of threads would be limited and you would not pay for the creation of the threads as the while loop runs. 
+
+To achieve this solution curan has the concept of a Job. A job contains a description of the task being executed and a [lambda](https://en.cppreference.com/w/cpp/language/lambda) which captures our local variables that we want to use in the future. Inside this lambda we provide it with a copy of the pointer to our image and we call our slow filter. Once the while filter is finished we terminate the thread pool. If you are curious, check how the thread pool is implemented. Its not that difficult to understand.
+
+```cpp
+
+#include "itkImage.h"
+
+using PixelType = unsigned char;
+using Dimension = 2;
+using ImageType = itk::Image<PixelType, Dimension>;
+
+ImageType::Pointer magicfunction_returns_image();
+void slow_image_filter(ImageType::Pointer);
+
+int main(){
+    //initualize the thread pool;
+	curan::utilities::initialize_thread_pool(10);
+    bool continue_running = true;
+    
+    while(continue_running){
+        ImageType::Pointer image = magicfunction_returns_image();
+        if(image.get()==nullptr){
+            continue_running = false;
+            continue;
+        }
+        curan::utilities::Job job_to_execute;
+	job_to_execute.description = "Job to execute";
+        job_to_execute.function_to_execute = [image]() {
+            slow_image_filter(image);
+	    };
+        curan::utilities::pool->submit(job_to_execute);
+    }
+    curan::utilities::terminate_thread_pool();
+    return 0;
+}
+```
+
+# Flags
+
+The last flag which is notable and usefull in your day to day inside the utilities target are multihtreaded safe flags. 
 
 ## User Interface
 
