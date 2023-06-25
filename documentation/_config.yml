@@ -21,15 +21,27 @@
 title: HumanRoboticsSDK
 email: joaomoliveira1996@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
-  This website showcases the awesome tecnologies we develop and the Human Robotics Lab
-baseurl: "" # the subpath of your site, e.g. /blog
+  This website showcases the awesome tecnologies we develop and the HRL
+baseurl: "/documentation" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 github_username:  Joaopmoliveira 
 
 # Build settings
+markdown: kramdown
 theme: minima
 plugins:
   - jekyll-feed
+
+header_pages:
+  - about.md
+  - get_started.md
+  - index.md
+  - screenshots.md
+  - tutorials.md
+
+relative_links:
+  enabled:     true
+  collections: false
 
 # Exclude from processing.
 # The following items will not be processed, by default.

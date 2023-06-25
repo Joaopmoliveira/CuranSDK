@@ -1,7 +1,10 @@
 ---
 layout: "page"
 title: "Get started" 
+permalink: "/get_started/"
 ---
+
+## Understand the structure
 
 So you have found yourself in front of Curan and you have sucessefully compiled the Curan SDK without any errors. Now you have a goal in mind and want to start implementing your own custom solutions for your medical applications. Well, this tutorial introduces the base cases of the classes available to achieve your goals. 
 
@@ -79,9 +82,9 @@ Because we are programmers, we need to test ideias, prototype until we are happy
 Simply define your executable and link the necessary targets, e.g. assume that you want to use the utilities target, then you just need to create a file in the tests folder, and write a CMakeLists.txt of that directory the following 
 
 ```cmake
-add_executable(test_util test_utils.cpp)
+add_executable(bar test_utils.cpp)
 
-target_link_libraries(test_util PUBLIC
+target_link_libraries(bar PUBLIC
 utils
 )
 
@@ -125,12 +128,9 @@ add_custom_target(
 When you want to use this location in one of your executables we can define a macro from cmake as such 
 
 ```cmake 
-add_executable(test_library_userinterface test_library_userinterface.cpp)
+add_executable(foo main.cpp)
 
-target_compile_definitions(test_library_userinterface PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_library_userinterface PUBLIC
-userinterface
+target_compile_definitions(foo PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 )
 ```
 
