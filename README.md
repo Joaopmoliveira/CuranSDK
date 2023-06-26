@@ -129,7 +129,7 @@ When using VScode to compile the project, if the previous order of the build ins
 
 ## API Reference
 
-Curan finaly has a [website](https://human-robotics-lab.github.io/CuranWeb/) where you can follow our tutorials on how to use the SDK we developed at the surgical robotics lab 
+Curan finaly has a [website](https://human-robotics-lab.github.io/CuranWeb/) where you can follow our tutorials on how to use the SDK we developed at the surgical robotics lab.
 
 ## Contributions 
 
