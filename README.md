@@ -127,6 +127,10 @@ Notice that we are forcing the cmake extension to pass the arguments of where vc
 
 When using VScode to compile the project, if the previous order of the build instructions is not followed properly, the build fails due to incorrect configurations. When you find yourself faced with these problems the simplest solution is to delete the .vscode folder and the build folder and reconfigure the project, this usually solves all the problems. 
 
+## API Reference
+
+Curan finaly has a [website](https://human-robotics-lab.github.io/CuranWeb/) where you can follow our tutorials on how to use the SDK we developed at the surgical robotics lab 
+
 ## Contributions 
 
 > -João Oliveira (Lead developer)
