@@ -208,7 +208,8 @@ int main() {
 	test_job_and_thread_pool();
 	test_thread_safe_queue();
 	test_memory_buffers();
-
+	int a = 0;
+	std::cout << ++a << '\n';
 	//terminate the thread pool;
 	curan::utilities::terminate_thread_pool();
 	return 0;

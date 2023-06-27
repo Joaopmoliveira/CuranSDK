@@ -41,9 +41,6 @@ add_custom_target(
   DEPENDS resources
 )
 
-message(${original_resource_paths})
-message(${post_build_resource_path})
-
 #Add internal Curan libraries to the list of known targets
 add_subdirectory(libraries)
 
@@ -52,3 +49,7 @@ add_subdirectory(tests)
 
 # Add medical applications
 add_subdirectory(applications)
+
+# Add medical applications
+add_subdirectory(tutorialsrc)
+
