@@ -101,6 +101,7 @@ project called .vscode) with a file inside it called settings.json with the foll
 
 ```
 {
+    "cmake.generator": "Ninja",
     "cmake.configureArgs": [
         "-DVCPKG_APPLOCAL_DEPS=ON",
         "-DX_VCPKG_APPLOCAL_DEPS_INSTALL=ON",
