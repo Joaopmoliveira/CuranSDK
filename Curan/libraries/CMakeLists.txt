@@ -5,4 +5,3 @@ add_subdirectory(modifieduserinterface)
 add_subdirectory(imageprocessing)
 add_subdirectory(optimization)
 add_subdirectory(rendering)
-
