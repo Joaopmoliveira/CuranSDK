@@ -7,20 +7,20 @@ LightWeightPage::LightWeightPage(post_signal_callback post_sig,Container&& conta
 
 }
 
-LightWeightPage::LightWeightPage(const LightWeightPage& other){
+LightWeightPage::LightWeightPage(const LightWeightPage& other): scene{other.scene}{
 
 }
 
 LightWeightPage& LightWeightPage::operator=(const LightWeightPage& other){
-
+    return *(this);
 }
 
-LightWeightPage::LightWeightPage(LightWeightPage&& other){
+LightWeightPage::LightWeightPage(LightWeightPage&& other): scene{std::move(other.scene)}{
 
 }
 
 LightWeightPage::~LightWeightPage(){
-    
+
 }
 
 LightWeightPage& LightWeightPage::draw(SkCanvas* canvas){
