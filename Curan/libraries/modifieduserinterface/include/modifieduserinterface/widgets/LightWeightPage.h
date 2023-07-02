@@ -34,6 +34,8 @@ namespace curan {
 
 			LightWeightPage& propagate_size_change(SkRect& new_size);
 
+			LightWeightPage& set_post_signal(post_signal_callback call);
+
 			inline LightWeightPage& set_dirtyness(bool var) {
 				is_dirty = var;
                 return *(this);
