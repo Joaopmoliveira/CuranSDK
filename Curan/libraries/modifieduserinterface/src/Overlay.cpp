@@ -3,7 +3,7 @@
 namespace curan {
 namespace ui {
 
-explicit Overlay::Overlay(post_signal_callback post_sig,std::shared_ptr<Container> contained,SkColor backgroundcolor){
+Overlay::Overlay(post_signal_callback post_sig,Container&& contained,SkColor backgroundcolor){
 
 }
 

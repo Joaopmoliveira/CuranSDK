@@ -23,18 +23,11 @@ namespace curan {
 			SkRect size = SkRect::MakeWH(100, 100);
 		public:
 
-			Drawable(SkRect size);
-
-			drawablefunction virtual draw() = 0;
-
-			callablefunction virtual call() = 0;
-
-			Drawable& virtual framebuffer_resize() = 0;
-
-			bool virtual is_leaf();
+			Drawable();
 
 			inline Drawable& set_position(SkRect pos) {
 				widget_rect = pos;
+				return *(this);
 			}
 
 			inline SkRect get_position() {
@@ -47,11 +40,11 @@ namespace curan {
 
 			inline bool interacts(double x, double y) {
 				SkRect drawable;
-				if (size.width() < 0.01 || size.height() < 0.01)
+				if (size.width() < 0.01f || size.height() < 0.01f)
 					drawable = widget_rect;
 				else
 					drawable = size;
-				drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
+				drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
 				return (drawable.fLeft < x && drawable.fRight > x && drawable.fTop < y && drawable.fBottom > y) ? true : false;
 			}
 		};

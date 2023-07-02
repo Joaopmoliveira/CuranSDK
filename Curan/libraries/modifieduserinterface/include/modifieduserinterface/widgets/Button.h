@@ -16,6 +16,13 @@ namespace curan {
 		using buttoncallback = std::function<void(Button*, ConfigDraw*)>;
 
 		class Button : public  Drawable , utilities::Lockable<Button>{
+		public:
+		enum class ButtonStates {
+				WAITING,
+				PRESSED,
+				HOVER,
+		};
+		private:
 			SkColor hover_color;
 			SkColor waiting_color;
 			SkColor click_color;
@@ -31,17 +38,13 @@ namespace curan {
 
 		public:
 
-        enum class ButtonStates {
-				WAITING,
-				PRESSED,
-				HOVER,
-		};
+
 			explicit Button(const std::string& button_text,const std::string& icon_identifier);
             explicit Button(const std::string& button_text);
 
-			drawablefunction draw() override;
-			callablefunction call() override;
-			void framebuffer_resize() override;
+			drawablefunction draw();
+			callablefunction call();
+			void framebuffer_resize();
 
 			inline Button& set_callback(buttoncallback in) {
 				callback = in;

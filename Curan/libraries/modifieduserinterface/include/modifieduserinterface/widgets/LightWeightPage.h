@@ -14,14 +14,14 @@ namespace curan {
 		};
 
 		class LightWeightPage {
-			std::shared_ptr<Container> scene;
+			Container scene;
 			std::atomic<bool> is_dirty = false;
 			compilation_results compiled_scene;
 			SkColor backgroundcolor = SK_ColorWHITE;
 			post_signal_callback post_signal_processing;
 
         public:
-			LightWeightPage(post_signal_callback post_sig,std::shared_ptr<Container> contained, SkColor backgroundcolor = SK_ColorWHITE;);
+			LightWeightPage(post_signal_callback post_sig,Container&& contained, SkColor backgroundcolor);
 
 			LightWeightPage& draw(SkCanvas* canvas);
 

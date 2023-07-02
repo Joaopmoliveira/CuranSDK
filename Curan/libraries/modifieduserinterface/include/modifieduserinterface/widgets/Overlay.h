@@ -18,7 +18,7 @@ namespace curan {
 
 			
 		public:
-            explicit Overlay(post_signal_callback post_sig,std::shared_ptr<Container> contained,SkColor backgroundcolor);
+            explicit Overlay(post_signal_callback post_sig,Container&& contained,SkColor backgroundcolor);
 			std::unique_ptr<LightWeightPage> take_ownership();
 		};
 	}

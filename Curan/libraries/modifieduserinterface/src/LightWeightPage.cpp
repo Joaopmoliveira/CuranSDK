@@ -3,7 +3,7 @@
 namespace curan {
 namespace ui {
 
-LightWeightPage::LightWeightPage(post_signal_callback post_sig,std::shared_ptr<Container> contained, SkColor backgroundcolor = SK_ColorWHITE){
+LightWeightPage::LightWeightPage(post_signal_callback post_sig,Container&& contained, SkColor backgroundcolor): scene{std::move(contained)}{
 
 }
 

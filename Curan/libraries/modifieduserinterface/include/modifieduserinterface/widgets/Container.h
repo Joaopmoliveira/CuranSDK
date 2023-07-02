@@ -5,13 +5,14 @@
 #include "utils/Lockable.h"
 #include <vector>
 #include <memory>
+#include "Widget.h"
 
 namespace curan {
 	namespace ui {
 
 		class Container : public Drawable , utilities::Lockable<Container>{
 			SkPaint paint_layout;
-			std::vector<std::shared_ptr<Drawable>> contained_layouts;
+			std::vector<Widget> contained_layouts;
 			std::vector<SkRect> rectangles_of_contained_layouts;
 			bool horizontaly_fixed = false;
 			bool vertically_fixed = false;
@@ -29,11 +30,12 @@ namespace curan {
 		};
 
 			explicit Container(ContainerType type, Arrangement arragement);
-
-			drawablefunction draw() override;
-			callablefunction call() override;
-			bool is_leaf() override;
-			Container& framebuffer_resize() override;
+			Container(Container&& container);
+			
+			drawablefunction draw();
+			callablefunction call();
+			bool is_leaf();
+			Container& framebuffer_resize();
 			Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
 
 			inline std::vector<SkRect>& get_positioning() {

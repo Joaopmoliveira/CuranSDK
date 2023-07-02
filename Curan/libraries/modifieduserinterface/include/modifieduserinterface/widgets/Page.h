@@ -12,8 +12,8 @@ namespace curan {
 		class Overlay;
 
 		class Page {
-			std::unique_ptr<LightWeightPage> main_page;
-			std::deque<std::unique_ptr<LightWeightPage>> page_stack;
+			LightWeightPage main_page;
+			std::deque<LightWeightPage> page_stack;
 			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 			SkPaint bluring_paint;
 			SkSamplingOptions options;
@@ -34,9 +34,9 @@ namespace curan {
 
 			inline Page& set_dirtyness(bool var) {
 				if (page_stack.empty())
-					main_page->set_dirtyness(var);
+					main_page.set_dirtyness(var);
 				else
-					page_stack.front()->set_dirtyness(var);
+					page_stack.front().set_dirtyness(var);
                 return *(this);
 			}
 

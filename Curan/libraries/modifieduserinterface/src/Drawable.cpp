@@ -3,7 +3,7 @@
 namespace curan {
 namespace ui {
 
-Drawable::Drawable(SkRect size){
+Drawable::Drawable(){
 
 }
 
