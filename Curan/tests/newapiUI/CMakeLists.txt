@@ -1,0 +1,9 @@
+add_executable(test_new_user_interface main.cpp)
+
+target_compile_definitions(test_new_user_interface PRIVATE SK_VULKAN)
+target_compile_definitions(test_new_user_interface PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_new_user_interface PUBLIC
+utils
+userinterfacemodified
+)

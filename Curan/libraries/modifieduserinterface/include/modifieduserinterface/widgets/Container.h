@@ -30,8 +30,7 @@ namespace curan {
 		};
 
 			explicit Container(ContainerType type, Arrangement arragement);
-			Container(Container&& container);
-			
+
 			drawablefunction draw();
 			callablefunction call();
 			bool is_leaf();
@@ -41,6 +40,8 @@ namespace curan {
 			inline std::vector<SkRect>& get_positioning() {
 				return rectangles_of_contained_layouts;
 			};
+
+			Container& operator<<(Widget&& widget);
 		};
 	}
 }

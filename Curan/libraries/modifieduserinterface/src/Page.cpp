@@ -26,7 +26,7 @@ Page& Page::pop(){
 
 }
 
-Page& Page::stack(std::shared_ptr<Overlay> overlay){
+Page& Page::stack(Overlay&& overlay){
 
 }
 

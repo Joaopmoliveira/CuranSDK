@@ -84,5 +84,10 @@ std::lock_guard<std::mutex> g{ get_mutex() };
     return *(this);
 }
 
+Container& Container::operator<<(Widget&& widget){
+    contained_layouts.emplace_back(std::move(widget));
+    return *(this);
+}
+
 }
 }
