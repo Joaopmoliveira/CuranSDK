@@ -7,6 +7,22 @@ LightWeightPage::LightWeightPage(post_signal_callback post_sig,Container&& conta
 
 }
 
+LightWeightPage::LightWeightPage(const LightWeightPage& other){
+
+}
+
+LightWeightPage& LightWeightPage::operator=(const LightWeightPage& other){
+
+}
+
+LightWeightPage::LightWeightPage(LightWeightPage&& other){
+
+}
+
+LightWeightPage::~LightWeightPage(){
+    
+}
+
 LightWeightPage& LightWeightPage::draw(SkCanvas* canvas){
     return *(this);
 }

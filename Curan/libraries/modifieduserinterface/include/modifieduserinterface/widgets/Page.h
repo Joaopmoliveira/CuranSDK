@@ -24,7 +24,7 @@ namespace curan {
 
 			Page& draw(SkCanvas* canvas);
 
-			Page& propagate_signal(Signal sig, ConfigDraw* config);
+			bool propagate_signal(Signal sig, ConfigDraw* config);
 
 			Page& propagate_size_change(SkRect& new_size);
 

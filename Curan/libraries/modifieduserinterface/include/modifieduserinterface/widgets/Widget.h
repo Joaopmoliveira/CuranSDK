@@ -5,11 +5,12 @@
 
 namespace curan{
 namespace ui{
-    class Container;
-    class Button;
-   using Widget = std::variant<Button,Container>; 
+
+class Container;
+class Button;
+using Widget = std::variant<Button,Container>; 
+
 } 
 }
-
 
 #endif
