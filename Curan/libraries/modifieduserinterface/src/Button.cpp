@@ -4,13 +4,26 @@
 namespace curan {
 namespace ui {
 
-Button::Button(IconResources& system_icons,const std::string& button_text,const std::string& icon_identifier):system_icons{system_icons}{
+Button::Button(IconResources& system_icons,const std::string& button_text) : system_icons{system_icons}{
 
 }
 
-Button::Button(IconResources& system_icons,const std::string& button_text):system_icons{system_icons}{
+Button::Button(const Button& other): system_icons{other.system_icons}{
 
 }
+
+Button& Button::operator=(const Button& other){
+	return *(this);
+}
+
+Button::Button(Button&& other) : system_icons{other.system_icons}{
+	
+}
+
+Button::~Button(){
+	
+}
+
 
 drawablefunction Button::draw(){
 auto lamb = [this](SkCanvas* canvas) {
@@ -29,7 +42,7 @@ auto lamb = [this](SkCanvas* canvas) {
 		auto size = get_size();
 
 		SkRect drawable = size;
-		drawable.offsetTo(widget_rect.centerX()- drawable.width()/2.0, widget_rect.centerY()- drawable.height() / 2.0);
+		drawable.offsetTo(widget_rect.centerX()- drawable.width()/2.0f, widget_rect.centerY()- drawable.height() / 2.0f);
 
 		float text_offset_x = drawable.centerX() - widget_rect_text.width() / 2.0f;
 		float text_offset_y = drawable.centerY() + widget_rect_text.height() / 2.0f;

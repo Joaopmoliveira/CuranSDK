@@ -9,6 +9,23 @@ Container::Container(ContainerType type, Arrangement arragement) {
 
 }
 
+Container::Container(const Container& other){
+
+}
+
+Container& Container::operator=(const Container& other){
+	return *(this);
+}
+
+Container::Container(Container&& other){
+
+}
+
+Container::~Container(){
+	
+}
+
+
 drawablefunction Container::draw(){
 	auto lamb = [this](SkCanvas* canvas) {
 		std::lock_guard<std::mutex> g{ get_mutex() };

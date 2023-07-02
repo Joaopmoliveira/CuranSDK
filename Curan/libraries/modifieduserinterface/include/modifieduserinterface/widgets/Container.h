@@ -11,12 +11,6 @@ namespace curan {
 	namespace ui {
 
 		class Container : public Drawable , utilities::Lockable<Container>{
-			SkPaint paint_layout;
-			std::vector<Widget> contained_layouts;
-			std::vector<SkRect> rectangles_of_contained_layouts;
-			bool horizontaly_fixed = false;
-			bool vertically_fixed = false;
-
 		public:
 
         enum class ContainerType{
@@ -29,19 +23,32 @@ namespace curan {
 			HORIZONTAL
 		};
 
-			explicit Container(ContainerType type, Arrangement arragement);
+		Container(ContainerType type, Arrangement arragement);
+		Container(const Container& other);
+		Container& operator=(const Container& other);
+		Container(Container&& other);
+		~Container();
 
-			drawablefunction draw();
-			callablefunction call();
-			bool is_leaf();
-			Container& framebuffer_resize();
-			Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
+		drawablefunction draw();
+		callablefunction call();
+		bool is_leaf();
+		Container& framebuffer_resize();
+		Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
 
-			inline std::vector<SkRect>& get_positioning() {
-				return rectangles_of_contained_layouts;
-			};
+		inline std::vector<SkRect>& get_positioning() {
+			return rectangles_of_contained_layouts;
+		};
 
-			Container& operator<<(Widget&& widget);
+		Container& operator<<(Widget&& widget);
+
+		private:
+			SkPaint paint_layout;
+			std::vector<Widget> contained_layouts;
+			std::vector<SkRect> rectangles_of_contained_layouts;
+			bool horizontaly_fixed = false;
+			bool vertically_fixed = false;
+			ContainerType type;
+			Arrangement arragement;
 		};
 	}
 }

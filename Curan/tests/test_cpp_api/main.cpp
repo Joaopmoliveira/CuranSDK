@@ -3,6 +3,10 @@
 #include <iostream>
 #include "utils/Overloading.h"
 
+class B;
+class C;
+using widget = std::variant<B,C>;
+
 struct A{
     void foo(){
         std::printf("printing foo\n");
@@ -42,20 +46,24 @@ struct C : public A{
 
     void bar(){
         std::printf("printing bar from C\n");
-    }
+    };
 
     C& update(int val){
         custom_val = val;
         return *(this);
-    }
+    };
 
     C& size(int insize){
         size_ = insize;
         return *(this);
-    }
+    };
+
+    void append(widget){
+
+    };
 };
 
-using widget = std::variant<B,C>;
+
 
 struct D{
     std::vector<widget> widgetcontainer;

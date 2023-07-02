@@ -38,12 +38,11 @@ namespace curan {
 
 		public:
 
-
-			explicit Button(IconResources& system_icons,const std::string& button_text,const std::string& icon_identifier);
-            explicit Button(IconResources& system_icons,const std::string& button_text);
-			explicit Button(const std::string& button_text,const std::string& icon_identifier);
-            explicit Button(const std::string& button_text);
-			
+            Button(IconResources& system_icons,const std::string& button_text);
+			Button(const Button& other);
+			Button& operator=(const Button& other);
+			Button(Button&& other);
+			~Button();
 
 			drawablefunction draw();
 			callablefunction call();

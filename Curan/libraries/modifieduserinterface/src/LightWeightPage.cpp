@@ -8,15 +8,15 @@ LightWeightPage::LightWeightPage(post_signal_callback post_sig,Container&& conta
 }
 
 LightWeightPage& LightWeightPage::draw(SkCanvas* canvas){
-
+    return *(this);
 }
 
 bool LightWeightPage::propagate_signal(Signal sig, ConfigDraw* config){
-
+    return true;
 }
 
 LightWeightPage& LightWeightPage::propagate_size_change(SkRect& new_size){
-
+    return *(this);
 }
 
 }
