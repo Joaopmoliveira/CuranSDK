@@ -25,7 +25,6 @@ Container::~Container(){
 	
 }
 
-
 drawablefunction Container::draw(){
 	auto lamb = [this](SkCanvas* canvas) {
 		std::lock_guard<std::mutex> g{ get_mutex() };

@@ -7,6 +7,10 @@ LightWeightPage::LightWeightPage(post_signal_callback post_sig,Container&& conta
 
 }
 
+LightWeightPage::LightWeightPage(Container&& contained, SkColor backgroundcolor): scene{std::move(contained)}{
+
+}
+
 LightWeightPage::LightWeightPage(const LightWeightPage& other): scene{other.scene}{
 
 }

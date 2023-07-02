@@ -21,12 +21,13 @@ namespace curan {
 			post_signal_callback post_signal_processing;
 
         public:
+			LightWeightPage(Container&& contained, SkColor backgroundcolor);
 			LightWeightPage(post_signal_callback post_sig,Container&& contained, SkColor backgroundcolor);
 			LightWeightPage(const LightWeightPage& other);
 			LightWeightPage& operator=(const LightWeightPage& other);
 			LightWeightPage(LightWeightPage&& other);
 			~LightWeightPage();
-			
+
 			LightWeightPage& draw(SkCanvas* canvas);
 
 			bool propagate_signal(Signal sig, ConfigDraw* config);
