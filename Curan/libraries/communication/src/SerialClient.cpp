@@ -14,7 +14,7 @@ SerialClient::SerialClient(Info& info) : serial(info.service){
 
 std::string SerialClient::read(size_t n){
         asio::streambuf input_buffer;
-        size_t nread = asio::read_until(
+        asio::read_until(
             serial, input_buffer, 'e'
         );
         std::istream is(&input_buffer);

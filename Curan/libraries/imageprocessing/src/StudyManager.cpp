@@ -28,7 +28,7 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 		ReaderType::Pointer reader = ReaderType::New();
 		reader->SetImageIO(gdcmImageOI);
 
-		bool is_directory = std::filesystem::is_directory(received_path);
+		//bool is_directory = std::filesystem::is_directory(received_path);
 
 		if (std::filesystem::is_directory(received_path))
 		{
@@ -131,7 +131,7 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 		try {
 			image2D->Update();
 		}
-		catch (const itk::ExceptionObject& e) {
+		catch (...) {
 			return false;
 		}
 

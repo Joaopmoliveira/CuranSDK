@@ -216,7 +216,6 @@ optimizer->SetNumberOfIterations(2000);
 optimizer->SetLearningRate(1);
 optimizer->SetMinimumStepLength(0.001);
 optimizer->SetReturnBestParametersAndValue(true);
-optimizer->SetNumberOfThreads(8);
 itk::SizeValueType value{10};
 optimizer->SetConvergenceWindowSize(value);
 optimizer->SetRelaxationFactor(0.8);

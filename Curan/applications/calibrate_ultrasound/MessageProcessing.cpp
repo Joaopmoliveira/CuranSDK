@@ -132,7 +132,6 @@ else if (!tmp.compare(image)) {
 
 	using AccumulatorPixelType = unsigned int;
 	using RadiusPixelType = double;
-	ImageType::IndexType localIndex;
 	using AccumulatorImageType = itk::Image<AccumulatorPixelType, Dimension>;
 	
 	using HoughTransformFilterType =
@@ -269,7 +268,7 @@ void ProcessingMessage::communicate() {
 		}
 	};
 	auto connectionstatus = client.connect(lam);
-	auto val = io_context.run();
+	io_context.run();
 	button->set_waiting_color(SK_ColorRED);
 	list_of_recorded_points.clear();
 	return;

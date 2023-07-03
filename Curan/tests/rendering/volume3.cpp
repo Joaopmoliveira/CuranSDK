@@ -119,7 +119,7 @@ void main() {
 
 void updateBaseTexture3D(vsg::floatArray3D& image, float value)
 {
-    float max_radius = sqrt(image.height() * image.height() + image.width() * image.width());
+    float max_radius = static_cast<float>(sqrt(image.height() * image.height() + image.width() * image.width()));
     for (size_t d = 0; d < image.depth(); ++d) {
         float d_ratio = static_cast<float>(d) / static_cast<float>(image.depth() - 1);
         for (size_t r = 0; r < image.height(); ++r)

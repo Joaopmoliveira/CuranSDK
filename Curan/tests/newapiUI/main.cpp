@@ -21,6 +21,9 @@ int main() {
 		buttoncontainer << std::move(button);
 		SkColor colbuton = { SK_ColorRED };
 
+		//this should be an error
+		auto val = button.get_click_color();
+		
 		SkPaint paint_square;
 		paint_square.setStyle(SkPaint::kFill_Style);
 		paint_square.setAntiAlias(true);

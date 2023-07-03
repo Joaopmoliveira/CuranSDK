@@ -81,7 +81,7 @@ namespace curan {
 			void destroy();
 
 			inline SkRect get_size() {
-				SkRect rec = SkRect::MakeXYWH(0,0,width,height);
+				SkRect rec = SkRect::MakeXYWH(0,0,static_cast<float>(width),static_cast<float>(height));
 				return rec;
 			}
 
