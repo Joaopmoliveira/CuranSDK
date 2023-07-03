@@ -28,10 +28,13 @@ namespace curan {
 			SkColor hover_color;
 			SkColor waiting_color;
 			SkColor click_color;
+			SkColor text_color;
 			SkPaint paint;
 			SkPaint paint_text;
 			SkRect widget_rect_text;
 			SkFont text_font;
+			std::string button_text;
+			std::string icon_identifier;
 			sk_sp<SkTextBlob> text;
 			sk_sp<SkImage> icon_data;
 			ButtonStates current_state = ButtonStates::WAITING;
