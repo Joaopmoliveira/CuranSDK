@@ -105,5 +105,9 @@ Container& Container::operator<<(Widget&& widget){
     return *(this);
 }
 
+void Container::compile(){
+	
+}
+
 }
 }

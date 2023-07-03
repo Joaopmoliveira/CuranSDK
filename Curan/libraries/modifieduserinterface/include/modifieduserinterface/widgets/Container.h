@@ -33,7 +33,9 @@ namespace curan {
 
 		drawablefunction draw();
 		callablefunction call();
+
 		bool is_leaf();
+
 		Container& framebuffer_resize();
 		Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
 
@@ -51,6 +53,8 @@ namespace curan {
 			bool vertically_fixed = false;
 			ContainerType type;
 			Arrangement arragement;
+
+			void compile();
 		};
 	}
 }

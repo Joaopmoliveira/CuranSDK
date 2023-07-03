@@ -38,6 +38,8 @@ namespace curan {
 			std::optional<buttoncallback> callback;
 			IconResources* system_icons = nullptr;
 
+			void compile();
+
 		public:
 
             Button(const std::string& button_text,IconResources* system_icons = nullptr);

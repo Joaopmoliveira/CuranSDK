@@ -21,7 +21,7 @@ icon_data{std::move(other.icon_data)},
 current_state{std::move(other.current_state)},
 callback{std::move(other.callback)},
 system_icons{std::move(other.system_icons)}
-	{
+{
 
 }
 
@@ -140,6 +140,10 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 
 void Button::framebuffer_resize(){
 
+}
+
+void Button::compile(){
+	
 }
 
 }
