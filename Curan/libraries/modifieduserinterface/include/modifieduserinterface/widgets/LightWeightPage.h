@@ -22,9 +22,10 @@ namespace curan {
 
         public:
 			LightWeightPage(Container&& contained, SkColor backgroundcolor);
-			LightWeightPage(post_signal_callback post_sig,Container&& contained, SkColor backgroundcolor);
-			LightWeightPage(const LightWeightPage& other);
-			LightWeightPage& operator=(const LightWeightPage& other);
+
+			LightWeightPage(const LightWeightPage& other) = delete;
+			LightWeightPage& operator=(const LightWeightPage& other) = delete;
+
 			LightWeightPage(LightWeightPage&& other);
 			~LightWeightPage();
 

@@ -9,20 +9,12 @@ LightWeightPage::LightWeightPage(Container&& contained, SkColor backgroundcolor)
 	};
 }
 
-LightWeightPage::LightWeightPage(const LightWeightPage& other): scene{other.scene}{
-
-}
-
-LightWeightPage& LightWeightPage::operator=(const LightWeightPage& other){
-    return *(this);
-}
-
-LightWeightPage::LightWeightPage(LightWeightPage&& other): scene{std::move(other.scene)}{
+LightWeightPage::LightWeightPage(LightWeightPage&& other) : scene{std::move(other.scene)},backgroundcolor{other.backgroundcolor} {
 
 }
 
 LightWeightPage::~LightWeightPage(){
-
+	
 }
 
 LightWeightPage& LightWeightPage::draw(SkCanvas* canvas){
@@ -52,10 +44,8 @@ LightWeightPage& LightWeightPage::set_post_signal(post_signal_callback call){
 }
 
 LightWeightPage& LightWeightPage::propagate_size_change(SkRect& new_size){
-	if (scene) {
-		scene.set_position(new_size);
-		scene.framebuffer_resize();
-	}
+	scene.set_position(new_size);
+	scene.framebuffer_resize();
     return *(this);
 }
 

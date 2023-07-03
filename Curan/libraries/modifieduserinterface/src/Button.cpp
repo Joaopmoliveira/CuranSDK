@@ -4,26 +4,17 @@
 namespace curan {
 namespace ui {
 
-Button::Button(IconResources& system_icons,const std::string& button_text) : system_icons{system_icons}{
+Button::Button(const std::string& button_text,IconResources* system_icons) : system_icons{system_icons}{
 
 }
 
-Button::Button(const Button& other): system_icons{other.system_icons}{
+Button::Button(Button&& other){
 
-}
-
-Button& Button::operator=(const Button& other){
-	return *(this);
-}
-
-Button::Button(Button&& other) : system_icons{other.system_icons}{
-	
 }
 
 Button::~Button(){
 	
 }
-
 
 drawablefunction Button::draw(){
 auto lamb = [this](SkCanvas* canvas) {
@@ -63,7 +54,7 @@ auto lamb = [this](SkCanvas* canvas) {
 
 			SkRect current_selected_image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, scale_factor * image_height);
 
-			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0 / 3, 1.0 / 3 });
+			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
 			canvas->drawImageRect(icon_data, current_selected_image_rectangle, opt);
 		}
 	};

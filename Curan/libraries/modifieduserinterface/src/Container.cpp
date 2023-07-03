@@ -9,14 +9,6 @@ Container::Container(ContainerType type, Arrangement arragement) {
 
 }
 
-Container::Container(const Container& other){
-
-}
-
-Container& Container::operator=(const Container& other){
-	return *(this);
-}
-
 Container::Container(Container&& other){
 
 }

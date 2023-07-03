@@ -17,11 +17,13 @@ namespace curan {
 
 		class Button : public  Drawable , utilities::Lockable<Button>{
 		public:
+
 		enum class ButtonStates {
 				WAITING,
 				PRESSED,
 				HOVER,
 		};
+		
 		private:
 			SkColor hover_color;
 			SkColor waiting_color;
@@ -34,13 +36,15 @@ namespace curan {
 			sk_sp<SkImage> icon_data;
 			ButtonStates current_state = ButtonStates::WAITING;
 			std::optional<buttoncallback> callback;
-			IconResources& system_icons;
+			IconResources* system_icons = nullptr;
 
 		public:
 
-            Button(IconResources& system_icons,const std::string& button_text);
-			Button(const Button& other);
-			Button& operator=(const Button& other);
+            Button(const std::string& button_text,IconResources* system_icons = nullptr);
+
+			Button(const Button& other) = delete;
+			Button& operator=(const Button& other)= delete;
+
 			Button(Button&& other);
 			~Button();
 

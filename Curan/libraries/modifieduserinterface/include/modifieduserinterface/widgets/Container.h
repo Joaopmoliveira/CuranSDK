@@ -24,8 +24,10 @@ namespace curan {
 		};
 
 		Container(ContainerType type, Arrangement arragement);
-		Container(const Container& other);
-		Container& operator=(const Container& other);
+
+		Container(const Container& other) = delete;
+		Container& operator=(const Container& other) = delete;
+
 		Container(Container&& other);
 		~Container();
 
