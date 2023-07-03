@@ -9,7 +9,14 @@ LightWeightPage::LightWeightPage(Container&& contained, SkColor backgroundcolor)
 	};
 }
 
-LightWeightPage::LightWeightPage(LightWeightPage&& other) : scene{std::move(other.scene)},backgroundcolor{other.backgroundcolor} {
+LightWeightPage::LightWeightPage(LightWeightPage&& other) : 
+			scene{std::move(other.scene)},
+			backgroundcolor{other.backgroundcolor},
+			is_dirty{other.is_dirty.load()},
+			compiled_scene{std::move(other.compiled_scene)},
+			post_signal_processing{std::move(other.post_signal_processing)}
+
+{
 
 }
 

@@ -8,12 +8,25 @@ Button::Button(const std::string& button_text,IconResources* system_icons) : sys
 
 }
 
-Button::Button(Button&& other){
+Button::Button(Button&& other) : 
+hover_color{std::move(other.hover_color)},
+waiting_color{std::move(other.waiting_color)},
+click_color{std::move(other.click_color)},
+paint{std::move(other.paint)},
+paint_text{std::move(other.paint_text)},
+widget_rect_text{std::move(other.widget_rect_text)},
+text_font{std::move(other.text_font)},
+text{std::move(other.text)},
+icon_data{std::move(other.icon_data)},
+current_state{std::move(other.current_state)},
+callback{std::move(other.callback)},
+system_icons{std::move(other.system_icons)}
+	{
 
 }
 
 Button::~Button(){
-	
+
 }
 
 drawablefunction Button::draw(){
