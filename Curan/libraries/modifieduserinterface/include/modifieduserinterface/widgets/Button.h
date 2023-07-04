@@ -39,16 +39,16 @@ namespace curan {
 			sk_sp<SkImage> icon_data;
 			ButtonStates current_state = ButtonStates::WAITING;
 			std::optional<buttoncallback> callback;
-			IconResources* system_icons = nullptr;
+			IconResources& system_icons;
 
-			Button(const std::string& button_text,IconResources* system_icons = nullptr);
+			Button(const std::string& button_text,IconResources& system_icons);
 
 		public:
 
-			static std::unique_ptr<Button> make(const std::string& button_text,IconResources* system_icons = nullptr);
+			static std::unique_ptr<Button> make(const std::string& button_text,IconResources& system_icons);
 
 			void compile();
-			
+
 			~Button();
 
 			drawablefunction draw();

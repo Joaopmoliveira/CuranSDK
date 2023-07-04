@@ -4,7 +4,7 @@
 namespace curan {
 namespace ui {
 
-Button::Button(const std::string& in_button_text,IconResources* system_icons) : button_text{in_button_text} , system_icons{system_icons}{
+Button::Button(const std::string& in_button_text,IconResources& system_icons) : button_text{in_button_text} , system_icons{system_icons}{
 	hover_color = SK_ColorDKGRAY;
 	waiting_color = SK_ColorGRAY;
 	click_color = SK_ColorCYAN;
@@ -33,7 +33,7 @@ Button::~Button(){
 
 }
 
-std::unique_ptr<Button> Button::make(const std::string& button_text,IconResources* system_icons){
+std::unique_ptr<Button> Button::make(const std::string& button_text,IconResources& system_icons){
 	std::unique_ptr<Button> button = std::unique_ptr<Button>(new Button{button_text,system_icons});
 	return button;
 }	
@@ -157,9 +157,9 @@ void Button::compile(){
 	text_font.measureText(button_text.data(), button_text.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(button_text.c_str(), text_font);
 
-	if (system_icons != nullptr && system_icons->is_loaded()) {
+	if (system_icons.is_loaded()) {
 		sk_sp<SkImage> image;
-		system_icons->get_icon(image,icon_identifier);
+		system_icons.get_icon(image,icon_identifier);
 		icon_data = image;
 	}
 }
