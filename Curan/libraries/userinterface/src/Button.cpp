@@ -23,9 +23,7 @@ Button::Button(const std::string& in_button_text,IconResources& system_icons) : 
 	const char* fontFamily = nullptr;
 	SkFontStyle fontStyle;
 	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-	text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
+	typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 
 	callback = std::nullopt;
 }
@@ -154,6 +152,9 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 
 void Button::compile(){
 	std::lock_guard<std::mutex> g{ get_mutex() };
+
+	auto text_font = SkFont(typeface, font_size, 1.0f, 0.0f);
+	text_font.setEdging(SkFont::Edging::kAntiAlias);
 
 	text_font.measureText(button_text.data(), button_text.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(button_text.c_str(), text_font);

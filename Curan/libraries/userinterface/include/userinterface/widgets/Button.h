@@ -32,7 +32,8 @@ namespace curan {
 			SkPaint paint;
 			SkPaint paint_text;
 			SkRect widget_rect_text;
-			SkFont text_font;
+			sk_sp<SkTypeface> typeface;
+			size_t font_size = 15;
 			std::string button_text;
 			std::string icon_identifier;
 			sk_sp<SkTextBlob> text;
@@ -54,6 +55,18 @@ namespace curan {
 
 			drawablefunction draw() override;
 			callablefunction call() override;
+
+			inline Button& set_font_size(const size_t & in_size) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				font_size = in_size;
+                return *(this);
+			}
+
+			inline Button& set_font_source(sk_sp<SkTypeface> in_typeface) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				typeface = in_typeface;
+                return *(this);
+			}
 
 			inline Button& set_callback(buttoncallback in) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
