@@ -13,14 +13,16 @@ int main() {
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-
 		auto callback = [](Slider* slider, ConfigDraw* config) {
 			std::cout << "received signal!\n";
 		};
 
 		auto slider = Slider::make({ 0.0f, 300.0f });
-		slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_slider_color(SK_ColorLTGRAY).set_size(SkRect::MakeWH(300,40));
-		slider->set_callback(callback);
+		slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY)
+				.set_slider_color(SK_ColorLTGRAY).set_callback([](Slider* slider, ConfigDraw* config) {
+			std::cout << "received signal!\n";
+		}).set_size(SkRect::MakeWH(300,40));
+
 		slider->compile();
 		slider->set_position(SkRect::MakeXYWH(50,50,300,40));
 		auto caldraw = slider->draw();
