@@ -36,7 +36,17 @@ namespace curan {
 
 		inline Container& set_divisions(const std::vector<SkScalar>& indivision){
 			std::lock_guard<std::mutex> g{ get_mutex() };
+			if(type==ContainerType::VARIABLE_CONTAINER)
+				throw std::runtime_error("Trying to set divisions on a variable container");
 			divisions = indivision;
+			return *(this);
+		}
+
+		inline Container& set_variable_layout(const std::vector<SkRect>& indivision){
+			std::lock_guard<std::mutex> g{ get_mutex() };
+			if(type==ContainerType::LINEAR_CONTAINER)
+				throw std::runtime_error("Trying to set variable layout on linear container");
+			rectangles_of_contained_layouts = indivision;
 			return *(this);
 		}
 

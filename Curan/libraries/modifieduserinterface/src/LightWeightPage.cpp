@@ -7,6 +7,7 @@ LightWeightPage::LightWeightPage(std::unique_ptr<Container> contained, SkColor b
     post_signal_processing = [](Signal sig, bool page_interaction, ConfigDraw* config) {
 		return;
 	};
+	is_dirty = true;
 }
 
 LightWeightPage::~LightWeightPage(){
@@ -14,7 +15,10 @@ LightWeightPage::~LightWeightPage(){
 }
 
 std::unique_ptr<LightWeightPage> LightWeightPage::make(std::unique_ptr<Container> contained, SkColor backgroundcolor){
+	compilation_results results;
+	contained->linearize_container(results.callable_draw, results.callable_signal);
 	std::unique_ptr<LightWeightPage> page = std::unique_ptr<LightWeightPage>(new LightWeightPage{std::move(contained),backgroundcolor});
+	page->compiled_scene = results;
 	return page;
 }
 
@@ -45,8 +49,10 @@ LightWeightPage& LightWeightPage::set_post_signal(post_signal_callback call){
 }
 
 LightWeightPage& LightWeightPage::propagate_size_change(SkRect& new_size){
-	scene->set_position(new_size);
-	scene->framebuffer_resize();
+	if(scene){
+		scene->set_position(new_size);
+		scene->framebuffer_resize();
+	}
     return *(this);
 }
 

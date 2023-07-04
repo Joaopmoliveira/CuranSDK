@@ -41,14 +41,14 @@ namespace curan {
 			std::optional<buttoncallback> callback;
 			IconResources* system_icons = nullptr;
 
-			void compile();
-
 			Button(const std::string& button_text,IconResources* system_icons = nullptr);
 
 		public:
 
 			static std::unique_ptr<Button> make(const std::string& button_text,IconResources* system_icons = nullptr);
 
+			void compile();
+			
 			~Button();
 
 			drawablefunction draw();

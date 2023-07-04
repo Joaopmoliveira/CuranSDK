@@ -93,8 +93,14 @@ std::lock_guard<std::mutex> g{ get_mutex() };
 }
 
 Container& Container::operator<<(Widget&& widget){
-
-    contained_layouts.emplace_back(std::move(widget));
+    std::visit(curan::utilities::overloaded{
+		[&](std::unique_ptr<Button>& arg) {
+            arg->compile();
+		},
+        [&](std::unique_ptr<Container>& arg) {
+            arg->compile();
+		}},widget);
+	contained_layouts.emplace_back(std::move(widget));
     return *(this);
 }
 
@@ -102,7 +108,11 @@ void Container::compile(){
 	if (contained_layouts.size() == 0)
 		return;
 	SkScalar packet_width = 1.0f / contained_layouts.size();
-
+	if(type == ContainerType::VARIABLE_CONTAINER){
+		if(contained_layouts.size()!=rectangles_of_contained_layouts.size())
+			throw std::runtime_error("missmatch between the number of contained layout and rectangles");
+		return;
+	}
 	switch (arragement) {
 	case Arrangement::HORIZONTAL:
 		if ((divisions.size() != 0) && (divisions.size() - 1 == contained_layouts.size())) {
@@ -129,9 +139,6 @@ void Container::compile(){
 				rectangles_of_contained_layouts.push_back(widget_rect);
 			}
 		}
-		break;
-	default:
-		throw std::runtime_error("received unknown arrangement");
 		break;
 	}
 }
