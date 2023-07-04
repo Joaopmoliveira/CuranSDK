@@ -17,7 +17,8 @@ void create_horizontal_layout(curan::ui::IconResources& resources) {
 
 	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
 	*container << std::move(button) << std::move(button2) << std::move(button3);
-	container->set_divisions({ 0.0 , 0.33333 , 0.66666 , 1.0 });
+	container->set_divisions({ 0.0f , 0.33333f , 0.66666f , 1.0f });
+	container->compile();
 	
 	auto rect_layout = container->get_positioning();
 	std::cout << "Container layout";
@@ -42,7 +43,8 @@ void create_vertical_layout(curan::ui::IconResources& resources) {
 
 	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
 	*container << std::move(button) << std::move(button2) << std::move(button3);
-	container->set_divisions({ 0.0 , 0.33333 , 0.66666 , 1.0 });
+	container->set_divisions({ 0.0f , 0.33333f , 0.66666f , 1.0f });
+	container->compile();
 
 	auto rect_layout = container->get_positioning();
 	std::cout << "Container layout";
@@ -68,6 +70,8 @@ void create_variable_layout(curan::ui::IconResources& resources) {
 	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::VARIABLE_CONTAINER,curan::ui::Container::Arrangement::UNDEFINED);
 	*container << std::move(button) << std::move(button2) << std::move(button3);
 	container->set_variable_layout({ SkRect::MakeLTRB(0.0,0.0,0.3333,1.0),SkRect::MakeLTRB(0.3333,0.0,0.6666,1.0),SkRect::MakeLTRB(0.6666,0.0,1.0,1.0) });
+
+	container->compile();
 
 	auto rect_layout = container->get_positioning();
 	std::cout << "Container layout";
@@ -97,6 +101,9 @@ void create_horizontal_layout_propagate(curan::ui::IconResources& resources) {
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container->set_position(my_small_window);
+
+	container->compile();
+
 	container->framebuffer_resize();
 
 	std::cout << "Container layout";
@@ -131,6 +138,9 @@ void create_vertical_layout_propagate(curan::ui::IconResources& resources) {
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container->set_position(my_small_window);
+
+	container->compile();
+
 	container->framebuffer_resize();
 
 	std::cout << "Container layout";
@@ -172,6 +182,9 @@ void create_nested_layout_propagate(curan::ui::IconResources& resources){
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container2->set_position(my_small_window);
+
+	container2->compile();
+
 	container2->framebuffer_resize();
 
 	std::cout << "Container layout";
@@ -215,6 +228,9 @@ void test_linearization(curan::ui::IconResources& resources) {
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container2->set_position(my_small_window);
+
+	container2->compile();
+
 	container2->framebuffer_resize();
 
 	std::vector<curan::ui::drawablefunction> temp_draw;
@@ -229,16 +245,22 @@ int main() {
 	try {
 		using namespace curan::ui;
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
+		std::cout << "============ create_horizontal_layout ============\n";
 		create_horizontal_layout(resources);
+		std::cout << "============ create_vertical_layout ============\n";
 		create_vertical_layout(resources);
+		std::cout << "============ create_variable_layout ============\n";
 		create_variable_layout(resources);
+		std::cout << "============ create_horizontal_layout_propagate ============\n";
 		create_horizontal_layout_propagate(resources);
+		std::cout << "============ create_vertical_layout_propagate ============\n";
 		create_vertical_layout_propagate(resources);
+		std::cout << "============ create_nested_layout_propagate ============\n";
 		create_nested_layout_propagate(resources);
 		test_linearization(resources);
 	}
-	catch (...) {
-		std::cout << "Failed";
+	catch (std::exception& e) {
+		std::cout << "Failed : " << e.what() << std::endl;
 		return 1;
 	}
 }

@@ -39,6 +39,10 @@ callablefunction Container::call(){
 
 Container& Container::framebuffer_resize(){
     std::lock_guard<std::mutex> g{ get_mutex() };
+
+	if(!compiled)
+		throw std::runtime_error("cannot query positions while container not compiled");
+
 	auto iter_rect = rectangles_of_contained_layouts.begin();
 	auto iter_drawables = contained_layouts.begin();
 	auto my_position = get_position();
@@ -63,7 +67,11 @@ Container& Container::framebuffer_resize(){
 }
 
 Container& Container::linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal){
-std::lock_guard<std::mutex> g{ get_mutex() };
+	std::lock_guard<std::mutex> g{ get_mutex() };
+
+	if(!compiled)
+		throw std::runtime_error("cannot query positions while container not compiled");
+
 	std::vector<drawablefunction> linearized_draw;
 	std::vector<callablefunction> linearized_call;
 
@@ -111,6 +119,7 @@ void Container::compile(){
 	if(type == ContainerType::VARIABLE_CONTAINER){
 		if(contained_layouts.size()!=rectangles_of_contained_layouts.size())
 			throw std::runtime_error("missmatch between the number of contained layout and rectangles");
+		compiled = true;
 		return;
 	}
 	switch (arragement) {
@@ -141,6 +150,7 @@ void Container::compile(){
 		}
 		break;
 	}
+	compiled = true;
 }
 
 }
