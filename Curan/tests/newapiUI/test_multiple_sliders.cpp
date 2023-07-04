@@ -17,7 +17,7 @@
 
 std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	using namespace curan::ui;
-
+	//---------------------- row 1 -------------------//
 	auto slider = Slider::make({ 0.0f, 300.0f });
 	slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob = TextBlob::make("Option 1");
@@ -26,7 +26,7 @@ std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*container << std::move(slider) << std::move(textblob);
 	container->set_divisions({ 0.0 , 0.5 , 1.0 });
-
+	//---------------------- row 2 -------------------//
 	auto slider1 = Slider::make({ 0.0f, 300.0f });
 	slider1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob1 = TextBlob::make("Option 2");
@@ -35,7 +35,7 @@ std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	auto container1 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*container1 << std::move(slider1) << std::move(textblob1);
 	container1->set_divisions({ 0.0 , 0.5 , 1.0 });
-
+	//---------------------- row 3 -------------------//
 	auto slider2 = Slider::make({ 0.0f, 300.0f });
 	slider2->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob2 = TextBlob::make("Option 3");
@@ -44,7 +44,7 @@ std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	auto container2 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*container2 << std::move(slider2) << std::move(textblob2);
 	container2->set_divisions({ 0.0 , 0.5 , 1.0 });
-
+	//---------------------- row 4 -------------------//
 	auto slider3 = Slider::make({ 0.0f, 300.0f });
 	slider3->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob3 = TextBlob::make("Option 4");
@@ -54,10 +54,12 @@ std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	*container3 << std::move(slider3) << std::move(textblob3);
 	container3->set_divisions({ 0.0 , 0.5 , 1.0 });
 
+	//---------------------- stack rows -------------------//
 	auto container4 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	*container4 << std::move(container) << std::move(container1) << std::move(container2) << std::move(container3);
 	container4->set_divisions({ 0.0 , 0.25 , 0.5 , 0.75 , 1.0 });
 
+	Overlay::
 	Overlay::Info information;
 	information.backgroundcolor = SK_ColorTRANSPARENT;
 	information.contained = containerotions;
