@@ -64,13 +64,13 @@ target_link_libraries(modified_test_page PUBLIC
 userinterfacemodified
 )
 
-#add_executable(modified_test_page_juntion test_openigtlink_viewer_with_button.cpp)
+add_executable(modified_test_page_juntion test_openigtlink_viewer_with_button.cpp)
 
-#target_compile_definitions(modified_test_page_juntion PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_compile_definitions(modified_test_page_juntion PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-#target_link_libraries(modified_test_page_juntion PUBLIC
-#userinterfacemodified
-#)
+target_link_libraries(modified_test_page_juntion PUBLIC
+userinterfacemodified
+)
 
 #add_executable(modified_test_overlay_api test_overlay_api.cpp)
 

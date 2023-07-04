@@ -14,6 +14,7 @@ src/Overlay.cpp
 src/Slider.cpp
 src/TextBlob.cpp
 src/OpenIGTLinkViewer.cpp
+src/ImageDisplay.cpp
 )
 
 target_include_directories(userinterfacemodified
