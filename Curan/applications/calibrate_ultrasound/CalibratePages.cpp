@@ -3,6 +3,74 @@
 std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(ProcessingMessage* processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 
+	//---------------------- row 1 -------------------//
+	auto slider = Slider::make({ 0.0f, 300.0f });
+	slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	auto textblob = TextBlob::make("Minimum Radius");
+	textblob->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+	double current_val = (processing->configuration.minimum_radius - processing->configuration.minimum_radius_limit[0]) / (processing->configuration.minimum_radius_limit[1] - processing->configuration.minimum_radius_limit[0]);
+	button->set_current_value(current_val);
+	
+	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container << std::move(textblob) << std::move(slider);
+	container->set_divisions({ 0.0 , 0.5 , 1.0 });
+	//---------------------- row 2 -------------------//
+	auto slider1 = Slider::make({ 0.0f, 300.0f });
+	slider1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	auto textblob1 = TextBlob::make("Maximum Radius");
+	textblob1->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+
+	auto container1 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container1 << std::move(textblob1) << std::move(slider1);
+	container1->set_divisions({ 0.0 , 0.5 , 1.0 });
+	//---------------------- row 3 -------------------//
+	auto slider2 = Slider::make({ 0.0f, 300.0f });
+	slider2->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	auto textblob2 = TextBlob::make("Sweep Angle");
+	textblob2->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+
+	auto container2 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container2 << std::move(textblob2) << std::move(slider2);
+	container2->set_divisions({ 0.0 , 0.5 , 1.0 });
+	//---------------------- row 4 -------------------//
+	auto slider3 = Slider::make({ 0.0f, 300.0f });
+	slider3->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	auto textblob3 = TextBlob::make("Sigma Gradient");
+	textblob3->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+
+	auto container3 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container3 << std::move(textblob3) << std::move(slider3);
+	container3->set_divisions({ 0.0 , 0.5 , 1.0 });
+
+	//---------------------- row 5 -------------------//
+	auto slider4 = Slider::make({ 0.0f, 300.0f });
+	slider4->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	auto textblob4 = TextBlob::make("Variance");
+	textblob4->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+
+	auto container4 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container4 << std::move(textblob4) << std::move(slider4);
+	container4->set_divisions({ 0.0 , 0.5 , 1.0 });
+	//---------------------- row 6 -------------------//
+	auto slider5 = Slider::make({ 0.0f, 300.0f });
+	slider5->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	auto textblob5 = TextBlob::make("Disk Ratio");
+	textblob5->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+
+	auto container5 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container5 << std::move(textblob5) << std::move(slider5);
+	container5->set_divisions({ 0.0 , 0.5 , 1.0 });
+	//---------------------- row 7 -------------------//
+	auto slider6 = Slider::make({ 0.0f, 300.0f });
+	slider6->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	auto textblob6 = TextBlob::make("Disk Ratio");
+	textblob6->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+
+	auto container6 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container6 << std::move(textblob6) << std::move(slider6);
+	container6->set_divisions({ 0.0 , 0.5 , 1.0 });
+	//---------------------- final -------------------//
+
 	Container::InfoLinearContainer infocontainer;
 	infocontainer.paint_layout = paint_square2;
 	infocontainer.arrangement = curan::ui::Arrangement::HORIZONTAL;
