@@ -12,6 +12,7 @@ src/Page.cpp
 src/LightWeightPage.cpp 
 src/Overlay.cpp
 src/Slider.cpp
+src/TextBlob.cpp
 )
 
 target_include_directories(userinterfacemodified
