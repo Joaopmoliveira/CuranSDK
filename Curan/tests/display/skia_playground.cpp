@@ -1,7 +1,8 @@
 #define STB_IMAGE_IMPLEMENTATION
-#include "userinterface/widgets/ConfigDraw.h"
-#include "userinterface/Window.h"
-#include "userinterface/widgets/IconResources.h"
+#include "modifieduserinterface/widgets/ConfigDraw.h"
+#include "modifieduserinterface/Window.h"
+#include "modifieduserinterface/widgets/Button.h"
+#include "modifieduserinterface/widgets/IconResources.h"
 #include <iostream>
 
 int main() {

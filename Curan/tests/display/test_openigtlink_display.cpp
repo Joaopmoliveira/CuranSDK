@@ -1,7 +1,7 @@
-#include "userinterface/Window.h"
-#include "userinterface/widgets/OpenIGTLinkViewer.h"
+#include "modifieduserinterface/Window.h"
+#include "modifieduserinterface/widgets/OpenIGTLinkViewer.h"
 #include <csignal>
-#include "userinterface/widgets/ConfigDraw.h"
+#include "modifieduserinterface/widgets/ConfigDraw.h"
 #include "utils/Logger.h"
 
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
@@ -106,7 +106,7 @@ ImageTesting update_texture(ImageTesting image, float value){
 	return image;
 }
 
-void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button) {
+void generate_image_message(curan::ui::OpenIGTLinkViewer* button) {
 	ImageTesting img{100,100};
 
 	igtl::TimeStamp::Pointer ts;
@@ -160,7 +160,7 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 
 }
 
-void generate_transform_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button) {
+void generate_transform_message(curan::ui::OpenIGTLinkViewer* button) {
 	igtl::TimeStamp::Pointer ts;
 	ts = igtl::TimeStamp::New();
 	size_t counter = 0;
@@ -197,39 +197,27 @@ void generate_transform_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> bu
 	curan::utilities::cout << "stopped to send data";
 }
 
-void GLFW_error(int error, const char* description)
-{
-	fputs(description, stdout);
-}
-
 
 int main() {
 	try {
-		glfwSetErrorCallback(GLFW_error);
 		using namespace curan::ui;
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		const char* fontFamily = nullptr;
-		SkFontStyle fontStyle;
-		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+		auto igtlink_viewer = OpenIGTLinkViewer::make();
+		igtlink_viewer->set_size(SkRect::MakeWH(600,600));
+		igtlink_viewer->compile();
 
-		SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-		text_font.setEdging(SkFont::Edging::kAntiAlias);
+		auto caldraw = igtlink_viewer->draw();
+		auto calsignal = igtlink_viewer->call();
 
-		OpenIGTLinkViewer::Info infor;
-		infor.text_font = text_font;
-		infor.size = SkRect::MakeWH(600,600);
-		std::shared_ptr<OpenIGTLinkViewer> open_viwer = OpenIGTLinkViewer::make(infor);
-		auto caldraw = open_viwer->draw();
-		auto calsignal = open_viwer->call();
 		SkRect rect = SkRect::MakeLTRB(0, 0, 1200, 800);
-		open_viwer->set_position(rect);
+		igtlink_viewer->set_position(rect);
 
-		auto lamd = [open_viwer]() {
-			generate_transform_message(open_viwer);
+		auto pointer_to_igtlink_viewer = igtlink_viewer.get();
+		auto lamd = [pointer_to_igtlink_viewer]() {
+			generate_image_message(pointer_to_igtlink_viewer);
 		};
 		std::thread message_generator{ lamd };
 
@@ -255,8 +243,8 @@ int main() {
 		message_generator.join();
 		return 0;
 	}
-	catch (...) {
-		std::cout << "Failed";
+	catch (std::exception& e) {
+		std::cout << "Failed: " << e.what() << std::endl;
 		return 1;
 	}
 }
