@@ -66,7 +66,7 @@ std::unique_ptr<curan::ui::Overlay> create_option_page() {
 int main() {
 	try {
 		using namespace curan::ui;
-		IconResources resources{ CURAN_COPIED_RESOURCE_PATH"/image" };
+		IconResources resources{ CURAN_COPIED_RESOURCE_PATH"/images" };
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
@@ -92,8 +92,8 @@ int main() {
 		};
 		buttonoptions_pointer->set_callback(button_callback);
 
-		int width = rec.width();
-		int height = rec.height();
+		auto width = rec.width();
+		auto height = rec.height();
 
 		ConfigDraw config_draw{ &page };
 
@@ -124,8 +124,8 @@ int main() {
 		}
 		return 0;
 	}
-	catch (...) {
-		std::cout << "Failed";
+	catch (std::exception& e) {
+		std::cout << "Failed" << e.what() << std::endl;
 		return 1;
 	}
 }
