@@ -27,7 +27,6 @@ namespace curan {
 
 		public:
 			IconResources(std::string path_to_resources);
-			bool load(std::string path_to_resources);
 			void get_icon(sk_sp<SkImage>& image, std::string icon_string);
 			inline bool is_loaded() {
 				return is_initialized;

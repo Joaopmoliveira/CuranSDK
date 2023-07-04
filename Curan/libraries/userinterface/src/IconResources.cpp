@@ -18,13 +18,6 @@ IconResources::IconResources(std::string path_to_resources)
 	}
 }
 
-bool IconResources::load(std::string path_to_resources)
-{
-	static IconResources icon_loader{ path_to_resources };
-	//TODO: this needs further attention, I have no clue what I was thinking
-	return &icon_loader;
-}
-
 void IconResources::get_icon(sk_sp<SkImage>& image, std::string icon_string)
 {
 	auto item_in_map = icon_map.find(icon_string);

@@ -111,7 +111,7 @@ int main (int argc, char** argv)
       {
          success = app.step();
       }
-   } catch(std::exception& e){
+   } catch(...){
       robot_state->kill_yourself();
       return 1;
    }

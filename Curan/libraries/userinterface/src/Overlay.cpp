@@ -1,14 +1,14 @@
 #include "userinterface/widgets/Overlay.h"
-#include <variant>
 #include "utils/Overloading.h"
 #include "userinterface/widgets/ConfigDraw.h"
-#include <iostream>
 
 namespace curan {
 namespace ui {
 
-Overlay::Info::Info(){
-	post_sig = [](Signal sig, bool page_interaction, ConfigDraw* config) {
+Overlay::Overlay(std::unique_ptr<Container> contained,
+                 SkColor in_backgroundcolor) : main_page{std::move(LightWeightPage::make(std::move(contained),backgroundcolor))}
+{
+    	auto post_sig = [](Signal sig, bool page_interaction, ConfigDraw* config) {
 		std::visit(utilities::overloaded{
 		[](Empty arg) {
 
@@ -34,25 +34,22 @@ Overlay::Info::Info(){
 		} },
 		sig);
 	};
+    main_page->set_post_signal(post_sig);
 }
 
-Overlay::Overlay(Info info) {
-	LightWeightPage::Info info_core;
-	info_core.backgroundcolor = info.backgroundcolor;
-	info_core.contained = info.contained;
-	info_core.post_sig = info.post_sig;
-	main_page = LightWeightPage::make(info_core);
+std::unique_ptr<LightWeightPage> Overlay::take_ownership(){
+    compile();
+    return std::move(main_page);
 }
 
-std::shared_ptr<Overlay> Overlay::make(Info info) {
-	std::shared_ptr<Overlay> page = std::shared_ptr<Overlay>(new Overlay{ info });
-	return page;
+std::unique_ptr<Overlay> Overlay::make(std::unique_ptr<Container> contained,SkColor backgroundcolor){
+	std::unique_ptr<Overlay> overlay = std::unique_ptr<Overlay>(new Overlay(std::move(contained),backgroundcolor));
+	return overlay;
 }
 
-std::unique_ptr<LightWeightPage> Overlay::take_ownership() {
-	return std::move(main_page);
-}
+void Overlay::compile(){
 
+}
 
 }
 }

@@ -96,10 +96,10 @@ struct vec2 {
 
 ImageTesting update_texture(ImageTesting image, float value) {
 
-	for (size_t r = 0; r < image.height(); ++r)
+	for (int32_t r = 0; r < image.height(); ++r)
 	{
 		float r_ratio = static_cast<float>(r) / static_cast<float>(image.height() - 1);
-		for (size_t c = 0; c < image.width(); ++c)
+		for (int c = 0; c < image.width(); ++c)
 		{
 			float c_ratio = static_cast<float>(c) / static_cast<float>(image.width() - 1);
 
@@ -117,7 +117,7 @@ ImageTesting update_texture(ImageTesting image, float value) {
 	return image;
 }
 
-void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button, std::shared_ptr<curan::ui::ImageDisplay> pure_display) {
+void generate_image_message(std::atomic<bool>& continue_running,curan::ui::OpenIGTLinkViewer* button, curan::ui::ImageDisplay* pure_display) {
 	ImageTesting img{ 100,100 };
 
 	igtl::TimeStamp::Pointer ts;
@@ -132,7 +132,7 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 	size_t counter = 0;
 	auto genesis = std::chrono::high_resolution_clock::now();
 	auto start = std::chrono::high_resolution_clock::now();
-	while (std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count() < 20.0) {
+	while (continue_running.load()) {
 		start = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 
@@ -184,173 +184,78 @@ void generate_image_message(std::shared_ptr<curan::ui::OpenIGTLinkViewer> button
 
 }
 
-std::shared_ptr<curan::ui::Overlay> create_option_page() {
+std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources& resources) {
 	using namespace curan::ui;
-	IconResources resources{ CURAN_COPIED_RESOURCE_PATH"/images" };
 
-	SkColor colbuton = { SK_ColorBLACK };
-	SkColor coltext = { SK_ColorBLACK };
+	auto button = Button::make("Slide",resources);
+	button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorCYAN).set_size(SkRect::MakeWH(100, 80));
 
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
+	auto button2 = Button::make("Push",resources);
+	button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorCYAN).set_size(SkRect::MakeWH(100, 80));
 
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
+	auto container2 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+	*container2 << std::move(button) << std::move(button2);
+	container2->set_divisions({0.0 , 0.5 , 1.0});
+	container2->set_color(SK_ColorTRANSPARENT);
 
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SK_ColorTRANSPARENT);
-
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
-
-	Button::Info infor{ resources };
-	infor.button_text = "Slide";
-	infor.click_color = SK_ColorGRAY;
-	infor.hover_color = SK_ColorDKGRAY;
-	infor.waiting_color = SK_ColorCYAN;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeWH(100, 80);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button = Button::make(infor);
-	infor.button_text = "Push";
-	std::shared_ptr<Button> button2 = Button::make(infor);
-
-	Container::InfoLinearContainer info;
-	info.paint_layout = paint_square2;
-	info.arrangement = curan::ui::Arrangement::VERTICAL;
-	info.divisions = { 0.0 , 0.5 , 1.0 };
-	info.layouts = { button,button2 };
-	std::shared_ptr<Container> container = Container::make(info);
-
-	Overlay::Info information;
-	information.backgroundcolor = SK_ColorTRANSPARENT;
-	information.contained = container;
-	return Overlay::make(information);
+	return Overlay::make(std::move(container2),SK_ColorTRANSPARENT);
 }
 
 
 int main() {
 	try {
 		using namespace curan::ui;
-		IconResources resources{ "C:/dev/Curan/resources" };
+		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		SkColor colbuton = { SK_ColorBLACK };
-		SkColor coltext = { SK_ColorWHITE };
+		auto igtlink_viewer = OpenIGTLinkViewer::make();
+		igtlink_viewer->set_size(SkRect::MakeWH(600,500));
+		auto igtlink_viewer_pointer = igtlink_viewer.get();
 
-		SkPaint paint_square;
-		paint_square.setStyle(SkPaint::kFill_Style);
-		paint_square.setAntiAlias(true);
-		paint_square.setStrokeWidth(4);
-		paint_square.setColor(colbuton);
+		auto image_display = ImageDisplay::make();
+		auto image_display_pointer = image_display.get();
 
-		SkPaint paint_text;
-		paint_text.setStyle(SkPaint::kFill_Style);
-		paint_text.setAntiAlias(true);
-		paint_text.setStrokeWidth(4);
-		paint_text.setColor(coltext);
+		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+		*container << std::move(igtlink_viewer) << std::move(image_display);
+		container->set_divisions({ 0.0 , 0.5 , 1.0 });
 
-		const char* fontFamily = nullptr;
-		SkFontStyle fontStyle;
-		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+		auto button = Button::make("Connect",resources);
+		button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 
-		SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
-		text_font.setEdging(SkFont::Edging::kAntiAlias);
+		auto buttonoptions = Button::make("Options",resources);
+		buttonoptions->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 
-		SkPaint paint_square2;
-		paint_square2.setStyle(SkPaint::kFill_Style);
-		paint_square2.setAntiAlias(true);
-		paint_square2.setStrokeWidth(4);
-		paint_square2.setColor(SK_ColorBLACK);
-
-		OpenIGTLinkViewer::Info infoviewer;
-		infoviewer.text_font = text_font;
-		infoviewer.size = SkRect::MakeWH(600, 500);
-		std::shared_ptr<OpenIGTLinkViewer> open_viwer = OpenIGTLinkViewer::make(infoviewer);
-
-		ImageDisplay::Info processed_viwer_info;
-		processed_viwer_info.height = 0;
-		processed_viwer_info.width = 0;
-		std::shared_ptr<ImageDisplay> processed_viwer = ImageDisplay::make(processed_viwer_info);
-
-		Container::InfoLinearContainer info;
-		info.paint_layout = paint_square2;
-		info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-		info.divisions = { 0.0 , 0.5 , 1.0 };
-		info.layouts = { open_viwer,processed_viwer };
-		std::shared_ptr<Container> container2 = Container::make(info);
-
-		Button::Info infor{ resources };
-		infor.button_text = "Connect";
-		infor.click_color = SK_ColorGRAY;
-		infor.hover_color = SK_ColorDKGRAY;
-		infor.waiting_color = SK_ColorBLACK;
-		infor.icon_identifier = "";
-		infor.paintButton = paint_square;
-		infor.paintText = paint_text;
-		infor.size = SkRect::MakeWH(100, 80);
-		infor.textFont = text_font;
-		std::shared_ptr<Button> button = Button::make(infor);
-		infor.button_text = "Options";
-		std::shared_ptr<Button> buttonoptions = Button::make(infor);
-
-		info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-		info.divisions = { 0.0 , 0.5 , 1.0 };
-		info.layouts = { button,buttonoptions };
-		std::shared_ptr<Container> buttoncontainer = Container::make(info);
-
-		info.arrangement = curan::ui::Arrangement::VERTICAL;
-		info.divisions = { 0.0 , 0.1 , 1.0 };
-		info.layouts = { buttoncontainer,container2 };
-		std::shared_ptr<Container> container = Container::make(info);
-
-		auto rec = viewer->get_size();
-		Page::Info information;
-		information.backgroundcolor = SK_ColorBLACK;
-		information.contained = container;
-		std::shared_ptr<Page> page = Page::make(information);
-		page->propagate_size_change(rec);
-
-		auto button_callback = [](Button* button,ConfigDraw* config) {
-			auto temp_optional_page = create_option_page();
+		auto button_callback = [&resources](Button* button,ConfigDraw* config) {
 			if(config->stack_page!=nullptr)
-				config->stack_page->stack(temp_optional_page);
+				config->stack_page->stack(create_option_page(resources));
 		};
 		buttonoptions->set_callback(button_callback);
 
-		int width = rec.width();
-		int height = rec.height();
+		auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+		*buttoncontainer << std::move(button) << std::move(buttonoptions);
+		buttoncontainer->set_divisions({ 0.0 , 0.5 , 1.0 });
 
-		auto lamd = [open_viwer, processed_viwer]() {
-			generate_image_message(open_viwer, processed_viwer);
+		auto widgetcontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+		*widgetcontainer << std::move(buttoncontainer) << std::move(container);
+		widgetcontainer->set_divisions({ 0.0 , 0.1 , 1.0 });
+
+		auto rec = viewer->get_size();
+		auto page = Page{std::move(widgetcontainer),SK_ColorBLACK};
+		page.propagate_size_change(rec);
+
+		auto width = rec.width();
+		auto height = rec.height();
+
+		std::atomic<bool> continue_running = true;
+
+		auto lamd = [igtlink_viewer_pointer, image_display_pointer,&continue_running]() {
+			generate_image_message(continue_running,igtlink_viewer_pointer, image_display_pointer);
 		};
 		std::thread message_generator{ lamd };
 
-		auto blur = SkImageFilters::Blur(10, 10, nullptr);
-		SkPaint bluring_paint;
-		bluring_paint.setImageFilter(std::move(blur));
-		SkSamplingOptions options;
-
-		ConfigDraw config_draw{ page.get()};
+		ConfigDraw config_draw{ &page};
 
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
@@ -360,13 +265,13 @@ int main() {
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
 			if (temp_height != height || temp_width != width) {
 				rec = SkRect::MakeWH(temp_width, temp_height);
-				page->propagate_size_change(rec);
+				page.propagate_size_change(rec);
 			}
-			page->draw(canvas);
+			page.draw(canvas);
 			auto signals = viewer->process_pending_signals();
 
 			if (!signals.empty())
-				page->propagate_signal(signals.back(), &config_draw);
+				page.propagate_signal(signals.back(), &config_draw);
 
 			glfwPollEvents();
 
@@ -374,14 +279,14 @@ int main() {
 			if (!val)
 				std::cout << "failed to swap buffers\n";
 			auto end = std::chrono::high_resolution_clock::now();
-			std::cout << "delay: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms\n";
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
+		continue_running.store(false);
 		message_generator.join();
 		return 0;
 	}
-	catch (...) {
-		std::cout << "Failed";
+	catch (std::exception& e) {
+		std::cout << "Failed: " << e.what() << std::endl;
 		return 1;
 	}
 }

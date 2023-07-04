@@ -12,39 +12,32 @@ namespace curan {
 		class Overlay;
 
 		class Page {
-		public:
-			struct Info {
-				std::shared_ptr<Container> contained;
-				SkColor backgroundcolor = SK_ColorWHITE;
-			};
-
-		private:	
 			std::unique_ptr<LightWeightPage> main_page;
 			std::deque<std::unique_ptr<LightWeightPage>> page_stack;
 			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 			SkPaint bluring_paint;
 			SkSamplingOptions options;
 
-			Page(Info drawables);
+        public:
 
-		public:
-			static std::shared_ptr<Page> make(Info);
+			explicit Page(std::unique_ptr<Container> container,SkColor background);
 
-			void draw(SkCanvas* canvas);
+			Page& draw(SkCanvas* canvas);
 
 			bool propagate_signal(Signal sig, ConfigDraw* config);
 
-			void propagate_size_change(SkRect& new_size);
+			Page& propagate_size_change(SkRect& new_size);
 
-			void pop();
+			Page& pop();
 
-			void stack(std::shared_ptr<Overlay> overlay);
+			Page& stack(std::unique_ptr<Overlay> overlay);
 
-			inline void set_dirtyness(bool var) {
+			inline Page& set_dirtyness(bool var) {
 				if (page_stack.empty())
 					main_page->set_dirtyness(var);
 				else
 					page_stack.front()->set_dirtyness(var);
+                return *(this);
 			}
 
 

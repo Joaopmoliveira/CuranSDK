@@ -14,35 +14,31 @@ namespace curan {
 		};
 
 		class LightWeightPage {
-		public:
-			struct Info {
-				post_signal_callback post_sig;
-				std::shared_ptr<Container> contained;
-				SkColor backgroundcolor = SK_ColorWHITE;
-
-				Info();
-			};
-
-		private:
-
-			std::shared_ptr<Container> scene;
+			std::unique_ptr<Container> scene;
 			std::atomic<bool> is_dirty = false;
 			compilation_results compiled_scene;
 			SkColor backgroundcolor = SK_ColorWHITE;
 			post_signal_callback post_signal_processing;
-			LightWeightPage(Info drawables);
 
-		public:
-			static std::unique_ptr<LightWeightPage> make(Info);
+			LightWeightPage(std::unique_ptr<Container> contained, SkColor backgroundcolor);
 
-			void draw(SkCanvas* canvas);
+        public:
+
+			static std::unique_ptr<LightWeightPage> make(std::unique_ptr<Container> contained, SkColor backgroundcolor);
+
+			~LightWeightPage();
+
+			LightWeightPage& draw(SkCanvas* canvas);
 
 			bool propagate_signal(Signal sig, ConfigDraw* config);
 
-			void propagate_size_change(SkRect& new_size);
+			LightWeightPage& propagate_size_change(SkRect& new_size);
 
-			inline void set_dirtyness(bool var) {
+			LightWeightPage& set_post_signal(post_signal_callback call);
+
+			inline LightWeightPage& set_dirtyness(bool var) {
 				is_dirty = var;
+                return *(this);
 			}
 		};
 

@@ -1,39 +1,48 @@
-#include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/widgets/Button.h"
 #include "utils/Overloading.h"
-#include <variant>
 
 namespace curan {
 namespace ui {
 
-Button::Info::Info(IconResources& in_system_icons) : system_icons{ in_system_icons } {
-	
-}
-		
-Button::Button(Info& info) : Drawable{ info.size }, system_icons{ info.system_icons } {
-	hover_color = info.hover_color;
-	waiting_color = info.waiting_color;
-	click_color = info.click_color;
-	paint = info.paintButton;
-	paint_text = info.paintText;
-	text_font = info.textFont;
-	callback = info.callback;
-	text_font.measureText(info.button_text.data(), info.button_text.size(), SkTextEncoding::kUTF8, &widget_rect_text);
-	text = SkTextBlob::MakeFromString(info.button_text.c_str(), text_font);
+Button::Button(const std::string& in_button_text,IconResources& system_icons) : button_text{in_button_text} , system_icons{system_icons}{
+	hover_color = SK_ColorDKGRAY;
+	waiting_color = SK_ColorGRAY;
+	click_color = SK_ColorCYAN;
+	text_color = SK_ColorWHITE;
 
-	if (system_icons.is_loaded()) {
-		sk_sp<SkImage> image;
-		system_icons.get_icon(image, info.icon_identifier);
-		icon_data = image;
-	}
+	paint.setStyle(SkPaint::kFill_Style);
+	paint.setAntiAlias(true);
+	paint.setStrokeWidth(4);
+	paint.setColor(hover_color);
+
+	paint_text.setStyle(SkPaint::kFill_Style);
+	paint_text.setAntiAlias(true);
+	paint_text.setStrokeWidth(4);
+	paint_text.setColor(text_color);
+
+	const char* fontFamily = nullptr;
+	SkFontStyle fontStyle;
+	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+	text_font = SkFont(typeface, 10, 1.0f, 0.0f);
+	text_font.setEdging(SkFont::Edging::kAntiAlias);
+
+	callback = std::nullopt;
 }
 
-std::shared_ptr<Button> Button::make(Info& info) {
-	return std::make_shared<Button>(info);
+Button::~Button(){
+
 }
 
-drawablefunction Button::draw() {
-	auto lamb = [this](SkCanvas* canvas) {
+std::unique_ptr<Button> Button::make(const std::string& button_text,IconResources& system_icons){
+	std::unique_ptr<Button> button = std::unique_ptr<Button>(new Button{button_text,system_icons});
+	return button;
+}	
+
+drawablefunction Button::draw(){
+if(!compiled)
+	throw std::runtime_error("must compile the button before drawing operations");
+auto lamb = [this](SkCanvas* canvas) {
 		switch (current_state) {
 		case ButtonStates::WAITING:
 			paint.setColor(get_waiting_color());
@@ -49,7 +58,7 @@ drawablefunction Button::draw() {
 		auto size = get_size();
 
 		SkRect drawable = size;
-		drawable.offsetTo(widget_rect.centerX()- drawable.width()/2.0, widget_rect.centerY()- drawable.height() / 2.0);
+		drawable.offsetTo(widget_rect.centerX()- drawable.width()/2.0f, widget_rect.centerY()- drawable.height() / 2.0f);
 
 		float text_offset_x = drawable.centerX() - widget_rect_text.width() / 2.0f;
 		float text_offset_y = drawable.centerY() + widget_rect_text.height() / 2.0f;
@@ -58,8 +67,8 @@ drawablefunction Button::draw() {
 		canvas->drawTextBlob(text, text_offset_x, text_offset_y, paint_text);
 
 		if (icon_data.get() != nullptr) {
-			float image_width = icon_data->width();
-			float image_height = icon_data->height();
+			float image_width = static_cast<float>(icon_data->width());
+			float image_height = static_cast<float>(icon_data->height());
 			float current_selected_width = drawable.width();
 			float current_selected_height = drawable.height() - widget_rect_text.height();
 
@@ -70,15 +79,17 @@ drawablefunction Button::draw() {
 
 			SkRect current_selected_image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, scale_factor * image_height);
 
-			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0 / 3, 1.0 / 3 });
+			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
 			canvas->drawImageRect(icon_data, current_selected_image_rectangle, opt);
 		}
 	};
 	return lamb;
 }
 
-callablefunction Button::call() {
-	auto lamb = [this](Signal sig, ConfigDraw* config) {
+callablefunction Button::call(){
+if(!compiled)
+	throw std::runtime_error("must compile the button before drawing operations");
+auto lamb = [this](Signal sig, ConfigDraw* config) {
 		bool interacted = false;
 		std::visit(utilities::overloaded{
 			[this,config](Empty arg) {
@@ -141,8 +152,18 @@ callablefunction Button::call() {
 	return lamb;
 }
 
-void Button::framebuffer_resize() {
+void Button::compile(){
+	std::lock_guard<std::mutex> g{ get_mutex() };
 
+	text_font.measureText(button_text.data(), button_text.size(), SkTextEncoding::kUTF8, &widget_rect_text);
+	text = SkTextBlob::MakeFromString(button_text.c_str(), text_font);
+
+	if (system_icons.is_loaded()) {
+		sk_sp<SkImage> image;
+		system_icons.get_icon(image,icon_identifier);
+		icon_data = image;
+	}
+	compiled = true;
 }
 
 }

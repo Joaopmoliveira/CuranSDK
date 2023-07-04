@@ -11,24 +11,17 @@ namespace curan {
 	namespace ui {
 
 		class Overlay {
-		public:
-			struct Info {
-				post_signal_callback post_sig;
-				std::shared_ptr<Container> contained;
-				SkColor backgroundcolor = SK_ColorWHITE;
-
-				Info();
-			};
-
-		private:
 			std::unique_ptr<LightWeightPage> main_page;
 			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 			SkPaint bluring_paint;
 			SkSamplingOptions options;
-
-			Overlay(Info drawables);
+			SkColor backgroundcolor;
+			void compile();
+			explicit Overlay(std::unique_ptr<Container> contained,SkColor backgroundcolor);
 		public:
-			static std::shared_ptr<Overlay> make(Info);
+
+			static std::unique_ptr<Overlay> make(std::unique_ptr<Container> contained,SkColor backgroundcolor);
+            
 			std::unique_ptr<LightWeightPage> take_ownership();
 		};
 	}

@@ -15,17 +15,18 @@ int main(int argc, char* argv[]) {
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
 	DisplayParams param{ std::move(context),2200,1800 };
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
 	std::shared_ptr<ProcessingMessage> processing;
-	auto page = create_main_page(data,processing);
+	auto page = create_main_page(data,processing,resources);
 
 	auto rec = viewer->get_size();
-	page->propagate_size_change(rec);
+	page.propagate_size_change(rec);
 
-	int width = rec.width();
-	int height = rec.height();
+	auto width = rec.width();
+	auto height = rec.height();
 
-	ConfigDraw config{page.get()};
+	ConfigDraw config{&page};
 
 	while (!glfwWindowShouldClose(viewer->window)) {
 		auto start = std::chrono::high_resolution_clock::now();
@@ -35,12 +36,12 @@ int main(int argc, char* argv[]) {
 		SkCanvas* canvas = pointer_to_surface->getCanvas();
 		if (temp_height != height || temp_width != width) {
 			rec = SkRect::MakeWH(temp_width, temp_height);
-			page->propagate_size_change(rec);
+			page.propagate_size_change(rec);
 		}
-		page->draw(canvas);
+		page.draw(canvas);
 		auto signals = viewer->process_pending_signals();
 		if (!signals.empty())
-			page->propagate_signal(signals.back(), &config);
+			page.propagate_signal(signals.back(), &config);
 		glfwPollEvents();
 
 		bool val = viewer->swapBuffers();

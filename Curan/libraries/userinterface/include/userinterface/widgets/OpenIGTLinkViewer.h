@@ -45,24 +45,31 @@ namespace curan {
 			std::list<Message> received_messages;
 		};
 
-		class OpenIGTLinkViewer : public Drawable, utilities::Lockable<OpenIGTLinkViewer>, utilities::Connectable<OpenIGTLinkViewer> {
+		class OpenIGTLinkViewer : public Drawable, utilities::Lockable<OpenIGTLinkViewer>{
 			MessageContainer container;
 			Press last_pressed_position;
 			SkRect widget_rect;
 			std::array<sk_sp<SkTextBlob>, 4> table_headers;
+			SkFont text_font;
+			SkPaint paint;
+			SkPaint paint_text;
+			bool in_debug_mode = false;
+			SkPoint center_debug_mode = { 0.0f,0.0f };
+			float debug_mode_radius = 10.0f;
+			sk_sp<SkTextBlob> debug_glyph;
+			bool compiled = false;
+
+			OpenIGTLinkViewer();
 
 		public:
-			struct Info {
-				SkFont text_font;
-				SkRect size;
-			};
 
-			OpenIGTLinkViewer(Info& info);
-			static std::shared_ptr<OpenIGTLinkViewer> make(Info& info);
+			static std::unique_ptr<OpenIGTLinkViewer> make();
 			void process_message(igtl::MessageBase::Pointer pointer);
+
 			drawablefunction draw() override;
 			callablefunction call() override;
 			void framebuffer_resize() override;
+			void compile();
 
 			inline std::array<sk_sp<SkTextBlob>, 4>& get_table_header() {
 				return table_headers;
@@ -71,16 +78,6 @@ namespace curan {
 			inline MessageContainer& get_container() {
 				return container;
 			}
-
-		private:
-
-			SkFont text_font;
-			SkPaint paint;
-			SkPaint paint_text;
-			bool in_debug_mode = false;
-			SkPoint center_debug_mode = { 0.0f,0.0f };
-			float debug_mode_radius = 10.0f;
-			sk_sp<SkTextBlob> debug_glyph;
 		};
 	}
 }

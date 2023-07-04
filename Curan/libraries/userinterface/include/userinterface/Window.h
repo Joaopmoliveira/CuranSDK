@@ -44,6 +44,7 @@ namespace curan {
 
 		class Window {
 		private:
+			DisplayParams params;
 			int width, height;
 			std::unique_ptr<Context> context = nullptr;
 			VkSurfaceKHR surface = VK_NULL_HANDLE;
@@ -56,7 +57,6 @@ namespace curan {
 			std::vector<SkSurface*> swapSurface;
 			uint32_t fCurrentBackbufferIndex{ 0 };
 			SkColorType colorType;
-			DisplayParams params;
 			VkSwapchainKHR swapChain = VK_NULL_HANDLE;
 			std::vector<VkImage> swapChainImages;
 			std::vector<VkImageLayout> swapChainImageLayout;
@@ -81,7 +81,7 @@ namespace curan {
 			void destroy();
 
 			inline SkRect get_size() {
-				SkRect rec = SkRect::MakeXYWH(0,0,width,height);
+				SkRect rec = SkRect::MakeXYWH(0,0,static_cast<float>(width),static_cast<float>(height));
 				return rec;
 			}
 

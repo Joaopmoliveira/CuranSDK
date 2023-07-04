@@ -11,7 +11,7 @@ namespace curan {
             struct Info {
                 char termination_character = 'e';
                 asio::io_service& service;
-                size_t baud_rate = 9600;
+                uint32_t baud_rate = 9600;
                 std::string port_name;
             };
 

@@ -6,80 +6,24 @@
 #include <iostream>
 
 void create_horizontal_layout(curan::ui::IconResources& resources) {
-	using namespace curan::ui;
-	SkColor colbuton = { SK_ColorWHITE };
-	SkColor coltext = { SK_ColorBLACK };
+	std::unique_ptr<curan::ui::Button> button = curan::ui::Button::make("Touch!",resources);
+	button->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
+	std::unique_ptr<curan::ui::Button> button2 = curan::ui::Button::make("Touch2!",resources);
+	button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
+	std::unique_ptr<curan::ui::Button> button3 = curan::ui::Button::make("Touch3!",resources);
+	button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
-
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
-
-	Button::Info infor{ resources };
-	infor.button_text = "Touch!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button = Button::make(infor);
-
-	infor.button_text = "Touch 2!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button2 = Button::make(infor);
-
-	infor.button_text = "Touch 3!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button3 = Button::make(infor);
-
-	Container::InfoLinearContainer info;
-	info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-	info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
-	info.layouts = { button ,button2 , button3 };
-	info.paint_layout = paint_square2;
-	std::shared_ptr<Container> container = Container::make(info);
-
+	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
+	*container << std::move(button) << std::move(button2) << std::move(button3);
+	container->set_divisions({ 0.0f , 0.33333f , 0.66666f , 1.0f });
+	container->compile();
+	
 	auto rect_layout = container->get_positioning();
 	std::cout << "Container layout";
-	std::cout << "Expected:\nRect1 left: 0 top: 0  right: 0.33333 bottom: 1 \n";
+	std::cout << "Expected:\n";
+	std::cout << "Rect1 left: 0       top: 0  right: 0.33333 bottom: 1 \n";
 	std::cout << "Rect2 left: 0.33333 top: 0  right: 0.66666 bottom: 1 \n";
 	std::cout << "Rect3 left: 0.66666 top: 0  right: 1.00000 bottom: 1 \n";
 
@@ -89,76 +33,19 @@ void create_horizontal_layout(curan::ui::IconResources& resources) {
 }
 
 void create_vertical_layout(curan::ui::IconResources& resources) {
-	using namespace curan::ui;
-	SkColor colbuton = { SK_ColorWHITE };
-	SkColor coltext = { SK_ColorBLACK };
+	std::unique_ptr<curan::ui::Button> button = curan::ui::Button::make("Touch!",resources);
+	button->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
+	std::unique_ptr<curan::ui::Button> button2 = curan::ui::Button::make("Touch2!",resources);
+	button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
+	std::unique_ptr<curan::ui::Button> button3 = curan::ui::Button::make("Touch3!",resources);
+	button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
-
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
-
-	Button::Info infor{ resources };
-	infor.button_text = "Touch!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button = Button::make(infor);
-
-	infor.button_text = "Touch 2!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button2 = Button::make(infor);
-
-	infor.button_text = "Touch 3!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button3 = Button::make(infor);
-
-	Container::InfoLinearContainer info;
-	info.arrangement = curan::ui::Arrangement::VERTICAL;
-	info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
-	info.layouts = { button ,button2 , button3 };
-	info.paint_layout = paint_square2;
-	std::shared_ptr<Container> container = Container::make(info);
+	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
+	*container << std::move(button) << std::move(button2) << std::move(button3);
+	container->set_divisions({ 0.0f , 0.33333f , 0.66666f , 1.0f });
+	container->compile();
 
 	auto rect_layout = container->get_positioning();
 	std::cout << "Container layout";
@@ -172,75 +59,20 @@ void create_vertical_layout(curan::ui::IconResources& resources) {
 }
 
 void create_variable_layout(curan::ui::IconResources& resources) {
-	using namespace curan::ui;
-	SkColor colbuton = { SK_ColorWHITE };
-	SkColor coltext = { SK_ColorBLACK };
+	std::unique_ptr<curan::ui::Button> button = curan::ui::Button::make("Touch!",resources);
+	button->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
+	std::unique_ptr<curan::ui::Button> button2 = curan::ui::Button::make("Touch2!",resources);
+	button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
+	std::unique_ptr<curan::ui::Button> button3 = curan::ui::Button::make("Touch3!",resources);
+	button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::VARIABLE_CONTAINER,curan::ui::Container::Arrangement::UNDEFINED);
+	*container << std::move(button) << std::move(button2) << std::move(button3);
+	container->set_variable_layout({ SkRect::MakeLTRB(0.0,0.0,0.3333,1.0),SkRect::MakeLTRB(0.3333,0.0,0.6666,1.0),SkRect::MakeLTRB(0.6666,0.0,1.0,1.0) });
 
-	SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
-
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
-
-	Button::Info infor{ resources };
-	infor.button_text = "Touch!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button = Button::make(infor);
-
-	infor.button_text = "Touch 2!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button2 = Button::make(infor);
-
-	infor.button_text = "Touch 3!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button3 = Button::make(infor);
-
-	Container::InfoVariableContainer info;
-	info.layouts = { button ,button2 , button3 };
-	info.rectangles_of_contained_layouts = { SkRect::MakeLTRB(0.0,0.0,0.3333,1.0),SkRect::MakeLTRB(0.3333,0.0,0.6666,1.0),SkRect::MakeLTRB(0.6666,0.0,1.0,1.0) };
-	info.paint_layout = paint_square2;
-	std::shared_ptr<Container> container = Container::make(info);
+	container->compile();
 
 	auto rect_layout = container->get_positioning();
 	std::cout << "Container layout";
@@ -255,79 +87,27 @@ void create_variable_layout(curan::ui::IconResources& resources) {
 
 
 void create_horizontal_layout_propagate(curan::ui::IconResources& resources) {
-	using namespace curan::ui;
-	SkColor colbuton = { SK_ColorWHITE };
-	SkColor coltext = { SK_ColorBLACK };
+	std::unique_ptr<curan::ui::Button> button = curan::ui::Button::make("Touch!",resources);
+	button->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button1 = button.get();
 
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
+	std::unique_ptr<curan::ui::Button> button2 = curan::ui::Button::make("Touch2!",resources);
+	button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button2 = button2.get();
 
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
+	std::unique_ptr<curan::ui::Button> button3 = curan::ui::Button::make("Touch3!",resources);
+	button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button3 = button3.get();
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
-
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
-
-	Button::Info infor{ resources };
-	infor.button_text = "Touch!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button = Button::make(infor);
-
-	infor.button_text = "Touch 2!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button2 = Button::make(infor);
-
-	infor.button_text = "Touch 3!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button3 = Button::make(infor);
-
-	Container::InfoLinearContainer info;
-	info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-	info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
-	info.layouts = { button ,button2 , button3 };
-	info.paint_layout = paint_square2;
-	std::shared_ptr<Container> container = Container::make(info);
+	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
+	*container << std::move(button) << std::move(button2) << std::move(button3);
+	container->set_divisions({ 0.0 , 0.33333 , 0.66666 , 1.0 });
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container->set_position(my_small_window);
+
+	container->compile();
+
 	container->framebuffer_resize();
 
 	std::cout << "Container layout";
@@ -337,89 +117,37 @@ void create_horizontal_layout_propagate(curan::ui::IconResources& resources) {
 	std::cout << "Button3 left: 650 top:  50  right: 950 bottom: 950 \n";
 
 	std::cout << "Real:\n";
-	auto pos1 = button->get_position();
+	auto pos1 = temporary_storage_button1->get_position();
 	std::cout << "Button1 left: " << pos1.fLeft << " top: " << pos1.fTop << " right: " << pos1.fRight << " bottom: " << pos1.fBottom << "\n";
-	auto pos2 = button2->get_position();
+	auto pos2 = temporary_storage_button2->get_position();
 	std::cout << "Button2 left: " << pos2.fLeft << " top: " << pos2.fTop << " right: " << pos2.fRight << " bottom: " << pos2.fBottom << "\n";
-	auto pos3 = button3->get_position();
+	auto pos3 = temporary_storage_button3->get_position();
 	std::cout << "Button3 left: " << pos3.fLeft << " top: " << pos3.fTop << " right: " << pos3.fRight << " bottom: " << pos3.fBottom << "\n";
 }
 
 
 void create_vertical_layout_propagate(curan::ui::IconResources& resources) {
-	using namespace curan::ui;
-	SkColor colbuton = { SK_ColorWHITE };
-	SkColor coltext = { SK_ColorBLACK };
+	std::unique_ptr<curan::ui::Button> button = curan::ui::Button::make("Touch!",resources);
+	button->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button1 = button.get();
 
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
+	std::unique_ptr<curan::ui::Button> button2 = curan::ui::Button::make("Touch2!",resources);
+	button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button2 = button2.get();
 
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
+	std::unique_ptr<curan::ui::Button> button3 = curan::ui::Button::make("Touch3!",resources);
+	button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button3 = button3.get();
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
-
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
-
-	Button::Info infor{ resources };
-	infor.button_text = "Touch!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button = Button::make(infor);
-
-	infor.button_text = "Touch 2!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button2 = Button::make(infor);
-
-	infor.button_text = "Touch 3!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button3 = Button::make(infor);
-
-	Container::InfoLinearContainer info;
-	info.arrangement = curan::ui::Arrangement::VERTICAL;
-	info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
-	info.layouts = { button ,button2 , button3 };
-	info.paint_layout = paint_square2;
-	std::shared_ptr<Container> container = Container::make(info);
+	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
+	*container << std::move(button) << std::move(button2) << std::move(button3);
+	container->set_divisions({ 0.0 , 0.33333 , 0.66666 , 1.0 });
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container->set_position(my_small_window);
+
+	container->compile();
+
 	container->framebuffer_resize();
 
 	std::cout << "Container layout";
@@ -429,173 +157,92 @@ void create_vertical_layout_propagate(curan::ui::IconResources& resources) {
 	std::cout << "Button3 left: 50 top: 650  right: 950 bottom: 950 \n";
 
 	std::cout << "Real:\n";
-	auto pos1 = button->get_position();
+	auto pos1 = temporary_storage_button1->get_position();
 	std::cout << "Button1 left: " << pos1.fLeft << " top: " << pos1.fTop << " right: " << pos1.fRight << " bottom: " << pos1.fBottom << "\n";
-	auto pos2 = button2->get_position();
+	auto pos2 = temporary_storage_button2->get_position();
 	std::cout << "Button2 left: " << pos2.fLeft << " top: " << pos2.fTop << " right: " << pos2.fRight << " bottom: " << pos2.fBottom << "\n";
-	auto pos3 = button3->get_position();
+	auto pos3 = temporary_storage_button3->get_position();
 	std::cout << "Button3 left: " << pos3.fLeft << " top: " << pos3.fTop << " right: " << pos3.fRight << " bottom: " << pos3.fBottom << "\n";
 }
 
 
 void create_nested_layout_propagate(curan::ui::IconResources& resources){
-	using namespace curan::ui;
-	SkColor colbuton = { SK_ColorWHITE };
-	SkColor coltext = { SK_ColorBLACK };
+	std::unique_ptr<curan::ui::Button> button = curan::ui::Button::make("Touch!",resources);
+	button->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button1 = button.get();
 
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
+	std::unique_ptr<curan::ui::Button> button2 = curan::ui::Button::make("Touch2!",resources);
+	button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button2 = button2.get();
 
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
+	std::unique_ptr<curan::ui::Button> button3 = curan::ui::Button::make("Touch3!",resources);
+	button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button3 = button3.get();
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+	std::unique_ptr<curan::ui::Button> button4 = curan::ui::Button::make("Touch4!",resources);
+	button4->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
+	auto temporary_storage_button4 = button4.get();
 
-	SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
+	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
+	*container << std::move(button) << std::move(button2) << std::move(button3);
+	container->set_divisions({ 0.0f , 0.33333f , 0.66666f , 1.0f });
 
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
-
-	Button::Info infor{ resources };
-	infor.button_text = "Touch!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button = Button::make(infor);
-
-	infor.button_text = "Touch 2!";
-	std::shared_ptr<Button> button2 = Button::make(infor);
-
-	infor.button_text = "Touch 3!";
-	std::shared_ptr<Button> button3 = Button::make(infor);
-
-	infor.button_text = "Touch 4!";
-	std::shared_ptr<Button> button4 = Button::make(infor);
-
-	Container::InfoLinearContainer info;
-	info.arrangement = curan::ui::Arrangement::VERTICAL;
-	info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
-	info.layouts = { button ,button2 , button3 };
-	info.paint_layout = paint_square2;
-	std::shared_ptr<Container> container = Container::make(info);
-
-
-	info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-	info.divisions = { 0.0 , 0.5 , 1.0 };
-	info.layouts = { container , button4 };
-	std::shared_ptr<Container> container2 = Container::make(info);
+	std::unique_ptr<curan::ui::Container> container2 = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
+	*container2 << std::move(container) << std::move(button4);
+	container2->set_divisions({  0.0f , 0.5f , 1.0f });
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container2->set_position(my_small_window);
+	container2->compile();
 	container2->framebuffer_resize();
 
 	std::cout << "Container layout";
 	std::cout << "Expected:\n";
-	std::cout << "Button1 left:  50 top:  50  right: 450 bottom: 350 \n";
-	std::cout << "Button2 left:  50 top: 350  right: 450 bottom: 650 \n";
-	std::cout << "Button3 left:  50 top: 650  right: 450 bottom: 950 \n";
-	std::cout << "Button4 left: 450 top:  50  right: 950 bottom: 950 \n";
+	std::cout << "Button1 left:  50 top:  50  right: 500 bottom: 350 \n";
+	std::cout << "Button2 left:  50 top: 350  right: 500 bottom: 650 \n";
+	std::cout << "Button3 left:  50 top: 650  right: 500 bottom: 950 \n";
+	std::cout << "Button4 left: 500 top:  50  right: 950 bottom: 950 \n";
 
 	std::cout << "Real:\n";
-	auto pos1 = button->get_position();
+	auto pos1 = temporary_storage_button1->get_position();
 	std::cout << "Button1 left: " << pos1.fLeft << " top: " << pos1.fTop << " right: " << pos1.fRight << " bottom: " << pos1.fBottom << "\n";
-	auto pos2 = button2->get_position();
+	auto pos2 = temporary_storage_button2->get_position();
 	std::cout << "Button2 left: " << pos2.fLeft << " top: " << pos2.fTop << " right: " << pos2.fRight << " bottom: " << pos2.fBottom << "\n";
-	auto pos3 = button3->get_position();
+	auto pos3 = temporary_storage_button3->get_position();
 	std::cout << "Button3 left: " << pos3.fLeft << " top: " << pos3.fTop << " right: " << pos3.fRight << " bottom: " << pos3.fBottom << "\n";
-	auto pos4 = button4->get_position();
+	auto pos4 = temporary_storage_button4->get_position();
 	std::cout << "Button4 left: " << pos4.fLeft << " top: " << pos4.fTop << " right: " << pos4.fRight << " bottom: " << pos4.fBottom << "\n";
 };
 
 void test_linearization(curan::ui::IconResources& resources) {
-	using namespace curan::ui;
-	SkColor colbuton = { SK_ColorWHITE };
-	SkColor coltext = { SK_ColorBLACK };
+	std::unique_ptr<curan::ui::Button> button = curan::ui::Button::make("Touch!",resources);
+	button->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
+	std::unique_ptr<curan::ui::Button> button2 = curan::ui::Button::make("Touch2!",resources);
+	button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
+	std::unique_ptr<curan::ui::Button> button3 = curan::ui::Button::make("Touch3!",resources);
+	button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+	std::unique_ptr<curan::ui::Button> button4 = curan::ui::Button::make("Touch4!",resources);
+	button4->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
 
-	SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
+	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
+	*container << std::move(button) << std::move(button2) << std::move(button3);
+	container->set_divisions({ 0.0 , 0.33333 , 0.66666 , 1.0 });
 
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SkColorSetARGB(255, 201, 201, 201));
-
-	Button::Info infor{ resources };
-	infor.button_text = "Touch!";
-	infor.click_color = SK_ColorRED;
-	infor.hover_color = SK_ColorCYAN;
-	infor.waiting_color = SK_ColorGRAY;
-	infor.icon_identifier = "";
-	infor.paintButton = paint_square;
-	infor.paintText = paint_text;
-	infor.size = SkRect::MakeLTRB(0, 0, 100, 200);
-	infor.textFont = text_font;
-	std::shared_ptr<Button> button = Button::make(infor);
-
-	infor.button_text = "Touch 2!";
-	std::shared_ptr<Button> button2 = Button::make(infor);
-
-	infor.button_text = "Touch 3!";
-	std::shared_ptr<Button> button3 = Button::make(infor);
-
-	infor.button_text = "Touch 4!";
-	std::shared_ptr<Button> button4 = Button::make(infor);
-
-	Container::InfoLinearContainer info;
-	info.arrangement = curan::ui::Arrangement::VERTICAL;
-	info.divisions = { 0.0 , 0.33333 , 0.66666 , 1.0 };
-	info.layouts = { button ,button2 , button3 };
-	info.paint_layout = paint_square2;
-	std::shared_ptr<Container> container = Container::make(info);
-
-
-	info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-	info.divisions = { 0.0 , 0.5 , 1.0 };
-	info.layouts = { container , button4 };
-	std::shared_ptr<Container> container2 = Container::make(info);
+	std::unique_ptr<curan::ui::Container> container2 = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
+	*container2 << std::move(container) << std::move(button4);
+	container2->set_divisions({  0.0 , 0.5 , 1.0 });
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
+
 	container2->set_position(my_small_window);
+	container2->compile();
 	container2->framebuffer_resize();
 
-	std::vector<drawablefunction> temp_draw;
-	std::vector<callablefunction> temp_call;
+	std::vector<curan::ui::drawablefunction> temp_draw;
+	std::vector<curan::ui::callablefunction> temp_call;
 	container2->linearize_container(temp_draw,temp_call);
 
 	std::cout << "expected size drawable: (6) real size: (" << temp_draw.size() << ")\n";
@@ -605,17 +252,24 @@ void test_linearization(curan::ui::IconResources& resources) {
 int main() {
 	try {
 		using namespace curan::ui;
-		IconResources resources{ "C:/dev/Curan/resources" };
+		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
+		std::cout << "\n\n============ create_horizontal_layout ============\n\n";
 		create_horizontal_layout(resources);
+		std::cout << "\n\n============ create_vertical_layout ============\n\n";
 		create_vertical_layout(resources);
+		std::cout << "\n\n============ create_variable_layout ============\n\n";
 		create_variable_layout(resources);
+		std::cout << "\n\n============ create_horizontal_layout_propagate ============\n\n";
 		create_horizontal_layout_propagate(resources);
+		std::cout << "\n\n============ create_vertical_layout_propagate ============\n\n";
 		create_vertical_layout_propagate(resources);
+		std::cout << "\n\n============ create_nested_layout_propagate ============\n\n";
 		create_nested_layout_propagate(resources);
+		std::cout << "\n\n============ test_linearization ============\n\n";
 		test_linearization(resources);
 	}
-	catch (...) {
-		std::cout << "Failed";
+	catch (std::exception& e) {
+		std::cout << "Failed : " << e.what() << std::endl;
 		return 1;
 	}
 }

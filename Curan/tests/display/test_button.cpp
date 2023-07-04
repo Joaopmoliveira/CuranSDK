@@ -13,47 +13,16 @@ int main() {
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		SkColor colbuton = { SK_ColorWHITE };
-		SkColor coltext = { SK_ColorBLACK };
-
-		SkPaint paint_square;
-		paint_square.setStyle(SkPaint::kFill_Style);
-		paint_square.setAntiAlias(true);
-		paint_square.setStrokeWidth(4);
-		paint_square.setColor(colbuton);
-
-		SkPaint paint_text;
-		paint_text.setStyle(SkPaint::kFill_Style);
-		paint_text.setAntiAlias(true);
-		paint_text.setStrokeWidth(4);
-		paint_text.setColor(coltext);
-
-		const char* fontFamily = nullptr;
-		SkFontStyle fontStyle;
-		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-		SkFont text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-		text_font.setEdging(SkFont::Edging::kAntiAlias);
-
 		auto callback = [](Button* button, ConfigDraw* config) {
 			std::cout << "received signal!\n";
 		};
 
-		Button::Info infor{ resources };
-		infor.button_text = "Touch!";
-		infor.click_color = SK_ColorRED;
-		infor.hover_color = SK_ColorCYAN;
-		infor.waiting_color = SK_ColorGRAY;
-		infor.icon_identifier = "";
-		infor.paintButton = paint_square;
-		infor.paintText = paint_text;
-		infor.size = SkRect::MakeWH(200, 90);
-		infor.textFont = text_font;
-		infor.callback = callback;
-		std::shared_ptr<Button> button = Button::make(infor);
+		auto button = Button::make("Touch!",resources);
 		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 200);
 		button->set_position(rect);
+		button->compile();
+		button->set_callback(callback);
+
 		auto caldraw = button->draw();
 		auto calsignal = button->call();
 

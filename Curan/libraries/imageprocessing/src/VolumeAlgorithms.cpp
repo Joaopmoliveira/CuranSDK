@@ -1,5 +1,6 @@
 #include "imageprocessing/VolumeAlgorithms.h"
 #include "utils/Logger.h"
+#include <type_traits>
 
 namespace curan {
 namespace image {
@@ -142,13 +143,6 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 {
 	// Determine if the output is a floating point or integer type. If floating point type then we don't round
 	// the interpolated value.
-	bool roundOutput = true; // assume integer output by default
-	char_pixel_type floatValueInOutputType = 0.3;
-	if (floatValueInOutputType > 0)
-	{
-		// output is a floating point number
-		roundOutput = false;
-	}
 
 	double fx, fy, fz;
 
@@ -274,14 +268,21 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 					f = fdx[j];
 					r = double((*accPtrTmp) / (double)ACCUMULATION_MULTIPLIER); // added division by double, since this always returned 0 otherwise
 					a = f + r;
-					if (roundOutput)
-					{
+
+					if constexpr (std::is_floating_point<char_pixel_type>::value){
+						*outPtrTmp = (f * (*inPtrTmp) + r * (*outPtrTmp)) / a;
+					} else {
 						*outPtrTmp = std::round((f * (*inPtrTmp) + r * (*outPtrTmp)) / a);
 					}
-					else
-					{
-						*outPtrTmp = (f * (*inPtrTmp) + r * (*outPtrTmp)) / a;
-					}
+
+					//if (roundOutput)
+					//{
+					//	*outPtrTmp = std::round((f * (*inPtrTmp) + r * (*outPtrTmp)) / a);
+					//}
+					//else
+					//{
+					//	*outPtrTmp = (f * (*inPtrTmp) + r * (*outPtrTmp)) / a;
+					//}
 					a *= ACCUMULATION_MULTIPLIER; // needs to be done for proper conversion to unsigned short for accumulation buffer
 					break;
 				default:

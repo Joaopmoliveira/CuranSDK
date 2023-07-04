@@ -178,7 +178,7 @@ void MyLBRClient::command() {
     auto Jacobian = J = MatrixNd::Zero(6, NUMBER_OF_JOINTS);
     robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
 
-    auto forces = (Jacobian*Jacobian.transpose()).inverse()*Jacobian*measured_torque;
+    //auto forces = (Jacobian*Jacobian.transpose()).inverse()*Jacobian*measured_torque;
 
 	for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
 		_qApplied[i] = _qCurr[i];

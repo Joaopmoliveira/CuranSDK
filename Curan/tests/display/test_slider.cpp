@@ -13,34 +13,20 @@ int main() {
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		SkColor colbuton = { SK_ColorWHITE };
-
-		SkPaint paint_square;
-		paint_square.setStyle(SkPaint::kStrokeAndFill_Style);
-		paint_square.setAntiAlias(true);
-		paint_square.setStrokeWidth(20);
-		paint_square.setColor(colbuton);
-		paint_square.setStrokeJoin(SkPaint::kRound_Join);
-		paint_square.setStrokeCap(SkPaint::kRound_Cap);
-
 		auto callback = [](Slider* slider, ConfigDraw* config) {
 			std::cout << "received signal!\n";
 		};
 
-		Slider::Info infor{};	
-		infor.click_color = SK_ColorLTGRAY;
-		infor.hover_color = SK_ColorCYAN;
-		infor.waiting_color = SK_ColorDKGRAY;
-		infor.sliderColor = SK_ColorGRAY;
-		infor.paintButton = paint_square;
-		infor.size = SkRect::MakeWH(200, 40);
-		infor.callback = callback;
-		infor.limits = { 0.0f, 300.0f };
-		std::shared_ptr<Slider> button = Slider::make(infor);
-		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 40);
-		button->set_position(rect);
-		auto caldraw = button->draw();
-		auto calsignal = button->call();
+		auto slider = Slider::make({ 0.0f, 300.0f });
+		slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY)
+				.set_slider_color(SK_ColorLTGRAY).set_callback([](Slider* slider, ConfigDraw* config) {
+			std::cout << "received signal!\n";
+		}).set_size(SkRect::MakeWH(300,40));
+
+		slider->compile();
+		slider->set_position(SkRect::MakeXYWH(50,50,300,40));
+		auto caldraw = slider->draw();
+		auto calsignal = slider->call();
 
 		ConfigDraw config_draw;
 
@@ -62,8 +48,8 @@ int main() {
 		}
 		return 0;
 	}
-	catch (...) {
-		std::cout << "Failed";
+	catch (std::exception & e) {
+		std::cout << "Failed: " << e.what() << std::endl;
 		return 1;
 	}
 }

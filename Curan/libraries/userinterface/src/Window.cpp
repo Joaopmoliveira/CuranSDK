@@ -7,10 +7,12 @@ namespace ui {
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const int EXTRA_BACK_BUFFER = 1;
 
-Window::Window(DisplayParams&& pars) : params{ std::move(pars) }, width{ pars.width }, height{ pars.height }, windowName{pars.windowName} {
+Window::Window(DisplayParams&& pars) : params{ std::move(pars) }, width{ params.width }, height{ params.height }, windowName{params.windowName} {
 	context = std::move(params.cxt);
 	params.cxt = nullptr;
 	bool val = initialize();
+	if(!val)
+		throw std::runtime_error("failed to initialize window");
 	connect_handler();
 };
 
