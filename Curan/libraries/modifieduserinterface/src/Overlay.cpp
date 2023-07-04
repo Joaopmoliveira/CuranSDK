@@ -7,7 +7,7 @@ namespace ui {
 
 Overlay::Overlay(post_signal_callback&& post_sig,
                 std::unique_ptr<Container> contained,
-                SkColor in_backgroundcolor) : main_page{LightWeightPage::make(std::move(contained),backgroundcolor)}
+                SkColor in_backgroundcolor) : main_page{std::move(LightWeightPage::make(std::move(contained),backgroundcolor))}
 {
 }
 

@@ -28,7 +28,15 @@ namespace curan {
 		drawablefunction draw();
 		callablefunction call();
 
-		bool is_leaf();
+		inline Container& set_color(SkColor color){
+			std::lock_guard<std::mutex> g{ get_mutex() };
+			layout_color = color;
+			return *(this);
+		}
+
+		inline bool is_leaf(){
+			return false;
+		}
 
 		Container& framebuffer_resize();
 		Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
@@ -39,7 +47,7 @@ namespace curan {
 
 		Container& operator<<(Widget&& widget);
 
-		std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement);
+		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement);
 
 		private:
 
@@ -52,7 +60,7 @@ namespace curan {
 			bool vertically_fixed = false;
 			ContainerType type;
 			Arrangement arragement;
-
+			SkColor layout_color;
 			void compile();
 		};
 	}

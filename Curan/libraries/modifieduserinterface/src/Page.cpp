@@ -4,7 +4,7 @@
 namespace curan {
 namespace ui {
 
-Page::Page(std::unique_ptr<Container> container,SkColor background) : main_page{LightWeightPage::make(move(container),background)}
+Page::Page(std::unique_ptr<Container> container,SkColor background) : main_page{std::move(LightWeightPage::make(move(container),background))}
 {
 	imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 	bluring_paint.setImageFilter(imgfilter);

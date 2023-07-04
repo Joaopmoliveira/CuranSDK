@@ -24,7 +24,7 @@ namespace curan {
 
         public:
 
-			std::unique_ptr<LightWeightPage> make(std::unique_ptr<Container> contained, SkColor backgroundcolor);
+			static std::unique_ptr<LightWeightPage> make(std::unique_ptr<Container> contained, SkColor backgroundcolor);
 
 			~LightWeightPage();
 

@@ -14,15 +14,15 @@ int main() {
 		curan::ui::DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<curan::ui::Window> viewer = std::make_unique<curan::ui::Window>(std::move(param));
 
-		curan::ui::Button button{"hi mark!",&resources};
-    	button.set_click_color(SK_ColorBLUE).set_current_state(curan::ui::Button::ButtonStates::PRESSED).set_hover_color(SK_ColorBLUE).set_waiting_color(SK_ColorBLUE);
+		auto button = curan::ui::Button::make("hi mark!",&resources);
+    	button->set_click_color(SK_ColorBLUE).set_current_state(curan::ui::Button::ButtonStates::PRESSED).set_hover_color(SK_ColorBLUE).set_waiting_color(SK_ColorBLUE);
 		
-		curan::ui::Container buttoncontainer{curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL};
-		buttoncontainer << std::move(button);
+		auto buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
+		*buttoncontainer << std::move(button);
 		SkColor colbuton = { SK_ColorRED };
 
 		//this should be an error
-		auto val = button.get_click_color();
+		auto val = button->get_click_color();
 		
 		SkPaint paint_square;
 		paint_square.setStyle(SkPaint::kFill_Style);

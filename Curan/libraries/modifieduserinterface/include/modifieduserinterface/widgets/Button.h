@@ -47,7 +47,7 @@ namespace curan {
 
 		public:
 
-			std::unique_ptr<Button> make(const std::string& button_text,IconResources* system_icons = nullptr);
+			static std::unique_ptr<Button> make(const std::string& button_text,IconResources* system_icons = nullptr);
 
 			~Button();
 
@@ -102,6 +102,10 @@ namespace curan {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				current_state = state;
                 return *(this);
+			}
+
+			inline bool is_leaf(){
+				return true;
 			}
 
 		};
