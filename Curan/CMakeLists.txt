@@ -51,5 +51,5 @@ add_subdirectory(tests)
 add_subdirectory(applications)
 
 # Add medical applications
-add_subdirectory(tutorialsrc)
+#add_subdirectory(tutorialsrc)
 
