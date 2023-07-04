@@ -41,8 +41,8 @@ Page& Page::pop(){
 	return *(this);
 }
 
-Page& Page::stack(Overlay&& overlay){
-	page_stack.emplace_back(overlay.take_ownership());
+Page& Page::stack(std::unique_ptr<Overlay> overlay){
+	page_stack.emplace_back(overlay->take_ownership());
 	return *(this);
 }
 

@@ -42,6 +42,11 @@ std::unique_ptr<LightWeightPage> Overlay::take_ownership(){
     return std::move(main_page);
 }
 
+std::unique_ptr<Overlay> Overlay::make(std::unique_ptr<Container> contained,SkColor backgroundcolor){
+	std::unique_ptr<Overlay> overlay = std::unique_ptr<Overlay>(new Overlay(std::move(contained),backgroundcolor));
+	return overlay;
+}
+
 void Overlay::compile(){
 
 }

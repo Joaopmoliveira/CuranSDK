@@ -30,7 +30,7 @@ namespace curan {
 
 			Page& pop();
 
-			Page& stack(Overlay&& overlay);
+			Page& stack(std::unique_ptr<Overlay> overlay);
 
 			inline Page& set_dirtyness(bool var) {
 				if (page_stack.empty())

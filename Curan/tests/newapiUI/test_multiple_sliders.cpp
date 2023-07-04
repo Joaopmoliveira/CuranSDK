@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-std::shared_ptr<curan::ui::Overlay> create_option_page() {
+std::unique_ptr<curan::ui::Overlay> create_option_page() {
 	using namespace curan::ui;
 	//---------------------- row 1 -------------------//
 	auto slider = Slider::make({ 0.0f, 300.0f });
@@ -59,11 +59,7 @@ std::shared_ptr<curan::ui::Overlay> create_option_page() {
 	*container4 << std::move(container) << std::move(container1) << std::move(container2) << std::move(container3);
 	container4->set_divisions({ 0.0 , 0.25 , 0.5 , 0.75 , 1.0 });
 
-	Overlay::
-	Overlay::Info information;
-	information.backgroundcolor = SK_ColorTRANSPARENT;
-	information.contained = containerotions;
-	return Overlay::make(information);
+	return Overlay::make(std::move(container4),SK_ColorTRANSPARENT);
 }
 
 
@@ -75,44 +71,31 @@ int main() {
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		Button::Info infor{ resources };
-		infor.button_text = "Connect";
-		infor.click_color = SK_ColorGRAY;
-		infor.hover_color = SK_ColorDKGRAY;
-		infor.waiting_color = SK_ColorBLACK;
-		infor.icon_identifier = "";
-		infor.paintButton = paint_square;
-		infor.paintText = paint_text;
-		infor.size = SkRect::MakeWH(100, 80);
-		infor.textFont = text_font;
-		std::shared_ptr<Button> button = Button::make(infor);
-		infor.button_text = "Options";
-		std::shared_ptr<Button> buttonoptions = Button::make(infor);
+		auto button = Button::make("Connect",resources);
+		button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK);
 
-		Container::InfoLinearContainer info;
-		info.paint_layout = paint_square2;
-		info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-		info.divisions = { 0.0 , 0.5 , 1.0 };
-		info.layouts = { button,buttonoptions };
-		std::shared_ptr<Container> buttoncontainer = Container::make(info);
+		auto buttonoptions = Button::make("Options",resources);
+		buttonoptions->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK);
+		auto buttonoptions_pointer = buttonoptions.get();
+
+		auto container2 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+		*container2 << std::move(button) << std::move(buttonoptions);
+		container2->set_divisions({ 0.0 , 0.5 , 1.0 });
 
 		auto rec = viewer->get_size();
-		Page::Info information;
-		information.backgroundcolor = SK_ColorBLACK;
-		information.contained = buttoncontainer;
-		std::shared_ptr<Page> page = Page::make(information);
-		page->propagate_size_change(rec);
+
+		auto page = Page{std::move(container2),SK_ColorBLACK};
+		page.propagate_size_change(rec);
 
 		auto button_callback = [&page](Button* slider,ConfigDraw* config) {
-			auto temp_optional_page = create_option_page();
-			page->stack(temp_optional_page);
+			page.stack(std::move(create_option_page()));
 		};
-		buttonoptions->set_callback(button_callback);
+		buttonoptions_pointer->set_callback(button_callback);
 
 		int width = rec.width();
 		int height = rec.height();
 
-		ConfigDraw config_draw{ page.get() };
+		ConfigDraw config_draw{ &page };
 
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
@@ -122,13 +105,13 @@ int main() {
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
 			if (temp_height != height || temp_width != width) {
 				rec = SkRect::MakeWH(temp_width, temp_height);
-				page->propagate_size_change(rec);
+				page.propagate_size_change(rec);
 			}
-			page->draw(canvas);
+			page.draw(canvas);
 			auto signals = viewer->process_pending_signals();
 
 			if (!signals.empty())
-				page->propagate_signal(signals.back(), &config_draw);
+				page.propagate_signal(signals.back(), &config_draw);
 
 			glfwPollEvents();
 
