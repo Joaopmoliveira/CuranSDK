@@ -92,10 +92,10 @@ struct vec2 {
 
 ImageTesting update_texture(ImageTesting image, float value) {
 
-	for (size_t r = 0; r < image.height(); ++r)
+	for (int32_t r = 0; r < image.height(); ++r)
 	{
 		float r_ratio = static_cast<float>(r) / static_cast<float>(image.height() - 1);
-		for (size_t c = 0; c < image.width(); ++c)
+		for (int c = 0; c < image.width(); ++c)
 		{
 			float c_ratio = static_cast<float>(c) / static_cast<float>(image.width() - 1);
 
