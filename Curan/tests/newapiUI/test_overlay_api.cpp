@@ -255,11 +255,6 @@ int main() {
 		};
 		std::thread message_generator{ lamd };
 
-		auto blur = SkImageFilters::Blur(10, 10, nullptr);
-		SkPaint bluring_paint;
-		bluring_paint.setImageFilter(std::move(blur));
-		SkSamplingOptions options;
-
 		ConfigDraw config_draw{ &page};
 
 		while (!glfwWindowShouldClose(viewer->window)) {
@@ -291,8 +286,8 @@ int main() {
 		message_generator.join();
 		return 0;
 	}
-	catch (...) {
-		std::cout << "Failed";
+	catch (std::exception& e) {
+		std::cout << "Failed: " << e.what() << std::endl;
 		return 1;
 	}
 }
