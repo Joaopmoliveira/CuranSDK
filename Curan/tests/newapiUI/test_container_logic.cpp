@@ -198,10 +198,10 @@ void create_nested_layout_propagate(curan::ui::IconResources& resources){
 
 	std::cout << "Container layout";
 	std::cout << "Expected:\n";
-	std::cout << "Button1 left:  50 top:  50  right: 450 bottom: 350 \n";
-	std::cout << "Button2 left:  50 top: 350  right: 450 bottom: 650 \n";
-	std::cout << "Button3 left:  50 top: 650  right: 450 bottom: 950 \n";
-	std::cout << "Button4 left: 450 top:  50  right: 950 bottom: 950 \n";
+	std::cout << "Button1 left:  50 top:  50  right: 500 bottom: 350 \n";
+	std::cout << "Button2 left:  50 top: 350  right: 500 bottom: 650 \n";
+	std::cout << "Button3 left:  50 top: 650  right: 500 bottom: 950 \n";
+	std::cout << "Button4 left: 500 top:  50  right: 950 bottom: 950 \n";
 
 	std::cout << "Real:\n";
 	auto pos1 = temporary_storage_button1->get_position();
@@ -236,7 +236,7 @@ void test_linearization(curan::ui::IconResources& resources) {
 	container2->set_divisions({  0.0 , 0.5 , 1.0 });
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
-	
+
 	container2->set_position(my_small_window);
 	container2->compile();
 	container2->framebuffer_resize();
