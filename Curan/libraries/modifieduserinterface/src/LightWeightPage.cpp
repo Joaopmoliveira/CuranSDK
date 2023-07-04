@@ -16,6 +16,7 @@ LightWeightPage::~LightWeightPage(){
 
 std::unique_ptr<LightWeightPage> LightWeightPage::make(std::unique_ptr<Container> contained, SkColor backgroundcolor){
 	compilation_results results;
+	contained->compile();
 	contained->linearize_container(results.callable_draw, results.callable_signal);
 	std::unique_ptr<LightWeightPage> page = std::unique_ptr<LightWeightPage>(new LightWeightPage{std::move(contained),backgroundcolor});
 	page->compiled_scene = results;

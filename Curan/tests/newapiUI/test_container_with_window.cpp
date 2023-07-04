@@ -18,14 +18,12 @@ int main() {
 
 		auto button1 = Button::make("print name",resources);
 		button1->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY);
-
 		auto button2 = Button::make("print age",resources);
 		button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 		*container << std::move(button1) << std::move(button2);
 		container->set_divisions({ 0.0 , 0.5 , 1.0 });
-
 		auto button3 = Button::make("print Eureka",resources);
 		button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY);
 
@@ -37,8 +35,8 @@ int main() {
 		Page page = Page{std::move(container2),SK_ColorBLACK};
 		page.propagate_size_change(rec);
 
-		int width = rec.width();
-		int height = rec.height();
+		auto width = rec.width();
+		auto height = rec.height();
 
 		ConfigDraw config;
 
@@ -66,8 +64,8 @@ int main() {
 		}
 		return 0;
 	}
-	catch (...) {
-		std::cout << "Failed";
+	catch (std::exception& e) {
+		std::cout << "Failed: " << e.what()<<std::endl;
 		return 1;
 	}
 }
