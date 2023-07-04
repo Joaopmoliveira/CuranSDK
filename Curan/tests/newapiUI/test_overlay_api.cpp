@@ -96,10 +96,10 @@ struct vec2 {
 
 ImageTesting update_texture(ImageTesting image, float value) {
 
-	for (size_t r = 0; r < image.height(); ++r)
+	for (int32_t r = 0; r < image.height(); ++r)
 	{
 		float r_ratio = static_cast<float>(r) / static_cast<float>(image.height() - 1);
-		for (size_t c = 0; c < image.width(); ++c)
+		for (int c = 0; c < image.width(); ++c)
 		{
 			float c_ratio = static_cast<float>(c) / static_cast<float>(image.width() - 1);
 
@@ -196,6 +196,7 @@ std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources&
 	auto container2 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	*container2 << std::move(button) << std::move(button2);
 	container2->set_divisions({0.0 , 0.5 , 1.0});
+	container2->set_color(SK_ColorTRANSPARENT);
 
 	return Overlay::make(std::move(container2),SK_ColorTRANSPARENT);
 }
@@ -204,7 +205,7 @@ std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources&
 int main() {
 	try {
 		using namespace curan::ui;
-		IconResources resources{ "C:/dev/Curan/resources" };
+		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
@@ -227,9 +228,8 @@ int main() {
 		buttonoptions->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 
 		auto button_callback = [&resources](Button* button,ConfigDraw* config) {
-			auto temp_optional_page = create_option_page(resources);
 			if(config->stack_page!=nullptr)
-				config->stack_page->stack(std::move(temp_optional_page));
+				config->stack_page->stack(create_option_page(resources));
 		};
 		buttonoptions->set_callback(button_callback);
 
@@ -279,7 +279,6 @@ int main() {
 			if (!val)
 				std::cout << "failed to swap buffers\n";
 			auto end = std::chrono::high_resolution_clock::now();
-			std::cout << "delay: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms\n";
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
 		continue_running.store(false);

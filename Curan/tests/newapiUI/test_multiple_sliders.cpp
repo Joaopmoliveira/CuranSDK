@@ -119,7 +119,6 @@ int main() {
 			if (!val)
 				std::cout << "failed to swap buffers\n";
 			auto end = std::chrono::high_resolution_clock::now();
-			//std::cout << "delay: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms\n";
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
 		return 0;

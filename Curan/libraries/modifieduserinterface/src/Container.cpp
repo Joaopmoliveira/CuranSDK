@@ -3,7 +3,7 @@
 namespace curan {
 namespace ui {
 
-Container::Container(const ContainerType& intype,const Arrangement& inarragement) : type{intype} , arragement{inarragement}, layout_color{SK_ColorBLACK} {
+Container::Container(const ContainerType& intype,const Arrangement& inarragement) : type{intype} , arragement{inarragement}, layout_color{SK_ColorTRANSPARENT} {
 	paint_layout.setStyle(SkPaint::kFill_Style);
 	paint_layout.setAntiAlias(true);
 	paint_layout.setStrokeWidth(4);
