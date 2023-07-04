@@ -1,4 +1,4 @@
-#include "modifieduserinterface/widgets/IconResources.h"
+#include "userinterface/widgets/IconResources.h"
 
 #include <filesystem>
 
@@ -16,6 +16,13 @@ IconResources::IconResources(std::string path_to_resources)
 		icon.read(s.c_str());
 		icon_map.emplace(std::make_pair(filename, icon));
 	}
+}
+
+bool IconResources::load(std::string path_to_resources)
+{
+	static IconResources icon_loader{ path_to_resources };
+	//TODO: this needs further attention, I have no clue what I was thinking
+	return &icon_loader;
 }
 
 void IconResources::get_icon(sk_sp<SkImage>& image, std::string icon_string)

@@ -1,27 +1,27 @@
 find_package(Vulkan REQUIRED)
 
-add_library(userinterface STATIC
+add_library(userinterfacemodified STATIC
 src/Context.cpp
 src/Signal.cpp
 src/Window.cpp
 src/Button.cpp
 src/IconResources.cpp
-src/OpenIGTLinkViewer.cpp
 src/Container.cpp 
 src/Drawable.cpp
 src/Page.cpp
-src/ImageDisplay.cpp
-src/RadioButton.cpp
-src/Slider.cpp 
-src/TextBlob.cpp 
 src/LightWeightPage.cpp 
-src/Overlay.cpp)
+src/Overlay.cpp
+src/Slider.cpp
+src/TextBlob.cpp
+src/OpenIGTLinkViewer.cpp
+src/ImageDisplay.cpp
+)
 
-target_include_directories(userinterface
+target_include_directories(userinterfacemodified
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 
-target_link_libraries(userinterface PUBLIC
+target_link_libraries(userinterfacemodified PUBLIC
 asio
 utils
 OpenIGTLink

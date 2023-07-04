@@ -1,14 +1,18 @@
-#include "userinterface/widgets/Drawable.h"
+#include "modifieduserinterface/widgets/Drawable.h"
 
 namespace curan {
 namespace ui {
 
-Drawable::Drawable(SkRect size) : size{size} {
+Drawable::Drawable(){
 
 }
 
-bool Drawable::is_leaf() {
-	return true;
+void Drawable::framebuffer_resize(){
+    return ;
+}
+
+bool Drawable::is_leaf(){
+    return true;
 }
 
 }

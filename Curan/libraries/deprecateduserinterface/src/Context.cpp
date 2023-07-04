@@ -1,4 +1,4 @@
-#include "modifieduserinterface/Context.h"
+#include "userinterface/Context.h"
 #include "utils/Logger.h"
 
 namespace curan {
@@ -55,9 +55,6 @@ bool Context::initialize_context() {
 	uint32_t instanceVersion = VK_MAKE_VERSION(1, 0, 0);;
 	// Provided by VK_VERSION_1_1
 	VkResult res = vkEnumerateInstanceVersion(&instanceVersion);
-	if (res < 0) {
-		return false;
-	}
 
 	uint32_t apiVersion = VK_MAKE_VERSION(1, 0, 0);
 	if (instanceVersion >= VK_MAKE_VERSION(1, 1, 0)) {

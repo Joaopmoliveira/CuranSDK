@@ -1,5 +1,5 @@
-#include "userinterface/widgets/OpenIGTLinkViewer.h"
-#include "userinterface/widgets/ConfigDraw.h"
+#include "modifieduserinterface/widgets/OpenIGTLinkViewer.h"
+#include "modifieduserinterface/widgets/ConfigDraw.h"
 #include <variant>
 #include "utils/Overloading.h"
 #include "utils/StringManipulation.h"
@@ -43,41 +43,18 @@ void set_skia_image(ImageMessage& message) {
 	}
 };
 
-OpenIGTLinkViewer::OpenIGTLinkViewer(Info& info) : Drawable{ info.size }, last_pressed_position{ -20000.0,-20000.0 } {
-	text_font = info.text_font;
-
-	std::string type = "Type";
-	sk_sp<SkTextBlob> text_type = SkTextBlob::MakeFromString(type.c_str(), text_font);
-	table_headers[0] = text_type;
-
-	std::string name = "Name";
-	sk_sp<SkTextBlob> text_name = SkTextBlob::MakeFromString(name.c_str(), text_font);
-	table_headers[1] = text_name;
-
-	std::string timestamp = "Timestamp (ms)";
-	sk_sp<SkTextBlob> text_timestamp = SkTextBlob::MakeFromString(timestamp.c_str(), text_font);
-	table_headers[2] = text_timestamp;
-
-	std::string freq = "Frequency (Hz)";
-	sk_sp<SkTextBlob> text_freq = SkTextBlob::MakeFromString(freq.c_str(), text_font);
-	table_headers[3] = text_freq;
-
-	paint.setStyle(SkPaint::kStroke_Style);
-	paint.setAntiAlias(true);
-	paint.setStrokeWidth(2);
-	paint.setColor(SK_ColorWHITE);
-
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(1);
-	paint_text.setColor(SK_ColorWHITE);
-
-	std::string information = "i";
-	debug_glyph = SkTextBlob::MakeFromString(information.c_str(), text_font);
+OpenIGTLinkViewer::OpenIGTLinkViewer() : last_pressed_position{ -20000.0,-20000.0 } {
+	const char* fontFamily = nullptr;
+	SkFontStyle fontStyle;
+	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+	text_font = SkFont(typeface, 10, 1.0f, 0.0f);
+	text_font.setEdging(SkFont::Edging::kAntiAlias);
 }
 
-std::shared_ptr<OpenIGTLinkViewer> OpenIGTLinkViewer::make(Info& info) {
-	return std::make_shared<OpenIGTLinkViewer>(info);
+std::unique_ptr<OpenIGTLinkViewer> OpenIGTLinkViewer::make() {
+	std::unique_ptr<OpenIGTLinkViewer> igtlviewer = std::unique_ptr<OpenIGTLinkViewer>(new OpenIGTLinkViewer());
+	return igtlviewer;
 }
 
 void OpenIGTLinkViewer::process_message(igtl::MessageBase::Pointer pointer) {
@@ -147,7 +124,8 @@ void OpenIGTLinkViewer::process_message(igtl::MessageBase::Pointer pointer) {
 }
 
 drawablefunction OpenIGTLinkViewer::draw() {
-
+if(!compiled)
+	throw std::runtime_error("must compile the button before drawing operations");
 	auto callab = [this](SkCanvas* canvas) {
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	paint.setColor(SK_ColorWHITE);
@@ -332,6 +310,8 @@ drawablefunction OpenIGTLinkViewer::draw() {
 }
 
 callablefunction OpenIGTLinkViewer::call() {
+if(!compiled)
+	throw std::runtime_error("must compile the button before drawing operations");
 	auto lamb = [this](Signal sig, ConfigDraw* config) {
 		std::lock_guard<std::mutex> g{ get_mutex() };
 		bool interacted = false;
@@ -372,6 +352,38 @@ callablefunction OpenIGTLinkViewer::call() {
 
 void OpenIGTLinkViewer::framebuffer_resize() {
 
+}
+
+void OpenIGTLinkViewer::compile(){
+	std::string type = "Type";
+	sk_sp<SkTextBlob> text_type = SkTextBlob::MakeFromString(type.c_str(), text_font);
+	table_headers[0] = text_type;
+
+	std::string name = "Name";
+	sk_sp<SkTextBlob> text_name = SkTextBlob::MakeFromString(name.c_str(), text_font);
+	table_headers[1] = text_name;
+
+	std::string timestamp = "Timestamp (ms)";
+	sk_sp<SkTextBlob> text_timestamp = SkTextBlob::MakeFromString(timestamp.c_str(), text_font);
+	table_headers[2] = text_timestamp;
+
+	std::string freq = "Frequency (Hz)";
+	sk_sp<SkTextBlob> text_freq = SkTextBlob::MakeFromString(freq.c_str(), text_font);
+	table_headers[3] = text_freq;
+
+	paint.setStyle(SkPaint::kStroke_Style);
+	paint.setAntiAlias(true);
+	paint.setStrokeWidth(2);
+	paint.setColor(SK_ColorWHITE);
+
+	paint_text.setStyle(SkPaint::kFill_Style);
+	paint_text.setAntiAlias(true);
+	paint_text.setStrokeWidth(1);
+	paint_text.setColor(SK_ColorWHITE);
+
+	std::string information = "i";
+	debug_glyph = SkTextBlob::MakeFromString(information.c_str(), text_font);
+	compiled = true;
 }
 	
 }

@@ -1,7 +1,7 @@
 add_subdirectory(utils)
 add_subdirectory(communication)
+add_subdirectory(deprecateduserinterface)
 add_subdirectory(userinterface)
-add_subdirectory(modifieduserinterface)
 add_subdirectory(imageprocessing)
 add_subdirectory(optimization)
 add_subdirectory(rendering)

@@ -1,65 +1,25 @@
-#include "userinterface/widgets/Container.h"
-#include "userinterface/widgets/ConfigDraw.h"
+#include "modifieduserinterface/widgets/Container.h"
 
 namespace curan {
 namespace ui {
 
-Container::Container(InfoLinearContainer& info) : Drawable{ SkRect::MakeWH(0,0)} {
-	paint_layout = info.paint_layout;
-	contained_layouts = info.layouts;
-
-	if (contained_layouts.size() == 0)
-		return;
-	SkScalar packet_width = 1.0f / contained_layouts.size();
-
-	switch (info.arrangement) {
-	case Arrangement::HORIZONTAL:
-		if ((info.divisions.size() != 0) && (info.divisions.size() - 1 == contained_layouts.size())) {
-			for (int i = 0; i < info.divisions.size() - 1; ++i) {
-				SkRect widget_rect = SkRect::MakeLTRB(info.divisions[i], 0, info.divisions[i + 1], 1);
-				rectangles_of_contained_layouts.push_back(widget_rect);
-			}
-		} else {
-			for (SkScalar left_position = 0.0; left_position < 1.0; left_position += packet_width) {
-				SkRect widget_rect = SkRect::MakeLTRB(left_position, 0, left_position + packet_width,1);
-				rectangles_of_contained_layouts.push_back(widget_rect);
-			}
-		}
-		break;
-	case Arrangement::VERTICAL:
-		if ((info.divisions.size() != 0) && (info.divisions.size() - 1 == contained_layouts.size())) {
-			for (int i = 0; i < info.divisions.size() - 1; ++i) {
-				SkRect widget_rect = SkRect::MakeLTRB(0, info.divisions[i], 1, info.divisions[i + 1]);
-				rectangles_of_contained_layouts.push_back(widget_rect);
-			}
-		} else {
-			for (SkScalar top_position = 0.0; top_position < 1.0; top_position += packet_width) {
-				SkRect widget_rect = SkRect::MakeLTRB(0, top_position, 1, top_position + packet_width);
-				rectangles_of_contained_layouts.push_back(widget_rect);
-			}
-		}
-		break;
-	default:
-		throw std::runtime_error("received unknown arrangement");
-		break;
-	}
+Container::Container(const ContainerType& intype,const Arrangement& inarragement) : type{intype} , arragement{inarragement}, layout_color{SK_ColorTRANSPARENT} {
+	paint_layout.setStyle(SkPaint::kFill_Style);
+	paint_layout.setAntiAlias(true);
+	paint_layout.setStrokeWidth(4);
+	paint_layout.setColor(layout_color);
 }
 
-Container::Container(InfoVariableContainer& info) : Drawable{ SkRect::MakeWH(0,0) } {
-	paint_layout = info.paint_layout;
-	contained_layouts = info.layouts;
-	rectangles_of_contained_layouts = info.rectangles_of_contained_layouts;
+std::unique_ptr<Container> Container::make(const ContainerType& type,const Arrangement& arragement){
+	std::unique_ptr<Container> container = std::unique_ptr<Container>(new Container{type,arragement});
+	return container;
 }
 
-std::shared_ptr<Container> Container::make(InfoLinearContainer& info) {
-	return std::make_shared<Container>(info);
+Container::~Container(){
+	
 }
 
-std::shared_ptr<Container> Container::make(InfoVariableContainer& info) {
-	return std::make_shared<Container>(info);
-}
-
-drawablefunction Container::draw() {
+drawablefunction Container::draw(){
 	auto lamb = [this](SkCanvas* canvas) {
 		std::lock_guard<std::mutex> g{ get_mutex() };
 		SkRect rectangle = get_position();
@@ -68,38 +28,41 @@ drawablefunction Container::draw() {
 	return lamb;
 }
 
-callablefunction Container::call() {
+callablefunction Container::call(){
 	auto lamb = [this](Signal canvas, ConfigDraw* config) {
 		return false;
 	};
 	return lamb;
 }
 
-void Container::framebuffer_resize() {
-	std::lock_guard<std::mutex> g{ get_mutex() };
+void Container::framebuffer_resize(){
+    std::lock_guard<std::mutex> g{ get_mutex() };
+
+	if(!compiled)
+		throw std::runtime_error("cannot query positions while container not compiled");
+
 	auto iter_rect = rectangles_of_contained_layouts.begin();
 	auto iter_drawables = contained_layouts.begin();
 	auto my_position = get_position();
-	double x_offset = my_position.fLeft;
-	double y_offset = my_position.fTop;
+	SkScalar x_offset = my_position.fLeft;
+	SkScalar y_offset = my_position.fTop;
 	for (; iter_rect != rectangles_of_contained_layouts.end() && iter_drawables != contained_layouts.end(); ++iter_rect, ++iter_drawables) {
 		SkRect rect = *iter_rect;
 		SkRect temp = rect.MakeXYWH(my_position.width() * rect.x() + x_offset,
 									my_position.height()*rect.y() + y_offset,
 									my_position.width() * rect.width(),
 									my_position.height() * rect.height());
-
 		(*iter_drawables)->set_position(temp);
 		(*iter_drawables)->framebuffer_resize();
 	}
 }
 
-bool Container::is_leaf() {
-	return false;
-}
-
-void Container::linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal) {
+Container& Container::linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal){
 	std::lock_guard<std::mutex> g{ get_mutex() };
+
+	if(!compiled)
+		throw std::runtime_error("cannot query positions while container not compiled");
+
 	std::vector<drawablefunction> linearized_draw;
 	std::vector<callablefunction> linearized_call;
 
@@ -115,7 +78,8 @@ void Container::linearize_container(std::vector<drawablefunction>& callable_draw
 			linearized_draw.push_back(tempdraw);
 			linearized_call.push_back(tempcall);
 		} else {
-			auto interpreted = std::dynamic_pointer_cast<Container>(drawble);
+			auto limited_raw_acess = drawble.get();
+			auto interpreted = dynamic_cast<Container*>(limited_raw_acess);
 			std::vector<drawablefunction> temp_linearized_draw;
 			std::vector<callablefunction> temp_linearized_call;
 			interpreted->linearize_container(temp_linearized_draw, temp_linearized_call);
@@ -126,6 +90,54 @@ void Container::linearize_container(std::vector<drawablefunction>& callable_draw
 
 	callable_draw = linearized_draw;
 	callable_signal = linearized_call;
+    return *(this);
+}
+
+Container& Container::operator<<(std::unique_ptr<Drawable> drawable){
+	drawable->compile();
+	contained_layouts.emplace_back(std::move(drawable));
+    return *(this);
+}
+
+void Container::compile(){
+	if (contained_layouts.size() == 0)
+		return;
+	SkScalar packet_width = 1.0f / contained_layouts.size();
+	if(type == ContainerType::VARIABLE_CONTAINER){
+		if(contained_layouts.size()!=rectangles_of_contained_layouts.size())
+			throw std::runtime_error("missmatch between the number of contained layout and rectangles");
+		compiled = true;
+		return;
+	}
+	switch (arragement) {
+	case Arrangement::HORIZONTAL:
+		if ((divisions.size() != 0) && (divisions.size() - 1 == contained_layouts.size())) {
+			for (int i = 0; i < divisions.size() - 1; ++i) {
+				SkRect widget_rect = SkRect::MakeLTRB(divisions[i], 0, divisions[i + 1], 1);
+				rectangles_of_contained_layouts.push_back(widget_rect);
+			}
+		} else {
+			for (SkScalar left_position = 0.0; left_position < 1.0; left_position += packet_width) {
+				SkRect widget_rect = SkRect::MakeLTRB(left_position, 0, left_position + packet_width,1);
+				rectangles_of_contained_layouts.push_back(widget_rect);
+			}
+		}
+		break;
+	case Arrangement::VERTICAL:
+		if ((divisions.size() != 0) && (divisions.size() - 1 == contained_layouts.size())) {
+			for (int i = 0; i < divisions.size() - 1; ++i) {
+				SkRect widget_rect = SkRect::MakeLTRB(0, divisions[i], 1, divisions[i + 1]);
+				rectangles_of_contained_layouts.push_back(widget_rect);
+			}
+		} else {
+			for (SkScalar top_position = 0.0; top_position < 1.0; top_position += packet_width) {
+				SkRect widget_rect = SkRect::MakeLTRB(0, top_position, 1, top_position + packet_width);
+				rectangles_of_contained_layouts.push_back(widget_rect);
+			}
+		}
+		break;
+	}
+	compiled = true;
 }
 
 }

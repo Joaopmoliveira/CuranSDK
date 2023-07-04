@@ -1,18 +1,18 @@
-#include "modifieduserinterface/widgets/ImageDisplay.h"
+#include "userinterface/widgets/ImageDisplay.h"
 #include "utils/TheadPool.h"
 #include <iostream>
-#include "modifieduserinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/ConfigDraw.h"
 
 namespace curan {
 namespace ui {
 
-ImageDisplay::ImageDisplay()  {
-
+ImageDisplay::ImageDisplay(Info& info) : Drawable{SkRect::MakeWH(info.width,info.height)} {
+	SkImageInfo image_info = SkImageInfo::Make(info.width,info.height,kRGB_888x_SkColorType, kPremul_SkAlphaType);
+	SkSurfaceProps props{ SkSurfaceProps::Flags::kDynamicMSAA_Flag,kRGB_H_SkPixelGeometry};
 }
 
-std::unique_ptr<ImageDisplay> ImageDisplay::make() {
-	std::unique_ptr<ImageDisplay> image_display = std::unique_ptr<ImageDisplay>( new ImageDisplay());
-	return image_display;
+std::shared_ptr<ImageDisplay> ImageDisplay::make(Info& info) {
+	return std::make_shared<ImageDisplay>(info);
 }
 
 void ImageDisplay::update_image(image_provider provider) {
@@ -27,8 +27,6 @@ void ImageDisplay::update_image(image_provider provider) {
 }
 
 drawablefunction ImageDisplay::draw() {
-	if(!compiled)
-		throw std::runtime_error("cannot query positions while container not compiled");
 	auto lamb = [this](SkCanvas* canvas) {
 		auto widget_rect = get_position();
 		SkRect current_selected_image_rectangle = widget_rect;
@@ -87,8 +85,6 @@ drawablefunction ImageDisplay::draw() {
 }
 
 callablefunction ImageDisplay::call() {
-	if(!compiled)
-		throw std::runtime_error("cannot query positions while container not compiled");
 	auto lamb = [this](Signal canvas, ConfigDraw* config) {
 
 		return false;
@@ -105,22 +101,19 @@ std::optional<skia_image_producer> ImageDisplay::get_image_wrapper() {
 	return images_to_render;
 }
 
-ImageDisplay& ImageDisplay::override_image_wrapper(std::optional<skia_image_producer> wrapper) {
+void ImageDisplay::override_image_wrapper(std::optional<skia_image_producer> wrapper) {
 	std::lock_guard<std::mutex> g(get_mutex());
 	old_image = wrapper;
-	return *(this);
 }
 
-ImageDisplay& ImageDisplay::update_custom_drawingcall(custom_step call) {
+void ImageDisplay::update_custom_drawingcall(custom_step call) {
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	custom_drawing_call = call;
-	return *(this);
 }
 
-ImageDisplay& ImageDisplay::clear_custom_drawingcall() {
+void ImageDisplay::clear_custom_drawingcall() {
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	custom_drawing_call = std::nullopt;
-	return *(this);
 }
 
 std::optional<custom_step> ImageDisplay::get_custom_drawingcall() {
@@ -128,7 +121,7 @@ std::optional<custom_step> ImageDisplay::get_custom_drawingcall() {
 	return custom_drawing_call;
 }
 
-ImageDisplay& ImageDisplay::update_batch(custom_step call, image_provider provider) {
+void ImageDisplay::update_batch(custom_step call, image_provider provider) {
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	SkPixmap pixelmap;
 	provider(pixelmap);
@@ -138,11 +131,6 @@ ImageDisplay& ImageDisplay::update_batch(custom_step call, image_provider provid
 	};
 	images_to_render = lam;
 	custom_drawing_call = call;
-	return *(this);
-}
-
-void ImageDisplay::compile(){
-	compiled = true;
 }
 
 }
