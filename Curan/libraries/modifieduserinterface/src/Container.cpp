@@ -1,6 +1,7 @@
-#include "modifieduserinterface/widgets/Container.h"
 #include "utils/Overloading.h"
 #include "modifieduserinterface/widgets/Button.h"
+#include "modifieduserinterface/widgets/Slider.h"
+#include "modifieduserinterface/widgets/Container.h"
 
 namespace curan {
 namespace ui {
@@ -59,6 +60,9 @@ Container& Container::framebuffer_resize(){
 			[&](std::unique_ptr<Button>& arg) {
                 arg->set_position(temp);
 			},
+			[&](std::unique_ptr<Slider>& arg) {
+                arg->set_position(temp);
+			},
             [&](std::unique_ptr<Container>& arg) {
                 arg->set_position(temp);
 				arg->framebuffer_resize();
@@ -87,6 +91,10 @@ Container& Container::linearize_container(std::vector<drawablefunction>& callabl
                 linearized_draw.push_back(arg->draw());
 			    linearized_call.push_back(arg->call());
 			},
+			[&](std::unique_ptr<Slider>& arg) {
+                linearized_draw.push_back(arg->draw());
+			    linearized_call.push_back(arg->call());
+			},
             [&](std::unique_ptr<Container>& arg) {
                 std::vector<drawablefunction> temp_linearized_draw;
 			    std::vector<callablefunction> temp_linearized_call;
@@ -104,6 +112,9 @@ Container& Container::linearize_container(std::vector<drawablefunction>& callabl
 Container& Container::operator<<(Widget&& widget){
     std::visit(curan::utilities::overloaded{
 		[&](std::unique_ptr<Button>& arg) {
+            arg->compile();
+		},
+		[&](std::unique_ptr<Slider>& arg) {
             arg->compile();
 		},
         [&](std::unique_ptr<Container>& arg) {

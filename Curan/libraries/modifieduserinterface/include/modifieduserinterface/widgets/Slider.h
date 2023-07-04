@@ -37,14 +37,18 @@ namespace curan {
 			float value_pressed = 0.5;
 			float dragable_percent_size = 0.1f;;
 
-			Slider();
+			Slider(const std::array<float,2>& in_limits);
 
 		public:
 
-			static std::unique_ptr<Slider> make();
+			static std::unique_ptr<Slider> make(const std::array<float,2>& in_limits);
+
+			~Slider();
 
 			drawablefunction draw();
 			callablefunction call();
+
+			void compile();
 
 			inline Slider& trigger(float in_current_value) {
 				value_pressed = in_current_value;
@@ -108,6 +112,10 @@ namespace curan {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				current_state = state;
 				return *(this);
+			}
+
+			inline bool is_leaf(){
+				return true;
 			}
 
 		};

@@ -6,20 +6,33 @@
 namespace curan {
 namespace ui {
 
+Slider::Slider(const std::array<float,2>& in_limits){
+    hover_color = SK_ColorCYAN;
+    waiting_color = SK_ColorDKGRAY;
+    click_color = SK_ColorLTGRAY;
 
-Slider::Slider(Info& info){
-    hover_color = info.hover_color;
-    waiting_color = info.waiting_color;
-    click_color = info.click_color;
-    paint = info.paintButton;
-    callback = info.callback;
-    slider_color = info.sliderColor;
-    limits = info.limits;
-    dragable_percent_size = info.dragable_percent_size;
+    slider_color = SK_ColorGRAY;
+    limits = in_limits;
+
+	paint.setStyle(SkPaint::kStrokeAndFill_Style);
+	paint.setAntiAlias(true);
+	paint.setStrokeWidth(20);
+	paint.setColor(slider_color);
+	paint.setStrokeJoin(SkPaint::kRound_Join);
+	paint.setStrokeCap(SkPaint::kRound_Cap);
 }
 
-std::shared_ptr<Slider> Slider::make(Info& info) {
-    return std::make_shared<Slider>(info);
+std::unique_ptr<Slider> Slider::make(const std::array<float,2>& in_limits) {
+	std::unique_ptr<Slider> slider = std::unique_ptr<Slider>(new Slider(in_limits));
+    return slider;
+}
+
+void Slider::compile(){
+	
+}
+
+Slider::~Slider(){
+
 }
 
 drawablefunction Slider::draw() {
@@ -30,7 +43,6 @@ drawablefunction Slider::draw() {
         SkRect drawable = size;
         drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
 
-		
         paint.setColor(slider_color);
 		canvas->drawRoundRect(drawable, drawable.height() / 2.0, drawable.height() / 2.0, paint);
 
