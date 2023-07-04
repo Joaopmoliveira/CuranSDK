@@ -12,6 +12,8 @@ namespace curan {
 	namespace ui {
 		class TextBlob : public  Drawable, utilities::Lockable<TextBlob>{
 			SkPaint paint;
+			SkColor text_color;
+			SkColor background_color;
 			SkPaint paint_text;
 			SkRect widget_rect_text;
 			SkFont text_font;
@@ -22,6 +24,11 @@ namespace curan {
 			static std::unique_ptr<TextBlob> make(const std::string& button_text);
 			drawablefunction draw() override;
 			callablefunction call() override;
+
+			TextBlob& set_text_color(){
+
+			}
+
 			void framebuffer_resize() override;
 			void compile() override;
 		};

@@ -7,6 +7,13 @@ namespace curan {
 namespace ui {
 
 TextBlob::TextBlob(const std::string& s) : text_to_compile{s} {
+	text_color = SK_ColorWHITE;
+	background_color = SK_ColorBLACK;
+	paint.setStyle(SkPaint::kFill_Style);
+	paint.setAntiAlias(true);
+	paint.setStrokeWidth(4);
+	paint.setColor(background_color);
+
 	paint_text.setStyle(SkPaint::kFill_Style);
 	paint_text.setAntiAlias(true);
 	paint_text.setStrokeWidth(4);
@@ -37,6 +44,8 @@ drawablefunction TextBlob::draw() {
 		float text_offset_x = drawable.centerX() - widget_rect_text.width() / 2.0f;
 		float text_offset_y = drawable.centerY() + widget_rect_text.height() / 2.0f;
 
+		paint.setColor(background_color);
+		paint_text.setColor(text_color);
 		canvas->drawRect(drawable, paint);
 		canvas->drawTextBlob(text, text_offset_x, text_offset_y, paint_text);
 	};
