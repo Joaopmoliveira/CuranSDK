@@ -105,9 +105,9 @@ void Container::compile(){
 
 	switch (arragement) {
 	case Arrangement::HORIZONTAL:
-		if ((rectangles_of_contained_layouts.size() != 0) && (rectangles_of_contained_layouts.size() - 1 == contained_layouts.size())) {
-			for (int i = 0; i < rectangles_of_contained_layouts.size() - 1; ++i) {
-				SkRect widget_rect = SkRect::MakeLTRB(rectangles_of_contained_layouts[i], 0, rectangles_of_contained_layouts[i + 1], 1);
+		if ((divisions.size() != 0) && (divisions.size() - 1 == contained_layouts.size())) {
+			for (int i = 0; i < divisions.size() - 1; ++i) {
+				SkRect widget_rect = SkRect::MakeLTRB(divisions[i], 0, divisions[i + 1], 1);
 				rectangles_of_contained_layouts.push_back(widget_rect);
 			}
 		} else {
@@ -118,9 +118,9 @@ void Container::compile(){
 		}
 		break;
 	case Arrangement::VERTICAL:
-		if ((rectangles_of_contained_layouts.size() != 0) && (rectangles_of_contained_layouts.size() - 1 == contained_layouts.size())) {
-			for (int i = 0; i < rectangles_of_contained_layouts.size() - 1; ++i) {
-				SkRect widget_rect = SkRect::MakeLTRB(0, rectangles_of_contained_layouts[i], 1, rectangles_of_contained_layouts[i + 1]);
+		if ((divisions.size() != 0) && (divisions.size() - 1 == contained_layouts.size())) {
+			for (int i = 0; i < divisions.size() - 1; ++i) {
+				SkRect widget_rect = SkRect::MakeLTRB(0, divisions[i], 1, divisions[i + 1]);
 				rectangles_of_contained_layouts.push_back(widget_rect);
 			}
 		} else {

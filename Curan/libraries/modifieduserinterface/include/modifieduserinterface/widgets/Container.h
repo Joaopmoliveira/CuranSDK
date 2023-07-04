@@ -34,6 +34,12 @@ namespace curan {
 			return *(this);
 		}
 
+		inline Container& set_divisions(const std::vector<SkScalar>& indivision){
+			std::lock_guard<std::mutex> g{ get_mutex() };
+			divisions = indivision;
+			return *(this);
+		}
+
 		inline bool is_leaf(){
 			return false;
 		}
@@ -54,6 +60,7 @@ namespace curan {
 			Container(const ContainerType& type,const Arrangement& arragement);
 
 			SkPaint paint_layout;
+			std::vector<SkScalar> divisions;
 			std::vector<Widget> contained_layouts;
 			std::vector<SkRect> rectangles_of_contained_layouts;
 			bool horizontaly_fixed = false;
