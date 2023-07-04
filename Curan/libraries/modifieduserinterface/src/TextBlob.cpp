@@ -33,6 +33,8 @@ std::unique_ptr<TextBlob> TextBlob::make(const std::string& button_text) {
 }
 
 drawablefunction TextBlob::draw() {
+	if(!compiled)
+		throw std::runtime_error("must compile the button before drawing operations");
 	auto lamb = [this](SkCanvas* canvas) {
 		std::lock_guard<std::mutex> g{ get_mutex() };
 		auto widget_rect = get_position();
@@ -53,6 +55,8 @@ drawablefunction TextBlob::draw() {
 }
 
 callablefunction TextBlob::call() {
+	if(!compiled)
+		throw std::runtime_error("must compile the button before drawing operations");
 	auto lamb = [this](Signal sig, ConfigDraw* config) {
 		bool interacted = false;
 		std::visit(utilities::overloaded{
@@ -90,6 +94,7 @@ void TextBlob::framebuffer_resize() {
 void TextBlob::compile(){
 	text_font.measureText(text_to_compile.data(), text_to_compile.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(text_to_compile.c_str(), text_font);
+	compiled = true;
 }
 
 }

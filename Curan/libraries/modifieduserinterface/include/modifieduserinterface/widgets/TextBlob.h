@@ -19,6 +19,7 @@ namespace curan {
 			SkFont text_font;
 			sk_sp<SkTextBlob> text;
 			std::string text_to_compile;
+			bool compiled = false;
 		public:
 			TextBlob(const std::string& button_text);
 			static std::unique_ptr<TextBlob> make(const std::string& button_text);
@@ -28,11 +29,13 @@ namespace curan {
 			TextBlob& set_text_color(SkColor in_text_color){
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				text_color = in_text_color;
+				return *(this);
 			}
 
 			TextBlob& set_background_color(SkColor in_background_color){
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				background_color = in_background_color;
+				return *(this);
 			}
 
 			void framebuffer_resize() override;

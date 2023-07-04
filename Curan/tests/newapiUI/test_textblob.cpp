@@ -13,8 +13,9 @@ int main() {
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 		auto textblob = TextBlob::make("I have become death");
-		textblob->set_text_color(SK_ColorBLUE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 90));
+		textblob->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 90));
 		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 200);
+		textblob->compile();
 		textblob->set_position(rect);
 		auto caldraw = textblob->draw();
 		auto calsignal = textblob->call();
