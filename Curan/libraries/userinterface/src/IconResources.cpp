@@ -1,4 +1,4 @@
-#include "modifieduserinterface/widgets/IconResources.h"
+#include "userinterface/widgets/IconResources.h"
 
 #include <filesystem>
 

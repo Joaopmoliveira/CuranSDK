@@ -2,7 +2,7 @@
 #define CURAN_CALIBRATEPAGES_HEADER_FILE_
 
 #include "MessageProcessing.h"
-#include "modifieduserinterface/widgets/IconResources.h"
+#include "userinterface/widgets/IconResources.h"
 
 std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources);
 

@@ -1,7 +1,7 @@
-#include "modifieduserinterface/widgets/Signal.h"
+#include "userinterface/widgets/Signal.h"
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include "modifieduserinterface/Window.h"
+#include "userinterface/Window.h"
 
 namespace curan {
 namespace ui {

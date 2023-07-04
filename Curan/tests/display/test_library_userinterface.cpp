@@ -1,4 +1,4 @@
-#include "modifieduserinterface/Window.h"
+#include "userinterface/Window.h"
 
 int main() {
 	using namespace curan::ui;

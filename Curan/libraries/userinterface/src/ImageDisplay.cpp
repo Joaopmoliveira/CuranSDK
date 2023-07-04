@@ -1,7 +1,7 @@
-#include "modifieduserinterface/widgets/ImageDisplay.h"
+#include "userinterface/widgets/ImageDisplay.h"
 #include "utils/TheadPool.h"
 #include <iostream>
-#include "modifieduserinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/ConfigDraw.h"
 
 namespace curan {
 namespace ui {

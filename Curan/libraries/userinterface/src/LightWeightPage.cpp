@@ -1,4 +1,4 @@
-#include "modifieduserinterface/widgets/LightWeightPage.h"
+#include "userinterface/widgets/LightWeightPage.h"
 
 namespace curan {
 namespace ui {

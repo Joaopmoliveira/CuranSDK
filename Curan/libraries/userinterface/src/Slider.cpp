@@ -1,5 +1,5 @@
-#include "modifieduserinterface/widgets/ConfigDraw.h"
-#include "modifieduserinterface/widgets/Slider.h"
+#include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/Slider.h"
 #include "utils/Overloading.h"
 #include <variant>
 

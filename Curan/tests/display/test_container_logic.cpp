@@ -1,8 +1,8 @@
 #define STB_IMAGE_IMPLEMENTATION
-#include "modifieduserinterface/Window.h"
-#include "modifieduserinterface/widgets/IconResources.h"
-#include "modifieduserinterface/widgets/Button.h"
-#include "modifieduserinterface/widgets/Container.h"
+#include "userinterface/Window.h"
+#include "userinterface/widgets/IconResources.h"
+#include "userinterface/widgets/Button.h"
+#include "userinterface/widgets/Container.h"
 #include <iostream>
 
 void create_horizontal_layout(curan::ui::IconResources& resources) {

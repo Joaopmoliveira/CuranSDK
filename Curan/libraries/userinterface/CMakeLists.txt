@@ -1,6 +1,6 @@
 find_package(Vulkan REQUIRED)
 
-add_library(userinterfacemodified STATIC
+add_library(userinterface STATIC
 src/Context.cpp
 src/Signal.cpp
 src/Window.cpp
@@ -17,11 +17,11 @@ src/OpenIGTLinkViewer.cpp
 src/ImageDisplay.cpp
 )
 
-target_include_directories(userinterfacemodified
+target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 
-target_link_libraries(userinterfacemodified PUBLIC
+target_link_libraries(userinterface PUBLIC
 asio
 utils
 OpenIGTLink

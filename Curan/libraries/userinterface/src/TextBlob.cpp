@@ -1,5 +1,5 @@
-#include "modifieduserinterface/widgets/ConfigDraw.h"
-#include "modifieduserinterface/widgets/TextBlob.h"
+#include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/TextBlob.h"
 #include "utils/Overloading.h"
 #include <variant>
 

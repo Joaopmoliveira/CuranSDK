@@ -1,7 +1,7 @@
-#include "modifieduserinterface/Window.h"
-#include "modifieduserinterface/widgets/OpenIGTLinkViewer.h"
+#include "userinterface/Window.h"
+#include "userinterface/widgets/OpenIGTLinkViewer.h"
 #include <csignal>
-#include "modifieduserinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/ConfigDraw.h"
 #include "utils/Logger.h"
 
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)

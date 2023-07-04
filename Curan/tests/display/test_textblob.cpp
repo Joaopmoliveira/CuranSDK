@@ -1,7 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
-#include "modifieduserinterface/widgets/ConfigDraw.h"
-#include "modifieduserinterface/Window.h"
-#include "modifieduserinterface/widgets/TextBlob.h"
+#include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/Window.h"
+#include "userinterface/widgets/TextBlob.h"
 #include <iostream>
 
 int main() {

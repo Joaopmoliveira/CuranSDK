@@ -1,5 +1,5 @@
-#include "modifieduserinterface/widgets/Page.h"
-#include "modifieduserinterface/widgets/Overlay.h"
+#include "userinterface/widgets/Page.h"
+#include "userinterface/widgets/Overlay.h"
 
 namespace curan {
 namespace ui {

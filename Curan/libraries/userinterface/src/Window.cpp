@@ -1,4 +1,4 @@
-#include "modifieduserinterface/Window.h"
+#include "userinterface/Window.h"
 #include "utils/Logger.h"
 
 namespace curan {

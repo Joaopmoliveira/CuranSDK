@@ -5,7 +5,7 @@ target_compile_definitions(modified_test_user_interface PRIVATE CURAN_COPIED_RES
 
 target_link_libraries(modified_test_user_interface PUBLIC
 utils
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_library_userinterface test_library_userinterface.cpp)
@@ -13,7 +13,7 @@ add_executable(modified_test_library_userinterface test_library_userinterface.cp
 target_compile_definitions(modified_test_library_userinterface PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_library_userinterface PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_button test_button.cpp)
@@ -21,7 +21,7 @@ add_executable(modified_test_button test_button.cpp)
 target_compile_definitions(modified_test_button PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_button PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_slider test_slider.cpp)
@@ -29,7 +29,7 @@ add_executable(modified_test_slider test_slider.cpp)
 target_compile_definitions(modified_test_slider PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_slider PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_textblob test_textblob.cpp)
@@ -37,7 +37,7 @@ add_executable(modified_test_textblob test_textblob.cpp)
 target_compile_definitions(modified_test_textblob PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_textblob PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_openigtlinkviewer test_openigtlink_display.cpp)
@@ -45,7 +45,7 @@ add_executable(modified_test_openigtlinkviewer test_openigtlink_display.cpp)
 target_compile_definitions(modified_test_openigtlinkviewer PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_openigtlinkviewer PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_container_logic test_container_logic.cpp)
@@ -53,7 +53,7 @@ add_executable(modified_test_container_logic test_container_logic.cpp)
 target_compile_definitions(modified_test_container_logic PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_container_logic PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_page test_container_with_window.cpp)
@@ -61,7 +61,7 @@ add_executable(modified_test_page test_container_with_window.cpp)
 target_compile_definitions(modified_test_page PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_page PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_page_juntion test_openigtlink_viewer_with_button.cpp)
@@ -69,7 +69,7 @@ add_executable(modified_test_page_juntion test_openigtlink_viewer_with_button.cp
 target_compile_definitions(modified_test_page_juntion PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_page_juntion PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_overlay_api test_overlay_api.cpp)
@@ -77,7 +77,7 @@ add_executable(modified_test_overlay_api test_overlay_api.cpp)
 target_compile_definitions(modified_test_overlay_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_overlay_api PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_test_multiple_sliders test_multiple_sliders.cpp)
@@ -85,7 +85,7 @@ add_executable(modified_test_multiple_sliders test_multiple_sliders.cpp)
 target_compile_definitions(modified_test_multiple_sliders PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_test_multiple_sliders PUBLIC
-userinterfacemodified
+userinterface
 )
 
 add_executable(modified_skia_playground skia_playground.cpp)
@@ -93,5 +93,5 @@ add_executable(modified_skia_playground skia_playground.cpp)
 target_compile_definitions(modified_skia_playground PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(modified_skia_playground PUBLIC
-userinterfacemodified
+userinterface
 )
