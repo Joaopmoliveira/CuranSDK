@@ -13,6 +13,7 @@ src/LightWeightPage.cpp
 src/Overlay.cpp
 src/Slider.cpp
 src/TextBlob.cpp
+src/OpenIGTLinkViewer.cpp
 )
 
 target_include_directories(userinterfacemodified
