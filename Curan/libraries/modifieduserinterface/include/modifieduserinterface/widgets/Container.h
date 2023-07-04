@@ -60,7 +60,7 @@ namespace curan {
 		Container& framebuffer_resize();
 		Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
 
-		inline std::vector<SkRect>& get_positioning() {
+		inline std::vector<SkRect> get_positioning() {
 			if(!compiled)
 				throw std::runtime_error("cannot query positions while container not compiled");
 			return rectangles_of_contained_layouts;
