@@ -17,7 +17,7 @@ namespace curan {
 		class ImageDisplay : public  Drawable, utilities::Lockable<ImageDisplay>{
 			int width = -1;
 			int height = -1;
-			
+			bool compiled = false;
 			std::optional<skia_image_producer> old_image = std::nullopt;
 			std::optional<skia_image_producer> images_to_render = std::nullopt;
 			std::optional<custom_step> custom_drawing_call = std::nullopt;

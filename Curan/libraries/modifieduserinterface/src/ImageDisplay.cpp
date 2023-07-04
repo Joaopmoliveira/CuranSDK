@@ -27,6 +27,8 @@ void ImageDisplay::update_image(image_provider provider) {
 }
 
 drawablefunction ImageDisplay::draw() {
+	if(!compiled)
+		throw std::runtime_error("cannot query positions while container not compiled");
 	auto lamb = [this](SkCanvas* canvas) {
 		auto widget_rect = get_position();
 		SkRect current_selected_image_rectangle = widget_rect;
@@ -85,6 +87,8 @@ drawablefunction ImageDisplay::draw() {
 }
 
 callablefunction ImageDisplay::call() {
+	if(!compiled)
+		throw std::runtime_error("cannot query positions while container not compiled");
 	auto lamb = [this](Signal canvas, ConfigDraw* config) {
 
 		return false;
@@ -138,10 +142,7 @@ ImageDisplay& ImageDisplay::update_batch(custom_step call, image_provider provid
 }
 
 void ImageDisplay::compile(){
-	if(width<= 0 || height <=0)
-		throw std::runtime_error("you must set the height of the image you wish to render");
-	SkImageInfo image_info = SkImageInfo::Make(width,height,kRGB_888x_SkColorType, kPremul_SkAlphaType);
-	SkSurfaceProps props{ SkSurfaceProps::Flags::kDynamicMSAA_Flag,kRGB_H_SkPixelGeometry};
+	compiled = true;
 }
 
 }
