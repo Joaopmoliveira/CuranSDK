@@ -1,20 +1,20 @@
-#add_executable(modified_test_user_interface test_user_interface.cpp)
+add_executable(modified_test_user_interface test_user_interface.cpp)
 
-#target_compile_definitions(modified_test_user_interface PRIVATE SK_VULKAN)
-#target_compile_definitions(modified_test_user_interface PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_compile_definitions(modified_test_user_interface PRIVATE SK_VULKAN)
+target_compile_definitions(modified_test_user_interface PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-#target_link_libraries(modified_test_user_interface PUBLIC
-#utils
-#userinterfacemodified
-#)
+target_link_libraries(modified_test_user_interface PUBLIC
+utils
+userinterfacemodified
+)
 
-#add_executable(modified_test_library_userinterface test_library_userinterface.cpp)
+add_executable(modified_test_library_userinterface test_library_userinterface.cpp)
 
-#target_compile_definitions(modified_test_library_userinterface PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_compile_definitions(modified_test_library_userinterface PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-#target_link_libraries(modified_test_library_userinterface PUBLIC
-#userinterfacemodified
-#)
+target_link_libraries(modified_test_library_userinterface PUBLIC
+userinterfacemodified
+)
 
 add_executable(modified_test_button test_button.cpp)
 
