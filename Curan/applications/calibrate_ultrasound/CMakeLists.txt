@@ -8,7 +8,7 @@ CalibratePages.cpp
 )
 
 target_link_libraries(ultrasoundcalibration PUBLIC
-userinterface
+userinterfacemodified
 communication
 imageprocessing
 ${ITK_LIBRARIES}
