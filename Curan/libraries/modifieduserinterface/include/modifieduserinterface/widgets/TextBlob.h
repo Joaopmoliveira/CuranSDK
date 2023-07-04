@@ -25,8 +25,14 @@ namespace curan {
 			drawablefunction draw() override;
 			callablefunction call() override;
 
-			TextBlob& set_text_color(){
+			TextBlob& set_text_color(SkColor in_text_color){
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				text_color = in_text_color;
+			}
 
+			TextBlob& set_background_color(SkColor in_background_color){
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				background_color = in_background_color;
 			}
 
 			void framebuffer_resize() override;

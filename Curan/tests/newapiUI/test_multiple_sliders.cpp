@@ -16,38 +16,6 @@
 #include <iostream>
 
 std::shared_ptr<curan::ui::Overlay> create_option_page() {
-	using namespace curan::ui;
-	IconResources resources{ CURAN_COPIED_RESOURCE_PATH"/images" };
-
-	SkColor colbuton = { SK_ColorBLACK };
-	SkColor coltext = { SK_ColorWHITE };
-
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
-
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
-
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SK_ColorTRANSPARENT);
-
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
-
 	Container::InfoLinearContainer infocontainer;
 	infocontainer.paint_layout = paint_square2;
 	infocontainer.arrangement = curan::ui::Arrangement::HORIZONTAL;
@@ -110,36 +78,7 @@ int main() {
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
-
-		SkColor colbuton = { SK_ColorBLACK };
-		SkColor coltext = { SK_ColorWHITE };
-
-		SkPaint paint_square;
-		paint_square.setStyle(SkPaint::kFill_Style);
-		paint_square.setAntiAlias(true);
-		paint_square.setStrokeWidth(4);
-		paint_square.setColor(colbuton);
-
-		SkPaint paint_text;
-		paint_text.setStyle(SkPaint::kFill_Style);
-		paint_text.setAntiAlias(true);
-		paint_text.setStrokeWidth(4);
-		paint_text.setColor(coltext);
-
-		const char* fontFamily = nullptr;
-		SkFontStyle fontStyle;
-		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-		SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
-		text_font.setEdging(SkFont::Edging::kAntiAlias);
-
-		SkPaint paint_square2;
-		paint_square2.setStyle(SkPaint::kFill_Style);
-		paint_square2.setAntiAlias(true);
-		paint_square2.setStrokeWidth(4);
-		paint_square2.setColor(SK_ColorBLACK);
-
+		
 		Button::Info infor{ resources };
 		infor.button_text = "Connect";
 		infor.click_color = SK_ColorGRAY;

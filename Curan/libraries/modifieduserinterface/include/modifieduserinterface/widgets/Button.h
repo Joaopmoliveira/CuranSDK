@@ -56,6 +56,7 @@ namespace curan {
 			callablefunction call() override;
 
 			inline Button& set_callback(buttoncallback in) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
 				callback = in;
                 return *(this);
 			}
