@@ -15,9 +15,10 @@ int main(int argc, char* argv[]) {
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
 	DisplayParams param{ std::move(context),2200,1800 };
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
-	std::shared_ptr<ProcessingMessage> processing;
-	auto page = create_main_page(data,processing);
+	ProcessingMessage* processing = nullptr;
+	auto page = create_main_page(data,processing,resources);
 
 	auto rec = viewer->get_size();
 	page->propagate_size_change(rec);

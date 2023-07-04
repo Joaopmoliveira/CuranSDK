@@ -1,37 +1,7 @@
 #include "CalibratePages.h"
 
-std::shared_ptr<curan::ui::Overlay> create_filtercontroler_overlay(ProcessingMessage* processing) {
+std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(ProcessingMessage* processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
-	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
-
-	SkColor colbuton = { SK_ColorBLACK };
-	SkColor coltext = { SK_ColorWHITE };
-
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
-
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
-
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SK_ColorTRANSPARENT);
-
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	SkFont text_font = SkFont(typeface, 20, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
 
 	Container::InfoLinearContainer infocontainer;
 	infocontainer.paint_layout = paint_square2;
@@ -140,38 +110,8 @@ std::shared_ptr<curan::ui::Overlay> create_filtercontroler_overlay(ProcessingMes
 }
 
 
-std::shared_ptr<curan::ui::Overlay> create_options_overlay(ProcessingMessage* processing) {
+std::unique_ptr<curan::ui::Overlay> create_options_overlay(ProcessingMessage* processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
-	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
-
-	SkColor colbuton = { SK_ColorBLACK };
-	SkColor coltext = { SK_ColorWHITE };
-
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
-
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
-
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SK_ColorTRANSPARENT);
-
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	SkFont text_font = SkFont(typeface, 15, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
 
 	std::shared_ptr<Button> display_type;
 	{
@@ -227,38 +167,8 @@ std::shared_ptr<curan::ui::Overlay> create_options_overlay(ProcessingMessage* pr
 }
 
 
-std::shared_ptr<curan::ui::Page> create_main_page(ConfigurationData& data, ProcessingMessage* processing) {
+curan::ui::Page create_main_page(ConfigurationData& data, ProcessingMessage* processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
-	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
-
-	SkColor colbuton = { SK_ColorBLACK };
-	SkColor coltext = { SK_ColorWHITE };
-
-	SkPaint paint_square;
-	paint_square.setStyle(SkPaint::kFill_Style);
-	paint_square.setAntiAlias(true);
-	paint_square.setStrokeWidth(4);
-	paint_square.setColor(colbuton);
-
-	SkPaint paint_text;
-	paint_text.setStyle(SkPaint::kFill_Style);
-	paint_text.setAntiAlias(true);
-	paint_text.setStrokeWidth(4);
-	paint_text.setColor(coltext);
-
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	SkFont text_font = SkFont(typeface, 15, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
-
-	SkPaint paint_square2;
-	paint_square2.setStyle(SkPaint::kFill_Style);
-	paint_square2.setAntiAlias(true);
-	paint_square2.setStrokeWidth(4);
-	paint_square2.setColor(SK_ColorBLACK);
 
 	OpenIGTLinkViewer::Info infoviewer;
 	infoviewer.text_font = text_font;
