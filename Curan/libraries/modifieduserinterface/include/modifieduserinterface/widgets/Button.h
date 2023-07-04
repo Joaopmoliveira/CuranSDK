@@ -48,12 +48,12 @@ namespace curan {
 
 			static std::unique_ptr<Button> make(const std::string& button_text,IconResources& system_icons);
 
-			void compile();
+			void compile() override;
 
 			~Button();
 
-			drawablefunction draw();
-			callablefunction call();
+			drawablefunction draw() override;
+			callablefunction call() override;
 
 			inline Button& set_callback(buttoncallback in) {
 				callback = in;
@@ -102,10 +102,6 @@ namespace curan {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				current_state = state;
                 return *(this);
-			}
-
-			inline bool is_leaf(){
-				return true;
 			}
 
 		};

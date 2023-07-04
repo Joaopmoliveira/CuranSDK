@@ -5,7 +5,6 @@
 #include "utils/Lockable.h"
 #include <vector>
 #include <memory>
-#include "Widget.h"
 
 namespace curan {
 	namespace ui {
@@ -26,8 +25,8 @@ namespace curan {
 
 		~Container();
 
-		drawablefunction draw();
-		callablefunction call();
+		drawablefunction draw() override;
+		callablefunction call() override;
 
 		inline Container& set_color(SkColor color){
 			std::lock_guard<std::mutex> g{ get_mutex() };
@@ -51,13 +50,13 @@ namespace curan {
 			return *(this);
 		}
 
-		inline bool is_leaf(){
+		inline bool is_leaf() override {
 			return false;
 		}
 
-		void compile();
+		void compile() override;
 
-		Container& framebuffer_resize();
+		void framebuffer_resize() override;
 		Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
 
 		inline std::vector<SkRect> get_positioning() {
@@ -66,7 +65,7 @@ namespace curan {
 			return rectangles_of_contained_layouts;
 		};
 
-		Container& operator<<(Widget&& widget);
+		Container& operator<<(std::unique_ptr<Drawable> value);
 
 		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement);
 
@@ -76,7 +75,7 @@ namespace curan {
 
 			SkPaint paint_layout;
 			std::vector<SkScalar> divisions;
-			std::vector<Widget> contained_layouts;
+			std::vector<std::unique_ptr<Drawable>> contained_layouts;
 			std::vector<SkRect> rectangles_of_contained_layouts;
 			bool horizontaly_fixed = false;
 			bool vertically_fixed = false;

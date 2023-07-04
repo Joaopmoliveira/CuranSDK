@@ -1,6 +1,3 @@
-#include "utils/Overloading.h"
-#include "modifieduserinterface/widgets/Button.h"
-#include "modifieduserinterface/widgets/Slider.h"
 #include "modifieduserinterface/widgets/Container.h"
 
 namespace curan {
@@ -38,7 +35,7 @@ callablefunction Container::call(){
 	return lamb;
 }
 
-Container& Container::framebuffer_resize(){
+void Container::framebuffer_resize(){
     std::lock_guard<std::mutex> g{ get_mutex() };
 
 	if(!compiled)
@@ -55,20 +52,9 @@ Container& Container::framebuffer_resize(){
 									my_position.height()*rect.y() + y_offset,
 									my_position.width() * rect.width(),
 									my_position.height() * rect.height());
-
-        std::visit(curan::utilities::overloaded{
-			[&](std::unique_ptr<Button>& arg) {
-                arg->set_position(temp);
-			},
-			[&](std::unique_ptr<Slider>& arg) {
-                arg->set_position(temp);
-			},
-            [&](std::unique_ptr<Container>& arg) {
-                arg->set_position(temp);
-				arg->framebuffer_resize();
-			}},*iter_drawables);
+		(*iter_drawables)->set_position(temp);
+		(*iter_drawables)->framebuffer_resize();
 	}
-    return *(this);
 }
 
 Container& Container::linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal){
@@ -86,22 +72,20 @@ Container& Container::linearize_container(std::vector<drawablefunction>& callabl
 	linearized_call.push_back(tempcall);
 
 	for (auto& drawble : contained_layouts) {
-        std::visit(curan::utilities::overloaded{
-			[&](std::unique_ptr<Button>& arg) {
-                linearized_draw.push_back(arg->draw());
-			    linearized_call.push_back(arg->call());
-			},
-			[&](std::unique_ptr<Slider>& arg) {
-                linearized_draw.push_back(arg->draw());
-			    linearized_call.push_back(arg->call());
-			},
-            [&](std::unique_ptr<Container>& arg) {
-                std::vector<drawablefunction> temp_linearized_draw;
-			    std::vector<callablefunction> temp_linearized_call;
-			    arg->linearize_container(temp_linearized_draw, temp_linearized_call);
-			    linearized_draw.insert(linearized_draw.end(), temp_linearized_draw.begin(), temp_linearized_draw.end());
-			    linearized_call.insert(linearized_call.end(), temp_linearized_call.begin(), temp_linearized_call.end());
-			}},drawble);
+		if (drawble->is_leaf()) {
+			auto tempdraw = drawble->draw();
+			auto tempcall = drawble->call();
+			linearized_draw.push_back(tempdraw);
+			linearized_call.push_back(tempcall);
+		} else {
+			auto limited_raw_acess = drawble.get();
+			auto interpreted = dynamic_cast<Container*>(limited_raw_acess);
+			std::vector<drawablefunction> temp_linearized_draw;
+			std::vector<callablefunction> temp_linearized_call;
+			interpreted->linearize_container(temp_linearized_draw, temp_linearized_call);
+			linearized_draw.insert(linearized_draw.end(), temp_linearized_draw.begin(), temp_linearized_draw.end());
+			linearized_call.insert(linearized_call.end(), temp_linearized_call.begin(), temp_linearized_call.end());
+		}
 	}
 
 	callable_draw = linearized_draw;
@@ -109,18 +93,9 @@ Container& Container::linearize_container(std::vector<drawablefunction>& callabl
     return *(this);
 }
 
-Container& Container::operator<<(Widget&& widget){
-    std::visit(curan::utilities::overloaded{
-		[&](std::unique_ptr<Button>& arg) {
-            arg->compile();
-		},
-		[&](std::unique_ptr<Slider>& arg) {
-            arg->compile();
-		},
-        [&](std::unique_ptr<Container>& arg) {
-            arg->compile();
-		}},widget);
-	contained_layouts.emplace_back(std::move(widget));
+Container& Container::operator<<(std::unique_ptr<Drawable> drawable){
+	drawable->compile();
+	contained_layouts.emplace_back(std::move(drawable));
     return *(this);
 }
 

@@ -51,6 +51,12 @@ namespace curan {
 				drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
 				return (drawable.fLeft < x && drawable.fRight > x && drawable.fTop < y && drawable.fBottom > y) ? true : false;
 			}
+
+			virtual void framebuffer_resize();
+			virtual bool is_leaf();
+			virtual void compile() = 0;
+			virtual drawablefunction draw() = 0;
+			virtual callablefunction call() = 0;
 		};
 	}
 }

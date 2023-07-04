@@ -44,10 +44,10 @@ namespace curan {
 
 			~Slider();
 
-			drawablefunction draw();
-			callablefunction call();
+			drawablefunction draw() override;
+			callablefunction call() override;
 
-			void compile();
+			void compile() override;
 
 			inline Slider& trigger(float in_current_value) {
 				value_pressed = in_current_value;
@@ -112,11 +112,6 @@ namespace curan {
 				current_state = state;
 				return *(this);
 			}
-
-			inline bool is_leaf(){
-				return true;
-			}
-
 		};
 	}
 }
