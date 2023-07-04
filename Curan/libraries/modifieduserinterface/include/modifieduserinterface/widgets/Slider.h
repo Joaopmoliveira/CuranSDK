@@ -49,6 +49,12 @@ namespace curan {
 
 			void compile() override;
 
+			inline Slider& set_callback(slidercallback in_callback){
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				callback = in_callback;
+				return *(this);
+			}
+
 			inline Slider& trigger(float in_current_value) {
 				value_pressed = in_current_value;
 				return *(this);

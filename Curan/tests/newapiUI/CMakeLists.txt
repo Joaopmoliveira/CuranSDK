@@ -24,13 +24,13 @@ target_link_libraries(modified_test_button PUBLIC
 userinterfacemodified
 )
 
-#add_executable(modified_test_slider test_slider.cpp)
+add_executable(modified_test_slider test_slider.cpp)
 
-#target_compile_definitions(modified_test_slider PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_compile_definitions(modified_test_slider PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-#target_link_libraries(modified_test_slider PUBLIC
-#userinterfacemodified
-#)
+target_link_libraries(modified_test_slider PUBLIC
+userinterfacemodified
+)
 
 #add_executable(modified_test_textblob test_textblob.cpp)
 
