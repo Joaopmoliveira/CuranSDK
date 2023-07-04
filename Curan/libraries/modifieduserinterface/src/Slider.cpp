@@ -1,5 +1,5 @@
-#include "userinterface/widgets/ConfigDraw.h"
-#include "userinterface/widgets/Slider.h"
+#include "modifieduserinterface/widgets/ConfigDraw.h"
+#include "modifieduserinterface/widgets/Slider.h"
 #include "utils/Overloading.h"
 #include <variant>
 
@@ -7,7 +7,7 @@ namespace curan {
 namespace ui {
 
 
-Slider::Slider(Info& info) : Drawable{ info.size } {
+Slider::Slider(Info& info){
     hover_color = info.hover_color;
     waiting_color = info.waiting_color;
     click_color = info.click_color;
@@ -137,10 +137,6 @@ callablefunction Slider::call() {
 		return interacted;
 	};
 	return lamb;
-}
-
-void Slider::framebuffer_resize() {
-
 }
 
 }

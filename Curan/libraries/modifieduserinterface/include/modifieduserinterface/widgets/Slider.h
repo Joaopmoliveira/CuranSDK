@@ -15,21 +15,8 @@ namespace curan {
 
 		using slidercallback = std::function<void(Slider*, ConfigDraw*)>;
 
-		class Slider : public  Drawable, utilities::Lockable<Slider>, utilities::Connectable<Slider> {
+		class Slider : public  Drawable, utilities::Lockable<Slider> {
 		public:
-			struct Info {
-				std::optional<slidercallback> callback;
-				SkColor hover_color;
-				SkColor waiting_color;
-				SkColor click_color;
-				SkPaint paintButton;
-				SkColor sliderColor;
-				SkRect size;
-				std::array<float, 2> limits = { 0.0f,100.0f };
-				float current_value;
-				float dragable_percent_size = 0.1f;
-			};
-
 			enum class SliderStates {
 				WAITING,
 				PRESSED,
@@ -50,24 +37,28 @@ namespace curan {
 			float value_pressed = 0.5;
 			float dragable_percent_size = 0.1f;;
 
-		public:
-			Slider(Info& info);
-			static std::shared_ptr<Slider> make(Info& info);
-			drawablefunction draw() override;
-			callablefunction call() override;
-			void framebuffer_resize() override;
+			Slider();
 
-			inline void trigger(float in_current_value) {
+		public:
+
+			static std::unique_ptr<Slider> make();
+
+			drawablefunction draw();
+			callablefunction call();
+
+			inline Slider& trigger(float in_current_value) {
 				value_pressed = in_current_value;
+				return *(this);
 			}
 
 			inline float read_trigger() {
 				return value_pressed;
 			}
 
-			inline void set_current_value(float in_current_value) {
+			inline Slider& set_current_value(float in_current_value) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				current_value = in_current_value;
+				return *(this);
 			}
 
 			inline float get_current_value() {
@@ -80,9 +71,10 @@ namespace curan {
 				return hover_color;
 			}
 
-			inline void set_hover_color(SkColor color) {
+			inline Slider& set_hover_color(SkColor color) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				hover_color = color;
+				return *(this);
 			}
 
 			inline SkColor get_waiting_color() {
@@ -90,9 +82,10 @@ namespace curan {
 				return waiting_color;
 			}
 
-			inline void set_waiting_color(SkColor new_waiting_color) {
+			inline Slider& set_waiting_color(SkColor new_waiting_color) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				waiting_color = new_waiting_color;
+				return *(this);
 			}
 
 			inline SkColor get_click_color() {
@@ -100,9 +93,10 @@ namespace curan {
 				return click_color;
 			}
 
-			inline void set_click_color(SkColor new_click_color) {
+			inline Slider& set_click_color(SkColor new_click_color) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				click_color = new_click_color;
+				return *(this);
 			}
 
 			inline SliderStates get_current_state() {
@@ -110,9 +104,10 @@ namespace curan {
 				return current_state;
 			}
 
-			inline void set_current_state(SliderStates state) {
+			inline Slider& set_current_state(SliderStates state) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				current_state = state;
+				return *(this);
 			}
 
 		};

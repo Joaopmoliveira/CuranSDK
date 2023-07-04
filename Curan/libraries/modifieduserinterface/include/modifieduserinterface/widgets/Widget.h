@@ -8,7 +8,9 @@ namespace ui{
 
 class Container;
 class Button;
-using Widget = std::variant<std::unique_ptr<Button>,std::unique_ptr<Container>>; 
+class Slider;
+
+using Widget = std::variant<std::unique_ptr<Button>,std::unique_ptr<Container>,std::unique_ptr<Slider>>; 
 
 } 
 }
