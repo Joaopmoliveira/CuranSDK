@@ -43,14 +43,12 @@ namespace curan {
 
 			void compile();
 
+			Button(const std::string& button_text,IconResources* system_icons = nullptr);
+
 		public:
 
-            Button(const std::string& button_text,IconResources* system_icons = nullptr);
+			std::unique_ptr<Button> make(const std::string& button_text,IconResources* system_icons = nullptr);
 
-			Button(const Button& other) = delete;
-			Button& operator=(const Button& other)= delete;
-
-			Button(Button&& other);
 			~Button();
 
 			drawablefunction draw();

@@ -11,13 +11,16 @@ namespace curan {
 	namespace ui {
 
 		class Overlay {
-			LightWeightPage main_page;
+			std::unique_ptr<LightWeightPage> main_page;
 			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 			SkPaint bluring_paint;
 			SkSamplingOptions options;
+			SkColor backgroundcolor;
+			void compile();
+
 		public:
-            explicit Overlay(post_signal_callback post_sig,Container&& contained,SkColor backgroundcolor);
-			LightWeightPage&& take_ownership();
+            explicit Overlay(post_signal_callback&& post_sig,std::unique_ptr<Container> contained,SkColor backgroundcolor);
+			std::unique_ptr<LightWeightPage> take_ownership();
 		};
 	}
 }

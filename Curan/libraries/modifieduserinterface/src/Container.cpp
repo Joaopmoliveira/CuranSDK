@@ -5,20 +5,12 @@
 namespace curan {
 namespace ui {
 
-Container::Container(ContainerType type, Arrangement arragement) {
+Container::Container(const ContainerType& type,const Arrangement& arragement) {
 
 }
 
-Container::Container(Container&& other) :
-paint_layout{std::move(other.paint_layout)},
-contained_layouts{std::move(other.contained_layouts)},
-rectangles_of_contained_layouts{std::move(other.rectangles_of_contained_layouts)},
-horizontaly_fixed{std::move(other.horizontaly_fixed)},
-vertically_fixed{std::move(other.vertically_fixed)},
-type{std::move(other.type)},
-arragement{std::move(other.arragement)}
-{
-
+std::unique_ptr<Container> Container::make(const ContainerType& type,const Arrangement& arragement){
+	std::unique_ptr<Container> container = std::unique_ptr<Container>(new Container{type,arragement});
 }
 
 Container::~Container(){

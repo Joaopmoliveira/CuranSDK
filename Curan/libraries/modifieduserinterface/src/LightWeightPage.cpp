@@ -3,25 +3,19 @@
 namespace curan {
 namespace ui {
 
-LightWeightPage::LightWeightPage(Container&& contained, SkColor backgroundcolor): scene{std::move(contained)},backgroundcolor{backgroundcolor}{
+LightWeightPage::LightWeightPage(std::unique_ptr<Container> contained, SkColor backgroundcolor): scene{std::move(contained)},backgroundcolor{backgroundcolor}{
     post_signal_processing = [](Signal sig, bool page_interaction, ConfigDraw* config) {
 		return;
 	};
 }
 
-LightWeightPage::LightWeightPage(LightWeightPage&& other) : 
-			scene{std::move(other.scene)},
-			backgroundcolor{other.backgroundcolor},
-			is_dirty{other.is_dirty.load()},
-			compiled_scene{std::move(other.compiled_scene)},
-			post_signal_processing{std::move(other.post_signal_processing)}
-
-{
-
-}
-
 LightWeightPage::~LightWeightPage(){
 	
+}
+
+std::unique_ptr<LightWeightPage> LightWeightPage::make(std::unique_ptr<Container> contained, SkColor backgroundcolor){
+	std::unique_ptr<LightWeightPage> page = std::unique_ptr<LightWeightPage>(new LightWeightPage{std::move(contained),backgroundcolor});
+	return page;
 }
 
 LightWeightPage& LightWeightPage::draw(SkCanvas* canvas){
@@ -51,8 +45,8 @@ LightWeightPage& LightWeightPage::set_post_signal(post_signal_callback call){
 }
 
 LightWeightPage& LightWeightPage::propagate_size_change(SkRect& new_size){
-	scene.set_position(new_size);
-	scene.framebuffer_resize();
+	scene->set_position(new_size);
+	scene->framebuffer_resize();
     return *(this);
 }
 

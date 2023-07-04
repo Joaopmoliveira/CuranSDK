@@ -8,26 +8,14 @@ Button::Button(const std::string& in_button_text,IconResources* system_icons) : 
 
 }
 
-Button::Button(Button&& other) : 
-hover_color{std::move(other.hover_color)},
-waiting_color{std::move(other.waiting_color)},
-click_color{std::move(other.click_color)},
-paint{std::move(other.paint)},
-paint_text{std::move(other.paint_text)},
-widget_rect_text{std::move(other.widget_rect_text)},
-text_font{std::move(other.text_font)},
-text{std::move(other.text)},
-icon_data{std::move(other.icon_data)},
-current_state{std::move(other.current_state)},
-callback{std::move(other.callback)},
-system_icons{std::move(other.system_icons)}
-{
-
-}
-
 Button::~Button(){
 
 }
+
+std::unique_ptr<Button> Button::make(const std::string& button_text,IconResources* system_icons){
+	std::unique_ptr<Button> button = std::unique_ptr<Button>(new Button{button_text,system_icons});
+	return button;
+}	
 
 drawablefunction Button::draw(){
 auto lamb = [this](SkCanvas* canvas) {

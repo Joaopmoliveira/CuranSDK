@@ -5,14 +5,19 @@
 namespace curan {
 namespace ui {
 
-Overlay::Overlay(post_signal_callback post_sig,
-                Container&& contained,
-                SkColor backgroundcolor) : main_page{std::move(contained),backgroundcolor}
+Overlay::Overlay(post_signal_callback&& post_sig,
+                std::unique_ptr<Container> contained,
+                SkColor in_backgroundcolor) : main_page{LightWeightPage::make(std::move(contained),backgroundcolor)}
 {
 }
 
-LightWeightPage&& Overlay::take_ownership(){
+std::unique_ptr<LightWeightPage> Overlay::take_ownership(){
+    compile();
     return std::move(main_page);
+}
+
+void Overlay::compile(){
+
 }
 
 }

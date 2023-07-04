@@ -23,12 +23,6 @@ namespace curan {
 			HORIZONTAL
 		};
 
-		Container(ContainerType type, Arrangement arragement);
-
-		Container(const Container& other) = delete;
-		Container& operator=(const Container& other) = delete;
-
-		Container(Container&& other);
 		~Container();
 
 		drawablefunction draw();
@@ -45,7 +39,12 @@ namespace curan {
 
 		Container& operator<<(Widget&& widget);
 
+		std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement);
+
 		private:
+
+			Container(const ContainerType& type,const Arrangement& arragement);
+
 			SkPaint paint_layout;
 			std::vector<Widget> contained_layouts;
 			std::vector<SkRect> rectangles_of_contained_layouts;
