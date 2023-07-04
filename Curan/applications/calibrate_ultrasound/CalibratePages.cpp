@@ -1,6 +1,6 @@
 #include "CalibratePages.h"
 
-std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(ProcessingMessage* processing,curan::ui::IconResources& resources) {
+std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 	//---------------------- row Minimum Radius -------------------//
 	auto slider = Slider::make({ 0.0f, 300.0f });
@@ -110,7 +110,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(ProcessingMes
 }
 
 
-std::unique_ptr<curan::ui::Overlay> create_options_overlay(ProcessingMessage* processing,curan::ui::IconResources& resources) {
+std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 
 	auto button = Button::make("Display Circles",resources);
@@ -134,7 +134,7 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(ProcessingMessage* pr
 	return Overlay::make(std::move(viwers_container),SK_ColorTRANSPARENT);
 }
 
-curan::ui::Page create_main_page(ConfigurationData& data, ProcessingMessage* processing,curan::ui::IconResources& resources) {
+curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 
 	auto igtlink_viewer = OpenIGTLinkViewer::make();
@@ -144,13 +144,13 @@ curan::ui::Page create_main_page(ConfigurationData& data, ProcessingMessage* pro
 	auto image_display = ImageDisplay::make();
 	auto image_display_pointer = image_display.get();
 
-	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-	*container << std::move(igtlink_viewer) << std::move(image_display);
-	container->set_divisions({ 0.0 , 0.5 , 1.0 });
+	auto displaycontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*displaycontainer << std::move(igtlink_viewer) << std::move(image_display);
+	displaycontainer->set_divisions({ 0.0 , 0.5 , 1.0 });
 
 	auto flag = curan::utilities::Flag::make_shared_flag();
 
-	processing = std::make_shared<ProcessingMessage>(igtlink_viewer_pointer, image_display_pointer, flag, data);
+	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, flag, data);
 	processing->port = data.port;
 
 	auto lam = [processing](Button* button, ConfigDraw* config) {
@@ -170,6 +170,7 @@ curan::ui::Page create_main_page(ConfigurationData& data, ProcessingMessage* pro
 	auto start_connection = Button::make("Connect",resources);
 	start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 	start_connection->set_callback(lam);
+	auto start_connection_pointer = start_connection.get();
 
 	auto change_recording_status = [processing](Button* button, ConfigDraw* config) {
 		auto val = !processing->should_record.load();
@@ -180,30 +181,25 @@ curan::ui::Page create_main_page(ConfigurationData& data, ProcessingMessage* pro
 
 	auto button_start_collection = Button::make("Data Collection",resources);
 	button_start_collection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	button_start_collection->set_callback(change_recording_status);
+	auto button_start_collection_pointer = button_start_collection.get();
 
 	auto button_options = Button::make("Options",resources);
 	button_options->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
-
-	infor.callback = [&processing](Button* button, ConfigDraw* config) {
-		auto overlay = create_options_overlay(processing);
-		config->stack_page->stack(overlay);
-	};
+	button_options->set_callback([&processing](Button* button, ConfigDraw* config) {
+		config->stack_page->stack(create_options_overlay(processing));
+	});
 
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-	*buttoncontainer << std::move(button) << std::move(buttonoptions);
+	*buttoncontainer << std::move(start_connection) << std::move(button_start_collection) << std::move(button_options);
 
-	processing->button = start_connection;
-	processing->button_start_collection = button_start_collection;
-	start_connection->set_waiting_color(SK_ColorRED);
+	processing->button = start_connection_pointer;
+	processing->button_start_collection = button_start_collection_pointer;
+	start_connection_pointer->set_waiting_color(SK_ColorRED);
 
-	info.arrangement = curan::ui::Arrangement::VERTICAL;
-	info.divisions = { 0.0 , 0.1 , 1.0 };
-	info.layouts = { button_container,viwers_container };
-	std::shared_ptr<Container> container = Container::make(info);
+	auto widgetcontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+	*widgetcontainer << std::move(buttoncontainer) << std::move(displaycontainer);
+	widgetcontainer->set_divisions({ 0.0 , 0.1 , 1.0 });
 
-	Page::Info information;
-	information.backgroundcolor = SK_ColorBLACK;
-	information.contained = container;
-	std::shared_ptr<Page> page = Page::make(information);
-	return page;
+	return Page{std::move(widgetcontainer),SK_ColorBLACK};
 }

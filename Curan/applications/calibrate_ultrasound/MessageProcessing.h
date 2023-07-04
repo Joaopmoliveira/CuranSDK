@@ -68,8 +68,8 @@ struct ProcessingMessage {
 	curan::ui::ImageDisplay* processed_viwer = nullptr;
 	curan::ui::OpenIGTLinkViewer* open_viwer = nullptr;
 	std::shared_ptr<curan::utilities::Flag> connection_status;
-	std::shared_ptr<curan::ui::Button> button;
-	std::shared_ptr<curan::ui::Button> button_start_collection;
+	curan::ui::Button* button;
+	curan::ui::Button* button_start_collection;
 	size_t number_of_circles = 3;
 	std::vector<SkColor> colors = { SK_ColorMAGENTA,SK_ColorBLUE,SK_ColorGREEN };
 	asio::io_context io_context;
