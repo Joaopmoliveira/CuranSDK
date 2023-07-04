@@ -40,6 +40,7 @@ namespace curan {
 			ButtonStates current_state = ButtonStates::WAITING;
 			std::optional<buttoncallback> callback;
 			IconResources& system_icons;
+			bool compiled = false;
 
 			Button(const std::string& button_text,IconResources& system_icons);
 

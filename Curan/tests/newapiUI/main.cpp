@@ -20,6 +20,9 @@ int main() {
 		auto button = Button::make("Touch!",resources);
 		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 200);
 		button->set_position(rect);
+		button->compile();
+		button->set_callback(callback);
+
 		auto caldraw = button->draw();
 		auto calsignal = button->call();
 

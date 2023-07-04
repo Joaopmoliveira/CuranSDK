@@ -8,6 +8,7 @@ Button::Button(const std::string& in_button_text,IconResources& system_icons) : 
 	hover_color = SK_ColorDKGRAY;
 	waiting_color = SK_ColorGRAY;
 	click_color = SK_ColorCYAN;
+	text_color = SK_ColorWHITE;
 
 	paint.setStyle(SkPaint::kFill_Style);
 	paint.setAntiAlias(true);
@@ -39,6 +40,8 @@ std::unique_ptr<Button> Button::make(const std::string& button_text,IconResource
 }	
 
 drawablefunction Button::draw(){
+if(!compiled)
+	throw std::runtime_error("must compile the button before drawing operations");
 auto lamb = [this](SkCanvas* canvas) {
 		switch (current_state) {
 		case ButtonStates::WAITING:
@@ -84,6 +87,8 @@ auto lamb = [this](SkCanvas* canvas) {
 }
 
 callablefunction Button::call(){
+if(!compiled)
+	throw std::runtime_error("must compile the button before drawing operations");
 auto lamb = [this](Signal sig, ConfigDraw* config) {
 		bool interacted = false;
 		std::visit(utilities::overloaded{
@@ -162,6 +167,7 @@ void Button::compile(){
 		system_icons.get_icon(image,icon_identifier);
 		icon_data = image;
 	}
+	compiled = true;
 }
 
 }
