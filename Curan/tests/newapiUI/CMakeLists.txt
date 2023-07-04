@@ -1,9 +1,19 @@
-add_executable(test_new_user_interface main.cpp)
+add_executable(test_new_user_interface test_button.cpp)
 
 target_compile_definitions(test_new_user_interface PRIVATE SK_VULKAN)
 target_compile_definitions(test_new_user_interface PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(test_new_user_interface PUBLIC
+utils
+userinterfacemodified
+)
+
+add_executable(test_new_container_logic test_container_logic.cpp)
+
+target_compile_definitions(test_new_container_logic PRIVATE SK_VULKAN)
+target_compile_definitions(test_new_container_logic PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_new_container_logic PUBLIC
 utils
 userinterfacemodified
 )

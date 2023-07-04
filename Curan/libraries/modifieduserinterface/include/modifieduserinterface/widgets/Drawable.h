@@ -38,6 +38,10 @@ namespace curan {
 				return size;
 			}
 
+			inline void set_size(const SkRect& insize){
+				size = insize;
+			}
+
 			inline bool interacts(double x, double y) {
 				SkRect drawable;
 				if (size.width() < 0.01f || size.height() < 0.01f)

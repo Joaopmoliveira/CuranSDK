@@ -20,7 +20,8 @@ namespace curan {
 
         enum class Arrangement {
 			VERTICAL,
-			HORIZONTAL
+			HORIZONTAL,
+			UNDEFINED
 		};
 
 		~Container();
