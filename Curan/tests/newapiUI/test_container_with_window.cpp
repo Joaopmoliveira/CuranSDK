@@ -16,71 +16,26 @@ int main() {
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		SkColor colbuton = { SK_ColorWHITE };
-		SkColor coltext = { SK_ColorWHITE };
+		auto button1 = Button::make("print name",resources);
+		button1->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY);
 
-		SkPaint paint_square;
-		paint_square.setStyle(SkPaint::kFill_Style);
-		paint_square.setAntiAlias(true);
-		paint_square.setStrokeWidth(4);
-		paint_square.setColor(colbuton);
+		auto button2 = Button::make("print age",resources);
+		button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY);
 
-		SkPaint paint_text;
-		paint_text.setStyle(SkPaint::kFill_Style);
-		paint_text.setAntiAlias(true);
-		paint_text.setStrokeWidth(4);
-		paint_text.setColor(coltext);
+		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+		*container << std::move(button1) << std::move(button2);
+		container->set_divisions({ 0.0 , 0.5 , 1.0 });
 
-		const char* fontFamily = nullptr;
-		SkFontStyle fontStyle;
-		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-		sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+		auto button3 = Button::make("print Eureka",resources);
+		button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY);
 
-		SkFont text_font = SkFont(typeface, 30, 1.0f, 0.0f);
-		text_font.setEdging(SkFont::Edging::kAntiAlias);
-
-		SkPaint paint_square2;
-		paint_square2.setStyle(SkPaint::kFill_Style);
-		paint_square2.setAntiAlias(true);
-		paint_square2.setStrokeWidth(4);
-		paint_square2.setColor(SK_ColorBLACK);
-
-		Button::Info infor{ resources };
-		infor.button_text = "print name";
-		infor.click_color = SK_ColorRED;
-		infor.hover_color = SK_ColorCYAN;
-		infor.waiting_color = SK_ColorGRAY;
-		infor.icon_identifier = "";
-		infor.paintButton = paint_square;
-		infor.paintText = paint_text;
-		infor.size = SkRect::MakeWH(200, 120);
-		infor.textFont = text_font;
-		std::shared_ptr<Button> button = Button::make(infor);
-
-		infor.button_text = "print age";
-		std::shared_ptr<Button> button2 = Button::make(infor);
-
-		infor.button_text = "print Eureka";
-		std::shared_ptr<Button> button3 = Button::make(infor);
-
-		Container::InfoLinearContainer info;
-		info.arrangement = curan::ui::Arrangement::VERTICAL;
-		info.divisions = { 0.0 , 0.5 , 1.0 };
-		info.layouts = { button ,button2};
-		info.paint_layout = paint_square2;
-		std::shared_ptr<Container> container = Container::make(info);
-
-		info.arrangement = curan::ui::Arrangement::HORIZONTAL;
-		info.divisions = { 0.0 , 0.5 , 1.0 };
-		info.layouts = { container , button3 };
-		std::shared_ptr<Container> container2 = Container::make(info);
+		auto container2 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+		*container2 << std::move(container) << std::move(button3);
+		container2->set_divisions({ 0.0 , 0.5 , 1.0 });
 
 		auto rec = viewer->get_size();
-		Page::Info information;
-		information.backgroundcolor = SK_ColorBLACK;
-		information.contained = container2;
-		std::shared_ptr<Page> page = Page::make(information);
-		page->propagate_size_change(rec);
+		Page page = Page{std::move(container2),SK_ColorBLACK};
+		page.propagate_size_change(rec);
 
 		int width = rec.width();
 		int height = rec.height();
@@ -95,12 +50,12 @@ int main() {
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
 			if (temp_height != height || temp_width != width) {
 				rec = SkRect::MakeWH(temp_width, temp_height);
-				page->propagate_size_change(rec);
+				page.propagate_size_change(rec);
 			}
-			page->draw(canvas);
+			page.draw(canvas);
 			auto signals = viewer->process_pending_signals();
 			if (!signals.empty())
-				page->propagate_signal(signals.back(),&config);
+				page.propagate_signal(signals.back(),&config);
 			glfwPollEvents();
 	
 			bool val = viewer->swapBuffers();
