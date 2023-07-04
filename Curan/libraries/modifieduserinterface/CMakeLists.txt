@@ -10,7 +10,9 @@ src/Container.cpp
 src/Drawable.cpp
 src/Page.cpp
 src/LightWeightPage.cpp 
-src/Overlay.cpp)
+src/Overlay.cpp
+src/Slider.cpp
+)
 
 target_include_directories(userinterfacemodified
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
