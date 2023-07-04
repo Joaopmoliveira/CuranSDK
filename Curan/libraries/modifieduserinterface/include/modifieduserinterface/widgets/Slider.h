@@ -27,6 +27,7 @@ namespace curan {
 			SkColor waiting_color;
 			SkColor click_color;
 			SkColor slider_color;
+
 			SkPaint paint;
 			SkRect widget_rect_text;
 			SliderStates current_state = SliderStates::WAITING;
@@ -107,6 +108,17 @@ namespace curan {
 				click_color = new_click_color;
 				return *(this);
 			}
+
+			inline SkColor get_slider_color() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return slider_color;
+			}
+
+			inline Slider& set_slider_color(SkColor new_slider_color) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				slider_color = new_slider_color;
+				return *(this);
+			}			
 
 			inline SliderStates get_current_state() {
 				std::lock_guard<std::mutex> g{ get_mutex() };

@@ -19,7 +19,7 @@ int main() {
 		};
 
 		auto slider = Slider::make({ 0.0f, 300.0f });
-		slider->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300,40));
+		slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_slider_color(SK_ColorLTGRAY).set_size(SkRect::MakeWH(300,40));
 		slider->set_callback(callback);
 		slider->compile();
 		slider->set_position(SkRect::MakeXYWH(50,50,300,40));
