@@ -207,6 +207,7 @@ int main() {
 
 		auto igtlink_viewer = OpenIGTLinkViewer::make();
 		igtlink_viewer->set_size(SkRect::MakeWH(600,600));
+		igtlink_viewer->compile();
 
 		auto caldraw = igtlink_viewer->draw();
 		auto calsignal = igtlink_viewer->call();
@@ -216,7 +217,7 @@ int main() {
 
 		auto pointer_to_igtlink_viewer = igtlink_viewer.get();
 		auto lamd = [pointer_to_igtlink_viewer]() {
-			generate_transform_message(pointer_to_igtlink_viewer);
+			generate_image_message(pointer_to_igtlink_viewer);
 		};
 		std::thread message_generator{ lamd };
 
