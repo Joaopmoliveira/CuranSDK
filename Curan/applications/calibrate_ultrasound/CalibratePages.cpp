@@ -187,7 +187,7 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	auto button_options = Button::make("Options",resources);
 	button_options->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
 	button_options->set_callback([&processing,&resources](Button* button, ConfigDraw* config) {
-		config->stack_page->stack(create_options_overlay(processing,&resources));
+		config->stack_page->stack(create_options_overlay(processing,resources));
 	});
 
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
