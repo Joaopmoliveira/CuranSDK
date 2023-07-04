@@ -5,6 +5,7 @@
 #include "modifieduserinterface/widgets/Container.h"
 #include "modifieduserinterface/widgets/IconResources.h"
 #include "modifieduserinterface/widgets/Page.h"
+
 #include <iostream>
 
 int main() {

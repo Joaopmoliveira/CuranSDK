@@ -56,13 +56,13 @@ target_link_libraries(modified_test_container_logic PUBLIC
 userinterfacemodified
 )
 
-#add_executable(modified_test_page test_container_with_window.cpp)
+add_executable(modified_test_page test_container_with_window.cpp)
 
-#target_compile_definitions(modified_test_page PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_compile_definitions(modified_test_page PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-#target_link_libraries(modified_test_page PUBLIC
-#userinterfacemodified
-#)
+target_link_libraries(modified_test_page PUBLIC
+userinterfacemodified
+)
 
 #add_executable(modified_test_page_juntion test_openigtlink_viewer_with_button.cpp)
 
@@ -90,8 +90,8 @@ userinterfacemodified
 
 add_executable(modified_skia_playground skia_playground.cpp)
 
-target_compile_definitions(skia_playground PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_compile_definitions(modified_skia_playground PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-target_link_libraries(skia_playground PUBLIC
+target_link_libraries(modified_skia_playground PUBLIC
 userinterfacemodified
 )
