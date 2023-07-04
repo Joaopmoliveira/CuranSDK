@@ -113,7 +113,7 @@ ImageTesting update_texture(ImageTesting image, float value) {
 	return image;
 }
 
-void generate_image_message(curan::ui::OpenIGTLinkViewer* button,curan::ui::ImageDisplay* pure_display) {
+void generate_image_message(std::atomic<bool>& continue_running ,curan::ui::OpenIGTLinkViewer* button,curan::ui::ImageDisplay* pure_display) {
 	ImageTesting img{ 100,100 };
 
 	igtl::TimeStamp::Pointer ts;
@@ -127,7 +127,8 @@ void generate_image_message(curan::ui::OpenIGTLinkViewer* button,curan::ui::Imag
 
 	auto genesis = std::chrono::high_resolution_clock::now();
 	auto start = std::chrono::high_resolution_clock::now();
-	while (std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count() < 20.0) {
+
+	while (continue_running.load()) {
 		start = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 
@@ -174,7 +175,6 @@ void generate_image_message(curan::ui::OpenIGTLinkViewer* button,curan::ui::Imag
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
 	curan::utilities::cout << "stopped to send data";
-
 }
 
 
@@ -211,8 +211,10 @@ int main() {
 		auto width = rec.width();
 		auto height = rec.height();
 
-		auto lamd = [igtlink_viewer_pointer, image_display_pointer]() {
-			generate_image_message(igtlink_viewer_pointer, image_display_pointer);
+		std::atomic<bool> continue_running = true;
+
+		auto lamd = [igtlink_viewer_pointer, image_display_pointer,&continue_running]() {
+			generate_image_message(continue_running,igtlink_viewer_pointer, image_display_pointer);
 		};
 		std::thread message_generator{ lamd };
 
@@ -240,11 +242,12 @@ int main() {
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
+		continue_running.store(false);
 		message_generator.join();
 		return 0;
 	}
-	catch (...) {
-		std::cout << "Failed";
+	catch (std::exception & e) {
+		std::cout << "Failed" << e.what() << std::endl;
 		return 1;
 	}
 }
