@@ -40,13 +40,13 @@ target_link_libraries(modified_test_textblob PUBLIC
 userinterfacemodified
 )
 
-#add_executable(modified_test_openigtlinkviewer test_openigtlink_display.cpp)
+add_executable(modified_test_openigtlinkviewer test_openigtlink_display.cpp)
 
-#target_compile_definitions(modified_test_openigtlinkviewer PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_compile_definitions(modified_test_openigtlinkviewer PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-#target_link_libraries(modified_test_openigtlinkviewer PUBLIC
-#userinterfacemodified
-#)
+target_link_libraries(modified_test_openigtlinkviewer PUBLIC
+userinterfacemodified
+)
 
 add_executable(modified_test_container_logic test_container_logic.cpp)
 
