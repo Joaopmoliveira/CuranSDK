@@ -185,17 +185,15 @@ void create_nested_layout_propagate(curan::ui::IconResources& resources){
 
 	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
 	*container << std::move(button) << std::move(button2) << std::move(button3);
-	container->set_divisions({ 0.0 , 0.33333 , 0.66666 , 1.0 });
+	container->set_divisions({ 0.0f , 0.33333f , 0.66666f , 1.0f });
 
 	std::unique_ptr<curan::ui::Container> container2 = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
 	*container2 << std::move(container) << std::move(button4);
-	container2->set_divisions({  0.0 , 0.5 , 1.0 });
+	container2->set_divisions({  0.0f , 0.5f , 1.0f });
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container2->set_position(my_small_window);
-
 	container2->compile();
-
 	container2->framebuffer_resize();
 
 	std::cout << "Container layout";
@@ -238,10 +236,9 @@ void test_linearization(curan::ui::IconResources& resources) {
 	container2->set_divisions({  0.0 , 0.5 , 1.0 });
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
+	
 	container2->set_position(my_small_window);
-
 	container2->compile();
-
 	container2->framebuffer_resize();
 
 	std::vector<curan::ui::drawablefunction> temp_draw;

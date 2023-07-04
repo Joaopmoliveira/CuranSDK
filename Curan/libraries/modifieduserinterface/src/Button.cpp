@@ -152,10 +152,6 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 	return lamb;
 }
 
-void Button::framebuffer_resize(){
-
-}
-
 void Button::compile(){
 	std::lock_guard<std::mutex> g{ get_mutex() };
 

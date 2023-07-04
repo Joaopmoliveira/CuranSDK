@@ -54,7 +54,6 @@ namespace curan {
 
 			drawablefunction draw();
 			callablefunction call();
-			void framebuffer_resize();
 
 			inline Button& set_callback(buttoncallback in) {
 				callback = in;

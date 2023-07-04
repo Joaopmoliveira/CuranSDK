@@ -61,6 +61,7 @@ Container& Container::framebuffer_resize(){
 			},
             [&](std::unique_ptr<Container>& arg) {
                 arg->set_position(temp);
+				arg->framebuffer_resize();
 			}},*iter_drawables);
 	}
     return *(this);
