@@ -5,6 +5,38 @@
 
 using imageType = curan::image::VolumeReconstructor::output_type;
 
+void updateBaseTexture3D(vsg::floatArray3D& image, imageType::Pointer image_to_render)
+{
+    using OutputPixelType = float;
+    using InputImageType = itk::Image<PixelType, 3>;
+    using OutputImageType = itk::Image<OutputPixelType, Dimension>;
+    using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
+    auto filter = FilterType::New();
+    filter->SetInput(image_to_render);
+
+    using RescaleType = itk::RescaleIntensityImageFilter<OutputImageType, OutputImageType>;
+    auto rescale = RescaleType::New();
+    rescale->SetInput(filter->GetOutput());
+    rescale->SetOutputMinimum(0.0);
+    rescale->SetOutputMaximum(1.0);
+
+    try{
+        rescale->Update();
+    } catch (const itk::ExceptionObject& e) {
+        std::cerr << "Error: " << e << std::endl;
+        throw std::runtime_error("error");
+    }
+
+    OutputImageType::Pointer out = rescale->GetOutput();
+
+    using IteratorType = itk::ImageRegionIteratorWithIndex<OutputImageType>;
+    IteratorType outputIt(out, out->GetRequestedRegion());
+    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+        ImageType::IndexType idx = outputIt.GetIndex();
+        image.set(idx[0], idx[1], idx[2], outputIt.Get());
+    }
+}
+
 void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer>& desired_images){
     // the volume shoud be a box with spacing 1.0 mm in all directions with a size of 2 mm in each side 
     // to fill the volume we create an image with two images 
@@ -30,7 +62,8 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
 
     constexpr long width = 3;
     constexpr long height = 3;
-    constexpr double x_offset = 0.2;
+    constexpr double x_offset = 1;
+    float spacing[3] = {1.0 , 1.0 , 1.0};
 
     imageType::Pointer image_1 = imageType::New();
     imageType::IndexType start_1;
@@ -50,6 +83,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     image_1->SetRegions(region_1);
     image_1->SetDirection(image_orientation);
     image_1->SetOrigin(image_origin);
+    image_1->SetSpacing(spacing);
     image_1->Allocate();
     curan::image::char_pixel_type pixel[width*height];
     curan::image::char_pixel_type pixel_value = 0;
@@ -77,13 +111,14 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     region_2.SetSize(size_2);
     region_2.SetIndex(start_2);
 
-    image_origin[0] = image_origin[0]+ x_offset;
+    image_origin[0] = 0.0;
 	image_origin[1] = 0.0;
-	image_origin[2] = 0.0;
+	image_origin[2] = image_origin[2]+ x_offset;
 
     image_2->SetRegions(region_2);
     image_2->SetDirection(image_orientation);
     image_2->SetOrigin(image_origin);
+    image_2->SetSpacing(spacing);
     image_2->Allocate();
 
     pointer = image_2->GetBufferPointer();
@@ -104,13 +139,14 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     region_3.SetSize(size_3);
     region_3.SetIndex(start_3);
 
-    image_origin[0] = image_origin[0]+ x_offset;
+    image_origin[0] = 0.0;
 	image_origin[1] = 0.0;
-	image_origin[2] = 0.0;
+	image_origin[2] = image_origin[2]+ x_offset;
 
     image_3->SetRegions(region_3);
     image_3->SetDirection(image_orientation);
     image_3->SetOrigin(image_origin);
+    image_3->SetSpacing(spacing);
     image_3->Allocate();
 
     pointer = image_3->GetBufferPointer();
@@ -146,60 +182,59 @@ void create_array_of_rotational_images_around_the_z_axis(std::vector<imageType::
 
 }
 
+void volume_creation(curan::renderable::Window& window){
+    curan::image::VolumeReconstructor volume_reconstructor;
+    std::vector<imageType::Pointer> images;
+    create_array_of_linear_images_in_x_direction(images);
+    volume_reconstructor.add_frames(images);
+    volume_reconstructor.update();
+
+    imageType::Pointer output ;
+    volume_reconstructor.get_output_pointer(output);
+    auto origin = output->GetOrigin();
+    auto spacing = output->GetSpacing();
+    auto size = output->GetLargestPossibleRegion().GetSize();
+
+    std::cout <<  "origin : \n"<< origin << "\n spacing : " << spacing << "\n size : "<< size << std::endl;
+    curan::renderable::Volume::Info volumeinfo;
+    volumeinfo.width = size.GetSize()[0]; 
+    volumeinfo.height = size.GetSize()[1];
+    volumeinfo.depth = size.GetSize()[2];
+    volumeinfo.spacing_x = spacing[0];
+    volumeinfo.spacing_y = spacing[1];
+    volumeinfo.spacing_z = spacing[2];
+    auto volume = curan::renderable::Volume::make(volumeinfo);
+    window << volume;
+
+    auto casted_volume = volume->cast<curan::renderable::Volume>();
+    auto updater = [output](vsg::floatArray3D& image){
+        updateBaseTexture3D(image, output);
+    };
+    casted_volume->update_volume(updater);
+}
+
 int main(){
-    { // first test creates two stacked images in the x direction and reconstructs the volume
-        curan::image::VolumeReconstructor volume_reconstructor;
-        std::vector<imageType::Pointer> images;
-        create_array_of_linear_images_in_x_direction(images);
-        volume_reconstructor.add_frames(images);
-        volume_reconstructor.update();
-        imageType::Pointer output ;
-        volume_reconstructor.get_output_pointer(output);
-        auto origin = output->GetOrigin();
-        auto spacing = output->GetSpacing();
-        std::printf("origin : (%f) (%f) (%f) \nspacing : (%f) (%f) (%f)\n",origin[0],origin[1],origin[2],spacing[0],spacing[1],spacing[2]);
-    }
+    curan::renderable::Window::Info info;
+    info.api_dump = false;
+    info.display = "";
+    info.full_screen = false;
+    info.is_debug = false;
+    info.screen_number = 0;
+    info.title = "myviewer";
+    curan::renderable::Window::WindowSize size{1000, 800};
+    info.window_size = size;
+    curan::renderable::Window window{info};
 
- /*    {// first test creates two stacked images in the x direction and reconstructs the volume
-        curan::image::VolumeReconstructor volume_reconstructor;
-        std::vector<imageType::Pointer> images;
-        create_array_of_linear_images_in_y_direction(images);
-        volume_reconstructor.add_frames(images);
-        volume_reconstructor.update();
-    }
+    std::thread volume_reconstruction{[&](){ volume_creation(window); }};
+    window.run();
+    volume_reconstruction.join();
 
-
-    {// first test creates two stacked images in the x direction and reconstructs the volume
-        curan::image::VolumeReconstructor volume_reconstructor;
-        std::vector<imageType::Pointer> images;
-        create_array_of_linear_images_in_z_direction(images);
-        volume_reconstructor.add_frames(images);
-        volume_reconstructor.update();
-    }
-
-
-    {  // first test creates two stacked images in the x direction and reconstructs the volume 
-        curan::image::VolumeReconstructor volume_reconstructor;
-        std::vector<imageType::Pointer> images;
-        create_array_of_rotational_images_around_the_x_axis(images);
-        volume_reconstructor.add_frames(images);
-        volume_reconstructor.update();
-    }
-
-    {// first test creates two stacked images in the x direction and reconstructs the volume
-        curan::image::VolumeReconstructor volume_reconstructor;
-        std::vector<imageType::Pointer> images;
-        create_array_of_rotational_images_around_the_y_axis(images);
-        volume_reconstructor.add_frames(images);
-        volume_reconstructor.update();
-    }
-
-    {// first test creates two stacked images in the x direction and reconstructs the volume
-        curan::image::VolumeReconstructor volume_reconstructor;
-        std::vector<imageType::Pointer> images;
-        create_array_of_rotational_images_around_the_z_axis(images);
-        volume_reconstructor.add_frames(images);
-        volume_reconstructor.update();
-    } */
+    window.transverse_identifiers(
+            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
+                   &map) {
+                for (auto &p : map){
+                    std::cout << "Object contained: " << p.first << '\n';
+                }
+    });
     return 0;
 }
