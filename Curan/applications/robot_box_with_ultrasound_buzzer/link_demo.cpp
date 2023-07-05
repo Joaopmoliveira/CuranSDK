@@ -119,17 +119,19 @@ int render(std::shared_ptr<SharedRobotState> state)
             temp_pos = current_position.load();
             vsg::vec3 origin(temp_pos[0],temp_pos[1],temp_pos[2]);
             casted_box->update_frame(origin);
-            if(current_distance<7.0){
+            //std::cout << current_distance.load() << std::endl;
+            if(current_distance.load()<7.0){
                 if(!already_recording){
                     already_recording = true;
                     start = std::chrono::steady_clock::now();
                     continue;
                 }
                 std::chrono::steady_clock::time_point current = std::chrono::steady_clock::now();
-                if(std::chrono::duration_cast<std::chrono::milliseconds>(current - start)>std::chrono::milliseconds(1000))
+                if(std::chrono::duration_cast<std::chrono::milliseconds>(current - start).count()>std::chrono::milliseconds(1000).count())
                     break;
-            }
+            } else {
             already_recording = false;
+            }
         }
         already_recording = false;
         vsg::vec3 origin_fixed = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
@@ -140,17 +142,18 @@ int render(std::shared_ptr<SharedRobotState> state)
             temp_pos = current_position.load();
             vsg::vec3 origin(temp_pos[0],temp_pos[1],temp_pos[2]);
             casted_box->update_frame(origin_fixed,origin);
-            if(current_distance<7.0){
+            if(current_distance.load()<7.0){
                 if(!already_recording){
                     already_recording = true;
                     start = std::chrono::steady_clock::now();
                     continue;
                 }
                 std::chrono::steady_clock::time_point current = std::chrono::steady_clock::now();
-                if(std::chrono::duration_cast<std::chrono::milliseconds>(current - start)>std::chrono::milliseconds(1000))
+                if(std::chrono::duration_cast<std::chrono::milliseconds>(current - start).count()>std::chrono::milliseconds(1000).count())
                     break;
-            }
+            } else {
             already_recording = false;
+            }
         }
         already_recording = false;
         auto xdir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
@@ -161,17 +164,18 @@ int render(std::shared_ptr<SharedRobotState> state)
             temp_pos = current_position.load();
             vsg::vec3 origin(temp_pos[0],temp_pos[1],temp_pos[2]);
             casted_box->update_frame(origin_fixed,xdir,origin);
-            if(current_distance<7.0){
+            if(current_distance.load()<7.0){
                 if(!already_recording){
                     already_recording = true;
                     start = std::chrono::steady_clock::now();
                     continue;
                 }
                 std::chrono::steady_clock::time_point current = std::chrono::steady_clock::now();
-                if(std::chrono::duration_cast<std::chrono::milliseconds>(current - start)>std::chrono::milliseconds(1000))
+                if(std::chrono::duration_cast<std::chrono::milliseconds>(current - start).count()>std::chrono::milliseconds(1000).count())
                     break;
-            }
+            } else {
             already_recording = false;
+            }
         }
         already_recording = false;
         auto ydir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
@@ -182,17 +186,18 @@ int render(std::shared_ptr<SharedRobotState> state)
             temp_pos = current_position.load();
             vsg::vec3 origin(temp_pos[0],temp_pos[1],temp_pos[2]);
             casted_box->update_frame(origin_fixed,xdir,ydir,origin);
-            if(current_distance<7.0){
+            if(current_distance.load()<7.0){
                 if(!already_recording){
                     already_recording = true;
                     start = std::chrono::steady_clock::now();
                     continue;
                 }
                 std::chrono::steady_clock::time_point current = std::chrono::steady_clock::now();
-                if(std::chrono::duration_cast<std::chrono::milliseconds>(current - start)>std::chrono::milliseconds(1000))
+                if(std::chrono::duration_cast<std::chrono::milliseconds>(current - start).count()>std::chrono::milliseconds(1000).count())
                     break;
-            }
+            } else {
             already_recording = false;
+            }
         }
         already_recording = false;
         auto zdir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
