@@ -157,6 +157,7 @@ ${ITK_LIBRARIES}
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+userinterface
 )
 
 add_executable(RobotDisplay

@@ -26,16 +26,46 @@
 #include "itkExtractImageFilter.h"
 #include "itkCommand.h"
 
+#include "userinterface/widgets/ImageDisplay.h"
+#include "userinterface/widgets/Page.h"
+#include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/Window.h"
+
 double pi = std::atan(1)*4;
 
 using PixelType = float;
+using PixelType_char = unsigned char;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
+using ImageType_char = itk::Image<PixelType_char, 2>;
 using TransformType = itk::VersorRigid3DTransform<double>;
 
 using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
 using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageType, ImageType>;
 using RegistrationType = itk::ImageRegistrationMethodv4<ImageType, ImageType, TransformType>;
+
+void function(curan::ui::ImageDisplay* image_display){
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    using ImageReaderType = itk::ImageFileReader<ImageType_char>;
+    auto ImageReader = ImageReaderType::New();
+
+    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/BrainProtonDensitySlice.png"};
+    ImageReader->SetFileName(dirName);
+    ImageReader->Update();
+
+    
+    ImageType_char::Pointer pointer_to_block_of_memory = ImageReader->GetOutput();
+    auto lam = [pointer_to_block_of_memory](SkPixmap& requested) {
+        ImageType_char::RegionType region = pointer_to_block_of_memory->GetLargestPossibleRegion();
+        ImageType_char::SizeType size_itk = region.GetSize();
+	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+	    size_t row_size = size_itk.GetSize()[0] * sizeof(char);
+	    SkPixmap map{inf,pointer_to_block_of_memory->GetBufferPointer(),row_size};
+	    requested = map;
+	    return;
+    };
+    image_display->update_image(lam);
+}
 
 void updateBaseTexture3D(vsg::floatArray3D& image, ImageType::Pointer image_to_render)
 {
@@ -330,94 +360,94 @@ registration->SetMetricSamplingPercentage(samplingPercentage);
 registration->MetricSamplingReinitializeSeed(121213);
 
 try{
-    ImageType::RegionType region = pointer2fixedimage->GetLargestPossibleRegion();
-    ImageType::SizeType size_itk = region.GetSize();
-    ImageType::SpacingType spacing = pointer2fixedimage->GetSpacing();
-    
-    curan::renderable::Window::Info info;
-    info.api_dump = false;
-    info.display = "";
-    info.full_screen = false;
-    info.is_debug = false;
-    info.screen_number = 0;
-    info.title = "myviewer";
-    curan::renderable::Window::WindowSize size{1000, 800};
-    info.window_size = size;
-    curan::renderable::Window window{info};
+  ImageType::RegionType region = pointer2fixedimage->GetLargestPossibleRegion();
+  ImageType::SizeType size_itk = region.GetSize();
+  ImageType::SpacingType spacing = pointer2fixedimage->GetSpacing();
+  
+  curan::renderable::Window::Info info;
+  info.api_dump = false;
+  info.display = "";
+  info.full_screen = false;
+  info.is_debug = false;
+  info.screen_number = 0;
+  info.title = "myviewer";
+  curan::renderable::Window::WindowSize size{1000, 800};
+  info.window_size = size;
+  curan::renderable::Window window{info};
 
-    curan::renderable::Volume::Info volumeinfo;
-    volumeinfo.width = size_itk.GetSize()[0]; 
-    volumeinfo.height = size_itk.GetSize()[1];
-    volumeinfo.depth = size_itk.GetSize()[2];
-    volumeinfo.spacing_x = spacing[0];
-    volumeinfo.spacing_y = spacing[1];
-    volumeinfo.spacing_z = spacing[2];
+  curan::renderable::Volume::Info volumeinfo;
+  volumeinfo.width = size_itk.GetSize()[0]; 
+  volumeinfo.height = size_itk.GetSize()[1];
+  volumeinfo.depth = size_itk.GetSize()[2];
+  volumeinfo.spacing_x = spacing[0];
+  volumeinfo.spacing_y = spacing[1];
+  volumeinfo.spacing_z = spacing[2];
 
 
 
-    auto volume_fixed = curan::renderable::Volume::make(volumeinfo);
-    window << volume_fixed;
+  auto volume_fixed = curan::renderable::Volume::make(volumeinfo);
+  window << volume_fixed;
 
-    auto casted_volume_fixed = volume_fixed->cast<curan::renderable::Volume>();
-    auto updater = [pointer2fixedimage](vsg::floatArray3D& image){
-        updateBaseTexture3D(image, pointer2fixedimage);
-    };
-    casted_volume_fixed->update_volume(updater);
+  auto casted_volume_fixed = volume_fixed->cast<curan::renderable::Volume>();
+  auto updater = [pointer2fixedimage](vsg::floatArray3D& image){
+      updateBaseTexture3D(image, pointer2fixedimage);
+  };
+  casted_volume_fixed->update_volume(updater);
 
-    //std::printf("fixed image dimension x(%i) y(%i) z(%i)\n",volumeinfo.width,volumeinfo.height,volumeinfo.depth);
+  //std::printf("fixed image dimension x(%i) y(%i) z(%i)\n",volumeinfo.width,volumeinfo.height,volumeinfo.depth);
 
-    ImageType::RegionType region_moving = pointer2movingimage->GetLargestPossibleRegion();
-    ImageType::SizeType size_itk_moving = region_moving.GetSize();
-    ImageType::SpacingType spacing_moving = pointer2movingimage->GetSpacing();
+  ImageType::RegionType region_moving = pointer2movingimage->GetLargestPossibleRegion();
+  ImageType::SizeType size_itk_moving = region_moving.GetSize();
+  ImageType::SpacingType spacing_moving = pointer2movingimage->GetSpacing();
 
-    volumeinfo.width = size_itk_moving.GetSize()[0]; 
-    volumeinfo.height = size_itk_moving.GetSize()[1];
-    volumeinfo.depth = size_itk_moving.GetSize()[2];
-    volumeinfo.spacing_x = spacing_moving[0];
-    volumeinfo.spacing_y = spacing_moving[1];
-    volumeinfo.spacing_z = spacing_moving[2];
+  volumeinfo.width = size_itk_moving.GetSize()[0]; 
+  volumeinfo.height = size_itk_moving.GetSize()[1];
+  volumeinfo.depth = size_itk_moving.GetSize()[2];
+  volumeinfo.spacing_x = spacing_moving[0];
+  volumeinfo.spacing_y = spacing_moving[1];
+  volumeinfo.spacing_z = spacing_moving[2];
 
-    //std::printf("moving image dimension x(%i) y(%i) z(%i)\n",volumeinfo.width,volumeinfo.height,volumeinfo.depth);
+  //std::printf("moving image dimension x(%i) y(%i) z(%i)\n",volumeinfo.width,volumeinfo.height,volumeinfo.depth);
 
-   
+  
 
-    auto volume_moving = curan::renderable::Volume::make(volumeinfo);
-    window << volume_moving;
+  auto volume_moving = curan::renderable::Volume::make(volumeinfo);
+  window << volume_moving;
 
-    auto casted_volume_moving = volume_moving->cast<curan::renderable::Volume>();
-    auto updater_moving = [pointer2movingimage](vsg::floatArray3D& image){
-        updateBaseTexture3D(image, pointer2movingimage);
-    };
+  auto casted_volume_moving = volume_moving->cast<curan::renderable::Volume>();
+  auto updater_moving = [pointer2movingimage](vsg::floatArray3D& image){
+      updateBaseTexture3D(image, pointer2movingimage);
+  };
 
-    casted_volume_moving->update_volume(updater_moving);
-    //casted_volume_moving->update_transform(vsg::translate(0.3,0.0,0.0));
+  casted_volume_moving->update_volume(updater_moving);
+  //casted_volume_moving->update_transform(vsg::translate(0.3,0.0,0.0));
 
-    using CommanddType2 = CommandIterationUpdate;
-    auto observer = CommanddType2::New();
-    observer->set_pointer(casted_volume_moving);
-    optimizer->AddObserver(itk::StartEvent(), observer);
-    optimizer->AddObserver(itk::IterationEvent(), observer);
-    optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
-    optimizer->AddObserver(itk::EndEvent(), observer);
+  using CommanddType2 = CommandIterationUpdate;
+  auto observer = CommanddType2::New();
+  observer->set_pointer(casted_volume_moving);
+  optimizer->AddObserver(itk::StartEvent(), observer);
+  optimizer->AddObserver(itk::IterationEvent(), observer);
+  optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
+  optimizer->AddObserver(itk::EndEvent(), observer);
 
   using CommandType = RegistrationInterfaceCommand<RegistrationType>;
   auto command = CommandType::New();
   registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
     
-    auto mover = [&registration](){
-        registration->Update();
-    };
-    std::thread mover_thread{mover};
-    window.run();
-    mover_thread.join();
-    
-    window.transverse_identifiers(
-            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
-                   &map) {
-                for (auto &p : map){
-                    std::cout << "Object contained: " << p.first << '\n';
-                }
-    });
+  auto mover = [&registration](){
+      registration->Update();
+  };
+  std::thread mover_thread{mover};
+  window.run();
+  mover_thread.join();
+  
+  window.transverse_identifiers(
+          [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
+                  &map) {
+              for (auto &p : map){
+                  std::cout << "Object contained: " << p.first << '\n';
+              }
+  });
 
 } catch (const std::exception& e) {
      std::cerr << "Exception thrown : " << e.what() << std::endl;
@@ -623,6 +653,61 @@ const TransformType::ParametersType finalParameters =
   std::string Output7{"sliceAfterRegistration.png"};
   sliceWriter->SetFileName(Output7);
   sliceWriter->Update();
+
+  try {
+    using namespace curan::ui;
+    std::unique_ptr<Context> context = std::make_unique<Context>();;
+    DisplayParams param{ std::move(context),600,600 };
+    std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+
+    std::unique_ptr<ImageDisplay> image_display = ImageDisplay::make();
+    image_display->set_size(SkRect::MakeWH(500,500));
+    ImageDisplay* pointer_to = image_display.get();
+    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+    *container << std::move(image_display);
+    curan::ui::Page page{std::move(container),SK_ColorBLACK};
+
+    auto call = [pointer_to](){
+        function(pointer_to);
+    };
+
+    std::thread image_generator(call);
+
+    auto rec = viewer->get_size();
+    int width = rec.width();
+    int height = rec.height();
+
+    ConfigDraw config{&page};
+
+    while (!glfwWindowShouldClose(viewer->window)) {
+        auto start = std::chrono::high_resolution_clock::now();
+        SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
+        auto temp_height = pointer_to_surface->height();
+        auto temp_width = pointer_to_surface->width();
+        SkCanvas* canvas = pointer_to_surface->getCanvas();
+        if (temp_height != height || temp_width != width) {
+            rec = SkRect::MakeWH(temp_width, temp_height);
+            page.propagate_size_change(rec);
+        }
+        page.draw(canvas);
+        auto signals = viewer->process_pending_signals();
+        if (!signals.empty())
+            page.propagate_signal(signals.back(),&config);
+        glfwPollEvents();
+    
+        bool val = viewer->swapBuffers();
+        if (!val)
+            std::cout << "failed to swap buffers\n";
+        auto end = std::chrono::high_resolution_clock::now();
+        std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+    }
+    image_generator.join();
+    return 0;   
+    }
+catch (std::exception & e ) {
+    std::cout << "Failed: " << e.what() << std::endl;
+    return 1;
+}
 // clean up done automatically thanks to ref_ptr<>
 return 0;
 }

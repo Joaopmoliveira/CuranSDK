@@ -1,0 +1,59 @@
+ <PlusConfiguration version="2.1">
+  <DataCollection StartupDelaySec="1.0">
+    <DeviceSet 
+      Name="Saved Data from file"
+      Description="Programa de testes Saved Data Device." />
+	
+	<Device
+      Id="SavedDataDevice"
+      Type="SavedDataSource"
+      SequenceFile="reconst_test_1.mha"
+      UseData="IMAGE_AND_TRANSFORM"
+      UseOriginalTimestamps="TRUE"
+      ToolReferenceFrame="Tracker"
+      RepeatEnabled="TRUE" >
+      <DataSources>
+        <DataSource Type="Video" Id="Video" BufferSize="100" />
+      </DataSources>
+      <OutputChannels>
+        <OutputChannel Id="SavedVideoStream" VideoDataSourceId="Video" />
+      </OutputChannels>
+    </Device>
+	
+	<Device 
+		Id="VideoMixer" 
+		Type="VirtualMixer" >
+		<InputChannels>
+			<InputChannel Id="SavedVideoStream" />
+		</InputChannels>
+		<OutputChannels>
+			<OutputChannel Id="MixedStream"/>
+		</OutputChannels>
+	</Device>
+	
+	
+  </DataCollection>
+  
+
+  <PlusOpenIGTLinkServer 
+    	MaxNumberOfIgtlMessagesToSend="10" 
+    	MaxTimeSpentWithProcessingMs="50" 
+    	ListeningPort="18944" 
+    	SendValidTransformsOnly="true" 
+    	OutputChannelId="MixedStream" > 
+    	<DefaultClientInfo> 
+      		<MessageTypes> 
+        		<Message Type="IMAGE" />
+				<Message Type="TRANSFORM" />
+      		</MessageTypes>
+      		<TransformNames> 
+				<Transform Name="TrackerToPolaris"/>
+      		</TransformNames>
+			<ImageNames>
+				<Image Name="Image" EmbeddedTransformToFrame="Image"/>
+			</ImageNames>
+    	</DefaultClientInfo>
+  </PlusOpenIGTLinkServer> 
+  
+ 
+</PlusConfiguration>

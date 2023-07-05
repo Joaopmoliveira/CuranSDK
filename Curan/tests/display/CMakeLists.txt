@@ -1,3 +1,8 @@
+find_package(ITK CONFIG REQUIRED)
+
+include(${ITK_USE_FILE})
+
+
 add_executable(modified_test_user_interface test_user_interface.cpp)
 
 target_compile_definitions(modified_test_user_interface PRIVATE SK_VULKAN)
@@ -94,4 +99,17 @@ target_compile_definitions(modified_skia_playground PRIVATE CURAN_COPIED_RESOURC
 
 target_link_libraries(modified_skia_playground PUBLIC
 userinterface
+)
+
+
+
+
+add_executable(test_image_visualization test_image_visualization.cpp)
+
+target_compile_definitions(test_image_visualization PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_image_visualization
+PUBLIC
+userinterface
+${ITK_LIBRARIES}
 )
