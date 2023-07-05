@@ -30,13 +30,6 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 
-add_executable(test_volume_reconstruction test_volume_creation.cpp)
-
-target_link_libraries(test_volume_reconstruction PUBLIC
-imageprocessing
-${ITK_LIBRARIES}
-)
-
 add_executable(test_manel_itk test_itk_manel.cpp)
 
 target_compile_definitions(test_manel_itk PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -72,6 +65,17 @@ add_executable(test_manel_itk4 test_itk_manel4.cpp)
 target_compile_definitions(test_manel_itk4 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(test_manel_itk4 PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+add_executable(test_volume_reconstruction test_volume_creation.cpp)
+
+target_compile_definitions(test_volume_reconstruction PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_volume_reconstruction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_volume_reconstruction
+PUBLIC
+renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )

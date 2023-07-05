@@ -1,4 +1,7 @@
 #include "imageprocessing/VolumeReconstructor.h"
+#include "rendering/Volume.h"
+#include "rendering/Window.h"
+#include "rendering/Renderable.h"
 
 using imageType = curan::image::VolumeReconstructor::output_type;
 
@@ -27,6 +30,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
 
     constexpr long width = 3;
     constexpr long height = 3;
+    constexpr double x_offset = 0.2;
 
     imageType::Pointer image_1 = imageType::New();
     imageType::IndexType start_1;
@@ -73,6 +77,10 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     region_2.SetSize(size_2);
     region_2.SetIndex(start_2);
 
+    image_origin[0] = image_origin[0]+ x_offset;
+	image_origin[1] = 0.0;
+	image_origin[2] = 0.0;
+
     image_2->SetRegions(region_2);
     image_2->SetDirection(image_orientation);
     image_2->SetOrigin(image_origin);
@@ -95,6 +103,10 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     imageType::RegionType region_3;
     region_3.SetSize(size_3);
     region_3.SetIndex(start_3);
+
+    image_origin[0] = image_origin[0]+ x_offset;
+	image_origin[1] = 0.0;
+	image_origin[2] = 0.0;
 
     image_3->SetRegions(region_3);
     image_3->SetDirection(image_orientation);
@@ -141,6 +153,11 @@ int main(){
         create_array_of_linear_images_in_x_direction(images);
         volume_reconstructor.add_frames(images);
         volume_reconstructor.update();
+        imageType::Pointer output ;
+        volume_reconstructor.get_output_pointer(output);
+        auto origin = output->GetOrigin();
+        auto spacing = output->GetSpacing();
+        std::printf("origin : (%f) (%f) (%f) \nspacing : (%f) (%f) (%f)\n",origin[0],origin[1],origin[2],spacing[0],spacing[1],spacing[2]);
     }
 
  /*    {// first test creates two stacked images in the x direction and reconstructs the volume
