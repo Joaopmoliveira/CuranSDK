@@ -8,8 +8,8 @@ using imageType = curan::image::VolumeReconstructor::output_type;
 void updateBaseTexture3D(vsg::floatArray3D& image, imageType::Pointer image_to_render)
 {
     using OutputPixelType = float;
-    using InputImageType = itk::Image<PixelType, 3>;
-    using OutputImageType = itk::Image<OutputPixelType, Dimension>;
+    using InputImageType = itk::Image<unsigned char, 3>;
+    using OutputImageType = itk::Image<OutputPixelType, 3>;
     using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
     auto filter = FilterType::New();
     filter->SetInput(image_to_render);
@@ -32,7 +32,8 @@ void updateBaseTexture3D(vsg::floatArray3D& image, imageType::Pointer image_to_r
     using IteratorType = itk::ImageRegionIteratorWithIndex<OutputImageType>;
     IteratorType outputIt(out, out->GetRequestedRegion());
     for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
-        ImageType::IndexType idx = outputIt.GetIndex();
+        imageType::IndexType idx = outputIt.GetIndex();
+        std::cout << "value: " << outputIt.Get() << std::endl;
         image.set(idx[0], idx[1], idx[2], outputIt.Get());
     }
 }
@@ -89,7 +90,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     curan::image::char_pixel_type pixel_value = 0;
     for(size_t y = 0; y < height ; ++y)
         for(size_t x = 0; x < width ; ++x){
-            pixel[x+y*height] = pixel_value;
+            pixel[x+y*height] = 255-pixel_value;
             ++pixel_value;
         }
 
@@ -183,19 +184,44 @@ void create_array_of_rotational_images_around_the_z_axis(std::vector<imageType::
 }
 
 void volume_creation(curan::renderable::Window& window){
-    curan::image::VolumeReconstructor volume_reconstructor;
+
     std::vector<imageType::Pointer> images;
     create_array_of_linear_images_in_x_direction(images);
-    volume_reconstructor.add_frames(images);
-    volume_reconstructor.update();
 
-    imageType::Pointer output ;
-    volume_reconstructor.get_output_pointer(output);
-    auto origin = output->GetOrigin();
-    auto spacing = output->GetSpacing();
-    auto size = output->GetLargestPossibleRegion().GetSize();
+	curan::image::VolumeReconstructor reconstructor;
 
-    std::cout <<  "origin : \n"<< origin << "\n spacing : " << spacing << "\n size : "<< size << std::endl;
+    itk::Vector<double,3> spacing;
+    spacing[0] = 1.0;
+    spacing[1] = 1.0;
+    spacing[2] = 1.0;
+
+    std::array<double,2> clip_origin = {0.0,0.0};
+    std::array<double,2> clip_size = {3.0,3.0};
+
+	reconstructor.set_output_spacing(spacing);
+	reconstructor.set_fill_strategy(curan::image::VolumeReconstructor::FillingStrategy::GAUSSIAN);
+	reconstructor.set_clipping_bounds(clip_origin, clip_size);
+	reconstructor.add_frames(images);
+
+	std::cout << "Started volumetric reconstruction: \n";
+	reconstructor.update();
+	std::cout << "Finished volumetric reconstruction: \n";
+
+	std::cout << "Started volumetric filling: \n";
+	curan::image::VolumeReconstructor::KernelDescriptor descript;
+	descript.fillType = curan::image::VolumeReconstructor::FillingStrategy::DISTANCE_WEIGHT_INVERSE;
+	descript.size = 5;
+	descript.stdev = 1;
+	descript.minRatio = 0.1;
+	reconstructor.add_kernel_descritor(descript);
+	reconstructor.fill_holes();
+	std::cout << "Finished volumetric filling: \n";
+
+	curan::image::VolumeReconstructor::output_type::Pointer buffer;
+	reconstructor.get_output_pointer(buffer);
+
+    auto size = buffer->GetLargestPossibleRegion().GetSize();
+
     curan::renderable::Volume::Info volumeinfo;
     volumeinfo.width = size.GetSize()[0]; 
     volumeinfo.height = size.GetSize()[1];
@@ -207,8 +233,8 @@ void volume_creation(curan::renderable::Window& window){
     window << volume;
 
     auto casted_volume = volume->cast<curan::renderable::Volume>();
-    auto updater = [output](vsg::floatArray3D& image){
-        updateBaseTexture3D(image, output);
+    auto updater = [buffer](vsg::floatArray3D& image){
+        updateBaseTexture3D(image, buffer);
     };
     casted_volume->update_volume(updater);
 }
