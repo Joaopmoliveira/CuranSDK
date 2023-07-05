@@ -12,6 +12,7 @@
 #include "itkImageRegistrationMethodv4.h"
 #include "itkMeanSquaresImageToImageMetricv4.h"
 #include "itkEuler3DTransform.h"
+#include "itkScaleTransform.h"
 #include "itkMattesMutualInformationImageToImageMetricv4.h"
 #include "itkVersorRigid3DTransform.h"
 #include "itkCenteredTransformInitializer.h"
@@ -106,9 +107,9 @@ public:
 
     std::cout << "-------------------------------------" << std::endl;
     std::cout << " Current level = " << currentLevel +1 << std::endl;
-    std::cout << "    shrink factor = " << shrinkFactors << std::endl;
+    /* std::cout << "    shrink factor = " << shrinkFactors << std::endl;
     std::cout << "    smoothing sigma = ";
-    std::cout << smoothingSigmas[currentLevel] << std::endl;
+    std::cout << smoothingSigmas[currentLevel] << std::endl; */
     std::cout << std::endl;
 
     /* if (registration->GetCurrentLevel() == 0)
@@ -166,9 +167,9 @@ public:
         moving_pointer_to_volume->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(vsg::radians(-pos[0]),1.0,0.0,0.0)*vsg::rotate(vsg::radians(-pos[1]),0.0,1.0,0.0)*vsg::rotate(vsg::radians(-pos[2]),0.0,0.0,1.0));
       }
   
-      std::cout << optimizer->GetCurrentIteration() << "   ";
+      /* std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
-      std::cout << optimizer->GetCurrentPosition() << std::endl;
+      std::cout << optimizer->GetCurrentPosition() << std::endl; */
       std::this_thread::sleep_for(std::chrono::milliseconds(8));
 
     } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
@@ -208,12 +209,9 @@ int main(int argc, char** argv) {
 
 
   std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
-  //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/ct_fixed.mha"};
   fixedImageReader->SetFileName(dirName);
 
   std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
-  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move.mha"};
-  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
   movingImageReader->SetFileName(dirName2);
 
   try{
@@ -245,7 +243,8 @@ initializer->SetFixedImage(fixedImageReader->GetOutput());
 initializer->SetMovingImage(movingImageReader->GetOutput());
 
 
-initializer->MomentsOn();
+//initializer->MomentsOn();
+initializer->GeometryOn();
 
 initializer->InitializeTransform();
 
@@ -253,21 +252,28 @@ using VersorType = TransformType::VersorType;
 using VectorType = VersorType::VectorType;
 VersorType rotation;
 VectorType axis;
-axis[0] = 0.0137631;
-axis[1] =  -0.000711808;
-axis[2] = -0.0410878;
-constexpr double angle = 1.0*(3.1415926535/180);
+axis[0] = 0.3165373;
+axis[1] =  -0.0143763;
+axis[2] = -0.9484711;
+constexpr double angle = 0.0875013;
 rotation.Set(axis, angle);
 VectorType translation;
-translation[0] = 5.3317+4.64537 +40; //+17.165       +00;
-translation[1] = -5.93364-17.4216; //-33.6491    +00;
-translation[2] = -15.0983-25.9184; //-21.472       ;
+translation[0] =17.7001  +0;
+translation[1] = -33.3714;
+translation[2] = -21.292;
+VectorType offset1;
+offset1[0] = 4.57104;
+offset1[1] = -17.3421;
+offset1[2] = -25.9166;
 initialTransform->SetRotation(rotation);
 initialTransform->SetTranslation(translation);
+initialTransform->SetOffset(offset1);
 initialTransform_2->SetRotation(rotation);
 initialTransform_2->SetTranslation(translation);
+initialTransform_2->SetOffset(offset1);
 std::cout << "initial transform matrix: " << initialTransform->GetMatrix() << std::endl;
 std::cout << "initial transform offset: " << initialTransform->GetOffset() << std::endl << std::endl;
+std::cout << "initial transform 2 offset: " << initialTransform_2->GetOffset() << std::endl << std::endl;
 
 std::cout << "initial translaction: " << initialTransform->GetTranslation() << std::endl;
 std::cout << "initial rotation: " << initialTransform->GetVersor() << std::endl;
@@ -286,7 +292,7 @@ optimizerScales[4] = translationScale;
 optimizerScales[5] = translationScale;
 optimizer->SetScales(optimizerScales);
 optimizer->SetNumberOfIterations(2000);
-optimizer->SetLearningRate(5);
+optimizer->SetLearningRate(1);
 optimizer->SetMinimumStepLength(0.001);
 optimizer->SetReturnBestParametersAndValue(true);
 optimizer->SetNumberOfThreads(8);
@@ -347,6 +353,8 @@ try{
     volumeinfo.spacing_y = spacing[1];
     volumeinfo.spacing_z = spacing[2];
 
+
+
     auto volume_fixed = curan::renderable::Volume::make(volumeinfo);
     window << volume_fixed;
 
@@ -388,9 +396,9 @@ try{
     auto observer = CommanddType2::New();
     observer->set_pointer(casted_volume_moving);
     optimizer->AddObserver(itk::StartEvent(), observer);
-  optimizer->AddObserver(itk::IterationEvent(), observer);
-  optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
-  optimizer->AddObserver(itk::EndEvent(), observer);
+    optimizer->AddObserver(itk::IterationEvent(), observer);
+    optimizer->AddObserver(itk::MultiResolutionIterationEvent(), observer);
+    optimizer->AddObserver(itk::EndEvent(), observer);
 
   using CommandType = RegistrationInterfaceCommand<RegistrationType>;
   auto command = CommandType::New();
@@ -451,6 +459,9 @@ const TransformType::ParametersType finalParameters =
   TransformType::OffsetType offset = finalTransform->GetOffset();
   std::cout << std::endl << "Matrix = " << std::endl << matrix << std::endl;
   std::cout << "Offset = " << std::endl << offset << std::endl;
+
+  std::cout << "final translaction: " << finalTransform->GetTranslation() << std::endl;
+  std::cout << "final versor: " << finalTransform->GetVersor() << std::endl;  
  
   using ResampleFilterType =
     itk::ResampleImageFilter<ImageType, ImageType>;
@@ -485,7 +496,7 @@ const TransformType::ParametersType finalParameters =
   resampler->SetOutputOrigin(fixedImage->GetOrigin());
   resampler->SetOutputSpacing(fixedImage->GetSpacing());
   resampler->SetOutputDirection(fixedImage->GetDirection());
-  resampler->SetDefaultPixelValue(1);
+  resampler->SetDefaultPixelValue(0);
 
   using OutputPixelType = unsigned char;
   using OutputImageType = itk::Image<OutputPixelType, Dimension>;
@@ -526,7 +537,7 @@ const TransformType::ParametersType finalParameters =
   difference->SetInput1(fixedImageReader->GetOutput());
   difference->SetInput2(resampler->GetOutput());
 
-  resampler->SetDefaultPixelValue(1);
+  resampler->SetDefaultPixelValue(0);
 
   auto writer2 = WriterType::New();
   writer2->SetInput(intensityRescaler->GetOutput());
@@ -562,19 +573,22 @@ const TransformType::ParametersType finalParameters =
   extractor->SetDirectionCollapseToSubmatrix();
   extractor->InPlaceOn();
 
-  ImageType::RegionType inputRegion =
-    fixedImage->GetLargestPossibleRegion();
+  ImageType::RegionType inputRegion = fixedImage->GetLargestPossibleRegion();
   ImageType::SizeType  size = inputRegion.GetSize();
   ImageType::IndexType start = inputRegion.GetIndex();
+  ImageType::SpacingType spacing = pointer2fixedimage->GetSpacing();
+
+  std::cout << "Image spacing: " << spacing << std::endl;
 
   // Select one slice as output
-  /* size[2] = 0;
-  start[2] = 20; */
-  size[1] = 0;
-  start[1] = 256;
+  size[2] = 0;
+  start[2] = 20;
+  /* size[1] = 0;
+  start[1] = 256; */
   ImageType::RegionType desiredRegion;
   desiredRegion.SetSize(size);
   desiredRegion.SetIndex(start);
+
   extractor->SetExtractionRegion(desiredRegion);
   using SliceWriterType = itk::ImageFileWriter<OutputSliceType>;
   auto sliceWriter = SliceWriterType::New();
