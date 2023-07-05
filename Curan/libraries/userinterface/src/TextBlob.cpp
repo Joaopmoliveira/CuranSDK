@@ -22,9 +22,7 @@ TextBlob::TextBlob(const std::string& s) : text_to_compile{s} {
 	const char* fontFamily = nullptr;
 	SkFontStyle fontStyle;
 	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-	text_font = SkFont(typeface, 10, 1.0f, 0.0f);
-	text_font.setEdging(SkFont::Edging::kAntiAlias);
+	typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 }
 
 std::unique_ptr<TextBlob> TextBlob::make(const std::string& button_text) {
@@ -92,6 +90,8 @@ void TextBlob::framebuffer_resize() {
 }
 
 void TextBlob::compile(){
+	auto text_font = SkFont(typeface, font_size, 1.0f, 0.0f);
+	text_font.setEdging(SkFont::Edging::kAntiAlias);
 	text_font.measureText(text_to_compile.data(), text_to_compile.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(text_to_compile.c_str(), text_font);
 	compiled = true;
