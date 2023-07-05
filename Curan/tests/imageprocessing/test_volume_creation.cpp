@@ -87,11 +87,11 @@ void create_array_of_linear_images_in_x_direction(std::vector<imageType::Pointer
     image_1->SetSpacing(spacing);
     image_1->Allocate();
     curan::image::char_pixel_type pixel[width*height];
-    curan::image::char_pixel_type pixel_value = 0;
+    curan::image::char_pixel_type pixel_value = 125;
     for(size_t y = 0; y < height ; ++y)
         for(size_t x = 0; x < width ; ++x){
             pixel[x+y*height] = 255-pixel_value;
-            ++pixel_value;
+            pixel_value-=10;
         }
 
     auto pointer = image_1->GetBufferPointer();
