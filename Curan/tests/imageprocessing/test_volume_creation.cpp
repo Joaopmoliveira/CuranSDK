@@ -229,6 +229,7 @@ void volume_creation(curan::renderable::Window& window){
     volumeinfo.spacing_x = spacing[0];
     volumeinfo.spacing_y = spacing[1];
     volumeinfo.spacing_z = spacing[2];
+    
     auto volume = curan::renderable::Volume::make(volumeinfo);
     window << volume;
 
