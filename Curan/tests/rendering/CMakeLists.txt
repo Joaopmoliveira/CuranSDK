@@ -131,6 +131,20 @@ vsgXchange::vsgXchange
 renderable
 )
 
+add_executable(test_volume_api_update
+test_volume_api_update.cpp
+)
+
+target_compile_definitions(test_volume_api_update PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_volume_api_update PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_volume_api_update
+PUBLIC
+${ITK_LIBRARIES}
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+)
+
 add_executable(test_visualization_registration
 test_visualization_registration.cpp
 )
