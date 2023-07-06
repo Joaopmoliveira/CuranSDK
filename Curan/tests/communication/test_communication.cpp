@@ -131,6 +131,5 @@ int main() {
 		curan::utilities::cout << "CLient exception was thrown"+std::string(e.what());
 		return 1;
 	}
-
 	return 0;
 }
