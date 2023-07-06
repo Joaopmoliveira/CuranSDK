@@ -1,30 +1,18 @@
-void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
-{
-	float position[3];
-	float orientation[4];
+#include "communication/Client.h"
+#include "communication/Server.h"
+#include "communication/ProtoIGTL.h"
+#include <thread>
+#include <csignal>
+#include <chrono>
+#include "utils/Logger.h"
+#include <atomic>
+#include "rendering/Window.h"
+#include "rendering/Renderable.h"
+#include "rendering/DynamicTexture.h"
+#include <iostream>
+#include <optional>
+#include <map>
 
-	// random position
-	static float phi = 0.0;
-	position[0] = 50.0 * cos(phi);
-	position[1] = 50.0 * sin(phi);
-	position[2] = 50.0 * cos(phi);
-	phi = phi + 0.2;
-
-	// random orientation
-	static float theta = 0.0;
-	orientation[0] = 0.0;
-	orientation[1] = 0.6666666666 * cos(theta);
-	orientation[2] = 0.577350269189626;
-	orientation[3] = 0.6666666666 * sin(theta);
-	theta = theta + 0.1;
-
-	//igtl::Matrix4x4 matrix;
-	igtl::QuaternionToMatrix(orientation, matrix);
-
-	matrix[0][3] = position[0];
-	matrix[1][3] = position[1];
-	matrix[2][3] = position[2];
-}
 
 class ImageTesting {
 	int _width;
@@ -120,12 +108,14 @@ void foo(unsigned short port,std::atomic<bool>& server_continue_running) {
 	    int   scalarType = igtl::ImageMessage::TYPE_UINT8;
 
 		int counter = 0;
-
+        auto genesis = std::chrono::high_resolution_clock::now();
 		while (server_continue_running.load()) {
 			auto start = std::chrono::high_resolution_clock::now();
+            float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 
 			igtl::Matrix4x4 matrix;
-			GetRandomTestMatrix(matrix);
+			igtl::IdentityMatrix(matrix);
+            matrix[0][3] = std::sin(time);
 			ts->GetTime();
 
 			igtl::TransformMessage::Pointer transMsg;
@@ -142,7 +132,6 @@ void foo(unsigned short port,std::atomic<bool>& server_continue_running) {
 			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
 			server.write(to_send);
 
-            float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 		    img = update_texture(std::move(img), 1.0+time);
 		    ts->GetTime();
 
@@ -156,16 +145,14 @@ void foo(unsigned short port,std::atomic<bool>& server_continue_running) {
 
 		    std::memcpy(imgMsg->GetScalarPointer(), img.get_scalar_pointer(), img.size());
 
-            igtl::Matrix4x4 matrix;
-		    GetRandomTestMatrix(matrix);
 		    imgMsg->SetMatrix(matrix);
 		    imgMsg->Pack();
 
-            callable = [imgMsg]() {
+            auto callable2 = [imgMsg]() {
 				return asio::buffer(imgMsg->GetPackPointer(), imgMsg->GetPackSize());
 			};
-            auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
-			server.write(to_send);
+            auto to_send_image = curan::utilities::CaptureBuffer::make_shared(std::move(callable2));
+			server.write(to_send_image);
 
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(10) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));

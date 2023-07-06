@@ -1,17 +1,4 @@
-#include "communication/Client.h"
-#include "communication/Server.h"
-#include "communication/ProtoIGTL.h"
-#include <thread>
-#include <csignal>
-#include <chrono>
-#include "utils/Logger.h"
-#include <atomic>
-#include "rendering/Window.h"
-#include "rendering/Renderable.h"
-#include "rendering/DynamicTexture.h"
-#include <iostream>
-#include <optional>
-#include <map>
+#include "dummy_server.h"
 
 struct SharedState{
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> texture;
@@ -103,7 +90,7 @@ void communication(SharedState& state){
 
 int main() {
     std::atomic<bool> server_continue_running = true;
-    std::thread server_thread{}; 
+    std::thread server_thread{[&](){foo(18944,server_continue_running);}}; 
     asio::io_context io_context;
     curan::renderable::Window::Info info;
     info.api_dump = false;
