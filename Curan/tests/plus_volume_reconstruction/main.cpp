@@ -196,7 +196,7 @@ std::vector<curan::image::VolumeReconstructor::output_type::Pointer> get_convert
         importFilter->SetSpacing(spacing);
 
         itk::Matrix<double,3,3> direction;
-        
+
         for(size_t col = 0; col < 3 ; ++col)
             for(size_t row = 0; row < 3 ; ++row)
                 direction[row][col] = local_mat[row][col];
@@ -241,7 +241,7 @@ int main(){
 
         std::array<double,2> clip_origin = {0.0,0.0};
         std::array<double,2> clip_size = {100,100};
-        float spacing[3] = {0.01 , 0.01, 0.01};
+        float spacing[3] = {0.0024 , 0.0024, 0.0024};
 
 	    reconstructor.set_output_spacing(spacing);
 	    reconstructor.set_fill_strategy(curan::image::VolumeReconstructor::FillingStrategy::GAUSSIAN);
