@@ -14,17 +14,28 @@
 #include <map>
 
 struct SharedState{
-    std::optional<vsg::ref<curan::renderable::DynamicTexture>> texture;
+    std::optional<vsg::ref_ptr<curan::renderable::DynamicTexture>> texture;
     curan::renderable::Window & window;
     asio::io_context& context;
-    SharedState(curan::renderable::Window & in_window, asio::io_context& in_context) : window{in_window},context{in_context} {
-
-    }
+    SharedState(curan::renderable::Window & in_window, asio::io_context& in_context) : window{in_window},context{in_context} {}
 };
 
+void process_transform_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
+    igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
+	transform_message->Copy(received_transform);
+	int c = transform_message->Unpack(1);
+	if (!(c & igtl::MessageHeader::UNPACK_BODY) && !shared_state.texture)
+		return ; //failed to unpack message or the texture is not set yet, therefore returning without doing anything
+    
+}
+
+void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
+
+}
+
 std::map<std::string,std::function<void(SharedState&,igtl::MessageBase::Pointer)>> functions{
-    {"TRANSFORM",[](SharedState& state,igtl::MessageBase::Pointer){}},
-    {"IMAGE",[](SharedState& state,igtl::MessageBase::Pointer){}}
+    {"TRANSFORM",process_transform_message},
+    {"IMAGE",process_image_message}
 };
 
 void bar(SharedState& shared_state ,size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
@@ -34,9 +45,7 @@ void bar(SharedState& shared_state ,size_t protocol_defined_val,std::error_code 
         shared_state.context.stop();
         return;
     } 
-	std::string tmp = val->GetMessageType();
-
-    if (auto search = functions.find(tmp); search != example.end())
+    if (auto search = functions.find(val->GetMessageType()); search != functions.end())
         search->second(shared_state,val);
     else
         std::cout << "No functionality for function received\n";
@@ -47,13 +56,13 @@ void communication(SharedState& state){
 	curan::utilities::cout << "started running";
 	unsigned short port = 18944;
 	asio::io_context io_context;
-	curan::communicationinterface_igtl igtlink_interface;
+	curan::communication::interface_igtl igtlink_interface;
 	curan::communication::Client::Info construction{ io_context,igtlink_interface };
 	asio::ip::tcp::resolver resolver(io_context);
 	auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	construction.endpoints = endpoints;
-	curan::communicatio::Client client{ construction };
-	auto connectionstatus = client.connect([&]((size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val)){bar(state,protocol_defined_val,er,val);});
+	curan::communication::Client client{ construction };
+	auto connectionstatus = client.connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val){bar(state,protocol_defined_val,er,val);});
 	auto val = io_context.run();
 	curan::utilities::cout << "stopped running";
 }
@@ -70,8 +79,8 @@ int main() {
     curan::renderable::Window::WindowSize size{1000, 800};
     info.window_size = size;
     curan::renderable::Window window{info};
-    SharedState state{window};
-    std::thread communication_thread{[&](){communication(state)}};
+    SharedState state{window,io_context};
+    std::thread communication_thread{[&](){communication(state);}};
     window.run();
     io_context.stop();
     communication_thread.join();
