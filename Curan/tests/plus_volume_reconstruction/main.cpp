@@ -14,7 +14,7 @@
 #include <map>
 
 struct SharedState{
-    std::optional<vsg::ref_ptr<curan::renderable::DynamicTexture>> texture;
+    std::optional<vsg::ref_ptr<curan::renderable::Renderable>> texture;
     curan::renderable::Window & window;
     asio::io_context& context;
     SharedState(curan::renderable::Window & in_window, asio::io_context& in_context) : window{in_window},context{in_context} {}
@@ -74,7 +74,7 @@ std::map<std::string,std::function<void(SharedState&,igtl::MessageBase::Pointer)
 };
 
 void bar(SharedState& shared_state ,size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
-	curan::utilities::cout << "received message";
+	std::cout << "received message\n";
 	assert(val.IsNotNull());
 	if (er){
         shared_state.context.stop();
@@ -88,7 +88,7 @@ void bar(SharedState& shared_state ,size_t protocol_defined_val,std::error_code 
 }
 
 void communication(SharedState& state){
-	curan::utilities::cout << "started running";
+	std::cout << "started running\n";
 	unsigned short port = 18944;
 	asio::io_context io_context;
 	curan::communication::interface_igtl igtlink_interface;
@@ -99,7 +99,7 @@ void communication(SharedState& state){
 	curan::communication::Client client{ construction };
 	auto connectionstatus = client.connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val){bar(state,protocol_defined_val,er,val);});
 	auto val = io_context.run();
-	curan::utilities::cout << "stopped running";
+	std::cout << "stopped running\n";
 }
 
 int main() {
