@@ -26,11 +26,46 @@ void process_transform_message(SharedState& shared_state,igtl::MessageBase::Poin
 	int c = transform_message->Unpack(1);
 	if (!(c & igtl::MessageHeader::UNPACK_BODY) && !shared_state.texture)
 		return ; //failed to unpack message or the texture is not set yet, therefore returning without doing anything
-    
+    igtl::Matrix4x4 local_mat;
+	transform_message->GetMatrix(local_mat);
+    vsg::dmat4 transformmat;
+
+    for(size_t col = 0; col < 4; ++col)
+        for(size_t row = 0; row < 4; ++row)
+            transformmat[row][col] = local_mat[row][col];
+
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat);
 }
 
 void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
-
+    igtl::ImageMessage::Pointer imageMessage = igtl::ImageMessage::New();
+	imageMessage->Copy(received_transform);
+	int c = imageMessage->Unpack(1);
+	if (!(c & igtl::MessageHeader::UNPACK_BODY))
+		return ; //failed to unpack message or the texture is not set yet, therefore returning without doing anything
+    if(!shared_state.texture){
+        int width, height, depth = 0;
+        imageMessage->GetDimensions(width,height,depth);
+        curan::renderable::DynamicTexture::Info infotexture;
+        infotexture.height = height;
+        infotexture.width = width;
+        infotexture.builder = vsg::Builder::create();
+        shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
+        shared_state.window << *shared_state.texture;
+    }
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_texture([imageMessage](vsg::vec4Array2D& image)
+    {
+        unsigned char* data = static_cast<unsigned char*>(imageMessage->GetScalarPointer());
+        size_t offset = 0;
+        for(auto iterator = image.begin() ; iterator!=image.end() && offset<imageMessage->GetImageSize() ; ++iterator,++offset){
+            iterator->a = 1.0; 
+            iterator->r = *(data+offset); 
+            iterator->g = *(data+offset); 
+            iterator->b = *(data+offset); 
+        }
+        return;
+    }
+    );
 }
 
 std::map<std::string,std::function<void(SharedState&,igtl::MessageBase::Pointer)>> functions{
