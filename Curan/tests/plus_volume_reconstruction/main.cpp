@@ -102,6 +102,8 @@ void communication(SharedState& state){
 }
 
 int main() {
+    std::atomic<bool> server_continue_running = true;
+    std::thread server_thread{}; 
     asio::io_context io_context;
     curan::renderable::Window::Info info;
     info.api_dump = false;
@@ -118,5 +120,7 @@ int main() {
     window.run();
     io_context.stop();
     communication_thread.join();
+    server_continue_running.store(false);
+    server_thread.join();
 	return 0;
 }
