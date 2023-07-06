@@ -89,12 +89,11 @@ void bar(SharedState& shared_state ,size_t protocol_defined_val,std::error_code 
 
 void communication(SharedState& state){
 	std::cout << "started running\n";
-	unsigned short port = 18944;
 	asio::io_context io_context;
 	curan::communication::interface_igtl igtlink_interface;
 	curan::communication::Client::Info construction{ io_context,igtlink_interface };
 	asio::ip::tcp::resolver resolver(io_context);
-	auto endpoints = resolver.resolve("localhost", std::to_string(port));
+	auto endpoints = resolver.resolve("localhost", "18944");
 	construction.endpoints = endpoints;
 	curan::communication::Client client{ construction };
 	auto connectionstatus = client.connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val){bar(state,protocol_defined_val,er,val);});
