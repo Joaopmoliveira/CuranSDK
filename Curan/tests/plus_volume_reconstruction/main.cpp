@@ -21,6 +21,7 @@ struct SharedState{
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> texture;
     curan::renderable::Window & window;
     asio::io_context& context;
+    std::atomic<bool> stop_service = false;
     SharedState(curan::renderable::Window & in_window, asio::io_context& in_context) : window{in_window},context{in_context} {}
 };
 
@@ -36,18 +37,18 @@ void process_transform_message(SharedState& shared_state,igtl::MessageBase::Poin
     assert(shared_state.texture!=std::nullopt);
     igtl::Matrix4x4 local_mat;
 	transform_message->GetMatrix(local_mat);
-    //igtl::PrintMatrix(local_mat);
     vsg::dmat4 transformmat;
 
-    double translx = local_mat[0][3];
-    double transly = local_mat[0][3];
-    double translz = local_mat[0][3];
+    local_mat[0][3] = local_mat[0][3]*1e-3;
+    local_mat[1][3] = local_mat[0][3]*1e-3;
+    local_mat[2][3] = local_mat[0][3]*1e-3;
+
+    igtl::PrintMatrix(local_mat);
 
     for(size_t col = 0; col < 4; ++col)
         for(size_t row = 0; row < 4; ++row)
             transformmat(col,row) = local_mat[row][col];
-
-    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat);
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat* vsg::rotate(vsg::radians(90.0),0.0,0.0,1.0));
 }
 
 using imageType = itk::Image<unsigned char,3>;
@@ -64,7 +65,7 @@ void updateBaseTexture3D(vsg::vec4Array2D& image, OutputImageType::Pointer image
 }
 
 void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
-    //std::cout << "received image message" << std::endl;
+    std::cout << "received image message" << std::endl;
     igtl::ImageMessage::Pointer imageMessage = igtl::ImageMessage::New();
 	imageMessage->Copy(received_transform);
 	int c = imageMessage->Unpack(1);
@@ -77,6 +78,10 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infotexture.height = height;
         infotexture.width = width;
         infotexture.builder = vsg::Builder::create();
+        infotexture.geomInfo.dx = vsg::vec3(0.00024*height,0.0,0.0);
+        infotexture.geomInfo.dy = vsg::vec3(0.0,0.00024*width,0.0);
+        infotexture.geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
+        infotexture.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
         shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
         shared_state.window << *shared_state.texture;
     }
@@ -134,7 +139,7 @@ std::map<std::string,std::function<void(SharedState& shared_state,igtl::MessageB
 };
 
 void bar(SharedState& shared_state,size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
-	//std::cout << "received message\n";
+	std::cout << "received message\n";
 	assert(val.IsNotNull());
 	if (er){
         shared_state.context.stop();
@@ -147,25 +152,28 @@ void bar(SharedState& shared_state,size_t protocol_defined_val,std::error_code e
     return;
 }
 
-void connect(curan::renderable::Window& window,asio::io_context& io_context,std::atomic<bool>& server_running){
-    SharedState shared_state = SharedState{window,io_context}; 
+void connect(curan::renderable::Window& window,asio::io_context& io_context,SharedState& shared_state){
+    
     try{
         asio::io_context io_context;
         unsigned short port = 18944;
-        std::thread server_thread{[&](){foo(port,io_context,server_running);}}; 
+        //std::thread server_thread{[&](){foo(port,io_context,server_running);}}; 
     	curan::communication::interface_igtl igtlink_interface;
 	    curan::communication::Client::Info construction{ io_context,igtlink_interface };
 	    asio::ip::tcp::resolver resolver(io_context);
 	    auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	    construction.endpoints = endpoints;
 	    curan::communication::Client client{ construction };
+        
 	    auto connectionstatus = client.connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val)
         {
             bar(shared_state,protocol_defined_val,er,val);
+            if(shared_state.stop_service)
+                client.get_socket().close();
         });
 	    io_context.run();
         std::cout << "io context stopped running" << std::endl;
-        server_thread.join();
+        //server_thread.join();
 	    return ;
     }  catch(std::exception & e){
         std::cout << "communication failure: " << e.what() << std::endl;
@@ -176,7 +184,6 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,std:
 int main(){
     asio::io_context io_context;
     try{  
-        std::atomic<bool> server_running = true;
         curan::renderable::Window::Info info;
         info.api_dump = false;
         info.display = "";
@@ -187,11 +194,11 @@ int main(){
         curan::renderable::Window::WindowSize size{1000, 800};
         info.window_size = size;
         curan::renderable::Window window{info};
-        std::thread connector{[&](){connect(window,io_context,server_running);}};
+        SharedState shared_state = SharedState{window,io_context}; 
+        std::thread connector{[&](){connect(window,io_context,shared_state);}};
         window.run();
         std::cout << "stopping content from main thread" << std::endl;
-        io_context.stop();
-        server_running = false;
+        shared_state.stop_service = true;
         connector.join();
         return 0;
     }  catch(std::exception & e){
