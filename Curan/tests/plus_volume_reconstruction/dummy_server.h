@@ -12,7 +12,33 @@
 #include <iostream>
 #include <optional>
 #include <map>
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+#include "itkCastImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
+#include "itkImage.h"
+#include "itkImportImageFilter.h"
+#include <atomic>
+#include "imageprocessing/VolumeReconstructor.h"
 
+using PixelType = unsigned char;
+constexpr unsigned int Dimension = 3;
+using ImageType = itk::Image<PixelType, Dimension>;
+using ImportFilterType = itk::ImportImageFilter<PixelType, Dimension>;
+
+using OutputPixelType = float;
+using InputImageType = itk::Image<unsigned char, 3>;
+using OutputImageType = itk::Image<OutputPixelType, 3>;
+using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
+
+struct SharedState{
+    std::optional<vsg::ref_ptr<curan::renderable::Renderable>> texture;
+    curan::renderable::Window & window;
+    asio::io_context& context;
+    std::atomic<bool> stop_service = false;
+	std::vector<igtl::ImageMessage::Pointer> recorded_images;
+    SharedState(curan::renderable::Window & in_window, asio::io_context& in_context) : window{in_window},context{in_context} {}
+};
 
 class ImageTesting {
 	int _width;
@@ -88,7 +114,7 @@ ImageTesting update_texture(ImageTesting image, float value){
 	return image;
 }
 
-void foo(unsigned short port,asio::io_context& cxt,std::atomic<bool>& server_running) {
+void foo(unsigned short port,asio::io_context& cxt,SharedState& shared_state) {
 	using namespace curan::communication;
 	try {
         std::cout << "Server starting\n";
@@ -110,7 +136,9 @@ void foo(unsigned short port,asio::io_context& cxt,std::atomic<bool>& server_run
 		int counter = 0;
         auto genesis = std::chrono::high_resolution_clock::now();
 
-		while (server_running) {
+		double controled_time = 0.0;
+
+		while (!shared_state.stop_service) {
 			auto start = std::chrono::high_resolution_clock::now();
             float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 
@@ -118,18 +146,19 @@ void foo(unsigned short port,asio::io_context& cxt,std::atomic<bool>& server_run
 			igtl::IdentityMatrix(matrix);
 
   			// random orientation
-  			static float theta = 0.0;
 			float orientation[4];
  			orientation[0]=0.0;
   			orientation[1]=0.6666666666*cos(time);
   			orientation[2]=0.577350269189626;
   			orientation[3]=0.6666666666*sin(time);
 
-			igtl::QuaternionToMatrix(orientation,matrix);
+			//igtl::QuaternionToMatrix(orientation,matrix);
 
-			matrix[0][3] = 0.5*std::sin(time);
-			matrix[1][3] = 0.0;
+			matrix[0][3] = 0.0;
+			matrix[1][3] = 0.5*std::sin(controled_time);
 			matrix[2][3] = 0.0;
+
+			
 
 			ts->GetTime();
 
@@ -147,7 +176,7 @@ void foo(unsigned short port,asio::io_context& cxt,std::atomic<bool>& server_run
 			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
 			server.write(to_send);
 
-		    img = update_texture(std::move(img), 1.0+time);
+		    img = update_texture(std::move(img), 1.0+controled_time);
 		    ts->GetTime();
 
             igtl::ImageMessage::Pointer imgMsg = igtl::ImageMessage::New();
@@ -170,7 +199,9 @@ void foo(unsigned short port,asio::io_context& cxt,std::atomic<bool>& server_run
 			server.write(to_send_image);
 
 			auto end = std::chrono::high_resolution_clock::now();
-			std::this_thread::sleep_for(std::chrono::milliseconds(16));
+			std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+			controled_time += 0.01;
 		}
 		std::cout << "Stopping server\n";
 	}

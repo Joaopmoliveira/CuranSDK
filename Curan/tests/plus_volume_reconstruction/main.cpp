@@ -1,29 +1,4 @@
 #include "dummy_server.h"
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkCastImageFilter.h"
-#include "itkRescaleIntensityImageFilter.h"
-#include "itkImage.h"
-#include "itkImportImageFilter.h"
-#include <atomic>
-
-using PixelType = unsigned char;
-constexpr unsigned int Dimension = 3;
-using ImageType = itk::Image<PixelType, Dimension>;
-using ImportFilterType = itk::ImportImageFilter<PixelType, Dimension>;
-
-using OutputPixelType = float;
-using InputImageType = itk::Image<unsigned char, 3>;
-using OutputImageType = itk::Image<OutputPixelType, 3>;
-using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
-
-struct SharedState{
-    std::optional<vsg::ref_ptr<curan::renderable::Renderable>> texture;
-    curan::renderable::Window & window;
-    asio::io_context& context;
-    std::atomic<bool> stop_service = false;
-    SharedState(curan::renderable::Window & in_window, asio::io_context& in_context) : window{in_window},context{in_context} {}
-};
 
 void process_transform_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
     //std::cout << "received transform message" << std::endl;
@@ -39,9 +14,9 @@ void process_transform_message(SharedState& shared_state,igtl::MessageBase::Poin
 	transform_message->GetMatrix(local_mat);
     vsg::dmat4 transformmat;
 
-    local_mat[0][3] = local_mat[0][3]*1e-3;
-    local_mat[1][3] = local_mat[0][3]*1e-3;
-    local_mat[2][3] = local_mat[0][3]*1e-3;
+    //local_mat[0][3] = local_mat[0][3]*1e-3;
+    //local_mat[1][3] = local_mat[0][3]*1e-3;
+    //local_mat[2][3] = local_mat[0][3]*1e-3;
 
     igtl::PrintMatrix(local_mat);
 
@@ -78,16 +53,21 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infotexture.height = height;
         infotexture.width = width;
         infotexture.builder = vsg::Builder::create();
-        infotexture.geomInfo.dx = vsg::vec3(0.00024*height,0.0,0.0);
-        infotexture.geomInfo.dy = vsg::vec3(0.0,0.00024*width,0.0);
+        //infotexture.geomInfo.dx = vsg::vec3(0.00024*height,0.0,0.0);
+        //infotexture.geomInfo.dy = vsg::vec3(0.0,0.00024*width,0.0);
+        //infotexture.geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
+        infotexture.geomInfo.dx = vsg::vec3(0.0024*height,0.0,0.0);
+        infotexture.geomInfo.dy = vsg::vec3(0.0,0.0024*width,0.0);
         infotexture.geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
         infotexture.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
         shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
         shared_state.window << *shared_state.texture;
     }
     assert(shared_state.texture!=std::nullopt);
+    shared_state.recorded_images.push_back(imageMessage);
     shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_texture([imageMessage](vsg::vec4Array2D& image)
     {
+        
         int x,y,z =0;
         imageMessage->GetDimensions(x,y,z);
         ImportFilterType::SizeType size;
@@ -127,7 +107,7 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
             std::cerr << "Error: " << e << std::endl;
             return;
         }
-
+        
         updateBaseTexture3D(image,rescale->GetOutput());
     }
     );
@@ -157,7 +137,7 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
     try{
         asio::io_context io_context;
         unsigned short port = 18944;
-        //std::thread server_thread{[&](){foo(port,io_context,server_running);}}; 
+        std::thread server_thread{[&](){foo(port,io_context,shared_state);}}; 
     	curan::communication::interface_igtl igtlink_interface;
 	    curan::communication::Client::Info construction{ io_context,igtlink_interface };
 	    asio::ip::tcp::resolver resolver(io_context);
@@ -173,13 +153,63 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
         });
 	    io_context.run();
         std::cout << "io context stopped running" << std::endl;
-        //server_thread.join();
+        server_thread.join();
 	    return ;
     }  catch(std::exception & e){
         std::cout << "communication failure: " << e.what() << std::endl;
         return;
     }
 };
+
+std::vector<curan::image::VolumeReconstructor::output_type::Pointer> get_converted_images(std::vector<igtl::ImageMessage::Pointer> openigtlinkmessages){
+    std::vector<curan::image::VolumeReconstructor::output_type::Pointer> output;
+    output.reserve(openigtlinkmessages.size());
+    for(auto& image : openigtlinkmessages ){
+        auto transformed_image = curan::image::VolumeReconstructor::output_type::New();
+        int x,y,z =0;
+        image->GetDimensions(x,y,z);
+        ImportFilterType::SizeType size;
+        size[0] = x;
+        size[1] = y;
+        size[2] = z; 
+ 
+        ImportFilterType::IndexType start;
+        start.Fill(0);
+ 
+        ImportFilterType::RegionType region;
+        region.SetIndex(start);
+        region.SetSize(size);
+        auto importFilter = ImportFilterType::New();
+
+        importFilter->SetRegion(region);
+        itk::SpacePrecisionType origin[Dimension] = { 0.0, 0.0, 0.0 };
+
+        igtl::Matrix4x4 local_mat;
+        image->GetMatrix(local_mat);
+
+        origin[0] = local_mat[0][3];
+        origin[1] = local_mat[1][3];
+        origin[2] = local_mat[2][3];
+
+        importFilter->SetOrigin(origin);
+        const itk::SpacePrecisionType spacing[Dimension] = { 0.0024, 0.0024, 1.0 };
+        importFilter->SetSpacing(spacing);
+
+        itk::Matrix<double,3,3> direction;
+        
+        for(size_t col = 0; col < 3 ; ++col)
+            for(size_t row = 0; row < 3 ; ++row)
+                direction[row][col] = local_mat[row][col];
+
+        importFilter->SetDirection(direction);
+
+        const bool importImageFilterWillOwnTheBuffer = false;
+        importFilter->SetImportPointer(static_cast<unsigned char*>(image->GetScalarPointer()), image->GetImageSize(), importImageFilterWillOwnTheBuffer);
+
+        output.push_back(transformed_image);
+    }
+    return output;
+}
 
 int main(){
     asio::io_context io_context;
@@ -200,6 +230,40 @@ int main(){
         std::cout << "stopping content from main thread" << std::endl;
         shared_state.stop_service = true;
         connector.join();
+
+        // Now that everything is finished we can try and compute the volumetric size of our image. 
+        // Once this is done I need to change the API of the volume reconstructor into two distinct classes,
+        // one which is dynamic and one which is static
+
+        std::vector<curan::image::VolumeReconstructor::output_type::Pointer> vector_of_images = get_converted_images(shared_state.recorded_images);
+
+        curan::image::VolumeReconstructor reconstructor;
+
+        std::array<double,2> clip_origin = {0.0,0.0};
+        std::array<double,2> clip_size = {100,100};
+        float spacing[3] = {0.01 , 0.01, 0.01};
+
+	    reconstructor.set_output_spacing(spacing);
+	    reconstructor.set_fill_strategy(curan::image::VolumeReconstructor::FillingStrategy::GAUSSIAN);
+	    reconstructor.set_clipping_bounds(clip_origin, clip_size);
+	    reconstructor.add_frames(vector_of_images);
+
+	    std::cout << "Started volumetric reconstruction: \n";
+	    reconstructor.update();
+	    std::cout << "Finished volumetric reconstruction: \n";
+
+	    std::cout << "Started volumetric filling: \n";
+	    curan::image::VolumeReconstructor::KernelDescriptor descript;
+	    descript.fillType = curan::image::VolumeReconstructor::FillingStrategy::DISTANCE_WEIGHT_INVERSE;
+        descript.size = 5;
+	    descript.stdev = 1;
+	    descript.minRatio = 0.1;
+	    reconstructor.add_kernel_descritor(descript);
+	    reconstructor.fill_holes();
+	    std::cout << "Finished volumetric filling: \n";
+
+	    curan::image::VolumeReconstructor::output_type::Pointer buffer;
+	    reconstructor.get_output_pointer(buffer);
         return 0;
     }  catch(std::exception & e){
         std::cout << "display failure: " << e.what() << std::endl;
