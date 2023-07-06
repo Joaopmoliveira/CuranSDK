@@ -34,8 +34,8 @@ namespace curan {
 		Logger& operator<< (Logger& io, const T& out) {
 			std::stringstream s;
 			s << out;
-			io.outputqueue.push(s.str());
-			std::cout << out << '\n';
+			if(io.outputqueue.size()<max_number_of_strings)
+				io.outputqueue.push(s.str());
 			return io;
 		};
 

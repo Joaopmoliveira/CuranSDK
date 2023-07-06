@@ -88,7 +88,7 @@ ImageTesting update_texture(ImageTesting image, float value){
 	return image;
 }
 
-void foo(unsigned short port,std::atomic<bool>& server_continue_running,asio::io_context& cxt) {
+void foo(unsigned short port,asio::io_context& cxt,std::atomic<bool>& server_running) {
 	using namespace curan::communication;
 	try {
         std::cout << "Server starting\n";
@@ -109,14 +109,28 @@ void foo(unsigned short port,std::atomic<bool>& server_continue_running,asio::io
 
 		int counter = 0;
         auto genesis = std::chrono::high_resolution_clock::now();
-		while (server_continue_running.load()) {
-            std::cout << "Sending new message\n";
+
+		while (server_running) {
 			auto start = std::chrono::high_resolution_clock::now();
             float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 
 			igtl::Matrix4x4 matrix;
 			igtl::IdentityMatrix(matrix);
-            matrix[0][3] = std::sin(time);
+
+  			// random orientation
+  			static float theta = 0.0;
+			float orientation[4];
+ 			orientation[0]=0.0;
+  			orientation[1]=0.6666666666*cos(time);
+  			orientation[2]=0.577350269189626;
+  			orientation[3]=0.6666666666*sin(time);
+
+			igtl::QuaternionToMatrix(orientation,matrix);
+
+			matrix[0][3] = 0.5*std::sin(time);
+			matrix[1][3] = 0.0;
+			matrix[2][3] = 0.0;
+
 			ts->GetTime();
 
 			igtl::TransformMessage::Pointer transMsg;
@@ -156,7 +170,7 @@ void foo(unsigned short port,std::atomic<bool>& server_continue_running,asio::io
 			server.write(to_send_image);
 
 			auto end = std::chrono::high_resolution_clock::now();
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+			std::this_thread::sleep_for(std::chrono::milliseconds(16));
 		}
 		std::cout << "Stopping server\n";
 	}
