@@ -48,7 +48,7 @@ void process_transform_message(SharedState& shared_state,igtl::MessageBase::Poin
     for(size_t col = 0; col < 4; ++col)
         for(size_t row = 0; row < 4; ++row)
             transformmat(col,row) = local_mat[row][col];
-    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat* vsg::rotate(vsg::radians(90.0),0.0,0.0,1.0));
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat* vsg::rotate(vsg::radians(90.0),1.0,0.0,0.0));
 }
 
 using imageType = itk::Image<unsigned char,3>;
