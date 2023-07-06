@@ -88,10 +88,10 @@ ImageTesting update_texture(ImageTesting image, float value){
 	return image;
 }
 
-void foo(unsigned short port,std::atomic<bool>& server_continue_running) {
+void foo(unsigned short port,std::atomic<bool>& server_continue_running,asio::io_context& cxt) {
 	using namespace curan::communication;
 	try {
-        asio::io_context cxt;
+        std::cout << "Server starting\n";
 		interface_igtl igtlink_interface;
 		Server::Info construction{ cxt,igtlink_interface ,port };
 
@@ -110,6 +110,7 @@ void foo(unsigned short port,std::atomic<bool>& server_continue_running) {
 		int counter = 0;
         auto genesis = std::chrono::high_resolution_clock::now();
 		while (server_continue_running.load()) {
+            std::cout << "Sending new message\n";
 			auto start = std::chrono::high_resolution_clock::now();
             float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 
@@ -155,10 +156,9 @@ void foo(unsigned short port,std::atomic<bool>& server_continue_running) {
 			server.write(to_send_image);
 
 			auto end = std::chrono::high_resolution_clock::now();
-			std::this_thread::sleep_for(std::chrono::milliseconds(10) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
-		std::cout << "Stopping context\n";
-		cxt.stop();
+		std::cout << "Stopping server\n";
 	}
 	catch (std::exception& e) {
 		std::cout << "CLient exception was thrown" << e.what() << std::endl;

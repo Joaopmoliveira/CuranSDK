@@ -6,6 +6,7 @@
 #include <sstream>
 #include <fstream>
 #include "SafeQueue.h"
+#include <iostream>
 
 namespace curan {
 	namespace utilities {
@@ -34,6 +35,7 @@ namespace curan {
 			std::stringstream s;
 			s << out;
 			io.outputqueue.push(s.str());
+			std::cout << out << '\n';
 			return io;
 		};
 
