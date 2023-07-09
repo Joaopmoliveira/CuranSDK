@@ -1,5 +1,8 @@
 #include "imageprocessing/VolumeAlgorithms.h"
 #include <optional>
+#include "Mathematics/ConvexHull3.h"
+#include "Mathematics/ArbitraryPrecision.h"
+#include "Mathematics/MinimumVolumeBox3.h"
 
 struct Clipping{
 	std::array<double, 2> clipRectangleOrigin = { 0.0,0.0 }; 
@@ -14,7 +17,7 @@ public:
 	using resampler_output = itk::ResampleImageFilter<output_type, output_type>;
 	using resampler_accumulator = itk::ResampleImageFilter<accumulator_type, accumulator_type>;
 private:
-	std::array<std::array<double,3>,3> axis;
+	gte::OrientedBox3<double> volumetric_bounding_box;
 	curan::image::reconstruction::Interpolation interpolation_strategy = curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION;
 	curan::image::reconstruction::Compounding compounding_strategy = curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE;
 
@@ -31,8 +34,7 @@ private:
 public:
 
     struct Info{
-        std::array<std::array<double,3>,3> axis;
-        itk::Point<double,3> origin;
+        gte::OrientedBox3<double> volumetric_bounding_box;
         output_type::SpacingType spacing;
     };
 
@@ -42,7 +44,7 @@ public:
 	// to manipulate
 	static constexpr int INPUT_COMPONENTS = 1;
 
-	StaticReconstructor(const Info& info) : output_spacing{info.spacing},axis{info.axis},origin{info.origin}{
+	StaticReconstructor(const Info& info) : output_spacing{info.spacing},volumetric_bounding_box{info.volumetric_bounding_box}{
 		output_type::IndexType output_start;
 		output_start[0] = 0;
 		output_start[1] = 0;
@@ -127,25 +129,30 @@ public:
     };
 
 	StaticReconstructor& update(){
+		gte::Vector<3, double> output_origin = volumetric_bounding_box.center
+		- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
+		- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
+		- volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
+
 		Eigen::Matrix4d ref_to_output_origin;
-		ref_to_output_origin(0, 0) = axis[0][0];
-		ref_to_output_origin(1, 0) = axis[0][1];
-		ref_to_output_origin(2, 0) = axis[0][2];
+		ref_to_output_origin(0, 0) = volumetric_bounding_box.axis[0][0];
+		ref_to_output_origin(1, 0) = volumetric_bounding_box.axis[0][1];
+		ref_to_output_origin(2, 0) = volumetric_bounding_box.axis[0][2];
 		ref_to_output_origin(3, 0) = 0.0;
 
-		ref_to_output_origin(0, 1) = axis[1][0];
-		ref_to_output_origin(1, 1) = axis[1][1];
-		ref_to_output_origin(2, 1) = axis[1][2];
+		ref_to_output_origin(0, 1) = volumetric_bounding_box.axis[1][0];
+		ref_to_output_origin(1, 1) = volumetric_bounding_box.axis[1][1];
+		ref_to_output_origin(2, 1) = volumetric_bounding_box.axis[1][2];
 		ref_to_output_origin(3, 1) = 0.0;
 
-		ref_to_output_origin(0, 2) = axis[2][0];
-		ref_to_output_origin(1, 2) = axis[2][1];
-		ref_to_output_origin(2, 2) = axis[2][2];
+		ref_to_output_origin(0, 2) = volumetric_bounding_box.axis[2][0];
+		ref_to_output_origin(1, 2) = volumetric_bounding_box.axis[2][1];
+		ref_to_output_origin(2, 2) = volumetric_bounding_box.axis[2][2];
 		ref_to_output_origin(3, 2) = 0.0;
 
-		ref_to_output_origin(0, 3) = origin[0];
-		ref_to_output_origin(1, 3) = origin[1];
-		ref_to_output_origin(2, 3) = origin[2];
+		ref_to_output_origin(0, 3) = output_origin[0];
+		ref_to_output_origin(1, 3) = output_origin[1];
+		ref_to_output_origin(2, 3) = output_origin[2];
 		ref_to_output_origin(3, 3) = 1.0;
 
 		Eigen::Matrix4d output_to_ref = ref_to_output_origin.inverse();
