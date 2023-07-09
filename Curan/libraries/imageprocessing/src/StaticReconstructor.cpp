@@ -87,7 +87,7 @@ StaticReconstructor& StaticReconstructor::add_frames(std::vector<output_type::Po
     return *(this);
 };
 
-output_type::Pointer StaticReconstructor::get_output_pointer(){
+StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointer(){
     return out_volume;
 }
 
