@@ -363,4 +363,7 @@ int main(){
 	gte::OrientedBox3<double> box {origin,alignement,inextent};
 	recon_info.volumetric_bounding_box = box;
 	StaticReconstructor reconstructor{recon_info};
+	reconstructor.set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE).add_frames(image_array);
+
+	reconstructor.update();
 };
