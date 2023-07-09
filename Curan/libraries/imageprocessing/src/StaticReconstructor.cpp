@@ -3,8 +3,8 @@
 namespace curan{
 namespace image {
 
-StaticReconstructor::Info::Info(std::array<double,3> spacing,std::array<double,3> inorigin, std::array<double,3> size, std::array<std::array<double,3>,3> direction){
-	auto inextent = gte::Vector3<double>{(size[0]*spacing[0])/2.0,(size[1]*spacing[1])/2.0,(size[2]*spacing[2])/2.0};
+StaticReconstructor::Info::Info(std::array<double,3> in_spacing,std::array<double,3> inorigin, std::array<double,3> size, std::array<std::array<double,3>,3> direction){
+	auto inextent = gte::Vector3<double>{(size[0]*in_spacing[0])/2.0,(size[1]*in_spacing[1])/2.0,(size[2]*in_spacing[2])/2.0};
 
     auto origin = gte::Vector3<double>{inorigin[0],inorigin[1],inorigin[2]};
 	std::array<gte::Vector3<double>, 3> alignement;
@@ -18,6 +18,9 @@ StaticReconstructor::Info::Info(std::array<double,3> spacing,std::array<double,3
 		+ alignement[2] * inextent[2];
 
     volumetric_bounding_box = gte::OrientedBox3<double>{output_origin,alignement,inextent};
+    spacing[0] = in_spacing[0];
+    spacing[1] = in_spacing[1];
+    spacing[2] = in_spacing[2];
 }
 
 StaticReconstructor::StaticReconstructor(const Info& info) : output_spacing{info.spacing},volumetric_bounding_box{info.volumetric_bounding_box}{
