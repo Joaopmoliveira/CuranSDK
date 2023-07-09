@@ -244,6 +244,74 @@ public:
 	}
 };
 
+constexpr long width = 50;
+constexpr long height = 50;
+constexpr double offset = 1;
+float spacing[3] = {0.05 , 0.05 , 1};
+float final_spacing [3] = {1 ,1, 1};
+
+void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructor::output_type::Pointer>& desired_images){
+    // the volume shoud be a box with spacing 1.0 mm in all directions with a size of 2 mm in each side 
+    // to fill the volume we create an image with two images 
+
+    itk::Matrix<double> image_orientation;
+	itk::Point<double> image_origin;
+
+	image_orientation[0][0] = 1.0;
+	image_orientation[1][0] = 0.0;
+	image_orientation[2][0] = 0.0;
+
+	image_orientation[0][1] = 0.0;
+	image_orientation[1][1] = 1.0;
+	image_orientation[2][1] = 0.0;
+
+	image_orientation[0][2] = 0.0;
+	image_orientation[1][2] = 0.0;
+	image_orientation[2][2] = 1.0;
+
+    std::cout << "orientation: \n" << image_orientation << std::endl;
+
+	image_origin[0] = 0.0;
+	image_origin[1] = 0.0;
+	image_origin[2] = 0.0;
+
+    curan::image::char_pixel_type pixel[width*height];
+    for(size_t y = 0; y < height ; ++y)
+        for(size_t x = 0; x < width ; ++x)
+            pixel[x+y*height] = (int) std::sqrt(y*y+x*x);
+
+    for(int z = 0; z < width ; ++z){
+        StaticReconstructor::output_type::Pointer image = StaticReconstructor::output_type::New();
+        StaticReconstructor::output_type::IndexType start;
+        start[0] = 0; // first index on X
+        start[1] = 0; // first index on Y
+        start[2] = 0; // first index on Z
+
+        StaticReconstructor::output_type::SizeType size;
+        size[0] = width; // size along X
+        size[1] = height; // size along Y
+        size[2] = 1; // size along Z
+
+        StaticReconstructor::output_type::RegionType region_1;
+        region_1.SetSize(size);
+        region_1.SetIndex(start);
+
+        image->SetRegions(region_1);
+        image->SetDirection(image_orientation);
+        image->SetOrigin(image_origin);
+        image->SetSpacing(spacing);
+        image->Allocate();
+
+        image_origin[0] = 0.0;
+	    image_origin[1] = 0.0;
+	    image_origin[2] = image_origin[2] + offset;
+
+        auto pointer = image->GetBufferPointer();
+        std::memcpy(pointer,pixel,sizeof(curan::image::char_pixel_type)*width*height);
+        desired_images.push_back(image);
+    }
+}
+
 int main(){
 
 };
