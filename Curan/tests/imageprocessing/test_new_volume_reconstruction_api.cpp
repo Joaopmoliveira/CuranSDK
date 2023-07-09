@@ -250,15 +250,13 @@ public:
 		frame_data.clear();
 		return *(this);
 	}
-
-
 };
 
-constexpr long width = 10;
-constexpr long height = 10;
+constexpr long width = 50;
+constexpr long height = 50;
 constexpr double offset = 1;
-float spacing[3] = {0.1 , 0.1 , 1};
-float final_spacing [3] = {0.1 ,0.1, 0.1};
+float spacing[3] = {0.05 , 0.05 , 1};
+float final_spacing [3] = {0.05 ,0.05, 0.05};
 
 void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructor::output_type::Pointer>& desired_images){
     // the volume shoud be a box with spacing 1.0 mm in all directions with a size of 2 mm in each side 
@@ -286,8 +284,9 @@ void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructo
     curan::image::char_pixel_type pixel[width*height];
     for(size_t y = 0; y < height ; ++y){
         for(size_t x = 0; x < width ; ++x){
-			pixel[x+y*height] = (int) std::sqrt(y*y+x*x);
-			std::cout << pixel << " ";
+			auto val = 255*(std::sqrt(y*y+x*x)/std::sqrt(height*height+width*width));
+			pixel[x+y*height] = (int) val;
+			std::cout << (int)pixel[x+y*height] << " ";
 		}
         std::cout << std::endl;
 	}
@@ -352,7 +351,7 @@ void updateBaseTexture3D(vsg::floatArray3D& image, StaticReconstructor::output_t
     IteratorType outputIt(out, out->GetRequestedRegion());
     for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
         StaticReconstructor::output_type::IndexType idx = outputIt.GetIndex();
-		std::printf("%d,%d,%d,val: %f\n",idx[0],idx[1],idx[2],outputIt.Get());
+		//std::printf("%d,%d,%d,val: %f\n",idx[0],idx[1],idx[2],outputIt.Get());
         image.set(idx[0], idx[1], idx[2], outputIt.Get());
     }
 }
@@ -361,6 +360,8 @@ int main(){
 	std::vector<StaticReconstructor::output_type::Pointer> image_array;
 	create_array_of_linear_images_in_x_direction(image_array);
 	size_t counter = 0;
+	/*
+	
 	for(auto& img : image_array){
 		auto size = img->GetLargestPossibleRegion().GetSize();
 		int height = size[1];
@@ -395,6 +396,7 @@ int main(){
 		std::printf("\tvertex 4 : ( %f %f %f )\n",vert4[0],vert4[1],vert4[2]);
 		++counter;
 	}
+	*/
 	StaticReconstructor::Info recon_info;
 	recon_info.spacing[0] = final_spacing[0];
 	recon_info.spacing[1] = final_spacing[1];
