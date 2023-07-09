@@ -142,7 +142,7 @@ try{
     std::array<double,2> clip_size = {width,height};
 
 	reconstructor.set_output_spacing(spacing);
-	reconstructor.set_fill_strategy(curan::image::VolumeReconstructor::FillingStrategy::GAUSSIAN);
+	reconstructor.set_fill_strategy(curan::image::reconstruction::FillingStrategy::GAUSSIAN);
 	reconstructor.set_clipping_bounds(clip_origin, clip_size);
 	reconstructor.add_frames(images);
 
@@ -151,8 +151,8 @@ try{
 	std::cout << "Finished volumetric reconstruction: \n";
 
 	std::cout << "Started volumetric filling: \n";
-	curan::image::VolumeReconstructor::KernelDescriptor descript;
-	descript.fillType = curan::image::VolumeReconstructor::FillingStrategy::DISTANCE_WEIGHT_INVERSE;
+	curan::image::reconstruction::KernelDescriptor descript;
+	descript.fillType = curan::image::reconstruction::FillingStrategy::DISTANCE_WEIGHT_INVERSE;
     descript.size = 5;
 	descript.stdev = 1;
 	descript.minRatio = 0.1;

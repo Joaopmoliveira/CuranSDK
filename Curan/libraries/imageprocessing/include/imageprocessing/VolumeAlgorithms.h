@@ -2,12 +2,13 @@
 #define CURAN_VOLUME_ALGORITHMS_HEADER_FILE_
 
 #include "ImageProcessingDefinitions.h"
-#include "VolumeReconstructor.h"
+#include "KernelDescriptor.h"
 
 namespace curan {
 	namespace image {
 		namespace reconstruction {
-
+			
+			constexpr int INPUT_COMPONENTS = 1;
 			constexpr uint64_t ACCUMULATION_MULTIPLIER = 256;
 			constexpr uint64_t ACCUMULATION_MAXIMUM = 65535;
 			constexpr uint64_t ACCUMULATION_THRESHOLD = 65279; // calculate manually to possibly save on computation time
@@ -49,7 +50,7 @@ namespace curan {
 				char_pixel_type* outPtr,
 				unsigned short* accPtr,
 				int numscalars,
-				VolumeReconstructor::Compounding compoundingMode,
+				Compounding compoundingMode,
 				int outExt[6],
 				uint64_t outInc[3],
 				unsigned int* accOverflowCount);
@@ -80,7 +81,7 @@ namespace curan {
 				char_pixel_type* outPtr,
 				unsigned short* accPtr,
 				int numscalars,
-				VolumeReconstructor::Compounding compoundingMode,
+				Compounding compoundingMode,
 				int outExt[6],
 				uint64_t outInc[3],
 				unsigned int* accOverflowCount);
@@ -103,8 +104,8 @@ namespace curan {
 				Eigen::Matrix4d matrix;
 
 				// details specified by the user RE: how the voxels should be computed
-				VolumeReconstructor::Interpolation interpolationMode;   // linear or nearest neighbor
-				VolumeReconstructor::Compounding compoundingMode;
+				Interpolation interpolationMode;   // linear or nearest neighbor
+				Compounding compoundingMode;
 
 				// parameters for clipping
 				double* clipRectangleOrigin; // array size 2
@@ -130,7 +131,7 @@ namespace curan {
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
 				char_pixel_type& returnVal,
-				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
+				const KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 
 
 			bool ApplyDistanceWeightInverse(char_pixel_type* inputData,            // contains the dataset being interpolated between
@@ -140,7 +141,7 @@ namespace curan {
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
 				char_pixel_type& returnVal,
-				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
+				const KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 
 
 			bool ApplyGaussian(char_pixel_type* inputData,            // contains the dataset being interpolated between
@@ -150,7 +151,7 @@ namespace curan {
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
 				char_pixel_type& returnVal,
-				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
+				const KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 
 
 			bool ApplyGaussianAccumulation(char_pixel_type* inputData,            // contains the dataset being interpolated between
@@ -160,7 +161,7 @@ namespace curan {
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
 				char_pixel_type& returnVal,
-				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
+				const KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 
 
 			bool ApplySticks(char_pixel_type* inputData,            // contains the dataset being interpolated between
@@ -170,7 +171,7 @@ namespace curan {
 				uint64_t* wholeExtent,        // the boundaries of the volume, outputExtent
 				uint64_t* thisPixel,          // The x,y,z coordinates of the voxel being calculated
 				char_pixel_type& returnVal,
-				const VolumeReconstructor::KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
+				const KernelDescriptor* descrip);           // The value of the pixel being calculated (unknown);
 		}
 	}
 }
