@@ -3,6 +3,9 @@
 #include "Mathematics/ConvexHull3.h"
 #include "Mathematics/ArbitraryPrecision.h"
 #include "Mathematics/MinimumVolumeBox3.h"
+#include "rendering/Volume.h"
+#include "rendering/Window.h"
+#include "rendering/Renderable.h"
 
 struct Clipping{
 	std::array<double, 2> clipRectangleOrigin = { 0.0,0.0 }; 
@@ -128,6 +131,10 @@ public:
         return *(this);
     };
 
+	output_type::Pointer get_output_pointer(){
+		return out_volume;
+	}
+
 	StaticReconstructor& update(){
 		gte::Vector<3, double> output_origin = volumetric_bounding_box.center
 		- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
@@ -241,7 +248,10 @@ public:
 		};
 
 		frame_data.clear();
+		return *(this);
 	}
+
+
 };
 
 constexpr long width = 50;
@@ -311,6 +321,39 @@ void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructo
     }
 }
 
+void updateBaseTexture3D(vsg::floatArray3D& image, StaticReconstructor::output_type::Pointer image_to_render)
+{
+    using OutputPixelType = float;
+    using InputImageType = itk::Image<unsigned char, 3>;
+    using OutputImageType = itk::Image<OutputPixelType, 3>;
+    using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
+    auto filter = FilterType::New();
+    filter->SetInput(image_to_render);
+
+    using RescaleType = itk::RescaleIntensityImageFilter<OutputImageType, OutputImageType>;
+    auto rescale = RescaleType::New();
+    rescale->SetInput(filter->GetOutput());
+    rescale->SetOutputMinimum(0.0);
+    rescale->SetOutputMaximum(1.0);
+
+    try{
+        rescale->Update();
+    } catch (const itk::ExceptionObject& e) {
+        std::cerr << "Error: " << e << std::endl;
+        throw std::runtime_error("error");
+    }
+
+    OutputImageType::Pointer out = rescale->GetOutput();
+
+    using IteratorType = itk::ImageRegionIteratorWithIndex<OutputImageType>;
+    IteratorType outputIt(out, out->GetRequestedRegion());
+    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+        StaticReconstructor::output_type::IndexType idx = outputIt.GetIndex();
+		std::printf("%d,%d,%d,val: %f\n",idx[0],idx[1],idx[2],outputIt.Get());
+        image.set(idx[0], idx[1], idx[2], outputIt.Get());
+    }
+}
+
 int main(){
 	std::vector<StaticReconstructor::output_type::Pointer> image_array;
 	create_array_of_linear_images_in_x_direction(image_array);
@@ -364,6 +407,49 @@ int main(){
 	recon_info.volumetric_bounding_box = box;
 	StaticReconstructor reconstructor{recon_info};
 	reconstructor.set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE).add_frames(image_array);
-
 	reconstructor.update();
+
+	auto buffer = reconstructor.get_output_pointer();
+
+	curan::renderable::Window::Info info;
+    info.api_dump = false;
+    info.display = "";
+    info.full_screen = false;
+    info.is_debug = false;
+    info.screen_number = 0;
+    info.title = "myviewer";
+    curan::renderable::Window::WindowSize size{1000, 800};
+    info.window_size = size;
+    curan::renderable::Window window{info};
+
+   	auto sizeimage = buffer->GetLargestPossibleRegion().GetSize();
+    std::printf("size : ");
+    std::cout << sizeimage << std::endl;
+    
+    curan::renderable::Volume::Info volumeinfo;
+    volumeinfo.width = sizeimage.GetSize()[0]; 
+    volumeinfo.height = sizeimage.GetSize()[1];
+    volumeinfo.depth = sizeimage.GetSize()[2];
+    volumeinfo.spacing_x = final_spacing[0];
+    volumeinfo.spacing_y = final_spacing[1];
+    volumeinfo.spacing_z = final_spacing[2];
+    
+    auto volume = curan::renderable::Volume::make(volumeinfo);
+	auto casted_volume = volume->cast<curan::renderable::Volume>();
+    auto updater = [buffer](vsg::floatArray3D& image){
+        updateBaseTexture3D(image, buffer);
+    };
+    casted_volume->update_volume(updater);
+    window << volume;
+    
+    window.run();
+
+    window.transverse_identifiers(
+            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
+                   &map) {
+                for (auto &p : map){
+                    std::cout << "Object contained: " << p.first << '\n';
+                }
+    });
+	return 0;
 };
