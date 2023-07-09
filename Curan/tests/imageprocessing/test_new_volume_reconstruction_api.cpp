@@ -133,8 +133,12 @@ public:
 			double clipRectangleOrigin [2]; // array size 2
 			double clipRectangleSize [2]; // array size 2
 			if(clipping){
-				clipRectangleOrigin;
-				clipRectangleSize;
+				clipRectangleOrigin[0] = (*clipping).clipRectangleOrigin[0];
+				clipRectangleOrigin[1] = (*clipping).clipRectangleOrigin[1];
+
+				clipRectangleSize[0] = (*clipping).clipRectangleSize[0];
+				clipRectangleSize[1] = (*clipping).clipRectangleSize[1];
+
 				inputFrameExtentForCurrentThread;
 			} else {
 				clipRectangleOrigin;
