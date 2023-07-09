@@ -43,6 +43,7 @@ namespace curan{
             struct Info{
                 gte::OrientedBox3<double> volumetric_bounding_box;
                 output_type::SpacingType spacing;
+                Info(std::array<double,3> spacing,std::array<double,3> origin, std::array<double,3> size, std::array<std::array<double,3>,3> direction);
             };
 
 	    // With this code we always assume 

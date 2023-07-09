@@ -53,28 +53,28 @@ void VolumeReconstructor::update()
 		img->TransformIndexToPhysicalPoint(origin_pixel, origin_position);
 
 		vertices[increment] = gte::Vector3<double>({ origin_position[0], origin_position[1], origin_position[2] });
-		std::printf("image %d - \n\tvertex 1 : ( %f %f %f )\n",counter,vertices[increment][0],vertices[increment][1],vertices[increment][2]);
+		//std::printf("image %d - \n\tvertex 1 : ( %f %f %f )\n",counter,vertices[increment][0],vertices[increment][1],vertices[increment][2]);
 
 		output_type::IndexType origin_along_width = { width - 1,0,0 };
 		output_type::PointType origin_along_width_position;
 		img->TransformIndexToPhysicalPoint(origin_along_width, origin_along_width_position);
 
 		vertices[increment + 1] = gte::Vector3<double>({ origin_along_width_position[0], origin_along_width_position[1], origin_along_width_position[2] });
-		std::printf("\tvertex 2 : ( %f %f %f )\n",counter,vertices[increment+1][0],vertices[increment+1][1],vertices[increment+1][2]);
+		//std::printf("\tvertex 2 : ( %f %f %f )\n",counter,vertices[increment+1][0],vertices[increment+1][1],vertices[increment+1][2]);
 
 		output_type::IndexType origin_along_width_and_height = { width - 1,height - 1,0 };
 		output_type::PointType origin_along_width_and_height_position;
 		img->TransformIndexToPhysicalPoint(origin_along_width_and_height, origin_along_width_and_height_position);
 
 		vertices[increment + 2] = gte::Vector3<double>({ origin_along_width_and_height_position[0], origin_along_width_and_height_position[1], origin_along_width_and_height_position[2] });
-		std::printf("\tvertex 3 : ( %f %f %f )\n",counter,vertices[increment+2][0],vertices[increment+2][1],vertices[increment+2][2]);
+		//std::printf("\tvertex 3 : ( %f %f %f )\n",counter,vertices[increment+2][0],vertices[increment+2][1],vertices[increment+2][2]);
 
 		output_type::IndexType origin_along_height = { 0,height - 1,0 };
 		output_type::PointType origin_along_height_position;
 		img->TransformIndexToPhysicalPoint(origin_along_height, origin_along_height_position);
 
 		vertices[increment + 3] = gte::Vector3<double>({ origin_along_height_position[0], origin_along_height_position[1], origin_along_height_position[2] });
-		std::printf("\tvertex 4 : ( %f %f %f )\n",counter,vertices[increment+3][0],vertices[increment+3][1],vertices[increment+3][2]);
+		//std::printf("\tvertex 4 : ( %f %f %f )\n",counter,vertices[increment+3][0],vertices[increment+3][1],vertices[increment+3][2]);
 		increment += 4;
 		++counter;
 	};

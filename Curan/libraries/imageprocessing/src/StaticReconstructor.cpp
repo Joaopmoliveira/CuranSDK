@@ -3,6 +3,23 @@
 namespace curan{
 namespace image {
 
+StaticReconstructor::Info::Info(std::array<double,3> spacing,std::array<double,3> inorigin, std::array<double,3> size, std::array<std::array<double,3>,3> direction){
+	auto inextent = gte::Vector3<double>{(size[0]*spacing[0])/2.0,(size[1]*spacing[1])/2.0,(size[2]*spacing[2])/2.0};
+
+    auto origin = gte::Vector3<double>{inorigin[0],inorigin[1],inorigin[2]};
+	std::array<gte::Vector3<double>, 3> alignement;
+	alignement[0] = {direction[0][0],direction[0][1],direction[0][2]};
+	alignement[1] = {direction[1][0],direction[1][1],direction[1][2]};
+	alignement[2] = {direction[2][0],direction[2][1],direction[2][2]};
+
+    auto output_origin = origin
+		+ alignement[0] * inextent[0]
+		+ alignement[1] * inextent[1]
+		+ alignement[2] * inextent[2];
+
+    volumetric_bounding_box = gte::OrientedBox3<double>{output_origin,alignement,inextent};
+}
+
 StaticReconstructor::StaticReconstructor(const Info& info) : output_spacing{info.spacing},volumetric_bounding_box{info.volumetric_bounding_box}{
 	output_type::IndexType output_start;
 	output_start[0] = 0;
