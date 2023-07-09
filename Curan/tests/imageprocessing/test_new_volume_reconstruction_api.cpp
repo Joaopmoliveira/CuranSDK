@@ -349,7 +349,7 @@ void updateBaseTexture3D(vsg::floatArray3D& image, StaticReconstructor::output_t
     IteratorType outputIt(out, out->GetRequestedRegion());
     for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
         StaticReconstructor::output_type::IndexType idx = outputIt.GetIndex();
-		std::printf("%d,%d,%d,val: %f\n",idx[0],idx[1],idx[2],outputIt.Get());
+		//std::printf("%d,%d,%d,val: %f\n",idx[0],idx[1],idx[2],outputIt.Get());
         image.set(idx[0], idx[1], idx[2], outputIt.Get());
     }
 }
@@ -410,6 +410,13 @@ int main(){
 	reconstructor.update();
 
 	auto buffer = reconstructor.get_output_pointer();
+	using IteratorType = itk::ImageRegionIteratorWithIndex<StaticReconstructor::output_type>;
+    IteratorType outputIt(buffer, buffer->GetRequestedRegion());
+    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+        StaticReconstructor::output_type::IndexType idx = outputIt.GetIndex();
+       	std::printf("%d\n",outputIt.Get()) ;
+    }
+	return 0;
 
 	curan::renderable::Window::Info info;
     info.api_dump = false;
