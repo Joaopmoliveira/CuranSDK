@@ -247,7 +247,7 @@ public:
 constexpr long width = 50;
 constexpr long height = 50;
 constexpr double offset = 1;
-float spacing[3] = {0.05 , 0.05 , 1};
+float spacing[3] = {0.02 , 0.02 , 1};
 float final_spacing [3] = {1 ,1, 1};
 
 void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructor::output_type::Pointer>& desired_images){
@@ -269,8 +269,6 @@ void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructo
 	image_orientation[1][2] = 0.0;
 	image_orientation[2][2] = 1.0;
 
-    std::cout << "orientation: \n" << image_orientation << std::endl;
-
 	image_origin[0] = 0.0;
 	image_origin[1] = 0.0;
 	image_origin[2] = 0.0;
@@ -279,7 +277,8 @@ void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructo
     for(size_t y = 0; y < height ; ++y)
         for(size_t x = 0; x < width ; ++x)
             pixel[x+y*height] = (int) std::sqrt(y*y+x*x);
-
+	
+	
     for(int z = 0; z < width ; ++z){
         StaticReconstructor::output_type::Pointer image = StaticReconstructor::output_type::New();
         StaticReconstructor::output_type::IndexType start;
@@ -304,7 +303,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructo
 
         image_origin[0] = 0.0;
 	    image_origin[1] = 0.0;
-	    image_origin[2] = image_origin[2] + offset;
+	    image_origin[2] = std::sin((1/50.0)*z);
 
         auto pointer = image->GetBufferPointer();
         std::memcpy(pointer,pixel,sizeof(curan::image::char_pixel_type)*width*height);
@@ -313,5 +312,55 @@ void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructo
 }
 
 int main(){
+	std::vector<StaticReconstructor::output_type::Pointer> image_array;
+	create_array_of_linear_images_in_x_direction(image_array);
+	size_t counter = 0;
+	for(auto& img : image_array){
+		auto size = img->GetLargestPossibleRegion().GetSize();
+		int height = size[1];
+		int width = size[0];
 
+		StaticReconstructor::output_type::PointType origin_position;
+		StaticReconstructor::output_type::IndexType origin_pixel = { 0,0,0 };
+		img->TransformIndexToPhysicalPoint(origin_pixel, origin_position);
+
+		auto vert1 = gte::Vector3<double>({ origin_position[0], origin_position[1], origin_position[2] });
+		std::printf("image %d - \n\tvertex 1 : ( %f %f %f )\n",counter,vert1[0],vert1[1],vert1[2]);
+
+		StaticReconstructor::output_type::IndexType origin_along_width = { width - 1,0,0 };
+		StaticReconstructor::output_type::PointType origin_along_width_position;
+		img->TransformIndexToPhysicalPoint(origin_along_width, origin_along_width_position);
+
+		auto vert2 = gte::Vector3<double>({ origin_along_width_position[0], origin_along_width_position[1], origin_along_width_position[2] });
+		std::printf("\tvertex 2 : ( %f %f %f )\n",vert2[0],vert2[1],vert2[2]);
+
+		StaticReconstructor::output_type::IndexType origin_along_width_and_height = { width - 1,height - 1,0 };
+		StaticReconstructor::output_type::PointType origin_along_width_and_height_position;
+		img->TransformIndexToPhysicalPoint(origin_along_width_and_height, origin_along_width_and_height_position);
+
+		auto vert3 = gte::Vector3<double>({ origin_along_width_and_height_position[0], origin_along_width_and_height_position[1], origin_along_width_and_height_position[2] });
+		std::printf("\tvertex 3 : ( %f %f %f )\n",vert3[0],vert3[1],vert3[2]);
+
+		StaticReconstructor::output_type::IndexType origin_along_height = { 0,height - 1,0 };
+		StaticReconstructor::output_type::PointType origin_along_height_position;
+		img->TransformIndexToPhysicalPoint(origin_along_height, origin_along_height_position);
+
+		auto vert4 = gte::Vector3<double>({ origin_along_height_position[0], origin_along_height_position[1], origin_along_height_position[2] });
+		std::printf("\tvertex 4 : ( %f %f %f )\n",vert4[0],vert4[1],vert4[2]);
+		++counter;
+	}
+	StaticReconstructor::Info recon_info;
+	recon_info.spacing[0] = 0.02;
+	recon_info.spacing[1] = 0.02;
+	recon_info.spacing[2] = 0.02;
+	auto origin = gte::Vector3<double>{0.0,0.0,0.0};
+	std::array<gte::Vector3<double>, 3> alignement;
+	alignement[0] = {1.0,0.0,0.0};
+	alignement[1] = {0.0,1.0,0.0};
+	alignement[2] = {0.0,0.0,1.0};
+	auto inextent = gte::Vector3<double>{1.0,1.0,1.0};
+
+	gte::OrientedBox3<double> box {origin,alignement,inextent};
+	recon_info.volumetric_bounding_box = box;
+	StaticReconstructor reconstructor{recon_info};
 };
