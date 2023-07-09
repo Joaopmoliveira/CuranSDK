@@ -130,20 +130,20 @@ public:
 
 		for (auto img : frame_data) {	
 			int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
-
+			double clipRectangleOrigin [2]; // array size 2
+			double clipRectangleSize [2]; // array size 2
 			if(clipping){
-				paste_slice_info.clipRectangleOrigin = (*clipping).clipRectangleOrigin.data();
-				paste_slice_info.clipRectangleSize = (*clipping).clipRectangleSize.data();
-				
-				paste_slice_info.inExt = inputFrameExtentForCurrentThread;
+				clipRectangleOrigin;
+				clipRectangleSize;
+				inputFrameExtentForCurrentThread;
 			} else {
-				img->GetLargestPossibleRegion().GetSize();
-				img->GetOrigin();
-				paste_slice_info.clipRectangleOrigin;
-				paste_slice_info.clipRectangleSize;
-				paste_slice_info.inExt = inputFrameExtentForCurrentThread;
+				clipRectangleOrigin;
+				clipRectangleSize;
+				inputFrameExtentForCurrentThread;
 			}	
-
+			paste_slice_info.clipRectangleOrigin = clipRectangleOrigin;
+			paste_slice_info.clipRectangleSize = clipRectangleSize;
+			paste_slice_info.inExt = inputFrameExtentForCurrentThread;
 			paste_slice_info.image_number += 1;
 
 			itk::Matrix<double> image_orientation = img->GetDirection();
