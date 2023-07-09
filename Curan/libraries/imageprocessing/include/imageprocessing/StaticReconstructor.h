@@ -7,6 +7,7 @@
 #include "Mathematics/ArbitraryPrecision.h"
 #include "Mathematics/MinimumVolumeBox3.h"
 #include "VolumeAlgorithms.h"
+#include <optional>
 
 namespace curan{
     namespace image {
@@ -74,3 +75,5 @@ namespace curan{
 
 }
 }
+
+#endif
