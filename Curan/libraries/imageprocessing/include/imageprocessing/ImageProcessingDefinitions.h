@@ -55,6 +55,29 @@ namespace curan{
 		struct Image {
 			Internal2DImageType::Pointer image;
 		};
+
+		namespace reconstruction {
+			enum Interpolation{
+				NEAREST_NEIGHBOR_INTERPOLATION,
+				LINEAR_INTERPOLATION
+			};
+
+			enum Compounding{
+				UNDEFINED_COMPOUNDING_MODE,
+				LATEST_COMPOUNDING_MODE,
+				MAXIMUM_COMPOUNDING_MODE,
+				MEAN_COMPOUNDING_MODE,
+			};
+
+			enum FillingStrategy
+			{
+				GAUSSIAN,
+				GAUSSIAN_ACCUMULATION,
+				DISTANCE_WEIGHT_INVERSE,
+				NEAREST_NEIGHBOR,
+				STICK
+			};
+		}
     }
 }
 

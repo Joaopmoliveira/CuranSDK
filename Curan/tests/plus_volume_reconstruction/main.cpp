@@ -18,11 +18,12 @@ void process_transform_message(SharedState& shared_state,igtl::MessageBase::Poin
     //local_mat[1][3] = local_mat[0][3]*1e-3;
     //local_mat[2][3] = local_mat[0][3]*1e-3;
 
-    igtl::PrintMatrix(local_mat);
+    //igtl::PrintMatrix(local_mat);
 
     for(size_t col = 0; col < 4; ++col)
         for(size_t row = 0; row < 4; ++row)
             transformmat(col,row) = local_mat[row][col];
+
     shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat* vsg::rotate(vsg::radians(90.0),1.0,0.0,0.0));
 }
 
@@ -40,7 +41,7 @@ void updateBaseTexture3D(vsg::vec4Array2D& image, OutputImageType::Pointer image
 }
 
 void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
-    std::cout << "received image message" << std::endl;
+    //std::cout << "received image message" << std::endl;
     igtl::ImageMessage::Pointer imageMessage = igtl::ImageMessage::New();
 	imageMessage->Copy(received_transform);
 	int c = imageMessage->Unpack(1);
@@ -119,7 +120,7 @@ std::map<std::string,std::function<void(SharedState& shared_state,igtl::MessageB
 };
 
 void bar(SharedState& shared_state,size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
-	std::cout << "received message\n";
+	//std::cout << "received message\n";
 	assert(val.IsNotNull());
 	if (er){
         shared_state.context.stop();
@@ -135,9 +136,8 @@ void bar(SharedState& shared_state,size_t protocol_defined_val,std::error_code e
 void connect(curan::renderable::Window& window,asio::io_context& io_context,SharedState& shared_state){
     
     try{
-        asio::io_context io_context;
         unsigned short port = 18944;
-        std::thread server_thread{[&](){foo(port,io_context,shared_state);}}; 
+        std::thread server_thread{[&](){foo(port,io_context);}}; 
     	curan::communication::interface_igtl igtlink_interface;
 	    curan::communication::Client::Info construction{ io_context,igtlink_interface };
 	    asio::ip::tcp::resolver resolver(io_context);
@@ -148,8 +148,6 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
 	    auto connectionstatus = client.connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val)
         {
             bar(shared_state,protocol_defined_val,er,val);
-            if(shared_state.stop_service)
-                client.get_socket().close();
         });
 	    io_context.run();
         std::cout << "io context stopped running" << std::endl;
@@ -165,7 +163,6 @@ std::vector<curan::image::VolumeReconstructor::output_type::Pointer> get_convert
     std::vector<curan::image::VolumeReconstructor::output_type::Pointer> output;
     output.reserve(openigtlinkmessages.size());
     for(auto& image : openigtlinkmessages ){
-        auto transformed_image = curan::image::VolumeReconstructor::output_type::New();
         int x,y,z =0;
         image->GetDimensions(x,y,z);
         ImportFilterType::SizeType size;
@@ -195,6 +192,23 @@ std::vector<curan::image::VolumeReconstructor::output_type::Pointer> get_convert
         const itk::SpacePrecisionType spacing[Dimension] = { 0.0024, 0.0024, 1.0 };
         importFilter->SetSpacing(spacing);
 
+        
+        vsg::dmat4 transformmat;
+
+        //local_mat[0][3] = local_mat[0][3]*1e-3;
+        //local_mat[1][3] = local_mat[0][3]*1e-3;
+        //local_mat[2][3] = local_mat[0][3]*1e-3;
+
+        //igtl::PrintMatrix(local_mat);
+
+        for(size_t col = 0; col < 4; ++col)
+            for(size_t row = 0; row < 4; ++row)
+                transformmat(col,row) = local_mat[row][col];
+        auto rotated_image = transformmat* vsg::rotate(vsg::radians(90.0),1.0,0.0,0.0);
+        for(size_t col = 0; col < 4; ++col)
+            for(size_t row = 0; row < 4; ++row)
+                local_mat[row][col] =rotated_image(col,row);
+
         itk::Matrix<double,3,3> direction;
 
         for(size_t col = 0; col < 3 ; ++col)
@@ -206,7 +220,8 @@ std::vector<curan::image::VolumeReconstructor::output_type::Pointer> get_convert
         const bool importImageFilterWillOwnTheBuffer = false;
         importFilter->SetImportPointer(static_cast<unsigned char*>(image->GetScalarPointer()), image->GetImageSize(), importImageFilterWillOwnTheBuffer);
 
-        output.push_back(transformed_image);
+        importFilter->Update();
+        output.push_back(importFilter->GetOutput());
     }
     return output;
 }
@@ -228,7 +243,7 @@ int main(){
         std::thread connector{[&](){connect(window,io_context,shared_state);}};
         window.run();
         std::cout << "stopping content from main thread" << std::endl;
-        shared_state.stop_service = true;
+        io_context.stop();
         connector.join();
 
         // Now that everything is finished we can try and compute the volumetric size of our image. 
@@ -236,7 +251,8 @@ int main(){
         // one which is dynamic and one which is static
 
         std::vector<curan::image::VolumeReconstructor::output_type::Pointer> vector_of_images = get_converted_images(shared_state.recorded_images);
-
+        std::cout << "the number of images is: " << shared_state.recorded_images.size() << std::endl;
+   
         curan::image::VolumeReconstructor reconstructor;
 
         std::array<double,2> clip_origin = {0.0,0.0};
@@ -244,7 +260,7 @@ int main(){
         float spacing[3] = {0.0024 , 0.0024, 0.0024};
 
 	    reconstructor.set_output_spacing(spacing);
-	    reconstructor.set_fill_strategy(curan::image::VolumeReconstructor::FillingStrategy::GAUSSIAN);
+	    reconstructor.set_fill_strategy(curan::image::reconstruction::FillingStrategy::GAUSSIAN);
 	    reconstructor.set_clipping_bounds(clip_origin, clip_size);
 	    reconstructor.add_frames(vector_of_images);
 
@@ -252,9 +268,18 @@ int main(){
 	    reconstructor.update();
 	    std::cout << "Finished volumetric reconstruction: \n";
 
+        curan::image::VolumeReconstructor::output_type::Pointer buffer;
+	    reconstructor.get_output_pointer(buffer);
+
+        auto sizeout = buffer->GetLargestPossibleRegion().GetSize();
+        std::cout << "size : " << sizeout << std::endl; 
+        auto outorigin = buffer->GetOrigin();
+        std::cout << "origin : " << outorigin << std::endl;
+        return 0;
+
 	    std::cout << "Started volumetric filling: \n";
-	    curan::image::VolumeReconstructor::KernelDescriptor descript;
-	    descript.fillType = curan::image::VolumeReconstructor::FillingStrategy::DISTANCE_WEIGHT_INVERSE;
+	    curan::image::reconstruction::KernelDescriptor descript;
+	    descript.fillType = curan::image::reconstruction::FillingStrategy::DISTANCE_WEIGHT_INVERSE;
         descript.size = 5;
 	    descript.stdev = 1;
 	    descript.minRatio = 0.1;
@@ -262,12 +287,9 @@ int main(){
 	    reconstructor.fill_holes();
 	    std::cout << "Finished volumetric filling: \n";
 
-	    curan::image::VolumeReconstructor::output_type::Pointer buffer;
-	    reconstructor.get_output_pointer(buffer);
         return 0;
     }  catch(std::exception & e){
         std::cout << "display failure: " << e.what() << std::endl;
-        io_context.stop();
         return 1;
     }
 }

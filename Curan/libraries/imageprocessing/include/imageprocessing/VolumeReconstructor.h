@@ -2,9 +2,11 @@
 #define CURAN_VOLUME_RECONSTRUCTOR_HEADER_FILE_
 
 #include "ImageProcessingDefinitions.h"
+#include "KernelDescriptor.h"
 #include "Mathematics/ConvexHull3.h"
 #include "Mathematics/ArbitraryPrecision.h"
 #include "Mathematics/MinimumVolumeBox3.h"
+#include "VolumeAlgorithms.h"
 
 namespace curan{
     namespace image{
@@ -21,70 +23,8 @@ namespace curan{
 			using resampler_output = itk::ResampleImageFilter<output_type, output_type>;
 			using resampler_accumulator = itk::ResampleImageFilter<accumulator_type, accumulator_type>;
 
-			// With this code we always assume 
-			// that the images are greyscale
-			// therefore there is a single value
-			// to manipulate
-			static constexpr int INPUT_COMPONENTS = 1;
-
 			VolumeReconstructor();
 			~VolumeReconstructor();
-
-			enum Interpolation{
-				NEAREST_NEIGHBOR_INTERPOLATION,
-				LINEAR_INTERPOLATION
-			};
-
-			enum Compounding{
-				UNDEFINED_COMPOUNDING_MODE,
-				LATEST_COMPOUNDING_MODE,
-				MAXIMUM_COMPOUNDING_MODE,
-				MEAN_COMPOUNDING_MODE,
-			};
-
-			enum FillingStrategy
-			{
-				GAUSSIAN,
-				GAUSSIAN_ACCUMULATION,
-				DISTANCE_WEIGHT_INVERSE,
-				NEAREST_NEIGHBOR,
-				STICK
-			};
-
-			struct KernelDescriptor
-			{
-				//constructor
-				KernelDescriptor();
-
-				//destructor
-				~KernelDescriptor();
-				
-				//copy constructor
-				KernelDescriptor(const KernelDescriptor& other);
-
-				//copy assignment
-				KernelDescriptor& operator=(const KernelDescriptor& other);
-
-				//move constructor
-
-				//move assignment
-
-				//data related with volume filling
-				int stickLengthLimit= -1;
-				int numSticksToUse= -1;    // the number of sticks to use in averaging the final voxel value
-				int numSticksInList= -1;         // the number of sticks in sticksList
-				
-				VolumeReconstructor::FillingStrategy fillType = VolumeReconstructor::FillingStrategy::GAUSSIAN;
-				int size = -1;
-				float stdev = -1;
-				float minRatio = -1;
-
-				int* sticksList = nullptr; // triples each corresponding to a stick orientation
-				float* kernel = nullptr; // stores the gaussian weights for this kernel
-
-
-				void Allocate();
-			};
 
 			void update();
 
@@ -132,14 +72,14 @@ namespace curan{
 			The fill strategy to be used when the FillHoles
 			method is called.
 			*/
-			void set_fill_strategy(FillingStrategy strategy);
+			void set_fill_strategy(reconstruction::FillingStrategy strategy);
 
 			/*
 			The kernel descriptor is the structure which defines
 			the kernel used to fill the empty voxels left in the 
 			output volume.
 			*/
-			void add_kernel_descritor(KernelDescriptor descriptor);
+			void add_kernel_descritor(reconstruction::KernelDescriptor descriptor);
 
 			/*
 			Once all the data has been inserted into the
@@ -162,8 +102,8 @@ namespace curan{
 			*/
 			bool update_internal_buffers();
 
-			Interpolation interpolation_strategy = Interpolation::NEAREST_NEIGHBOR_INTERPOLATION;
-			Compounding compounding_strategy = Compounding::LATEST_COMPOUNDING_MODE;
+			reconstruction::Interpolation interpolation_strategy = reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION;
+			reconstruction::Compounding compounding_strategy = reconstruction::Compounding::LATEST_COMPOUNDING_MODE;
 
 			std::array<double, 2> clipRectangleOrigin = { 0.0,0.0 }; // array size 2
 			std::array<double, 2> clipRectangleSize = { 0.0,0.0 };; // array size 2
@@ -177,8 +117,8 @@ namespace curan{
 			gte::OrientedBox3<double> volumetric_bounding_box;
 
 			//data related with volume filling
-			std::vector<KernelDescriptor> kernels;
-			FillingStrategy fillType;
+			std::vector<reconstruction::KernelDescriptor> kernels;
+			reconstruction::FillingStrategy fillType;
 		};
     }
 }

@@ -136,7 +136,7 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 	char_pixel_type* outPtr,
 	unsigned short* accPtr,
 	int numscalars,
-	VolumeReconstructor::Compounding compoundingMode,
+	Compounding compoundingMode,
 	int outExt[6],
 	uint64_t outInc[3],
 	unsigned int* accOverflowCount)
@@ -236,7 +236,7 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 				i--;
 				switch (compoundingMode)
 				{
-				case VolumeReconstructor::MAXIMUM_COMPOUNDING_MODE:
+				case MAXIMUM_COMPOUNDING_MODE:
 				{
 					const double minWeight(0.125); // If a pixel is right in the middle of the eight surrounding voxels
 					// (trilinear weight = 0.125 for each), then it the compounding operator
@@ -250,7 +250,7 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 					}
 					break;
 				}
-				case VolumeReconstructor::LATEST_COMPOUNDING_MODE:
+				case LATEST_COMPOUNDING_MODE:
 				{
 					const double minWeight(0.125); // If a pixel is right in the middle of the eight surrounding voxels
 					// (trilinear weight = 0.125 for each), then it the compounding operator
@@ -264,7 +264,7 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 					}
 					break;
 				}
-				case VolumeReconstructor::MEAN_COMPOUNDING_MODE:
+				case MEAN_COMPOUNDING_MODE:
 					f = fdx[j];
 					r = double((*accPtrTmp) / (double)ACCUMULATION_MULTIPLIER); // added division by double, since this always returned 0 otherwise
 					a = f + r;
@@ -319,7 +319,7 @@ int NearestNeighborInterpolation(const Eigen::Vector4d point,
 	char_pixel_type* outPtr,
 	unsigned short* accPtr,
 	int numscalars,
-	VolumeReconstructor::Compounding compoundingMode,
+	Compounding compoundingMode,
 	int outExt[6],
 	uint64_t outInc[3],
 	unsigned int* accOverflowCount)
@@ -356,7 +356,7 @@ int NearestNeighborInterpolation(const Eigen::Vector4d point,
 		outPtr += inc;
 		switch (compoundingMode)
 		{
-		case (VolumeReconstructor::MAXIMUM_COMPOUNDING_MODE):
+		case (MAXIMUM_COMPOUNDING_MODE):
 		{
 			accPtr += inc / outInc[0];
 
@@ -384,7 +384,7 @@ int NearestNeighborInterpolation(const Eigen::Vector4d point,
 
 			break;
 		}
-		case (VolumeReconstructor::MEAN_COMPOUNDING_MODE):
+		case (MEAN_COMPOUNDING_MODE):
 		{
 			accPtr += inc / outInc[0];
 			if (*accPtr <= ACCUMULATION_THRESHOLD)   // no overflow, act normally
@@ -413,7 +413,7 @@ int NearestNeighborInterpolation(const Eigen::Vector4d point,
 			}
 			break;
 		}
-		case (VolumeReconstructor::LATEST_COMPOUNDING_MODE):
+		case (LATEST_COMPOUNDING_MODE):
 		{
 			accPtr += inc / outInc[0];
 
@@ -455,7 +455,7 @@ bool ApplyNearestNeighbor(char_pixel_type* inputData,
 	uint64_t* wholeExtent,
 	uint64_t* thisPixel,
 	char_pixel_type& returnVal,
-	const VolumeReconstructor::KernelDescriptor* descrip)
+	const KernelDescriptor* descrip)
 {
 	double sumIntensities(0); // unsigned long because these rise in value quickly
 	int sumAccumulator(0);
@@ -515,7 +515,7 @@ bool ApplyDistanceWeightInverse(char_pixel_type* inputData,
 	uint64_t* wholeExtent,
 	uint64_t* thisPixel,
 	char_pixel_type& returnVal,
-	const VolumeReconstructor::KernelDescriptor* descrip)
+	const KernelDescriptor* descrip)
 {
 	// set the x, y, and z range
 	int range = (descrip->size - 1) / 2; // so with N = 3, our range is x-1 through x+1, and so on
@@ -578,7 +578,7 @@ bool ApplyGaussian(char_pixel_type* inputData,
 	uint64_t* wholeExtent,
 	uint64_t* thisPixel,
 	char_pixel_type& returnVal,
-	const VolumeReconstructor::KernelDescriptor* descrip)
+	const KernelDescriptor* descrip)
 {
 	// set the x, y, and z range
 	int range = (descrip->size - 1) / 2; // so with N = 3, our range is x-1 through x+1, and so on
@@ -641,7 +641,7 @@ bool ApplyGaussianAccumulation(char_pixel_type* inputData,
 	uint64_t* wholeExtent,
 	uint64_t* thisPixel,
 	char_pixel_type& returnVal,
-	const VolumeReconstructor::KernelDescriptor* descrip)
+	const KernelDescriptor* descrip)
 {
 	// set the x, y, and z range
 	int range = (descrip->size - 1) / 2; // so with N = 3, our range is x-1 through x+1, and so on
@@ -704,7 +704,7 @@ bool ApplySticks(char_pixel_type* inputData,
 	uint64_t* wholeExtent,
 	uint64_t* thisPixel,
 	char_pixel_type& returnVal,
-	const VolumeReconstructor::KernelDescriptor* descrip)
+	const KernelDescriptor* descrip)
 {
 	// extract coordinates
 	int x(thisPixel[0]), y(thisPixel[1]), z(thisPixel[2]); // coordinates of the hole voxel
@@ -849,8 +849,8 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 	unsigned int* accOverflowCount = insertionParams->accOverflowCount;
 
 	// details specified by the user RE: how the voxels should be computed
-	VolumeReconstructor::Interpolation interpolationMode = insertionParams->interpolationMode;   // linear or nearest neighbor
-	VolumeReconstructor::Compounding compoundingMode = insertionParams->compoundingMode;         // weighted average or maximum
+	Interpolation interpolationMode = insertionParams->interpolationMode;   // linear or nearest neighbor
+	Compounding compoundingMode = insertionParams->compoundingMode;         // weighted average or maximum
 
 	// parameters for clipping
 	double* clipRectangleOrigin = insertionParams->clipRectangleOrigin; // array size 2
@@ -898,7 +898,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 	// start of the next line
 	uint64_t outInc[3] = { 0,0,0 };
 
-	uint64_t  incr = VolumeReconstructor::INPUT_COMPONENTS;
+	uint64_t  incr = INPUT_COMPONENTS;
 	for (int i = 0; i < 3; ++i) {
 		outInc[i] = incr;
 		incr *= (outExt[i * 2 + 1] - outExt[i * 2] + 1);
@@ -915,7 +915,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 	// start of the next line
 	uint64_t inInc[3] = { 0,0,0 };
 
-	incr = VolumeReconstructor::INPUT_COMPONENTS;
+	incr = INPUT_COMPONENTS;
 	for (int i = 0; i < 3; ++i) {
 		inInc[i] = incr;
 		incr *= (inExt[i * 2 + 1] - inExt[i * 2] + 1);
@@ -933,16 +933,16 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 	inIncY = inInc[1] - (e1 - e0 + 1) * inInc[0];
 	inIncZ = inInc[2] - (e3 - e2 + 1) * inInc[1];
 
-	int numscalars = VolumeReconstructor::INPUT_COMPONENTS;
+	int numscalars = INPUT_COMPONENTS;
 
 	// Set interpolation method - nearest neighbor or trilinear
-	int (*interpolate)(const Eigen::Vector4d, char_pixel_type*, char_pixel_type*, unsigned short*, int, VolumeReconstructor::Compounding, int a[6], uint64_t b[3], unsigned int*) = NULL;     // pointer to the nearest neighbor or trilinear interpolation function
+	int (*interpolate)(const Eigen::Vector4d, char_pixel_type*, char_pixel_type*, unsigned short*, int, Compounding, int a[6], uint64_t b[3], unsigned int*) = NULL;     // pointer to the nearest neighbor or trilinear interpolation function
 	switch (interpolationMode)
 	{
-	case VolumeReconstructor::NEAREST_NEIGHBOR_INTERPOLATION:
+	case NEAREST_NEIGHBOR_INTERPOLATION:
 		interpolate = &NearestNeighborInterpolation;
 		break;
-	case VolumeReconstructor::LINEAR_INTERPOLATION:
+	case LINEAR_INTERPOLATION:
 		interpolate = &TrilinearInterpolation;
 		break;
 	default:

@@ -35,7 +35,6 @@ struct SharedState{
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> texture;
     curan::renderable::Window & window;
     asio::io_context& context;
-    std::atomic<bool> stop_service = false;
 	std::vector<igtl::ImageMessage::Pointer> recorded_images;
     SharedState(curan::renderable::Window & in_window, asio::io_context& in_context) : window{in_window},context{in_context} {}
 };
@@ -114,7 +113,7 @@ ImageTesting update_texture(ImageTesting image, float value){
 	return image;
 }
 
-void foo(unsigned short port,asio::io_context& cxt,SharedState& shared_state) {
+void foo(unsigned short port,asio::io_context& cxt) {
 	using namespace curan::communication;
 	try {
         std::cout << "Server starting\n";
@@ -138,7 +137,7 @@ void foo(unsigned short port,asio::io_context& cxt,SharedState& shared_state) {
 
 		double controled_time = 0.0;
 
-		while (!shared_state.stop_service) {
+		while (!cxt.stopped()) {
 			auto start = std::chrono::high_resolution_clock::now();
             float time = std::chrono::duration<float, std::chrono::seconds::period>(start - genesis).count();
 
@@ -155,10 +154,8 @@ void foo(unsigned short port,asio::io_context& cxt,SharedState& shared_state) {
 			//igtl::QuaternionToMatrix(orientation,matrix);
 
 			matrix[0][3] = 0.0;
-			matrix[1][3] = 0.5*std::sin(controled_time);
+			matrix[1][3] = 0.25*std::sin(10.0*controled_time);
 			matrix[2][3] = 0.0;
-
-			
 
 			ts->GetTime();
 

@@ -41,6 +41,7 @@ void VolumeReconstructor::update()
 	vertices.resize(frame_data.size() * 4 + 8);
 
 	int increment = 0;
+	int counter = 0 ;
 	for (auto& img : frame_data)
 	{
 		auto size = img->GetLargestPossibleRegion().GetSize();
@@ -52,26 +53,30 @@ void VolumeReconstructor::update()
 		img->TransformIndexToPhysicalPoint(origin_pixel, origin_position);
 
 		vertices[increment] = gte::Vector3<double>({ origin_position[0], origin_position[1], origin_position[2] });
+		std::printf("image %d - \n\tvertex 1 : ( %f %f %f )\n",counter,vertices[increment][0],vertices[increment][1],vertices[increment][2]);
 
 		output_type::IndexType origin_along_width = { width - 1,0,0 };
 		output_type::PointType origin_along_width_position;
 		img->TransformIndexToPhysicalPoint(origin_along_width, origin_along_width_position);
 
 		vertices[increment + 1] = gte::Vector3<double>({ origin_along_width_position[0], origin_along_width_position[1], origin_along_width_position[2] });
+		std::printf("\tvertex 2 : ( %f %f %f )\n",counter,vertices[increment+1][0],vertices[increment+1][1],vertices[increment+1][2]);
 
 		output_type::IndexType origin_along_width_and_height = { width - 1,height - 1,0 };
 		output_type::PointType origin_along_width_and_height_position;
 		img->TransformIndexToPhysicalPoint(origin_along_width_and_height, origin_along_width_and_height_position);
 
 		vertices[increment + 2] = gte::Vector3<double>({ origin_along_width_and_height_position[0], origin_along_width_and_height_position[1], origin_along_width_and_height_position[2] });
+		std::printf("\tvertex 3 : ( %f %f %f )\n",counter,vertices[increment+2][0],vertices[increment+2][1],vertices[increment+2][2]);
 
 		output_type::IndexType origin_along_height = { 0,height - 1,0 };
 		output_type::PointType origin_along_height_position;
 		img->TransformIndexToPhysicalPoint(origin_along_height, origin_along_height_position);
 
 		vertices[increment + 3] = gte::Vector3<double>({ origin_along_height_position[0], origin_along_height_position[1], origin_along_height_position[2] });
-
+		std::printf("\tvertex 4 : ( %f %f %f )\n",counter,vertices[increment+3][0],vertices[increment+3][1],vertices[increment+3][2]);
 		increment += 4;
+		++counter;
 	};
 
 	// if the bounding box is still unitialized 
@@ -223,12 +228,12 @@ void VolumeReconstructor::get_output_pointer(output_type::Pointer& pointer_to_be
 	pointer_to_be_changed = out_volume;
 };
 
-void VolumeReconstructor::set_fill_strategy(FillingStrategy strategy)
+void VolumeReconstructor::set_fill_strategy(reconstruction::FillingStrategy strategy)
 {
 	fillType = strategy;
 };
 
-void VolumeReconstructor::add_kernel_descritor(KernelDescriptor descriptor)
+void VolumeReconstructor::add_kernel_descritor(reconstruction::KernelDescriptor descriptor)
 {
 	if (fillType == descriptor.fillType) {
 		descriptor.Allocate();
@@ -267,7 +272,7 @@ void VolumeReconstructor::fill_holes()
 	uint64_t byteIncVol[3] = { 0 }; //x,y,z
 
 	int idx;
-	uint64_t incr = INPUT_COMPONENTS;
+	uint64_t incr = reconstruction::INPUT_COMPONENTS;
 
 	for (idx = 0; idx < 3; ++idx)
 	{
@@ -278,7 +283,7 @@ void VolumeReconstructor::fill_holes()
 	// this will store the position of the pixel being looked at currently
 	uint64_t currentPos[3]; //x,y,z
 
-	uint64_t numVolumeComponents = INPUT_COMPONENTS;
+	uint64_t numVolumeComponents = reconstruction::INPUT_COMPONENTS;
 
 	// Set interpolation method - nearest neighbor or trilinear
 	bool (*apply)(char_pixel_type * inputData,
@@ -288,23 +293,23 @@ void VolumeReconstructor::fill_holes()
 		uint64_t * wholeExtent,
 		uint64_t * thisPixel,
 		char_pixel_type & returnVal,
-		const KernelDescriptor * descriptor) = NULL;
+		const reconstruction::KernelDescriptor * descriptor) = NULL;
 
 	switch (fillType)
 	{
-	case FillingStrategy::GAUSSIAN:
+	case reconstruction::FillingStrategy::GAUSSIAN:
 		apply = &reconstruction::ApplyGaussian;
 		break;
-	case FillingStrategy::GAUSSIAN_ACCUMULATION:
+	case reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION:
 		apply = &reconstruction::ApplyGaussianAccumulation;
 		break;
-	case FillingStrategy::DISTANCE_WEIGHT_INVERSE:
+	case reconstruction::FillingStrategy::DISTANCE_WEIGHT_INVERSE:
 		apply = &reconstruction::ApplyDistanceWeightInverse;
 		break;
-	case FillingStrategy::NEAREST_NEIGHBOR:
+	case reconstruction::FillingStrategy::NEAREST_NEIGHBOR:
 		apply = &reconstruction::ApplyNearestNeighbor;
 		break;
-	case FillingStrategy::STICK:
+	case reconstruction::FillingStrategy::STICK:
 		apply = &reconstruction::ApplySticks;
 		break;
 	default:
@@ -488,220 +493,6 @@ bool VolumeReconstructor::update_internal_buffers()
 	}
 	return true;
 };
-
-VolumeReconstructor::KernelDescriptor::KernelDescriptor()
-{
-}
-
-VolumeReconstructor::KernelDescriptor::~KernelDescriptor()
-{
-	if (sticksList != nullptr)
-		delete[] sticksList;
-
-	if (kernel != nullptr)
-		delete[] kernel;
-}
-
-VolumeReconstructor::KernelDescriptor::KernelDescriptor(const KernelDescriptor& other)
-{
-	stickLengthLimit = other.stickLengthLimit;
-	numSticksToUse = other.numSticksToUse;    // the number of sticks to use in averaging the final voxel value
-	numSticksInList = other.numSticksInList;         // the number of sticks in sticksList
-	fillType = other.fillType;
-	size = other.size;
-	stdev = other.stdev;
-	minRatio = other.minRatio;
-
-	if (other.sticksList != nullptr) {
-		if (sticksList != nullptr)
-			delete[] sticksList;
-		size_t sticksList_size = 39;
-		sticksList = new int[sticksList_size];
-		std::memcpy(sticksList, other.sticksList, sticksList_size);
-	}
-
-	if (other.kernel != nullptr) {
-		if (kernel != nullptr)
-			delete[] kernel;
-		size_t kernel_size = size * size * size;
-		kernel = new float[kernel_size];
-		std::memcpy(kernel, other.kernel, kernel_size);
-	}
-}
-
-VolumeReconstructor::KernelDescriptor& VolumeReconstructor::KernelDescriptor::operator=(const KernelDescriptor& other)
-{
-	if (this != &other) {
-		stickLengthLimit = other.stickLengthLimit;
-		numSticksToUse = other.numSticksToUse;    // the number of sticks to use in averaging the final voxel value
-		numSticksInList = other.numSticksInList;         // the number of sticks in sticksList
-		fillType = other.fillType;
-		size = other.size;
-		stdev = other.stdev;
-		minRatio = other.minRatio;
-
-		if (other.sticksList != nullptr) {
-			if (sticksList != nullptr)
-				delete[] sticksList;
-			size_t sticksList_size = 39;
-			sticksList = new int[sticksList_size];
-			std::memcpy(sticksList, other.sticksList, sticksList_size);
-		}
-
-		if (other.kernel != nullptr) {
-			if (kernel != nullptr)
-				delete[] kernel;
-			size_t kernel_size = size * size * size;
-			kernel = new float[kernel_size];
-			std::memcpy(kernel, other.kernel, kernel_size);
-		}
-	}
-	return *this;
-}
-
-void VolumeReconstructor::KernelDescriptor::Allocate(){
-	switch (fillType)
-	{
-	case FillingStrategy::DISTANCE_WEIGHT_INVERSE:
-	{
-		if (kernel != nullptr)
-			delete[] kernel;
-		kernel = new float[size * size * size];
-
-		float range = (size - 1) / 2.;
-		int index(0);
-		for (int z = 0; z < size; z++)
-		{
-			for (int y = 0; y < size; y++)
-			{
-				for (int x = 0; x < size; x++)
-				{
-					float xD = (x - range);
-					float yD = (y - range);
-					float zD = (z - range);
-					float distance = sqrt(xD * xD + yD * yD + zD * zD); // use euclidean distance
-					if (distance) { // avoid division by zero
-						float invD = fabsf(1.0f / distance);
-						kernel[index] = invD;
-					} else {
-						kernel[index] = 0.0f; // center shouldn't have any weight anyway
-					}
-					index++;
-				}
-			}
-		}
-
-	}
-	break;
-	case FillingStrategy::GAUSSIAN:
-	{
-		if (kernel != nullptr)
-			delete[] kernel;
-		kernel = new float[size * size * size];
-
-		float range = (size - 1) / 2.;
-		const double Pi = 3.1415926535897932384626433832795;
-
-		// divisors in the exponent
-		float divisor = stdev * stdev * 2.0;
-
-		// divisor in the non-exponent
-		float termDivisor = pow(2 * Pi, 3. / 2) * pow(stdev, 3);
-
-		int index(0);
-		for (int z = 0; z < size; z++)
-		{
-			for (int y = 0; y < size; y++)
-			{
-				for (int x = 0; x < size; x++)
-				{
-					double xExp = pow((double)x - range, 2) / divisor;
-					double yExp = pow((double)y - range, 2) / divisor;
-					double zExp = pow((double)z - range, 2) / divisor;
-					double eExp = -(xExp + yExp + zExp);
-
-					float calcVal = (1.0f) / (termDivisor)*exp(eExp);
-					kernel[index] = calcVal;
-					index++;
-				}
-			}
-		}
-	}
-	break;
-	case FillingStrategy::GAUSSIAN_ACCUMULATION:
-	{
-		if (kernel != nullptr)
-			delete[] kernel;
-		kernel = new float[size * size * size];
-
-		float range = (size - 1) / 2.;
-		const double Pi = 3.1415926535897932384626433832795;
-
-		// divisors in the exponent
-		float divisor = stdev * stdev * 2.0;
-
-		// divisor in the non-exponent
-		float termDivisor = pow(2 * Pi, 3. / 2) * pow(stdev, 3);
-
-		int index(0);
-		for (int z = 0; z < size; z++)
-		{
-			for (int y = 0; y < size; y++)
-			{
-				for (int x = 0; x < size; x++)
-				{
-					double xExp = pow((double)x - range, 2) / divisor;
-					double yExp = pow((double)y - range, 2) / divisor;
-					double zExp = pow((double)z - range, 2) / divisor;
-					double eExp = -(xExp + yExp + zExp);
-
-					float calcVal = (1.0f) / (termDivisor)*exp(eExp);
-					kernel[index] = calcVal;
-					index++;
-				}
-			}
-		}
-	}
-	break;
-	case FillingStrategy::NEAREST_NEIGHBOR:
-	
-			// we do not need to allocate anything for the nearest neighbor algorithm
-	break;
-	case FillingStrategy::STICK:
-	{
-		numSticksInList = 13;
-		if (sticksList != nullptr)
-			delete[] sticksList;
-		sticksList = new int[39];
-
-		// 1x1, 2x0
-		sticksList[0] = 1; sticksList[1] = 0; sticksList[2] = 0; // x, y, z
-		sticksList[3] = 0; sticksList[4] = 1; sticksList[5] = 0;
-		sticksList[6] = 0; sticksList[7] = 0; sticksList[8] = 1;
-
-		// 2x1, 1x0
-		sticksList[9] = 1; sticksList[10] = 1; sticksList[11] = 0;
-		sticksList[12] = 1; sticksList[13] = 0; sticksList[14] = 1;
-		sticksList[15] = 0; sticksList[16] = 1; sticksList[17] = 1;
-		// 1x1, 1x-1, 1x0
-		sticksList[18] = 1; sticksList[19] = -1; sticksList[20] = 0;
-		sticksList[21] = 1; sticksList[22] = 0; sticksList[23] = -1;
-		sticksList[24] = 0; sticksList[25] = 1; sticksList[26] = -1;
-
-		// 3x1
-		sticksList[27] = 1; sticksList[28] = 1; sticksList[29] = 1;
-		// 2x1, 1x-1
-		sticksList[30] = -1; sticksList[31] = 1; sticksList[32] = 1;
-		sticksList[33] = 1; sticksList[34] = -1; sticksList[35] = 1;
-		sticksList[36] = -1; sticksList[37] = -1; sticksList[38] = 1;
-
-	}
-	break;
-	default:
-		// should we return an error?
-		break;
-	}
-}
 
 }
 }
