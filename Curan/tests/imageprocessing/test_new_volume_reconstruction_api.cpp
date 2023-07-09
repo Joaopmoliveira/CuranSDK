@@ -43,8 +43,51 @@ public:
 	static constexpr int INPUT_COMPONENTS = 1;
 
 	StaticReconstructor(const Info& info) : output_spacing{info.spacing},axis{info.axis},origin{info.origin}{
+		output_type::IndexType output_start;
+		output_start[0] = 0;
+		output_start[1] = 0;
+		output_start[2] = 0;
+
+		output_type::DirectionType output_directorion;
+		output_directorion[0][0] = volumetric_bounding_box.axis[0][0];
+		output_directorion[1][0] = volumetric_bounding_box.axis[1][0];
+		output_directorion[2][0] = volumetric_bounding_box.axis[2][0];
+
+		output_directorion[0][1] = volumetric_bounding_box.axis[0][1];
+		output_directorion[1][1] = volumetric_bounding_box.axis[1][1];
+		output_directorion[2][1] = volumetric_bounding_box.axis[2][1];
+
+		output_directorion[0][2] = volumetric_bounding_box.axis[0][2];
+		output_directorion[1][2] = volumetric_bounding_box.axis[1][2];
+		output_directorion[2][2] = volumetric_bounding_box.axis[2][2];
+
+		output_type::SizeType output_size;
+		output_size[0] = std::ceil(volumetric_bounding_box.extent[0] * 2 / output_spacing[0]);
+		output_size[1] = std::ceil(volumetric_bounding_box.extent[1] * 2 / output_spacing[1]);
+		output_size[2] = std::ceil(volumetric_bounding_box.extent[2] * 2 / output_spacing[2]);
+
+		output_type::PointType output_origin;
+		output_origin[0] = origin[0];
+		output_origin[1] = origin[1];	
+		output_origin[2] = origin[2];
+
+		output_type::RegionType output_region;
+		output_region.SetSize(output_size);
+		output_region.SetIndex(output_start);
+
 		out_volume = output_type::New();
+		out_volume->SetRegions(output_region);
+		out_volume->SetOrigin(output_origin);
+		out_volume->SetSpacing(output_spacing);
+		out_volume->SetDirection(output_directorion);
+		out_volume->Allocate(true);
+
 		acummulation_buffer = accumulator_type::New();
+		acummulation_buffer->SetRegions(output_region);
+		acummulation_buffer->SetOrigin(output_origin);
+		acummulation_buffer->SetSpacing(output_spacing);
+		acummulation_buffer->SetDirection(output_directorion);
+		acummulation_buffer->Allocate(true);
     }
 
 	~StaticReconstructor(){
@@ -139,11 +182,18 @@ public:
 				clipRectangleSize[0] = (*clipping).clipRectangleSize[0];
 				clipRectangleSize[1] = (*clipping).clipRectangleSize[1];
 
-				inputFrameExtentForCurrentThread;
+				inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
+				inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
 			} else {
-				clipRectangleOrigin;
-				clipRectangleSize;
-				inputFrameExtentForCurrentThread;
+				auto local_size = img->GetLargestPossibleRegion().GetSize();
+				auto local_origin = img->GetOrigin();
+				clipRectangleOrigin[0] = local_origin[0];
+				clipRectangleOrigin[1] = local_origin[1];
+				clipRectangleSize[0] = local_size.GetSize()[0];
+				clipRectangleSize[1] = local_size.GetSize()[1];
+
+				inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
+				inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
 			}	
 			paste_slice_info.clipRectangleOrigin = clipRectangleOrigin;
 			paste_slice_info.clipRectangleSize = clipRectangleSize;
