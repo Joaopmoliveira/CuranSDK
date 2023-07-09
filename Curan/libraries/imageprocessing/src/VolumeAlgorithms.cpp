@@ -970,6 +970,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 				if (idX < clipExt[0] || idX > clipExt[1] || idY < clipExt[2] || idY > clipExt[3])
 				{
 					// outside the clipping rectangle
+					std::cout << "outside\n";
 					continue;
 				}
 				//scale the input from pixels to mm 
@@ -986,7 +987,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 				outPoint[2] /= outSpacing[2];
 				outPoint[3] = 1;
 
-				/*
+				
 				const size_t string_maximum_size = (12 + 1) * 4 + 1;
 				char str[string_maximum_size];
 
@@ -1002,8 +1003,8 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 				number_writen += 1;
 				number_writen += sprintf(str + number_writen, "%d", idZ);
 
-				curan::utils::console->info(str);
-				*/
+				std::cout << str << "inPtr " << inPtr << "\n";
+			
 				// interpolation functions return 1 if the interpolation was successful, 0 otherwise
 				interpolate(outPoint, inPtr, outPtr, accPtr, numscalars, compoundingMode, outExt, outInc, accOverflowCount);
 			}

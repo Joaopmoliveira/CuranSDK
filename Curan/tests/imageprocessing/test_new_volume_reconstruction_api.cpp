@@ -254,11 +254,11 @@ public:
 
 };
 
-constexpr long width = 50;
-constexpr long height = 50;
+constexpr long width = 10;
+constexpr long height = 10;
 constexpr double offset = 1;
 float spacing[3] = {0.02 , 0.02 , 1};
-float final_spacing [3] = {1 ,1, 1};
+float final_spacing [3] = {0.02 ,0.02, 0.02};
 
 void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructor::output_type::Pointer>& desired_images){
     // the volume shoud be a box with spacing 1.0 mm in all directions with a size of 2 mm in each side 
@@ -313,7 +313,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructo
 
         image_origin[0] = 0.0;
 	    image_origin[1] = 0.0;
-	    image_origin[2] = std::sin((1/50.0)*z);
+	    image_origin[2] = std::sin((1.0/width)*z);
 
         auto pointer = image->GetBufferPointer();
         std::memcpy(pointer,pixel,sizeof(curan::image::char_pixel_type)*width*height);
@@ -393,10 +393,10 @@ int main(){
 		++counter;
 	}
 	StaticReconstructor::Info recon_info;
-	recon_info.spacing[0] = 0.02;
-	recon_info.spacing[1] = 0.02;
-	recon_info.spacing[2] = 0.02;
-	auto origin = gte::Vector3<double>{0.0,0.0,0.0};
+	recon_info.spacing[0] = final_spacing[0];
+	recon_info.spacing[1] = final_spacing[1];
+	recon_info.spacing[2] = final_spacing[2];
+	auto origin = gte::Vector3<double>{1.0,1.0,1.0};
 	std::array<gte::Vector3<double>, 3> alignement;
 	alignement[0] = {1.0,0.0,0.0};
 	alignement[1] = {0.0,1.0,0.0};
@@ -410,13 +410,13 @@ int main(){
 	reconstructor.update();
 
 	auto buffer = reconstructor.get_output_pointer();
-	using IteratorType = itk::ImageRegionIteratorWithIndex<StaticReconstructor::output_type>;
-    IteratorType outputIt(buffer, buffer->GetRequestedRegion());
-    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
-        StaticReconstructor::output_type::IndexType idx = outputIt.GetIndex();
-       	std::printf("%d\n",outputIt.Get()) ;
-    }
-	return 0;
+//	using IteratorType = itk::ImageRegionIteratorWithIndex<StaticReconstructor::output_type>;
+//    IteratorType outputIt(buffer, buffer->GetRequestedRegion());
+//    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+//        StaticReconstructor::output_type::IndexType idx = outputIt.GetIndex();
+//       	std::printf("%d\n",outputIt.Get()) ;
+//    }
+//	return 0;
 
 	curan::renderable::Window::Info info;
     info.api_dump = false;
