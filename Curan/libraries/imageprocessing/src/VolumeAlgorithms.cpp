@@ -986,7 +986,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 				outPoint[1] /= outSpacing[1];
 				outPoint[2] /= outSpacing[2];
 				outPoint[3] = 1;
-
+/*
 				
 				const size_t string_maximum_size = (12 + 1) * 4 + 1;
 				char str[string_maximum_size];
@@ -1002,8 +1002,8 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 				str[number_writen] = ',';
 				number_writen += 1;
 				number_writen += sprintf(str + number_writen, "%d", idZ);
-
-				std::cout << str << "inPtr " << inPtr << "\n";
+*/
+				//std::cout << str << "inPtr " << (int)*inPtr << "\n";
 			
 				// interpolation functions return 1 if the interpolation was successful, 0 otherwise
 				interpolate(outPoint, inPtr, outPtr, accPtr, numscalars, compoundingMode, outExt, outInc, accOverflowCount);

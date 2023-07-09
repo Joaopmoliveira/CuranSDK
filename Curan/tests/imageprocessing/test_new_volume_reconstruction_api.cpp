@@ -257,8 +257,8 @@ public:
 constexpr long width = 10;
 constexpr long height = 10;
 constexpr double offset = 1;
-float spacing[3] = {0.02 , 0.02 , 1};
-float final_spacing [3] = {0.02 ,0.02, 0.02};
+float spacing[3] = {0.1 , 0.1 , 1};
+float final_spacing [3] = {0.1 ,0.1, 0.1};
 
 void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructor::output_type::Pointer>& desired_images){
     // the volume shoud be a box with spacing 1.0 mm in all directions with a size of 2 mm in each side 
@@ -284,11 +284,14 @@ void create_array_of_linear_images_in_x_direction(std::vector<StaticReconstructo
 	image_origin[2] = 0.0;
 
     curan::image::char_pixel_type pixel[width*height];
-    for(size_t y = 0; y < height ; ++y)
-        for(size_t x = 0; x < width ; ++x)
-            pixel[x+y*height] = (int) std::sqrt(y*y+x*x);
-	
-	
+    for(size_t y = 0; y < height ; ++y){
+        for(size_t x = 0; x < width ; ++x){
+			pixel[x+y*height] = (int) std::sqrt(y*y+x*x);
+			std::cout << pixel << " ";
+		}
+        std::cout << std::endl;
+	}
+
     for(int z = 0; z < width ; ++z){
         StaticReconstructor::output_type::Pointer image = StaticReconstructor::output_type::New();
         StaticReconstructor::output_type::IndexType start;
@@ -349,7 +352,7 @@ void updateBaseTexture3D(vsg::floatArray3D& image, StaticReconstructor::output_t
     IteratorType outputIt(out, out->GetRequestedRegion());
     for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
         StaticReconstructor::output_type::IndexType idx = outputIt.GetIndex();
-		//std::printf("%d,%d,%d,val: %f\n",idx[0],idx[1],idx[2],outputIt.Get());
+		std::printf("%d,%d,%d,val: %f\n",idx[0],idx[1],idx[2],outputIt.Get());
         image.set(idx[0], idx[1], idx[2], outputIt.Get());
     }
 }
@@ -396,17 +399,17 @@ int main(){
 	recon_info.spacing[0] = final_spacing[0];
 	recon_info.spacing[1] = final_spacing[1];
 	recon_info.spacing[2] = final_spacing[2];
-	auto origin = gte::Vector3<double>{1.0,1.0,1.0};
+	auto origin = gte::Vector3<double>{0.5,0.5,0.5};
 	std::array<gte::Vector3<double>, 3> alignement;
 	alignement[0] = {1.0,0.0,0.0};
 	alignement[1] = {0.0,1.0,0.0};
 	alignement[2] = {0.0,0.0,1.0};
-	auto inextent = gte::Vector3<double>{1.0,1.0,1.0};
+	auto inextent = gte::Vector3<double>{0.5,0.5,0.5};
 
 	gte::OrientedBox3<double> box {origin,alignement,inextent};
 	recon_info.volumetric_bounding_box = box;
 	StaticReconstructor reconstructor{recon_info};
-	reconstructor.set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE).add_frames(image_array);
+	reconstructor.set_compound(curan::image::reconstruction::Compounding::MEAN_COMPOUNDING_MODE).add_frames(image_array);
 	reconstructor.update();
 
 	auto buffer = reconstructor.get_output_pointer();
@@ -437,9 +440,9 @@ int main(){
     volumeinfo.width = sizeimage.GetSize()[0]; 
     volumeinfo.height = sizeimage.GetSize()[1];
     volumeinfo.depth = sizeimage.GetSize()[2];
-    volumeinfo.spacing_x = final_spacing[0];
-    volumeinfo.spacing_y = final_spacing[1];
-    volumeinfo.spacing_z = final_spacing[2];
+    volumeinfo.spacing_x = 10;
+    volumeinfo.spacing_y = 10;
+    volumeinfo.spacing_z = 10;
     
     auto volume = curan::renderable::Volume::make(volumeinfo);
 	auto casted_volume = volume->cast<curan::renderable::Volume>();
