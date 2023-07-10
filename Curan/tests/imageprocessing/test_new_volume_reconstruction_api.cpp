@@ -23,12 +23,12 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
 	image_orientation[2][0] = 0.0;
 
 	image_orientation[0][1] = 0.0;
-	image_orientation[1][1] = -1.0;
+	image_orientation[1][1] = 1.0;
 	image_orientation[2][1] = 0.0;
 
 	image_orientation[0][2] = 0.0;
 	image_orientation[1][2] = 0.0;
-	image_orientation[2][2] = -1.0;
+	image_orientation[2][2] = 1.0;
 
 	image_origin[0] = 0.0;
 	image_origin[1] = 0.0;
@@ -187,6 +187,9 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 
 	for(auto img : image_array){
 		std::cout << "added an image\n";
+        texture->cast<curan::renderable::DynamicTexture>()->update_texture([img](vsg::vec4Array2D& image){ updateBaseTexture3D(image,img);});
+        auto localorigin = img->GetOrigin();
+        texture->update_transform(vsg::translate(localorigin[0]+0.5,localorigin[1]+0.5,localorigin[2]));
 		reconstructor.add_frame(img);
 		reconstructor.update();
 		if(!continue_updating)
@@ -194,9 +197,6 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 		buffer = reconstructor.get_output_pointer();
 		auto updater = [buffer](vsg::floatArray3D& image){ updateBaseTexture3D(image, buffer); };
     	casted_volume->update_volume(updater);
-        texture->cast<curan::renderable::DynamicTexture>()->update_texture([img](vsg::vec4Array2D& image){ updateBaseTexture3D(image,img);});
-        auto localorigin = img->GetOrigin();
-        texture->update_transform(vsg::translate(localorigin[0]+0.5,localorigin[1]+0.5,localorigin[2]));
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	}
 }
