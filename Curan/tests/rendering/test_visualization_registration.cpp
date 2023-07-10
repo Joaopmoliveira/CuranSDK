@@ -281,9 +281,9 @@ using VersorType = TransformType::VersorType;
 using VectorType = VersorType::VectorType;
 VersorType rotation;
 VectorType axis;
-axis[0] = 0.3165373;
-axis[1] =  -0.0143763;
-axis[2] = -0.9484711;
+axis[0] = 0.3165373 + 0;
+axis[1] =  -0.0143763 + 0;
+axis[2] = -0.9484711 + 0.8;
 constexpr double angle = 0.0875013;
 rotation.Set(axis, angle);
 VectorType translation;
@@ -529,10 +529,8 @@ const TransformType::ParametersType finalParameters =
 
   using OutputPixelType = unsigned char;
   using OutputImageType = itk::Image<OutputPixelType, Dimension>;
-  using CastFilterType =
-    itk::CastImageFilter<ImageType, OutputImageType>;
-  using RescaleFilterType =
-    itk::RescaleIntensityImageFilter<ImageType, OutputImageType>;
+  using CastFilterType = itk::CastImageFilter<ImageType, OutputImageType>;
+  using RescaleFilterType = itk::RescaleIntensityImageFilter<ImageType, OutputImageType>;
   using WriterType = itk::ImageFileWriter<OutputImageType>;
 
   auto writer = WriterType::New();
@@ -655,7 +653,8 @@ const TransformType::ParametersType finalParameters =
 
 
   extractor->SetInput(intensityRescaler->GetOutput());
-  resampler->SetTransform(finalTransform);
+  resampler->SetTransform(initialTransform_2);
+  extractor->Update();
   try {
     using namespace curan::ui;
     std::unique_ptr<Context> context = std::make_unique<Context>();;
