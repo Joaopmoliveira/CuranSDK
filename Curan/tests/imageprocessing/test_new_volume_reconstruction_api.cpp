@@ -15,9 +15,6 @@ float spacing[3] = {0.02 , 0.02 , 1};
 float final_spacing [3] = {0.02 ,0.02, 0.02};
 
 void create_array_of_linear_images_in_x_direction(std::vector<curan::image::StaticReconstructor::output_type::Pointer>& desired_images){
-    // the volume shoud be a box with spacing 1.0 mm in all directions with a size of 2 mm in each side 
-    // to fill the volume we create an image with two images 
-
     itk::Matrix<double> image_orientation;
 	itk::Point<double> image_origin;
 
@@ -26,12 +23,12 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
 	image_orientation[2][0] = 0.0;
 
 	image_orientation[0][1] = 0.0;
-	image_orientation[1][1] = 1.0;
+	image_orientation[1][1] = -1.0;
 	image_orientation[2][1] = 0.0;
 
 	image_orientation[0][2] = 0.0;
 	image_orientation[1][2] = 0.0;
-	image_orientation[2][2] = 1.0;
+	image_orientation[2][2] = -1.0;
 
 	image_origin[0] = 0.0;
 	image_origin[1] = 0.0;
