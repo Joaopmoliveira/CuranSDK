@@ -132,7 +132,7 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
     
     try{
         unsigned short port = 18944;
-        std::thread server_thread{[&](){foo(port,io_context);}}; 
+//        std::thread server_thread{[&](){foo(port,io_context);}}; 
     	curan::communication::interface_igtl igtlink_interface;
 	    curan::communication::Client::Info construction{ io_context,igtlink_interface };
 	    asio::ip::tcp::resolver resolver(io_context);
@@ -146,7 +146,7 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
         });
 	    io_context.run();
         std::cout << "io context stopped running" << std::endl;
-        server_thread.join();
+//       server_thread.join();
 	    return ;
     }  catch(std::exception & e){
         std::cout << "communication failure: " << e.what() << std::endl;
@@ -240,7 +240,7 @@ int main(){
         std::cout << "stopping content from main thread" << std::endl;
         io_context.stop();
         connector.join();
-
+        return 0;
         // Now that everything is finished we can try and compute the volumetric size of our image. 
         // Once this is done I need to change the API of the volume reconstructor into two distinct classes,
         // one which is dynamic and one which is static
