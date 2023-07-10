@@ -44,17 +44,21 @@ using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
 using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageType, ImageType>;
 using RegistrationType = itk::ImageRegistrationMethodv4<ImageType, ImageType, TransformType>;
 
-void function(curan::ui::ImageDisplay* image_display){
+using OutputPixelType = unsigned char;
+  using OutputImageType = itk::Image<OutputPixelType, Dimension>;
+using OutputSliceType = itk::Image<OutputPixelType, 2>;
+
+void function(curan::ui::ImageDisplay* image_display, itk::ExtractImageFilter<OutputImageType, OutputSliceType>* resampler){
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     using ImageReaderType = itk::ImageFileReader<ImageType_char>;
     auto ImageReader = ImageReaderType::New();
 
-    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/BrainProtonDensitySlice.png"};
+    /* std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/BrainProtonDensitySlice.png"};
     ImageReader->SetFileName(dirName);
-    ImageReader->Update();
+    ImageReader->Update(); */
 
     
-    ImageType_char::Pointer pointer_to_block_of_memory = ImageReader->GetOutput();
+    ImageType_char::Pointer pointer_to_block_of_memory = resampler->GetOutput();
     auto lam = [pointer_to_block_of_memory](SkPixmap& requested) {
         ImageType_char::RegionType region = pointer_to_block_of_memory->GetLargestPossibleRegion();
         ImageType_char::SizeType size_itk = region.GetSize();
@@ -288,7 +292,7 @@ axis[2] = -0.9484711;
 constexpr double angle = 0.0875013;
 rotation.Set(axis, angle);
 VectorType translation;
-translation[0] =17.7001  +0;
+translation[0] =17.7001  +40;
 translation[1] = -33.3714;
 translation[2] = -21.292;
 VectorType offset1;
@@ -654,6 +658,9 @@ const TransformType::ParametersType finalParameters =
   sliceWriter->SetFileName(Output7);
   sliceWriter->Update();
 
+
+  extractor->SetInput(intensityRescaler->GetOutput());
+  resampler->SetTransform(finalTransform);
   try {
     using namespace curan::ui;
     std::unique_ptr<Context> context = std::make_unique<Context>();;
@@ -667,8 +674,8 @@ const TransformType::ParametersType finalParameters =
     *container << std::move(image_display);
     curan::ui::Page page{std::move(container),SK_ColorBLACK};
 
-    auto call = [pointer_to](){
-        function(pointer_to);
+    auto call = [&](){
+        function(pointer_to, extractor);
     };
 
     std::thread image_generator(call);
