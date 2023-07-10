@@ -4,7 +4,7 @@ namespace curan{
 namespace image {
 
 StaticReconstructor::Info::Info(std::array<double,3> in_spacing,std::array<double,3> inorigin, std::array<double,3> size, std::array<std::array<double,3>,3> direction){
-	auto inextent = gte::Vector3<double>{(size[0]*in_spacing[0])/2.0,(size[1]*in_spacing[1])/2.0,(size[2]*in_spacing[2])/2.0};
+	auto inextent = gte::Vector3<double>{size[0]/2.0,size[1]/2.0,size[2]/2.0};
 
     auto origin = gte::Vector3<double>{inorigin[0],inorigin[1],inorigin[2]};
 	std::array<gte::Vector3<double>, 3> alignement;
@@ -47,10 +47,15 @@ StaticReconstructor::StaticReconstructor(const Info& info) : output_spacing{info
     output_size[1] = std::ceil(volumetric_bounding_box.extent[1] * 2 / output_spacing[1]);
     output_size[2] = std::ceil(volumetric_bounding_box.extent[2] * 2 / output_spacing[2]);
 
+	gte::Vector<3, double> origin_gte = volumetric_bounding_box.center
+		- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
+		- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
+		- volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
+
     output_type::PointType output_origin;
-    output_origin[0] = origin[0];
-    output_origin[1] = origin[1];	
-    output_origin[2] = origin[2];
+    output_origin[0] = origin_gte[0];
+    output_origin[1] = origin_gte[1];	
+    output_origin[2] = origin_gte[2];
 
     output_type::RegionType output_region;
     output_region.SetSize(output_size);
@@ -179,8 +184,8 @@ StaticReconstructor& StaticReconstructor::update(){
 			auto local_origin = img->GetOrigin();
 			clipRectangleOrigin[0] = local_origin[0];
 			clipRectangleOrigin[1] = local_origin[1];
-			clipRectangleSize[0] = local_size.GetSize()[0];
-			clipRectangleSize[1] = local_size.GetSize()[1];
+			clipRectangleSize[0] = local_size.GetSize()[0]-1;
+			clipRectangleSize[1] = local_size.GetSize()[1]-1;
 
 			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
 			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];

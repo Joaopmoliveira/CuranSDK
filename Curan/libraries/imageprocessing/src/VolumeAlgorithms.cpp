@@ -986,24 +986,26 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 				outPoint[1] /= outSpacing[1];
 				outPoint[2] /= outSpacing[2];
 				outPoint[3] = 1;
-/*
-				
-				const size_t string_maximum_size = (12 + 1) * 4 + 1;
-				char str[string_maximum_size];
 
-				int number_writen = 0;
-				number_writen += sprintf(str + number_writen, "%d", insertionParams->image_number);
-				str[number_writen] = ',';
-				number_writen += 1;
-				number_writen += sprintf(str + number_writen, "%d", idX);
-				str[number_writen] = ',';
-				number_writen += 1;
-				number_writen += sprintf(str + number_writen, "%d", idY);
-				str[number_writen] = ',';
-				number_writen += 1;
-				number_writen += sprintf(str + number_writen, "%d", idZ);
-*/
-				//std::cout << str << "inPtr " << (int)*inPtr << "\n";
+				
+//				const size_t string_maximum_size = (12 + 1) * 5 + 1;
+//				char str[string_maximum_size];
+
+//				int number_writen = 0;
+//				number_writen += std::sprintf(str + number_writen, "%d", insertionParams->image_number);
+//				str[number_writen] = ',';
+//				number_writen += 1;
+//				number_writen += std::sprintf(str + number_writen, "%d", idX);
+//				str[number_writen] = ',';
+//				number_writen += 1;
+//				number_writen += std::sprintf(str + number_writen, "%d", idY);
+//				str[number_writen] = ',';
+//				number_writen += 1;
+//				number_writen += std::sprintf(str + number_writen, "%d", idZ);
+//				str[number_writen] = ',';
+//				number_writen += 1;
+//				number_writen += std::sprintf(str + number_writen, "%d", *inPtr);
+//				std::cout << str << "\n";
 			
 				// interpolation functions return 1 if the interpolation was successful, 0 otherwise
 				interpolate(outPoint, inPtr, outPtr, accPtr, numscalars, compoundingMode, outExt, outInc, accOverflowCount);
