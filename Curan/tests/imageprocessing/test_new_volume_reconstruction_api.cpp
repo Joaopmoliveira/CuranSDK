@@ -8,10 +8,10 @@
 #include "rendering/Renderable.h"
 #include "rendering/DynamicTexture.h"
 
-constexpr long width = 50;
-constexpr long height = 50;
-float spacing[3] = {0.02 , 0.02 , 1};
-float final_spacing [3] = {0.02 ,0.02, 0.02};
+constexpr long width = 10;
+constexpr long height = 10;
+float spacing[3] = {0.1 , 0.1 , 1};
+float final_spacing [3] = {0.1 ,0.1, 0.1};
 
 void create_array_of_linear_images_in_x_direction(std::vector<curan::image::StaticReconstructor::output_type::Pointer>& desired_images){
     itk::Matrix<double> image_orientation;
@@ -141,15 +141,16 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 	create_array_of_linear_images_in_x_direction(image_array);
 
 	std::array<double,3> vol_origin = {0.0,0.0,0.0};
-	std::array<double,3> vol_spacing = {0.021,0.021,0.021};
-	std::array<double,3> vol_size = {50,50,50};
+	std::array<double,3> vol_spacing = {0.1,0.1,0.1};
+	std::array<double,3> vol_size = {10,10,10};
 	std::array<std::array<double,3>,3> vol_direction;
 	vol_direction[0] = {1.0,0.0,0.0};
 	vol_direction[1] = {0.0,1.0,0.0};
 	vol_direction[2] = {0.0,0.0,1.0};
 	curan::image::StaticReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
 	curan::image::StaticReconstructor reconstructor{recon_info};
-	reconstructor.set_compound(curan::image::reconstruction::Compounding::MEAN_COMPOUNDING_MODE).set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
+	reconstructor.set_compound(curan::image::reconstruction::Compounding::MAXIMUM_COMPOUNDING_MODE)
+        .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
 
 	auto buffer = reconstructor.get_output_pointer();
 
@@ -161,9 +162,9 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
     volumeinfo.width = sizeimage.GetSize()[0]; 
     volumeinfo.height = sizeimage.GetSize()[1];
     volumeinfo.depth = sizeimage.GetSize()[2];
-    volumeinfo.spacing_x = 20;
-    volumeinfo.spacing_y = 20;
-    volumeinfo.spacing_z = 20;
+    volumeinfo.spacing_x = 100;
+    volumeinfo.spacing_y = 100;
+    volumeinfo.spacing_z = 100;
     auto volume = curan::renderable::Volume::make(volumeinfo);
 	auto casted_volume = volume->cast<curan::renderable::Volume>();
     auto updater = [buffer](vsg::floatArray3D& image){
@@ -176,7 +177,7 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
     infotexture.height = height;
     infotexture.width = width;
     infotexture.builder = vsg::Builder::create();
-    infotexture.spacing = {0.02,0.02,0.02};
+    infotexture.spacing = {0.1,0.1,0.1};
     infotexture.origin = {0.0,0.0,0.0};
     auto texture = curan::renderable::DynamicTexture::make(infotexture);
     window << texture;
@@ -205,7 +206,7 @@ int main(){
     info.is_debug = false;
     info.screen_number = 0;
     info.title = "myviewer";
-    curan::renderable::Window::WindowSize size{1000, 800};
+    curan::renderable::Window::WindowSize size{1200, 1000};
     info.window_size = size;
     curan::renderable::Window window{info};
 	std::atomic<bool> continue_updating = true;
