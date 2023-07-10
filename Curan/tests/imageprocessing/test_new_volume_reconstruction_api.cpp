@@ -6,6 +6,7 @@
 #include "rendering/Volume.h"
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
+#include "rendering/DynamicTexture.h"
 
 constexpr long width = 50;
 constexpr long height = 50;
@@ -73,6 +74,37 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
         auto pointer = image->GetBufferPointer();
         std::memcpy(pointer,pixel,sizeof(curan::image::char_pixel_type)*width*height);
         desired_images.push_back(image);
+    }
+}
+
+void updateBaseTexture3D(vsg::vec4Array2D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render)
+{
+    using OutputPixelType = float;
+    using OutputImageType = itk::Image<OutputPixelType, 3>;
+    using FilterType = itk::CastImageFilter<curan::image::StaticReconstructor::output_type, OutputImageType>;
+    auto filter = FilterType::New();
+    filter->SetInput(image_to_render);
+
+    using RescaleType = itk::RescaleIntensityImageFilter<OutputImageType, OutputImageType>;
+    auto rescale = RescaleType::New();
+    rescale->SetInput(filter->GetOutput());
+    rescale->SetOutputMinimum(0.0);
+    rescale->SetOutputMaximum(1.0);
+
+    try{
+        rescale->Update();
+    } catch (const itk::ExceptionObject& e) {
+        std::cerr << "Error: " << e << std::endl;
+        throw std::runtime_error("error");
+    }
+
+    OutputImageType::Pointer out = rescale->GetOutput();
+    using IteratorType = itk::ImageRegionIteratorWithIndex<OutputImageType>;
+    IteratorType outputIt(out, out->GetRequestedRegion());
+    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+        OutputImageType::IndexType idx = outputIt.GetIndex();
+        std::printf("(%d,%d)->(%f)\n",idx[0],idx[1],outputIt.Get());
+        image.set(idx[0],idx[1],vsg::vec4(outputIt.Get(),outputIt.Get(),outputIt.Get(),1.0));
     }
 }
 
@@ -144,6 +176,18 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
     casted_volume->update_volume(updater);
     window << volume;
 
+
+    curan::renderable::DynamicTexture::Info infotexture;
+    infotexture.height = height;
+    infotexture.width = width;
+    infotexture.builder = vsg::Builder::create();
+    infotexture.geomInfo.dx = vsg::vec3(0.02*height,0.0,0.0);
+    infotexture.geomInfo.dy = vsg::vec3(0.0,0.02*width,0.0);
+    infotexture.geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
+    infotexture.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
+    auto texture = curan::renderable::DynamicTexture::make(infotexture);
+    window << texture;
+
 	for(auto img : image_array){
 		std::cout << "added an image\n";
 		reconstructor.add_frame(img);
@@ -155,6 +199,12 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
         	updateBaseTexture3D(image, buffer);
    		 };
     	casted_volume->update_volume(updater);
+        texture->cast<curan::renderable::DynamicTexture>()->update_texture([buffer](vsg::vec4Array2D& image)
+        {
+            updateBaseTexture3D(image,buffer);
+        });
+        auto localorigin = img->GetOrigin();
+        texture->update_transform(vsg::translate(localorigin[0]+0.5,localorigin[1]+0.5,localorigin[2]));
 	}
 }
 
