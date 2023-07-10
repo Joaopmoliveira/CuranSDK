@@ -10,7 +10,6 @@
 
 constexpr long width = 50;
 constexpr long height = 50;
-constexpr double offset = 1;
 float spacing[3] = {0.02 , 0.02 , 1};
 float final_spacing [3] = {0.02 ,0.02, 0.02};
 
@@ -66,7 +65,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
 
         image_origin[0] = 0.0;
 	    image_origin[1] = 0.0;
-	    image_origin[2] = std::sin((1.0/width)*z);
+	    image_origin[2] = std::sin((1.0/(width-1))*z);
 
         auto pointer = image->GetBufferPointer();
         std::memcpy(pointer,pixel,sizeof(curan::image::char_pixel_type)*width*height);
@@ -142,7 +141,7 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 	create_array_of_linear_images_in_x_direction(image_array);
 
 	std::array<double,3> vol_origin = {0.0,0.0,0.0};
-	std::array<double,3> vol_spacing = {0.03,0.03,0.03};
+	std::array<double,3> vol_spacing = {0.021,0.021,0.021};
 	std::array<double,3> vol_size = {50,50,50};
 	std::array<std::array<double,3>,3> vol_direction;
 	vol_direction[0] = {1.0,0.0,0.0};
@@ -162,9 +161,9 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
     volumeinfo.width = sizeimage.GetSize()[0]; 
     volumeinfo.height = sizeimage.GetSize()[1];
     volumeinfo.depth = sizeimage.GetSize()[2];
-    volumeinfo.spacing_x = 30;
-    volumeinfo.spacing_y = 30;
-    volumeinfo.spacing_z = 30;
+    volumeinfo.spacing_x = 20;
+    volumeinfo.spacing_y = 20;
+    volumeinfo.spacing_z = 20;
     auto volume = curan::renderable::Volume::make(volumeinfo);
 	auto casted_volume = volume->cast<curan::renderable::Volume>();
     auto updater = [buffer](vsg::floatArray3D& image){
