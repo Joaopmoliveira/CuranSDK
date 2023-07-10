@@ -103,7 +103,7 @@ void updateBaseTexture3D(vsg::vec4Array2D& image, curan::image::StaticReconstruc
     IteratorType outputIt(out, out->GetRequestedRegion());
     for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
         OutputImageType::IndexType idx = outputIt.GetIndex();
-        std::printf("(%d,%d)->(%f)\n",idx[0],idx[1],outputIt.Get());
+        //std::printf("(%d,%d)->(%f)\n",idx[0],idx[1],outputIt.Get());
         image.set(idx[0],idx[1],vsg::vec4(outputIt.Get(),outputIt.Get(),outputIt.Get(),1.0));
     }
 }
@@ -145,7 +145,7 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 	create_array_of_linear_images_in_x_direction(image_array);
 
 	std::array<double,3> vol_origin = {0.0,0.0,0.0};
-	std::array<double,3> vol_spacing = {0.02,0.02,0.02};
+	std::array<double,3> vol_spacing = {0.03,0.03,0.03};
 	std::array<double,3> vol_size = {50,50,50};
 	std::array<std::array<double,3>,3> vol_direction;
 	vol_direction[0] = {1.0,0.0,0.0};
@@ -153,7 +153,7 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 	vol_direction[2] = {0.0,0.0,1.0};
 	curan::image::StaticReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
 	curan::image::StaticReconstructor reconstructor{recon_info};
-	reconstructor.set_compound(curan::image::reconstruction::Compounding::MEAN_COMPOUNDING_MODE);
+	reconstructor.set_compound(curan::image::reconstruction::Compounding::MEAN_COMPOUNDING_MODE).set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
 
 	auto buffer = reconstructor.get_output_pointer();
 
@@ -165,9 +165,9 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
     volumeinfo.width = sizeimage.GetSize()[0]; 
     volumeinfo.height = sizeimage.GetSize()[1];
     volumeinfo.depth = sizeimage.GetSize()[2];
-    volumeinfo.spacing_x = 20;
-    volumeinfo.spacing_y = 20;
-    volumeinfo.spacing_z = 20;
+    volumeinfo.spacing_x = 30;
+    volumeinfo.spacing_y = 30;
+    volumeinfo.spacing_z = 30;
     auto volume = curan::renderable::Volume::make(volumeinfo);
 	auto casted_volume = volume->cast<curan::renderable::Volume>();
     auto updater = [buffer](vsg::floatArray3D& image){
@@ -195,16 +195,12 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 		if(!continue_updating)
 			return;
 		buffer = reconstructor.get_output_pointer();
-		auto updater = [buffer](vsg::floatArray3D& image){
-        	updateBaseTexture3D(image, buffer);
-   		 };
+		auto updater = [buffer](vsg::floatArray3D& image){ updateBaseTexture3D(image, buffer); };
     	casted_volume->update_volume(updater);
-        texture->cast<curan::renderable::DynamicTexture>()->update_texture([buffer](vsg::vec4Array2D& image)
-        {
-            updateBaseTexture3D(image,buffer);
-        });
+        texture->cast<curan::renderable::DynamicTexture>()->update_texture([img](vsg::vec4Array2D& image){ updateBaseTexture3D(image,img);});
         auto localorigin = img->GetOrigin();
         texture->update_transform(vsg::translate(localorigin[0]+0.5,localorigin[1]+0.5,localorigin[2]));
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	}
 }
 
