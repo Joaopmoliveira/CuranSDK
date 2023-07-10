@@ -43,7 +43,7 @@ try {
     std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
     std::unique_ptr<ImageDisplay> image_display = ImageDisplay::make();
-    image_display->set_size(SkRect::MakeWH(500,500));
+    //image_display->set_size(SkRect::MakeWH(500,500));
     ImageDisplay* pointer_to = image_display.get();
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
     *container << std::move(image_display);
@@ -56,6 +56,7 @@ try {
     std::thread image_generator(call);
 
     auto rec = viewer->get_size();
+    page.propagate_size_change(rec);
     int width = rec.width();
     int height = rec.height();
 

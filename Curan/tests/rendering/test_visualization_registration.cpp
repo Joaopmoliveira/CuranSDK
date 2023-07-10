@@ -15,6 +15,7 @@
 #include "itkScaleTransform.h"
 #include "itkMattesMutualInformationImageToImageMetricv4.h"
 #include "itkVersorRigid3DTransform.h"
+#include "itkVersorRigid3DTransformOptimizer.h"
 #include "itkCenteredTransformInitializer.h"
 #include "itkRegularStepGradientDescentOptimizerv4.h"
 #include "itkImageFileReader.h"
@@ -41,28 +42,22 @@ using ImageType_char = itk::Image<PixelType_char, 2>;
 using TransformType = itk::VersorRigid3DTransform<double>;
 
 using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+//using OptimizerType = itk::VersorRigid3DTransformOptimizer;
 using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageType, ImageType>;
 using RegistrationType = itk::ImageRegistrationMethodv4<ImageType, ImageType, TransformType>;
 
 using OutputPixelType = unsigned char;
-  using OutputImageType = itk::Image<OutputPixelType, Dimension>;
+using OutputImageType = itk::Image<OutputPixelType, Dimension>;
 using OutputSliceType = itk::Image<OutputPixelType, 2>;
 
 void function(curan::ui::ImageDisplay* image_display, itk::ExtractImageFilter<OutputImageType, OutputSliceType>* resampler){
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    using ImageReaderType = itk::ImageFileReader<ImageType_char>;
-    auto ImageReader = ImageReaderType::New();
+    //std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    /* std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/BrainProtonDensitySlice.png"};
-    ImageReader->SetFileName(dirName);
-    ImageReader->Update(); */
-
-    
     ImageType_char::Pointer pointer_to_block_of_memory = resampler->GetOutput();
     auto lam = [pointer_to_block_of_memory](SkPixmap& requested) {
         ImageType_char::RegionType region = pointer_to_block_of_memory->GetLargestPossibleRegion();
         ImageType_char::SizeType size_itk = region.GetSize();
-	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType);
 	    size_t row_size = size_itk.GetSize()[0] * sizeof(char);
 	    SkPixmap map{inf,pointer_to_block_of_memory->GetBufferPointer(),row_size};
 	    requested = map;
@@ -204,7 +199,7 @@ public:
       /* std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
       std::cout << optimizer->GetCurrentPosition() << std::endl; */
-      std::this_thread::sleep_for(std::chrono::milliseconds(8));
+      std::this_thread::sleep_for(std::chrono::milliseconds(7));
 
     } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
     {
@@ -292,12 +287,12 @@ axis[2] = -0.9484711;
 constexpr double angle = 0.0875013;
 rotation.Set(axis, angle);
 VectorType translation;
-translation[0] =17.7001  +40;
+translation[0] =17.7001;
 translation[1] = -33.3714;
 translation[2] = -21.292;
 VectorType offset1;
-offset1[0] = 4.57104;
-offset1[1] = -17.3421;
+offset1[0] = 4.57104 + 40;
+offset1[1] = -17.3421 + 40;
 offset1[2] = -25.9166;
 initialTransform->SetRotation(rotation);
 initialTransform->SetTranslation(translation);
@@ -668,7 +663,7 @@ const TransformType::ParametersType finalParameters =
     std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
     std::unique_ptr<ImageDisplay> image_display = ImageDisplay::make();
-    image_display->set_size(SkRect::MakeWH(500,500));
+    image_display->set_size(SkRect::MakeWH(600,600));
     ImageDisplay* pointer_to = image_display.get();
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
     *container << std::move(image_display);
@@ -681,6 +676,7 @@ const TransformType::ParametersType finalParameters =
     std::thread image_generator(call);
 
     auto rec = viewer->get_size();
+    page.propagate_size_change(rec);
     int width = rec.width();
     int height = rec.height();
 
