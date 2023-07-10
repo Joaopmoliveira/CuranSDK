@@ -33,6 +33,15 @@
 	
 	
   </DataCollection>
+
+<CoordinateDefinitions>
+  <Transform From="Image" To="Tracker"
+    Matrix="0 -1  0  0       
+	    1  0  0  0 
+            0  0  1  0     
+            0  0  0  1"
+    Date="2011.12.06 17:57:00" Error="0.0" />     
+</CoordinateDefinitions>
   
 
   <PlusOpenIGTLinkServer 
@@ -47,10 +56,10 @@
 				<Message Type="TRANSFORM" />
       		</MessageTypes>
       		<TransformNames> 
-				<Transform Name="TrackerToPolaris"/>
+				<Transform Name="ImageToPolaris"/>
       		</TransformNames>
 			<ImageNames>
-				<Image Name="Image" EmbeddedTransformToFrame="Image"/>
+				<Image Name="Image" EmbeddedTransformToFrame="Polaris"/>
 			</ImageNames>
     	</DefaultClientInfo>
   </PlusOpenIGTLinkServer> 

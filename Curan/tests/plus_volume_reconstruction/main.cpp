@@ -12,19 +12,22 @@ void process_transform_message(SharedState& shared_state,igtl::MessageBase::Poin
     assert(shared_state.texture!=std::nullopt);
     igtl::Matrix4x4 local_mat;
 	transform_message->GetMatrix(local_mat);
+    std::cout << "printing 1\n";
+    igtl::PrintMatrix(local_mat);
+
     vsg::dmat4 transformmat;
 
-    //local_mat[0][3] = local_mat[0][3]*1e-3;
-    //local_mat[1][3] = local_mat[0][3]*1e-3;
-    //local_mat[2][3] = local_mat[0][3]*1e-3;
-
-    //igtl::PrintMatrix(local_mat);
+    local_mat[0][3] = local_mat[0][3]*1e-3;
+    local_mat[1][3] = local_mat[1][3]*1e-3;
+    local_mat[2][3] = -local_mat[2][3]*1e-3;
+    std::cout << "printing 2\n";
+    igtl::PrintMatrix(local_mat);
 
     for(size_t col = 0; col < 4; ++col)
         for(size_t row = 0; row < 4; ++row)
             transformmat(col,row) = local_mat[row][col];
 
-    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat* vsg::rotate(vsg::radians(90.0),1.0,0.0,0.0));
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat);
 }
 
 using imageType = itk::Image<unsigned char,3>;
@@ -54,7 +57,7 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infotexture.height = height;
         infotexture.width = width;
         infotexture.builder = vsg::Builder::create();
-        infotexture.spacing = {0.0024,0.0024,1};
+        infotexture.spacing = {0.00024,0.00024,1};
         infotexture.origin = {0.0,0.0,0.0};
         shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
         shared_state.window << *shared_state.texture;
@@ -179,30 +182,20 @@ std::vector<curan::image::VolumeReconstructor::output_type::Pointer> get_convert
         igtl::Matrix4x4 local_mat;
         image->GetMatrix(local_mat);
 
-        origin[0] = local_mat[0][3];
-        origin[1] = local_mat[1][3];
-        origin[2] = local_mat[2][3];
+        origin[0] = local_mat[0][3]*1e-3;
+        origin[1] = local_mat[1][3]*1e-3;
+        origin[2] = -local_mat[2][3]*1e-3;
 
         importFilter->SetOrigin(origin);
-        const itk::SpacePrecisionType spacing[Dimension] = { 0.0024, 0.0024, 1.0 };
+        const itk::SpacePrecisionType spacing[Dimension] = { 0.00024, 0.00024, 1.0 };
         importFilter->SetSpacing(spacing);
 
         
         vsg::dmat4 transformmat;
 
-        //local_mat[0][3] = local_mat[0][3]*1e-3;
-        //local_mat[1][3] = local_mat[0][3]*1e-3;
-        //local_mat[2][3] = local_mat[0][3]*1e-3;
-
-        //igtl::PrintMatrix(local_mat);
-
-        for(size_t col = 0; col < 4; ++col)
-            for(size_t row = 0; row < 4; ++row)
-                transformmat(col,row) = local_mat[row][col];
-        auto rotated_image = transformmat* vsg::rotate(vsg::radians(90.0),1.0,0.0,0.0);
-        for(size_t col = 0; col < 4; ++col)
-            for(size_t row = 0; row < 4; ++row)
-                local_mat[row][col] =rotated_image(col,row);
+        local_mat[0][3] = local_mat[0][3]*1e-3;
+        local_mat[1][3] = local_mat[1][3]*1e-3;
+        local_mat[2][3] = -local_mat[2][3]*1e-3;
 
         itk::Matrix<double,3,3> direction;
 
@@ -240,7 +233,7 @@ int main(){
         std::cout << "stopping content from main thread" << std::endl;
         io_context.stop();
         connector.join();
-        return 0;
+
         // Now that everything is finished we can try and compute the volumetric size of our image. 
         // Once this is done I need to change the API of the volume reconstructor into two distinct classes,
         // one which is dynamic and one which is static
@@ -252,7 +245,7 @@ int main(){
 
         std::array<double,2> clip_origin = {0.0,0.0};
         std::array<double,2> clip_size = {100,100};
-        float spacing[3] = {0.0024 , 0.0024, 0.0024};
+        float spacing[3] = {0.00024 , 0.00024, 0.00024};
 
 	    reconstructor.set_output_spacing(spacing);
 	    reconstructor.set_fill_strategy(curan::image::reconstruction::FillingStrategy::GAUSSIAN);
@@ -267,9 +260,13 @@ int main(){
 	    reconstructor.get_output_pointer(buffer);
 
         auto sizeout = buffer->GetLargestPossibleRegion().GetSize();
-        std::cout << "size : " << sizeout << std::endl; 
+        std::cout << "Size : " << sizeout << std::endl; 
         auto outorigin = buffer->GetOrigin();
-        std::cout << "origin : " << outorigin << std::endl;
+        auto direct = buffer->GetDirection();
+
+        std::cout << "Origin : " << outorigin << std::endl;
+        std::cout << "Direction : " << direct << std::endl;
+        std::cout << "Spacing : " << buffer->GetSpacing() << std::endl;
         return 0;
 
 	    std::cout << "Started volumetric filling: \n";
