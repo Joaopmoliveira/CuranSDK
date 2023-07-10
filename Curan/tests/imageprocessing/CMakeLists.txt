@@ -61,3 +61,14 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_debug_api debug_image_orientation_and_position.cpp)
+
+target_compile_definitions(test_debug_api PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_debug_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_debug_api
+PUBLIC
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)

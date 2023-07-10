@@ -5,6 +5,7 @@
 #include <vsgXchange/all.h>
 #include "Renderable.h"
 #include <optional>
+#include <array>
 
 namespace curan {
     namespace renderable {
@@ -17,7 +18,8 @@ namespace curan {
             struct Info {
                 size_t width = 100;
                 size_t height = 100;
-                vsg::GeometryInfo geomInfo;
+                std::array<double,3> origin;
+                std::array<double,3> spacing; 
                 vsg::StateInfo stateInfo;
                 vsg::ref_ptr<vsg::Builder> builder;
                 std::optional<std::string> identifier;

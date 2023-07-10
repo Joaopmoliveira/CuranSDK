@@ -173,15 +173,12 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
     casted_volume->update_volume(updater);
     window << volume;
 
-
     curan::renderable::DynamicTexture::Info infotexture;
     infotexture.height = height;
     infotexture.width = width;
     infotexture.builder = vsg::Builder::create();
-    infotexture.geomInfo.dx = vsg::vec3(0.02*height,0.0,0.0);
-    infotexture.geomInfo.dy = vsg::vec3(0.0,0.02*width,0.0);
-    infotexture.geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
-    infotexture.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
+    infotexture.spacing = {0.02,0.02,0.02};
+    infotexture.origin = {0.0,0.0,0.0};
     auto texture = curan::renderable::DynamicTexture::make(infotexture);
     window << texture;
 
@@ -189,7 +186,7 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 		std::cout << "added an image\n";
         texture->cast<curan::renderable::DynamicTexture>()->update_texture([img](vsg::vec4Array2D& image){ updateBaseTexture3D(image,img);});
         auto localorigin = img->GetOrigin();
-        texture->update_transform(vsg::translate(localorigin[0]+0.5,localorigin[1]+0.5,localorigin[2]));
+        texture->update_transform(vsg::translate(localorigin[0],localorigin[1],localorigin[2]));
 		reconstructor.add_frame(img);
 		reconstructor.update();
 		if(!continue_updating)

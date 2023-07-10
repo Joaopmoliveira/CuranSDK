@@ -54,13 +54,8 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infotexture.height = height;
         infotexture.width = width;
         infotexture.builder = vsg::Builder::create();
-        //infotexture.geomInfo.dx = vsg::vec3(0.00024*height,0.0,0.0);
-        //infotexture.geomInfo.dy = vsg::vec3(0.0,0.00024*width,0.0);
-        //infotexture.geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
-        infotexture.geomInfo.dx = vsg::vec3(0.0024*height,0.0,0.0);
-        infotexture.geomInfo.dy = vsg::vec3(0.0,0.0024*width,0.0);
-        infotexture.geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
-        infotexture.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
+        infotexture.spacing = {0.0024,0.0024,1};
+        infotexture.origin = {0.0,0.0,0.0};
         shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
         shared_state.window << *shared_state.texture;
     }
