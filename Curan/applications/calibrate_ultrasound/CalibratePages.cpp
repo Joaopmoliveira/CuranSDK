@@ -160,7 +160,7 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 			val.function_to_execute = [processing]() {
 				processing->communicate();
 			};
-			curan::utilities::pool->submit(val);
+			processing.shared_pool->submit(val);
 		}
 		else {
 			processing->attempt_stop();

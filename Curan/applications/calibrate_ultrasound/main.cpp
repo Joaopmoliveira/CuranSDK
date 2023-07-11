@@ -8,9 +8,10 @@
 
 int main(int argc, char* argv[]) {
 	using namespace curan::ui;
-	curan::utilities::initialize_thread_pool(10);
+	auto projeto = curan::utilities::ThreadPool::create(4);
 
 	ConfigurationData data;
+	data.shared_pool = projeto;
 	std::cout << "the received port is: " << data.port << "\n";
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
 	DisplayParams param{ std::move(context),2200,1800 };
@@ -55,9 +56,8 @@ int main(int argc, char* argv[]) {
 
 	int tasks_n = 0;
 	int tasks_queue = 0;
-	curan::utilities::pool->get_number_tasks(tasks_n, tasks_queue);
+	projeto->get_number_tasks(tasks_n, tasks_queue);
 	std::cout << "Number of tasks executing: " << tasks_n << " number of tasks in queue" << tasks_queue << "\n";
-	curan::utilities::terminate_thread_pool();
 	std::cout << "Number of frame recordings: " << processing->list_of_recorded_points.size() << "\n";
 	std::cout << "Received spacing: \n";
 

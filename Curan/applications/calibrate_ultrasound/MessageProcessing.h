@@ -41,6 +41,7 @@ struct ConfigurationData {
 	std::atomic<double> disk_ratio = 1;
 	std::atomic<double> threshold = 110;
 
+	std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
 };
 
 struct ObservationEigenFormat {

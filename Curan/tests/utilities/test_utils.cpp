@@ -13,7 +13,7 @@ medical viewer use the constructs provided by this module. Lets go into the
 details!
 */
 
-int test_shared_flag() {
+int test_shared_flag(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) {
 	auto flag = curan::utilities::Flag::make_shared_flag();
 	flag->clear();
 
@@ -47,7 +47,7 @@ int test_shared_flag() {
 	return 0;
 }
 
-int test_job_and_thread_pool() {
+int test_job_and_thread_pool(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) {
 	using namespace curan::utilities;
 	auto flag1 = curan::utilities::Flag::make_shared_flag();
 	flag1->clear();
@@ -78,28 +78,28 @@ int test_job_and_thread_pool() {
 	//expected behavior once we submit the first job we expect the number of tasks to increment by 1, then 2 ...
 	int number_of_tasks = 0;
 	int number_of_tasks_in_queue = 0;
-	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	std::string message = "Number of tasks (pending + execution): (" +std::to_string(number_of_tasks) +" + "+ std::to_string(number_of_tasks_in_queue) + ") (expected 0) \n";
 	std::cout << message;
-	pool->submit(job1);
-	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	shared_pool->submit(job1);
+	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 1) \n";
 	std::cout << message;
-	pool->submit(job2);
-	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	shared_pool->submit(job2);
+	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 2) \n";
 	std::cout << message;
-	pool->submit(job3);
-	pool->submit(job4);
-	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	shared_pool->submit(job3);
+	shared_pool->submit(job4);
+	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 4) \n";
 	std::cout << message;
 	flag1->set();
-	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4)\n ";
 	std::cout << message;
 	flag2->set();
-	pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
+	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4) \n";
 	std::cout << message;
 	std::cout << message;
@@ -116,7 +116,7 @@ struct PoPable {
 
 };
 
-void test_thread_safe_queue() {
+void test_thread_safe_queue(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) {
 	PoPable pop;
 	curan::utilities::SafeQueue<PoPable> safe_queue;
 	auto put_in = [&safe_queue](PoPable pop) {
@@ -202,16 +202,12 @@ void test_memory_buffers() {
 
 int main() {
 	//initualize the thread pool;
-	curan::utilities::initialize_thread_pool(10);
+	auto projeto = curan::utilities::ThreadPool::create(10);
 
-	test_shared_flag();
-	test_job_and_thread_pool();
-	test_thread_safe_queue();
+	test_shared_flag(projeto);
+	test_job_and_thread_pool(projeto);
+	test_thread_safe_queue(projeto);
 	test_memory_buffers();
-	int a = 0;
-	std::cout << ++a << '\n';
-	//terminate the thread pool;
-	curan::utilities::terminate_thread_pool();
 	return 0;
 }
 

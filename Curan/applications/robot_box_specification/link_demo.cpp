@@ -14,7 +14,7 @@
 
 int render(std::shared_ptr<SharedRobotState> state)
 {
-    curan::utilities::initialize_thread_pool(4);
+    auto projeto = curan::utilities::ThreadPool::create(4);
     curan::renderable::Window::Info info;
     info.api_dump = false;
     info.display = "";
@@ -40,7 +40,7 @@ int render(std::shared_ptr<SharedRobotState> state)
     
     curan::utilities::Job append_box;
 	append_box.description = "function that adds the wired box on screen";
-	append_box.function_to_execute = [&window,&current_position]() {
+	append_box.function_to_execute = [&]() {
         auto box = curan::renderable::PhaseWiredBox::make();
         window << box;
         auto casted_box = box->cast<curan::renderable::PhaseWiredBox>();
@@ -55,7 +55,7 @@ int render(std::shared_ptr<SharedRobotState> state)
             std::cout << "key read\n";
             flag1->set();
         };
-        curan::utilities::pool->submit(key_reader); //we must click on a key before advancing with or test
+        projeto->submit(key_reader); //we must click on a key before advancing with or test
         std::array<float,3> temp_pos = current_position.load();
         std::cout << "fixing first vertex\n";
         while(!flag1->value()){
@@ -67,7 +67,7 @@ int render(std::shared_ptr<SharedRobotState> state)
         flag1->clear();
         vsg::vec3 origin_fixed = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
         std::printf("first vertex - x : %f y : %f z : %f\n",origin_fixed[0],origin_fixed[1],origin_fixed[2]);
-        curan::utilities::pool->submit(key_reader);
+        projeto->submit(key_reader);
         std::cout << "fixing second vertex\n";
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
@@ -78,7 +78,7 @@ int render(std::shared_ptr<SharedRobotState> state)
         flag1->clear();
         auto xdir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
         std::printf("second vertex - x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
-        curan::utilities::pool->submit(key_reader);
+        projeto->submit(key_reader);
         std::cout << "fixing third vertex\n";
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
@@ -89,7 +89,7 @@ int render(std::shared_ptr<SharedRobotState> state)
         flag1->clear();
         auto ydir = vsg::vec3(temp_pos[0],temp_pos[1],temp_pos[2]);
         std::printf("third vertex - x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
-        curan::utilities::pool->submit(key_reader);
+        projeto->submit(key_reader);
         std::cout << "fixing fourth vertex\n";
         while(!flag1->value()){
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
@@ -101,7 +101,7 @@ int render(std::shared_ptr<SharedRobotState> state)
         std::printf("fourth vertex - x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
         casted_box->print(origin_fixed,xdir,ydir,zdir);
 	};
-    curan::utilities::pool->submit(append_box);
+    projeto->submit(append_box);
 
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
 	
@@ -153,6 +153,5 @@ int render(std::shared_ptr<SharedRobotState> state)
 
         q_old = iiwa->q;
     }
-    curan::utilities::terminate_thread_pool();
     return 0;
 }

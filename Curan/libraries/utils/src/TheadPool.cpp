@@ -3,17 +3,7 @@
 namespace curan{
 namespace utilities{
 
-std::unique_ptr<ThreadPool> pool = nullptr;
-
-void initialize_thread_pool(int number_of_threads) {
-	pool = std::make_unique<ThreadPool>(number_of_threads);
-}
-
-void terminate_thread_pool(){
-	pool.reset();
-}
-
-ThreadPool::ThreadPool(int number_of_threads)
+ThreadPool::ThreadPool(size_t number_of_threads)
 {
 	for (int ii = 0; ii < number_of_threads; ii++)
 		pool.push_back(std::thread(&ThreadPool::infinite_loop, this));
@@ -21,6 +11,7 @@ ThreadPool::ThreadPool(int number_of_threads)
 
 ThreadPool::~ThreadPool()
 {
+	std::lock_guard<std::mutex> lk(mut);
 	if (!stopped)
 		shutdown();
 }
@@ -66,6 +57,12 @@ void ThreadPool::shutdown()
 		every_thread.join();
 	pool.clear();
 	stopped = true; // use this flag in destructor, if not set, call shutdown() 
+}
+
+std::shared_ptr<ThreadPool> ThreadPool::create(size_t num_of_threads){
+	auto local =  new ThreadPool{num_of_threads};
+	std::shared_ptr<ThreadPool> pool;
+	return pool;
 }
 
 }

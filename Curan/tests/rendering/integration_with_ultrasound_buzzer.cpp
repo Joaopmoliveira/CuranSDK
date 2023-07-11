@@ -26,7 +26,7 @@ template <typename T> int sgn(T val) {
 
 int main(int argc, char* argv[]){
     //initualize the thread pool;
-	curan::utilities::initialize_thread_pool(4);
+    auto projeto = curan::utilities::ThreadPool::create(4);
 
     std::string serial_connection_name = std::string(CURAN_SERIAL_PORT);
     if(serial_connection_name.size()==0){
@@ -103,7 +103,7 @@ int main(int argc, char* argv[]){
             }
         }
 	};
-    curan::utilities::pool->submit(append_box);
+    projeto->submit(append_box);
 
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
 	
@@ -152,7 +152,5 @@ int main(int argc, char* argv[]){
         time += sampletime;
     }
     serial.close();
-    //terminate the thread pool;
-	curan::utilities::terminate_thread_pool();
     return 0;
 }

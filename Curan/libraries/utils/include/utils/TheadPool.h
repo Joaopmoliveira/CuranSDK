@@ -5,6 +5,7 @@
 #include <mutex>
 #include <vector>
 #include "Job.h"
+#include <memory>
 
 namespace curan {
 	namespace utilities {
@@ -22,22 +23,14 @@ namespace curan {
 			int number_of_tasks_executing = 0;
 			int number_of_pending_tasks = 0;
 			void infinite_loop();
-
-		public:
-
-			ThreadPool(int number_of_threads);
+			ThreadPool(size_t number_of_threads);
 			~ThreadPool();
-
+		public:
+			static std::shared_ptr<ThreadPool> create(size_t num_of_threads);
 			void get_number_tasks(int& tasks_executing, int& tasks_in_queue);
 			void submit(Job task);
 			void shutdown();
 		};
-
-		extern std::unique_ptr<ThreadPool> pool;
-
-		void initialize_thread_pool(int number_of_threads);
-
-		void terminate_thread_pool();
 }
 }
 

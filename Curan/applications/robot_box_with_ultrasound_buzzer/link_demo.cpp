@@ -28,7 +28,7 @@ template <typename T> int sgn(T val) {
 int render(std::shared_ptr<SharedRobotState> state)
 {
     //initualize the thread pool;
-	curan::utilities::initialize_thread_pool(4);
+	auto projeto = curan::utilities::ThreadPool::create(4);
 
     std::string serial_connection_name = std::string(CURAN_SERIAL_PORT);
     if(serial_connection_name.size()==0){
@@ -38,7 +38,6 @@ int render(std::shared_ptr<SharedRobotState> state)
     asio::serial_port serial(context);
     serial.open(serial_connection_name);
 
-    curan::utilities::initialize_thread_pool(4);
     curan::renderable::Window::Info info;
     info.api_dump = false;
     info.display = "";
@@ -102,7 +101,7 @@ int render(std::shared_ptr<SharedRobotState> state)
         }
         current_distance = 40.0;
 	};
-    curan::utilities::pool->submit(update_box_size);
+    projeto->submit(update_box_size);
     
     curan::utilities::Job append_box;
 	append_box.description = "function that adds the wired box on screen";
@@ -204,7 +203,7 @@ int render(std::shared_ptr<SharedRobotState> state)
         std::printf("fourth vertex - x : %f y : %f z : %f\n",temp_pos[0],temp_pos[1],temp_pos[2]);
         casted_box->print(origin_fixed,xdir,ydir,zdir);
 	};
-    curan::utilities::pool->submit(append_box);
+    projeto->submit(append_box);
 
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
 	
@@ -257,6 +256,5 @@ int render(std::shared_ptr<SharedRobotState> state)
         q_old = iiwa->q;
     }
     serial.close();
-    curan::utilities::terminate_thread_pool();
     return 0;
 }
