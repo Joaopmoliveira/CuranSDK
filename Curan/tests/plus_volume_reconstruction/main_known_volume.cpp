@@ -7,6 +7,7 @@
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "rendering/DynamicTexture.h"
+#include "rendering/Box.h"
 #include "dummy_classic.h"
 
 void updateBaseTexture3D(vsg::vec4Array2D& image, OutputImageType::Pointer image_to_render)
@@ -71,36 +72,6 @@ void updateBaseTexture3D(vsg::floatArray3D& image, curan::image::StaticReconstru
     }
 }
 
-void process_transform_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
-    //std::cout << "received transform message" << std::endl;
-    igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
-	transform_message->Copy(received_transform);
-	int c = transform_message->Unpack(1);
-	if (!(c & igtl::MessageHeader::UNPACK_BODY))
-		return ; //failed to unpack message or the texture is not set yet, therefore returning without doing anything
-    if(shared_state.texture==std::nullopt)
-        return;
-    assert(shared_state.texture!=std::nullopt);
-    igtl::Matrix4x4 local_mat;
-	transform_message->GetMatrix(local_mat);
-    std::cout << "printing 1\n";
-    igtl::PrintMatrix(local_mat);
-
-    vsg::dmat4 transformmat;
-
-    local_mat[0][3] = local_mat[0][3]*1e-3;
-    local_mat[1][3] = local_mat[1][3]*1e-3;
-    local_mat[2][3] = -local_mat[2][3]*1e-3;
-    std::cout << "printing 2\n";
-    igtl::PrintMatrix(local_mat);
-
-    for(size_t col = 0; col < 4; ++col)
-        for(size_t row = 0; row < 4; ++row)
-            transformmat(col,row) = local_mat[row][col];
-
-    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat);
-}
-
 void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
     //std::cout << "received image message" << std::endl;
     igtl::ImageMessage::Pointer imageMessage = igtl::ImageMessage::New();
@@ -119,8 +90,27 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infotexture.origin = {0.0,0.0,0.0};
         shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
         shared_state.window << *shared_state.texture;
+        std::cout << "Height: " << height << "      Width: " << width << std::endl;
     }
     assert(shared_state.texture!=std::nullopt);
+    igtl::Matrix4x4 local_mat;
+    imageMessage->GetMatrix(local_mat);
+    vsg::dmat4 transformmat;
+    //shared_state.reconstructor.add_frame();
+
+    //std::printf("(%4.2f) (%4.2f) (%4.2f) \n",local_mat[0][3],local_mat[1][3],local_mat[2][3]);
+
+    local_mat[0][3] = local_mat[0][3]*1e-3;
+    local_mat[1][3] = local_mat[1][3]*1e-3;
+    local_mat[2][3] = local_mat[2][3]*1e-3;
+
+
+
+    for(size_t col = 0; col < 4; ++col)
+        for(size_t row = 0; row < 4; ++row)
+            transformmat(col,row) = local_mat[row][col];
+
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat);
     shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_texture([imageMessage](vsg::vec4Array2D& image)
     {
         int x,y,z =0;
@@ -162,7 +152,6 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
 }
 
 std::map<std::string,std::function<void(SharedState& shared_state,igtl::MessageBase::Pointer)>> functions{
-    {"TRANSFORM",process_transform_message},
     {"IMAGE",process_image_message}
 };
 
@@ -235,6 +224,22 @@ int main(){
     curan::renderable::Window::WindowSize size{1000, 800};
     info.window_size = size;
     curan::renderable::Window window{info};
+
+    curan::renderable::Box::Info infobox;
+    infobox.builder = vsg::Builder::create();
+    infobox.geomInfo.color = vsg::vec4(1.0,0.0,0.0,0.5);
+    infobox.geomInfo.dx = vsg::vec3(.121f,0.0,0.0);
+    infobox.geomInfo.dy = vsg::vec3(0.0,.146f,0.0);
+    infobox.geomInfo.dz = vsg::vec3(0.0,0.0,.271f);
+    infobox.geomInfo.position = vsg::vec3( 0.0606,0.0731,0.1349);
+    auto box = curan::renderable::Box::make(infobox);
+    vsg::dmat4 mat = vsg::translate(0.0,0.0,0.0);
+    mat[0] = vsg::vec4(0.9490,-0.0330,-0.3136,0.0);
+    mat[1] = vsg::vec4(0.0136,0.9979,-0.0638,0.0);
+    mat[2] = vsg::vec4(0.3150,0.0562,0.9474,0.0);
+    mat[3] = vsg::vec4(0.0750,-0.0500,-1.1710,1.0);
+    box->update_transform(mat);
+    window << box;
 
     curan::renderable::Volume::Info volumeinfo;
     volumeinfo.width = final_size[0]; 

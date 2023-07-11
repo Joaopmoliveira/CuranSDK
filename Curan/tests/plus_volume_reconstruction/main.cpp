@@ -12,16 +12,13 @@ void process_transform_message(SharedState& shared_state,igtl::MessageBase::Poin
     assert(shared_state.texture!=std::nullopt);
     igtl::Matrix4x4 local_mat;
 	transform_message->GetMatrix(local_mat);
-    std::cout << "printing 1\n";
-    igtl::PrintMatrix(local_mat);
 
     vsg::dmat4 transformmat;
 
     local_mat[0][3] = local_mat[0][3]*1e-3;
     local_mat[1][3] = local_mat[1][3]*1e-3;
     local_mat[2][3] = -local_mat[2][3]*1e-3;
-    std::cout << "printing 2\n";
-    igtl::PrintMatrix(local_mat);
+
 
     for(size_t col = 0; col < 4; ++col)
         for(size_t row = 0; row < 4; ++row)
@@ -64,6 +61,9 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
     }
     assert(shared_state.texture!=std::nullopt);
     shared_state.recorded_images.push_back(imageMessage);
+    igtl::Matrix4x4 local_mat;
+    imageMessage->GetMatrix(local_mat);
+    igtl::PrintMatrix(local_mat);
     shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_texture([imageMessage](vsg::vec4Array2D& image)
     {
         

@@ -8,10 +8,10 @@
 #include "rendering/Renderable.h"
 #include "rendering/DynamicTexture.h"
 
-constexpr long width = 500;
-constexpr long height = 500;
-float spacing[3] = {0.002 , 0.002 , 0.002};
-float final_spacing [3] = {0.002 ,0.002, 0.002};
+constexpr long width = 426;
+constexpr long height = 386;
+float spacing[3] = {0.0001852 , 0.0001852 , 0.0001852};
+float final_spacing [3] = {0.001852 ,0.001852, 0.001852};
 
 void create_array_of_linear_images_in_x_direction(std::vector<curan::image::StaticReconstructor::output_type::Pointer>& desired_images){
     itk::Matrix<double> image_orientation;
@@ -141,14 +141,14 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 
 	std::array<double,3> vol_origin = {0.0,0.0,0.0};
 	std::array<double,3> vol_spacing = {final_spacing[0],final_spacing[1],final_spacing[2]};
-	std::array<double,3> vol_size = {1.0,1.0,1.0};
+	std::array<double,3> vol_size = {0.0606,0.0731,0.1349};
 	std::array<std::array<double,3>,3> vol_direction;
 	vol_direction[0] = {1.0,0.0,0.0};
 	vol_direction[1] = {0.0,1.0,0.0};
 	vol_direction[2] = {0.0,0.0,1.0};
 	curan::image::StaticReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
 	curan::image::StaticReconstructor reconstructor{recon_info};
-	reconstructor.set_compound(curan::image::reconstruction::Compounding::MAXIMUM_COMPOUNDING_MODE)
+	reconstructor.set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
         .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
 
 	auto buffer = reconstructor.get_output_pointer();
