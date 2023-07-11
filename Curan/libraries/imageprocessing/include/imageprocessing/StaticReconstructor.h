@@ -8,6 +8,7 @@
 #include "Mathematics/MinimumVolumeBox3.h"
 #include "VolumeAlgorithms.h"
 #include <optional>
+#include <mutex>
 
 namespace curan{
     namespace image {
@@ -38,6 +39,7 @@ namespace curan{
 
 	        std::vector<curan::image::reconstruction::KernelDescriptor> kernels;
 	        curan::image::reconstruction::FillingStrategy fillType;
+			std::mutex mut;
         public:
 
             struct Info{
@@ -70,7 +72,7 @@ namespace curan{
 
 	    output_type::Pointer get_output_pointer();
 
-	    StaticReconstructor& update();
+	    bool update();
 };
 
 

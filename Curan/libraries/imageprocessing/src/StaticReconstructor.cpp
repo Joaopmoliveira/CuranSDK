@@ -81,42 +81,49 @@ StaticReconstructor::~StaticReconstructor(){
 }
 
 StaticReconstructor& StaticReconstructor::set_interpolation(const curan::image::reconstruction::Interpolation& new_interpolation_strategy){
+	std::lock_guard<std::mutex> g{mut};
     interpolation_strategy = new_interpolation_strategy;
     return *(this);
 }
 
 StaticReconstructor& StaticReconstructor::set_compound(const curan::image::reconstruction::Compounding& new_compounding_strategy){
+	std::lock_guard<std::mutex> g{mut};
     compounding_strategy = new_compounding_strategy;
     return *(this);
 }
 
 StaticReconstructor& StaticReconstructor::set_fillstrategy(const curan::image::reconstruction::Compounding& new_compounding_strategy){
+	std::lock_guard<std::mutex> g{mut};
     compounding_strategy = new_compounding_strategy;
     return *(this);
 }
 
 StaticReconstructor& StaticReconstructor::set_clipping(const Clipping& new_clipping){
+	std::lock_guard<std::mutex> g{mut};
     clipping = new_clipping;
     return *(this);
 }
 
 StaticReconstructor& StaticReconstructor::add_frame(output_type::Pointer image_pointer)
 {
+	std::lock_guard<std::mutex> g{mut};
 	frame_data.push_back(image_pointer);
     return *(this);
 };
 
 StaticReconstructor& StaticReconstructor::add_frames(std::vector<output_type::Pointer>& images_vector)
 {
+	std::lock_guard<std::mutex> g{mut};
     frame_data.insert(std::end(frame_data), std::begin(images_vector), std::end(images_vector));
     return *(this);
 };
 
 StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointer(){
+	std::lock_guard<std::mutex> g{mut};
     return out_volume;
 }
 
-StaticReconstructor& StaticReconstructor::update(){
+bool StaticReconstructor::update(){
 	gte::Vector<3, double> output_origin = volumetric_bounding_box.center
 	- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
 	- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
@@ -166,7 +173,16 @@ StaticReconstructor& StaticReconstructor::update(){
 	// cicle throught all frames and insert
 	// them in the output buffer, one at a time
 
-	for (auto img : frame_data) {	
+	std::vector<output_type::Pointer> local_image_copies;
+	{
+		std::lock_guard<std::mutex> g{mut};
+		local_image_copies = std::move(frame_data);
+		frame_data = std::vector<output_type::Pointer>();
+		if(local_image_copies.size()==0)
+			return false;
+	}
+
+	for (auto img : local_image_copies) {	
 	    int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
 		double clipRectangleOrigin [2]; // array size 2
 		double clipRectangleSize [2]; // array size 2
@@ -227,9 +243,7 @@ StaticReconstructor& StaticReconstructor::update(){
 
 		curan::image::reconstruction::UnoptimizedInsertSlice(&paste_slice_info);
 	};
-
-	frame_data.clear();
-	return *(this);
+	return true;
 }
 
 }
