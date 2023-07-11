@@ -34,10 +34,10 @@ using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
 struct SharedState{
     curan::image::StaticReconstructor reconstructor;
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> texture;
-    vsg::ref_ptr<curan::renderable::Volume> volume;
+    vsg::ref_ptr<curan::renderable::Renderable> volume;
     curan::renderable::Window & window;
     asio::io_context& context;
-    SharedState(curan::renderable::Window & in_window, asio::io_context& in_context,const curan::image::StaticReconstructor::Info& info, vsg::ref_ptr<curan::renderable::Volume> in_volume) : window{in_window},context{in_context},reconstructor{info}, volume{in_volume}
+    SharedState(curan::renderable::Window & in_window, asio::io_context& in_context,const curan::image::StaticReconstructor::Info& info, vsg::ref_ptr<curan::renderable::Renderable> in_volume) : window{in_window},context{in_context},reconstructor{info}, volume{in_volume}
     {}
 };
 
