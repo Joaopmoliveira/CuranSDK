@@ -153,14 +153,14 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, flag, data);
 	processing->port = data.port;
 
-	auto lam = [processing](Button* button, ConfigDraw* config) {
+	auto lam = [&data,processing](Button* button, ConfigDraw* config) {
 		if (!processing->connection_status->value()) {
 			curan::utilities::Job val;
 			val.description = "connection thread";
 			val.function_to_execute = [processing]() {
 				processing->communicate();
 			};
-			processing.shared_pool->submit(val);
+			data.shared_pool->submit(val);
 		}
 		else {
 			processing->attempt_stop();
