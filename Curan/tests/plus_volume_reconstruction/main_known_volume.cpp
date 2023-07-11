@@ -184,8 +184,7 @@ void bar(SharedState& shared_state,size_t protocol_defined_val,std::error_code e
 void connect(curan::renderable::Window& window,asio::io_context& io_context,SharedState& shared_state){
     
     try{
-        unsigned short port = 18944;
-//        std::thread server_thread{[&](){foo(port,io_context);}}; 
+        unsigned short port = 18944; 
     	curan::communication::interface_igtl igtlink_interface;
 	    curan::communication::Client::Info construction{ io_context,igtlink_interface };
 	    asio::ip::tcp::resolver resolver(io_context);
@@ -199,7 +198,6 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
         });
 	    io_context.run();
         std::cout << "io context stopped running" << std::endl;
-//       server_thread.join();
 	    return ;
     }  catch(std::exception & e){
         std::cout << "communication failure: " << e.what() << std::endl;
@@ -260,7 +258,7 @@ int main(){
 
     SharedState shared_state = SharedState{window,io_context,recon_info,volume}; 
     std::thread connector{[&](){connect(window,io_context,shared_state);}};
-    std::thread volume_updater{[&](){}};
+    std::thread volume_updater{[&](){volume_update_operation(shared_state);}};
     window.run();
     std::cout << "stopping content from main thread" << std::endl;
     io_context.stop();
