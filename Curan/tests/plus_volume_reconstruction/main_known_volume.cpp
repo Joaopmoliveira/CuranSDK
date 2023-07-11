@@ -8,70 +8,156 @@
 #include "rendering/Renderable.h"
 #include "rendering/DynamicTexture.h"
 
+
+void process_transform_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
+    //std::cout << "received transform message" << std::endl;
+    igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
+	transform_message->Copy(received_transform);
+	int c = transform_message->Unpack(1);
+	if (!(c & igtl::MessageHeader::UNPACK_BODY))
+		return ; //failed to unpack message or the texture is not set yet, therefore returning without doing anything
+    if(shared_state.texture==std::nullopt)
+        return;
+    assert(shared_state.texture!=std::nullopt);
+    igtl::Matrix4x4 local_mat;
+	transform_message->GetMatrix(local_mat);
+    std::cout << "printing 1\n";
+    igtl::PrintMatrix(local_mat);
+
+    vsg::dmat4 transformmat;
+
+    local_mat[0][3] = local_mat[0][3]*1e-3;
+    local_mat[1][3] = local_mat[1][3]*1e-3;
+    local_mat[2][3] = -local_mat[2][3]*1e-3;
+    std::cout << "printing 2\n";
+    igtl::PrintMatrix(local_mat);
+
+    for(size_t col = 0; col < 4; ++col)
+        for(size_t row = 0; row < 4; ++row)
+            transformmat(col,row) = local_mat[row][col];
+
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat);
+}
+
+void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
+    //std::cout << "received image message" << std::endl;
+    igtl::ImageMessage::Pointer imageMessage = igtl::ImageMessage::New();
+	imageMessage->Copy(received_transform);
+	int c = imageMessage->Unpack(1);
+	if (!(c & igtl::MessageHeader::UNPACK_BODY))
+		return ; //failed to unpack message or the texture is not set yet, therefore returning without doing anything
+    if(!shared_state.texture){
+        int width, height, depth = 0;
+        imageMessage->GetDimensions(width,height,depth);
+        curan::renderable::DynamicTexture::Info infotexture;
+        infotexture.height = height;
+        infotexture.width = width;
+        infotexture.builder = vsg::Builder::create();
+        infotexture.spacing = {0.00024,0.00024,1};
+        infotexture.origin = {0.0,0.0,0.0};
+        shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
+        shared_state.window << *shared_state.texture;
+    }
+    assert(shared_state.texture!=std::nullopt);
+    shared_state.recorded_images.push_back(imageMessage);
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_texture([imageMessage](vsg::vec4Array2D& image)
+    {
+        
+        int x,y,z =0;
+        imageMessage->GetDimensions(x,y,z);
+        ImportFilterType::SizeType size;
+        size[0] = x;
+        size[1] = y;
+        size[2] = z; 
+ 
+        ImportFilterType::IndexType start;
+        start.Fill(0);
+ 
+        ImportFilterType::RegionType region;
+        region.SetIndex(start);
+        region.SetSize(size);
+        auto importFilter = ImportFilterType::New();
+
+        importFilter->SetRegion(region);
+        const itk::SpacePrecisionType origin[Dimension] = { 0.0, 0.0, 0.0 };
+        importFilter->SetOrigin(origin);
+        const itk::SpacePrecisionType spacing[Dimension] = { 1.0, 1.0, 1.0 };
+        importFilter->SetSpacing(spacing);
+
+        const bool importImageFilterWillOwnTheBuffer = false;
+        importFilter->SetImportPointer(static_cast<unsigned char*>(imageMessage->GetScalarPointer()), imageMessage->GetImageSize(), importImageFilterWillOwnTheBuffer);
+
+        auto filter = FilterType::New();
+        filter->SetInput(importFilter->GetOutput());
+
+        using RescaleType = itk::RescaleIntensityImageFilter<OutputImageType, OutputImageType>;
+        auto rescale = RescaleType::New();
+        rescale->SetInput(filter->GetOutput());
+        rescale->SetOutputMinimum(0.0);
+        rescale->SetOutputMaximum(1.0);
+
+        try{
+            rescale->Update();
+        } catch (const itk::ExceptionObject& e) {
+            std::cerr << "Error: " << e << std::endl;
+            return;
+        }
+        
+        updateBaseTexture3D(image,rescale->GetOutput());
+    }
+    );
+}
+
+std::map<std::string,std::function<void(SharedState& shared_state,igtl::MessageBase::Pointer)>> functions{
+    {"TRANSFORM",process_transform_message},
+    {"IMAGE",process_image_message}
+};
+
+void bar(SharedState& shared_state,size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
+	//std::cout << "received message\n";
+	assert(val.IsNotNull());
+	if (er){
+        shared_state.context.stop();
+        return;
+    } 
+    if (auto search = functions.find(val->GetMessageType()); search != functions.end())
+        search->second(shared_state,val);
+    else
+        std::cout << "No functionality for function received\n";
+    return;
+}
+
+
+void connect(curan::renderable::Window& window,asio::io_context& io_context,SharedState& shared_state){
+    
+    try{
+        unsigned short port = 18944;
+//        std::thread server_thread{[&](){foo(port,io_context);}}; 
+    	curan::communication::interface_igtl igtlink_interface;
+	    curan::communication::Client::Info construction{ io_context,igtlink_interface };
+	    asio::ip::tcp::resolver resolver(io_context);
+	    auto endpoints = resolver.resolve("localhost", std::to_string(port));
+	    construction.endpoints = endpoints;
+	    curan::communication::Client client{ construction };
+        
+	    auto connectionstatus = client.connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val)
+        {
+            bar(shared_state,protocol_defined_val,er,val);
+        });
+	    io_context.run();
+        std::cout << "io context stopped running" << std::endl;
+//       server_thread.join();
+	    return ;
+    }  catch(std::exception & e){
+        std::cout << "communication failure: " << e.what() << std::endl;
+        return;
+    }
+};
+
 constexpr long width = 50;
 constexpr long height = 50;
 float spacing[3] = {0.02 , 0.02 , 0.02};
 float final_spacing [3] = {0.02 ,0.02, 0.02};
-
-void create_array_of_linear_images_in_x_direction(std::vector<curan::image::StaticReconstructor::output_type::Pointer>& desired_images){
-    itk::Matrix<double> image_orientation;
-	itk::Point<double> image_origin;
-
-	image_orientation[0][0] = 1.0;
-	image_orientation[1][0] = 0.0;
-	image_orientation[2][0] = 0.0;
-
-	image_orientation[0][1] = 0.0;
-	image_orientation[1][1] = 1.0;
-	image_orientation[2][1] = 0.0;
-
-	image_orientation[0][2] = 0.0;
-	image_orientation[1][2] = 0.0;
-	image_orientation[2][2] = 1.0;
-
-	image_origin[0] = 0.0;
-	image_origin[1] = 0.0;
-	image_origin[2] = 0.0;
-
-    curan::image::char_pixel_type pixel[width*height];
-    for(size_t y = 0; y < height ; ++y){
-        for(size_t x = 0; x < width ; ++x){
-			auto val = 255.0*(std::sqrt(y*y+x*x)/std::sqrt((height-1)*(height-1)+(width-1)*(width-1)));
-			pixel[x+y*height] = (int) val;
-		}
-	}
-
-    for(int z = 0; z < width ; ++z){
-        curan::image::StaticReconstructor::output_type::Pointer image = curan::image::StaticReconstructor::output_type::New();
-        curan::image::StaticReconstructor::output_type::IndexType start;
-        start[0] = 0; // first index on X
-        start[1] = 0; // first index on Y
-        start[2] = 0; // first index on Z
-
-        curan::image::StaticReconstructor::output_type::SizeType size;
-        size[0] = width; // size along X
-        size[1] = height; // size along Y
-        size[2] = 1; // size along Z
-
-        curan::image::StaticReconstructor::output_type::RegionType region_1;
-        region_1.SetSize(size);
-        region_1.SetIndex(start);
-
-        image->SetRegions(region_1);
-        image->SetDirection(image_orientation);
-        image->SetOrigin(image_origin);
-        image->SetSpacing(spacing);
-        image->Allocate();
-
-        image_origin[0] = 0.0;
-	    image_origin[1] = 0.0;
-	    image_origin[2] = std::sin((1.0/(width-1))*z);
-
-        auto pointer = image->GetBufferPointer();
-        std::memcpy(pointer,pixel,sizeof(curan::image::char_pixel_type)*width*height);
-        desired_images.push_back(image);
-    }
-}
 
 void updateBaseTexture3D(vsg::vec4Array2D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render)
 {
