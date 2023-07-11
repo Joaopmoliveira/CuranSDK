@@ -9,11 +9,11 @@
 #include "rendering/DynamicTexture.h"
 #include "dummy_classic.h"
 
-void updateBaseTexture3D(vsg::vec4Array2D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render)
+void updateBaseTexture3D(vsg::vec4Array2D& image, OutputImageType::Pointer image_to_render)
 {
     using OutputPixelType = float;
     using OutputImageType = itk::Image<OutputPixelType, 3>;
-    using FilterType = itk::CastImageFilter<curan::image::StaticReconstructor::output_type, OutputImageType>;
+    using FilterType = itk::CastImageFilter<OutputImageType, OutputImageType>;
     auto filter = FilterType::New();
     filter->SetInput(image_to_render);
 
@@ -123,7 +123,6 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
     assert(shared_state.texture!=std::nullopt);
     shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_texture([imageMessage](vsg::vec4Array2D& image)
     {
-        
         int x,y,z =0;
         imageMessage->GetDimensions(x,y,z);
         ImportFilterType::SizeType size;
@@ -151,19 +150,13 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         auto filter = FilterType::New();
         filter->SetInput(importFilter->GetOutput());
 
-        using RescaleType = itk::RescaleIntensityImageFilter<OutputImageType, OutputImageType>;
-        auto rescale = RescaleType::New();
-        rescale->SetInput(filter->GetOutput());
-        rescale->SetOutputMinimum(0.0);
-        rescale->SetOutputMaximum(1.0);
-
         try{
-            rescale->Update();
+            filter->Update();
         } catch (const itk::ExceptionObject& e) {
             std::cerr << "Error: " << e << std::endl;
             return;
         }
-        updateBaseTexture3D(image,rescale->GetOutput());
+        updateBaseTexture3D(image,filter->GetOutput());
     }
     );
 }
@@ -221,7 +214,7 @@ void volume_update_operation(SharedState& shared_state){
             auto updater = [buffer](vsg::floatArray3D& image){
                 updateBaseTexture3D(image, buffer);
             };
-            shared_state.volume->cast<curan::renderable::Volume>->update_volume(updater);
+            shared_state.volume->cast<curan::renderable::Volume>()->update_volume(updater);
         };
     };
 }

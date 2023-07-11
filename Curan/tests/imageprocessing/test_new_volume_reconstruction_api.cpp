@@ -8,10 +8,10 @@
 #include "rendering/Renderable.h"
 #include "rendering/DynamicTexture.h"
 
-constexpr long width = 50;
-constexpr long height = 50;
-float spacing[3] = {0.02 , 0.02 , 0.02};
-float final_spacing [3] = {0.02 ,0.02, 0.02};
+constexpr long width = 500;
+constexpr long height = 500;
+float spacing[3] = {0.002 , 0.002 , 0.002};
+float final_spacing [3] = {0.002 ,0.002, 0.002};
 
 void create_array_of_linear_images_in_x_direction(std::vector<curan::image::StaticReconstructor::output_type::Pointer>& desired_images){
     itk::Matrix<double> image_orientation;
@@ -192,7 +192,6 @@ void update_volume(curan::renderable::Window& window,std::atomic<bool>& continue
 		buffer = reconstructor.get_output_pointer();
 		auto updater = [buffer](vsg::floatArray3D& image){ updateBaseTexture3D(image, buffer); };
     	casted_volume->update_volume(updater);
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	}
 }
 
