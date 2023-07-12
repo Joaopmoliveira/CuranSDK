@@ -123,7 +123,7 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
     return out_volume;
 }
 
-bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilitites::ThreadPool>pool){
+bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool){
 	return true;
 }
 

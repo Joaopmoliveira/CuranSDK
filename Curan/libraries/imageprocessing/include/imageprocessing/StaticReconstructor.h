@@ -75,7 +75,7 @@ namespace curan{
 
 	    bool update();
 
-		bool multithreaded_update(std::shared_ptr<utilitites::ThreadPool>pool);
+		bool multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool);
 };
 
 
