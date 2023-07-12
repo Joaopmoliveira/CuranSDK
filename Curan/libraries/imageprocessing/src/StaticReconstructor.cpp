@@ -124,6 +124,126 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
 }
 
 bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool){
+	gte::Vector<3, double> output_origin = volumetric_bounding_box.center
+	- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
+	- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
+	- volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
+
+	Eigen::Matrix4d ref_to_output_origin;
+	ref_to_output_origin(0, 0) = volumetric_bounding_box.axis[0][0];
+	ref_to_output_origin(1, 0) = volumetric_bounding_box.axis[0][1];
+	ref_to_output_origin(2, 0) = volumetric_bounding_box.axis[0][2];
+	ref_to_output_origin(3, 0) = 0.0;
+
+	ref_to_output_origin(0, 1) = volumetric_bounding_box.axis[1][0];
+	ref_to_output_origin(1, 1) = volumetric_bounding_box.axis[1][1];
+	ref_to_output_origin(2, 1) = volumetric_bounding_box.axis[1][2];
+	ref_to_output_origin(3, 1) = 0.0;
+
+	ref_to_output_origin(0, 2) = volumetric_bounding_box.axis[2][0];
+	ref_to_output_origin(1, 2) = volumetric_bounding_box.axis[2][1];
+	ref_to_output_origin(2, 2) = volumetric_bounding_box.axis[2][2];
+	ref_to_output_origin(3, 2) = 0.0;
+
+	ref_to_output_origin(0, 3) = output_origin[0];
+	ref_to_output_origin(1, 3) = output_origin[1];
+	ref_to_output_origin(2, 3) = output_origin[2];
+	ref_to_output_origin(3, 3) = 1.0;
+
+	Eigen::Matrix4d output_to_ref = ref_to_output_origin.inverse();
+
+	unsigned int accOverflow = 20;
+
+	curan::image::reconstruction::PasteSliceIntoVolumeInsertSliceParams paste_slice_info;
+	paste_slice_info.outData = out_volume;
+	paste_slice_info.outPtr = out_volume->GetBufferPointer();
+	paste_slice_info.accPtr = acummulation_buffer->GetBufferPointer();
+	paste_slice_info.interpolationMode = interpolation_strategy;
+	paste_slice_info.compoundingMode = compounding_strategy;
+	paste_slice_info.accOverflowCount = &accOverflow;
+	paste_slice_info.pixelRejectionThreshold = 0;
+	paste_slice_info.image_number = 0;
+
+	Eigen::Matrix4d ref_to_image;
+	ref_to_image(3, 0) = 0.0;
+	ref_to_image(3, 1) = 0.0;
+	ref_to_image(3, 2) = 0.0;
+	ref_to_image(3, 3) = 1.0;
+
+
+	std::vector<output_type::Pointer> local_image_copies;
+	{
+		std::lock_guard<std::mutex> g{mut};
+		local_image_copies = std::move(frame_data);
+		frame_data = std::vector<output_type::Pointer>();
+		if(local_image_copies.size()==0)
+			return false;
+	}
+
+	// now we need to divide the image between equal patches, for that we copy the IGSIO 
+	// block of code
+
+	for (auto img : local_image_copies) {	
+	    int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
+		double clipRectangleOrigin [2]; // array size 2
+		double clipRectangleSize [2]; // array size 2
+		if(clipping){
+			clipRectangleOrigin[0] = (*clipping).clipRectangleOrigin[0];
+			clipRectangleOrigin[1] = (*clipping).clipRectangleOrigin[1];
+
+			clipRectangleSize[0] = (*clipping).clipRectangleSize[0];
+			clipRectangleSize[1] = (*clipping).clipRectangleSize[1];
+
+			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
+			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
+		} else {
+			auto local_size = img->GetLargestPossibleRegion().GetSize();
+			auto local_origin = img->GetOrigin();
+			clipRectangleOrigin[0] = local_origin[0];
+			clipRectangleOrigin[1] = local_origin[1];
+			clipRectangleSize[0] = local_size.GetSize()[0]-1;
+			clipRectangleSize[1] = local_size.GetSize()[1]-1;
+
+			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
+			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
+		}	
+		paste_slice_info.clipRectangleOrigin = clipRectangleOrigin;
+	    paste_slice_info.clipRectangleSize = clipRectangleSize;
+		paste_slice_info.inExt = inputFrameExtentForCurrentThread;
+		paste_slice_info.image_number += 1;
+
+		itk::Matrix<double> image_orientation = img->GetDirection();
+		itk::Point<double> image_origin = img->GetOrigin();
+
+		ref_to_image(0, 0) = image_orientation[0][0];
+		ref_to_image(1, 0) = image_orientation[1][0];
+		ref_to_image(2, 0) = image_orientation[2][0];
+
+		ref_to_image(0, 1) = image_orientation[0][1];
+		ref_to_image(1, 1) = image_orientation[1][1];
+		ref_to_image(2, 1) = image_orientation[2][1];
+
+		ref_to_image(0, 2) = image_orientation[0][2];
+		ref_to_image(1, 2) = image_orientation[1][2];
+		ref_to_image(2, 2) = image_orientation[2][2];
+
+		ref_to_image(0, 3) = image_origin[0];
+		ref_to_image(1, 3) = image_origin[1];
+		ref_to_image(2, 3) = image_origin[2];
+
+		// The matrix is the transformation of the 
+		// origin of the output volume (1) to the 
+		// origin of the input image (2). This is 
+		// given by T02=T01*T12, and by premultiplying 
+		// by T10=inverse(T01) we obtain T12=inverse(T01)*T02
+		Eigen::Matrix4d output_to_origin = output_to_ref * ref_to_image;
+
+		paste_slice_info.inData = img;
+		paste_slice_info.inPtr = img->GetBufferPointer();
+		paste_slice_info.matrix = output_to_origin;
+
+		curan::image::reconstruction::UnoptimizedInsertSlice(&paste_slice_info);
+	};
 	return true;
 }
 
