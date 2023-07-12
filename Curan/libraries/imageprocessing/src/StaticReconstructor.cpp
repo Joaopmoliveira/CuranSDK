@@ -137,6 +137,7 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
   		while ( min == max ){
     		--splitAxis;
     		if ( splitAxis < 0 ){
+				//return failure
       			return false;
 			}
 			min = fullExt[splitAxis * 2];
@@ -153,9 +154,7 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
 			nsplit[splitAxis * 2] = nsplit[splitAxis * 2] + thread_id * valuesPerThread;
 		++thread_id;
 	}
-
-
-  	// return the number of threads used
+	//return if succedded
   	return true;
 }
 
