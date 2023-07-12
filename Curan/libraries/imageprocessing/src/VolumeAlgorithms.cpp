@@ -947,9 +947,8 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 		break;
 	default:
 	{
-		std::string s = "Unknown interpolation mode: " + std::to_string(interpolationMode);
-		utilities::cout << s;
-		return;
+		interpolate = &NearestNeighborInterpolation;
+		break;
 	}
 	}
 
@@ -970,7 +969,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 				if (idX < clipExt[0] || idX > clipExt[1] || idY < clipExt[2] || idY > clipExt[3])
 				{
 					// outside the clipping rectangle
-					std::cout << "outside\n";
+					//std::cout << "outside\n";
 					continue;
 				}
 				//scale the input from pixels to mm 

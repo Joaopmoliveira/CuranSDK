@@ -1,10 +1,10 @@
 #include "imageprocessing/StaticReconstructor.h"
 #include <optional>
 
-constexpr long width = 426;
-constexpr long height = 386;
-float spacing[3] = {0.0001852 , 0.0001852 , 0.0001852};
-float final_spacing [3] = {0.001852 ,0.001852, 0.001852};
+constexpr long width = 500;
+constexpr long height = 500;
+float spacing[3] = {0.002 , 0.002 , 0.002};
+float final_spacing [3] = {0.002,0.002, 0.002};
 
 void create_array_of_linear_images_in_x_direction(std::vector<curan::image::StaticReconstructor::output_type::Pointer>& desired_images){
     itk::Matrix<double> image_orientation;
@@ -58,7 +58,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
 
         image_origin[0] = 0.0;
 	    image_origin[1] = 0.0;
-	    image_origin[2] = std::sin((1.0/(width-1))*z);
+	    image_origin[2] = std::sin((3.1415/2.0)*(1.0/(width-1))*z);
 
         auto pointer = image->GetBufferPointer();
         std::memcpy(pointer,pixel,sizeof(curan::image::char_pixel_type)*width*height);
@@ -72,7 +72,7 @@ int main(){
 
 	std::array<double,3> vol_origin = {0.0,0.0,0.0};
 	std::array<double,3> vol_spacing = {final_spacing[0],final_spacing[1],final_spacing[2]};
-	std::array<double,3> vol_size = {0.0606,0.0731,0.1349};
+	std::array<double,3> vol_size = {1.0,1.0,1.0};
 	std::array<std::array<double,3>,3> vol_direction;
 	vol_direction[0] = {1.0,0.0,0.0};
 	vol_direction[1] = {0.0,1.0,0.0};
@@ -88,11 +88,15 @@ int main(){
     std::printf("size : ");
     std::cout << sizeimage << std::endl;
 
-    auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(12);
-    
+    auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(1);
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::printf("started volumetric reconstruction\n");
 	for(auto img : image_array){
 		reconstructor.add_frame(img);
 		reconstructor.multithreaded_update(reconstruction_thread_pool);
+        //std::cout << "inserted an image\n";
 	}
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::printf("finished volumetric reconstruction (time taken: %d ms)\n",std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
 	return 0;
 };

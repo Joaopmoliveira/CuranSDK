@@ -4,7 +4,7 @@
 namespace curan{
 namespace utilities{
 
-ThreadPool::ThreadPool(size_t number_of_threads)
+ThreadPool::ThreadPool(size_t number_of_threads) : stopped{false}
 {
 	for (int ii = 0; ii < number_of_threads; ii++)
 		pool.push_back(std::thread(&ThreadPool::infinite_loop, this));

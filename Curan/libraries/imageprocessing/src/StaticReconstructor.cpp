@@ -154,6 +154,13 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
 			nsplit[splitAxis * 2] = nsplit[splitAxis * 2] + thread_id * valuesPerThread;
 		++thread_id;
 	}
+
+	thread_id = 0;
+	std::printf("\n=======\n");
+	for(const auto& val : splitting){
+		std::printf("for thread: %d extent is: [%d %d] [%d %d] [%d %d]\n",thread_id,val[0],val[1],val[2],val[3],val[4],val[5]);
+		++thread_id;
+	}
 	//return if succedded
   	return true;
 }
@@ -296,6 +303,8 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 				curan::image::reconstruction::UnoptimizedInsertSlice(&paste_slice_info);
 				std::lock_guard<std::mutex> g{local_mut};
 				++executed;
+				//std::printf("finished patch of work: %d (to do: %d)\n",executed,block_divisions.size());
+				cv.notify_one();
 			};
 			pool->submit(std::move(job));
 		}
