@@ -17,7 +17,7 @@ namespace curan {
 		{
 		private:
 			bool stopped = false;
-			mutable std::mutex mut;
+			std::mutex mut;
 			std::vector<std::thread> pool;
 			SafeQueue<Job> job_queue;
 			int number_of_tasks_executing = 0;
@@ -30,6 +30,10 @@ namespace curan {
 			void get_number_tasks(int& tasks_executing, int& tasks_in_queue);
 			void submit(Job task);
 			void shutdown();
+			inline size_t size(){
+				std::lock_guard<std::mutex> g{mut};
+				return pool.size();
+			}
 		};
 }
 }

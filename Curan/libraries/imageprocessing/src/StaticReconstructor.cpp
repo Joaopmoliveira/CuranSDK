@@ -1,5 +1,7 @@
 #include "imageprocessing/StaticReconstructor.h"
 
+#include <condition_variable>
+
 namespace curan{
 namespace image {
 
@@ -123,46 +125,38 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
     return out_volume;
 }
 
-int splice_input_extent( int splitExt[6], int fullExt[6], int threadId, int number_of_threads){
-	int min, max;
-	// start with same extent
-  	memcpy( splitExt, fullExt, 6 * sizeof( int ) );
-	// determine which axis we should split along - preference is z, then y, then x
-  	// as long as we can possibly split along that axis (i.e. as long as z0 != z1)
-  	int splitAxis = 2; // the axis we should split along, try with z first
-  	min = fullExt[4];
-  	max = fullExt[5];
-  	while ( min == max ){
-    	--splitAxis;
-    	// we cannot split if the input extent is something like [50, 50, 100, 100, 0, 0]!
-    	if ( splitAxis < 0 ){
-      		throw std::runtime_error("cannot splice input extent");
-      		return ; //is this needed?
+ [[nodiscard]] bool splice_input_extent( std::vector<std::array<int,6>> splitting, const int fullExt[6]){
+	std::vector<std::array<int,6>>  splitting_behavior;
+	size_t thread_id = 0;
+	for(auto& nsplit : splitting){
+		int min, max;
+  		memcpy( nsplit.data(), fullExt, 6 * sizeof( int ) );
+  		int splitAxis = 2; 
+  		min = fullExt[4];
+  		max = fullExt[5];
+  		while ( min == max ){
+    		--splitAxis;
+    		if ( splitAxis < 0 ){
+      			return false;
+			}
+			min = fullExt[splitAxis * 2];
+    		max = fullExt[splitAxis * 2 + 1];
+   		}
+  		int range = max - min + 1;
+  		int valuesPerThread = ( int )std::ceil( range / ( double )splitting.size() );
+ 		int maxThreadIdUsed = ( int )std::ceil( range / ( double )valuesPerThread ) - 1;
+  		if ( thread_id < maxThreadIdUsed ){
+    		nsplit[splitAxis * 2] = nsplit[splitAxis * 2] + thread_id * valuesPerThread;
+    		nsplit[splitAxis * 2 + 1] = nsplit[splitAxis * 2] + valuesPerThread - 1;
 		}
-		min = fullExt[splitAxis * 2];
-    	max = fullExt[splitAxis * 2 + 1];
-    }
+  		if ( thread_id == maxThreadIdUsed )
+			nsplit[splitAxis * 2] = nsplit[splitAxis * 2] + thread_id * valuesPerThread;
+		++thread_id;
+	}
 
- 	// determine the actual number of pieces that will be generated
-  	int range = max - min + 1;
-  	// split the range over the maximum number of threads
-  	int valuesPerThread = ( int )std::ceil( range / ( double )number_of_threads );
-  	// figure out the largest thread id used
- 	 int maxThreadIdUsed = ( int )std::ceil( range / ( double )valuesPerThread ) - 1;
-  	// if we are in a thread that will work on part of the extent, then figure
-  	// out the range that this thread should work on
-  	if ( threadId < maxThreadIdUsed )
-  	{
-    	splitExt[splitAxis * 2] = splitExt[splitAxis * 2] + threadId * valuesPerThread;
-    	splitExt[splitAxis * 2 + 1] = splitExt[splitAxis * 2] + valuesPerThread - 1;
-  	}
-  	if ( threadId == maxThreadIdUsed )
-  	{
-		splitExt[splitAxis * 2] = splitExt[splitAxis * 2] + threadId * valuesPerThread;
-  	}
 
   	// return the number of threads used
-  	return number_of_threads + 1;
+  	return true;
 }
 
 bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool){
@@ -222,12 +216,8 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 			return false;
 	}
 
-	// now we need to divide the image between equal patches, for that we copy the IGSIO 
-	// block of code 
-	//splice_input_extent();
-
 	for (auto img : local_image_copies) {	
-	    int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
+		int inputExtent[6] = { 0, 0, 0, 0, 0, 0};
 		double clipRectangleOrigin [2]; // array size 2
 		double clipRectangleSize [2]; // array size 2
 		if(clipping){
@@ -237,8 +227,8 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 			clipRectangleSize[0] = (*clipping).clipRectangleSize[0];
 			clipRectangleSize[1] = (*clipping).clipRectangleSize[1];
 
-			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
-			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
+			inputExtent[1] = clipRectangleSize[0];
+			inputExtent[3] = clipRectangleSize[1];
 		} else {
 			auto local_size = img->GetLargestPossibleRegion().GetSize();
 			auto local_origin = img->GetOrigin();
@@ -247,12 +237,12 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 			clipRectangleSize[0] = local_size.GetSize()[0]-1;
 			clipRectangleSize[1] = local_size.GetSize()[1]-1;
 
-			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
-			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
+			inputExtent[1] = clipRectangleSize[0];
+			inputExtent[3] = clipRectangleSize[1];
 		}	
+
 		paste_slice_info.clipRectangleOrigin = clipRectangleOrigin;
 	    paste_slice_info.clipRectangleSize = clipRectangleSize;
-		paste_slice_info.inExt = inputFrameExtentForCurrentThread;
 		paste_slice_info.image_number += 1;
 
 		itk::Matrix<double> image_orientation = img->GetDirection();
@@ -285,7 +275,33 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 		paste_slice_info.inPtr = img->GetBufferPointer();
 		paste_slice_info.matrix = output_to_origin;
 
-		curan::image::reconstruction::UnoptimizedInsertSlice(&paste_slice_info);
+
+		// now we need to divide the image between equal patches, for that we copy the IGSIO 
+		// block of code 
+		std::vector<std::array<int,6>> block_divisions;
+		block_divisions.resize(pool->size());
+		if(!splice_input_extent(block_divisions,inputExtent))
+			throw std::runtime_error("failure to execute slicing of input image");
+
+		std::condition_variable cv;
+		std::mutex local_mut;
+		std::unique_lock<std::mutex> unique_{local_mut};
+		int executed = 0;
+		for(const auto& range : block_divisions){
+			curan::utilities::Job job;
+			job.description = "partial volume reconstruction";
+			job.function_to_execute = [&](){
+				int this_thread_extent[6];
+				std::memcpy(this_thread_extent,range.data(),6*sizeof(int));
+				paste_slice_info.inExt = this_thread_extent;
+				curan::image::reconstruction::UnoptimizedInsertSlice(&paste_slice_info);
+				std::lock_guard<std::mutex> g{local_mut};
+				++executed;
+			};
+			pool->submit(std::move(job));
+		}
+		//this blocks until all threads have processed their corresponding block that they need to process
+		cv.wait(unique_,[&](){ return executed==block_divisions.size();});
 	};
 	return true;
 }
