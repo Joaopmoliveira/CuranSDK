@@ -1,4 +1,5 @@
 #include "utils/TheadPool.h"
+#include <memory>
 
 namespace curan{
 namespace utilities{
@@ -59,10 +60,8 @@ void ThreadPool::shutdown()
 	stopped = true; // use this flag in destructor, if not set, call shutdown() 
 }
 
-std::shared_ptr<ThreadPool> ThreadPool::create(size_t num_of_threads){
-	auto local =  new ThreadPool{num_of_threads};
-	std::shared_ptr<ThreadPool> pool;
-	return pool;
+std::shared_ptr<curan::utilities::ThreadPool> ThreadPool::create(size_t num_of_threads){
+	return std::shared_ptr<curan::utilities::ThreadPool>(new ThreadPool{num_of_threads});
 }
 
 }

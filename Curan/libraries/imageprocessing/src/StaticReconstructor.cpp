@@ -123,6 +123,10 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
     return out_volume;
 }
 
+bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilitites::ThreadPool>pool){
+	return true;
+}
+
 bool StaticReconstructor::update(){
 	gte::Vector<3, double> output_origin = volumetric_bounding_box.center
 	- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]

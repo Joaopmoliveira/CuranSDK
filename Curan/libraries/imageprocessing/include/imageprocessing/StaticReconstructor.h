@@ -9,6 +9,7 @@
 #include "VolumeAlgorithms.h"
 #include <optional>
 #include <mutex>
+#include "utils/TheadPool.h"
 
 namespace curan{
     namespace image {
@@ -73,6 +74,8 @@ namespace curan{
 	    output_type::Pointer get_output_pointer();
 
 	    bool update();
+
+		bool multithreaded_update(std::shared_ptr<utilitites::ThreadPool>pool);
 };
 
 

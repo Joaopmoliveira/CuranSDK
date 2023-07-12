@@ -24,8 +24,8 @@ namespace curan {
 			int number_of_pending_tasks = 0;
 			void infinite_loop();
 			ThreadPool(size_t number_of_threads);
-			~ThreadPool();
 		public:
+			~ThreadPool();
 			static std::shared_ptr<ThreadPool> create(size_t num_of_threads);
 			void get_number_tasks(int& tasks_executing, int& tasks_in_queue);
 			void submit(Job task);
