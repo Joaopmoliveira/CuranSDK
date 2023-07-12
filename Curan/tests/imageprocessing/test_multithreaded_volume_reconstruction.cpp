@@ -1,10 +1,45 @@
 #include "imageprocessing/StaticReconstructor.h"
+#include "rendering/Volume.h"
+#include "rendering/Window.h"
+#include "rendering/Renderable.h"
 #include <optional>
 
-constexpr long width = 500;
-constexpr long height = 500;
-float spacing[3] = {0.002 , 0.002 , 0.002};
-float final_spacing [3] = {0.002,0.002, 0.002};
+constexpr long width = 100;
+constexpr long height = 100;
+float spacing[3] = {0.01 , 0.01 , 0.01};
+float final_spacing [3] = {0.01,0.01, 0.01};
+
+void updateBaseTexture3D(vsg::floatArray3D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render)
+{
+    using OutputPixelType = float;
+    using InputImageType = itk::Image<unsigned char, 3>;
+    using OutputImageType = itk::Image<OutputPixelType, 3>;
+    using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
+    auto filter = FilterType::New();
+    filter->SetInput(image_to_render);
+
+    using RescaleType = itk::RescaleIntensityImageFilter<OutputImageType, OutputImageType>;
+    auto rescale = RescaleType::New();
+    rescale->SetInput(filter->GetOutput());
+    rescale->SetOutputMinimum(0.0);
+    rescale->SetOutputMaximum(1.0);
+
+    try{
+        rescale->Update();
+    } catch (const itk::ExceptionObject& e) {
+        std::cerr << "Error: " << e << std::endl;
+        throw std::runtime_error("error");
+    }
+
+    OutputImageType::Pointer out = rescale->GetOutput();
+    using IteratorType = itk::ImageRegionIteratorWithIndex<OutputImageType>;
+    IteratorType outputIt(out, out->GetRequestedRegion());
+    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+        OutputImageType::IndexType idx = outputIt.GetIndex();
+        image.set(idx[0], idx[1], idx[2], outputIt.Get());
+    }
+}
+
 
 void create_array_of_linear_images_in_x_direction(std::vector<curan::image::StaticReconstructor::output_type::Pointer>& desired_images){
     itk::Matrix<double> image_orientation;
@@ -58,7 +93,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
 
         image_origin[0] = 0.0;
 	    image_origin[1] = 0.0;
-	    image_origin[2] = std::sin((3.1415/2.0)*(1.0/(width-1))*z);
+	    image_origin[2] = 1.0/(width-1)*z;
 
         auto pointer = image->GetBufferPointer();
         std::memcpy(pointer,pixel,sizeof(curan::image::char_pixel_type)*width*height);
@@ -66,7 +101,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
     }
 }
 
-int main(){
+void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stopping_condition){
     try{
 	    std::vector<curan::image::StaticReconstructor::output_type::Pointer> image_array;
 	    create_array_of_linear_images_in_x_direction(image_array);
@@ -83,28 +118,80 @@ int main(){
 	    reconstructor.set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
             .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
 
-	    auto buffer = reconstructor.get_output_pointer();
-
+        auto buffer = reconstructor.get_output_pointer();
 	    auto sizeimage = buffer->GetLargestPossibleRegion().GetSize();
         std::printf("size : ");
         std::cout << sizeimage << std::endl;
 
-        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(9);
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        curan::renderable::Volume::Info volumeinfo;
+        volumeinfo.width = sizeimage.GetSize()[0]; 
+        volumeinfo.height = sizeimage.GetSize()[1];
+        volumeinfo.depth = sizeimage.GetSize()[2];
+        volumeinfo.spacing_x = final_spacing[0]*1e3;
+        volumeinfo.spacing_y = final_spacing[1]*1e3;
+        volumeinfo.spacing_z = final_spacing[2]*1e3;
+    
+        auto volume = curan::renderable::Volume::make(volumeinfo);
+        window << volume;
+
+        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(1);
         std::printf("started volumetric reconstruction\n");
         size_t counter = 0;
 	    for(auto img : image_array){
+            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 		    reconstructor.add_frame(img);
 		    reconstructor.multithreaded_update(reconstruction_thread_pool);
+            std::chrono::steady_clock::time_point elapsed_for_reconstruction = std::chrono::steady_clock::now();
+            auto val_elapsed_for_reconstruction = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_reconstruction - begin).count();
+            begin = std::chrono::steady_clock::now();
+            if(stopping_condition)
+                break;
+            auto casted_volume = volume->cast<curan::renderable::Volume>();
+            auto updater = [buffer](vsg::floatArray3D& image){
+                updateBaseTexture3D(image, buffer);
+            };
+            casted_volume->update_volume(updater);
+            std::chrono::steady_clock::time_point elapsed_for_rendering = std::chrono::steady_clock::now();
+            auto val_elapsed_for_rendering = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_rendering - begin).count();
+            std::printf("added image (volume reconstruction %d) (volume rendering %d)\n",val_elapsed_for_reconstruction,val_elapsed_for_rendering);
             ++counter;
 	    }
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        auto val = (int)std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-        std::printf("finished volumetric reconstruction (time taken: %d microseconds)\n",val);
-	    std::printf("per image time: %f microseconds/image\n",val/(double)counter);
-        return 0;
+        return ;
     }catch(std::exception& e){
         std::cout << "exception was throuwn with error message :" << e.what() << std::endl;
-        return 1;
+        return ;
     }
 };
+
+
+int main(){
+try{   
+    curan::renderable::Window::Info info;
+    info.api_dump = false;
+    info.display = "";
+    info.full_screen = false;
+    info.is_debug = false;
+    info.screen_number = 0;
+    info.title = "myviewer";
+    curan::renderable::Window::WindowSize size{1000, 800};
+    info.window_size = size;
+    curan::renderable::Window window{info};
+
+    std::atomic<bool> stopping_condition = false;
+    std::thread volume_reconstruction{[&](){ volume_creation(window,stopping_condition); }};
+    window.run();
+    stopping_condition = true;
+    volume_reconstruction.join();
+
+    window.transverse_identifiers(
+            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable >>
+                   &map) {
+                for (auto &p : map){
+                    std::cout << "Object contained: " << p.first << '\n';
+                }
+    });
+} catch(std::exception & e){
+    std::cout << "failed: " << e.what() << std::endl;
+}
+return 0;
+}
