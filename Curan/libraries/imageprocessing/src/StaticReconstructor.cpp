@@ -123,6 +123,48 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
     return out_volume;
 }
 
+int splice_input_extent( int splitExt[6], int fullExt[6], int threadId, int number_of_threads){
+	int min, max;
+	// start with same extent
+  	memcpy( splitExt, fullExt, 6 * sizeof( int ) );
+	// determine which axis we should split along - preference is z, then y, then x
+  	// as long as we can possibly split along that axis (i.e. as long as z0 != z1)
+  	int splitAxis = 2; // the axis we should split along, try with z first
+  	min = fullExt[4];
+  	max = fullExt[5];
+  	while ( min == max ){
+    	--splitAxis;
+    	// we cannot split if the input extent is something like [50, 50, 100, 100, 0, 0]!
+    	if ( splitAxis < 0 ){
+      		throw std::runtime_error("cannot splice input extent");
+      		return ; //is this needed?
+		}
+		min = fullExt[splitAxis * 2];
+    	max = fullExt[splitAxis * 2 + 1];
+    }
+
+ 	// determine the actual number of pieces that will be generated
+  	int range = max - min + 1;
+  	// split the range over the maximum number of threads
+  	int valuesPerThread = ( int )std::ceil( range / ( double )number_of_threads );
+  	// figure out the largest thread id used
+ 	 int maxThreadIdUsed = ( int )std::ceil( range / ( double )valuesPerThread ) - 1;
+  	// if we are in a thread that will work on part of the extent, then figure
+  	// out the range that this thread should work on
+  	if ( threadId < maxThreadIdUsed )
+  	{
+    	splitExt[splitAxis * 2] = splitExt[splitAxis * 2] + threadId * valuesPerThread;
+    	splitExt[splitAxis * 2 + 1] = splitExt[splitAxis * 2] + valuesPerThread - 1;
+  	}
+  	if ( threadId == maxThreadIdUsed )
+  	{
+		splitExt[splitAxis * 2] = splitExt[splitAxis * 2] + threadId * valuesPerThread;
+  	}
+
+  	// return the number of threads used
+  	return number_of_threads + 1;
+}
+
 bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool){
 	gte::Vector<3, double> output_origin = volumetric_bounding_box.center
 	- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
@@ -181,7 +223,8 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 	}
 
 	// now we need to divide the image between equal patches, for that we copy the IGSIO 
-	// block of code
+	// block of code 
+	//splice_input_extent();
 
 	for (auto img : local_image_copies) {	
 	    int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
