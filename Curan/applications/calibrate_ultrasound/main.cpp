@@ -52,14 +52,7 @@ int main(int argc, char* argv[]) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
 	processing->attempt_stop();
-	std::cout << "trying to stop everything" << std::endl;
-
-	int tasks_n = 0;
-	int tasks_queue = 0;
-	projeto->get_number_tasks(tasks_n, tasks_queue);
-	std::cout << "Number of tasks executing: " << tasks_n << " number of tasks in queue" << tasks_queue << "\n";
-	std::cout << "Number of frame recordings: " << processing->list_of_recorded_points.size() << "\n";
-	std::cout << "Received spacing: \n";
+	std::cout << "trying to stop communication" << std::endl;
 
 	return 0;
 

@@ -96,13 +96,13 @@ int main(){
 	    for(auto img : image_array){
 		    reconstructor.add_frame(img);
 		    reconstructor.multithreaded_update(reconstruction_thread_pool);
-            if(counter>25)
-               break;
             ++counter;
 	    }
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        std::printf("finished volumetric reconstruction (time taken: %d ms)\n",(int)std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
-	    return 0;
+        auto val = (int)std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+        std::printf("finished volumetric reconstruction (time taken: %d microseconds)\n",val);
+	    std::printf("per image time: %f microseconds/image\n",val/(double)counter);
+        return 0;
     }catch(std::exception& e){
         std::cout << "exception was throuwn with error message :" << e.what() << std::endl;
         return 1;

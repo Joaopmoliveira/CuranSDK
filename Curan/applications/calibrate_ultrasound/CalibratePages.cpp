@@ -4,7 +4,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 	using namespace curan::ui;
 	//---------------------- row Minimum Radius -------------------//
 	auto slider = Slider::make({ 0.0f, 300.0f });
-	slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob = TextBlob::make("Minimum Radius");
 	textblob->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
 	double current_val = (processing->configuration.minimum_radius - processing->configuration.minimum_radius_limit[0]) / (processing->configuration.minimum_radius_limit[1] - processing->configuration.minimum_radius_limit[0]);
@@ -18,7 +18,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 	container->set_divisions({ 0.0 , 0.5 , 1.0 });
 	//---------------------- row Maximum Radius -------------------//
 	auto slider1 = Slider::make({ 0.0f, 300.0f });
-	slider1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	slider1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob1 = TextBlob::make("Maximum Radius");
 	textblob1->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
 	double current_val1 = (processing->configuration.maximum_radius - processing->configuration.maximum_radius_limit[0]) / (processing->configuration.maximum_radius_limit[1] - processing->configuration.maximum_radius_limit[0]);
@@ -32,7 +32,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 	container1->set_divisions({ 0.0 , 0.5 , 1.0 });
 	//---------------------- row Sweep Angle -------------------//
 	auto slider2 = Slider::make({ 0.0f, 300.0f });
-	slider2->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	slider2->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob2 = TextBlob::make("Sweep Angle");
 	textblob2->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
 	double current_val2 = (processing->configuration.sweep_angle - processing->configuration.sweep_angle_limit[0]) / (processing->configuration.sweep_angle_limit[1] - processing->configuration.sweep_angle_limit[0]);
@@ -46,7 +46,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 	container2->set_divisions({ 0.0 , 0.5 , 1.0 });
 	//---------------------- row Sigma Gradient -------------------//
 	auto slider3 = Slider::make({ 0.0f, 300.0f });
-	slider3->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	slider3->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob3 = TextBlob::make("Sigma Gradient");
 	textblob3->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
 	double current_val3 = (processing->configuration.sigma_gradient - processing->configuration.sigma_gradient_limit[0]) / (processing->configuration.sigma_gradient_limit[1] - processing->configuration.sigma_gradient_limit[0]);
@@ -61,7 +61,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 
 	//---------------------- row Variance -------------------//
 	auto slider4 = Slider::make({ 0.0f, 300.0f });
-	slider4->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	slider4->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob4 = TextBlob::make("Variance");
 	textblob4->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
 	double current_val4 = (processing->configuration.variance - processing->configuration.variance_limit[0]) / (processing->configuration.variance_limit[1] - processing->configuration.variance_limit[0]);
@@ -75,7 +75,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 	container4->set_divisions({ 0.0 , 0.5 , 1.0 });
 	//---------------------- row Disk Ratio -------------------//
 	auto slider5 = Slider::make({ 0.0f, 300.0f });
-	slider5->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	slider5->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob5 = TextBlob::make("Disk Ratio");
 	textblob5->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
 	double current_val5 = (processing->configuration.disk_ratio - processing->configuration.disk_ratio_limit[0]) / (processing->configuration.disk_ratio_limit[1] - processing->configuration.disk_ratio_limit[0]);
@@ -89,7 +89,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 	container5->set_divisions({ 0.0 , 0.5 , 1.0 });
 	//---------------------- row Threshold -------------------//
 	auto slider6 = Slider::make({ 0.0f, 300.0f });
-	slider6->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 40));
+	slider6->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 40));
 	auto textblob6 = TextBlob::make("Threshold");
 	textblob6->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
 	double current_val6 = (processing->configuration.threshold - processing->configuration.threshold_limit[0]) / (double)(processing->configuration.threshold_limit[1] - processing->configuration.threshold_limit[0]);
@@ -153,7 +153,7 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, flag, data);
 	processing->port = data.port;
 
-	auto lam = [&data,processing](Button* button, ConfigDraw* config) {
+	auto start_connection_callback = [&data,processing](Button* button, ConfigDraw* config) {
 		if (!processing->connection_status->value()) {
 			curan::utilities::Job val;
 			val.description = "connection thread";
@@ -169,7 +169,7 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 
 	auto start_connection = Button::make("Connect",resources);
 	start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
-	start_connection->set_callback(lam);
+	start_connection->set_callback(start_connection_callback);
 	auto start_connection_pointer = start_connection.get();
 
 	auto change_recording_status = [processing](Button* button, ConfigDraw* config) {
