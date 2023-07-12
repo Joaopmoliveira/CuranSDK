@@ -72,3 +72,12 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_multithreaded_reconstruction test_multithreaded_volume_reconstruction.cpp)
+
+target_compile_definitions(test_multithreaded_reconstruction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_multithreaded_reconstruction
+PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
