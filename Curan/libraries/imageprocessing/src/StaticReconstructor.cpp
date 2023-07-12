@@ -125,8 +125,7 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
     return out_volume;
 }
 
- [[nodiscard]] bool splice_input_extent( std::vector<std::array<int,6>> splitting, const int fullExt[6]){
-	std::vector<std::array<int,6>>  splitting_behavior;
+ [[nodiscard]] bool splice_input_extent( std::vector<std::array<int,6>>& splitting, const int fullExt[6]){
 	size_t thread_id = 0;
 	for(auto& nsplit : splitting){
 		int min, max;
@@ -154,14 +153,6 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
 			nsplit[splitAxis * 2] = nsplit[splitAxis * 2] + thread_id * valuesPerThread;
 		++thread_id;
 	}
-
-	thread_id = 0;
-	std::printf("\n=======\n");
-	for(const auto& val : splitting){
-		std::printf("for thread: %d extent is: [%d %d] [%d %d] [%d %d]\n",thread_id,val[0],val[1],val[2],val[3],val[4],val[5]);
-		++thread_id;
-	}
-	//return if succedded
   	return true;
 }
 
@@ -288,24 +279,39 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 		block_divisions.resize(pool->size());
 		if(!splice_input_extent(block_divisions,inputExtent))
 			throw std::runtime_error("failure to execute slicing of input image");
-
+		//for(const auto& split : block_divisions){
+		//	std::printf("(%d) (%d) (%d) (%d) (%d) (%d)\n",split[0],split[1],split[2],split[3],split[4],split[5]);
+		//}
 		std::condition_variable cv;
 		std::mutex local_mut;
 		std::unique_lock<std::mutex> unique_{local_mut};
 		int executed = 0;
+		size_t index = 0;
 		for(const auto& range : block_divisions){
 			curan::utilities::Job job;
 			job.description = "partial volume reconstruction";
-			job.function_to_execute = [&](){
-				int this_thread_extent[6];
-				std::memcpy(this_thread_extent,range.data(),6*sizeof(int));
-				paste_slice_info.inExt = this_thread_extent;
-				curan::image::reconstruction::UnoptimizedInsertSlice(&paste_slice_info);
-				std::lock_guard<std::mutex> g{local_mut};
-				++executed;
-				//std::printf("finished patch of work: %d (to do: %d)\n",executed,block_divisions.size());
-				cv.notify_one();
+			job.function_to_execute = [index,range,paste_slice_info,&executed,&local_mut,&cv](){
+				size_t local_index = index;
+				try{
+					int this_thread_extent[6];
+					std::memcpy(this_thread_extent,range.data(),6*sizeof(int));
+
+					curan::image::reconstruction::PasteSliceIntoVolumeInsertSliceParams local_paste_slice_info;
+					local_paste_slice_info = paste_slice_info;
+					local_paste_slice_info.inExt = this_thread_extent;
+
+					curan::image::reconstruction::UnoptimizedInsertSlice(&local_paste_slice_info);
+					{
+						std::lock_guard<std::mutex> g{local_mut};
+						++executed;
+						//std::printf("finished patch of work: %d (to do: %d)\n",executed,(int)block_divisions.size());
+					}
+					cv.notify_one();
+				} catch(std::exception & e){
+					std::cout << "exception was thrown in index :" << local_index << " with error message: " << e.what() << std::endl;
+				}
 			};
+			++index;
 			pool->submit(std::move(job));
 		}
 		//this blocks until all threads have processed their corresponding block that they need to process

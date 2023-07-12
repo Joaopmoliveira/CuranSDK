@@ -67,36 +67,44 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
 }
 
 int main(){
-	std::vector<curan::image::StaticReconstructor::output_type::Pointer> image_array;
-	create_array_of_linear_images_in_x_direction(image_array);
+    try{
+	    std::vector<curan::image::StaticReconstructor::output_type::Pointer> image_array;
+	    create_array_of_linear_images_in_x_direction(image_array);
 
-	std::array<double,3> vol_origin = {0.0,0.0,0.0};
-	std::array<double,3> vol_spacing = {final_spacing[0],final_spacing[1],final_spacing[2]};
-	std::array<double,3> vol_size = {1.0,1.0,1.0};
-	std::array<std::array<double,3>,3> vol_direction;
-	vol_direction[0] = {1.0,0.0,0.0};
-	vol_direction[1] = {0.0,1.0,0.0};
-	vol_direction[2] = {0.0,0.0,1.0};
-	curan::image::StaticReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
-	curan::image::StaticReconstructor reconstructor{recon_info};
-	reconstructor.set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
-        .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
+	    std::array<double,3> vol_origin = {0.0,0.0,0.0};
+	    std::array<double,3> vol_spacing = {final_spacing[0],final_spacing[1],final_spacing[2]};
+	    std::array<double,3> vol_size = {1.0,1.0,1.0};
+	    std::array<std::array<double,3>,3> vol_direction;
+	    vol_direction[0] = {1.0,0.0,0.0};
+	    vol_direction[1] = {0.0,1.0,0.0};
+	    vol_direction[2] = {0.0,0.0,1.0};
+	    curan::image::StaticReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
+	    curan::image::StaticReconstructor reconstructor{recon_info};
+	    reconstructor.set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
+            .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
 
-	auto buffer = reconstructor.get_output_pointer();
+	    auto buffer = reconstructor.get_output_pointer();
 
-	auto sizeimage = buffer->GetLargestPossibleRegion().GetSize();
-    std::printf("size : ");
-    std::cout << sizeimage << std::endl;
+	    auto sizeimage = buffer->GetLargestPossibleRegion().GetSize();
+        std::printf("size : ");
+        std::cout << sizeimage << std::endl;
 
-    auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(1);
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    std::printf("started volumetric reconstruction\n");
-	for(auto img : image_array){
-		reconstructor.add_frame(img);
-		reconstructor.multithreaded_update(reconstruction_thread_pool);
-        //std::cout << "inserted an image\n";
-	}
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::printf("finished volumetric reconstruction (time taken: %d ms)\n",std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
-	return 0;
+        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(9);
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        std::printf("started volumetric reconstruction\n");
+        size_t counter = 0;
+	    for(auto img : image_array){
+		    reconstructor.add_frame(img);
+		    reconstructor.multithreaded_update(reconstruction_thread_pool);
+            if(counter>25)
+               break;
+            ++counter;
+	    }
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        std::printf("finished volumetric reconstruction (time taken: %d ms)\n",(int)std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
+	    return 0;
+    }catch(std::exception& e){
+        std::cout << "exception was throuwn with error message :" << e.what() << std::endl;
+        return 1;
+    }
 };

@@ -13,26 +13,29 @@ ThreadPool::ThreadPool(size_t number_of_threads) : stopped{false}
 ThreadPool::~ThreadPool()
 {
 	std::lock_guard<std::mutex> lk(mut);
-	if (!stopped)
-		shutdown();
+	if (!stopped){
+		stopped = true;
+		internal_shutdown();
+	}
+
 }
 
 void ThreadPool::infinite_loop()
 {
 	Job job;
 	while (true){
-	if (!job_queue.wait_and_pop(job))
-		break;
-	{
-		std::lock_guard<std::mutex> lk(mut);
-		++number_of_tasks_executing;
-		--number_of_pending_tasks;
-	}
-	job.function_to_execute();
-	{
-		std::lock_guard<std::mutex> lk(mut);
-		--number_of_tasks_executing;
-	}
+		if (!job_queue.wait_and_pop(job))
+			return;
+		{
+			std::lock_guard<std::mutex> lk(mut);
+			++number_of_tasks_executing;
+			--number_of_pending_tasks;
+		}
+		job.function_to_execute();
+		{
+			std::lock_guard<std::mutex> lk(mut);
+			--number_of_tasks_executing;
+		}
 	}
 }
 
@@ -50,14 +53,21 @@ void ThreadPool::submit(Job task)
 	job_queue.push(task);
 }
 
-void ThreadPool::shutdown()
+void ThreadPool::internal_shutdown()
 {
-	std::lock_guard<std::mutex> lk(mut);
 	job_queue.invalidate();
 	for (std::thread& every_thread : pool)
 		every_thread.join();
 	pool.clear();
 	stopped = true; // use this flag in destructor, if not set, call shutdown() 
+}
+
+void ThreadPool::shutdown()
+{
+	std::lock_guard<std::mutex> lk(mut);
+	if(stopped)
+		return;
+	internal_shutdown();
 }
 
 std::shared_ptr<curan::utilities::ThreadPool> ThreadPool::create(size_t num_of_threads){
