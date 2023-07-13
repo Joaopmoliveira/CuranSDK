@@ -83,3 +83,15 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(convert_Plus2ITK_image convert_Plus2ITK_image.cpp)
+
+target_compile_definitions(convert_Plus2ITK_image PRIVATE vsgXchange_FOUND)
+target_compile_definitions(convert_Plus2ITK_image PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(convert_Plus2ITK_image
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)
