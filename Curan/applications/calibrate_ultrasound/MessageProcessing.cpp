@@ -1,25 +1,6 @@
 #include "MessageProcessing.h"
 #include "optimization/WireCalibration.h"
 
-bool PotentialObservationEigenFormat::is_complete(ObservationEigenFormat& observation) {
-	bool val = flange_data.has_value() && segmented_wires.has_value();
-	if (!val)
-		return val;
-	observation.flange_data = *flange_data;
-	observation.segmented_wires = *segmented_wires;
-	flange_data = std::nullopt;
-	segmented_wires = std::nullopt;
-	return val;
-}
-
-void PotentialObservationEigenFormat::set_flange_data(Eigen::Matrix<double, 4, 4> flange_dat) {
-	flange_data = flange_dat;
-}
-
-void PotentialObservationEigenFormat::set_segmented_wires(Eigen::Matrix<double, 3, Eigen::Dynamic> in_segmented_wires) {
-	segmented_wires = in_segmented_wires;
-}
-
 std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(Eigen::Matrix<double, 3, Eigen::Dynamic>& current, Eigen::Matrix<double, 3, Eigen::Dynamic>& previous, double threshold) {
 	assert(current.cols() == previous.cols());
 	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> distance_matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(previous.cols(), previous.cols());
@@ -30,16 +11,30 @@ std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(
 			distance_matrix(distance_row, distance_col) = (previous_col - current_col).norm();
 		}
 	}
+	std::cout << "previous : \n" << previous  << std::endl;
+	std::cout << "current : \n" << current  << std::endl;
+	std::cout << "cost matrix: \n" << distance_matrix << std::endl;
 	Eigen::Matrix<double, 3, Eigen::Dynamic> local_copy = current;
-	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Index   minIndex;
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Index minIndex;
+	std::vector<size_t> index_mapping;
+	index_mapping.resize(previous.cols());
 	size_t ordered_indices = 0;
 	for (const auto& row : distance_matrix.rowwise()) {
 		double cost = row.minCoeff(&minIndex);
-		local_copy.col(ordered_indices) = current.col(minIndex);
+		index_mapping[ordered_indices] = minIndex;
+		local_copy.col(minIndex) = current.col(ordered_indices); 
+		std::printf("cost is: %f\n",cost);
 		if (cost > threshold) {
 			return std::nullopt;
 		}
 		++ordered_indices;
+	}
+
+	std::sort(index_mapping.begin(),index_mapping.end());
+	for(int i = 0; i < index_mapping.size() - 1; i++) {
+    	if (index_mapping[i] == index_mapping[i + 1]) {
+        	return std::nullopt;
+    	}
 	}
 	return local_copy;
 }
@@ -51,6 +46,7 @@ bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::P
 	int c = transform_message->Unpack(1);
 	if (!(c & igtl::MessageHeader::UNPACK_BODY))
 		return false; //failed to unpack message, therefore returning without doing anything
+	return true;
 }
 
 bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
@@ -60,14 +56,6 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	int c = message_body->Unpack(1);
 	if (!(c & igtl::MessageHeader::UNPACK_BODY))
 		return false; //failed to unpack message, therefore returning without doing anything
-
-	igtl::Matrix4x4 local_mat;
-	message_body->GetMatrix(local_mat);
-	Eigen::Matrix<double, 4, 4> flange_data;
-	for (size_t cols = 0; cols < 4; ++cols)
-		for (size_t lines = 0; lines < 4; ++lines)
-			flange_data(lines, cols) = local_mat[lines][cols];
-	processor->observation_to_propagete.set_flange_data(flange_data);
 
 	int x, y, z;
 	message_body->GetDimensions(x, y, z);
@@ -155,12 +143,14 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		return false;
 	}
 
+
 	HoughTransformFilterType::CirclesListType circles;
 	circles = houghFilter->GetCircles();
 
 	using CirclesListType = HoughTransformFilterType::CirclesListType;
+	ObservationEigenFormat observation_n;
 	CirclesListType::const_iterator itCircles = circles.begin();
-	Eigen::Matrix<double, 3, Eigen::Dynamic> local_segmented_wires = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3, processor->number_of_circles);
+	observation_n.segmented_wires = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3, processor->number_of_circles);
 	size_t circle_index = 0;
 	while (itCircles != circles.end())
 	{
@@ -169,22 +159,29 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			(*itCircles)->GetCenterInObjectSpace();
 		segmented_point(0, 0) = centerPoint[0];
 		segmented_point(1, 0) = centerPoint[1];
-		local_segmented_wires.col(circle_index) = segmented_point;
+		observation_n.segmented_wires.col(circle_index) = segmented_point;
 		itCircles++;
 		++circle_index;
 	}
 
-	if (processor->list_of_recorded_points.size() == 0) {
-		processor->observation_to_propagete.set_segmented_wires(local_segmented_wires);
+	igtl::Matrix4x4 local_mat;
+	message_body->GetMatrix(local_mat);
+	for (size_t cols = 0; cols < 4; ++cols)
+		for (size_t lines = 0; lines < 4; ++lines)
+			observation_n.flange_data(lines, cols) = local_mat[lines][cols];
+
+	if (processor->list_of_recorded_points.size() == 0 && processor->should_record) {
+		processor->list_of_recorded_points.push_back(observation_n);
 	}
 	else {
-		auto possible_arrangement = rearrange_wire_geometry(local_segmented_wires, processor->list_of_recorded_points.back().segmented_wires,processor->threshold);
-		if (possible_arrangement) {
-			local_segmented_wires = *possible_arrangement;
-			processor->observation_to_propagete.set_segmented_wires(*possible_arrangement);
-		} else {
-			local_segmented_wires = processor->list_of_recorded_points.back().segmented_wires;
+		if(processor->should_record){
+			auto possible_arrangement = rearrange_wire_geometry(observation_n.segmented_wires, processor->list_of_recorded_points.back().segmented_wires,processor->threshold);
+			if (possible_arrangement) {
+				observation_n.segmented_wires = *possible_arrangement;
+				processor->list_of_recorded_points.push_back(observation_n);
+			}
 		}
+
 	}
 
 	if (processor->show_circles.load()) {
@@ -197,7 +194,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			return;
 		};
 		auto local_colors = processor->colors;
-		auto special_custom = [x,y,local_segmented_wires, local_colors](SkCanvas* canvas, SkRect allowed_region) {
+		auto special_custom = [x,y,processor,observation_n, local_colors](SkCanvas* canvas, SkRect allowed_region) {
 			float scalling_factor_x = allowed_region.width()/x;
 			float scalling_factor_y = allowed_region.height()/y;
 			float radius = 15;
@@ -206,23 +203,35 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			paint_square.setAntiAlias(true);
 			paint_square.setStrokeWidth(4);
 			paint_square.setColor(SK_ColorGREEN);
-			assert(local_segmented_wires.cols() == local_colors.size());
+			assert(processor->list_of_recorded_points.back().segmented_wires.cols() == local_colors.size());
 			auto coliter = local_colors.begin();
-			for (const auto& circles : local_segmented_wires.colwise()) {
-				float xloc = allowed_region.x()+ scalling_factor_x * circles(0, 0);
-				float yloc = allowed_region.y()+ scalling_factor_y * circles(1, 0);
-				SkPoint center{xloc,yloc};
-				paint_square.setColor(*coliter);
-				canvas->drawCircle(center,radius, paint_square);
-				++coliter;
+			if(!processor->should_record){
+				for (const auto& circles : observation_n.segmented_wires.colwise()) {
+					float xloc = allowed_region.x()+ scalling_factor_x * circles(0, 0);
+					float yloc = allowed_region.y()+ scalling_factor_y * circles(1, 0);
+					SkPoint center{xloc,yloc};
+					paint_square.setColor(*coliter);
+					canvas->drawCircle(center,radius, paint_square);
+					++coliter;
+				}
+			} else{
+				for (const auto& circles : processor->list_of_recorded_points.back().segmented_wires.colwise()) {
+					float xloc = allowed_region.x()+ scalling_factor_x * circles(0, 0);
+					float yloc = allowed_region.y()+ scalling_factor_y * circles(1, 0);
+					SkPoint center{xloc,yloc};
+					paint_square.setColor(*coliter);
+					canvas->drawCircle(center,radius, paint_square);
+					++coliter;
+				}
 			}
 		};
 		processor->processed_viwer->update_batch(special_custom,lam);
 	}
 	else {
 		processor->processed_viwer->clear_custom_drawingcall();
-		ImageType::Pointer localImage = rescale->GetOutput();
-		auto lam = [localImage, x, y](SkPixmap& requested) {
+		//ImageType::Pointer localImage = rescale->GetOutput();
+		ImageType::Pointer localImage = importFilter->GetOutput();
+		auto lam = [message_body,localImage, x, y](SkPixmap& requested) {
 			auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
 			size_t row_size = x * sizeof(unsigned char);
 			SkPixmap map{ inf,localImage->GetBufferPointer(),row_size };
@@ -230,6 +239,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		};
 		processor->processed_viwer->update_image(lam);
 	}
+	return true;
 }
 
 std::map<std::string,std::function<bool(ProcessingMessage*,igtl::MessageBase::Pointer val)>> openigtlink_callbacks{
@@ -241,13 +251,13 @@ bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_
 	//std::cout << "received message\n";
 	assert(val.IsNotNull());
 	if (er){
-        return false;
+        return true;
     } 
     if (auto search = openigtlink_callbacks.find(val->GetMessageType()); search != openigtlink_callbacks.end())
         search->second(this,val);
     else
         std::cout << "No functionality for function received\n";
-    return true;
+    return false;
 }
 
 void ProcessingMessage::communicate() {
@@ -264,11 +274,16 @@ void ProcessingMessage::communicate() {
 	connection_status->set();
 
 	auto lam = [this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
-		if (process_message(protocol_defined_val, er, val))
-		{
-			connection_status->clear();
-			attempt_stop();
+		try{
+			if (process_message(protocol_defined_val, er, val))
+			{
+				connection_status->clear();
+				attempt_stop();
+			}
+		}catch(...){
+			std::cout << "Exception was thrown\n";
 		}
+
 	};
 	auto connectionstatus = client.connect(lam);
 	io_context.run();

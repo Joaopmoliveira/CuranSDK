@@ -52,9 +52,11 @@ int main(int argc, char* argv[]) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
 	processing->attempt_stop();
-	std::cout << "trying to stop communication" << std::endl;
+	std::cout << "trying to stop communication\n" << std::endl;
 
-	return 0;
+	std::printf("minimum_radius: (%f)\nmaximum_radius: (%f)\nsweep_angle: (%f)\nsigma_gradient: (%f)\nvariance: (%f)\nDiscRadiusRatio: (%f), Threshold (%f)", 
+		data.minimum_radius.load(), data.maximum_radius.load(), data.sweep_angle.load(),data.sigma_gradient.load(), 
+		data.variance.load(), data.disk_ratio.load());
 
 	constexpr size_t number_of_strings = 3;
 	constexpr size_t number_of_variables = 6 + 4 * number_of_strings;
@@ -62,47 +64,35 @@ int main(int argc, char* argv[]) {
 
 	curan::optim::WireData optimizationdata;
 	optimizationdata.wire_data.reserve(number_of_strings * processing->list_of_recorded_points.size());
-	int counter_f = 1;
+	
 	for (const auto& f : processing->list_of_recorded_points) {
-		size_t wire_number = 1;
 		curan::optim::Observation localobservation;
-		Eigen::Matrix<double, 4, 4> temp = Eigen::Matrix<double, 4, 4>::Zero();
+		localobservation.flange_configuration.values[0] = f.flange_data(0, 0);
+		localobservation.flange_configuration.values[1] = f.flange_data(1, 0);
+		localobservation.flange_configuration.values[2] = f.flange_data(2, 0);
 
-		localobservation.flange_configuration.values[0] = temp(0, 0);
-		localobservation.flange_configuration.values[1] = temp(1, 0);
-		localobservation.flange_configuration.values[2] = temp(2, 0);
+		localobservation.flange_configuration.values[3] = f.flange_data(0, 1);
+		localobservation.flange_configuration.values[4] = f.flange_data(1, 1);
+		localobservation.flange_configuration.values[5] = f.flange_data(2, 1);
 
-		localobservation.flange_configuration.values[3] = temp(0, 1);
-		localobservation.flange_configuration.values[4] = temp(1, 1);
-		localobservation.flange_configuration.values[5] = temp(2, 1);
+		localobservation.flange_configuration.values[6] = f.flange_data(0, 2);
+		localobservation.flange_configuration.values[7] = f.flange_data(1, 2);
+		localobservation.flange_configuration.values[8] = f.flange_data(2, 2);
 
-		localobservation.flange_configuration.values[6] = temp(0, 2);
-		localobservation.flange_configuration.values[7] = temp(1, 2);
-		localobservation.flange_configuration.values[8] = temp(2, 2);
+		localobservation.flange_configuration.values[9] = f.flange_data(0, 3)*1e-3;
+		localobservation.flange_configuration.values[10] = f.flange_data(1, 3)*1e-3;
+		localobservation.flange_configuration.values[11] = f.flange_data(2, 3)*1e-3;
 
-		localobservation.flange_configuration.values[9] = temp(0, 3);
-		localobservation.flange_configuration.values[10] = temp(1, 3);
-		localobservation.flange_configuration.values[11] = temp(2, 3);
-
-		localobservation.wire_number = wire_number;
-
-		Eigen::Matrix<double, 3, 1> temp2 = Eigen::Matrix<double, 3, 1>::Zero();
-
-		localobservation.wire_data.values[0] = temp2(0, 0);
-		localobservation.wire_data.values[1] = temp2(1, 0);
-		localobservation.wire_data.values[2] = temp2(2, 0);
-		optimizationdata.wire_data.push_back(localobservation);
-		std::cout << "slice : " << counter_f << "\n";
-		std::cout << "->transformation : " << f.flange_data << "\n";
-		for (const auto& p : f.segmented_wires.colwise()) {
-			std::cout << "	point(" << wire_number << ") -> (" << p(0,0) << ", " << p(1,0) << ")\n";
+		size_t wire_number = 1;
+		for (const auto& wire_observation : f.segmented_wires.colwise()) {
+			localobservation.wire_number = wire_number;
+			localobservation.wire_data.values[0] = wire_observation(0, 0)*0.0001852;
+			localobservation.wire_data.values[1] = wire_observation(1, 0)*0.0001852;
+			localobservation.wire_data.values[2] = wire_observation(2, 0)*0.0001852;
+			optimizationdata.wire_data.push_back(localobservation);
 			++wire_number;
 		}
-
-		++counter_f;
 	}
-	std::cout << "\n";
-
 
 	for (auto& val : variables)
 		val = 0.0;
@@ -116,7 +106,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	ceres::Solver::Options options;
-	options.max_num_iterations = 250;
+	options.max_num_iterations = 2500;
 	options.linear_solver_type = ceres::DENSE_QR;
 	options.minimizer_progress_to_stdout = true;
 
