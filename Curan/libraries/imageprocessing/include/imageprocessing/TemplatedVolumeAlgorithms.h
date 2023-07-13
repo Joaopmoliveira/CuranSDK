@@ -336,8 +336,188 @@ struct PasteSliceIntoVolumeInsertSliceParams
 
 template<typename input_pixel_type,typename output_pixel_type,double convertion_ration>
 void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams<input_pixel_type,output_pixel_type,convertion_ration>* insertionParams){
+	// information on the volume
+	itk::Image<output_pixel_type,3>::Pointer outData = insertionParams->outData;
+	output_pixel_type* outPtr = outData->GetBufferPointer();
+	unsigned short* accPtr = insertionParams->accPtr;
+	itk::Image<input_pixel_type,3>::Pointer inData = insertionParams->inData;
+	input_pixel_type* inPtr = inData->GetBufferPointer();
+	int* inExt = insertionParams->inExt;
+	unsigned int* accOverflowCount = insertionParams->accOverflowCount;
 
-};
+	// details specified by the user RE: how the voxels should be computed
+	Interpolation interpolationMode = insertionParams->interpolationMode;   // linear or nearest neighbor
+	Compounding compoundingMode = insertionParams->compoundingMode;         // weighted average or maximum
+
+	// parameters for clipping
+	double* clipRectangleOrigin = insertionParams->clipRectangleOrigin; // array size 2
+	double* clipRectangleSize = insertionParams->clipRectangleSize; // array size 2
+
+	// slice spacing and origin
+	double inSpacing[3];
+	auto spacing = inData->GetSpacing();
+	inSpacing[0] = spacing[0];
+	inSpacing[1] = spacing[1];
+	inSpacing[2] = spacing[2];
+
+	double inOrigin[3];
+	auto origin = inData->GetOrigin();
+	inOrigin[0] = origin[0];
+	inOrigin[1] = origin[1];
+	inOrigin[2] = origin[2];
+
+	// get the clip rectangle as an extent
+	int clipExt[6];
+	GetClipExtent(clipExt, inOrigin, inSpacing, inExt, clipRectangleOrigin, clipRectangleSize);
+
+	// find maximum output range = output extent
+	int outExt[6];
+	double outSpacing[3];
+	auto outspacing = outData->GetSpacing();
+	outSpacing[0] = outspacing[0];
+	outSpacing[1] = outspacing[1];
+	outSpacing[2] = outspacing[2];
+
+	auto outdata_ROI = outData->GetLargestPossibleRegion();
+	auto size_out = outdata_ROI.GetSize();
+	auto start_out = outdata_ROI.GetIndex();
+
+	outExt[0] = start_out[0];
+	outExt[1] = size_out[0] - 1;
+
+	outExt[2] = start_out[1];
+	outExt[3] = size_out[1] - 1;
+
+	outExt[4] = start_out[2];
+	outExt[5] = size_out[2] - 1;
+
+	// Get increments to march through data - ex move from the end of one x scanline of data to the
+	// start of the next line
+	uint64_t outInc[3] = { 0,0,0 };
+
+	uint64_t  incr = INPUT_COMPONENTS;
+	for (int i = 0; i < 3; ++i) {
+		outInc[i] = incr;
+		incr *= (outExt[i * 2 + 1] - outExt[i * 2] + 1);
+	}
+
+	uint64_t inIncX = 0, inIncY = 0, inIncZ = 0;
+
+	auto indata_ROI = inData->GetLargestPossibleRegion();
+	auto size_in = indata_ROI.GetSize();
+	auto start_in = indata_ROI.GetIndex();
+
+
+	// Get increments to march through data - ex move from the end of one x scanline of data to the
+	// start of the next line
+	uint64_t inInc[3] = { 0,0,0 };
+
+	incr = INPUT_COMPONENTS;
+	for (int i = 0; i < 3; ++i) {
+		inInc[i] = incr;
+		incr *= (inExt[i * 2 + 1] - inExt[i * 2] + 1);
+	}
+
+	int e0, e1, e2, e3;
+
+	inIncX = 0;
+
+	e0 = inExt[0];
+	e1 = inExt[1];
+	e2 = inExt[2];
+	e3 = inExt[3];
+
+	inIncY = inInc[1] - (e1 - e0 + 1) * inInc[0];
+	inIncZ = inInc[2] - (e3 - e2 + 1) * inInc[1];
+
+	int numscalars = INPUT_COMPONENTS;
+
+	// Set interpolation method - nearest neighbor or trilinear
+	int (*interpolate)(const Eigen::Vector4d, char_pixel_type*, char_pixel_type*, unsigned short*, int, Compounding, int a[6], uint64_t b[3], unsigned int*) = NULL;     // pointer to the nearest neighbor or trilinear interpolation function
+	switch (interpolationMode)
+	{
+	case NEAREST_NEIGHBOR_INTERPOLATION:
+		interpolate = &NearestNeighborInterpolation;
+		break;
+	case LINEAR_INTERPOLATION:
+		interpolate = &TrilinearInterpolation;
+		break;
+	default:
+	{
+		interpolate = &NearestNeighborInterpolation;
+		break;
+	}
+	}
+
+	// Loop through  slice pixels in the input extent and put them into the output volume
+	// the resulting point in the output volume (outPoint) from a point in the input slice
+	// (inpoint)
+	Eigen::Vector4d inPoint;
+	Eigen::Vector4d outPoint;
+	inPoint[3] = 1;
+
+
+	//we need to properly offset the data to the correct position due to the influence of the multithreading aspect
+    //   0 1 2 3 4 5 6 7 8 9 10 11 12 13   14 15 16 17 18 19 20 21 22 23 24 25 26 27    28 
+	// [ x x x x x x x x x x  x  x  x  x] [x  x   x  x  x  x  x  x  x  x  x  x  x  x] [ x x x x x x x x x x x x x x]
+	// lets think y and x first
+	// offset = inExt[0] (the x offset (should be null)) + inExt[2]*size_in[0] (we shift the extent to the line of x which corresponds to us) + inExt[4]*size_
+	inPtr = inData->GetBufferPointer()+inExt[0]+inExt[2]*size_in[0]+inExt[4]*size_in[0]*size_in[1];
+
+
+	for (int idZ = inExt[4]; idZ <= inExt[5]; idZ++, inPtr += inIncZ)
+	{
+		for (int idY = inExt[2]; idY <= inExt[3]; idY++, inPtr += inIncY)
+		{
+			for (int idX = inExt[0]; idX <= inExt[1]; idX++, inPtr += numscalars)
+			{
+				// check if we are within the current clip extent
+				if (idX < clipExt[0] || idX > clipExt[1] || idY < clipExt[2] || idY > clipExt[3])
+				{
+					// outside the clipping rectangle
+					//std::cout << "outside\n";
+					continue;
+				}
+				//scale the input from pixels to mm 
+				inPoint[0] = idX * inSpacing[0];
+				inPoint[1] = idY * inSpacing[1];
+				inPoint[2] = idZ * inSpacing[2];
+
+				//transform the point into the output coordinates
+				outPoint = insertionParams->matrix * inPoint;
+
+				//scale the output from milimiters to pixels
+				outPoint[0] /= outSpacing[0];
+				outPoint[1] /= outSpacing[1];
+				outPoint[2] /= outSpacing[2];
+				outPoint[3] = 1;
+
+				
+//				const size_t string_maximum_size = (12 + 1) * 5 + 1;
+//				char str[string_maximum_size];
+
+//				int number_writen = 0;
+//				number_writen += std::sprintf(str + number_writen, "%d", insertionParams->image_number);
+//				str[number_writen] = ',';
+//				number_writen += 1;
+//				number_writen += std::sprintf(str + number_writen, "%d", idX);
+//				str[number_writen] = ',';
+//				number_writen += 1;
+//				number_writen += std::sprintf(str + number_writen, "%d", idY);
+//				str[number_writen] = ',';
+//				number_writen += 1;
+//				number_writen += std::sprintf(str + number_writen, "%d", idZ);
+//				str[number_writen] = ',';
+//				number_writen += 1;
+//				number_writen += std::sprintf(str + number_writen, "%d", *inPtr);
+//				std::cout << str << "\n";
+			
+				// interpolation functions return 1 if the interpolation was successful, 0 otherwise
+				interpolate(outPoint, inPtr, outPtr, accPtr, numscalars, compoundingMode, outExt, outInc, accOverflowCount);
+			}
+		}
+	}
+}
 
 }
 }

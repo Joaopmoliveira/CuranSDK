@@ -1,5 +1,6 @@
 #include "rendering/IntegratedVolumeReconstructor.h"
 #include "rendering/integrated_shaders/VolumeIntegratedShaders.h"
+#include "imageprocessing/TemplatedVolumeAlgorithms.h"
 
 namespace curan{
 namespace renderable {

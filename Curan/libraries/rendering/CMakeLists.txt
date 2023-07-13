@@ -13,6 +13,7 @@ src/SequencialLinks.cpp
 src/Floor.cpp
 src/PhaseWiredBox.cpp
 src/Volume.cpp
+src/IntegratedVolumeReconstructor.cpp
 )
 
 target_include_directories(renderable
