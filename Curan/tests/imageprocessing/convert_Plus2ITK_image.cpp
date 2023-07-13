@@ -48,15 +48,8 @@ struct SharedState{
 };
 
 
-void plus2ITK_im_convert(igtl::MessageBase::Pointer received_transform, OutputImageType::Pointer image_to_render) {
-    igtl::ImageMessage::Pointer imageMessage = igtl::ImageMessage::New();
-	imageMessage->Copy(received_transform);
-	int c = imageMessage->Unpack(1);
-	if (!(c & igtl::MessageHeader::UNPACK_BODY))
-		return ; //failed to unpack message or the texture is not set yet, therefore returning without doing anything
-
+void plus2ITK_im_convert(const igtl::ImageMessage::Pointer& imageMessage, OutputImageType::Pointer& image_to_render, vsg::dmat4& transformmat) {
     ImportFilterType::RegionType region;
-
     int width, height, depth = 0;
     imageMessage->GetDimensions(width,height,depth);
     ImportFilterType::SizeType size;
@@ -64,7 +57,6 @@ void plus2ITK_im_convert(igtl::MessageBase::Pointer received_transform, OutputIm
         size[1] = height;
         size[2] = depth;
     region.SetSize(size);
-    std::cout << "Dimensions X: " << width << "      Y: " << height << "      Z: " << depth << std::endl;
      
     ImportFilterType::IndexType start;
     start.Fill(0);
@@ -77,13 +69,12 @@ void plus2ITK_im_convert(igtl::MessageBase::Pointer received_transform, OutputIm
     imageMessage->GetOrigin(xx, yy, zz);
     const itk::SpacePrecisionType origin[Dimension] = { xx,yy,zz};
     importFilter->SetOrigin(origin);
-    std::cout << "Origin X: " << xx << "      Y: " << yy << "      Z: " << zz <<std::endl;
 
     float xxx, yyy, zzz = 0.0;
     imageMessage->GetSpacing(xxx, yyy, zzz);
     const itk::SpacePrecisionType spacing[Dimension] = {xxx,yyy,zzz};
     importFilter->SetSpacing(spacing);
-    std::cout << "Spacing X: " << xxx << "      Y: " << yyy << "      Z: " << zzz <<std::endl;
+
 
     const bool importImageFilterWillOwnTheBuffer = false;
     importFilter->SetImportPointer(static_cast<unsigned char*>(imageMessage->GetScalarPointer()), imageMessage->GetImageSize(), importImageFilterWillOwnTheBuffer);
@@ -98,15 +89,16 @@ void plus2ITK_im_convert(igtl::MessageBase::Pointer received_transform, OutputIm
         return;
     }
 
+    image_to_render = filter->GetOutput();
+
     igtl::Matrix4x4 local_mat;
     imageMessage->GetMatrix(local_mat);
-    vsg::dmat4 transformmat;
+
     igtl::PrintMatrix(local_mat);
-    //std::printf("(%4.2f) (%4.2f) (%4.2f) \n",local_mat[0][3],local_mat[1][3],local_mat[2][3]);
 
     local_mat[0][3] = local_mat[0][3]*1e-3;
     local_mat[1][3] = local_mat[1][3]*1e-3;
-    local_mat[2][3] = local_mat[2][3]*1e-3;
+    local_mat[2][3] = -local_mat[2][3]*1e-3;
 
 
     for(size_t col = 0; col < 4; ++col)
@@ -147,16 +139,17 @@ void updateBaseTexture3D(vsg::vec4Array2D& image, OutputImageType::Pointer image
 }
 
 void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
-    //std::cout << "received image message" << std::endl;
+    OutputImageType::Pointer image_to_render;
+    vsg::dmat4 transformmat;
     igtl::ImageMessage::Pointer imageMessage = igtl::ImageMessage::New();
-	imageMessage->Copy(received_transform);
+    imageMessage->Copy(received_transform);
 	int c = imageMessage->Unpack(1);
 	if (!(c & igtl::MessageHeader::UNPACK_BODY))
 		return ; //failed to unpack message or the texture is not set yet, therefore returning without doing anything
+    plus2ITK_im_convert(imageMessage, image_to_render, transformmat);
     if(!shared_state.texture){
         int width, height, depth = 0;
         imageMessage->GetDimensions(width,height,depth);
-
         curan::renderable::DynamicTexture::Info infotexture;
         infotexture.height = height;
         infotexture.width = width;
@@ -165,66 +158,13 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infotexture.origin = {0.0,0.0,0.0};
         shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
         shared_state.window << *shared_state.texture;
-        //std::cout << "Height: " << height << "      Width: " << width << std::endl;
     }
-    assert(shared_state.texture!=std::nullopt);
-    igtl::Matrix4x4 local_mat;
-    imageMessage->GetMatrix(local_mat);
-    vsg::dmat4 transformmat;
-    // igtl::PrintMatrix(local_mat);
-    //std::printf("(%4.2f) (%4.2f) (%4.2f) \n",local_mat[0][3],local_mat[1][3],local_mat[2][3]);
-
-    local_mat[0][3] = local_mat[0][3]*1e-3;
-    local_mat[1][3] = local_mat[1][3]*1e-3;
-    local_mat[2][3] = local_mat[2][3]*1e-3;
-
-
-    for(size_t col = 0; col < 4; ++col)
-        for(size_t row = 0; row < 4; ++row)
-            transformmat(col,row) = local_mat[row][col];
-
     shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat);
-    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_texture([imageMessage](vsg::vec4Array2D& image)
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_texture([image_to_render](vsg::vec4Array2D& image)
     {
-        int x,y,z =0;
-        imageMessage->GetDimensions(x,y,z);
-        ImportFilterType::SizeType size;
-        size[0] = x;
-        size[1] = y;
-        size[2] = z; 
- 
-        ImportFilterType::IndexType start;
-        start.Fill(0);
- 
-        ImportFilterType::RegionType region;
-        region.SetIndex(start);
-        region.SetSize(size);
-        auto importFilter = ImportFilterType::New();
-
-        importFilter->SetRegion(region);
-        const itk::SpacePrecisionType origin[Dimension] = { 0.0, 0.0, 0.0 };
-        importFilter->SetOrigin(origin);
-        const itk::SpacePrecisionType spacing[Dimension] = { 1.0, 1.0, 1.0 };
-        importFilter->SetSpacing(spacing);
-
-        const bool importImageFilterWillOwnTheBuffer = false;
-        importFilter->SetImportPointer(static_cast<unsigned char*>(imageMessage->GetScalarPointer()), imageMessage->GetImageSize(), importImageFilterWillOwnTheBuffer);
-
-        auto filter = FilterType::New();
-        filter->SetInput(importFilter->GetOutput());
-
-        try{
-            filter->Update();
-        } catch (const itk::ExceptionObject& e) {
-            std::cerr << "Error: " << e << std::endl;
-            return;
-        }
-        updateBaseTexture3D(image,filter->GetOutput());
+        updateBaseTexture3D(image,image_to_render);
     }
     );
-    OutputImageType::Pointer image_to_render2;
-    igtl::MessageBase::Pointer received_transform2 = received_transform;
-    plus2ITK_im_convert(received_transform2, image_to_render2);
 }
 
 std::map<std::string,std::function<void(SharedState& shared_state,igtl::MessageBase::Pointer)>> functions{
@@ -270,9 +210,6 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
     }
 };
 
-constexpr long width = 50;
-constexpr long height = 50;
-float spacing[3] = {0.02 , 0.02 , 0.02};
 float final_spacing [3] = {0.02 ,0.02, 0.02};
 float final_size[3] = {50,50,50};
 
