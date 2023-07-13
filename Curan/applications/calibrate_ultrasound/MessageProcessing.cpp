@@ -247,7 +247,7 @@ bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_
         search->second(this,val);
     else
         std::cout << "No functionality for function received\n";
-    return;
+    return true;
 }
 
 void ProcessingMessage::communicate() {
