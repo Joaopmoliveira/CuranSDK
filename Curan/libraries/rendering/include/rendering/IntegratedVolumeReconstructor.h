@@ -35,8 +35,9 @@ namespace curan{
 
 	        output_type::SpacingType output_spacing;
 	        itk::Point<double,3> origin;
-	        output_type::Pointer out_volume;
 	        accumulator_type::Pointer acummulation_buffer;
+	        output_type::Pointer out_volume; //this is a non-owning copy of the texture Data bellow, it is only used for simplicity
+            vsg::ref_ptr<vsg::floatArray3D> textureData;
 
 	        std::vector<curan::image::reconstruction::KernelDescriptor> kernels;
 	        curan::image::reconstruction::FillingStrategy fillType;

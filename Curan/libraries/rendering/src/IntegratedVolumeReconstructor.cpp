@@ -29,6 +29,39 @@ vsg::ref_ptr<Renderable> IntegratedReconstructor::make(Info& info){
 }
 
 IntegratedReconstructor::IntegratedReconstructor(const Info& info){
+	output_type::IndexType output_start;
+	output_start[0] = 0;
+    output_start[1] = 0;
+    output_start[2] = 0;
+
+    output_type::DirectionType output_directorion;
+    output_directorion[0][0] = volumetric_bounding_box.axis[0][0];
+    output_directorion[1][0] = volumetric_bounding_box.axis[1][0];
+    output_directorion[2][0] = volumetric_bounding_box.axis[2][0];
+
+    output_directorion[0][1] = volumetric_bounding_box.axis[0][1];
+    output_directorion[1][1] = volumetric_bounding_box.axis[1][1];
+    output_directorion[2][1] = volumetric_bounding_box.axis[2][1];
+
+    output_directorion[0][2] = volumetric_bounding_box.axis[0][2];
+    output_directorion[1][2] = volumetric_bounding_box.axis[1][2];
+    output_directorion[2][2] = volumetric_bounding_box.axis[2][2];
+
+	output_type::SizeType output_size;
+    output_size[0] = std::ceil(volumetric_bounding_box.extent[0] * 2 / output_spacing[0]);
+    output_size[1] = std::ceil(volumetric_bounding_box.extent[1] * 2 / output_spacing[1]);
+    output_size[2] = std::ceil(volumetric_bounding_box.extent[2] * 2 / output_spacing[2]);
+
+	gte::Vector<3, double> origin_gte = volumetric_bounding_box.center
+		- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
+		- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
+		- volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
+
+    output_type::PointType output_origin;
+    output_origin[0] = origin_gte[0];
+    output_origin[1] = origin_gte[1];	
+    output_origin[2] = origin_gte[2];
+    
     vsg::vec3 origin = vsg::vec3(0.0,0.0,0.0);
     vsg::vec3 dx = vsg::vec3(1.0, 0.0, 0.0);
     vsg::vec3 dy = vsg::vec3(0.0, 1.0, 0.0);
@@ -175,8 +208,24 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info){
     obj_contained->addChild(scalling_transform);
 
     //now we need to create the Accumulation buffer and the ITK wrapper for the output volume
-    
 
+    output_type::RegionType output_region;
+    output_region.SetSize(output_size);
+    output_region.SetIndex(output_start);
+
+    out_volume = output_type::New();
+	out_volume->SetRegions(output_region);
+	out_volume->SetOrigin(output_origin);
+	out_volume->SetSpacing(output_spacing);
+	out_volume->SetDirection(output_directorion);
+	out_volume->Allocate(true);
+
+	acummulation_buffer = accumulator_type::New();
+	acummulation_buffer->SetRegions(output_region);
+	acummulation_buffer->SetOrigin(output_origin);
+	acummulation_buffer->SetSpacing(output_spacing);
+	acummulation_buffer->SetDirection(output_directorion);
+	acummulation_buffer->Allocate(true);
     if (info.identifier)
         set_identifier(*info.identifier);
 }
