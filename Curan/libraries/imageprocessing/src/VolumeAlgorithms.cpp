@@ -275,14 +275,6 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 						*outPtrTmp = std::round((f * (*inPtrTmp) + r * (*outPtrTmp)) / a);
 					}
 
-					//if (roundOutput)
-					//{
-					//	*outPtrTmp = std::round((f * (*inPtrTmp) + r * (*outPtrTmp)) / a);
-					//}
-					//else
-					//{
-					//	*outPtrTmp = (f * (*inPtrTmp) + r * (*outPtrTmp)) / a;
-					//}
 					a *= ACCUMULATION_MULTIPLIER; // needs to be done for proper conversion to unsigned short for accumulation buffer
 					break;
 				default:
