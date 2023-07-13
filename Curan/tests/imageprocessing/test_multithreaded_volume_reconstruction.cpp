@@ -9,8 +9,10 @@ constexpr long height = 100;
 float spacing[3] = {0.01 , 0.01 , 0.01};
 float final_spacing [3] = {0.01,0.01, 0.01};
 
-void updateBaseTexture3D(vsg::floatArray3D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render)
+/*
+void updateBaseTexture3D(vsg::floatArray3D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render, std::shared_ptr<curan::utilities::ThreadPool> shared_pool)
 {
+    assert(image_to_render!=nullptr,"failure because pointer is null");
     using OutputPixelType = float;
     using InputImageType = itk::Image<unsigned char, 3>;
     using OutputImageType = itk::Image<OutputPixelType, 3>;
@@ -31,14 +33,124 @@ void updateBaseTexture3D(vsg::floatArray3D& image, curan::image::StaticReconstru
         throw std::runtime_error("error");
     }
 
-    OutputImageType::Pointer out = rescale->GetOutput();
-    using IteratorType = itk::ImageRegionIteratorWithIndex<OutputImageType>;
-    IteratorType outputIt(out, out->GetRequestedRegion());
-    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
-        OutputImageType::IndexType idx = outputIt.GetIndex();
-        image.set(idx[0], idx[1], idx[2], outputIt.Get());
+    auto out = rescale->GetOutput();
+    float* buffer = out->GetBufferPointer();
+    assert(buffer!=nullptr,"failure because pointer is null");
+    auto size = out->GetLargestPossibleRegion(); 
+    size_t total_size = size.GetSize()[0]*size.GetSize()[1]*size.GetSize()[2]*sizeof(float);
+    size_t divided_size_linearized = (size_t)std::floor(total_size/(double)shared_pool->size());
+    std::vector<std::array<size_t,2>> block_sizes;
+    for(size_t index = 0; index < total_size ; index+=divided_size_linearized){
+        if(index+divided_size_linearized<total_size) block_sizes.push_back({index,divided_size_linearized});
+        else block_sizes.push_back({index,total_size-index});
     }
+
+
+    std::condition_variable cv;
+	std::mutex local_mut;
+	std::unique_lock<std::mutex> unique_{local_mut};
+	int executed = 0;
+	size_t index = 0;
+	for(const auto& range : block_sizes){
+		curan::utilities::Job job;
+		job.description = "partial volume rendering copy";
+		job.function_to_execute = [index,range,buffer,&executed,&local_mut,&cv,&image](){
+			size_t local_index = index;
+			try{
+                std::printf("printing information: origin (%d), size() ")
+				{    
+					std::lock_guard<std::mutex> g{local_mut};
+					++executed;
+				}
+				cv.notify_one();
+			} catch(std::exception & e){
+				std::cout << "exception was thrown in index :" << local_index << " with error message: " << e.what() << std::endl;
+			}
+		};
+		++index;
+		shared_pool->submit(std::move(job));
+	}
+	//this blocks until all threads have processed their corresponding block that they need to process
+	cv.wait(unique_,[&](){ return executed==block_sizes.size();});
 }
+
+*/
+
+void updateBaseTexture3D(vsg::floatArray3D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render,std::shared_ptr<curan::utilities::ThreadPool> shared_pool)
+{
+    /*
+    using OutputPixelType = float;
+    using InputImageType = itk::Image<unsigned char, 3>;
+    using OutputImageType = itk::Image<OutputPixelType, 3>;
+    using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
+    auto filter = FilterType::New();
+    filter->SetInput(image_to_render);
+
+    using RescaleType = itk::RescaleIntensityImageFilter<OutputImageType, OutputImageType>;
+    auto rescale = RescaleType::New();
+    rescale->SetInput(filter->GetOutput());
+    rescale->SetOutputMinimum(0.0);
+    rescale->SetOutputMaximum(1.0);
+
+    try{
+        rescale->Update();
+    } catch (const itk::ExceptionObject& e) {
+        std::cerr << "Error: " << e << std::endl;
+        throw std::runtime_error("error");
+    }
+    */
+    auto size =  image_to_render->GetLargestPossibleRegion().GetSize();
+    int fullExt[6] = {0,size[0], 0,size[1], 0 ,size[2] };
+    std::vector<std::array<int,6>> splitting;
+    splitting.resize(shared_pool->size());
+    auto val = curan::image::splice_input_extent(splitting,fullExt);
+    //for(const auto & split : splitting)
+    //    std::printf("[%d %d] [%d %d] [%d %d]\n",split[0],split[1],split[2],split[3],split[4],split[5]);
+
+    std::condition_variable cv;
+	std::mutex local_mut;
+	std::unique_lock<std::mutex> unique_{local_mut};
+	int executed = 0;
+	size_t index = 0;
+	for(const auto& split : splitting){
+		curan::utilities::Job job;
+		job.description = "partial volume rendering copy";
+		job.function_to_execute = [&](){
+			try{
+                auto buffer = image_to_render->GetBufferPointer()+split[0]+split[2]*size[0]+split[4]*size[0]*size[1];
+                for(size_t zind = split[4]; zind<split[5] ; ++zind){
+                    for(size_t yind = split[2]; yind<split[3] ; ++yind ){
+                        for(size_t xind = split[0]; xind < split[1]; ++xind){
+                            image.set(xind, yind, zind, *buffer/255.0f);
+                            ++buffer;
+                        }
+                    }
+                }
+			    {    
+					std::lock_guard<std::mutex> g{local_mut};
+					++executed;
+				}
+				cv.notify_one();
+			} catch(std::exception & e){
+				std::cout << "exception was thrown with error message: " << e.what() << std::endl;
+			}
+		};
+		++index;
+		shared_pool->submit(std::move(job));
+	}
+	//this blocks until all threads have processed their corresponding block that they need to process
+	cv.wait(unique_,[&](){ return executed==splitting.size();});
+    
+    /*
+    using IteratorType = itk::ImageRegionIteratorWithIndex<curan::image::StaticReconstructor::output_type>;
+    IteratorType outputIt(image_to_render, image_to_render->GetRequestedRegion());
+    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+        curan::image::StaticReconstructor::output_type::IndexType idx = outputIt.GetIndex();
+        image.set(idx[0], idx[1], idx[2], outputIt.Get()/255.0f);
+    }
+    */
+}
+
 
 
 void create_array_of_linear_images_in_x_direction(std::vector<curan::image::StaticReconstructor::output_type::Pointer>& desired_images){
@@ -134,7 +246,7 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
         auto volume = curan::renderable::Volume::make(volumeinfo);
         window << volume;
 
-        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(1);
+        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(4);
         std::printf("started volumetric reconstruction\n");
         size_t counter = 0;
 	    for(auto img : image_array){
@@ -147,13 +259,13 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
             if(stopping_condition)
                 break;
             auto casted_volume = volume->cast<curan::renderable::Volume>();
-            auto updater = [buffer](vsg::floatArray3D& image){
-                updateBaseTexture3D(image, buffer);
+            auto updater = [buffer,reconstruction_thread_pool](vsg::floatArray3D& image){
+                updateBaseTexture3D(image, buffer,reconstruction_thread_pool);
             };
             casted_volume->update_volume(updater);
             std::chrono::steady_clock::time_point elapsed_for_rendering = std::chrono::steady_clock::now();
             auto val_elapsed_for_rendering = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_rendering - begin).count();
-            std::printf("added image (volume reconstruction %d) (volume rendering %d)\n",val_elapsed_for_reconstruction,val_elapsed_for_rendering);
+            //std::printf("added image (volume reconstruction %d) (volume rendering %d)\n",val_elapsed_for_reconstruction,val_elapsed_for_rendering);
             ++counter;
 	    }
         return ;

@@ -959,6 +959,15 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 	Eigen::Vector4d outPoint;
 	inPoint[3] = 1;
 
+
+	//we need to properly offset the data to the correct position due to the influence of the multithreading aspect
+    //   0 1 2 3 4 5 6 7 8 9 10 11 12 13   14 15 16 17 18 19 20 21 22 23 24 25 26 27    28 
+	// [ x x x x x x x x x x  x  x  x  x] [x  x   x  x  x  x  x  x  x  x  x  x  x  x] [ x x x x x x x x x x x x x x]
+	// lets think y and x first
+	// offset = inExt[0] (the x offset (should be null)) + inExt[2]*size_in[0] (we shift the extent to the line of x which corresponds to us) + inExt[4]*size_
+	inPtr = inData->GetBufferPointer()+inExt[0]+inExt[2]*size_in[0]+inExt[4]*size_in[0]*size_in[1];
+
+
 	for (int idZ = inExt[4]; idZ <= inExt[5]; idZ++, inPtr += inIncZ)
 	{
 		for (int idY = inExt[2]; idY <= inExt[3]; idY++, inPtr += inIncY)

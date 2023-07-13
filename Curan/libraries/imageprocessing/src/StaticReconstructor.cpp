@@ -125,7 +125,7 @@ StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointe
     return out_volume;
 }
 
- [[nodiscard]] bool splice_input_extent( std::vector<std::array<int,6>>& splitting, const int fullExt[6]){
+bool splice_input_extent( std::vector<std::array<int,6>>& splitting, const int fullExt[6]){
 	size_t thread_id = 0;
 	for(auto& nsplit : splitting){
 		int min, max;

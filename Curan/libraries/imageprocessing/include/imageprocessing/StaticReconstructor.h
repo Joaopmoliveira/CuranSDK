@@ -18,6 +18,8 @@ namespace curan{
 	        std::array<double, 2> clipRectangleSize = { 0.0,0.0 };
         };
 
+		[[nodiscard]] bool splice_input_extent( std::vector<std::array<int,6>>& splitting, const int fullExt[6]);
+
         class StaticReconstructor{
         public:
             static constexpr size_t Dimension = 3;
