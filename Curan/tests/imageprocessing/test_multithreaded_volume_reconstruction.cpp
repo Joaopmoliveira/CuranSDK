@@ -4,10 +4,10 @@
 #include "rendering/Renderable.h"
 #include <optional>
 
-constexpr long width = 100;
-constexpr long height = 100;
-float spacing[3] = {0.01 , 0.01 , 0.01};
-float final_spacing [3] = {0.01,0.01, 0.01};
+constexpr long width = 250;
+constexpr long height = 250;
+float spacing[3] = {0.004 , 0.004 , 0.004};
+float final_spacing [3] = {0.004,0.004, 0.004};
 
 void updateBaseTexture3DMultiThreaded(vsg::floatArray3D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render,std::shared_ptr<curan::utilities::ThreadPool> shared_pool)
 {
@@ -153,7 +153,7 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
         auto volume = curan::renderable::Volume::make(volumeinfo);
         window << volume;
 
-        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(4);
+        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(10);
         std::printf("started volumetric reconstruction\n");
         size_t counter = 0;
 	    for(auto img : image_array){
