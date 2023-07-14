@@ -15,14 +15,14 @@
 #include "rendering/Renderable.h"
 
 namespace curan{
-    namespace renderable {
-        
+    namespace image {
+
         struct Clipping{
 	        std::array<double, 2> clipRectangleOrigin = { 0.0,0.0 }; 
 	        std::array<double, 2> clipRectangleSize = { 0.0,0.0 };
         };
 
-        struct IntegratedReconstructor : public vsg::Inherit<Renderable, IntegratedReconstructor>{
+        struct IntegratedReconstructor : public vsg::Inherit<renderable::Renderable, IntegratedReconstructor>{
         public:
             static constexpr size_t Dimension = 3;
 	        using output_type = itk::Image<float, Dimension>;
@@ -56,7 +56,7 @@ namespace curan{
 
 	    static constexpr int INPUT_COMPONENTS = 1;
 
-        static vsg::ref_ptr<Renderable> make(Info& info);
+        static vsg::ref_ptr<renderable::Renderable> make(Info& info);
 
 	    IntegratedReconstructor(const Info& info);
 

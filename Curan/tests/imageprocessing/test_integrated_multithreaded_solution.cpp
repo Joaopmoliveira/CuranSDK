@@ -9,7 +9,7 @@ constexpr long height = 250;
 float spacing[3] = {0.004 , 0.004 , 0.004};
 float final_spacing [3] = {0.004,0.004, 0.004};
 
-void create_array_of_linear_images_in_x_direction(std::vector<curan::image::StaticReconstructor::output_type::Pointer>& desired_images){
+void create_array_of_linear_images_in_x_direction(std::vector<curan::image::IntegratedReconstructor::output_type::Pointer>& desired_images){
     itk::Matrix<double> image_orientation;
 	itk::Point<double> image_origin;
 
@@ -38,18 +38,18 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
 	}
 
     for(int z = 0; z < width ; ++z){
-        curan::image::StaticReconstructor::output_type::Pointer image = curan::image::StaticReconstructor::output_type::New();
-        curan::image::StaticReconstructor::output_type::IndexType start;
+        curan::image::IntegratedReconstructor::output_type::Pointer image = curan::image::IntegratedReconstructor::output_type::New();
+        curan::image::IntegratedReconstructor::output_type::IndexType start;
         start[0] = 0; // first index on X
         start[1] = 0; // first index on Y
         start[2] = 0; // first index on Z
 
-        curan::image::StaticReconstructor::output_type::SizeType size;
+        curan::image::IntegratedReconstructor::output_type::SizeType size;
         size[0] = width; // size along X
         size[1] = height; // size along Y
         size[2] = 1; // size along Z
 
-        curan::image::StaticReconstructor::output_type::RegionType region_1;
+        curan::image::IntegratedReconstructor::output_type::RegionType region_1;
         region_1.SetSize(size);
         region_1.SetIndex(start);
 
@@ -71,7 +71,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Stat
 
 void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stopping_condition){
     try{
-	    std::vector<curan::image::StaticReconstructor::output_type::Pointer> image_array;
+	    std::vector<curan::image::IntegratedReconstructor::output_type::Pointer> image_array;
 	    create_array_of_linear_images_in_x_direction(image_array);
 
 	    std::array<double,3> vol_origin = {0.0,0.0,0.0};
@@ -81,8 +81,8 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
 	    vol_direction[0] = {1.0,0.0,0.0};
 	    vol_direction[1] = {0.0,1.0,0.0};
 	    vol_direction[2] = {0.0,0.0,1.0};
-	    curan::image::StaticReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
-	    curan::image::StaticReconstructor reconstructor{recon_info};
+	    curan::image::IntegratedReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
+	    curan::image::IntegratedReconstructor reconstructor{recon_info};
 	    reconstructor.set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
             .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
     

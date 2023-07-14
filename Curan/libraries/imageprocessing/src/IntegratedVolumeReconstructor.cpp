@@ -3,7 +3,7 @@
 #include "rendering/IntegratedVolumeReconstructor.h"
 
 namespace curan{
-namespace renderable {
+namespace image {
 
 IntegratedReconstructor::Info::Info(std::array<double,3> inspacing,std::array<double,3> inorigin, std::array<double,3> insize, std::array<std::array<double,3>,3> indirection){
 	auto inextent = gte::Vector3<double>{insize[0]/2.0,insize[1]/2.0,insize[2]/2.0};
