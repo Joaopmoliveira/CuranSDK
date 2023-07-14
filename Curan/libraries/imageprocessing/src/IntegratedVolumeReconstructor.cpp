@@ -1,6 +1,6 @@
 #include "rendering/integrated_shaders/VolumeIntegratedShaders.h"
 #include "imageprocessing/TemplatedVolumeAlgorithms.h"
-#include "rendering/IntegratedVolumeReconstructor.h"
+#include "imageprocessing/IntegratedVolumeReconstructor.h"
 
 namespace curan{
 namespace image {
@@ -25,13 +25,47 @@ IntegratedReconstructor::Info::Info(std::array<double,3> inspacing,std::array<do
     spacing[2] = inspacing[2];
 }
 
-vsg::ref_ptr<Renderable> IntegratedReconstructor::make(Info& info){
+vsg::ref_ptr<renderable::Renderable> IntegratedReconstructor::make(Info& info){
     vsg::ref_ptr<IntegratedReconstructor> sphere_to_add = IntegratedReconstructor::create(info);
-    vsg::ref_ptr<Renderable> val = sphere_to_add.cast<Renderable>();
+    vsg::ref_ptr<renderable::Renderable> val = sphere_to_add.cast<renderable::Renderable>();
     return val;
 }
 
 IntegratedReconstructor::IntegratedReconstructor(const Info& info){
+	output_type::IndexType output_start;
+	output_start[0] = 0;
+    output_start[1] = 0;
+    output_start[2] = 0;
+
+    output_type::DirectionType output_directorion;
+    output_directorion[0][0] = volumetric_bounding_box.axis[0][0];
+    output_directorion[1][0] = volumetric_bounding_box.axis[1][0];
+    output_directorion[2][0] = volumetric_bounding_box.axis[2][0];
+
+    output_directorion[0][1] = volumetric_bounding_box.axis[0][1];
+    output_directorion[1][1] = volumetric_bounding_box.axis[1][1];
+    output_directorion[2][1] = volumetric_bounding_box.axis[2][1];
+
+    output_directorion[0][2] = volumetric_bounding_box.axis[0][2];
+    output_directorion[1][2] = volumetric_bounding_box.axis[1][2];
+    output_directorion[2][2] = volumetric_bounding_box.axis[2][2];
+
+	output_type::SizeType output_size;
+    output_size[0] = std::ceil(volumetric_bounding_box.extent[0] * 2 / output_spacing[0]);
+    output_size[1] = std::ceil(volumetric_bounding_box.extent[1] * 2 / output_spacing[1]);
+    output_size[2] = std::ceil(volumetric_bounding_box.extent[2] * 2 / output_spacing[2]);
+
+	gte::Vector<3, double> origin_gte = volumetric_bounding_box.center
+		- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
+		- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
+		- volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
+
+    output_type::PointType output_origin;
+    output_origin[0] = origin_gte[0];
+    output_origin[1] = origin_gte[1];	
+    output_origin[2] = origin_gte[2];
+    
+
     vsg::vec3 origin = vsg::vec3(0.0,0.0,0.0);
     vsg::vec3 dx = vsg::vec3(1.0, 0.0, 0.0);
     vsg::vec3 dy = vsg::vec3(0.0, 1.0, 0.0);
@@ -96,8 +130,8 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info){
     };
 
        // load shaders
-    auto vertexShader = vsg::ShaderStage::create(VK_SHADER_STAGE_VERTEX_BIT, "main", volume_vert);
-    auto fragmentShader = vsg::ShaderStage::create(VK_SHADER_STAGE_FRAGMENT_BIT, "main", volume_frag);
+    auto vertexShader = vsg::ShaderStage::create(VK_SHADER_STAGE_VERTEX_BIT, "main", renderable::volume_vert);
+    auto fragmentShader = vsg::ShaderStage::create(VK_SHADER_STAGE_FRAGMENT_BIT, "main", renderable::volume_frag);
 
     if (!vertexShader || !fragmentShader)
         throw std::runtime_error("failed to create the shaders necessary for the volume rendering");
@@ -106,7 +140,7 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info){
     vertexShader->specializationConstants = specializationVertexContexts;
 
     // read texture image
-    textureData = vsg::floatArray3D::create(info.width, info.height, info.depth);
+    textureData = vsg::floatArray3D::create(output_size[0], output_size[1], output_size[2]);
     textureData->properties.format = VK_FORMAT_R32_SFLOAT;
     textureData->properties.dataVariance = vsg::DYNAMIC_DATA;
 
@@ -165,7 +199,7 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info){
 
     vsg::dvec3 position(0.0f, 0.0f, 0.0f);
 
-    vsg::dvec3 mixture(info.width* info.spacing_x * 0.001,info.height* info.spacing_y* 0.001, info.depth* info.spacing_z* 0.001);
+    vsg::dvec3 mixture(output_size[0]* info.spacing[0] * 0.001,output_size[1]* info.spacing[1]* 0.001, output_size[2]* info.spacing[2]* 0.001);
 
     auto scalling_transform = vsg::MatrixTransform::create(vsg::scale(mixture));
     transform = vsg::MatrixTransform::create(vsg::translate(position));
