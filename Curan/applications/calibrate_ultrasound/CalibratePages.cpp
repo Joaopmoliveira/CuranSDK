@@ -130,8 +130,8 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 	*viwers_container << std::move(button) << std::move(button2);
 	viwers_container->set_divisions({0.0 , 0.5 , 1.0});
 	viwers_container->set_color(SK_ColorTRANSPARENT);
-
-	return Overlay::make(std::move(viwers_container),SK_ColorTRANSPARENT);
+	
+	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125));
 }
 
 curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {
@@ -183,6 +183,9 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	button_start_collection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
 	button_start_collection->set_callback(change_recording_status);
 	auto button_start_collection_pointer = button_start_collection.get();
+	button_start_collection->set_callback([processing](Button* button, ConfigDraw* config){
+		processing->should_record = !processing->should_record;
+	});
 
 	auto button_options = Button::make("Options",resources);
 	button_options->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
@@ -192,7 +195,6 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*buttoncontainer << std::move(start_connection) << std::move(button_start_collection) << std::move(button_options);
-
 	processing->button = start_connection_pointer;
 	processing->button_start_collection = button_start_collection_pointer;
 	start_connection_pointer->set_waiting_color(SK_ColorRED);

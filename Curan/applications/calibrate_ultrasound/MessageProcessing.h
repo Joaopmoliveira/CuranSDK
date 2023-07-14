@@ -29,17 +29,17 @@ struct ConfigurationData {
 	std::array<double, 2> maximum_radius_limit = { 11.0,30.0 };
 	std::array<double, 2> sweep_angle_limit = { 0.1,0.8 };
 	std::array<double, 2> sigma_gradient_limit = { 1.0,20.0 };
-	std::array<double, 2> variance_limit = { 1.0,20.0 };
+	std::array<double, 2> variance_limit = { 1.0,5.0 };
 	std::array<double, 2> disk_ratio_limit = { 0.1,10.0 };
 	std::array<double, 2>  threshold_limit = { 50.0,150.0 };
 
-	std::atomic<double> minimum_radius = 8;
-	std::atomic<double> maximum_radius = 12.0;
-	std::atomic<double> sweep_angle = 0.1;
-	std::atomic<double> sigma_gradient = 10;
-	std::atomic<double> variance = 10;
-	std::atomic<double> disk_ratio = 1;
-	std::atomic<double> threshold = 110;
+	std::atomic<double> minimum_radius = 9.3;
+	std::atomic<double> maximum_radius = 14.5;
+	std::atomic<double> sweep_angle = 0.26;
+	std::atomic<double> sigma_gradient = 12.755;
+	std::atomic<double> variance = 5;
+	std::atomic<double> disk_ratio = 2.888;
+	std::atomic<double> threshold = 110.0;
 
 	std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
 };
@@ -49,21 +49,10 @@ struct ObservationEigenFormat {
 	Eigen::Matrix<double, 3, Eigen::Dynamic> segmented_wires;
 };
 
-struct PotentialObservationEigenFormat {
-	std::optional<Eigen::Matrix<double, 4, 4>> flange_data;
-	std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> segmented_wires;
-
-	bool is_complete(ObservationEigenFormat& observation);
-
-	void set_flange_data(Eigen::Matrix<double, 4, 4> flange_dat);
-
-	void set_segmented_wires(Eigen::Matrix<double, 3, Eigen::Dynamic> in_segmented_wires);
-};
 
 std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(Eigen::Matrix<double, 3, Eigen::Dynamic>& current, Eigen::Matrix<double, 3, Eigen::Dynamic>& previous, double threshold);
 
 struct ProcessingMessage {
-	PotentialObservationEigenFormat observation_to_propagete;
 	std::list<ObservationEigenFormat> list_of_recorded_points;
 
 	curan::ui::ImageDisplay* processed_viwer = nullptr;
@@ -75,7 +64,7 @@ struct ProcessingMessage {
 	std::vector<SkColor> colors = { SK_ColorMAGENTA,SK_ColorBLUE,SK_ColorGREEN };
 	asio::io_context io_context;
 	ConfigurationData& configuration;
-	double threshold = 100.0;
+	double threshold = 70.0;
 	std::atomic<bool> should_record = false;
 	std::atomic<bool> show_circles = false;
 	short port = 10000;
