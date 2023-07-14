@@ -243,13 +243,13 @@ IntegratedReconstructor& IntegratedReconstructor::set_clipping(const Clipping& n
     return *(this);
 }
 
-IntegratedReconstructor& IntegratedReconstructor::add_frame(output_type::Pointer image_pointer){
+IntegratedReconstructor& IntegratedReconstructor::add_frame(input_type::Pointer image_pointer){
 	std::lock_guard<std::mutex> g{mut};
 	frame_data.push_back(image_pointer);
     return *(this);
 }
 
-IntegratedReconstructor& IntegratedReconstructor::add_frames(std::vector<output_type::Pointer>& images_vector){
+IntegratedReconstructor& IntegratedReconstructor::add_frames(std::vector<input_type::Pointer>& images_vector){
 	std::lock_guard<std::mutex> g{mut};
     frame_data.insert(std::end(frame_data), std::begin(images_vector), std::end(images_vector));
     return *(this);
@@ -260,6 +260,145 @@ IntegratedReconstructor::output_type::Pointer IntegratedReconstructor::get_outpu
 }
 
 bool IntegratedReconstructor::update(){
+	gte::Vector<3, double> output_origin = volumetric_bounding_box.center
+	- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
+	- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
+	- volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
+
+	Eigen::Matrix4d ref_to_output_origin;
+	ref_to_output_origin(0, 0) = volumetric_bounding_box.axis[0][0];
+	ref_to_output_origin(1, 0) = volumetric_bounding_box.axis[0][1];
+	ref_to_output_origin(2, 0) = volumetric_bounding_box.axis[0][2];
+	ref_to_output_origin(3, 0) = 0.0;
+
+	ref_to_output_origin(0, 1) = volumetric_bounding_box.axis[1][0];
+	ref_to_output_origin(1, 1) = volumetric_bounding_box.axis[1][1];
+	ref_to_output_origin(2, 1) = volumetric_bounding_box.axis[1][2];
+	ref_to_output_origin(3, 1) = 0.0;
+
+	ref_to_output_origin(0, 2) = volumetric_bounding_box.axis[2][0];
+	ref_to_output_origin(1, 2) = volumetric_bounding_box.axis[2][1];
+	ref_to_output_origin(2, 2) = volumetric_bounding_box.axis[2][2];
+	ref_to_output_origin(3, 2) = 0.0;
+
+	ref_to_output_origin(0, 3) = output_origin[0];
+	ref_to_output_origin(1, 3) = output_origin[1];
+	ref_to_output_origin(2, 3) = output_origin[2];
+	ref_to_output_origin(3, 3) = 1.0;
+
+	Eigen::Matrix4d output_to_ref = ref_to_output_origin.inverse();
+
+	unsigned int accOverflow = 20;
+
+	curan::image::reconstruction::PasteSliceIntoVolumeInsertSliceParamsTemplated<input_pixel_type,output_pixel_type> paste_slice_info;
+	paste_slice_info.outPtr = out_volume->GetBufferPointer();
+    auto size_out = out_volume->GetLargestPossibleRegion().GetSize();
+    auto origin_out = out_volume->GetOrigin();
+    auto spacing_out = out_volume->GetSpacing();
+    paste_slice_info.out_origin[0] = origin_out[0];
+    paste_slice_info.out_origin[1] = origin_out[1];
+    paste_slice_info.out_origin[2] = origin_out[2];
+    paste_slice_info.out_size[0] = size_out[0];
+    paste_slice_info.out_size[1] = size_out[1];
+    paste_slice_info.out_size[2] = size_out[2];
+    paste_slice_info.out_spacing[0] = spacing_out[0];
+    paste_slice_info.out_spacing[1] = spacing_out[1];
+    paste_slice_info.out_spacing[2] = spacing_out[2];
+	paste_slice_info.accPtr = acummulation_buffer->GetBufferPointer();
+	paste_slice_info.interpolationMode = interpolation_strategy;
+	paste_slice_info.compoundingMode = compounding_strategy;
+	paste_slice_info.accOverflowCount = &accOverflow;
+	paste_slice_info.pixelRejectionThreshold = 0;
+	paste_slice_info.image_number = 0;
+
+	Eigen::Matrix4d ref_to_image;
+	ref_to_image(3, 0) = 0.0;
+	ref_to_image(3, 1) = 0.0;
+	ref_to_image(3, 2) = 0.0;
+	ref_to_image(3, 3) = 1.0;
+
+	// cicle throught all frames and insert
+	// them in the output buffer, one at a time
+
+	std::vector<input_type::Pointer> local_image_copies;
+	{
+		std::lock_guard<std::mutex> g{mut};
+		local_image_copies = std::move(frame_data);
+		frame_data = std::vector<input_type::Pointer>();
+		if(local_image_copies.size()==0)
+			return false;
+	}
+
+	for (auto img : local_image_copies) {	
+	    int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
+		double clipRectangleOrigin [2]; // array size 2
+		double clipRectangleSize [2]; // array size 2
+		if(clipping){
+			clipRectangleOrigin[0] = (*clipping).clipRectangleOrigin[0];
+			clipRectangleOrigin[1] = (*clipping).clipRectangleOrigin[1];
+
+			clipRectangleSize[0] = (*clipping).clipRectangleSize[0];
+			clipRectangleSize[1] = (*clipping).clipRectangleSize[1];
+
+			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
+			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
+		} else {
+			auto local_size = img->GetLargestPossibleRegion().GetSize();
+			auto local_origin = img->GetOrigin();
+			clipRectangleOrigin[0] = local_origin[0];
+			clipRectangleOrigin[1] = local_origin[1];
+			clipRectangleSize[0] = local_size.GetSize()[0]-1;
+			clipRectangleSize[1] = local_size.GetSize()[1]-1;
+
+			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
+			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
+		}	
+		paste_slice_info.clipRectangleOrigin = clipRectangleOrigin;
+	    paste_slice_info.clipRectangleSize = clipRectangleSize;
+		paste_slice_info.inExt = inputFrameExtentForCurrentThread;
+		paste_slice_info.image_number += 1;
+
+		itk::Matrix<double> image_orientation = img->GetDirection();
+		itk::Point<double> image_origin = img->GetOrigin();
+
+		ref_to_image(0, 0) = image_orientation[0][0];
+		ref_to_image(1, 0) = image_orientation[1][0];
+		ref_to_image(2, 0) = image_orientation[2][0];
+
+		ref_to_image(0, 1) = image_orientation[0][1];
+		ref_to_image(1, 1) = image_orientation[1][1];
+		ref_to_image(2, 1) = image_orientation[2][1];
+
+		ref_to_image(0, 2) = image_orientation[0][2];
+		ref_to_image(1, 2) = image_orientation[1][2];
+		ref_to_image(2, 2) = image_orientation[2][2];
+
+		ref_to_image(0, 3) = image_origin[0];
+		ref_to_image(1, 3) = image_origin[1];
+		ref_to_image(2, 3) = image_origin[2];
+
+		// The matrix is the transformation of the 
+		// origin of the output volume (1) to the 
+		// origin of the input image (2). This is 
+		// given by T02=T01*T12, and by premultiplying 
+		// by T10=inverse(T01) we obtain T12=inverse(T01)*T02
+		Eigen::Matrix4d output_to_origin = output_to_ref * ref_to_image;
+        auto size_in = img->GetLargestPossibleRegion().GetSize();
+        auto origin_in = img->GetOrigin();
+        auto spacing_in = img->GetSpacing();
+		paste_slice_info.inPtr = img->GetBufferPointer();
+        paste_slice_info.in_origin[0] = origin_in[0];
+        paste_slice_info.in_origin[1] = origin_in[1];
+        paste_slice_info.in_origin[2] = origin_in[2];
+        paste_slice_info.in_size[0] = size_in[0];
+        paste_slice_info.in_size[1] = size_in[1];
+        paste_slice_info.in_size[2] = size_in[2];
+        paste_slice_info.in_spacing[0] = spacing_in[0];
+        paste_slice_info.in_spacing[1] = spacing_in[1];
+        paste_slice_info.in_spacing[2] = spacing_in[2];
+		paste_slice_info.matrix = output_to_origin;
+		curan::image::reconstruction::TemplatedUnoptimizedInsertSlice<input_pixel_type,output_pixel_type,255.0f>(&paste_slice_info);
+	};
     return true;
 }
 
