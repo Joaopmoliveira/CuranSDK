@@ -26,7 +26,9 @@ IntegratedReconstructor::Info::Info(std::array<double,3> inspacing,std::array<do
 }
 
 vsg::ref_ptr<Renderable> IntegratedReconstructor::make(Info& info){
-
+    vsg::ref_ptr<IntegratedReconstructor> sphere_to_add = IntegratedReconstructor::create(info);
+    vsg::ref_ptr<Renderable> val = sphere_to_add.cast<Renderable>();
+    return val;
 }
 
 IntegratedReconstructor::IntegratedReconstructor(const Info& info){
@@ -78,11 +80,11 @@ IntegratedReconstructor::output_type::Pointer IntegratedReconstructor::get_outpu
 }
 
 bool IntegratedReconstructor::update(){
-
+    return true;
 }
 
 bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool){
-
+    return true;
 }
 
 }

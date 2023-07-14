@@ -3,6 +3,7 @@
 
 #include "ImageProcessingDefinitions.h"
 #include "KernelDescriptor.h"
+#include <array>
 
 namespace curan {
 	namespace image {

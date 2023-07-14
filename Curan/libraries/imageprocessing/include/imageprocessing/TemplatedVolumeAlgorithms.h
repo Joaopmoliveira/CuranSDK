@@ -8,7 +8,7 @@ namespace curan {
 namespace image {
 namespace reconstruction {
 			
-void GetClipExtentTemplate(int clipExt[6],
+void TemplatedGetClipExtent(int clipExt[6],
 double inOrigin[3],
 double inSpacing[3],
 const int inExt[6],
@@ -16,7 +16,7 @@ double clipRectangleOrigin[2],
 double clipRectangleSize[2]);
 
 template<typename input_pixel_type,typename output_pixel_type,output_pixel_type convertion_ratio>
-int TrilinearInterpolation(const Eigen::Vector4d point,
+int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 	input_pixel_type* inPtr,
 	output_pixel_type* outPtr,
 	unsigned short* accPtr,
@@ -198,7 +198,7 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 
 
 template<typename input_pixel_type,typename output_pixel_type,output_pixel_type convertion_ratio>
-int NearestNeighborInterpolation(const Eigen::Vector4d point,
+int TemplatedNearestNeighborInterpolation(const Eigen::Vector4d point,
 	input_pixel_type* inPtr,
 	output_pixel_type* outPtr,
 	unsigned short* accPtr,
@@ -317,22 +317,24 @@ int NearestNeighborInterpolation(const Eigen::Vector4d point,
 	return 0;
 }
 
-template<typename input_pixel_type,typename output_pixel_type,output_pixel_type convertion_ration>
+template<typename input_pixel_type,typename output_pixel_type>
 struct PasteSliceIntoVolumeInsertSliceParamsTemplated
 {
 	// information on the volume
-	itk::Image<input_pixel_type,3>::Pointer outData;            // the output volume
-	output_pixel_type* outPtr;                     // scalar pointer to the output volume over the output extent
-	unsigned short* accPtr;           // scalar pointer to the accumulation buffer over the output extent
-	itk::Image<output_pixel_type,3>::Pointer inData;             // input slice
-	input_pixel_type* inPtr;                      // scalar pointer to the input volume over the input slice extent
-	int* inExt;                       // array size 6, input slice extent (could have been split for threading)
-	unsigned int* accOverflowCount;   // the number of voxels that may have error due to accumulation overflow
+	std::array<double,3> out_spacing;
+	std::array<size_t,3> out_size;
+	std::array<size_t,3> out_origin;
+	output_pixel_type* outPtr;
+	unsigned short* accPtr; 
+	std::array<double,3> in_spacing;
+	std::array<size_t,3> in_size;
+	std::array<double,3> in_origin;
+	input_pixel_type* inPtr; 
+	int* inExt; 
+	unsigned int* accOverflowCount;
 
-	// transform matrix for images -> volume
 	Eigen::Matrix4d matrix;
 
-	// details specified by the user RE: how the voxels should be computed
 	Interpolation interpolationMode;   // linear or nearest neighbor
 	Compounding compoundingMode;
 
@@ -345,13 +347,11 @@ struct PasteSliceIntoVolumeInsertSliceParamsTemplated
 };
 
 template<typename input_pixel_type,typename output_pixel_type,output_pixel_type convertion_ration>
-void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTemplated<input_pixel_type,output_pixel_type,convertion_ration>* insertionParams){
+void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTemplated<input_pixel_type,output_pixel_type>* insertionParams){
 	// information on the volume
-	itk::Image<output_pixel_type,3>::Pointer outData = insertionParams->outData;
-	output_pixel_type* outPtr = outData->GetBufferPointer();
+	output_pixel_type* outPtr = insertionParams->outPtr;
 	unsigned short* accPtr = insertionParams->accPtr;
-	itk::Image<input_pixel_type,3>::Pointer inData = insertionParams->inData;
-	input_pixel_type* inPtr = inData->GetBufferPointer();
+	input_pixel_type* inPtr = insertionParams->inPtr;
 	int* inExt = insertionParams->inExt;
 	unsigned int* accOverflowCount = insertionParams->accOverflowCount;
 
@@ -365,16 +365,14 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTemplated<input
 
 	// slice spacing and origin
 	double inSpacing[3];
-	auto spacing = inData->GetSpacing();
-	inSpacing[0] = spacing[0];
-	inSpacing[1] = spacing[1];
-	inSpacing[2] = spacing[2];
+	inSpacing[0] = insertionParams->in_spacing[0];
+	inSpacing[1] = insertionParams->in_spacing[1];
+	inSpacing[2] = insertionParams->in_spacing[2];
 
 	double inOrigin[3];
-	auto origin = inData->GetOrigin();
-	inOrigin[0] = origin[0];
-	inOrigin[1] = origin[1];
-	inOrigin[2] = origin[2];
+	inOrigin[0] = insertionParams->in_origin[0];
+	inOrigin[1] = insertionParams->in_origin[1];
+	inOrigin[2] = insertionParams->in_origin[2];
 
 	// get the clip rectangle as an extent
 	int clipExt[6];
@@ -383,23 +381,18 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTemplated<input
 	// find maximum output range = output extent
 	int outExt[6];
 	double outSpacing[3];
-	auto outspacing = outData->GetSpacing();
-	outSpacing[0] = outspacing[0];
-	outSpacing[1] = outspacing[1];
-	outSpacing[2] = outspacing[2];
+	outSpacing[0] = insertionParams->out_spacing[0];
+	outSpacing[1] = insertionParams->out_spacing[1];
+	outSpacing[2] = insertionParams->out_spacing[2];
 
-	auto outdata_ROI = outData->GetLargestPossibleRegion();
-	auto size_out = outdata_ROI.GetSize();
-	auto start_out = outdata_ROI.GetIndex();
+	outExt[0] = 0;
+	outExt[1] = insertionParams->out_size[0] - 1;
 
-	outExt[0] = start_out[0];
-	outExt[1] = size_out[0] - 1;
+	outExt[2] = 0;
+	outExt[3] = insertionParams->out_size[1] - 1;
 
-	outExt[2] = start_out[1];
-	outExt[3] = size_out[1] - 1;
-
-	outExt[4] = start_out[2];
-	outExt[5] = size_out[2] - 1;
+	outExt[4] = ;
+	outExt[5] = insertionParams->out_size[2] - 1;
 
 	// Get increments to march through data - ex move from the end of one x scanline of data to the
 	// start of the next line
@@ -412,11 +405,6 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTemplated<input
 	}
 
 	uint64_t inIncX = 0, inIncY = 0, inIncZ = 0;
-
-	auto indata_ROI = inData->GetLargestPossibleRegion();
-	auto size_in = indata_ROI.GetSize();
-	auto start_in = indata_ROI.GetIndex();
-
 
 	// Get increments to march through data - ex move from the end of one x scanline of data to the
 	// start of the next line
@@ -443,18 +431,18 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTemplated<input
 	int numscalars = INPUT_COMPONENTS;
 
 	// Set interpolation method - nearest neighbor or trilinear
-	int (*interpolate)(const Eigen::Vector4d, char_pixel_type*, char_pixel_type*, unsigned short*, int, Compounding, int a[6], uint64_t b[3], unsigned int*) = NULL;     // pointer to the nearest neighbor or trilinear interpolation function
+	int (*interpolate)(const Eigen::Vector4d, input_pixel_type*, output_pixel_type*, unsigned short*, int, Compounding, int a[6], uint64_t b[3], unsigned int*) = NULL;     // pointer to the nearest neighbor or trilinear interpolation function
 	switch (interpolationMode)
 	{
 	case NEAREST_NEIGHBOR_INTERPOLATION:
-		interpolate = &NearestNeighborInterpolation;
+		interpolate = &TemplatedNearestNeighborInterpolation<input_pixel_type,output_pixel_type,convertion_ration>;
 		break;
 	case LINEAR_INTERPOLATION:
-		interpolate = &TrilinearInterpolation;
+		interpolate = &TemplatedTrilinearInterpolation<input_pixel_type,output_pixel_type,convertion_ration>;
 		break;
 	default:
 	{
-		interpolate = &NearestNeighborInterpolation;
+		interpolate = &TemplatedNearestNeighborInterpolation<input_pixel_type,output_pixel_type,convertion_ration>;
 		break;
 	}
 	}
@@ -472,7 +460,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTemplated<input
 	// [ x x x x x x x x x x  x  x  x  x] [x  x   x  x  x  x  x  x  x  x  x  x  x  x] [ x x x x x x x x x x x x x x]
 	// lets think y and x first
 	// offset = inExt[0] (the x offset (should be null)) + inExt[2]*size_in[0] (we shift the extent to the line of x which corresponds to us) + inExt[4]*size_
-	inPtr = inData->GetBufferPointer()+inExt[0]+inExt[2]*size_in[0]+inExt[4]*size_in[0]*size_in[1];
+	inPtr += inExt[0]+inExt[2]*size_in[0]+inExt[4]*size_in[0]*size_in[1];
 
 
 	for (int idZ = inExt[4]; idZ <= inExt[5]; idZ++, inPtr += inIncZ)
