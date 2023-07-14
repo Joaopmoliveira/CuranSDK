@@ -57,7 +57,12 @@ int main(int argc, char* argv[]) {
 
 	std::printf("\nminimum_radius: (%f)\nmaximum_radius: (%f)\nsweep_angle: (%f)\nsigma_gradient: (%f)\nvariance: (%f)\nDiscRadiusRatio: (%f), Threshold (%f)\n", 
 		data.minimum_radius.load(), data.maximum_radius.load(), data.sweep_angle.load(),data.sigma_gradient.load(), 
-		data.variance.load(), data.disk_ratio.load());
+		data.variance.load(), data.disk_ratio.load(),data.threshold.load());
+
+	if(processing->list_of_recorded_points.size()==0){
+		std::cout << "no calibration data was recorded\n";
+		return 1;
+	}
 
 	constexpr size_t number_of_strings = 3;
 	constexpr size_t number_of_variables = 6 + 4 * number_of_strings;
@@ -120,11 +125,10 @@ int main(int argc, char* argv[]) {
 	for (const auto& val : variables)
 		std::cout << 0.0 << " , ";
 	std::cout << "\n";
-	std::vector<double> final_values;
-	final_values.reserve(number_of_variables);
+	std::stringstream optimized_values;
 	std::cout << "Final: \n";
 	for (const auto& val : variables){
-		final_values.push_back(val); 
+		optimized_values << val << std::endl;
 		std::cout << val << " , ";
 	}
 	
@@ -139,11 +143,11 @@ int main(int argc, char* argv[]) {
 	
 	// Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the 
 	// tracker transformation ()
-	std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration!");
-	
+	std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration! Produced JSON file:\n");
+
 	nlohmann::json calibration_data;
 	calibration_data["timestamp"] = return_current_time_and_date();
-	calibration_data["array_data"] = nlohmann::json::parse(final_values);
+	calibration_data["array_data"] = optimized_values.str();
 	calibration_data["optimization_error"] = summary.final_cost;
 
 	// write prettified JSON to another file
