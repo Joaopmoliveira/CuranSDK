@@ -8,6 +8,7 @@
 
 int foo(std::atomic<bool>& flag_to_signal,double* value);
 int bar(std::atomic<bool>& flag_to_signal,double* value);
+
 int foo(curan::utilities::SafeQueue<double>& queue);
 int bar(curan::utilities::SafeQueue<double>& queue);
 

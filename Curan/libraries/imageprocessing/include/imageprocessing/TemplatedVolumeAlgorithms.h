@@ -1,5 +1,5 @@
-#ifndef CURAN_VOLUME_ALGORITHMS_HEADER_FILE_
-#define CURAN_VOLUME_ALGORITHMS_HEADER_FILE_
+#ifndef CURAN_TEMPLATED_VOLUME_ALGORITHMS_HEADER_FILE_
+#define CURAN_TEMPLATED_VOLUME_ALGORITHMS_HEADER_FILE_
 
 #include "ImageProcessingDefinitions.h"
 #include "KernelDescriptor.h"
@@ -158,8 +158,18 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
                     *outPtrTmp = (needs_rounding) ? std::round((f * (*inPtrTmp) + r * (*outPtrTmp)) / a)/convertion_ratio : ((f * (*inPtrTmp) + r * (*outPtrTmp)) / a)/convertion_ratio;
 					a *= ACCUMULATION_MULTIPLIER; // needs to be done for proper conversion to unsigned short for accumulation buffer
 					break;
-				default:
-					throw std::runtime_error("Undefined compounding mode");
+				default: //assume lattest which is cheap
+					const double minWeight(0.125); // If a pixel is right in the middle of the eight surrounding voxels
+					// (trilinear weight = 0.125 for each), then it the compounding operator
+					// should be applied for each. Else, it should only be considered
+					// for the other nearest voxels.
+					if (fdx[j] >= minWeight)
+					{
+						*outPtrTmp = (*inPtrTmp)/convertion_ratio;
+						f = fdx[j];
+						a = f * ACCUMULATION_MULTIPLIER;;
+					}
+					break;
 					break;
 				}
 				inPtrTmp++;
@@ -307,8 +317,8 @@ int NearestNeighborInterpolation(const Eigen::Vector4d point,
 	return 0;
 }
 
-template<typename input_pixel_type,typename output_pixel_type,double convertion_ration>
-struct PasteSliceIntoVolumeInsertSliceParams
+template<typename input_pixel_type,typename output_pixel_type,output_pixel_type convertion_ration>
+struct PasteSliceIntoVolumeInsertSliceParamsTemplated
 {
 	// information on the volume
 	itk::Image<input_pixel_type,3>::Pointer outData;            // the output volume
@@ -334,8 +344,8 @@ struct PasteSliceIntoVolumeInsertSliceParams
 	int image_number;
 };
 
-template<typename input_pixel_type,typename output_pixel_type,double convertion_ration>
-void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams<input_pixel_type,output_pixel_type,convertion_ration>* insertionParams){
+template<typename input_pixel_type,typename output_pixel_type,output_pixel_type convertion_ration>
+void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTemplated<input_pixel_type,output_pixel_type,convertion_ration>* insertionParams){
 	// information on the volume
 	itk::Image<output_pixel_type,3>::Pointer outData = insertionParams->outData;
 	output_pixel_type* outPtr = outData->GetBufferPointer();

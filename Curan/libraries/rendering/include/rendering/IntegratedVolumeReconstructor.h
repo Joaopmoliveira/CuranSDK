@@ -1,15 +1,18 @@
 #ifndef CURAN_INTEGRATED_RECONSTRUCTOR_HEADER_FILE_
 #define CURAN_INTEGRATED_RECONSTRUCTOR_HEADER_FILE_
 
-#include "ImageProcessingDefinitions.h"
-#include "KernelDescriptor.h"
+#include "imageprocessing/ImageProcessingDefinitions.h"
+#include "imageprocessing/KernelDescriptor.h"
 #include "Mathematics/ConvexHull3.h"
 #include "Mathematics/ArbitraryPrecision.h"
 #include "Mathematics/MinimumVolumeBox3.h"
-#include "VolumeAlgorithms.h"
+#include "imageprocessing/VolumeAlgorithms.h"
 #include <optional>
 #include <mutex>
 #include "utils/TheadPool.h"
+#include <vsg/all.h>
+#include <vsgXchange/all.h>
+#include "Renderable.h"
 
 namespace curan{
     namespace renderable {
