@@ -454,14 +454,12 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 	Eigen::Vector4d outPoint;
 	inPoint[3] = 1;
 
-
 	//we need to properly offset the data to the correct position due to the influence of the multithreading aspect
     //   0 1 2 3 4 5 6 7 8 9 10 11 12 13   14 15 16 17 18 19 20 21 22 23 24 25 26 27    28 
 	// [ x x x x x x x x x x  x  x  x  x] [x  x   x  x  x  x  x  x  x  x  x  x  x  x] [ x x x x x x x x x x x x x x]
 	// lets think y and x first
 	// offset = inExt[0] (the x offset (should be null)) + inExt[2]*size_in[0] (we shift the extent to the line of x which corresponds to us) + inExt[4]*size_
 	inPtr += inExt[0]+inExt[2]*size_in[0]+inExt[4]*size_in[0]*size_in[1];
-
 
 	for (int idZ = inExt[4]; idZ <= inExt[5]; idZ++, inPtr += inIncZ)
 	{
@@ -472,8 +470,6 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 				// check if we are within the current clip extent
 				if (idX < clipExt[0] || idX > clipExt[1] || idY < clipExt[2] || idY > clipExt[3])
 				{
-					// outside the clipping rectangle
-					//std::cout << "outside\n";
 					continue;
 				}
 				//scale the input from pixels to mm 
@@ -489,26 +485,6 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 				outPoint[1] /= outSpacing[1];
 				outPoint[2] /= outSpacing[2];
 				outPoint[3] = 1;
-
-				
-//				const size_t string_maximum_size = (12 + 1) * 5 + 1;
-//				char str[string_maximum_size];
-
-//				int number_writen = 0;
-//				number_writen += std::sprintf(str + number_writen, "%d", insertionParams->image_number);
-//				str[number_writen] = ',';
-//				number_writen += 1;
-//				number_writen += std::sprintf(str + number_writen, "%d", idX);
-//				str[number_writen] = ',';
-//				number_writen += 1;
-//				number_writen += std::sprintf(str + number_writen, "%d", idY);
-//				str[number_writen] = ',';
-//				number_writen += 1;
-//				number_writen += std::sprintf(str + number_writen, "%d", idZ);
-//				str[number_writen] = ',';
-//				number_writen += 1;
-//				number_writen += std::sprintf(str + number_writen, "%d", *inPtr);
-//				std::cout << str << "\n";
 			
 				// interpolation functions return 1 if the interpolation was successful, 0 otherwise
 				interpolate(outPoint, inPtr, outPtr, accPtr, numscalars, compoundingMode, outExt, outInc, accOverflowCount);

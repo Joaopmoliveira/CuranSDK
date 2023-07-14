@@ -241,13 +241,13 @@ bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_
 	//std::cout << "received message\n";
 	assert(val.IsNotNull());
 	if (er){
-        return false;
+        return true;
     } 
     if (auto search = openigtlink_callbacks.find(val->GetMessageType()); search != openigtlink_callbacks.end())
         search->second(this,val);
     else
         std::cout << "No functionality for function received\n";
-    return;
+    return false;
 }
 
 void ProcessingMessage::communicate() {

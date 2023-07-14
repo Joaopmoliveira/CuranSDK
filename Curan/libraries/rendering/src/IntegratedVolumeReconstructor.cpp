@@ -10,19 +10,19 @@ IntegratedReconstructor::Info::Info(std::array<double,3> inspacing,std::array<do
 
     auto origin = gte::Vector3<double>{inorigin[0],inorigin[1],inorigin[2]};
 	std::array<gte::Vector3<double>, 3> alignement;
-	//alignement[0] = {indirection[0][0],indirection[0][1],indirection[0][2]};
-	//alignement[1] = {indirection[1][0],indirection[1][1],indirection[1][2]};
-	//alignement[2] = {indirection[2][0],indirection[2][1],indirection[2][2]};
+	alignement[0] = {indirection[0][0],indirection[0][1],indirection[0][2]};
+	alignement[1] = {indirection[1][0],indirection[1][1],indirection[1][2]};
+	alignement[2] = {indirection[2][0],indirection[2][1],indirection[2][2]};
 
-    //auto output_origin = origin
-	//	+ alignement[0] * inextent[0]
-//		+ alignement[1] * inextent[1]
-//		+ alignement[2] * inextent[2];
+    auto output_origin = origin
+		+ alignement[0] * inextent[0]
+		+ alignement[1] * inextent[1]
+		+ alignement[2] * inextent[2];
 
-  //  volumetric_bounding_box = gte::OrientedBox3<double>{output_origin,alignement,inextent};
-   // spacing[0] = in_spacing[0];
-   // spacing[1] = in_spacing[1];
-   // spacing[2] = in_spacing[2];
+    volumetric_bounding_box = gte::OrientedBox3<double>{output_origin,alignement,inextent};
+    spacing[0] = inspacing[0];
+    spacing[1] = inspacing[1];
+    spacing[2] = inspacing[2];
 }
 
 vsg::ref_ptr<Renderable> IntegratedReconstructor::make(Info& info){
