@@ -132,6 +132,9 @@ When using VScode to compile the project, if the previous order of the build ins
 
 Curan finaly has a [website](https://human-robotics-lab.github.io/CuranWeb/) where you can follow our tutorials on how to use the SDK we developed at the surgical robotics lab.
 
+## Acknowledgments 
+The volume reconstruction code is essencially a copy of [IGSIO](https://github.com/IGSIO/IGSIO) modified to work with the interal classes and structures of Curan. 
+
 ## Contributions 
 
 > -João Oliveira (Lead developer)

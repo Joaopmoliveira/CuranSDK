@@ -1,6 +1,6 @@
 #include "imageprocessing/StaticReconstructor.h"
-
 #include <condition_variable>
+#include "imageprocessing/SplicingTools.h"
 
 namespace curan{
 namespace image {
@@ -123,37 +123,6 @@ StaticReconstructor& StaticReconstructor::add_frames(std::vector<output_type::Po
 StaticReconstructor::output_type::Pointer StaticReconstructor::get_output_pointer(){
 	std::lock_guard<std::mutex> g{mut};
     return out_volume;
-}
-
-bool splice_input_extent( std::vector<std::array<int,6>>& splitting, const int fullExt[6]){
-	size_t thread_id = 0;
-	for(auto& nsplit : splitting){
-		int min, max;
-  		memcpy( nsplit.data(), fullExt, 6 * sizeof( int ) );
-  		int splitAxis = 2; 
-  		min = fullExt[4];
-  		max = fullExt[5];
-  		while ( min == max ){
-    		--splitAxis;
-    		if ( splitAxis < 0 ){
-				//return failure
-      			return false;
-			}
-			min = fullExt[splitAxis * 2];
-    		max = fullExt[splitAxis * 2 + 1];
-   		}
-  		int range = max - min + 1;
-  		int valuesPerThread = ( int )std::ceil( range / ( double )splitting.size() );
- 		int maxThreadIdUsed = ( int )std::ceil( range / ( double )valuesPerThread ) - 1;
-  		if ( thread_id < maxThreadIdUsed ){
-    		nsplit[splitAxis * 2] = nsplit[splitAxis * 2] + thread_id * valuesPerThread;
-    		nsplit[splitAxis * 2 + 1] = nsplit[splitAxis * 2] + valuesPerThread - 1;
-		}
-  		if ( thread_id == maxThreadIdUsed )
-			nsplit[splitAxis * 2] = nsplit[splitAxis * 2] + thread_id * valuesPerThread;
-		++thread_id;
-	}
-  	return true;
 }
 
 bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool){
