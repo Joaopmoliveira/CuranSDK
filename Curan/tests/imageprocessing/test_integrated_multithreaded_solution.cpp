@@ -84,17 +84,18 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
 	    vol_direction[1] = {0.0,1.0,0.0};
 	    vol_direction[2] = {0.0,0.0,1.0};
 	    curan::image::IntegratedReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
-	    curan::image::IntegratedReconstructor reconstructor{recon_info};
-	    reconstructor.set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
+        auto integrated_volume =  curan::image::IntegratedReconstructor::make(recon_info);
+        integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
             .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
-    
-        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(10);
+        window << integrated_volume;
+        
+        //auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(10);
         std::printf("started volumetric reconstruction\n");
         size_t counter = 0;
 	    for(auto img : image_array){
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-		    reconstructor.add_frame(img);
-		    reconstructor.multithreaded_update(reconstruction_thread_pool);
+		    integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(img);
+		    integrated_volume->cast<curan::image::IntegratedReconstructor>()->update();
             std::chrono::steady_clock::time_point elapsed_for_reconstruction = std::chrono::steady_clock::now();
             auto val_elapsed_for_reconstruction = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_reconstruction - begin).count();
             std::printf("added image (volume reconstruction %d)\n",val_elapsed_for_reconstruction);

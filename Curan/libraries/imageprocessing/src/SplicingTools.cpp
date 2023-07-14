@@ -1,4 +1,5 @@
 #include "imageprocessing/SplicingTools.h"
+#include <cmath>
 
 namespace curan{
 namespace image {

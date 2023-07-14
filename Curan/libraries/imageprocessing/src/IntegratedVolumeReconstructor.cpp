@@ -1,6 +1,7 @@
 #include "rendering/integrated_shaders/VolumeIntegratedShaders.h"
 #include "imageprocessing/TemplatedVolumeAlgorithms.h"
 #include "imageprocessing/IntegratedVolumeReconstructor.h"
+#include "itkImportImageFilter.h"
 
 namespace curan{
 namespace image {
@@ -211,6 +212,29 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info){
     obj_contained = vsg::Group::create();
     obj_contained->addChild(scalling_transform);
 
+    output_type::RegionType output_region;
+    output_region.SetSize(output_size);
+    output_region.SetIndex(output_start);
+
+    using ImportFilterType = itk::ImportImageFilter<output_pixel_type, Dimension>;
+
+    auto importFilter = ImportFilterType::New();
+    importFilter->SetRegion(output_region);
+    importFilter->SetOrigin(output_origin);
+    importFilter->SetSpacing(output_spacing);
+    importFilter->SetDirection(output_directorion);
+    const bool importImageFilterWillOwnTheBuffer = false;
+    importFilter->SetImportPointer(textureData->data(), textureData->size(), importImageFilterWillOwnTheBuffer);    
+    importFilter-update();
+    out_volume = importFilter->GetOutput();
+
+	acummulation_buffer = accumulator_type::New();
+	acummulation_buffer->SetRegions(output_region);
+	acummulation_buffer->SetOrigin(output_origin);
+	acummulation_buffer->SetSpacing(output_spacing);
+	acummulation_buffer->SetDirection(output_directorion);
+	acummulation_buffer->Allocate(true);
+
     if (info.identifier)
         set_identifier(*info.identifier);
 }
@@ -399,6 +423,7 @@ bool IntegratedReconstructor::update(){
 		paste_slice_info.matrix = output_to_origin;
 		curan::image::reconstruction::TemplatedUnoptimizedInsertSlice<input_pixel_type,output_pixel_type,255>(&paste_slice_info);
 	};
+    textureData->dirty();
     return true;
 }
 
