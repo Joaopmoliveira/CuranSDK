@@ -2,6 +2,7 @@
 #include <cmath>
 #include "ceres/ceres.h"
 #include "optimization/WireCalibration.h"
+#include <nlohmann/json.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "CalibratePages.h"
@@ -113,20 +114,41 @@ int main(int argc, char* argv[]) {
 	ceres::Solver::Summary summary;
 	ceres::Solve(options, &problem, &summary);
 	std::cout << summary.BriefReport() << "\n";
+	
 	std::cout << "Initial: \n";
 
 	for (const auto& val : variables)
 		std::cout << 0.0 << " , ";
 	std::cout << "\n";
+	std::vector<double> final_values;
+	final_values.reserve(number_of_variables);
 	std::cout << "Final: \n";
-	for (const auto& val : variables)
+	for (const auto& val : variables){
+		final_values.push_back(val); 
 		std::cout << val << " , ";
+	}
+	
+	auto return_current_time_and_date = [](){
+	    auto now = std::chrono::system_clock::now();
+    	auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
-
+    	std::stringstream ss;
+    	ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+   		return ss.str();
+	};
+	
 	// Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the 
 	// tracker transformation ()
-	std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration!.");
-
+	std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration!");
 	
+	nlohmann::json calibration_data;
+	calibration_data["timestamp"] = return_current_time_and_date();
+	calibration_data["array_data"] = nlohmann::json::parse(final_values);
+	calibration_data["optimization_error"] = summary.final_cost;
+
+	// write prettified JSON to another file
+	std::ofstream o("optimization_result.json");
+	o << calibration_data;
+	std::cout << calibration_data << std::endl;
 	return 0;
 }
