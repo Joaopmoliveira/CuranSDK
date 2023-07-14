@@ -4,10 +4,10 @@
 #include "rendering/Renderable.h"
 #include <optional>
 
-constexpr long width = 250;
-constexpr long height = 250;
-float spacing[3] = {0.004 , 0.004 , 0.004};
-float final_spacing [3] = {0.004,0.004, 0.004};
+constexpr long width = 500;
+constexpr long height = 500;
+float spacing[3] = {0.002 , 0.002 , 0.002};
+float final_spacing [3] = {0.002,0.002, 0.002};
 
 using imagetype = itk::Image<unsigned char,3>;
 
