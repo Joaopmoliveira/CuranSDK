@@ -130,8 +130,8 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 	*viwers_container << std::move(button) << std::move(button2);
 	viwers_container->set_divisions({0.0 , 0.5 , 1.0});
 	viwers_container->set_color(SK_ColorTRANSPARENT);
-
-	return Overlay::make(std::move(viwers_container),SK_ColorTRANSPARENT);
+	
+	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125));
 }
 
 curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {

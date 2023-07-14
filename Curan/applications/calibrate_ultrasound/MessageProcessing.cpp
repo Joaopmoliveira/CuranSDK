@@ -11,9 +11,6 @@ std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(
 			distance_matrix(distance_row, distance_col) = (previous_col - current_col).norm();
 		}
 	}
-	std::cout << "previous : \n" << previous  << std::endl;
-	std::cout << "current : \n" << current  << std::endl;
-	std::cout << "cost matrix: \n" << distance_matrix << std::endl;
 	Eigen::Matrix<double, 3, Eigen::Dynamic> local_copy = current;
 	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Index minIndex;
 	std::vector<size_t> index_mapping;
@@ -23,7 +20,6 @@ std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(
 		double cost = row.minCoeff(&minIndex);
 		index_mapping[ordered_indices] = minIndex;
 		local_copy.col(minIndex) = current.col(ordered_indices); 
-		std::printf("cost is: %f\n",cost);
 		if (cost > threshold) {
 			return std::nullopt;
 		}
@@ -50,6 +46,8 @@ bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::P
 }
 
 bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point end = begin;
 	processor->open_viwer->process_message(val);
 	igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
 	message_body->Copy(val);
@@ -103,7 +101,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	auto blurfilter = FilterTypeBlur::New();
 	blurfilter->SetInput(rescaletofloat->GetOutput());
 	blurfilter->SetVariance(processor->configuration.variance);
-	blurfilter->SetMaximumKernelWidth(10);
+	blurfilter->SetMaximumKernelWidth(5);
 
 	using RescaleTypeToImageType = itk::RescaleIntensityImageFilter<FloatImageType, ImageType>;
 	auto rescaletochar = RescaleTypeToImageType::New();
@@ -142,7 +140,6 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	catch (...) {
 		return false;
 	}
-
 
 	HoughTransformFilterType::CirclesListType circles;
 	circles = houghFilter->GetCircles();
@@ -239,6 +236,10 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		};
 		processor->processed_viwer->update_image(lam);
 	}
+	end = std::chrono::steady_clock::now();
+	auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+	if(time_elapsed>30)
+		std::printf("warning: reduce brightness of image because processing size is too large (%d milliseconds)\n",time_elapsed);
 	return true;
 }
 

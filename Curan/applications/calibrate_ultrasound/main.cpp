@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
 	processing->attempt_stop();
 	std::cout << "trying to stop communication\n" << std::endl;
 
-	std::printf("minimum_radius: (%f)\nmaximum_radius: (%f)\nsweep_angle: (%f)\nsigma_gradient: (%f)\nvariance: (%f)\nDiscRadiusRatio: (%f), Threshold (%f)", 
+	std::printf("\nminimum_radius: (%f)\nmaximum_radius: (%f)\nsweep_angle: (%f)\nsigma_gradient: (%f)\nvariance: (%f)\nDiscRadiusRatio: (%f), Threshold (%f)\n", 
 		data.minimum_radius.load(), data.maximum_radius.load(), data.sweep_angle.load(),data.sigma_gradient.load(), 
 		data.variance.load(), data.disk_ratio.load());
 
@@ -121,5 +121,12 @@ int main(int argc, char* argv[]) {
 	std::cout << "Final: \n";
 	for (const auto& val : variables)
 		std::cout << val << " , ";
+
+
+	// Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the 
+	// tracker transformation ()
+	std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration!.");
+
+	
 	return 0;
 }
