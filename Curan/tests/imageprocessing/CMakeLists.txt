@@ -95,3 +95,15 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_integrated_multithreaded_reconstruction test_integrated_multithreaded_solution.cpp)
+
+target_compile_definitions(test_integrated_multithreaded_reconstruction PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_integrated_multithreaded_reconstruction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_integrated_multithreaded_reconstruction
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)

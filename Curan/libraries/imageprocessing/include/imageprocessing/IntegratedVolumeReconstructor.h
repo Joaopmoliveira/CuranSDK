@@ -16,6 +16,7 @@
 
 namespace curan{
     namespace renderable {
+        
         struct Clipping{
 	        std::array<double, 2> clipRectangleOrigin = { 0.0,0.0 }; 
 	        std::array<double, 2> clipRectangleSize = { 0.0,0.0 };
