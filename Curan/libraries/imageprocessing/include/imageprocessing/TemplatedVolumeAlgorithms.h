@@ -2,19 +2,13 @@
 #define CURAN_TEMPLATED_VOLUME_ALGORITHMS_HEADER_FILE_
 
 #include "ImageProcessingDefinitions.h"
+#include "SplicingTools.h"
 #include "KernelDescriptor.h"
 
 namespace curan {
 namespace image {
 namespace reconstruction {
-			
-void TemplatedGetClipExtent(int clipExt[6],
-double inOrigin[3],
-double inSpacing[3],
-const int inExt[6],
-double clipRectangleOrigin[2],
-double clipRectangleSize[2]);
-
+		
 template<typename input_pixel_type,typename output_pixel_type,int ratio>
 int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 	input_pixel_type* inPtr,
@@ -401,7 +395,7 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 
 	// get the clip rectangle as an extent
 	int clipExt[6];
-	TemplatedGetClipExtent(clipExt, inOrigin, inSpacing, inExt, clipRectangleOrigin, clipRectangleSize);
+	GetClipExtent(clipExt, inOrigin, inSpacing, inExt, clipRectangleOrigin, clipRectangleSize);
 
 	// find maximum output range = output extent
 	int outExt[6];

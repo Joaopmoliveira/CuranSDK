@@ -6,6 +6,7 @@ src/FilterAlgorithms.cpp
 src/KernelDescriptor.cpp
 src/StaticReconstructor.cpp
 src/IntegratedVolumeReconstructor.cpp
+src/SplicingTools.cpp
 )
 
 find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)

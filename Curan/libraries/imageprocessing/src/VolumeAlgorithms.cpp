@@ -1,4 +1,5 @@
 #include "imageprocessing/VolumeAlgorithms.h"
+#include "imageprocessing/SplicingTools.h"
 #include "utils/Logger.h"
 #include <type_traits>
 
@@ -60,75 +61,6 @@ bool GetPerpendicularSlice(Volume& in_vol, InternalImageType::Pointer& out_vol, 
 	InternalImageType::SizeType   size2 = inputRegion2.GetSize();
 	out_vol = output_image;
 	return true;
-}
-
-void GetClipExtent(int clipExt[6],
-	double inOrigin[3],
-	double inSpacing[3],
-	const int inExt[6],
-	double clipRectangleOrigin[2],
-	double clipRectangleSize[2])
-{
-	// Map the clip rectangle (millimetres) to pixels
-	// --> number of pixels (+ or -) from the origin
-
-	int x0 = (int)std::ceil(clipRectangleOrigin[0]);
-	int x1 = (int)std::floor(clipRectangleOrigin[0] + clipRectangleSize[0]);
-	int y0 = (int)std::ceil(clipRectangleOrigin[1]);
-	int y1 = (int)std::floor(clipRectangleOrigin[1] + clipRectangleSize[1]);
-
-	// Make sure that x0 <= x1 and y0 <= y1
-	if (x0 > x1)
-	{
-		int tmp = x0;
-		x0 = x1;
-		x1 = tmp;
-	}
-	if (y0 > y1)
-	{
-		int tmp = y0;
-		y0 = y1;
-		y1 = tmp;
-	}
-
-	// make sure the clip extent lies within the input extent
-	if (x0 < inExt[0])
-	{
-		x0 = inExt[0];
-	}
-	if (x1 > inExt[1])
-	{
-		x1 = inExt[1];
-	}
-	// clip extent was outside of range of input extent
-	if (x0 > x1)
-	{
-		x0 = inExt[0];
-		x1 = inExt[0] - 1;
-	}
-
-	if (y0 < inExt[2])
-	{
-		y0 = inExt[2];
-	}
-	if (y1 > inExt[3])
-	{
-		y1 = inExt[3];
-	}
-	// clip extent was outside of range of input extent
-	if (y0 > y1)
-	{
-		y0 = inExt[2];
-		y1 = inExt[2] - 1;
-	}
-
-	// Set the clip extent
-	clipExt[0] = x0;
-	clipExt[1] = x1;
-	clipExt[2] = y0;
-	clipExt[3] = y1;
-	clipExt[4] = inExt[4];
-	clipExt[5] = inExt[5];
 }
 
 int TrilinearInterpolation(const Eigen::Vector4d point,

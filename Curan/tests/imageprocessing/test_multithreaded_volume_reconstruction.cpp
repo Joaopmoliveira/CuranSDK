@@ -3,6 +3,7 @@
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include <optional>
+#include "imageprocessing/SplicingTools.h"
 
 constexpr long width = 250;
 constexpr long height = 250;
