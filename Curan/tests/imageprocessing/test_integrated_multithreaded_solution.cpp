@@ -9,7 +9,9 @@ constexpr long height = 250;
 float spacing[3] = {0.004 , 0.004 , 0.004};
 float final_spacing [3] = {0.004,0.004, 0.004};
 
-void create_array_of_linear_images_in_x_direction(std::vector<curan::image::IntegratedReconstructor::output_type::Pointer>& desired_images){
+using imagetype = itk::Image<unsigned char,3>;
+
+void create_array_of_linear_images_in_x_direction(std::vector<imagetype::Pointer>& desired_images){
     itk::Matrix<double> image_orientation;
 	itk::Point<double> image_origin;
 
@@ -38,18 +40,18 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Inte
 	}
 
     for(int z = 0; z < width ; ++z){
-        curan::image::IntegratedReconstructor::output_type::Pointer image = curan::image::IntegratedReconstructor::output_type::New();
-        curan::image::IntegratedReconstructor::output_type::IndexType start;
+        imagetype::Pointer image = imagetype::New();
+        imagetype::IndexType start;
         start[0] = 0; // first index on X
         start[1] = 0; // first index on Y
         start[2] = 0; // first index on Z
 
-        curan::image::IntegratedReconstructor::output_type::SizeType size;
+        imagetype::SizeType size;
         size[0] = width; // size along X
         size[1] = height; // size along Y
         size[2] = 1; // size along Z
 
-        curan::image::IntegratedReconstructor::output_type::RegionType region_1;
+        imagetype::RegionType region_1;
         region_1.SetSize(size);
         region_1.SetIndex(start);
 
@@ -71,7 +73,7 @@ void create_array_of_linear_images_in_x_direction(std::vector<curan::image::Inte
 
 void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stopping_condition){
     try{
-	    std::vector<curan::image::IntegratedReconstructor::output_type::Pointer> image_array;
+	    std::vector<imagetype::Pointer> image_array;
 	    create_array_of_linear_images_in_x_direction(image_array);
 
 	    std::array<double,3> vol_origin = {0.0,0.0,0.0};

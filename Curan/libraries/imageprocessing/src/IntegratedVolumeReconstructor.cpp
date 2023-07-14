@@ -397,7 +397,7 @@ bool IntegratedReconstructor::update(){
         paste_slice_info.in_spacing[1] = spacing_in[1];
         paste_slice_info.in_spacing[2] = spacing_in[2];
 		paste_slice_info.matrix = output_to_origin;
-		curan::image::reconstruction::TemplatedUnoptimizedInsertSlice<input_pixel_type,output_pixel_type,255.0f>(&paste_slice_info);
+		curan::image::reconstruction::TemplatedUnoptimizedInsertSlice<input_pixel_type,output_pixel_type,255>(&paste_slice_info);
 	};
     return true;
 }

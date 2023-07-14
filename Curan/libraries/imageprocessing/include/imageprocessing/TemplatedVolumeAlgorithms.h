@@ -15,7 +15,7 @@ const int inExt[6],
 double clipRectangleOrigin[2],
 double clipRectangleSize[2]);
 
-template<typename input_pixel_type,typename output_pixel_type,output_pixel_type convertion_ratio>
+template<typename input_pixel_type,typename output_pixel_type,int ratio>
 int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 	input_pixel_type* inPtr,
 	output_pixel_type* outPtr,
@@ -98,7 +98,7 @@ int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 		fdx[7] = fx * fyfz;
 
 		double f, r, a;
-		input_pixel_type* inPtrTmp, 
+		input_pixel_type* inPtrTmp;
         output_pixel_type* outPtrTmp;
 
 		unsigned short* accPtrTmp;
@@ -131,7 +131,10 @@ int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 					// for the other nearest voxels.
 					if (fdx[j] >= minWeight && *inPtrTmp > *outPtrTmp)
 					{
-						*outPtrTmp = (*inPtrTmp)/convertion_ratio;
+						if constexpr(ratio==1)
+							*outPtrTmp = (*inPtrTmp);
+						else
+							*outPtrTmp = (*inPtrTmp)/(double)ratio;
 						f = fdx[j];
 						a = f * ACCUMULATION_MULTIPLIER;;
 					}
@@ -144,8 +147,11 @@ int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 					// should be applied for each. Else, it should only be considered
 					// for the other nearest voxels.
 					if (fdx[j] >= minWeight)
-					{
-						*outPtrTmp = (*inPtrTmp)/convertion_ratio;
+					{	
+						if constexpr(ratio==1)
+							*outPtrTmp = (*inPtrTmp);
+						else
+							*outPtrTmp = (*inPtrTmp)/(double)ratio;
 						f = fdx[j];
 						a = f * ACCUMULATION_MULTIPLIER;;
 					}
@@ -155,7 +161,11 @@ int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 					f = fdx[j];
 					r = double((*accPtrTmp) / (double)ACCUMULATION_MULTIPLIER); // added division by double, since this always returned 0 otherwise
 					a = f + r;
-                    *outPtrTmp = (needs_rounding) ? std::round((f * (*inPtrTmp) + r * (*outPtrTmp)) / a)/convertion_ratio : ((f * (*inPtrTmp) + r * (*outPtrTmp)) / a)/convertion_ratio;
+					if constexpr(ratio==1)
+						*outPtrTmp = (needs_rounding) ? std::round((f * (*inPtrTmp) + r * (*outPtrTmp)) / a) : ((f * (*inPtrTmp) + r * (*outPtrTmp)) / a);
+					else
+						*outPtrTmp = (needs_rounding) ? std::round((f * (*inPtrTmp) + r * (*outPtrTmp)) / a)/(double)ratio : ((f * (*inPtrTmp) + r * (*outPtrTmp)) / a)/(double)ratio;
+                    
 					a *= ACCUMULATION_MULTIPLIER; // needs to be done for proper conversion to unsigned short for accumulation buffer
 					break;
 				default: //assume lattest which is cheap
@@ -165,7 +175,10 @@ int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 					// for the other nearest voxels.
 					if (fdx[j] >= minWeight)
 					{
-						*outPtrTmp = (*inPtrTmp)/convertion_ratio;
+						if constexpr(ratio==1)
+							*outPtrTmp = (*inPtrTmp);
+						else
+							*outPtrTmp = (*inPtrTmp)/(double)ratio;
 						f = fdx[j];
 						a = f * ACCUMULATION_MULTIPLIER;;
 					}
@@ -197,7 +210,7 @@ int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 }
 
 
-template<typename input_pixel_type,typename output_pixel_type,output_pixel_type convertion_ratio>
+template<typename input_pixel_type,typename output_pixel_type,int ratio>
 int TemplatedNearestNeighborInterpolation(const Eigen::Vector4d point,
 	input_pixel_type* inPtr,
 	output_pixel_type* outPtr,
@@ -239,7 +252,10 @@ int TemplatedNearestNeighborInterpolation(const Eigen::Vector4d point,
 			{
 				if (*inPtr > *outPtr)
 				{
-					*outPtr = (*inPtr)/convertion_ratio;
+					if constexpr(ratio==1)
+						*outPtr = (*inPtr);
+					else
+						*outPtr = (*inPtr)/(double)ratio;
 				}
 				inPtr++;
 				outPtr++;
@@ -266,7 +282,10 @@ int TemplatedNearestNeighborInterpolation(const Eigen::Vector4d point,
 
 				for (i = 0; i < numscalars; i++)
 				{
-					*outPtr = (((*inPtr++) * ACCUMULATION_MULTIPLIER + (*outPtr) * (*accPtr)) / newa)/convertion_ratio;
+					if constexpr(ratio==1)
+						*outPtr = (((*inPtr++) * ACCUMULATION_MULTIPLIER + (*outPtr) * (*accPtr)) / newa);
+					else
+						*outPtr = (((*inPtr++) * ACCUMULATION_MULTIPLIER + (*outPtr) * (*accPtr)) / newa)/(double)ratio;
 					outPtr++;
 				}
 
@@ -277,12 +296,19 @@ int TemplatedNearestNeighborInterpolation(const Eigen::Vector4d point,
 				}
 			} else     // overflow, use recursive filtering with 255/256 and 1/256 as the weights, since 255 voxels have been inserted so far
 			{ 
+				if constexpr(ratio==1)
+					*outPtr = (char_pixel_type)(fraction1_256 * (*inPtr++) + fraction255_256 * (*outPtr));
+				else{
+					*outPtr = (char_pixel_type)(fraction1_256 * ((*inPtr/(double)ratio)) + fraction255_256 * (*outPtr));
+					++inPtr;
+				}
 				// TODO: Should do this for all the scalars, and accumulation?
-				*outPtr = (char_pixel_type)(fraction1_256 * (*inPtr++) + fraction255_256 * (*outPtr));
+				
 			}
 			break;
 		}
 		case (LATEST_COMPOUNDING_MODE):
+		default:
 		{
 			accPtr += inc / outInc[0];
 
@@ -294,7 +320,10 @@ int TemplatedNearestNeighborInterpolation(const Eigen::Vector4d point,
 
 			for (i = 0; i < numscalars; i++)
 			{
-				*outPtr = (*inPtr)/convertion_ratio;
+				if constexpr(ratio==1)
+					*outPtr = (*inPtr);
+				else
+					*outPtr = (*inPtr)/(double)ratio;
 				inPtr++;
 				outPtr++;
 			}
@@ -307,10 +336,6 @@ int TemplatedNearestNeighborInterpolation(const Eigen::Vector4d point,
 
 			break;
 		}
-		default:
-			std::string s = "Unknown Compounding operator detected, value " + std::to_string(compoundingMode) + ". Leaving value as-is.";
-			utilities::cout << s;
-			break;
 		}
 		return 1;
 	}
@@ -346,7 +371,7 @@ struct PasteSliceIntoVolumeInsertSliceParamsTemplated
 	int image_number;
 };
 
-template<typename input_pixel_type,typename output_pixel_type,output_pixel_type convertion_ration>
+template<typename input_pixel_type,typename output_pixel_type,int ratio>
 void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTemplated<input_pixel_type,output_pixel_type>* insertionParams){
 	// information on the volume
 	output_pixel_type* outPtr = insertionParams->outPtr;
@@ -376,7 +401,7 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 
 	// get the clip rectangle as an extent
 	int clipExt[6];
-	GetClipExtent(clipExt, inOrigin, inSpacing, inExt, clipRectangleOrigin, clipRectangleSize);
+	TemplatedGetClipExtent(clipExt, inOrigin, inSpacing, inExt, clipRectangleOrigin, clipRectangleSize);
 
 	// find maximum output range = output extent
 	int outExt[6];
@@ -391,7 +416,7 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 	outExt[2] = 0;
 	outExt[3] = insertionParams->out_size[1] - 1;
 
-	outExt[4] = ;
+	outExt[4] = 0;
 	outExt[5] = insertionParams->out_size[2] - 1;
 
 	// Get increments to march through data - ex move from the end of one x scanline of data to the
@@ -430,23 +455,6 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 
 	int numscalars = INPUT_COMPONENTS;
 
-	// Set interpolation method - nearest neighbor or trilinear
-	int (*interpolate)(const Eigen::Vector4d, input_pixel_type*, output_pixel_type*, unsigned short*, int, Compounding, int a[6], uint64_t b[3], unsigned int*) = NULL;     // pointer to the nearest neighbor or trilinear interpolation function
-	switch (interpolationMode)
-	{
-	case NEAREST_NEIGHBOR_INTERPOLATION:
-		interpolate = &TemplatedNearestNeighborInterpolation<input_pixel_type,output_pixel_type,convertion_ration>;
-		break;
-	case LINEAR_INTERPOLATION:
-		interpolate = &TemplatedTrilinearInterpolation<input_pixel_type,output_pixel_type,convertion_ration>;
-		break;
-	default:
-	{
-		interpolate = &TemplatedNearestNeighborInterpolation<input_pixel_type,output_pixel_type,convertion_ration>;
-		break;
-	}
-	}
-
 	// Loop through  slice pixels in the input extent and put them into the output volume
 	// the resulting point in the output volume (outPoint) from a point in the input slice
 	// (inpoint)
@@ -459,8 +467,9 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 	// [ x x x x x x x x x x  x  x  x  x] [x  x   x  x  x  x  x  x  x  x  x  x  x  x] [ x x x x x x x x x x x x x x]
 	// lets think y and x first
 	// offset = inExt[0] (the x offset (should be null)) + inExt[2]*size_in[0] (we shift the extent to the line of x which corresponds to us) + inExt[4]*size_
-	inPtr += inExt[0]+inExt[2]*size_in[0]+inExt[4]*size_in[0]*size_in[1];
-
+	inPtr += inExt[0]+inExt[2]*insertionParams->in_size[0]+inExt[4]*insertionParams->in_size[0]*insertionParams->in_size[1];
+	switch(interpolationMode){
+	case LINEAR_INTERPOLATION:
 	for (int idZ = inExt[4]; idZ <= inExt[5]; idZ++, inPtr += inIncZ)
 	{
 		for (int idY = inExt[2]; idY <= inExt[3]; idY++, inPtr += inIncY)
@@ -487,10 +496,46 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 				outPoint[3] = 1;
 			
 				// interpolation functions return 1 if the interpolation was successful, 0 otherwise
-				interpolate(outPoint, inPtr, outPtr, accPtr, numscalars, compoundingMode, outExt, outInc, accOverflowCount);
+				TemplatedTrilinearInterpolation<input_pixel_type,output_pixel_type,ratio>(outPoint, inPtr, outPtr, accPtr, numscalars, compoundingMode, outExt, outInc, accOverflowCount);
 			}
 		}
 	}
+	break;
+	case NEAREST_NEIGHBOR_INTERPOLATION:
+	default: 
+	for (int idZ = inExt[4]; idZ <= inExt[5]; idZ++, inPtr += inIncZ)
+	{
+		for (int idY = inExt[2]; idY <= inExt[3]; idY++, inPtr += inIncY)
+		{
+			for (int idX = inExt[0]; idX <= inExt[1]; idX++, inPtr += numscalars)
+			{
+				// check if we are within the current clip extent
+				if (idX < clipExt[0] || idX > clipExt[1] || idY < clipExt[2] || idY > clipExt[3])
+				{
+					continue;
+				}
+				//scale the input from pixels to mm 
+				inPoint[0] = idX * inSpacing[0];
+				inPoint[1] = idY * inSpacing[1];
+				inPoint[2] = idZ * inSpacing[2];
+
+				//transform the point into the output coordinates
+				outPoint = insertionParams->matrix * inPoint;
+
+				//scale the output from milimiters to pixels
+				outPoint[0] /= outSpacing[0];
+				outPoint[1] /= outSpacing[1];
+				outPoint[2] /= outSpacing[2];
+				outPoint[3] = 1;
+			
+				// interpolation functions return 1 if the interpolation was successful, 0 otherwise
+				TemplatedNearestNeighborInterpolation<input_pixel_type,output_pixel_type,ratio>(outPoint, inPtr, outPtr, accPtr, numscalars, compoundingMode, outExt, outInc, accOverflowCount);
+			}
+		}
+	}
+	break;
+	};
+
 }
 
 }
