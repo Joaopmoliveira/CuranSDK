@@ -60,6 +60,9 @@ void signal_handler(int signal)
 
 int main (int argc, char** argv)
 {
+   // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
+   // TODO
+
    std::signal(SIGINT, signal_handler);
 
    /***************************************************************************/
