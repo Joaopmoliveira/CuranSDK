@@ -44,11 +44,11 @@ add_custom_target(
 #Add internal Curan libraries to the list of known targets
 add_subdirectory(libraries)
 
-# Add tests for submodules of curan, i.e. utilities, communication, etc...
-add_subdirectory(tests)
-
 # Add medical applications
 add_subdirectory(applications)
+
+# Add tests for submodules of curan, i.e. utilities, communication, etc...
+add_subdirectory(tests)
 
 # Add medical applications
 add_subdirectory(tutorialsrc)

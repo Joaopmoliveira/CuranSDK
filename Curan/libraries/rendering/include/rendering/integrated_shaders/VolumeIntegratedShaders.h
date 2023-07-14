@@ -1,3 +1,6 @@
+#ifndef CURAN_INTEGRATED_SHADERS_RENDERABLE_HEADER_FILE_
+#define CURAN_INTEGRATED_SHADERS_RENDERABLE_HEADER_FILE_    
+
 namespace curan{
 namespace renderable {
 
@@ -118,3 +121,5 @@ void main() {
 
 }
 }
+
+#endif

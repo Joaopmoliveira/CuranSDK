@@ -5,6 +5,8 @@ src/VolumeAlgorithms.cpp
 src/FilterAlgorithms.cpp 
 src/KernelDescriptor.cpp
 src/StaticReconstructor.cpp
+src/IntegratedVolumeReconstructor.cpp
+src/SplicingTools.cpp
 )
 
 find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)
@@ -18,5 +20,6 @@ include(${ITK_USE_FILE})
 target_link_libraries(imageprocessing PUBLIC
 ${ITK_LIBRARIES}
 utils
+renderable
 GeometricTools
 )

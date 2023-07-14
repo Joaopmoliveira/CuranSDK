@@ -10,18 +10,25 @@
 #include <optional>
 #include <mutex>
 #include "utils/TheadPool.h"
+#include <vsg/all.h>
+#include <vsgXchange/all.h>
+#include "rendering/Renderable.h"
 
 namespace curan{
-    namespace renderable {
+    namespace image {
+
         struct Clipping{
 	        std::array<double, 2> clipRectangleOrigin = { 0.0,0.0 }; 
 	        std::array<double, 2> clipRectangleSize = { 0.0,0.0 };
         };
 
-        struct IntegratedReconstructor : public vsg::Inherit<Renderable, IntegratedReconstructor>{
+        struct IntegratedReconstructor : public vsg::Inherit<renderable::Renderable, IntegratedReconstructor>{
         public:
             static constexpr size_t Dimension = 3;
-	        using output_type = itk::Image<float, Dimension>;
+            using input_pixel_type = unsigned char;
+            using input_type = itk::Image<input_pixel_type, Dimension>;
+            using output_pixel_type = float;
+	        using output_type = itk::Image<output_pixel_type, Dimension>;
             using accumulator_type = itk::Image<unsigned short, Dimension>;
 	        using resampler_output = itk::ResampleImageFilter<output_type, output_type>;
 	        using resampler_accumulator = itk::ResampleImageFilter<accumulator_type, accumulator_type>;
@@ -31,7 +38,7 @@ namespace curan{
 	        curan::image::reconstruction::Compounding compounding_strategy = curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE;
 
             std::optional<Clipping> clipping;
-	        std::vector<output_type::Pointer> frame_data;
+	        std::vector<input_type::Pointer> frame_data;
 
 	        output_type::SpacingType output_spacing;
 	        itk::Point<double,3> origin;
@@ -45,6 +52,7 @@ namespace curan{
         public:
 
             struct Info{
+                std::optional<std::string> identifier;
                 gte::OrientedBox3<double> volumetric_bounding_box;
                 output_type::SpacingType spacing;
                 Info(std::array<double,3> spacing,std::array<double,3> origin, std::array<double,3> size, std::array<std::array<double,3>,3> direction);
@@ -52,7 +60,7 @@ namespace curan{
 
 	    static constexpr int INPUT_COMPONENTS = 1;
 
-        static vsg::ref_ptr<Renderable> make(Info& info);
+        static vsg::ref_ptr<renderable::Renderable> make(Info& info);
 
 	    IntegratedReconstructor(const Info& info);
 
@@ -66,11 +74,9 @@ namespace curan{
 
         IntegratedReconstructor& set_clipping(const Clipping& new_clipping);
 
-        IntegratedReconstructor& add_frame(output_type::Pointer image_pointer);
+        IntegratedReconstructor& add_frame(input_type::Pointer image_pointer);
 
-        IntegratedReconstructor& add_frames(std::vector<output_type::Pointer>& images_vector);
-
-	    output_type::Pointer get_output_pointer();
+        IntegratedReconstructor& add_frames(std::vector<input_type::Pointer>& images_vector);
 
 	    bool update();
 
