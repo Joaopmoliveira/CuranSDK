@@ -19,4 +19,5 @@ target_link_libraries(imageprocessing PUBLIC
 ${ITK_LIBRARIES}
 utils
 GeometricTools
+renderable
 )
