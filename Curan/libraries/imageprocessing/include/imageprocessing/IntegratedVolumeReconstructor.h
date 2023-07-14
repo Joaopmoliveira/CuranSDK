@@ -78,8 +78,6 @@ namespace curan{
 
         IntegratedReconstructor& add_frames(std::vector<input_type::Pointer>& images_vector);
 
-	    output_type::Pointer get_output_pointer();
-
 	    bool update();
 
 		bool multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool);

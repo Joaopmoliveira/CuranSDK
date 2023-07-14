@@ -216,18 +216,6 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info){
     output_region.SetSize(output_size);
     output_region.SetIndex(output_start);
 
-    using ImportFilterType = itk::ImportImageFilter<output_pixel_type, Dimension>;
-
-    auto importFilter = ImportFilterType::New();
-    importFilter->SetRegion(output_region);
-    importFilter->SetOrigin(output_origin);
-    importFilter->SetSpacing(output_spacing);
-    importFilter->SetDirection(output_directorion);
-    const bool importImageFilterWillOwnTheBuffer = false;
-    importFilter->SetImportPointer(textureData->data(), textureData->size(), importImageFilterWillOwnTheBuffer);    
-    importFilter-update();
-    out_volume = importFilter->GetOutput();
-
 	acummulation_buffer = accumulator_type::New();
 	acummulation_buffer->SetRegions(output_region);
 	acummulation_buffer->SetOrigin(output_origin);
@@ -279,10 +267,6 @@ IntegratedReconstructor& IntegratedReconstructor::add_frames(std::vector<input_t
     return *(this);
 }
 
-IntegratedReconstructor::output_type::Pointer IntegratedReconstructor::get_output_pointer(){
-    return out_volume;
-}
-
 bool IntegratedReconstructor::update(){
 	gte::Vector<3, double> output_origin = volumetric_bounding_box.center
 	- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
@@ -315,10 +299,10 @@ bool IntegratedReconstructor::update(){
 	unsigned int accOverflow = 20;
 
 	curan::image::reconstruction::PasteSliceIntoVolumeInsertSliceParamsTemplated<input_pixel_type,output_pixel_type> paste_slice_info;
-	paste_slice_info.outPtr = out_volume->GetBufferPointer();
-    auto size_out = out_volume->GetLargestPossibleRegion().GetSize();
-    auto origin_out = out_volume->GetOrigin();
-    auto spacing_out = out_volume->GetSpacing();
+	paste_slice_info.outPtr = textureData->data();
+    auto size_out = acummulation_buffer->GetLargestPossibleRegion().GetSize();
+    auto origin_out = acummulation_buffer->GetOrigin();
+    auto spacing_out = acummulation_buffer->GetSpacing();
     paste_slice_info.out_origin[0] = origin_out[0];
     paste_slice_info.out_origin[1] = origin_out[1];
     paste_slice_info.out_origin[2] = origin_out[2];
