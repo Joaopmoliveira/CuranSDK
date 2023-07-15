@@ -80,6 +80,12 @@ namespace curan{
 
 	    bool update();
 
+        inline void reset(){
+            std::lock_guard<std::mutex> g{mut};
+            for(auto& pix = textureData->begin() ; pix != textureData->end(); ++pix)
+                *pix = 0.0;
+        } 
+
 		bool multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool);
 };
 

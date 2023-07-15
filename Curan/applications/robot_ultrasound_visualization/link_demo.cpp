@@ -85,7 +85,6 @@ int render(std::shared_ptr<SharedRobotState> state)
 
 	robot->attachToolToRobotModel(myTool.get());
 
-
     RigidBodyDynamics::Math::VectorNd measured_torque = RigidBodyDynamics::Math::VectorNd::Zero(7,1);
     Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
     Vector3d p_0_cur = Vector3d(0, 0, 0.045);

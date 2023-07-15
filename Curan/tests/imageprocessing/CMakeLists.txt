@@ -40,44 +40,12 @@ ${ITK_LIBRARIES}
 )
 
 
-add_executable(test_volume_reconstruction test_volume_creation.cpp)
-
-target_compile_definitions(test_volume_reconstruction PRIVATE vsgXchange_FOUND)
-target_compile_definitions(test_volume_reconstruction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-target_link_libraries(test_volume_reconstruction
-PUBLIC
-renderable
-imageprocessing
-${ITK_LIBRARIES}
-)
-
-add_executable(test_new_volume_reconstruction test_new_volume_reconstruction_api.cpp)
-
-target_compile_definitions(test_new_volume_reconstruction PRIVATE vsgXchange_FOUND)
-target_compile_definitions(test_new_volume_reconstruction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-target_link_libraries(test_new_volume_reconstruction
-PUBLIC
-renderable
-imageprocessing
-${ITK_LIBRARIES}
-)
 
 add_executable(test_debug_api debug_image_orientation_and_position.cpp)
 
 target_compile_definitions(test_debug_api PRIVATE vsgXchange_FOUND)
 target_compile_definitions(test_debug_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_link_libraries(test_debug_api
-PUBLIC
-renderable
-imageprocessing
-${ITK_LIBRARIES}
-)
-
-add_executable(test_multithreaded_reconstruction test_multithreaded_volume_reconstruction.cpp)
-
-target_compile_definitions(test_multithreaded_reconstruction PRIVATE vsgXchange_FOUND)
-target_compile_definitions(test_multithreaded_reconstruction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-target_link_libraries(test_multithreaded_reconstruction
 PUBLIC
 renderable
 imageprocessing
@@ -96,14 +64,4 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 
-add_executable(test_integrated_multithreaded_reconstruction test_integrated_multithreaded_solution.cpp)
-
-target_compile_definitions(test_integrated_multithreaded_reconstruction PRIVATE vsgXchange_FOUND)
-target_compile_definitions(test_integrated_multithreaded_reconstruction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-target_link_libraries(test_integrated_multithreaded_reconstruction
-PUBLIC
-communication
-renderable
-imageprocessing
-${ITK_LIBRARIES}
-)
+add_subdirectory(volumetric)
