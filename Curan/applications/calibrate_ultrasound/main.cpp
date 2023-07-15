@@ -119,19 +119,35 @@ int main(int argc, char* argv[]) {
 	ceres::Solver::Summary summary;
 	ceres::Solve(options, &problem, &summary);
 	std::cout << summary.BriefReport() << "\n";
-	
-	std::cout << "Initial: \n";
 
-	for (const auto& val : variables)
-		std::cout << 0.0 << " , ";
-	std::cout << "\n";
-	std::stringstream optimized_values;
-	std::cout << "Final: \n";
-	for (const auto& val : variables){
-		optimized_values << val << std::endl;
-		std::cout << val << " , ";
-	}
-	
+	double t1 = cos(variables[2]);
+    double t2 = sin(variables[2]);
+    double t3 = cos(variables[1]);
+	double t4 = sin(variables[1]);
+    double t5 = cos(variables[0]);
+    double t6 = sin(variables[0]);
+
+	Eigen::Matrix<double,4,4> transformation_matrix = Eigen::Matrix<double,4,4>::Identity();
+	transformation_matrix(0,0) = t1 * t3;
+	transformation_matrix(1,0) = t2 * t3;
+	transformation_matrix(2,0) = -t4;
+
+	transformation_matrix(0,1) = t1 * t4 * t6 - t2 * t5;
+	transformation_matrix(1,1) = t1 * t5 + t2 * t4 * t6;
+	transformation_matrix(2,1) = t3 * t6;
+
+	transformation_matrix(0,2) = t2 * t6 + t1 * t4 * t5;
+	transformation_matrix(1,2) = t2 * t4 * t5 - t1 * t6;
+	transformation_matrix(2,2) = t3 * t5;
+
+	transformation_matrix(0,3) = variables[3];
+	transformation_matrix(1,3) = variables[4];
+	transformation_matrix(2,3) = variables[5];
+
+	std::cout << "Initial: \n" << Eigen::Matrix<double,4,4>::Identity() << std::endl;
+	std::cout << "Final: \n" << transformation_matrix << std::endl;
+	std::cout << "(all units in meters)" << std::endl; 
+
 	auto return_current_time_and_date = [](){
 	    auto now = std::chrono::system_clock::now();
     	auto in_time_t = std::chrono::system_clock::to_time_t(now);
@@ -140,6 +156,9 @@ int main(int argc, char* argv[]) {
     	ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
    		return ss.str();
 	};
+
+	std::stringstream optimized_values;
+	optimized_values << transformation_matrix << std::endl;
 	
 	// Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the 
 	// tracker transformation ()
@@ -147,7 +166,7 @@ int main(int argc, char* argv[]) {
 
 	nlohmann::json calibration_data;
 	calibration_data["timestamp"] = return_current_time_and_date();
-	calibration_data["array_data"] = optimized_values.str();
+	calibration_data["homogeneous_transformation"] = optimized_values.str();
 	calibration_data["optimization_error"] = summary.final_cost;
 
 	// write prettified JSON to another file
