@@ -1,4 +1,4 @@
-#include "imageprocessing/StaticReconstructor.h"
+#include "imageprocessing/IntegratedVolumeReconstructor.h"
 #include <optional>
 #include "Mathematics/ConvexHull3.h"
 #include "Mathematics/ArbitraryPrecision.h"
@@ -40,38 +40,6 @@ void updateBaseTexture3D(vsg::vec4Array2D& image, OutputImageType::Pointer image
     }
 }
 
-void updateBaseTexture3D(vsg::floatArray3D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render)
-{
-    using OutputPixelType = float;
-    using InputImageType = itk::Image<unsigned char, 3>;
-    using OutputImageType = itk::Image<OutputPixelType, 3>;
-    using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
-    auto filter = FilterType::New();
-    filter->SetInput(image_to_render);
-
-    using RescaleType = itk::RescaleIntensityImageFilter<OutputImageType, OutputImageType>;
-    auto rescale = RescaleType::New();
-    rescale->SetInput(filter->GetOutput());
-    rescale->SetOutputMinimum(0.0);
-    rescale->SetOutputMaximum(1.0);
-
-    try{
-        rescale->Update();
-    } catch (const itk::ExceptionObject& e) {
-        std::cerr << "Error: " << e << std::endl;
-        throw std::runtime_error("error");
-    }
-
-    OutputImageType::Pointer out = rescale->GetOutput();
-
-    using IteratorType = itk::ImageRegionIteratorWithIndex<OutputImageType>;
-    IteratorType outputIt(out, out->GetRequestedRegion());
-    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
-        curan::image::StaticReconstructor::output_type::IndexType idx = outputIt.GetIndex();
-        image.set(idx[0], idx[1], idx[2], outputIt.Get());
-    }
-}
-
 void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
     //std::cout << "received image message" << std::endl;
     igtl::ImageMessage::Pointer imageMessage = igtl::ImageMessage::New();
@@ -86,7 +54,7 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infotexture.height = height;
         infotexture.width = width;
         infotexture.builder = vsg::Builder::create();
-        infotexture.spacing = {0.00024,0.00024,1};
+        infotexture.spacing = {0.0001852,0.0001852,1};
         infotexture.origin = {0.0,0.0,0.0};
         shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
         shared_state.window << *shared_state.texture;
@@ -102,7 +70,7 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
 
     local_mat[0][3] = local_mat[0][3]*1e-3;
     local_mat[1][3] = local_mat[1][3]*1e-3;
-    local_mat[2][3] = local_mat[2][3]*1e-3;
+    local_mat[2][3] = -local_mat[2][3]*1e-3;
 
 
 
@@ -194,17 +162,17 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
     }
 };
 
+/*
+
 void volume_update_operation(SharedState& shared_state){
     while(!shared_state.context.stopped()){
         if(shared_state.reconstructor.update() && shared_state.texture){
             auto buffer = shared_state.reconstructor.get_output_pointer();
-            auto updater = [buffer](vsg::floatArray3D& image){
-                updateBaseTexture3D(image, buffer);
-            };
-            shared_state.volume->cast<curan::renderable::Volume>()->update_volume(updater);
         };
     };
 }
+
+*/
 
 constexpr long width = 50;
 constexpr long height = 50;
@@ -225,45 +193,8 @@ int main(){
     info.window_size = size;
     curan::renderable::Window window{info};
 
-    curan::renderable::Box::Info infobox;
-    infobox.builder = vsg::Builder::create();
-    infobox.geomInfo.color = vsg::vec4(1.0,0.0,0.0,0.5);
-    infobox.geomInfo.dx = vsg::vec3(.121f,0.0,0.0);
-    infobox.geomInfo.dy = vsg::vec3(0.0,.146f,0.0);
-    infobox.geomInfo.dz = vsg::vec3(0.0,0.0,.271f);
-    infobox.geomInfo.position = vsg::vec3( 0.0606,0.0731,0.1349);
-    auto box = curan::renderable::Box::make(infobox);
-    vsg::dmat4 mat = vsg::translate(0.0,0.0,0.0);
-    mat[0] = vsg::vec4(0.9490,-0.0330,-0.3136,0.0);
-    mat[1] = vsg::vec4(0.0136,0.9979,-0.0638,0.0);
-    mat[2] = vsg::vec4(0.3150,0.0562,0.9474,0.0);
-    mat[3] = vsg::vec4(0.0750,-0.0500,-1.1710,1.0);
-    box->update_transform(mat);
-    window << box;
-
-    curan::renderable::Volume::Info volumeinfo;
-    volumeinfo.width = final_size[0]; 
-    volumeinfo.height = final_size[1];
-    volumeinfo.depth = final_size[2];
-    volumeinfo.spacing_x = final_spacing[0]*1e3;
-    volumeinfo.spacing_y = final_spacing[1]*1e3;
-    volumeinfo.spacing_z = final_spacing[2]*1e3;
-    auto volume = curan::renderable::Volume::make(volumeinfo);
-	auto casted_volume = volume->cast<curan::renderable::Volume>();
-    window << volume;
-
-    std::array<double,3> vol_origin = {0.0,0.0,0.0};
-	std::array<double,3> vol_spacing = {final_spacing[0],final_spacing[1],final_spacing[2]};
-	std::array<double,3> vol_size = {1.0,1.0,1.0};
-	std::array<std::array<double,3>,3> vol_direction;
-	vol_direction[0] = {1.0,0.0,0.0};
-	vol_direction[1] = {0.0,1.0,0.0};
-	vol_direction[2] = {0.0,0.0,1.0};
-	curan::image::StaticReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
-
-    SharedState shared_state = SharedState{window,io_context,recon_info,volume}; 
+    SharedState shared_state = SharedState{window,io_context}; 
     std::thread connector{[&](){connect(window,io_context,shared_state);}};
-    std::thread volume_updater{[&](){volume_update_operation(shared_state);}};
     window.run();
     std::cout << "stopping content from main thread" << std::endl;
     io_context.stop();

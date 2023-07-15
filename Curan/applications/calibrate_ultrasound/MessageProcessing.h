@@ -29,9 +29,9 @@ struct ConfigurationData {
 	std::array<double, 2> maximum_radius_limit = { 11.0,30.0 };
 	std::array<double, 2> sweep_angle_limit = { 0.1,0.8 };
 	std::array<double, 2> sigma_gradient_limit = { 1.0,20.0 };
-	std::array<double, 2> variance_limit = { 1.0,5.0 };
+	std::array<double, 2> variance_limit = { 1.0,10.0 };
 	std::array<double, 2> disk_ratio_limit = { 0.1,10.0 };
-	std::array<double, 2>  threshold_limit = { 50.0,150.0 };
+	std::array<double, 2>  threshold_limit = { 50.0,200.0 };
 
 	std::atomic<double> minimum_radius = 9.3;
 	std::atomic<double> maximum_radius = 14.5;

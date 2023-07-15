@@ -65,10 +65,10 @@
     <CoordinateDefinitions>
     <Transform From="Image" To="Tracker"
       Matrix="
-        1 0 0 0 
-		0 1 0 0
-		0 0 1 0
-        0	0	0	1"/>
+  0.998064 -0.0205487 -0.0587094  -0.319423
+ 0.0559133  -0.117162   0.991538  -0.218282
+-0.0272533    -0.9929  -0.115786 0.00950409
+         0          0          0          1"/>
   </CoordinateDefinitions>
   
  <PlusOpenIGTLinkServer 
