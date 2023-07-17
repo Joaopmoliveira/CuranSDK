@@ -6,7 +6,7 @@ namespace curan {
 namespace ui {
 
 Overlay::Overlay(std::unique_ptr<Container> contained,
-                 SkColor in_backgroundcolor) : main_page{std::move(LightWeightPage::make(std::move(contained),backgroundcolor))}
+                 SkColor in_backgroundcolor) : main_page{std::move(LightWeightPage::make(std::move(contained),in_backgroundcolor))}
 {
     	auto post_sig = [](Signal sig, bool page_interaction, ConfigDraw* config) {
 		std::visit(utilities::overloaded{

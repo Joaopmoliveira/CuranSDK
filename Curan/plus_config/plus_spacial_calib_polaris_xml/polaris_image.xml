@@ -8,7 +8,7 @@
     <Device
       Id="TrackerDevice"
       Type="PolarisTracker"
-      SerialPort="4"
+      SerialPort="5"
       BaudRate="115200"
       LocalTimeOffsetSec="0"
       ToolReferenceFrame="Polaris" >
