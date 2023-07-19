@@ -6,6 +6,7 @@
 #include <atomic>
 #include "friLBRClient.h"
 #include "rendering/DynamicTexture.h"
+#include <Eigen/Dense>
 
 /*
 This is a class which wraps the atomic behavior we desired. 
