@@ -39,7 +39,7 @@ struct ConfigurationData {
 	std::atomic<double> sigma_gradient = 5.0;
 	std::atomic<double> variance = 5.0;
 	std::atomic<double> disk_ratio = 2.888;
-	std::atomic<double> threshold = 70.0;
+	std::atomic<double> threshold = 125.0;
 
 	std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
 };

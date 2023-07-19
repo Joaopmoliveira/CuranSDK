@@ -4,10 +4,10 @@
 #include "rendering/Renderable.h"
 #include <optional>
 
-constexpr long width = 400;
-constexpr long height = 400;
-float spacing[3] = {0.0025 , 0.0025 , 0.0025};
-float final_spacing [3] = {0.0025,0.0025, 0.0025};
+constexpr long width = 500;
+constexpr long height = 500;
+float spacing[3] = {0.002 , 0.002 , 0.002};
+float final_spacing [3] = {0.002 , 0.002 , 0.002};
 
 using imagetype = itk::Image<unsigned char,3>;
 
@@ -83,7 +83,7 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
 	    curan::image::IntegratedReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
         auto integrated_volume =  curan::image::IntegratedReconstructor::make(recon_info);
         integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
-            .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
+            .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
         window << integrated_volume;
         
         auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(10);
@@ -99,7 +99,6 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
                 std::chrono::steady_clock::time_point elapsed_for_reconstruction = std::chrono::steady_clock::now();
                 auto val_elapsed_for_reconstruction = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_reconstruction - begin).count();
                 std::printf("added image (volume reconstruction %d)\n",val_elapsed_for_reconstruction);
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 ++counter;
                 if(stopping_condition)
                     return;

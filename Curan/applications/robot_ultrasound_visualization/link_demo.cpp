@@ -26,10 +26,16 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
         curan::renderable::DynamicTexture::Info infotexture;
         infotexture.height = y;
         infotexture.width = x;
-        infotexture.spacing = {0.02,0.02,0.02};
+        infotexture.spacing = {0.0001852,0.0001852,0.0001852};
         infotexture.origin = {0.0,0.0,0.0};
         infotexture.builder = vsg::Builder::create();
         state->dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
+        vsg::dmat4 homogeneous_transformation;
+        for(size_t row = 0 ; state->calibration_matrix.rows(); ++row)
+            for(size_t col = 0; state->calibration_matrix.cols(); ++col)
+                homogeneous_transformation(col,row) = state->calibration_matrix(row,col);
+        state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(homogeneous_transformation);
+        state->robot->append(*state->dynamic_texture);
     }
     
     auto updateBaseTexture = [message_body](vsg::vec4Array2D& image)
@@ -55,12 +61,6 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
         }
     };
     state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
-
-
-	igtl::Matrix4x4 local_mat;
-	message_body->GetMatrix(local_mat);
-
-
 	return true;
 }
 
@@ -81,7 +81,7 @@ bool process_message(std::shared_ptr<SharedRobotState> state , size_t protocol_d
     return false;
 }
 
-int communication(std::shared_ptr<SharedRobotState> state,curan::renderable::Window& window){
+int communication(std::shared_ptr<SharedRobotState> state){
     asio::io_context context;
     curan::communication::interface_igtl igtlink_interface;
 	curan::communication::Client::Info construction{ context,igtlink_interface };
@@ -92,7 +92,7 @@ int communication(std::shared_ptr<SharedRobotState> state,curan::renderable::Win
 
 	auto lam = [&](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 	try{
-		if (process_message(state,protocol_defined_val, er, val))
+		if (process_message(state,protocol_defined_val, er, val) || state->should_kill_myself())
 			context.stop();
 	} catch(...)    {
 		std::cout << "Exception was thrown\n";
@@ -111,23 +111,23 @@ int render(std::shared_ptr<SharedRobotState> state)
     info.is_debug = false;
     info.screen_number = 0;
     info.title = "myviewer";
-    curan::renderable::Window::WindowSize size{1000, 800};
+    curan::renderable::Window::WindowSize size{2000, 1200};
     info.window_size = size;
     curan::renderable::Window window{info};
-
-    auto communication_callable = [](){
-
-    };
-    //here I should lauch the thread that does the communication and renders the image above the robotic system 
-    std::thread communication_thread(communication_callable);
 
     std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
     curan::renderable::SequencialLinks::Info create_info;
     create_info.convetion = vsg::CoordinateConvention::Y_UP;
     create_info.json_path = robot_path;
     create_info.number_of_links = 8;
-    vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
-    window << robotRenderable;
+    state->robot = curan::renderable::SequencialLinks::make(create_info);
+    window << state->robot;
+
+    auto communication_callable = [state](){
+        communication(state);
+    };
+    //here I should lauch the thread that does the communication and renders the image above the robotic system 
+    std::thread communication_thread(communication_callable);
 
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
 	
@@ -147,7 +147,7 @@ int render(std::shared_ptr<SharedRobotState> state)
     Vector3d p_0_cur = Vector3d(0, 0, 0.045);
     RigidBodyDynamics::Math::MatrixNd Jacobian = RigidBodyDynamics::Math::MatrixNd::Zero(6, NUMBER_OF_JOINTS);
 
-    auto robotRenderableCasted = robotRenderable->cast<curan::renderable::SequencialLinks>();
+    auto robotRenderableCasted = state->robot->cast<curan::renderable::SequencialLinks>();
 
     while(window.run_once() && !state->should_kill_myself()) {
         auto current_reading = state->read();

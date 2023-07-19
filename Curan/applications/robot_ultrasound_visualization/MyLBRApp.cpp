@@ -43,6 +43,7 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include <chrono>
 #include <thread>
 #include "link_demo.h"
+#include <nlohmann/json.hpp>
 
 // Variable with the default ID of the robotic system
 constexpr size_t portID = 30200;
@@ -58,28 +59,80 @@ void signal_handler(int signal)
   gSignalStatus = signal;
 }
 
+Eigen::MatrixXd convert_matrix(std::stringstream& data)
+{
+ 
+    // the inspiration for creating this function was drawn from here (I did NOT copy and paste the code)
+    // https://stackoverflow.com/questions/34247057/how-to-read-csv-file-and-assign-to-eigen-matrix
+     
+    // the input is the file: "fileToOpen.csv":
+    // a,b,c
+    // d,e,f
+    // This function converts input file data into the Eigen matrix format
+ 
+ 
+ 
+    // the matrix entries are stored in this variable row-wise. For example if we have the matrix:
+    // M=[a b c 
+    //    d e f]
+    // the entries are stored as matrixEntries=[a,b,c,d,e,f], that is the variable "matrixEntries" is a row vector
+    // later on, this vector is mapped into the Eigen matrix format
+    std::vector<double> matrixEntries;
+ 
+    // this variable is used to store the row of the matrix that contains commas 
+     std::string matrixRowString;
+ 
+    // this variable is used to store the matrix entry;
+     std::string matrixEntry;
+ 
+    // this variable is used to track the number of rows
+    int matrixRowNumber = 0;
+ 
+ 
+    while (getline(data, matrixRowString)) // here we read a row by row of matrixDataFile and store every line into the string variable matrixRowString
+    {
+         std::stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
+ 
+        while (getline(matrixRowStringStream, matrixEntry, ',')) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
+        {
+            matrixEntries.push_back(stod(matrixEntry));   //here we convert the string to double and fill in the row vector storing all the matrix entries
+        }
+        matrixRowNumber++; //update the column numbers
+    }
+ 
+    // here we convet the vector variable into the matrix and return the resulting object, 
+    // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
+    return Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
+ 
+}
+
 int main (int argc, char** argv)
 {
-   // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
-   // TODO
-
    std::signal(SIGINT, signal_handler);
 
-   /***************************************************************************/
-   /*                                                                         */
-   /*   Place user Client Code here                                           */
-   /*                                                                         */
-   /***************************************************************************/
    auto robot_state = SharedRobotState::make_shared();
+   try{
+   // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
+   nlohmann::json calibration_data;
+	std::ifstream in("optimization_result.json");
+	in >> calibration_data;
+   std::string timestamp = calibration_data["timestamp"];
+	std::string homogenenous_transformation = calibration_data["homogeneous_transformation"];
+	double error = calibration_data["optimization_error"];
+	std::printf("Using calibration with average error of : %f\n on the date",error);
+   std::cout << timestamp << std::endl;
+   std::stringstream matrix_strm;
+   matrix_strm << homogenenous_transformation;
+   robot_state->calibration_matrix = convert_matrix(matrix_strm);
+   std::cout << "with the homogeneous matrix :\n" <<  robot_state->calibration_matrix << std::endl;
+   } catch(...){
+       std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
+      return 1;
+   }
+
+
    // create new client
 	MyLBRClient client{robot_state};
-
-   /***************************************************************************/
-   /*                                                                         */
-   /*   Standard application structure                                        */
-   /*   Configuration                                                         */
-   /*                                                                         */
-   /***************************************************************************/
 
    // create new udp connection	
    KUKA::FRI::UdpConnection connection;
@@ -98,13 +151,6 @@ int main (int argc, char** argv)
       render(robot_state);
    };
    std::thread render_process(capture);
-
-   /***************************************************************************/
-   /*                                                                         */
-   /*   Standard application structure                                        */
-   /*   Execution mainloop                                                    */
-   /*                                                                         */
-   /***************************************************************************/
 
    // repeatedly call the step routine to receive and process FRI packets
    try
