@@ -83,7 +83,7 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
 	    curan::image::IntegratedReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
         auto integrated_volume =  curan::image::IntegratedReconstructor::make(recon_info);
         integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
-            .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
+            .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
         window << integrated_volume;
         
         auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(10);

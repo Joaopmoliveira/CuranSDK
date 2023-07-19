@@ -9,9 +9,101 @@
 #include "rendering/Renderable.h"
 #include "rendering/SequencialLinks.h"
 #include "rendering/DynamicTexture.h"
+#include <asio.hpp>
+#include "communication/Client.h"
+#include "communication/Server.h"
+#include "communication/ProtoIGTL.h"
+
+bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::MessageBase::Pointer val){
+	igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
+	message_body->Copy(val);
+	int c = message_body->Unpack(1);
+	if (!(c & igtl::MessageHeader::UNPACK_BODY))
+		return false; //failed to unpack message, therefore returning without doing anything
+    if(!state->dynamic_texture){
+    	int x, y, z;
+	    message_body->GetDimensions(x, y, z);
+        curan::renderable::DynamicTexture::Info infotexture;
+        infotexture.height = y;
+        infotexture.width = x;
+        infotexture.spacing = {0.02,0.02,0.02};
+        infotexture.origin = {0.0,0.0,0.0};
+        infotexture.builder = vsg::Builder::create();
+        state->dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
+    }
+    
+    auto updateBaseTexture = [message_body](vsg::vec4Array2D& image)
+    {
+        int x, y, z;
+	    message_body->GetDimensions(x, y, z);
+        auto image_raw = (unsigned char*)message_body->GetScalarPointer();
+        assert(image.width()==x && image.height()==y);
+        using value_type = typename vsg::vec4Array2D::value_type;
+        for (uint32_t r = 0; r < image.height(); ++r)
+        {
+            value_type* ptr = &image.at(0, r);
+            for (size_t c = 0; c < image.width(); ++c)
+            {
+                ptr->r = *image_raw;
+                ptr->g = *image_raw;
+                ptr->b = *image_raw;
+                ptr->a = 1.0f;
+
+                ++ptr;
+                ++image_raw;
+            }
+        }
+    };
+    state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+
+
+	igtl::Matrix4x4 local_mat;
+	message_body->GetMatrix(local_mat);
+
+
+	return true;
+}
+
+
+std::map<std::string,std::function<bool(std::shared_ptr<SharedRobotState> state , igtl::MessageBase::Pointer val)>> openigtlink_callbacks{
+	{"IMAGE",process_image_message}
+};
+
+bool process_message(std::shared_ptr<SharedRobotState> state , size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
+	assert(val.IsNotNull());
+	if (er)
+        return true;
+
+    if (auto search = openigtlink_callbacks.find(val->GetMessageType()); search != openigtlink_callbacks.end())
+        search->second(state,val);
+    else
+        std::cout << "No functionality for function received\n";
+    return false;
+}
+
+int communication(std::shared_ptr<SharedRobotState> state,curan::renderable::Window& window){
+    asio::io_context context;
+    curan::communication::interface_igtl igtlink_interface;
+	curan::communication::Client::Info construction{ context,igtlink_interface };
+	asio::ip::tcp::resolver resolver(context);
+	auto endpoints = resolver.resolve("localhost", std::to_string(18944));
+	construction.endpoints = endpoints;
+	curan::communication::Client client{ construction };
+
+	auto lam = [&](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
+	try{
+		if (process_message(state,protocol_defined_val, er, val))
+			context.stop();
+	} catch(...)    {
+		std::cout << "Exception was thrown\n";
+	}
+	};
+	auto connectionstatus = client.connect(lam);
+	context.run();
+}
 
 int render(std::shared_ptr<SharedRobotState> state)
-{
+{ 
     curan::renderable::Window::Info info;
     info.api_dump = false;
     info.display = "";
@@ -23,6 +115,12 @@ int render(std::shared_ptr<SharedRobotState> state)
     info.window_size = size;
     curan::renderable::Window window{info};
 
+    auto communication_callable = [](){
+
+    };
+    //here I should lauch the thread that does the communication and renders the image above the robotic system 
+    std::thread communication_thread(communication_callable);
+
     std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
     curan::renderable::SequencialLinks::Info create_info;
     create_info.convetion = vsg::CoordinateConvention::Y_UP;
@@ -30,47 +128,6 @@ int render(std::shared_ptr<SharedRobotState> state)
     create_info.number_of_links = 8;
     vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
     window << robotRenderable;
-
-    curan::renderable::DynamicTexture::Info infotexture;
-    infotexture.height = 100;
-    infotexture.width = 100;
-    infotexture.spacing = {0.02,0.02,0.02};
-    infotexture.origin = {0.0,1.0,0.0};
-    infotexture.builder = vsg::Builder::create();
-    auto dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
-    dynamic_texture->update_transform(vsg::rotate<double>(vsg::radians(90.0),1.0,0.0,0.0)*vsg::translate<double>(0.0,0.126,0.0));
-    robotRenderable->append(dynamic_texture);
-
-    float value = 1.0;
-    auto updateBaseTexture = [value](vsg::vec4Array2D& image)
-    {
-        using value_type = typename vsg::vec4Array2D::value_type;
-        for (uint32_t r = 0; r < image.height(); ++r)
-        {
-            float r_ratio = static_cast<float>(r) / static_cast<float>(image.height() - 1);
-            value_type* ptr = &image.at(0, r);
-            for (size_t c = 0; c < image.width(); ++c)
-            {
-                float c_ratio = static_cast<float>(c) / static_cast<float>(image.width() - 1);
-
-                vsg::vec2 delta((r_ratio - 0.5f), (c_ratio - 0.5f));
-
-                float angle = atan2(delta.x, delta.y);
-
-                float distance_from_center = vsg::length(delta);
-
-                float intensity = (sin(1.0f * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
-
-                ptr->r = intensity;
-                ptr->g = intensity;
-                ptr->b = intensity;
-                ptr->a = 1.0f;
-
-                ++ptr;
-            }
-        }
-    };
-    dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
 
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
 	
@@ -117,6 +174,6 @@ int render(std::shared_ptr<SharedRobotState> state)
 
         q_old = iiwa->q;
     }
-
+    communication_thread.join();
     return 0;
 }

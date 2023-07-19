@@ -13,14 +13,10 @@
       LocalTimeOffsetSec="0"
       ToolReferenceFrame="Polaris" >
       <DataSources>
-        <DataSource Type="Tool" Id="Probe" RomFile="NdiToolDefinitions/8700339.rom" />
-        <DataSource Type="Tool" Id="Stylus" RomFile="NdiToolDefinitions/8700340.rom" />
         <DataSource Type="Tool" Id="Tracker" RomFile="NdiToolDefinitions/8700449.rom" />
       </DataSources>
       <OutputChannels>
         <OutputChannel Id="TrackerStream" >
-          <DataSource Id="Probe"/>
-          <DataSource Id="Stylus"/>
 		  <DataSource Id="Tracker"/>
         </OutputChannel>
       </OutputChannels>
@@ -29,7 +25,7 @@
       Id="VideoDevice" 
       Type="ICCapturing"  
 	  AcquisitionRate="25"
-	  LocalTimeOffsetSec="0"
+	  LocalTimeOffsetSec="-0.119"
       DeviceName="DFG/USB2pro"
       VideoNorm="PAL_B"
       VideoFormat="Y800"
@@ -65,10 +61,10 @@
     <CoordinateDefinitions>
     <Transform From="Image" To="Tracker"
       Matrix="
-        1 0 0 0 
-		0 1 0 0
-		0 0 1 0
-        0	0	0	1"/>
+      1 0 0 0 
+		  0 1 0 0
+		  0 0 1 0
+      0 0	0 1"/>
   </CoordinateDefinitions>
   
  <PlusOpenIGTLinkServer 
@@ -86,5 +82,4 @@ OutputChannelId="TrackedVideoStream" >
 		</ImageNames>
 	</DefaultClientInfo>
   </PlusOpenIGTLinkServer> 
-  
 </PlusConfiguration>

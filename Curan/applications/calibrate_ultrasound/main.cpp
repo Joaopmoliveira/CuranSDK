@@ -70,8 +70,22 @@ int main(int argc, char* argv[]) {
 
 	curan::optim::WireData optimizationdata;
 	optimizationdata.wire_data.reserve(number_of_strings * processing->list_of_recorded_points.size());
+
+	nlohmann::json flange_data_to_matlab;
+	flange_data_to_matlab["number_of_observations"] = processing->list_of_recorded_points.size();
+	flange_data_to_matlab["number_of_wires"] = number_of_strings;
 	
+	size_t counter = 0;
 	for (const auto& f : processing->list_of_recorded_points) {
+		nlohmann::json recording;
+		std::stringstream ss;
+		ss << f.flange_data;
+		recording["flange_data"] = ss.str();
+		ss.str("");
+		ss << f.segmented_wires;
+		recording["wire_config"] = ss.str();
+		std::string val = "recording_" + std::to_string(counter);
+		flange_data_to_matlab[val] = recording;
 		curan::optim::Observation localobservation;
 		localobservation.flange_configuration.values[0] = f.flange_data(0, 0);
 		localobservation.flange_configuration.values[1] = f.flange_data(1, 0);
@@ -89,15 +103,16 @@ int main(int argc, char* argv[]) {
 		localobservation.flange_configuration.values[10] = f.flange_data(1, 3)*1e-3;
 		localobservation.flange_configuration.values[11] = f.flange_data(2, 3)*1e-3;
 
-		size_t wire_number = 1;
+		size_t wire_number = 0;
 		for (const auto& wire_observation : f.segmented_wires.colwise()) {
 			localobservation.wire_number = wire_number;
 			localobservation.wire_data.values[0] = wire_observation(0, 0)*0.0001852;
 			localobservation.wire_data.values[1] = wire_observation(1, 0)*0.0001852;
-			localobservation.wire_data.values[2] = wire_observation(2, 0)*0.0001852;
+			localobservation.wire_data.values[2] = 0.0;
 			optimizationdata.wire_data.push_back(localobservation);
 			++wire_number;
 		}
+		++counter;
 	}
 
 	for (auto& val : variables)
@@ -173,5 +188,8 @@ int main(int argc, char* argv[]) {
 	std::ofstream o("optimization_result.json");
 	o << calibration_data;
 	std::cout << calibration_data << std::endl;
+
+	std::ofstream data_to_matlab("data_to_matlab.json");
+	data_to_matlab << flange_data_to_matlab << std::endl;
 	return 0;
 }

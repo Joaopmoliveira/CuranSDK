@@ -14,6 +14,7 @@ endif(WIN32)
 
 target_link_libraries(RealTimeRobotVisualizer
 PUBLIC
+communication
 KukaRobotLibrary 
 FRILibrary
 robotParameters

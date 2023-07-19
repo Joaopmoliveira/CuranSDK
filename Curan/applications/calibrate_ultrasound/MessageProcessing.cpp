@@ -90,8 +90,6 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	filter->ThresholdOutside(lowerThreshold, upperThreshold);
 	filter->SetOutsideValue(0);
 
-
-
 	using RescaleTypeToFloat = itk::RescaleIntensityImageFilter<ImageType, FloatImageType>;
 	auto rescaletofloat = RescaleTypeToFloat::New();
 	rescaletofloat->SetInput(filter->GetOutput());
@@ -179,6 +177,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	if (processor->list_of_recorded_points.size() == 0 && processor->should_record) {
 		//if first time we assume that the matrix has the correct number of observations, i.e it has number_of_wires observations
 		observation_n.segmented_wires = segmented_wires;
+		std::cout << "recorded first point \n";
 		processor->list_of_recorded_points.push_back(observation_n);
 	}
 	else {
@@ -186,7 +185,11 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			auto possible_arrangement = rearrange_wire_geometry(segmented_wires, processor->list_of_recorded_points.back().segmented_wires,processor->threshold);
 			if (possible_arrangement) {
 				observation_n.segmented_wires = *possible_arrangement;
+				segmented_wires = observation_n.segmented_wires;
 				processor->list_of_recorded_points.push_back(observation_n);
+				std::printf("recorded another point cols size: %d \n",segmented_wires.cols());
+			} else{
+				std::printf("possible arrangement failure \n");
 			}
 		}
 
@@ -205,7 +208,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		auto special_custom = [x,y,processor,segmented_wires, local_colors](SkCanvas* canvas, SkRect allowed_region) {
 			float scalling_factor_x = allowed_region.width()/x;
 			float scalling_factor_y = allowed_region.height()/y;
-			float radius = 15;
+			float radius = 5;
 			SkPaint paint_square;
 			paint_square.setStyle(SkPaint::kFill_Style);
 			paint_square.setAntiAlias(true);
@@ -249,7 +252,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	}
 	end = std::chrono::steady_clock::now();
 	auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-	if(time_elapsed>30)
+	if(time_elapsed>40)
 		std::printf("warning: reduce brightness of image because processing size is too large (%d milliseconds)\n",time_elapsed);
 	return true;
 }
@@ -295,12 +298,10 @@ void ProcessingMessage::communicate() {
 		}catch(...){
 			std::cout << "Exception was thrown\n";
 		}
-
 	};
 	auto connectionstatus = client.connect(lam);
 	io_context.run();
 	button->set_waiting_color(SK_ColorRED);
-	list_of_recorded_points.clear();
 	return;
 }
 

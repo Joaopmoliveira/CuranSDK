@@ -2,34 +2,38 @@
 
   <DataCollection StartupDelaySec="1.0">
     <DeviceSet 
-      Name="polaris + image"
-      Description="polaris + image" />
+      Name="robot + image"
+      Description="robot + image" />
 
-    <Device
-      Id="TrackerDevice"
-      Type="PolarisTracker"
-      SerialPort="4"
-      BaudRate="115200"
-      LocalTimeOffsetSec="0"
-      ToolReferenceFrame="Polaris" >
-      <DataSources>
-        <DataSource Type="Tool" Id="Probe" RomFile="NdiToolDefinitions/8700339.rom" />
-        <DataSource Type="Tool" Id="Stylus" RomFile="NdiToolDefinitions/8700340.rom" />
-        <DataSource Type="Tool" Id="Tracker" RomFile="NdiToolDefinitions/8700449.rom" />
-      </DataSources>
-      <OutputChannels>
-        <OutputChannel Id="TrackerStream" >
-          <DataSource Id="Probe"/>
-          <DataSource Id="Stylus"/>
-		  <DataSource Id="Tracker"/>
-        </OutputChannel>
-      </OutputChannels>
-    </Device>
+<Device
+		Id="ROBOT"
+		Type="OpenIGTLinkTracker"
+		LocalTimeOffsetSec="0"
+		ServerAddress="172.31.1.148"
+		ServerPort="50000"
+		MessageType="TDATA"
+		ToolReferenceFrame="Base"
+		IgtlMessageCrcCheckEnabled="true"
+		AcquisitionRate="25"
+		UseReceivedTimestamps="false"
+		SendTimeoutSec="0.2"
+		UseLastTransformsOnReceiveTimeout="true"
+		ReconnectOnReceiveTimeout="true" 
+		ReceiveTimeoutSec ="0.5">
+		<DataSources>
+			<DataSource Type="Tool" Id="Flange" /> 
+		</DataSources>
+		<OutputChannels>
+			<OutputChannel Id="RobotStream">
+				<DataSource Id="Flange" />
+		</OutputChannel>
+		</OutputChannels>
+	</Device>
 	<Device
       Id="VideoDevice" 
       Type="ICCapturing"  
 	  AcquisitionRate="25"
-	  LocalTimeOffsetSec="0"
+	  LocalTimeOffsetSec="-0.1219"
       DeviceName="DFG/USB2pro"
       VideoNorm="PAL_B"
       VideoFormat="Y800"
@@ -53,7 +57,7 @@
 		Id="VideoMixer" 
 		Type="VirtualMixer" >
 		<InputChannels>
-			<InputChannel Id="TrackerStream" />
+			<InputChannel Id="RobotStream" />
 			<InputChannel Id="VideoStream" />
 		</InputChannels>
 		<OutputChannels>
@@ -63,7 +67,7 @@
   </DataCollection>
   
     <CoordinateDefinitions>
-    <Transform From="Image" To="Tracker"
+    <Transform From="Image" To="Flange"
       Matrix="
         1 0 0 0 
 		0 1 0 0
@@ -79,12 +83,35 @@ SendValidTransformsOnly="true"
 OutputChannelId="TrackedVideoStream" > 
 	<DefaultClientInfo> 
 		<MessageTypes> 
+			<Message Type="TRANSFORM" />
 			<Message Type="IMAGE" />
 		</MessageTypes>
+		<TransformNames> 
+				<Transform Name="FlangeToBase" />
+			</TransformNames>
 		<ImageNames>
-			<Image Name="Image" EmbeddedTransformToFrame="Polaris"/>
+			<Image Name="Image" EmbeddedTransformToFrame="Base"/>
 		</ImageNames>
 	</DefaultClientInfo>
   </PlusOpenIGTLinkServer> 
+  
+ <fCal
+    NumberOfCalibrationImagesToAcquire="200"
+    NumberOfValidationImagesToAcquire="100"
+    NumberOfStylusCalibrationPointsToAcquire="200"
+    RecordingIntervalMs="100"
+    MaxTimeSpentWithProcessingMs="70"
+    ImageCoordinateFrame="Image"
+    ProbeCoordinateFrame="Flange"
+    ReferenceCoordinateFrame="Base"
+    TransducerOriginCoordinateFrame="TransducerOrigin"
+    TransducerOriginPixelCoordinateFrame="TransducerOriginPixel"
+    TemporalCalibrationDurationSec="10"
+    FixedChannelId="VideoStream" 
+    FixedSourceId="Video"
+    MovingChannelId="RobotStream"
+    MovingSourceId="FlangeToBase"
+    DefaultSelectedChannelId="TrackedVideoStream" 
+    FreeHandStartupDelaySec="3" />
   
 </PlusConfiguration>

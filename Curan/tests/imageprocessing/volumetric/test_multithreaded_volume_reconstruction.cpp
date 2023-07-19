@@ -5,10 +5,10 @@
 #include <optional>
 #include "imageprocessing/SplicingTools.h"
 
-constexpr long width = 250;
-constexpr long height = 250;
-float spacing[3] = {0.004 , 0.004 , 0.004};
-float final_spacing [3] = {0.004,0.004, 0.004};
+constexpr long width = 500;
+constexpr long height = 500;
+float spacing[3] = {0.002 , 0.002 , 0.002};
+float final_spacing [3] = {0.002 , 0.002 , 0.002};
 
 void updateBaseTexture3DMultiThreaded(vsg::floatArray3D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render,std::shared_ptr<curan::utilities::ThreadPool> shared_pool)
 {

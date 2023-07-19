@@ -8,9 +8,9 @@
     <Device
       Id="TrackerDevice"
       Type="PolarisTracker"
-      SerialPort="4"
+      SerialPort="5"
       BaudRate="115200"
-      LocalTimeOffsetSec="0"
+      LocalTimeOffsetSec="0.00"
       ToolReferenceFrame="Polaris" >
       <DataSources>
         <DataSource Type="Tool" Id="Probe" RomFile="NdiToolDefinitions/8700339.rom" />
@@ -29,7 +29,7 @@
       Id="VideoDevice" 
       Type="ICCapturing"  
 	  AcquisitionRate="25"
-	  LocalTimeOffsetSec="0"
+	  LocalTimeOffsetSec="-0.119"
       DeviceName="DFG/USB2pro"
       VideoNorm="PAL_B"
       VideoFormat="Y800"
@@ -65,10 +65,10 @@
     <CoordinateDefinitions>
     <Transform From="Image" To="Tracker"
       Matrix="
-  0.998064 -0.0205487 -0.0587094  -0.319423
- 0.0559133  -0.117162   0.991538  -0.218282
--0.0272533    -0.9929  -0.115786 0.00950409
-         0          0          0          1"/>
+  1 0 0 0
+  0 1 0 0 
+  0 0 1 0 
+  0 0 0 1"/>
   </CoordinateDefinitions>
   
  <PlusOpenIGTLinkServer 
@@ -86,5 +86,24 @@ OutputChannelId="TrackedVideoStream" >
 		</ImageNames>
 	</DefaultClientInfo>
   </PlusOpenIGTLinkServer> 
+  
+<fCal
+    NumberOfCalibrationImagesToAcquire="200"
+    NumberOfValidationImagesToAcquire="100"
+    NumberOfStylusCalibrationPointsToAcquire="200"
+    RecordingIntervalMs="100"
+    MaxTimeSpentWithProcessingMs="70"
+    ImageCoordinateFrame="Image"
+    ProbeCoordinateFrame="Tracker"
+    ReferenceCoordinateFrame="Polaris"
+    TransducerOriginCoordinateFrame="TransducerOrigin"
+    TransducerOriginPixelCoordinateFrame="TransducerOriginPixel"
+    TemporalCalibrationDurationSec="10"
+    FixedChannelId="VideoStream" 
+    FixedSourceId="Video"
+    MovingChannelId="TrackerStream"
+    MovingSourceId="TrackerToPolaris"
+    DefaultSelectedChannelId="TrackedVideoStream" 
+    FreeHandStartupDelaySec="3" />
   
 </PlusConfiguration>
