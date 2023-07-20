@@ -226,7 +226,6 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	}
 	else {
 		processor->processed_viwer->clear_custom_drawingcall();
-		//ImageType::Pointer localImage = rescale->GetOutput();
 		ImageType::Pointer localImage = importFilter->GetOutput();
 		auto lam = [message_body,localImage, x, y](SkPixmap& requested) {
 			auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
