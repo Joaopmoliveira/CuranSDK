@@ -101,7 +101,6 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
             std::chrono::steady_clock::time_point elapsed_for_reconstruction = std::chrono::steady_clock::now();
             auto val_elapsed_for_reconstruction = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_reconstruction - begin).count();
             std::printf("added image (volume reconstruction %d)\n",val_elapsed_for_reconstruction);
-            std::this_thread::sleep_for(std::chrono::milliseconds(25));
             ++counter;
             if(stopping_condition)
                 return;

@@ -14,10 +14,12 @@ endif(WIN32)
 
 target_link_libraries(RealTimeRobotVisualizer
 PUBLIC
+communication
 KukaRobotLibrary 
 FRILibrary
 robotParameters
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+Eigen3::Eigen
 )

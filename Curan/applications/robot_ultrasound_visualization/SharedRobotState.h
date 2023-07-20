@@ -5,6 +5,8 @@
 #include <memory>
 #include <atomic>
 #include "friLBRClient.h"
+#include "rendering/DynamicTexture.h"
+#include <Eigen/Dense>
 
 /*
 This is a class which wraps the atomic behavior we desired. 
@@ -28,6 +30,9 @@ class SharedRobotState : std::enable_shared_from_this<SharedRobotState>{
     std::atomic<bool> commit_senpuko;
     SharedRobotState();
 public:
+    std::optional<vsg::ref_ptr<curan::renderable::Renderable>> dynamic_texture;
+    vsg::ref_ptr<curan::renderable::Renderable> robot;
+    Eigen::Matrix<double,4,4> calibration_matrix;
     static std::shared_ptr<SharedRobotState> make_shared();
     inline KUKA::FRI::LBRState read(){
         return current_state.load(std::memory_order_relaxed);

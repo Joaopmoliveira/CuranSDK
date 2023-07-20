@@ -29,17 +29,17 @@ struct ConfigurationData {
 	std::array<double, 2> maximum_radius_limit = { 11.0,30.0 };
 	std::array<double, 2> sweep_angle_limit = { 0.1,0.8 };
 	std::array<double, 2> sigma_gradient_limit = { 1.0,20.0 };
-	std::array<double, 2> variance_limit = { 1.0,5.0 };
+	std::array<double, 2> variance_limit = { 1.0,10.0 };
 	std::array<double, 2> disk_ratio_limit = { 0.1,10.0 };
-	std::array<double, 2>  threshold_limit = { 50.0,150.0 };
+	std::array<double, 2> threshold_limit = { 50.0,200.0 };
 
-	std::atomic<double> minimum_radius = 9.3;
-	std::atomic<double> maximum_radius = 14.5;
+	std::atomic<double> minimum_radius = 10.0;
+	std::atomic<double> maximum_radius = 11.5;
 	std::atomic<double> sweep_angle = 0.26;
-	std::atomic<double> sigma_gradient = 12.755;
-	std::atomic<double> variance = 5;
+	std::atomic<double> sigma_gradient = 5.0;
+	std::atomic<double> variance = 5.0;
 	std::atomic<double> disk_ratio = 2.888;
-	std::atomic<double> threshold = 110.0;
+	std::atomic<double> threshold = 125.0;
 
 	std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
 };
@@ -61,7 +61,8 @@ struct ProcessingMessage {
 	curan::ui::Button* button;
 	curan::ui::Button* button_start_collection;
 	size_t number_of_circles = 3;
-	std::vector<SkColor> colors = { SK_ColorMAGENTA,SK_ColorBLUE,SK_ColorGREEN };
+	size_t number_of_circles_plus_extra = 5;
+	std::vector<SkColor> colors = { SK_ColorMAGENTA,SK_ColorBLUE,SK_ColorGREEN,SK_ColorYELLOW,SK_ColorRED};
 	asio::io_context io_context;
 	ConfigurationData& configuration;
 	double threshold = 70.0;

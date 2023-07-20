@@ -2,24 +2,23 @@
 #include "optimization/WireCalibration.h"
 
 std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(Eigen::Matrix<double, 3, Eigen::Dynamic>& current, Eigen::Matrix<double, 3, Eigen::Dynamic>& previous, double threshold) {
-	assert(current.cols() == previous.cols());
-	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> distance_matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(previous.cols(), previous.cols());
-	for (size_t distance_row = 0; distance_row < previous.cols(); ++distance_row) {
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> distance_matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(current.cols(), previous.cols());
+	for (size_t distance_row = 0; distance_row < current.cols(); ++distance_row) {
 		Eigen::Matrix<double, 3, 1> current_col = current.col(distance_row);
 		for (size_t distance_col = 0; distance_col < previous.cols(); ++distance_col) {
 			Eigen::Matrix<double, 3, 1> previous_col = previous.col(distance_col);
 			distance_matrix(distance_row, distance_col) = (previous_col - current_col).norm();
 		}
 	}
-	Eigen::Matrix<double, 3, Eigen::Dynamic> local_copy = current;
+	Eigen::Matrix<double, 3, Eigen::Dynamic> local_copy = previous;
 	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Index minIndex;
 	std::vector<size_t> index_mapping;
 	index_mapping.resize(previous.cols());
 	size_t ordered_indices = 0;
-	for (const auto& row : distance_matrix.rowwise()) {
+	for (const auto& row : distance_matrix.colwise()) {
 		double cost = row.minCoeff(&minIndex);
 		index_mapping[ordered_indices] = minIndex;
-		local_copy.col(minIndex) = current.col(ordered_indices); 
+		local_copy.col(ordered_indices) = current.col(minIndex); 
 		if (cost > threshold) {
 			return std::nullopt;
 		}
@@ -101,7 +100,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	auto blurfilter = FilterTypeBlur::New();
 	blurfilter->SetInput(rescaletofloat->GetOutput());
 	blurfilter->SetVariance(processor->configuration.variance);
-	blurfilter->SetMaximumKernelWidth(5);
+	blurfilter->SetMaximumKernelWidth(15);
 
 	using RescaleTypeToImageType = itk::RescaleIntensityImageFilter<FloatImageType, ImageType>;
 	auto rescaletochar = RescaleTypeToImageType::New();
@@ -118,8 +117,11 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		AccumulatorPixelType,
 		RadiusPixelType>;
 	auto houghFilter = HoughTransformFilterType::New();
-
-	houghFilter->SetNumberOfCircles(processor->number_of_circles);
+	if (processor->list_of_recorded_points.size() == 0){
+		houghFilter->SetNumberOfCircles(processor->number_of_circles);
+	} else {
+		houghFilter->SetNumberOfCircles(processor->number_of_circles_plus_extra);	
+	}
 	houghFilter->SetMinimumRadius(processor->configuration.minimum_radius);
 	houghFilter->SetMaximumRadius(processor->configuration.maximum_radius);
 	houghFilter->SetSweepAngle(processor->configuration.sweep_angle);
@@ -147,7 +149,12 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	using CirclesListType = HoughTransformFilterType::CirclesListType;
 	ObservationEigenFormat observation_n;
 	CirclesListType::const_iterator itCircles = circles.begin();
-	observation_n.segmented_wires = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3, processor->number_of_circles);
+	Eigen::Matrix<double, 3, Eigen::Dynamic> segmented_wires;
+	if (processor->list_of_recorded_points.size() == 0){
+		segmented_wires = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3, processor->number_of_circles);
+	} else {
+		segmented_wires = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3, processor->number_of_circles_plus_extra);
+	}
 	size_t circle_index = 0;
 	while (itCircles != circles.end())
 	{
@@ -156,7 +163,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			(*itCircles)->GetCenterInObjectSpace();
 		segmented_point(0, 0) = centerPoint[0];
 		segmented_point(1, 0) = centerPoint[1];
-		observation_n.segmented_wires.col(circle_index) = segmented_point;
+		segmented_wires.col(circle_index) = segmented_point;
 		itCircles++;
 		++circle_index;
 	}
@@ -168,21 +175,28 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			observation_n.flange_data(lines, cols) = local_mat[lines][cols];
 
 	if (processor->list_of_recorded_points.size() == 0 && processor->should_record) {
+		//if first time we assume that the matrix has the correct number of observations, i.e it has number_of_wires observations
+		observation_n.segmented_wires = segmented_wires;
+		std::cout << "recorded first point \n";
 		processor->list_of_recorded_points.push_back(observation_n);
 	}
 	else {
 		if(processor->should_record){
-			auto possible_arrangement = rearrange_wire_geometry(observation_n.segmented_wires, processor->list_of_recorded_points.back().segmented_wires,processor->threshold);
+			auto possible_arrangement = rearrange_wire_geometry(segmented_wires, processor->list_of_recorded_points.back().segmented_wires,processor->threshold);
 			if (possible_arrangement) {
 				observation_n.segmented_wires = *possible_arrangement;
+				segmented_wires = observation_n.segmented_wires;
 				processor->list_of_recorded_points.push_back(observation_n);
+				std::printf("recorded another point cols size: %d \n",segmented_wires.cols());
+			} else{
+				std::printf("possible arrangement failure \n");
 			}
 		}
 
 	}
 
 	if (processor->show_circles.load()) {
-		ImageType::Pointer localImage = importFilter->GetOutput();
+		ImageType::Pointer localImage = rescale->GetOutput();
 		auto lam = [message_body,localImage, x, y](SkPixmap& requested) {
 			auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
 			size_t row_size = x * sizeof(unsigned char);
@@ -191,19 +205,19 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			return;
 		};
 		auto local_colors = processor->colors;
-		auto special_custom = [x,y,processor,observation_n, local_colors](SkCanvas* canvas, SkRect allowed_region) {
+		auto special_custom = [x,y,processor,segmented_wires, local_colors](SkCanvas* canvas, SkRect allowed_region) {
 			float scalling_factor_x = allowed_region.width()/x;
 			float scalling_factor_y = allowed_region.height()/y;
-			float radius = 15;
+			float radius = 5;
 			SkPaint paint_square;
 			paint_square.setStyle(SkPaint::kFill_Style);
 			paint_square.setAntiAlias(true);
 			paint_square.setStrokeWidth(4);
 			paint_square.setColor(SK_ColorGREEN);
-			assert(processor->list_of_recorded_points.back().segmented_wires.cols() == local_colors.size());
+			//assert(processor->list_of_recorded_points.back().segmented_wires.cols() == local_colors.size());
 			auto coliter = local_colors.begin();
 			if(!processor->should_record){
-				for (const auto& circles : observation_n.segmented_wires.colwise()) {
+				for (const auto& circles : segmented_wires.colwise()) {
 					float xloc = allowed_region.x()+ scalling_factor_x * circles(0, 0);
 					float yloc = allowed_region.y()+ scalling_factor_y * circles(1, 0);
 					SkPoint center{xloc,yloc};
@@ -226,7 +240,8 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	}
 	else {
 		processor->processed_viwer->clear_custom_drawingcall();
-		ImageType::Pointer localImage = importFilter->GetOutput();
+		//ImageType::Pointer localImage = rescale->GetOutput();
+		ImageType::Pointer localImage = rescale->GetOutput();
 		auto lam = [message_body,localImage, x, y](SkPixmap& requested) {
 			auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
 			size_t row_size = x * sizeof(unsigned char);
@@ -237,7 +252,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	}
 	end = std::chrono::steady_clock::now();
 	auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-	if(time_elapsed>30)
+	if(time_elapsed>40)
 		std::printf("warning: reduce brightness of image because processing size is too large (%d milliseconds)\n",time_elapsed);
 	return true;
 }
@@ -283,12 +298,10 @@ void ProcessingMessage::communicate() {
 		}catch(...){
 			std::cout << "Exception was thrown\n";
 		}
-
 	};
 	auto connectionstatus = client.connect(lam);
 	io_context.run();
 	button->set_waiting_color(SK_ColorRED);
-	list_of_recorded_points.clear();
 	return;
 }
 

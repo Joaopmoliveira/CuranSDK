@@ -4,10 +4,10 @@
 #include "rendering/Renderable.h"
 #include <optional>
 
-constexpr long width = 400;
-constexpr long height = 400;
-float spacing[3] = {0.0025 , 0.0025 , 0.0025};
-float final_spacing [3] = {0.0025,0.0025, 0.0025};
+constexpr long width = 500;
+constexpr long height = 500;
+float spacing[3] = {0.002 , 0.002 , 0.002};
+float final_spacing [3] = {0.002 , 0.002 , 0.002};
 
 using imagetype = itk::Image<unsigned char,3>;
 
@@ -99,7 +99,6 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
                 std::chrono::steady_clock::time_point elapsed_for_reconstruction = std::chrono::steady_clock::now();
                 auto val_elapsed_for_reconstruction = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_reconstruction - begin).count();
                 std::printf("added image (volume reconstruction %d)\n",val_elapsed_for_reconstruction);
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 ++counter;
                 if(stopping_condition)
                     return;
