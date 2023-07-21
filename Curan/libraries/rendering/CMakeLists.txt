@@ -11,7 +11,7 @@ src/Sphere.cpp
 src/Window.cpp
 src/SequencialLinks.cpp
 src/Floor.cpp
-src/PhaseWiredBox.cpp
+#src/PhaseWiredBox.cpp
 src/Volume.cpp
 )
 

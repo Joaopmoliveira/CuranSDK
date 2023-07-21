@@ -22,6 +22,7 @@ namespace curan{
 			using accumulator_type = itk::Image<short_pixel_type, Dimension3D>;
 			using resampler_output = itk::ResampleImageFilter<output_type, output_type>;
 			using resampler_accumulator = itk::ResampleImageFilter<accumulator_type, accumulator_type>;
+			using array_type = std::array<gte::Vector3<double>, 8>;
 
 			VolumeReconstructorBoxDefiner();
 			~VolumeReconstructorBoxDefiner();
@@ -62,7 +63,7 @@ namespace curan{
 			Obtain the pointer to the 3D itk volume reconstructed
 			and filled under the hood with this class.
 			*/
-			void get_final_volume_vertices(std::array<gte::Vector3<double>, 8> box_data);
+			void get_final_volume_vertices(array_type& box_data);
 
 			/*
 			The fill strategy to be used when the FillHoles

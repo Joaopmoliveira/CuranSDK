@@ -1,6 +1,8 @@
 #include "imageprocessing/VolumeReconstructorBoxDefiner.h"
 #include "imageprocessing/VolumeAlgorithms.h"
 #include "utils/Logger.h"
+#include <list>
+#include <set>
 
 namespace curan {
 namespace image {
@@ -21,11 +23,23 @@ VolumeReconstructorBoxDefiner::VolumeReconstructorBoxDefiner()
 	output_spacing[1] = 1.0;
 	output_spacing[2] = 1.0;
 
+	volumes_initiated = false;
+
 }
 
 VolumeReconstructorBoxDefiner::~VolumeReconstructorBoxDefiner()
 {
 }
+
+struct already_found
+{
+  std::set<gte::Vector3<double>> & theSet;
+
+  bool operator()(const gte::Vector3<double>& s) const
+  {
+     return !theSet.insert(s).second;
+  }
+};
 
 void VolumeReconstructorBoxDefiner::update()
 {
@@ -38,11 +52,11 @@ void VolumeReconstructorBoxDefiner::update()
 	// which represent the minimum bounding 
 	// box containing all the frames 
 	// already added to memory
-	vertices.resize(frame_data.size() * 4 + 8);
+	vertices.resize(frame_data.size() * 4+8);
 
 	int increment = 0;
 	int counter = 0 ;
-	auto& img = frame_data;
+
 	for (auto& img : frame_data)
 	{
 		auto size = img->GetLargestPossibleRegion().GetSize();
@@ -54,28 +68,28 @@ void VolumeReconstructorBoxDefiner::update()
 		img->TransformIndexToPhysicalPoint(origin_pixel, origin_position);
 
 		vertices[increment] = gte::Vector3<double>({ origin_position[0], origin_position[1], origin_position[2] });
-		std::printf("image %d - \n\tvertex 1 : ( %f %f %f )\n",counter,vertices[increment][0],vertices[increment][1],vertices[increment][2]);
+		//std::printf("image %d - \n\tvertex 1 : ( %f %f %f )\n",counter,vertices[increment][0],vertices[increment][1],vertices[increment][2]);
 
 		output_type::IndexType origin_along_width = { width - 1,0,0 };
 		output_type::PointType origin_along_width_position;
 		img->TransformIndexToPhysicalPoint(origin_along_width, origin_along_width_position);
 
 		vertices[increment + 1] = gte::Vector3<double>({ origin_along_width_position[0], origin_along_width_position[1], origin_along_width_position[2] });
-		std::printf("\tvertex 2 : ( %f %f %f )\n",vertices[increment+1][0],vertices[increment+1][1],vertices[increment+1][2]);
+		//std::printf("\tvertex 2 : ( %f %f %f )\n",vertices[increment+1][0],vertices[increment+1][1],vertices[increment+1][2]);
 
 		output_type::IndexType origin_along_width_and_height = { width - 1,height - 1,0 };
 		output_type::PointType origin_along_width_and_height_position;
 		img->TransformIndexToPhysicalPoint(origin_along_width_and_height, origin_along_width_and_height_position);
 
 		vertices[increment + 2] = gte::Vector3<double>({ origin_along_width_and_height_position[0], origin_along_width_and_height_position[1], origin_along_width_and_height_position[2] });
-		std::printf("\tvertex 3 : ( %f %f %f )\n",vertices[increment+2][0],vertices[increment+2][1],vertices[increment+2][2]);
+		//std::printf("\tvertex 3 : ( %f %f %f )\n",vertices[increment+2][0],vertices[increment+2][1],vertices[increment+2][2]);
 
 		output_type::IndexType origin_along_height = { 0,height - 1,0 };
 		output_type::PointType origin_along_height_position;
 		img->TransformIndexToPhysicalPoint(origin_along_height, origin_along_height_position);
 
 		vertices[increment + 3] = gte::Vector3<double>({ origin_along_height_position[0], origin_along_height_position[1], origin_along_height_position[2] });
-		std::printf("\tvertex 4 : ( %f %f %f )\n",vertices[increment+3][0],vertices[increment+3][1],vertices[increment+3][2]);
+		//std::printf("\tvertex 4 : ( %f %f %f )\n",vertices[increment+3][0],vertices[increment+3][1],vertices[increment+3][2]);
 		increment += 4;
 		++counter;
 	};
@@ -88,7 +102,14 @@ void VolumeReconstructorBoxDefiner::update()
 		gte::MinimumVolumeBox3<double, true> bounding_box(0);
 
 		double volume = 0.0;
-		bounding_box(frame_data.size() * 4, vertices.data(), 4, volumetric_bounding_box, volume);
+		std::list<gte::Vector3<double>> list;
+		std::copy( vertices.begin(), vertices.end(), std::back_inserter( list ) );
+		std::set<gte::Vector3<double>> theSet;
+		list.remove_if( list.begin(), list.end(), already_found(theSet) );
+		vertices = std::vector<gte::Vector3<double>>(list.begin(),list.end());
+		for(const auto& vert : vertices)
+			std::printf("( %f %f %f )\n",vert[0],vert[1],vert[2]);
+		bounding_box(vertices.size() * 4, vertices.data(), 4, volumetric_bounding_box, volume);
 
 		std::cout << "Volumes initiated" << std::endl;
 		volumes_initiated = true;
@@ -104,11 +125,18 @@ void VolumeReconstructorBoxDefiner::update()
 		current_corners[7] = volumetric_bounding_box.center - volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] - volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
 
 		vertices.insert(vertices.begin() + frame_data.size() * 4, std::begin(current_corners), std::begin(current_corners));
+		std::list<gte::Vector3<double>> list;
+		std::copy( vertices.begin(), vertices.end(), std::back_inserter( list ) );
+		std::set<gte::Vector3<double>> theSet;
+		list.remove_if( list.begin(), list.end(), already_found(theSet) );
+		vertices = std::vector<gte::Vector3<double>>(list.begin(),list.end());
+		for(const auto& vert : vertices)
+			std::printf("*( %f %f %f )\n",vert[0],vert[1],vert[2]);
 		gte::MinimumVolumeBox3<double, true> bounding_box(0);
 
 		double volume = 0.0;
 		bounding_box(vertices.size(), vertices.data(), 4, volumetric_bounding_box, volume);
-		//std::cout << vertices.size() << std::endl;
+		std::printf("Volumetric bounding box center (%f, %f,%f)\n", volumetric_bounding_box.center[0], volumetric_bounding_box.center[1], volumetric_bounding_box.center[2]);
 	}
 
 	frame_data.clear();
@@ -120,7 +148,7 @@ void VolumeReconstructorBoxDefiner::set_clipping_bounds(std::array<double, 2> in
 	clipRectangleSize = inclipRectangleSize;
 }
 
-void VolumeReconstructorBoxDefiner::get_final_volume_vertices(std::array<gte::Vector3<double>, 8> box_data){
+void VolumeReconstructorBoxDefiner::get_final_volume_vertices(array_type& box_data){
 	std::array<gte::Vector3<double>, 8> current_corners;
 	current_corners[0] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
 	current_corners[1] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
@@ -131,30 +159,6 @@ void VolumeReconstructorBoxDefiner::get_final_volume_vertices(std::array<gte::Ve
 	current_corners[6] = volumetric_bounding_box.center - volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] - volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
 	current_corners[7] = volumetric_bounding_box.center - volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] - volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
 
-	std::cout << current_corners[0][0] << std::endl;
-	std::cout << current_corners[0][1] << std::endl;
-	std::cout << current_corners[0][2] << std::endl;
-	std::cout << current_corners[1][0] << std::endl;
-	std::cout << current_corners[1][1] << std::endl;
-	std::cout << current_corners[1][2] << std::endl;
-	std::cout << current_corners[2][0] << std::endl;
-	std::cout << current_corners[2][1] << std::endl;
-	std::cout << current_corners[2][2] << std::endl;
-	std::cout << current_corners[3][0] << std::endl;
-	std::cout << current_corners[3][1] << std::endl;
-	std::cout << current_corners[3][2] << std::endl;
-	std::cout << current_corners[4][0] << std::endl;
-	std::cout << current_corners[4][1] << std::endl;
-	std::cout << current_corners[4][2] << std::endl;
-	std::cout << current_corners[5][0] << std::endl;
-	std::cout << current_corners[5][1] << std::endl;
-	std::cout << current_corners[5][2] << std::endl;
-	std::cout << current_corners[6][0] << std::endl;
-	std::cout << current_corners[6][1] << std::endl;
-	std::cout << current_corners[6][2] << std::endl;
-	std::cout << current_corners[7][0] << std::endl;
-	std::cout << current_corners[7][1] << std::endl;
-	std::cout << current_corners[7][2] << std::endl;
 	box_data = current_corners;
 };
 
