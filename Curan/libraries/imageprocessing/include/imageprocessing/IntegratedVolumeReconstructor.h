@@ -82,7 +82,7 @@ namespace curan{
 
         inline void reset(){
             std::lock_guard<std::mutex> g{mut};
-            for(auto& pix = textureData->begin() ; pix != textureData->end(); ++pix)
+            for(auto pix = textureData->begin() ; pix != textureData->end(); ++pix)
                 *pix = 0.0;
         } 
 

@@ -1,4 +1,5 @@
 #include "userinterface/Window.h"
+#include <thread>
 
 int main() {
 	using namespace curan::ui;

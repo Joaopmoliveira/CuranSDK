@@ -3,6 +3,7 @@
 
 #include <mutex>
 #include <vector>
+#include <memory>
 
 namespace curan {
 	namespace utilities {

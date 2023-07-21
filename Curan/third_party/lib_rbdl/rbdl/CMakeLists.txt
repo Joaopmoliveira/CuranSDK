@@ -112,7 +112,9 @@ message("rbdl building static")
   target_link_libraries( rbdl-static PUBLIC Eigen3::Eigen)
   target_compile_definitions(rbdl-static PUBLIC RBDL_BUILD_STATIC)
   target_include_directories( rbdl-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+  IF (WIN32)
   target_compile_options(rbdl-static PRIVATE /bigobj)
+  ENDIF()
 	IF (RBDL_BUILD_ADDON_LUAMODEL)
 		TARGET_LINK_LIBRARIES ( rbdl-static
 			rbdl_luamodel-static

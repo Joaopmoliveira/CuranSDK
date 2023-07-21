@@ -41,6 +41,15 @@ namespace curan{
 		using DictionaryType = itk::MetaDataDictionary;
 		using MetaDataStringType = itk::MetaDataObject<std::string>;
 
+namespace reconstruction{
+		constexpr int INPUT_COMPONENTS = 1;
+		constexpr uint64_t ACCUMULATION_MULTIPLIER = 256;
+		constexpr uint64_t ACCUMULATION_MAXIMUM = 65535;
+		constexpr uint64_t ACCUMULATION_THRESHOLD = 65279; // calculate manually to possibly save on computation time
+		constexpr double fraction1_256 = 1.0 / 256;
+		constexpr double fraction255_256 = 255.0 / 256;
+}
+
 		struct Study {
 			std::vector<InternalImageType::Pointer> study_img;
 			std::string individual_name;

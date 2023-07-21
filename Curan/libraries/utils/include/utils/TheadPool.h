@@ -6,6 +6,7 @@
 #include <vector>
 #include "Job.h"
 #include <memory>
+#include <thread>
 
 namespace curan {
 	namespace utilities {

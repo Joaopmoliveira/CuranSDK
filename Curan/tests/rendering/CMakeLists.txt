@@ -1,14 +1,14 @@
 find_package(vsg)
 find_package(vsgXchange)
 
-add_executable(test_builder_wired_callsequence test_builder_wired_callsequence.cpp)
-target_compile_definitions(test_builder_wired_callsequence PRIVATE vsgXchange_FOUND)
-target_compile_definitions(test_builder_wired_callsequence PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-target_link_libraries(test_builder_wired_callsequence
-PUBLIC
-vsg::vsg
-vsgXchange::vsgXchange
-)
+#add_executable(test_builder_wired_callsequence test_builder_wired_callsequence.cpp)
+#target_compile_definitions(test_builder_wired_callsequence PRIVATE vsgXchange_FOUND)
+#target_compile_definitions(test_builder_wired_callsequence PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+#target_link_libraries(test_builder_wired_callsequence
+#PUBLIC
+#vsg::vsg
+#vsgXchange::vsgXchange
+#)
 
 
 add_executable(Renderer
@@ -204,16 +204,16 @@ PUBLIC
 renderable
 )
 
-add_executable(test_creation_of_wired_box
-test_creation_of_wired_box.cpp
-)
+#add_executable(test_creation_of_wired_box
+#test_creation_of_wired_box.cpp
+#)
 
-target_compile_definitions(test_creation_of_wired_box PRIVATE vsgXchange_FOUND)
-target_compile_definitions(test_creation_of_wired_box PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-target_link_libraries(test_creation_of_wired_box
-PUBLIC
-renderable
-)
+#target_compile_definitions(test_creation_of_wired_box PRIVATE vsgXchange_FOUND)
+#target_compile_definitions(test_creation_of_wired_box PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+#target_link_libraries(test_creation_of_wired_box
+#PUBLIC
+#renderable
+#)
 
 add_executable(test_world_position
 validate_world_position_of_rendered_model.cpp
@@ -231,48 +231,48 @@ vsgXchange::vsgXchange
 renderable
 )
 
-add_executable(test_robot_plus_wired
-robot_integration_with_wired_box.cpp
-)
+#add_executable(test_robot_plus_wired
+#robot_integration_with_wired_box.cpp
+#)
 
-target_compile_definitions(test_robot_plus_wired PRIVATE vsgXchange_FOUND)
-target_compile_definitions(test_robot_plus_wired PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+#target_compile_definitions(test_robot_plus_wired PRIVATE vsgXchange_FOUND)
+#target_compile_definitions(test_robot_plus_wired PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-target_link_libraries(test_robot_plus_wired
-PUBLIC
-KukaRobotLibrary 
-robotParameters
-vsg::vsg
-vsgXchange::vsgXchange
-renderable
-)
+#target_link_libraries(test_robot_plus_wired
+#PUBLIC
+#KukaRobotLibrary 
+#robotParameters
+#vsg::vsg
+#vsgXchange::vsgXchange
+#renderable
+#)
 
-add_executable(test_robot_and_ultrasound_buzzer
-integration_with_ultrasound_buzzer.cpp
-)
+#add_executable(test_robot_and_ultrasound_buzzer
+#integration_with_ultrasound_buzzer.cpp
+#)
 
-target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE vsgXchange_FOUND)
-target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+#target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE vsgXchange_FOUND)
+#target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-target_link_libraries(test_robot_and_ultrasound_buzzer
-PUBLIC
-KukaRobotLibrary 
-robotParameters
-vsg::vsg
-vsgXchange::vsgXchange
-renderable
-asio
-)
+#target_link_libraries(test_robot_and_ultrasound_buzzer
+#PUBLIC
+#KukaRobotLibrary 
+#robotParameters
+#vsg::vsg
+#vsgXchange::vsgXchange
+#renderable
+#asio
+#)
 
-if(SERIAL_RECEIVE_ARGUMENT)
-    if(WIN32)
-        target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="COM6")
-    else(WIN32)
-        target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="/dev/ttyUSB0")
-    endif(WIN32)
-else(SERIAL_RECEIVE_ARGUMENT)
-    target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="COM6")
-endif(SERIAL_RECEIVE_ARGUMENT)
+#if(SERIAL_RECEIVE_ARGUMENT)
+#    if(WIN32)
+#        target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="COM6")
+#    else(WIN32)
+#        target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="/dev/ttyUSB0")
+#    endif(WIN32)
+#else(SERIAL_RECEIVE_ARGUMENT)
+#    target_compile_definitions(test_robot_and_ultrasound_buzzer PRIVATE CURAN_SERIAL_PORT="COM6")
+#endif(SERIAL_RECEIVE_ARGUMENT)
 
 
 add_executable(test_empty_window

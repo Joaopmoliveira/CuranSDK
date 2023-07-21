@@ -14,6 +14,7 @@
 #include <variant>
 
 #include <iostream>
+#include <thread>
 
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 {

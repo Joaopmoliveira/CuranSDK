@@ -130,7 +130,7 @@ int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 						else
 							*outPtrTmp = (*inPtrTmp)/(double)ratio;
 						f = fdx[j];
-						a = f * ACCUMULATION_MULTIPLIER;;
+						a = f * ACCUMULATION_MULTIPLIER;
 					}
 					break;
 				}
@@ -147,7 +147,7 @@ int TemplatedTrilinearInterpolation(const Eigen::Vector4d point,
 						else
 							*outPtrTmp = (*inPtrTmp)/(double)ratio;
 						f = fdx[j];
-						a = f * ACCUMULATION_MULTIPLIER;;
+						a = f * ACCUMULATION_MULTIPLIER;
 					}
 					break;
 				}

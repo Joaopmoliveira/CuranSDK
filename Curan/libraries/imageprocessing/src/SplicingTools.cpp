@@ -1,5 +1,6 @@
 #include "imageprocessing/SplicingTools.h"
 #include <cmath>
+#include <cstring>
 
 namespace curan{
 namespace image {
@@ -77,7 +78,7 @@ bool splice_input_extent( std::vector<std::array<int,6>>& splitting, const int f
 	size_t thread_id = 0;
 	for(auto& nsplit : splitting){
 		int min, max;
-  		memcpy( nsplit.data(), fullExt, 6 * sizeof( int ) );
+  		std::memcpy( nsplit.data(), fullExt, 6 * sizeof( int ) );
   		int splitAxis = 2; 
   		min = fullExt[4];
   		max = fullExt[5];

@@ -14,6 +14,7 @@
 #include <variant>
 
 #include <iostream>
+#include <thread>
 
 std::unique_ptr<curan::ui::Overlay> create_option_page() {
 	using namespace curan::ui;
