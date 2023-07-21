@@ -3,6 +3,7 @@
 #include <csignal>
 #include "userinterface/widgets/ConfigDraw.h"
 #include "utils/Logger.h"
+#include <thread>
 
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 {

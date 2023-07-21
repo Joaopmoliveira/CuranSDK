@@ -10,6 +10,7 @@
 #include "userinterface/widgets/Page.h"
 #include "utils/Logger.h"
 #include <iostream>
+#include <thread>
 
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 {

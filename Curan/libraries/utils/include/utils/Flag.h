@@ -3,6 +3,7 @@
 
 #include <mutex>
 #include <memory>
+#include <condition_variable>
 
 namespace curan {
 	namespace utilities {

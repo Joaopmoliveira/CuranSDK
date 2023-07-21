@@ -6,6 +6,7 @@
 #include <chrono>
 #include "utils/Logger.h"
 #include <atomic>
+#include <cmath>
 
 void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 {
@@ -14,17 +15,17 @@ void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 
 	// random position
 	static float phi = 0.0;
-	position[0] = 50.0 * cos(phi);
-	position[1] = 50.0 * sin(phi);
-	position[2] = 50.0 * cos(phi);
+	position[0] = 50.0 * std::cos(phi);
+	position[1] = 50.0 * std::sin(phi);
+	position[2] = 50.0 * std::cos(phi);
 	phi = phi + 0.2;
 
 	// random orientation
 	static float theta = 0.0;
 	orientation[0] = 0.0;
-	orientation[1] = 0.6666666666 * cos(theta);
+	orientation[1] = 0.6666666666 * std::cos(theta);
 	orientation[2] = 0.577350269189626;
-	orientation[3] = 0.6666666666 * sin(theta);
+	orientation[3] = 0.6666666666 * std::sin(theta);
 	theta = theta + 0.1;
 
 	//igtl::Matrix4x4 matrix;

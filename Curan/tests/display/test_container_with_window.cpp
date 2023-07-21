@@ -7,6 +7,7 @@
 #include "userinterface/widgets/Page.h"
 
 #include <iostream>
+#include <thread>
 
 int main() {
 	try {

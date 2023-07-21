@@ -3,6 +3,7 @@
 #include "userinterface/Window.h"
 #include "userinterface/widgets/TextBlob.h"
 #include <iostream>
+#include <thread>
 
 int main() {
 	try {
