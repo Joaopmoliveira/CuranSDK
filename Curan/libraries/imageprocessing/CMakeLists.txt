@@ -1,6 +1,7 @@
 add_library(imageprocessing
 src/StudyManager.cpp
 src/VolumeReconstructor.cpp
+src/VolumeReconstructorBoxDefiner.cpp
 src/VolumeAlgorithms.cpp
 src/FilterAlgorithms.cpp 
 src/KernelDescriptor.cpp
