@@ -76,11 +76,11 @@
   </CoordinateDefinitions>
   
  <PlusOpenIGTLinkServer 
-MaxNumberOfIgtlMessagesToSend="1" 
-MaxTimeSpentWithProcessingMs="50" 
-ListeningPort="18944" 
-SendValidTransformsOnly="true" 
-OutputChannelId="TrackedVideoStream" > 
+	MaxNumberOfIgtlMessagesToSend="1" 
+	MaxTimeSpentWithProcessingMs="50" 
+	ListeningPort="18944" 
+	SendValidTransformsOnly="true" 
+	OutputChannelId="TrackedVideoStream" > 
 	<DefaultClientInfo> 
 		<MessageTypes> 
 			<Message Type="TRANSFORM" />

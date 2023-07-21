@@ -64,4 +64,16 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 
+
+add_executable(test_baby_steps baby_steps.cpp)
+
+target_compile_definitions(test_baby_steps PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_baby_steps PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_baby_steps
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)
 add_subdirectory(volumetric)
