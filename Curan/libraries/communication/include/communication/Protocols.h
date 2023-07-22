@@ -45,7 +45,7 @@ namespace curan {
 		Interface for the openigtlink protocol.
 		*/
 		using interface_igtl = std::function<void(const size_t&, const std::error_code&, igtl::MessageBase::Pointer)>;
-
+		using interface_fri = std::function<void(const size_t&, const std::error_code&, int)>;
 		using interface_empty = std::function<void(void)>;
 
 		/*

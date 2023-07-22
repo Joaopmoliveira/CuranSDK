@@ -105,7 +105,7 @@ void VolumeReconstructorBoxDefiner::update()
 		std::list<gte::Vector3<double>> list;
 		std::copy( vertices.begin(), vertices.end(), std::back_inserter( list ) );
 		std::set<gte::Vector3<double>> theSet;
-		list.remove_if( list.begin(), list.end(), already_found(theSet) );
+		//list.remove_if( list.begin(), list.end(), already_found(theSet) );
 		vertices = std::vector<gte::Vector3<double>>(list.begin(),list.end());
 		for(const auto& vert : vertices)
 			std::printf("( %f %f %f )\n",vert[0],vert[1],vert[2]);
@@ -128,7 +128,7 @@ void VolumeReconstructorBoxDefiner::update()
 		std::list<gte::Vector3<double>> list;
 		std::copy( vertices.begin(), vertices.end(), std::back_inserter( list ) );
 		std::set<gte::Vector3<double>> theSet;
-		list.remove_if( list.begin(), list.end(), already_found(theSet) );
+		//list.remove_if( list.begin(), list.end(), already_found(theSet) );
 		vertices = std::vector<gte::Vector3<double>>(list.begin(),list.end());
 		for(const auto& vert : vertices)
 			std::printf("*( %f %f %f )\n",vert[0],vert[1],vert[2]);
