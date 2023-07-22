@@ -7,7 +7,6 @@
     "glfw3",
     "nlohmann-json",
     "assimp",
-    "minc",
     {
       "name": "skia",
       "features": [ "vulkan" ]
