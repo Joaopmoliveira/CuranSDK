@@ -1,6 +1,0 @@
-message FRIContent {
-  uint32 number_of_links;
-  repeating double angles = 1;
-  repeating double external_torques = 2;
-  repeating double measured_torques = 3;
-}

@@ -25,6 +25,8 @@
 #include "igtlCapabilityMessage.h"
 #endif
 
+#include "customprotocols/FRIContent.h"
+
 namespace curan {
 	namespace communication {
 		/*
@@ -45,7 +47,7 @@ namespace curan {
 		Interface for the openigtlink protocol.
 		*/
 		using interface_igtl = std::function<void(const size_t&, const std::error_code&, igtl::MessageBase::Pointer)>;
-		using interface_fri = std::function<void(const size_t&, const std::error_code&, int)>;
+		using interface_fri = std::function<void(const size_t&, const std::error_code&, FRIMessage)>;
 		using interface_empty = std::function<void(void)>;
 
 		/*
@@ -53,7 +55,7 @@ namespace curan {
 		variant which contains the signature of the
 		callable methods.
 		*/
-		using callable = std::variant<interface_empty,interface_igtl>;
+		using callable = std::variant<interface_empty,interface_igtl,interface_fri>;
 
 		/*
 		This function selects which protocol we want to communicate with depending
