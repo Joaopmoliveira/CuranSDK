@@ -100,6 +100,7 @@ int communication(std::shared_ptr<SharedRobotState> state){
 	};
 	auto connectionstatus = client.connect(lam);
 	context.run();
+    return 0;
 }
 
 int render(std::shared_ptr<SharedRobotState> state)

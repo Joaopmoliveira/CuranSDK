@@ -99,14 +99,15 @@ void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<c
 		while (flag->value()) {
 			const auto start = std::chrono::high_resolution_clock::now();
 
-			curan::communication::FRIMessage message;
-			message.angles ;
-			message.external_torques ;
-			message.measured_torques ; 
-			message.serialize();
+			std::shared_ptr<curan::communication::FRIMessage> message = std::shared_ptr<curan::communication::FRIMessage>(new curan::communication::FRIMessage());
+
+			message->angles ;
+			message->external_torques ;
+			message->measured_torques ; 
+			message->serialize();
 
 			auto callable = [message]() {
-				return asio::buffer(message.get_buffer(),message.get_body_size()+message.get_header_size());
+				return asio::buffer(message->get_buffer(),message->get_body_size()+message->get_header_size());
 			};
 			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
 			server.write(to_send);
