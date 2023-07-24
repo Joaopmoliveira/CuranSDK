@@ -1,5 +1,6 @@
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
+#include "communication/ProtoFRI.h"
 #include <iostream>
 #include "utils/Logger.h"
 #include "utils/Flag.h"
@@ -178,7 +179,7 @@ int main() {
 		if (!temp.compare("STP_TDATA")) {
 			curan::utils::cout << "received request to stop processing images\n";
 			state_flag->clear();
-			server.get_context().stop();
+			server.get_context().stop(); //TODO
 			return;
 		}
 	};
@@ -187,15 +188,23 @@ int main() {
 	if (!val)
 		return 1;
 
-	auto state_machine = [state_flag, &server, shared_state]() {
+	auto openigtlink_tracking = [state_flag, &server, shared_state]() {
 		start_tracking(server, state_flag, shared_state);
 	};
 
-	std::thread thred{ state_machine };
+	std::thread thred{ openigtlink_tracking };
 	auto robot_functional_control = [shared_state, robot_flag]() {
 		robot_control(shared_state, robot_flag);
 	};
 	std::thread thred_robot_control{ robot_functional_control };
+
+	curan::communication::interface_fri fri_interface;
+	curan::communication::Server::Info construction_joints{ io_context,fri_interface ,port };
+	curan::communication::Server server_joints{ construction_joints };
+
+	auto joint_tracking = [](){
+
+	};
 
 	curan::utils::cout << "Starting server with port: " << port << " and in the localhost\n";
 

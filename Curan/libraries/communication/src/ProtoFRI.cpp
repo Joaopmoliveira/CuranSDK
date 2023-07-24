@@ -19,7 +19,7 @@ void read_header_first_time(FRIClientConnection val) {
 		if (!ec) {
 			read_body(val, ec);
 		} else {
-			val.owner->transverse_callables<interface_fri>(0, ec, val.message_to_receive);
+			val.owner->transverse_callables<interface_fri>(0, ec, val.message);
 			val.owner->get_socket().get_underlying_socket().close();
 		}				
 		}

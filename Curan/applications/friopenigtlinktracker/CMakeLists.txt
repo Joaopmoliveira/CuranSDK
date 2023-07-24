@@ -5,7 +5,7 @@ MyLBRClient.cpp
 
 target_link_libraries(FRIPlusBridge 
 PUBLIC 
-Eigen::Eigen 
+Eigen3::Eigen
 rbdl-static 
 KukaRobotLibrary 
 FRILibrary
