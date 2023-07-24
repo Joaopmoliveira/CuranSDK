@@ -55,6 +55,10 @@ namespace curan {
 
 			void write(std::shared_ptr<utilities::MemoryBuffer> buffer);
 
+			inline asio::io_context& get_context(){
+				return _cxt;
+			}
+
 		private:
 
 			void accept();
