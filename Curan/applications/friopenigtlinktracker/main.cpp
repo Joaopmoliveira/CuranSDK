@@ -249,8 +249,8 @@ int main() {
 	curan::communication::Server::Info construction_joints{ io_context,fri_interface ,port_fri };
 	curan::communication::Server server_joints{ construction_joints };
 
-	auto joint_tracking = [](){
-
+	auto joint_tracking = [state_flag, &server_joints, shared_state](){
+		start_joint_tracking(server_joints,state_flag,shared_state);
 	};
 
 	curan::utilities::cout << "Starting server with port: " << port_fri << " and in the localhost\n";

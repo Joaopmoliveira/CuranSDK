@@ -344,8 +344,7 @@ VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
                     Js(i, k) = 0;
                 }
                 //Js(i, theMostCriticalOld[i]) = 1.0;
-                Eigen::Index ind;
-                Js(ind) = 1.0;
+                Js.coeffRef(i, theMostCriticalOld[i]) = 1.0;
             }
 
             MatrixNd LambdaSatInv = Js * iiwa->Minv * Js.transpose();
