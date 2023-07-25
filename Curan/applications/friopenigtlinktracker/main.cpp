@@ -2,6 +2,7 @@
 #include "communication/ProtoIGTL.h"
 #include "communication/ProtoFRI.h"
 #include <iostream>
+#include <thread>
 #include "utils/Logger.h"
 #include "utils/Flag.h"
 
