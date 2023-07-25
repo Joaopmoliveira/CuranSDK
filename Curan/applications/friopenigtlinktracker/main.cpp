@@ -33,6 +33,18 @@ void robot_control(std::shared_ptr<SharedState> shared_state,std::shared_ptr<cur
 	return;
 }
 
+void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage>& message,std::shared_ptr<SharedState>& shared_state){
+    auto robot_state = shared_state->robot_state.load();
+	auto _qCurr = robot_state.getMeasuredJointPosition();
+	auto _eExtern = robot_state.getExternalTorque();
+	auto _eMeasured = robot_state.getMeasuredTorque();
+	for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+		message->angles[i] = _qCurr[i];
+		message->measured_torques[i] = _eMeasured[i];
+		message->external_torques[i] = _eExtern[i];
+	}
+}
+
 void GetRobotConfiguration(igtl::Matrix4x4& matrix, kuka::Robot* robot, RobotParameters* iiwa,std::shared_ptr<SharedState> shared_state)
 {
 	auto robot_state = shared_state->robot_state.load();
@@ -102,9 +114,7 @@ void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<c
 
 			std::shared_ptr<curan::communication::FRIMessage> message = std::shared_ptr<curan::communication::FRIMessage>(new curan::communication::FRIMessage());
 
-			message->angles ;
-			message->external_torques ;
-			message->measured_torques ; 
+			GetRobotConfiguration(message,shared_state);
 			message->serialize();
 
 			auto callable = [message]() {
@@ -253,12 +263,14 @@ int main() {
 	auto joint_tracking = [state_flag, &server_joints, shared_state](){
 		start_joint_tracking(server_joints,state_flag,shared_state);
 	};
-
+	std::thread thred_joint{ joint_tracking };
+	
 	curan::utilities::cout << "Starting server with port: " << port_fri << " and in the localhost\n";
 
 	io_context.run();
 	robot_flag->clear();
 	thred_robot_control.join();
 	thred.join();
+	thred_joint.join();
 	return 0;
 }
