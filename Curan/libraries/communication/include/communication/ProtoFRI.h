@@ -21,7 +21,7 @@ namespace curan {
 				namespace implementation {
 
 					struct FRIClientConnection {
-						FRIMessage message;
+						std::shared_ptr<FRIMessage> message = nullptr;
 						Client* owner;
 						FRIClientConnection(Client* supplied_owner);
 					};

@@ -12,6 +12,12 @@ target_link_libraries(test_communication PUBLIC
 communication
 )
 
+add_executable(test_fri_communication fri_openigtlink_dummy_implementation.cpp)
+
+target_link_libraries(test_fri_communication PUBLIC
+communication
+)
+
 add_executable(communication_with_arduino_or_esc32 communication_with_arduino_or_esc32.cpp)
 
 target_link_libraries(communication_with_arduino_or_esc32 PUBLIC

@@ -27,16 +27,17 @@ std::optional<std::shared_ptr<utilities::Cancelable>> Server::connect(callable c
 }
 
 void Server::write(std::shared_ptr<utilities::MemoryBuffer> buffer) {
-	if (list_of_clients.size()==0)
+	if (list_of_clients.size()==0){
 		utilities::cout << "No client to write";
-	list_of_clients.erase(std::remove_if(list_of_clients.begin(),list_of_clients.end(),
-	[buffer](std::shared_ptr<Client>& client){
+		return;
+	}
+	list_of_clients.remove_if([buffer](std::shared_ptr<Client>& client){
 		if(!client->get_socket().get_underlying_socket().is_open())
 			return true;
 		client->write(buffer);
 		return false;
 	}
-	));			
+	);			
 }
 
 void Server::accept() {

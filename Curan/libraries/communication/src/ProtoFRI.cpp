@@ -14,7 +14,7 @@ FRIClientConnection::FRIClientConnection(Client* supplied_owner) : owner{ suppli
 
 void read_header_first_time(FRIClientConnection val) {
 	asio::async_read(val.owner->get_socket().get_underlying_socket(),
-		asio::buffer(val.message.get_buffer(), val.message.get_header_size()), asio::transfer_all(),
+		asio::buffer(val.message->get_buffer(), val.message->get_header_size()), asio::transfer_all(),
 		[val](std::error_code ec, std::size_t len) {
 		if (!ec) {
 			read_body(val, ec);
@@ -30,10 +30,11 @@ void read_header(FRIClientConnection val, std::error_code ec) {
 	//we have a message fully unpacked in memory that we must broadcast to all
 	//listeners of the interface. We do this by calling the templated broadcast method
 	size_t temp = 0;
-    val.message.deserialize();
+    val.message->deserialize();
 	val.owner->transverse_callables<interface_fri>(temp, ec, val.message);
+	val.message = std::make_shared<FRIMessage>();
 	asio::async_read(val.owner->get_socket().get_underlying_socket(),
-		asio::buffer(val.message.get_buffer(), val.message.get_header_size()), asio::transfer_all(),
+		asio::buffer(val.message->get_buffer(), val.message->get_header_size()), asio::transfer_all(),
 		[val](std::error_code ec, std::size_t len){
 		if (!ec) {
 			read_body(val, ec);
@@ -45,10 +46,10 @@ void read_header(FRIClientConnection val, std::error_code ec) {
 }
 
 void read_body(FRIClientConnection val, std::error_code ec) {
-	val.message.deserialize_header();
+	val.message->deserialize_header();
 
 	asio::async_read(val.owner->get_socket().get_underlying_socket(),
-		asio::buffer(val.message.get_body_buffer(), val.message.get_body_size()), asio::transfer_all(),
+		asio::buffer(val.message->get_body_buffer(), val.message->get_body_size()), asio::transfer_all(),
 		[val](std::error_code ec, std::size_t len){
 		if (!ec)
 			read_header(val, ec);
@@ -63,6 +64,7 @@ void read_body(FRIClientConnection val, std::error_code ec) {
 void start(Client* client_pointer) {
 	utilities::cout << "starting to:";
 	implementation::FRIClientConnection val{ client_pointer };
+	val.message = std::make_shared<FRIMessage>();
 	implementation::read_header_first_time(std::move(val));	
 }
 

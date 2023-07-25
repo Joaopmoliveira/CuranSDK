@@ -52,7 +52,7 @@ void VolumeReconstructorBoxDefiner::update()
 	// which represent the minimum bounding 
 	// box containing all the frames 
 	// already added to memory
-	vertices.resize(frame_data.size() * 4+8);
+	vertices.resize(frame_data.size() * 4);
 
 	int increment = 0;
 	int counter = 0 ;
@@ -105,15 +105,17 @@ void VolumeReconstructorBoxDefiner::update()
 		std::list<gte::Vector3<double>> list;
 		std::copy( vertices.begin(), vertices.end(), std::back_inserter( list ) );
 		std::set<gte::Vector3<double>> theSet;
-		//list.remove_if( list.begin(), list.end(), already_found(theSet) );
+		list.remove_if(already_found{theSet} );
 		vertices = std::vector<gte::Vector3<double>>(list.begin(),list.end());
-		for(const auto& vert : vertices)
-			std::printf("( %f %f %f )\n",vert[0],vert[1],vert[2]);
+		//for(const auto& vert : vertices)
+		//	std::printf("( %f %f %f )\n",vert[0],vert[1],vert[2]);
+
 		bounding_box(vertices.size() * 4, vertices.data(), 4, volumetric_bounding_box, volume);
 
 		std::cout << "Volumes initiated" << std::endl;
 		volumes_initiated = true;
 	} else {
+		std::cout << "New image" << std::endl;
 		std::array<gte::Vector3<double>, 8> current_corners;
 		current_corners[0] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
 		current_corners[1] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
@@ -124,14 +126,14 @@ void VolumeReconstructorBoxDefiner::update()
 		current_corners[6] = volumetric_bounding_box.center - volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] - volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
 		current_corners[7] = volumetric_bounding_box.center - volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] - volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
 
-		vertices.insert(vertices.begin() + frame_data.size() * 4, std::begin(current_corners), std::begin(current_corners));
+		vertices.insert(vertices.end(), std::begin(current_corners), std::end(current_corners));
 		std::list<gte::Vector3<double>> list;
 		std::copy( vertices.begin(), vertices.end(), std::back_inserter( list ) );
 		std::set<gte::Vector3<double>> theSet;
-		//list.remove_if( list.begin(), list.end(), already_found(theSet) );
+		list.remove_if(already_found{theSet} );
 		vertices = std::vector<gte::Vector3<double>>(list.begin(),list.end());
-		for(const auto& vert : vertices)
-			std::printf("*( %f %f %f )\n",vert[0],vert[1],vert[2]);
+		//for(const auto& vert : vertices)
+		//	std::printf("*( %f %f %f )\n",vert[0],vert[1],vert[2]);
 		gte::MinimumVolumeBox3<double, true> bounding_box(0);
 
 		double volume = 0.0;

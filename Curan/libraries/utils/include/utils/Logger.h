@@ -24,7 +24,6 @@ namespace curan {
 			};
 
 			SafeQueue<std::string> outputqueue;
-			std::list<std::string> previous_outputs;
 
 			template<class U>
 			friend Logger& operator<<(Logger& os, const U& L);

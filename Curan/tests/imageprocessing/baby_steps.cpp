@@ -89,7 +89,6 @@ int main(){
 
        /*  box_class.add_frames(image_array);
         box_class.update(); */
-        std::cout << "final\n";
 
         std::printf("started volumetric reconstruction\n");
         size_t counter = 0;
@@ -111,6 +110,7 @@ int main(){
         
         box_class.get_final_volume_vertices(box_data);
 
+        std::cout << "Final box vertices" << std::endl;
         for(const auto& arr : box_data)
             std::printf("( %f , %f , %f )\n",arr[0],arr[1],arr[2]);
 
