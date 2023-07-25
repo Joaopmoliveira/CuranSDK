@@ -1,4 +1,4 @@
-#include "imageprocessing/VolumeReconstructorBoxDefiner.h"
+#include "imageprocessing/BoundingBox4Reconstruction.h"
 #include "communication/Client.h"
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
@@ -16,7 +16,7 @@ constexpr long height = 100;
 float spacing[3] = {0.01 , 0.01 , 0.01};
 float final_spacing [3] = {0.01 , 0.01 , 0.01};
 
-using imagetype = curan::image::VolumeReconstructorBoxDefiner::output_type;
+using imagetype = curan::image::BoundingBox4Reconstruction::output_type;
 
 void create_array_of_linear_images_in_x_direction(std::vector<imagetype::Pointer>& desired_images){
     itk::Matrix<double> image_orientation;
@@ -85,7 +85,7 @@ int main(){
 	    //create_array_of_images(image_array);
         create_array_of_linear_images_in_x_direction(image_array);
         
-        curan::image::VolumeReconstructorBoxDefiner box_class;
+        curan::image::BoundingBox4Reconstruction box_class;
 
        /*  box_class.add_frames(image_array);
         box_class.update(); */
@@ -98,46 +98,21 @@ int main(){
             box_class.add_frame(img);
             box_class.update();
 
-            std::chrono::steady_clock::time_point elapsed_for_reconstruction = std::chrono::steady_clock::now();
+            std::chrono::steady_clock::time_point elapsed_for_bound_box = std::chrono::steady_clock::now();
 
-            auto val_elapsed_for_reconstruction = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_reconstruction - begin).count();
+            auto val_elapsed_for_bound_box = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_bound_box - begin).count();
 
-            //std::printf("added image (volume reconstruction %d)\n",val_elapsed_for_reconstruction);
+            std::printf("added image - elapsed time: %d microseconds\n",val_elapsed_for_bound_box);
 
             ++counter;
         }
-        curan::image::VolumeReconstructorBoxDefiner::array_type box_data;
+        curan::image::BoundingBox4Reconstruction::array_type box_data;
         
         box_class.get_final_volume_vertices(box_data);
 
         std::cout << "Final box vertices" << std::endl;
         for(const auto& arr : box_data)
             std::printf("( %f , %f , %f )\n",arr[0],arr[1],arr[2]);
-
-        /* std::cout << box_data[0][0] << std::endl;
-        std::cout << box_data[0][1] << std::endl;
-        std::cout << box_data[0][2] << std::endl;
-        std::cout << box_data[1][0] << std::endl;
-        std::cout << box_data[1][1] << std::endl;
-        std::cout << box_data[1][2] << std::endl;
-        std::cout << box_data[2][0] << std::endl;
-        std::cout << box_data[2][1] << std::endl;
-        std::cout << box_data[2][2] << std::endl;
-        std::cout << box_data[3][0] << std::endl;
-        std::cout << box_data[3][1] << std::endl;
-        std::cout << box_data[3][2] << std::endl;
-        std::cout << box_data[4][0] << std::endl;
-        std::cout << box_data[4][1] << std::endl;
-        std::cout << box_data[4][2] << std::endl;
-        std::cout << box_data[5][0] << std::endl;
-        std::cout << box_data[5][1] << std::endl;
-        std::cout << box_data[5][2] << std::endl;
-        std::cout << box_data[6][0] << std::endl;
-        std::cout << box_data[6][1] << std::endl;
-        std::cout << box_data[6][2] << std::endl;
-        std::cout << box_data[7][0] << std::endl;
-        std::cout << box_data[7][1] << std::endl;
-        std::cout << box_data[7][2] << std::endl; */
 
     } catch(std::exception& e) {
         std::cout << "exception was throuwn with error message :" << e.what() << std::endl;

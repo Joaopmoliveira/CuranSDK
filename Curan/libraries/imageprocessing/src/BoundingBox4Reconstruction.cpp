@@ -1,4 +1,4 @@
-#include "imageprocessing/VolumeReconstructorBoxDefiner.h"
+#include "imageprocessing/BoundingBox4Reconstruction.h"
 #include "imageprocessing/VolumeAlgorithms.h"
 #include "utils/Logger.h"
 #include <list>
@@ -7,27 +7,12 @@
 namespace curan {
 namespace image {
 
-VolumeReconstructorBoxDefiner::VolumeReconstructorBoxDefiner()
+BoundingBox4Reconstruction::BoundingBox4Reconstruction()
 {
-	if (out_volume.IsNull())
-	{
-		out_volume = InternalImageType::New();
-	}
-
-	if (acummulation_buffer.IsNull())
-	{
-		acummulation_buffer = itk::Image<short_pixel_type, Dimension3D>::New();
-	}
-
-	output_spacing[0] = 1.0;
-	output_spacing[1] = 1.0;
-	output_spacing[2] = 1.0;
-
 	volumes_initiated = false;
-
 }
 
-VolumeReconstructorBoxDefiner::~VolumeReconstructorBoxDefiner()
+BoundingBox4Reconstruction::~BoundingBox4Reconstruction()
 {
 }
 
@@ -41,17 +26,12 @@ struct already_found
   }
 };
 
-void VolumeReconstructorBoxDefiner::update()
+void BoundingBox4Reconstruction::update()
 {
 	std::vector<gte::Vector3<double>> vertices;
 
 	// We multiply by four because each 
-	// image has four courners and we 
-	// add eight because we have the 
-	// current eight corners in memory 
-	// which represent the minimum bounding 
-	// box containing all the frames 
-	// already added to memory
+	// image has four courners
 	vertices.resize(frame_data.size() * 4);
 
 	int increment = 0;
@@ -110,12 +90,12 @@ void VolumeReconstructorBoxDefiner::update()
 		//for(const auto& vert : vertices)
 		//	std::printf("( %f %f %f )\n",vert[0],vert[1],vert[2]);
 
-		bounding_box(vertices.size() * 4, vertices.data(), 4, volumetric_bounding_box, volume);
+		bounding_box(vertices.size(), vertices.data(), 4, volumetric_bounding_box, volume);
 
-		std::cout << "Volumes initiated" << std::endl;
+		//std::cout << "Volumes initiated" << std::endl;
 		volumes_initiated = true;
 	} else {
-		std::cout << "New image" << std::endl;
+		//std::cout << "New image" << std::endl;
 		std::array<gte::Vector3<double>, 8> current_corners;
 		current_corners[0] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
 		current_corners[1] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
@@ -138,19 +118,13 @@ void VolumeReconstructorBoxDefiner::update()
 
 		double volume = 0.0;
 		bounding_box(vertices.size(), vertices.data(), 4, volumetric_bounding_box, volume);
-		std::printf("Volumetric bounding box center (%f, %f,%f)\n", volumetric_bounding_box.center[0], volumetric_bounding_box.center[1], volumetric_bounding_box.center[2]);
+		//std::printf("Volumetric bounding box center (%f, %f,%f)\n", volumetric_bounding_box.center[0], volumetric_bounding_box.center[1], volumetric_bounding_box.center[2]);
 	}
 
 	frame_data.clear();
 };
 
-void VolumeReconstructorBoxDefiner::set_clipping_bounds(std::array<double, 2> inclipRectangleOrigin, std::array<double, 2> inclipRectangleSize)
-{
-	clipRectangleOrigin = inclipRectangleOrigin;
-	clipRectangleSize = inclipRectangleSize;
-}
-
-void VolumeReconstructorBoxDefiner::get_final_volume_vertices(array_type& box_data){
+void BoundingBox4Reconstruction::get_final_volume_vertices(array_type& box_data){
 	std::array<gte::Vector3<double>, 8> current_corners;
 	current_corners[0] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
 	current_corners[1] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
@@ -164,12 +138,12 @@ void VolumeReconstructorBoxDefiner::get_final_volume_vertices(array_type& box_da
 	box_data = current_corners;
 };
 
-void VolumeReconstructorBoxDefiner::add_frames(std::vector<output_type::Pointer>& images_vector)
+void BoundingBox4Reconstruction::add_frames(std::vector<output_type::Pointer>& images_vector)
 {
 	frame_data.insert(std::end(frame_data), std::begin(images_vector), std::end(images_vector));
 };
 
-void VolumeReconstructorBoxDefiner::add_frame(output_type::Pointer image_pointer)
+void BoundingBox4Reconstruction::add_frame(output_type::Pointer image_pointer)
 {
 	frame_data.push_back(image_pointer);
 };
