@@ -37,9 +37,11 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include "robotParameters.h"
 #include <memory>
 #include <atomic>
+#include <optional>
 
 struct SharedState {
     std::atomic<KUKA::FRI::LBRState> robot_state;
+    std::atomic<bool> is_initialized = true;
 };
 
 /**
