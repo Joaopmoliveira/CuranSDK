@@ -1,6 +1,5 @@
 add_executable(RealTimeRobotVisualizer
-MyLBRApp.cpp
-MyLBRClient.cpp
+main.cpp
 link_demo.cpp
 SharedRobotState.cpp
 )

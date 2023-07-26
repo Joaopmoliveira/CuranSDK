@@ -13,6 +13,7 @@
 #include "communication/Client.h"
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
+#include "communication/ProtoFRI.h"
 
 bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::MessageBase::Pointer val){
 	igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
@@ -101,12 +102,12 @@ int communication(std::shared_ptr<SharedRobotState> state){
 	auto connectionstatus = client.connect(lam);
 
 
-    curan::communication::interface_fri igtlink_interface;
-	curan::communication::Client::Info construction{ context,igtlink_interface };
-	asio::ip::tcp::resolver resolver(context);
-	auto endpoints = resolver.resolve("172.31.1.148", std::to_string(50010));
+    curan::communication::interface_fri fri_interface;
+	curan::communication::Client::Info fri_construction{ context,igtlink_interface };
+	asio::ip::tcp::resolver fri_resolver(context);
+	auto fri_endpoints = resolver.resolve("172.31.1.148", std::to_string(50010));
 	construction.endpoints = endpoints;
-	curan::communication::Client client{ construction };
+	curan::communication::Client fri_client{ construction };
 
 	context.run();
     return 0;

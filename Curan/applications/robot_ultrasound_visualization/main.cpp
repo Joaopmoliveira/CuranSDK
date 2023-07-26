@@ -151,23 +151,6 @@ int main (int argc, char** argv)
     //here I should lauch the thread that does the communication and renders the image above the robotic system 
     std::thread communication_thread(communication_callable);
 
-    kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
-	
-	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
-	auto iiwa = std::make_unique<RobotParameters>(); // myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
-
-	// Attach tool
-	double toolMass = 0.0;                                                                     // No tool for now
-	RigidBodyDynamics::Math::Vector3d toolCOM = RigidBodyDynamics::Math::Vector3d::Zero(3, 1);
-	RigidBodyDynamics::Math::Matrix3d toolInertia = RigidBodyDynamics::Math::Matrix3d::Zero(3, 3);
-	auto myTool = std::make_unique<ToolData>(toolMass, toolCOM, toolInertia);
-
-	robot->attachToolToRobotModel(myTool.get());
-
-   RigidBodyDynamics::Math::VectorNd measured_torque = RigidBodyDynamics::Math::VectorNd::Zero(7,1);
-   Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
-   Vector3d p_0_cur = Vector3d(0, 0, 0.045);
-   RigidBodyDynamics::Math::MatrixNd Jacobian = RigidBodyDynamics::Math::MatrixNd::Zero(6, NUMBER_OF_JOINTS);
 
    auto robotRenderableCasted = state->robot->cast<curan::renderable::SequencialLinks>();
 
@@ -177,24 +160,8 @@ int main (int argc, char** argv)
       auto tau_current = current_reading.getExternalTorque();
 
 	   for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-		   iiwa->q[i] = q_current[i];
          robotRenderableCasted->set(i,q_current[i]);
-		   measured_torque[i] = tau_current[i];
 	   }
-      static RigidBodyDynamics::Math::VectorNd q_old = iiwa->q;
-	   for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-		   iiwa->qDot[i] = (q_current[i] - q_old[i]) / current_reading.getSampleTime();
-	   }   
-
-      robot->getMassMatrix(iiwa->M,iiwa->q);
-	   iiwa->M(6,6) = 45 * iiwa->M(6,6);                                       // Correct mass of last body to avoid large accelerations
-	   iiwa->Minv = iiwa->M.inverse();
-	   robot->getCoriolisAndGravityVector(iiwa->c,iiwa->g,iiwa->q,iiwa->qDot);
-	   robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,7);              // 3x1 position of flange (body = 7), expressed in base coordinates
-
-      robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
-
-      q_old = iiwa->q;
    }
    communication_thread.join();
    std::cout << "terminated the program" << std::endl;
