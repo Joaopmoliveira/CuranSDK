@@ -35,9 +35,6 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 \version {1.9}
 */
 
-#include "MyLBRClient.h"
-#include "friUdpConnection.h"
-#include "friClientApplication.h"
 #include <fstream>
 #include <csignal>
 #include <chrono>
@@ -129,53 +126,77 @@ int main (int argc, char** argv)
        std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
       return 1;
    }
+    curan::renderable::Window::Info info;
+    info.api_dump = false;
+    info.display = "";
+    info.full_screen = false;
+    info.is_debug = false;
+    info.screen_number = 0;
+    info.title = "myviewer";
+    curan::renderable::Window::WindowSize size{2000, 1200};
+    info.window_size = size;
+    curan::renderable::Window window{info};
 
+    std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
+    curan::renderable::SequencialLinks::Info create_info;
+    create_info.convetion = vsg::CoordinateConvention::Y_UP;
+    create_info.json_path = robot_path;
+    create_info.number_of_links = 8;
+    state->robot = curan::renderable::SequencialLinks::make(create_info);
+    window << state->robot;
 
-   // create new client
-	MyLBRClient client{robot_state};
+    auto communication_callable = [state](){
+        communication(state);
+    };
+    //here I should lauch the thread that does the communication and renders the image above the robotic system 
+    std::thread communication_thread(communication_callable);
 
-   // create new udp connection	
-   KUKA::FRI::UdpConnection connection;
+    kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
+	
+	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
+	auto iiwa = std::make_unique<RobotParameters>(); // myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
 
-   // pass connection and client to a new FRI client application
-   KUKA::FRI::ClientApplication app(connection, client);
-   
-   // Connect client application to KUKA Sunrise controller.
-   // Parameter NULL means: repeat to the address, which sends the data
-   app.connect(portID, NULL);
+	// Attach tool
+	double toolMass = 0.0;                                                                     // No tool for now
+	RigidBodyDynamics::Math::Vector3d toolCOM = RigidBodyDynamics::Math::Vector3d::Zero(3, 1);
+	RigidBodyDynamics::Math::Matrix3d toolInertia = RigidBodyDynamics::Math::Matrix3d::Zero(3, 3);
+	auto myTool = std::make_unique<ToolData>(toolMass, toolCOM, toolInertia);
 
-   app.step(); //this blocks until the first message is read
-   //we only want to lauch the visualization once one message
-   //has been shared
-   auto capture = [robot_state](){
-      render(robot_state);
-   };
-   std::thread render_process(capture);
+	robot->attachToolToRobotModel(myTool.get());
 
-   // repeatedly call the step routine to receive and process FRI packets
-   try
-   {
-      bool success = true;
-      while ( !gSignalStatus && success)
-      {
-         success = app.step();
-      }
-   } catch(...){
-      robot_state->kill_yourself();
-      return 1;
+   RigidBodyDynamics::Math::VectorNd measured_torque = RigidBodyDynamics::Math::VectorNd::Zero(7,1);
+   Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
+   Vector3d p_0_cur = Vector3d(0, 0, 0.045);
+   RigidBodyDynamics::Math::MatrixNd Jacobian = RigidBodyDynamics::Math::MatrixNd::Zero(6, NUMBER_OF_JOINTS);
+
+   auto robotRenderableCasted = state->robot->cast<curan::renderable::SequencialLinks>();
+
+   while(window.run_once() && !state->should_kill_myself()) {
+      auto current_reading = state->read();
+      auto q_current = current_reading.getMeasuredJointPosition();
+      auto tau_current = current_reading.getExternalTorque();
+
+	   for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+		   iiwa->q[i] = q_current[i];
+         robotRenderableCasted->set(i,q_current[i]);
+		   measured_torque[i] = tau_current[i];
+	   }
+      static RigidBodyDynamics::Math::VectorNd q_old = iiwa->q;
+	   for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+		   iiwa->qDot[i] = (q_current[i] - q_old[i]) / current_reading.getSampleTime();
+	   }   
+
+      robot->getMassMatrix(iiwa->M,iiwa->q);
+	   iiwa->M(6,6) = 45 * iiwa->M(6,6);                                       // Correct mass of last body to avoid large accelerations
+	   iiwa->Minv = iiwa->M.inverse();
+	   robot->getCoriolisAndGravityVector(iiwa->c,iiwa->g,iiwa->q,iiwa->qDot);
+	   robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,7);              // 3x1 position of flange (body = 7), expressed in base coordinates
+
+      robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
+
+      q_old = iiwa->q;
    }
-
-   robot_state->kill_yourself();
-
-   /***************************************************************************/
-   /*                                                                         */
-   /*   Standard application structure                                        */
-   /*   Dispose                                                               */
-   /*                                                                         */
-   /***************************************************************************/
-   // disconnect from controller
-   app.disconnect();
-   render_process.join();
+   communication_thread.join();
    std::cout << "terminated the program" << std::endl;
    return 0;
 }

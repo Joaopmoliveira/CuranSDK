@@ -6,6 +6,6 @@
 #include <iostream>
 #include "SharedRobotState.h"
 
-int render(std::shared_ptr<SharedRobotState> ptr);
+int communication(std::shared_ptr<SharedRobotState> state);
 
 #endif

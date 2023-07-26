@@ -26,7 +26,7 @@ the class has a method which can query if this thread should die
 or not. 
 */
 class SharedRobotState : std::enable_shared_from_this<SharedRobotState>{
-    std::atomic<KUKA::FRI::LBRState> current_state;
+    
     std::atomic<bool> commit_senpuko;
     SharedRobotState();
 public:
@@ -34,13 +34,7 @@ public:
     vsg::ref_ptr<curan::renderable::Renderable> robot;
     Eigen::Matrix<double,4,4> calibration_matrix;
     static std::shared_ptr<SharedRobotState> make_shared();
-    inline KUKA::FRI::LBRState read(){
-        return current_state.load(std::memory_order_relaxed);
-    }
-    inline void write(const KUKA::FRI::LBRState& state){
-        current_state.store(state,std::memory_order_relaxed);
-    }
-
+    
     inline bool should_kill_myself(){
         return commit_senpuko.load(std::memory_order_relaxed);
     }

@@ -99,82 +99,15 @@ int communication(std::shared_ptr<SharedRobotState> state){
 	}
 	};
 	auto connectionstatus = client.connect(lam);
+
+
+    curan::communication::interface_fri igtlink_interface;
+	curan::communication::Client::Info construction{ context,igtlink_interface };
+	asio::ip::tcp::resolver resolver(context);
+	auto endpoints = resolver.resolve("172.31.1.148", std::to_string(50010));
+	construction.endpoints = endpoints;
+	curan::communication::Client client{ construction };
+
 	context.run();
-    return 0;
-}
-
-int render(std::shared_ptr<SharedRobotState> state)
-{ 
-    curan::renderable::Window::Info info;
-    info.api_dump = false;
-    info.display = "";
-    info.full_screen = false;
-    info.is_debug = false;
-    info.screen_number = 0;
-    info.title = "myviewer";
-    curan::renderable::Window::WindowSize size{2000, 1200};
-    info.window_size = size;
-    curan::renderable::Window window{info};
-
-    std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
-    curan::renderable::SequencialLinks::Info create_info;
-    create_info.convetion = vsg::CoordinateConvention::Y_UP;
-    create_info.json_path = robot_path;
-    create_info.number_of_links = 8;
-    state->robot = curan::renderable::SequencialLinks::make(create_info);
-    window << state->robot;
-
-    auto communication_callable = [state](){
-        communication(state);
-    };
-    //here I should lauch the thread that does the communication and renders the image above the robotic system 
-    std::thread communication_thread(communication_callable);
-
-    kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
-	
-	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
-	auto iiwa = std::make_unique<RobotParameters>(); // myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
-
-	// Attach tool
-	double toolMass = 0.0;                                                                     // No tool for now
-	RigidBodyDynamics::Math::Vector3d toolCOM = RigidBodyDynamics::Math::Vector3d::Zero(3, 1);
-	RigidBodyDynamics::Math::Matrix3d toolInertia = RigidBodyDynamics::Math::Matrix3d::Zero(3, 3);
-	auto myTool = std::make_unique<ToolData>(toolMass, toolCOM, toolInertia);
-
-	robot->attachToolToRobotModel(myTool.get());
-
-    RigidBodyDynamics::Math::VectorNd measured_torque = RigidBodyDynamics::Math::VectorNd::Zero(7,1);
-    Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
-    Vector3d p_0_cur = Vector3d(0, 0, 0.045);
-    RigidBodyDynamics::Math::MatrixNd Jacobian = RigidBodyDynamics::Math::MatrixNd::Zero(6, NUMBER_OF_JOINTS);
-
-    auto robotRenderableCasted = state->robot->cast<curan::renderable::SequencialLinks>();
-
-    while(window.run_once() && !state->should_kill_myself()) {
-        auto current_reading = state->read();
-        auto q_current = current_reading.getMeasuredJointPosition();
-        auto tau_current = current_reading.getExternalTorque();
-
-	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-		    iiwa->q[i] = q_current[i];
-            robotRenderableCasted->set(i,q_current[i]);
-		    measured_torque[i] = tau_current[i];
-	    }
-        static RigidBodyDynamics::Math::VectorNd q_old = iiwa->q;
-	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-		    iiwa->qDot[i] = (q_current[i] - q_old[i]) / current_reading.getSampleTime();
-	    }   
-
-        robot->getMassMatrix(iiwa->M,iiwa->q);
-	    iiwa->M(6,6) = 45 * iiwa->M(6,6);                                       // Correct mass of last body to avoid large accelerations
-	    iiwa->Minv = iiwa->M.inverse();
-	    robot->getCoriolisAndGravityVector(iiwa->c,iiwa->g,iiwa->q,iiwa->qDot);
-	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,7);              // 3x1 position of flange (body = 7), expressed in base coordinates
-
-        robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
-
-        q_old = iiwa->q;
-    }
-    communication_thread.join();
     return 0;
 }
