@@ -83,12 +83,8 @@
 	OutputChannelId="TrackedVideoStream" > 
 	<DefaultClientInfo> 
 		<MessageTypes> 
-			<Message Type="TRANSFORM" />
 			<Message Type="IMAGE" />
 		</MessageTypes>
-		<TransformNames> 
-				<Transform Name="FlangeToBase" />
-			</TransformNames>
 		<ImageNames>
 			<Image Name="Image" EmbeddedTransformToFrame="Base"/>
 		</ImageNames>
