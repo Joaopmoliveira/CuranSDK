@@ -177,6 +177,8 @@ void MyLBRClient::monitor() {
     // Copy measured joint positions (radians) to _qcurr, which is a double
     memcpy(_qCurr, robotState().getMeasuredJointPosition(), NUMBER_OF_JOINTS * sizeof(double));
     shared_state->robot_state.store(robotState());
+    shared_state->is_initialized.store(true);
+
 }
 //******************************************************************************
 
@@ -192,7 +194,7 @@ void MyLBRClient::waitForCommand()
         robotCommand().setJointPosition(robotState().getIpoJointPosition());            // Just overlaying same position
     }
     shared_state->robot_state.store(robotState());
-
+    shared_state->is_initialized.store(true);
 }
 
 VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
@@ -343,8 +345,7 @@ VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
                 {
                     Js(i, k) = 0;
                 }
-                //Js(i, theMostCriticalOld[i]) = 1.0;
-                Js.coeffRef(i, theMostCriticalOld[i]) = 1.0;
+                Js(i, (int)theMostCriticalOld[i]) = 1;
             }
 
             MatrixNd LambdaSatInv = Js * iiwa->Minv * Js.transpose();
@@ -419,7 +420,7 @@ void MyLBRClient::command() {
     memcpy(_measured_torques, robotState().getMeasuredTorque(), NUMBER_OF_JOINTS * sizeof(double));
 
     shared_state->robot_state.store(robotState());
-
+    shared_state->is_initialized.store(true);
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
         iiwa->q[i] = _qCurr[i];
         measured_torque[i] = _measured_torques[i];

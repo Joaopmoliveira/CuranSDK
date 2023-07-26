@@ -10,6 +10,7 @@
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
 
+/*
 constexpr unsigned short DEFAULT_PORTID = 30000;
 
 
@@ -86,7 +87,7 @@ struct OutsideValues {
 	std::mutex mut;
 };
 
-OutsideValues values;
+OutsideValues specification;
 
 void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<curan::utilities::Flag> flag, std::shared_ptr<SharedState> shared_state) {
 	asio::io_context& context = server.get_context();
@@ -104,10 +105,11 @@ void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<c
 		flag->wait();
 		std::string name = "empty";
 		{
-			std::lock_guard<std::mutex> g(values.mut);
-			val = values.framerate;
-			name = values.name;
+			std::lock_guard<std::mutex> g(specification.mut);
+			val = specification.framerate;
+			name = specification.name;
 		}
+
 
 		while (flag->value()) {
 			const auto start = std::chrono::high_resolution_clock::now();
@@ -130,6 +132,7 @@ void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<c
 }
 
 void start_tracking(curan::communication::Server& server,std::shared_ptr<curan::utilities::Flag> flag, std::shared_ptr<SharedState> shared_state) {
+try{
 	asio::io_context& context = server.get_context();
 	igtl::TimeStamp::Pointer ts;
 	ts = igtl::TimeStamp::New();
@@ -139,47 +142,40 @@ void start_tracking(curan::communication::Server& server,std::shared_ptr<curan::
 	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
 	auto iiwa = std::make_unique<RobotParameters>(); // myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
 
+	double toolMass = 0.0;                                                                     // No tool for now
+	Vector3d toolCOM = Vector3d::Zero(3, 1);
+	Matrix3d toolInertia = Matrix3d::Zero(3, 3);
+	std::unique_ptr<ToolData> myTool = std::make_unique<ToolData>(toolMass, toolCOM, toolInertia);
+	//-(change_1 )myLBR->attachToolToRobotModel(myTool);
+	robot->attachToolToRobotModel(myTool.get());
+
 	while (!context.stopped()) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		int val = 50;
-		curan::utilities::cout << "waiting for outside value\n";
-		flag->wait();
 		std::string name = "empty";
-		{
-			std::lock_guard<std::mutex> g(values.mut);
-			val = values.framerate;
-			name = values.name;
-		}
+		val = specification.framerate;
+		name = specification.name;
 		std::string device_name = "FlangeTo" + name;
-
 		curan::utilities::cout << "name to outside:" << device_name << "\nstarting communication!\n";
-
-		igtl::TrackingDataMessage::Pointer trackingMsg;
-		trackingMsg = igtl::TrackingDataMessage::New();
-		trackingMsg->SetDeviceName(device_name);
-
-		igtl::TrackingDataElement::Pointer trackElement0;
-		trackElement0 = igtl::TrackingDataElement::New();
-		trackElement0->SetName(device_name.c_str());
-		trackElement0->SetType(igtl::TrackingDataElement::TYPE_TRACKER);
-
-		trackingMsg->AddTrackingDataElement(trackElement0);
-
-		static float phi0 = 0.0;
-		static float theta0 = 0.0;
-
 
 		while (flag->value()) {
 			const auto start = std::chrono::high_resolution_clock::now();
 			ts->GetTime();
-
+			igtl::TrackingDataMessage::Pointer trackingMsg;
+			trackingMsg = igtl::TrackingDataMessage::New();
+			trackingMsg->SetDeviceName(device_name);
+			igtl::TrackingDataElement::Pointer trackElement0;
+			trackElement0 = igtl::TrackingDataElement::New();
+			trackElement0->SetName(device_name.c_str());
+			trackElement0->SetType(igtl::TrackingDataElement::TYPE_TRACKER);
+			trackingMsg->AddTrackingDataElement(trackElement0);
+		
 			igtl::Matrix4x4 matrix;
 			igtl::TrackingDataElement::Pointer ptr;
-
 			trackingMsg->GetTrackingDataElement(0, ptr);
 			GetRobotConfiguration(matrix, robot.get(), iiwa.get(), shared_state);
 			ptr->SetMatrix(matrix);
-
+			trackingMsg->SetTimeStamp(ts);
 			trackingMsg->Pack();
 
 			auto callable = [trackingMsg]() {
@@ -187,14 +183,44 @@ void start_tracking(curan::communication::Server& server,std::shared_ptr<curan::
 			};
 			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
 			server.write(to_send);
-
 			const auto end = std::chrono::high_resolution_clock::now();
-			std::this_thread::sleep_for(std::chrono::milliseconds((int)(1000.0/ val)) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+			auto val_to_sleep = std::chrono::milliseconds(val) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+			auto sleep_for = (val_to_sleep.count()>0) ?  val_to_sleep : std::chrono::milliseconds(0);
+			std::this_thread::sleep_for(sleep_for);
 		}
 	}
+} catch(...){	
+	curan::utilities::cout << "exception was thrown\n";
+}
 }
 
-int main() {
+
+int main_imple(int argc, char* argv[]){
+	/*
+
+	std::cout << "How to use: \nCall the executable as FRIBrigde Name_of_device Time_between_messages(milliseconds), \ne.g. : FRIBrigde Flange 40\n";
+	if(argc!=3){
+		std::cout << "Must provide at least two arguments to the executable\n";
+		return 1;
+	}
+	std::string integer{argv[2]};
+	size_t pos = 0;
+	try{
+		specification.framerate = std::stoi(integer,&pos);
+	} catch(...){
+		return 2;
+	};
+	if(pos!=integer.size()){
+
+		std::cout << "failed to parse the supplied integer value\n";
+		return 2;
+	}
+	specification.name = std::string(argv[1]);
+	
+
+	specification.framerate = 40;
+	specification.name = "Base";
+
 	unsigned short port_igtl = 50000;
 	unsigned short port_fri = 50010;
 	asio::io_context io_context;
@@ -223,9 +249,9 @@ int main() {
 				int framerate = tracking->GetResolution();
 				curan::utilities::cout << "message coordinate name: (" << s << ") , frame rate: " << framerate << "\n";
 				{
-					std::lock_guard<std::mutex> g(values.mut);
-					values.framerate = framerate;
-					values.name = s;
+					std::lock_guard<std::mutex> g(specification.mut);
+					specification.framerate = framerate;
+					specification.name = s;
 					state_flag->set();
 				}
 			}
@@ -272,5 +298,308 @@ int main() {
 	thred_robot_control.join();
 	thred.join();
 	thred_joint.join();
+	return 0;
+}
+
+int main(int argc, char* argv[]) {
+	try{
+		main_imple(argc,argv);
+	}catch(std::exception& e){
+		std::cout << "Exception occured with error message: " << e.what() << "\n";
+	} catch(...){
+		std::cout << "Unknown exception occurred \n";
+	}
+}
+
+*/
+
+constexpr unsigned short DEFAULT_PORTID = 30200;
+
+
+void robot_control(std::shared_ptr<SharedState> shared_state,std::shared_ptr<curan::utilities::Flag> flag) {
+	curan::utilities::cout << "Lauching robot control thread\n";
+	MyLBRClient client = MyLBRClient(shared_state);
+	KUKA::FRI::UdpConnection connection;
+	KUKA::FRI::ClientApplication app(connection, client);
+	app.connect(DEFAULT_PORTID, NULL);
+	bool success = app.step();
+	if(success)
+		curan::utilities::cout << "Established first message between robot and host\n";
+	else
+		curan::utilities::cout << "Failed to established first message between robot and host\n";
+	try
+	{
+		while (success && flag->value())
+		{
+			success = app.step();
+		}
+	}
+	catch (std::exception& e) {
+		return;
+	}
+	app.disconnect();
+	return;
+}
+
+void GetRobotConfiguration(igtl::Matrix4x4& matrix, kuka::Robot* robot, RobotParameters* iiwa,std::shared_ptr<SharedState> shared_state)
+{
+	static auto t1 = std::chrono::steady_clock::now();
+	static double _qOld[NUMBER_OF_JOINTS];
+	bool is_initialized = shared_state->is_initialized.load();
+	if(is_initialized){
+		auto robot_state = shared_state->robot_state.load();
+		auto _qCurr = robot_state.getMeasuredJointPosition();
+		memcpy(_qOld, _qCurr, NUMBER_OF_JOINTS * sizeof(double));
+		//curan::utils::cout << "the joints are: \n";
+		for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+        	iiwa->q[i] = _qCurr[i];
+    	}
+		auto t2 = std::chrono::steady_clock::now();
+		auto sampleTimeChrono = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1);
+		double sampleTime = (sampleTimeChrono.count()< 1) ? 0.001 : sampleTimeChrono.count()/1000.0;	
+		t1 = t2;
+	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+	        iiwa->qDot[i] = (_qCurr[i] - _qOld[i]) / sampleTime;
+    	}
+		//curan::utils::cout << "\n";
+	
+		static Vector3d p_0_cur = Vector3d::Zero(3, 1);
+		static Matrix3d R_0_7 = Matrix3d::Zero(3, 3);
+		static Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
+
+	    robot->getMassMatrix(iiwa->M, iiwa->q);
+	    iiwa->M(6, 6) = 45 * iiwa->M(6, 6);                                       // Correct mass of last body to avoid large accelerations
+	    iiwa->Minv = iiwa->M.inverse();
+	    robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
+	    robot->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7);              // 3x1 position of flange (body = 7), expressed in base coordinates
+	    robot->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);                                // 3x3 rotation matrix of flange, expressed in base coordinates
+	
+
+		p_0_cur *= 1000; 
+		matrix[0][0] = R_0_7(0, 0);
+		matrix[1][0] = R_0_7(1, 0);
+		matrix[2][0] = R_0_7(2, 0);
+
+		matrix[0][1] = R_0_7(0, 1);
+		matrix[1][1] = R_0_7(1, 1);
+		matrix[2][1] = R_0_7(2, 1);
+
+		matrix[0][2] = R_0_7(0, 2);
+		matrix[1][2] = R_0_7(1, 2);
+		matrix[2][2] = R_0_7(2, 2);
+
+		matrix[3][0] = 0.0;
+		matrix[3][1] = 0.0;
+		matrix[3][2] = 0.0;
+		matrix[3][3] = 1.0;
+
+		matrix[0][3] = p_0_cur(0,0);
+		matrix[1][3] = p_0_cur(1,0);
+		matrix[2][3] = p_0_cur(2,0);
+	} else {
+		double _qCurr[NUMBER_OF_JOINTS];
+ 	  	for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+			_qCurr[i] = 0.0;
+		}
+		memcpy(_qOld, _qCurr, NUMBER_OF_JOINTS * sizeof(double));
+		//curan::utils::cout << "the joints are: \n";
+	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+	        iiwa->q[i] = _qCurr[i];
+	    }
+		auto t2 = std::chrono::steady_clock::now();
+		auto sampleTimeChrono = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1);
+		double sampleTime = (sampleTimeChrono.count()< 1) ? 0.001 : sampleTimeChrono.count()/1000.0;	
+		t1 = t2;
+ 	   for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+ 	       iiwa->qDot[i] = (_qCurr[i] - _qOld[i]) / sampleTime;
+	    }
+		//curan::utils::cout << "\n";
+	
+		static Vector3d p_0_cur = Vector3d::Zero(3, 1);
+		static Matrix3d R_0_7 = Matrix3d::Zero(3, 3);
+		static Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
+
+ 	   robot->getMassMatrix(iiwa->M, iiwa->q);
+ 	   iiwa->M(6, 6) = 45 * iiwa->M(6, 6);                                       // Correct mass of last body to avoid large accelerations
+ 	   iiwa->Minv = iiwa->M.inverse();
+ 	   robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
+ 	   robot->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7);              // 3x1 position of flange (body = 7), expressed in base coordinates
+ 	   robot->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);                                // 3x3 rotation matrix of flange, expressed in base coordinates
+	
+
+		p_0_cur *= 1000; 
+		matrix[0][0] = R_0_7(0, 0);
+		matrix[1][0] = R_0_7(1, 0);
+		matrix[2][0] = R_0_7(2, 0);
+
+		matrix[0][1] = R_0_7(0, 1);
+		matrix[1][1] = R_0_7(1, 1);
+		matrix[2][1] = R_0_7(2, 1);
+
+		matrix[0][2] = R_0_7(0, 2);
+		matrix[1][2] = R_0_7(1, 2);
+		matrix[2][2] = R_0_7(2, 2);
+
+		matrix[3][0] = 0.0;
+		matrix[3][1] = 0.0;
+		matrix[3][2] = 0.0;
+		matrix[3][3] = 1.0;
+
+		matrix[0][3] = p_0_cur(0,0);
+		matrix[1][3] = p_0_cur(1,0);
+		matrix[2][3] = p_0_cur(2,0);
+	}
+}
+
+struct PlusSpecification {
+	int framerate = 30;
+	std::string name;
+} specification;
+
+void start_tracking(curan::communication::Server& server,std::shared_ptr<curan::utilities::Flag> flag, std::shared_ptr<SharedState> shared_state) {
+try{
+	asio::io_context& context = server.get_context();
+	igtl::TimeStamp::Pointer ts;
+	ts = igtl::TimeStamp::New();
+	// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
+	kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
+
+	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
+	auto iiwa = std::make_unique<RobotParameters>(); // myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
+
+	double toolMass = 0.0;                                                                     // No tool for now
+	Vector3d toolCOM = Vector3d::Zero(3, 1);
+	Matrix3d toolInertia = Matrix3d::Zero(3, 3);
+	std::unique_ptr<ToolData> myTool = std::make_unique<ToolData>(toolMass, toolCOM, toolInertia);
+	//-(change_1 )myLBR->attachToolToRobotModel(myTool);
+	robot->attachToolToRobotModel(myTool.get());
+
+	while (!context.stopped()) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		int val = 50;
+		std::string name = "empty";
+		val = specification.framerate;
+		name = specification.name;
+		std::string device_name = "FlangeTo" + name;
+		curan::utilities::cout << "name to outside:" << device_name << "\nstarting communication!\n";
+
+		while (flag->value()) {
+			const auto start = std::chrono::high_resolution_clock::now();
+			ts->GetTime();
+			igtl::TrackingDataMessage::Pointer trackingMsg;
+			trackingMsg = igtl::TrackingDataMessage::New();
+			trackingMsg->SetDeviceName(device_name);
+			igtl::TrackingDataElement::Pointer trackElement0;
+			trackElement0 = igtl::TrackingDataElement::New();
+			trackElement0->SetName(device_name.c_str());
+			trackElement0->SetType(igtl::TrackingDataElement::TYPE_TRACKER);
+			trackingMsg->AddTrackingDataElement(trackElement0);
+		
+			igtl::Matrix4x4 matrix;
+			igtl::TrackingDataElement::Pointer ptr;
+			trackingMsg->GetTrackingDataElement(0, ptr);
+			GetRobotConfiguration(matrix, robot.get(), iiwa.get(), shared_state);
+			ptr->SetMatrix(matrix);
+			trackingMsg->SetTimeStamp(ts);
+			trackingMsg->Pack();
+
+			auto callable = [trackingMsg]() {
+				return asio::buffer(trackingMsg->GetPackPointer(), trackingMsg->GetPackSize());
+			};
+			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+			server.write(to_send);
+			const auto end = std::chrono::high_resolution_clock::now();
+			auto val_to_sleep = std::chrono::milliseconds(val) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+			auto sleep_for = (val_to_sleep.count()>0) ?  val_to_sleep : std::chrono::milliseconds(0);
+			std::this_thread::sleep_for(sleep_for);
+		}
+	}
+} catch(...){	
+	curan::utilities::cout << "exception was thrown\n";
+}
+}
+
+int main(int argc, char* argv[]) {
+
+	std::cout << "How to use: \nCall the executable as FRIBrigde Name_of_device Time_between_messages(milliseconds), \ne.g. : FRIBrigde Flange 40\n";
+	if(argc!=3){
+		std::cout << "Must provide at least two arguments to the executable\n";
+		return 1;
+	}
+	std::string integer{argv[2]};
+	size_t pos = 0;
+	try{
+		specification.framerate = std::stoi(integer,&pos);
+	} catch(...){
+		return 2;
+	};
+	if(pos!=integer.size()){
+
+		std::cout << "failed to parse the supplied integer value\n";
+		return 2;
+	}
+	
+	specification.name = std::string(argv[1]);
+
+	unsigned short port = 50000;
+	asio::io_context io_context;
+	curan::communication::interface_igtl igtlink_interface;
+	curan::communication::Server::Info construction{ io_context,igtlink_interface ,port };
+	curan::communication::Server server{ construction };
+	
+	auto state_flag = curan::utilities::Flag::make_shared_flag();
+	state_flag->clear();
+	auto robot_flag = curan::utilities::Flag::make_shared_flag();
+	robot_flag->set();
+
+	auto shared_state = std::make_shared<SharedState>();
+	shared_state->is_initialized.store(false);
+	auto robot_functional_control = [shared_state, robot_flag]() {
+		robot_control(shared_state, robot_flag);
+	};
+	std::thread thred_robot_control{ robot_functional_control };
+
+	curan::communication::interface_igtl callme = [state_flag,&server](const size_t& custom, const std::error_code& err, igtl::MessageBase::Pointer pointer) {
+		if (err) {
+			return;
+		}
+		auto temp = pointer->GetMessageType();
+		if (!temp.compare("STT_TDATA")) {
+			igtl::StartTrackingDataMessage::Pointer tracking = igtl::StartTrackingDataMessage::New();
+			tracking->Copy(pointer);
+			int c = tracking->Unpack(1);
+			if (c & igtl::MessageHeader::UNPACK_BODY) {
+				std::string s{ tracking->GetCoordinateName() };
+				int framerate = tracking->GetResolution();
+				state_flag->set();
+				curan::utilities::cout << "message coordinate name: (" << s << ") , frame rate: " << framerate << "\n";
+			} else 
+				curan::utilities::cout << "failed to unpack plus message\n";
+			return;
+		}
+		if (!temp.compare("STP_TDATA")) {
+			curan::utilities::cout << "received request to stop processing images\n";
+			state_flag->clear();
+			server.get_context().stop();
+			return;
+		}
+	};
+
+	auto val = server.connect(callme);
+	if (!val)
+		return 1;
+
+	auto state_machine = [state_flag, &server, shared_state]() {
+		start_tracking(server, state_flag, shared_state);
+	};
+
+	std::thread thred{ state_machine };
+
+	curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
+
+	io_context.run();
+	robot_flag->clear();
+	thred_robot_control.join();
+	thred.join();
 	return 0;
 }
