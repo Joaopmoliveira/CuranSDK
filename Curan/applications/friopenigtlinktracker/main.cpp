@@ -488,7 +488,6 @@ try{
 		curan::utilities::cout << "name to outside:" << device_name << "\nstarting communication!\n";
 
 		while (flag->value()) {
-			std::cout << "here!\n";
 			const auto start = std::chrono::high_resolution_clock::now();
 			ts->GetTime();
 			igtl::TrackingDataMessage::Pointer trackingMsg;
@@ -524,6 +523,59 @@ try{
 }
 }
 
+
+void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage>& message,std::shared_ptr<SharedState>& shared_state){
+    auto robot_state = shared_state->robot_state.load();
+	auto _qCurr = robot_state.getMeasuredJointPosition();
+	auto _eExtern = robot_state.getExternalTorque();
+	auto _eMeasured = robot_state.getMeasuredTorque();
+	for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+		message->angles[i] = _qCurr[i];
+		message->measured_torques[i] = _eMeasured[i];
+		message->external_torques[i] = _eExtern[i];
+	}
+}
+
+void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<curan::utilities::Flag> flag, std::shared_ptr<SharedState> shared_state) {
+	asio::io_context& context = server.get_context();
+
+	// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
+	kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
+
+	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
+	auto iiwa = std::make_unique<RobotParameters>(); // myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
+
+	while (!context.stopped()) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		int val = 50;
+		curan::utilities::cout << "waiting for outside value\n";
+		flag->wait();
+		std::string name = "empty";
+		{
+			val = specification.framerate;
+			name = specification.name;
+		}
+		while (!context.stopped()) {
+			const auto start = std::chrono::high_resolution_clock::now();
+
+			std::shared_ptr<curan::communication::FRIMessage> message = std::shared_ptr<curan::communication::FRIMessage>(new curan::communication::FRIMessage());
+
+			GetRobotConfiguration(message,shared_state);
+			message->serialize();
+
+			auto callable = [message]() {
+				return asio::buffer(message->get_buffer(),message->get_body_size()+message->get_header_size());
+			};
+			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+			server.write(to_send);
+
+			const auto end = std::chrono::high_resolution_clock::now();
+			std::this_thread::sleep_for(std::chrono::milliseconds((int)(1000.0/ val)) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+		}
+	}
+}
+
+
 int main(int argc, char* argv[]) {
 	try{
 	
@@ -558,7 +610,6 @@ int main(int argc, char* argv[]) {
 		if (err) {
 			return;
 		}
-		std::cout << "========\n========\n======received something===========\n============\n===========\n";
 		auto temp = pointer->GetMessageType();
 		if (!temp.compare("STT_TDATA")) {
 			igtl::StartTrackingDataMessage::Pointer tracking = igtl::StartTrackingDataMessage::New();
@@ -600,6 +651,18 @@ int main(int argc, char* argv[]) {
 	};
 
 	std::thread thred{ state_machine };
+
+	int port_fri = 50010;
+
+	curan::communication::interface_fri fri_interface;
+	curan::communication::Server::Info construction_joints{ io_context,fri_interface ,port_fri };
+	curan::communication::Server server_joints{ construction_joints };
+
+	auto joint_tracking = [state_flag, &server_joints, shared_state](){
+		start_joint_tracking(server_joints,state_flag,shared_state);
+	};
+	std::thread thred_joint{ joint_tracking };
+
 	curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
 	io_context.run();
 	robot_flag->clear();
