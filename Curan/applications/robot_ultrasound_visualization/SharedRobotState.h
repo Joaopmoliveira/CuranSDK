@@ -5,6 +5,7 @@
 #include <memory>
 #include <atomic>
 #include "rendering/DynamicTexture.h"
+#include "rendering/Window.h"
 #include <Eigen/Dense>
 
 /*
@@ -30,7 +31,8 @@ class SharedRobotState : std::enable_shared_from_this<SharedRobotState>{
     SharedRobotState();
 public:
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> dynamic_texture;
-    vsg::ref_ptr<curan::renderable::Renderable> robot;
+    //vsg::ref_ptr<curan::renderable::Renderable> robot;
+    curan::renderable::Window* window_pointer = nullptr;
     vsg::dmat4 calibration_matrix;
     static std::shared_ptr<SharedRobotState> make_shared();
     

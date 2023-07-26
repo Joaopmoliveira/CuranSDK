@@ -31,40 +31,53 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
         infotexture.origin = {0.0,0.0,0.0};
         infotexture.builder = vsg::Builder::create();
         state->dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
+        (*state->window_pointer) << *state->dynamic_texture;
     }
     auto updateBaseTexture = [message_body](vsg::vec4Array2D& image)
     {
-        int x, y, z;
-	    message_body->GetDimensions(x, y, z);
-        auto image_raw = (unsigned char*)message_body->GetScalarPointer();
-        assert(image.width()==x && image.height()==y);
-        using value_type = typename vsg::vec4Array2D::value_type;
-        for (uint32_t r = 0; r < image.height(); ++r)
-        {
-            value_type* ptr = &image.at(0, r);
-            for (size_t c = 0; c < image.width(); ++c)
-            {
-                ptr->r = *image_raw;
-                ptr->g = *image_raw;
-                ptr->b = *image_raw;
-                ptr->a = 1.0f;
+        try{
+            int x, y, z;
+	        message_body->GetDimensions(x, y, z);
+            unsigned char* scaller_buffer = (unsigned char*)message_body->GetScalarPointer();
+            
+            for (size_t r = 0; r < image.height(); ++r)
+                {
+                    using value_type = typename vsg::vec4Array2D::value_type;
+                    value_type* ptr = &image.at(0, r);
+                    for (size_t c = 0; c < image.width(); ++c)
+                    {
+                        ptr->r = *scaller_buffer/255.0;
+                        ptr->g = *scaller_buffer/255.0;
+                        ptr->b = *scaller_buffer/255.0;
+                        ptr->a = 1.0f;
+                        ++ptr;
+                        ++scaller_buffer;
+                    }
+                }
 
-                ++ptr;
-                ++image_raw;
-            }
+        } catch(std::exception& e){
+            std::cout << "exception : " << e.what() << std::endl;;
         }
     };
-    state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+    //state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+    auto local_dynamic_texture = *state->dynamic_texture;
+    //local_dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+    auto local_cast_dyanmic = local_dynamic_texture->cast<curan::renderable::DynamicTexture>();
+    local_cast_dyanmic->update_texture(updateBaseTexture);
     igtl::Matrix4x4 image_transform;
     message_body->GetMatrix(image_transform);
     vsg::dmat4 homogeneous_transformation;
     for(size_t row = 0 ; row < 4 ; ++row)
         for(size_t col = 0; col < 4 ; ++col)
             homogeneous_transformation(col,row) = image_transform[row][col];
-    state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(homogeneous_transformation*state->calibration_matrix);
+
+    homogeneous_transformation(3,0) *= 1e-3;
+    homogeneous_transformation(3,1) *= 1e-3;
+    homogeneous_transformation(3,2) *= 1e-3;
+    auto product = homogeneous_transformation*state->calibration_matrix;
+    state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(product);
 	return true;
 }
-
 
 std::map<std::string,std::function<bool(std::shared_ptr<SharedRobotState> state , igtl::MessageBase::Pointer val)>> openigtlink_callbacks{
 	{"IMAGE",process_image_message}
@@ -74,26 +87,13 @@ bool process_message(std::shared_ptr<SharedRobotState> state , size_t protocol_d
 	assert(val.IsNotNull());
 	if (er)
         return true;
-
+    std::cout << "Received message type: " << val->GetMessageType() << "\n";
     if (auto search = openigtlink_callbacks.find(val->GetMessageType()); search != openigtlink_callbacks.end())
         search->second(state,val);
     else
         std::cout << "No functionality for function received\n";
     return false;
 }
-
-
-bool client_callback(std::shared_ptr<SharedRobotState> state,const size_t& loc, const std::error_code& err, std::shared_ptr<curan::communication::FRIMessage> message){
-	if (err)
-        return true;
-    auto robotRenderableCasted = state->robot->cast<curan::renderable::SequencialLinks>();
-    for(size_t link = 0 ; link< curan::communication::FRIMessage::n_joints ; ++link){
-        robotRenderableCasted->set(link,message->angles[link]);
-        std::printf("values: %f %f %f \n",message->angles[link],message->external_torques[link],message->measured_torques[link]);
-    }
-    return 0;
-}
-
 
 int communication(std::shared_ptr<SharedRobotState> state){
     asio::io_context context;
@@ -113,23 +113,6 @@ int communication(std::shared_ptr<SharedRobotState> state){
 	}
 	};
 	auto connectionstatus = client.connect(lam);
-
-
-    curan::communication::interface_fri fri_interface;
-	curan::communication::Client::Info fri_construction{ context,igtlink_interface };
-	asio::ip::tcp::resolver fri_resolver(context);
-	auto fri_endpoints = resolver.resolve("172.31.1.148", std::to_string(50010));
-	construction.endpoints = endpoints;
-	curan::communication::Client fri_client{ construction };
-	auto fri_lam = [&](const size_t& loc, const std::error_code& err, std::shared_ptr<curan::communication::FRIMessage> message) {
-	try{
-		if (client_callback(state,loc, err, message) || state->should_kill_myself())
-			context.stop();
-	} catch(...)    {
-		std::cout << "Exception was thrown\n";
-	}
-	};
-    auto connections_state = fri_client.connect(fri_lam);
 	context.run();
     return 0;
 }

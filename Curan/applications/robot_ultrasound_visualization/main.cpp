@@ -110,19 +110,19 @@ int main (int argc, char** argv)
    try{
    // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
    nlohmann::json calibration_data;
-	std::ifstream in("optimization_result.json");
+	std::ifstream in("C:/Users/SURGROB7/optimization_result.json");
 	in >> calibration_data;
    std::string timestamp = calibration_data["timestamp"];
 	std::string homogenenous_transformation = calibration_data["homogeneous_transformation"];
 	double error = calibration_data["optimization_error"];
-	std::printf("Using calibration with average error of : %f\n on the date",error);
+	std::printf("Using calibration with average error of : %f\n on the date ",error);
    std::cout << timestamp << std::endl;
    std::stringstream matrix_strm;
    matrix_strm << homogenenous_transformation;
    auto calibration_matrix = convert_matrix(matrix_strm);
    std::cout << "with the homogeneous matrix :\n" <<  calibration_matrix << std::endl;
-   for(size_t row = 0 ; calibration_matrix.rows(); ++row)
-      for(size_t col = 0; calibration_matrix.cols(); ++col)
+   for(size_t row = 0 ; row < calibration_matrix.rows(); ++row)
+      for(size_t col = 0; col < calibration_matrix.cols(); ++col)
         robot_state->calibration_matrix(col,row) = calibration_matrix(row,col);
 
    } catch(...){
@@ -139,14 +139,14 @@ int main (int argc, char** argv)
    curan::renderable::Window::WindowSize size{2000, 1200};
    info.window_size = size;
    curan::renderable::Window window{info};
-
-   std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
-   curan::renderable::SequencialLinks::Info create_info;
-   create_info.convetion = vsg::CoordinateConvention::Y_UP;
-   create_info.json_path = robot_path;
-   create_info.number_of_links = 8;
-   robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
-   window << robot_state->robot;
+   robot_state->window_pointer = &window;
+   //std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
+   //curan::renderable::SequencialLinks::Info create_info;
+   //create_info.convetion = vsg::CoordinateConvention::Y_UP;
+   //create_info.json_path = robot_path;
+   //create_info.number_of_links = 8;
+   //robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
+   //window << robot_state->robot;
 
    auto communication_callable = [robot_state](){
       communication(robot_state);
