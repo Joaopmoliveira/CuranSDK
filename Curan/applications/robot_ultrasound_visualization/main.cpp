@@ -106,7 +106,6 @@ Eigen::MatrixXd convert_matrix(std::stringstream& data)
 int main (int argc, char** argv)
 {
    std::signal(SIGINT, signal_handler);
-
    auto robot_state = SharedRobotState::make_shared();
    try{
    // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
@@ -126,43 +125,33 @@ int main (int argc, char** argv)
        std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
       return 1;
    }
-    curan::renderable::Window::Info info;
-    info.api_dump = false;
-    info.display = "";
-    info.full_screen = false;
-    info.is_debug = false;
-    info.screen_number = 0;
-    info.title = "myviewer";
-    curan::renderable::Window::WindowSize size{2000, 1200};
-    info.window_size = size;
-    curan::renderable::Window window{info};
+   curan::renderable::Window::Info info;
+   info.api_dump = false;
+   info.display = "";
+   info.full_screen = false;
+   info.is_debug = false;
+   info.screen_number = 0;
+   info.title = "myviewer";
+   curan::renderable::Window::WindowSize size{2000, 1200};
+   info.window_size = size;
+   curan::renderable::Window window{info};
 
-    std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
-    curan::renderable::SequencialLinks::Info create_info;
-    create_info.convetion = vsg::CoordinateConvention::Y_UP;
-    create_info.json_path = robot_path;
-    create_info.number_of_links = 8;
-    robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
-    window << robot_state->robot;
+   std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
+   curan::renderable::SequencialLinks::Info create_info;
+   create_info.convetion = vsg::CoordinateConvention::Y_UP;
+   create_info.json_path = robot_path;
+   create_info.number_of_links = 8;
+   robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
+   window << robot_state->robot;
 
-    auto communication_callable = [robot_state](){
-        communication(robot_state);
-    };
-    //here I should lauch the thread that does the communication and renders the image above the robotic system 
-    std::thread communication_thread(communication_callable);
+   auto communication_callable = [robot_state](){
+      communication(robot_state);
+   };
+   //here I should lauch the thread that does the communication and renders the image above the robotic system 
+   std::thread communication_thread(communication_callable);
 
-
-   auto robotRenderableCasted = robot_state->robot->cast<curan::renderable::SequencialLinks>();
-
-   while(window.run_once() && !robot_state->should_kill_myself()) {
-      auto current_reading = robot_state->read();
-      auto q_current = robot_state.getMeasuredJointPosition();
-      auto tau_current = current_reading.getExternalTorque();
-
-	   for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-         robotRenderableCasted->set(i,q_current[i]);
-	   }
-   }
+   window.run();
+   robot_state->kill_yourself();
    communication_thread.join();
    std::cout << "terminated the program" << std::endl;
    return 0;

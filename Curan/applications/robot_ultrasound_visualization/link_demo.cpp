@@ -82,6 +82,19 @@ bool process_message(std::shared_ptr<SharedRobotState> state , size_t protocol_d
     return false;
 }
 
+
+bool client_callback(std::shared_ptr<SharedRobotState> state,const size_t& loc, const std::error_code& err, std::shared_ptr<curan::communication::FRIMessage> message){
+	if (err)
+        return true;
+    auto robotRenderableCasted = state->robot->cast<curan::renderable::SequencialLinks>();
+    for(size_t link = 0 ; link< curan::communication::FRIMessage::n_joints ; ++link){
+        robotRenderableCasted->set(link,message->angles[link]);
+        std::printf("values: %f %f %f \n",message->angles[link],message->external_torques[link],message->measured_torques[link]);
+    }
+    return 0;
+}
+
+
 int communication(std::shared_ptr<SharedRobotState> state){
     asio::io_context context;
     curan::communication::interface_igtl igtlink_interface;
@@ -108,6 +121,15 @@ int communication(std::shared_ptr<SharedRobotState> state){
 	auto fri_endpoints = resolver.resolve("172.31.1.148", std::to_string(50010));
 	construction.endpoints = endpoints;
 	curan::communication::Client fri_client{ construction };
+	auto fri_lam = [&](const size_t& loc, const std::error_code& err, std::shared_ptr<curan::communication::FRIMessage> message) {
+	try{
+		if (client_callback(state,loc, err, message) || state->should_kill_myself())
+			context.stop();
+	} catch(...)    {
+		std::cout << "Exception was thrown\n";
+	}
+	};
+    auto connections_state = fri_client.connect(fri_lam)
 
 	context.run();
     return 0;
