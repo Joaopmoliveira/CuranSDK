@@ -31,14 +31,7 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
         infotexture.origin = {0.0,0.0,0.0};
         infotexture.builder = vsg::Builder::create();
         state->dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
-        vsg::dmat4 homogeneous_transformation;
-        for(size_t row = 0 ; state->calibration_matrix.rows(); ++row)
-            for(size_t col = 0; state->calibration_matrix.cols(); ++col)
-                homogeneous_transformation(col,row) = state->calibration_matrix(row,col);
-        state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(homogeneous_transformation);
-        state->robot->append(*state->dynamic_texture);
     }
-    
     auto updateBaseTexture = [message_body](vsg::vec4Array2D& image)
     {
         int x, y, z;
@@ -62,6 +55,13 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
         }
     };
     state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+    igtl::Matrix4x4 image_transform;
+    message_body->GetMatrix(image_transform);
+    vsg::dmat4 homogeneous_transformation;
+    for(size_t row = 0 ; row < 4 ; ++row)
+        for(size_t col = 0; col < 4 ; ++col)
+            homogeneous_transformation(col,row) = image_transform[row][col];
+    state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(homogeneous_transformation*state->calibration_matrix);
 	return true;
 }
 
@@ -129,8 +129,7 @@ int communication(std::shared_ptr<SharedRobotState> state){
 		std::cout << "Exception was thrown\n";
 	}
 	};
-    auto connections_state = fri_client.connect(fri_lam)
-
+    auto connections_state = fri_client.connect(fri_lam);
 	context.run();
     return 0;
 }

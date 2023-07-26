@@ -119,8 +119,12 @@ int main (int argc, char** argv)
    std::cout << timestamp << std::endl;
    std::stringstream matrix_strm;
    matrix_strm << homogenenous_transformation;
-   robot_state->calibration_matrix = convert_matrix(matrix_strm);
-   std::cout << "with the homogeneous matrix :\n" <<  robot_state->calibration_matrix << std::endl;
+   auto calibration_matrix = convert_matrix(matrix_strm);
+   std::cout << "with the homogeneous matrix :\n" <<  calibration_matrix << std::endl;
+   for(size_t row = 0 ; calibration_matrix.rows(); ++row)
+      for(size_t col = 0; calibration_matrix.cols(); ++col)
+        robot_state->calibration_matrix(col,row) = calibration_matrix(row,col);
+
    } catch(...){
        std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
       return 1;
