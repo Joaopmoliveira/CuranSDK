@@ -7,7 +7,7 @@
 namespace curan {
 namespace communication {
 
-Server::Server(Info& info) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), info.port) } {
+Server::Server(Info& info) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), info.port) },connection_type{info.connection_type}  {
 	accept();
 }
 
@@ -16,8 +16,11 @@ Server::~Server() {
 }
 
 std::optional<std::shared_ptr<utilities::Cancelable>> Server::connect(callable c) {
-	if (connection_type.index() != c.index())
+	if (connection_type.index() != c.index()){
+		utilities::cout << "the supplied callback is not supported against the requested interface";
 		return std::nullopt;
+	}
+
 	auto cancel = utilities::Cancelable::make_cancelable();
 	combined val{ c,cancel };
 	callables.push_back(val);
@@ -32,8 +35,11 @@ void Server::write(std::shared_ptr<utilities::MemoryBuffer> buffer) {
 		return;
 	}
 	list_of_clients.remove_if([buffer](std::shared_ptr<Client>& client){
-		if(!client->get_socket().get_underlying_socket().is_open())
+		if(!client->get_socket().get_underlying_socket().is_open()){
+			utilities::cout << "erasing client";
 			return true;
+		}
+			
 		client->write(buffer);
 		return false;
 	}

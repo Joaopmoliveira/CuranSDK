@@ -317,6 +317,7 @@ constexpr unsigned short DEFAULT_PORTID = 30200;
 
 
 void robot_control(std::shared_ptr<SharedState> shared_state,std::shared_ptr<curan::utilities::Flag> flag) {
+	try{
 	curan::utilities::cout << "Lauching robot control thread\n";
 	MyLBRClient client = MyLBRClient(shared_state);
 	KUKA::FRI::UdpConnection connection;
@@ -339,6 +340,10 @@ void robot_control(std::shared_ptr<SharedState> shared_state,std::shared_ptr<cur
 	}
 	app.disconnect();
 	return;
+	} catch(...){
+		std::cout << "robot control exception\n";
+		return;
+	}
 }
 
 void GetRobotConfiguration(igtl::Matrix4x4& matrix, kuka::Robot* robot, RobotParameters* iiwa,std::shared_ptr<SharedState> shared_state)
@@ -471,7 +476,6 @@ try{
 	Vector3d toolCOM = Vector3d::Zero(3, 1);
 	Matrix3d toolInertia = Matrix3d::Zero(3, 3);
 	std::unique_ptr<ToolData> myTool = std::make_unique<ToolData>(toolMass, toolCOM, toolInertia);
-	//-(change_1 )myLBR->attachToolToRobotModel(myTool);
 	robot->attachToolToRobotModel(myTool.get());
 
 	while (!context.stopped()) {
@@ -484,6 +488,7 @@ try{
 		curan::utilities::cout << "name to outside:" << device_name << "\nstarting communication!\n";
 
 		while (flag->value()) {
+			std::cout << "here!\n";
 			const auto start = std::chrono::high_resolution_clock::now();
 			ts->GetTime();
 			igtl::TrackingDataMessage::Pointer trackingMsg;
@@ -520,7 +525,8 @@ try{
 }
 
 int main(int argc, char* argv[]) {
-
+	try{
+	
 	std::cout << "How to use: \nCall the executable as FRIBrigde Name_of_device Time_between_messages(milliseconds), \ne.g. : FRIBrigde Flange 40\n";
 	if(argc!=3){
 		std::cout << "Must provide at least two arguments to the executable\n";
@@ -540,29 +546,19 @@ int main(int argc, char* argv[]) {
 	}
 	
 	specification.name = std::string(argv[1]);
-
+	
 	unsigned short port = 50000;
 	asio::io_context io_context;
 	curan::communication::interface_igtl igtlink_interface;
 	curan::communication::Server::Info construction{ io_context,igtlink_interface ,port };
 	curan::communication::Server server{ construction };
-	
 	auto state_flag = curan::utilities::Flag::make_shared_flag();
 	state_flag->clear();
-	auto robot_flag = curan::utilities::Flag::make_shared_flag();
-	robot_flag->set();
-
-	auto shared_state = std::make_shared<SharedState>();
-	shared_state->is_initialized.store(false);
-	auto robot_functional_control = [shared_state, robot_flag]() {
-		robot_control(shared_state, robot_flag);
-	};
-	std::thread thred_robot_control{ robot_functional_control };
-
 	curan::communication::interface_igtl callme = [state_flag,&server](const size_t& custom, const std::error_code& err, igtl::MessageBase::Pointer pointer) {
 		if (err) {
 			return;
 		}
+		std::cout << "========\n========\n======received something===========\n============\n===========\n";
 		auto temp = pointer->GetMessageType();
 		if (!temp.compare("STT_TDATA")) {
 			igtl::StartTrackingDataMessage::Pointer tracking = igtl::StartTrackingDataMessage::New();
@@ -586,20 +582,31 @@ int main(int argc, char* argv[]) {
 	};
 
 	auto val = server.connect(callme);
-	if (!val)
-		return 1;
+	
+	auto robot_flag = curan::utilities::Flag::make_shared_flag();
+	robot_flag->set();
+
+	auto shared_state = std::make_shared<SharedState>();
+	shared_state->is_initialized.store(false);
+	auto robot_functional_control = [shared_state, robot_flag]() {
+		robot_control(shared_state, robot_flag);
+	};
+
+	std::thread thred_robot_control{ robot_functional_control };
+
 
 	auto state_machine = [state_flag, &server, shared_state]() {
 		start_tracking(server, state_flag, shared_state);
 	};
 
 	std::thread thred{ state_machine };
-
 	curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
-
 	io_context.run();
 	robot_flag->clear();
 	thred_robot_control.join();
 	thred.join();
 	return 0;
+	} catch(std::exception& e){
+		std::cout << "main Exception : " << e.what() << std::endl;
+	}
 }
