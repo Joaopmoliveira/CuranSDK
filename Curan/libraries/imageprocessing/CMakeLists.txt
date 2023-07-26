@@ -8,6 +8,7 @@ src/KernelDescriptor.cpp
 src/StaticReconstructor.cpp
 src/IntegratedVolumeReconstructor.cpp
 src/SplicingTools.cpp
+src/igtl2itkConverter.cpp
 )
 
 find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)
@@ -23,4 +24,5 @@ ${ITK_LIBRARIES}
 utils
 renderable
 GeometricTools
+OpenIGTLink
 )

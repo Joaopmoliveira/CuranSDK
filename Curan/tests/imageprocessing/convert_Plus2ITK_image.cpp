@@ -18,6 +18,8 @@
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "rendering/DynamicTexture.h"
+#include "rendering/PhaseWiredBox.h"
+#include "rendering/Box.h"
 #include <iostream>
 #include <map>
 #include "itkImageFileReader.h"
@@ -27,19 +29,24 @@
 #include "itkImage.h"
 #include "itkImportImageFilter.h"
 #include "imageprocessing/VolumeReconstructor.h"
+#include "imageprocessing/igtl2itkConverter.h"
+#include "imageprocessing/BoundingBox4Reconstruction.h"
+#include <vsg/all.h>
 
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using ImportFilterType = itk::ImportImageFilter<PixelType, Dimension>;
 
-using OutputPixelType = float;
+using OutputPixelType = unsigned char;
 using InputImageType = itk::Image<unsigned char, 3>;
 using OutputImageType = itk::Image<OutputPixelType, 3>;
 using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
 
 struct SharedState{
+    curan::image::BoundingBox4Reconstruction box_class;
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> texture;
+    vsg::ref_ptr<curan::renderable::Renderable> caixa;
     vsg::ref_ptr<curan::renderable::Renderable> volume;
     curan::renderable::Window & window;
     asio::io_context& context;
@@ -48,75 +55,17 @@ struct SharedState{
 };
 
 
-void plus2ITK_im_convert(const igtl::ImageMessage::Pointer& imageMessage, OutputImageType::Pointer& image_to_render, vsg::dmat4& transformmat) {
-    ImportFilterType::RegionType region;
-    int width, height, depth = 0;
-    imageMessage->GetDimensions(width,height,depth);
-    ImportFilterType::SizeType size;
-        size[0] = width;
-        size[1] = height;
-        size[2] = depth;
-    region.SetSize(size);
-     
-    ImportFilterType::IndexType start;
-    start.Fill(0);
-    region.SetIndex(start);
-
-    auto importFilter = ImportFilterType::New();
-    importFilter->SetRegion(region);
-
-    float xx, yy, zz = 0.0;
-    imageMessage->GetOrigin(xx, yy, zz);
-    const itk::SpacePrecisionType origin[Dimension] = { xx,yy,zz};
-    importFilter->SetOrigin(origin);
-
-    float xxx, yyy, zzz = 0.0;
-    imageMessage->GetSpacing(xxx, yyy, zzz);
-    const itk::SpacePrecisionType spacing[Dimension] = {xxx,yyy,zzz};
-    importFilter->SetSpacing(spacing);
-
-
-    const bool importImageFilterWillOwnTheBuffer = false;
-    importFilter->SetImportPointer(static_cast<unsigned char*>(imageMessage->GetScalarPointer()), imageMessage->GetImageSize(), importImageFilterWillOwnTheBuffer);
-
-    auto filter = FilterType::New();
-    filter->SetInput(importFilter->GetOutput());
-
-    try{
-        filter->Update();
-    } catch (const itk::ExceptionObject& e) {
-        std::cerr << "Error: " << e << std::endl;
-        return;
-    }
-
-    image_to_render = filter->GetOutput();
-
-    igtl::Matrix4x4 local_mat;
-    imageMessage->GetMatrix(local_mat);
-
-    igtl::PrintMatrix(local_mat);
-
-    local_mat[0][3] = local_mat[0][3]*1e-3;
-    local_mat[1][3] = local_mat[1][3]*1e-3;
-    local_mat[2][3] = -local_mat[2][3]*1e-3;
-
-
-    for(size_t col = 0; col < 4; ++col)
-        for(size_t row = 0; row < 4; ++row)
-            transformmat(col,row) = local_mat[row][col];
-
-};
-
-
 void updateBaseTexture3D(vsg::vec4Array2D& image, OutputImageType::Pointer image_to_render)
 {
-    using OutputPixelType = float;
+    using OutputPixelType = unsigned char;
     using OutputImageType = itk::Image<OutputPixelType, 3>;
-    using FilterType = itk::CastImageFilter<OutputImageType, OutputImageType>;
+    using InputPixelType = float;
+    using InputImageType = itk::Image<InputPixelType, 3>;
+    using FilterType = itk::CastImageFilter<OutputImageType, InputImageType>;
     auto filter = FilterType::New();
     filter->SetInput(image_to_render);
 
-    using RescaleType = itk::RescaleIntensityImageFilter<OutputImageType, OutputImageType>;
+    using RescaleType = itk::RescaleIntensityImageFilter<InputImageType, OutputImageType>;
     auto rescale = RescaleType::New();
     rescale->SetInput(filter->GetOutput());
     rescale->SetOutputMinimum(0.0);
@@ -140,13 +89,32 @@ void updateBaseTexture3D(vsg::vec4Array2D& image, OutputImageType::Pointer image
 
 void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer received_transform){
     OutputImageType::Pointer image_to_render;
-    vsg::dmat4 transformmat;
     igtl::ImageMessage::Pointer imageMessage = igtl::ImageMessage::New();
     imageMessage->Copy(received_transform);
 	int c = imageMessage->Unpack(1);
 	if (!(c & igtl::MessageHeader::UNPACK_BODY))
 		return ; //failed to unpack message or the texture is not set yet, therefore returning without doing anything
-    plus2ITK_im_convert(imageMessage, image_to_render, transformmat);
+
+    curan::image::igtl2ITK_im_convert(imageMessage, image_to_render);
+    const itk::SpacePrecisionType spacing[3] = {0.0001852,0.0001852,0.0001852};
+    image_to_render->SetSpacing(spacing);
+    auto origin = image_to_render->GetOrigin();
+    origin[0] *= 1e-3;
+    origin[1] *= 1e-3;
+    origin[2] *= 1e-3;
+    image_to_render->SetOrigin(origin);
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    shared_state.box_class.add_frame(image_to_render);
+    shared_state.box_class.update();
+    auto caixa = shared_state.box_class.get_final_volume_vertices();
+
+    std::chrono::steady_clock::time_point elapsed_for_bound_box = std::chrono::steady_clock::now();
+    auto val_elapsed_for_bound_box = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_bound_box - begin).count();
+    //std::printf("added image - elapsed time: %d microseconds\n",val_elapsed_for_bound_box);
+
+
+    //igtl2ITK_im_convert(imageMessage, image_to_render);
     if(!shared_state.texture){
         int width, height, depth = 0;
         imageMessage->GetDimensions(width,height,depth);
@@ -158,8 +126,50 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infotexture.origin = {0.0,0.0,0.0};
         shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
         shared_state.window << *shared_state.texture;
+
+        curan::renderable::Box::Info infobox;
+        infobox.builder = vsg::Builder::create();
+        infobox.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+        infobox.geomInfo.dx = vsg::vec3(1.0f,0.0,0.0);
+        infobox.geomInfo.dy = vsg::vec3(0.0,1.0f,0.0);
+        infobox.geomInfo.dz = vsg::vec3(0.0,0.0,1.0f);
+        infobox.geomInfo.position = vsg::vec3(0.5,0.5,0.5);
+        shared_state.caixa = curan::renderable::Box::make(infobox);
+        shared_state.window << shared_state.caixa;
     }
-    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transformmat);
+
+    vsg::dmat4 transform_matrix;
+
+    for(size_t col = 0; col < 3; ++col)
+        for(size_t row = 0; row < 3; ++row)
+            transform_matrix(col,row) = image_to_render->GetDirection()[row][col];
+
+    transform_matrix(3,0) = image_to_render->GetOrigin()[0];
+    transform_matrix(3,1) = image_to_render->GetOrigin()[1];
+    transform_matrix(3,2) = image_to_render->GetOrigin()[2];
+    
+    vsg::dmat4 box_transform_matrix = vsg::translate(0.0,0.0,0.0);
+
+    for(size_t col = 0; col < 3; ++col)
+        for(size_t row = 0; row < 3; ++row)
+            box_transform_matrix(col,row) = caixa.axis[col][row];
+
+    box_transform_matrix(3,0) = caixa.center[0];
+    box_transform_matrix(3,1) = caixa.center[1];
+    box_transform_matrix(3,2) = caixa.center[2];
+    box_transform_matrix(3,3) = 1;
+
+    //std::cout << "centro caixa: " << caixa.extent[0] << std::endl;;
+    //std::printf("extent (%f %f %f)\n",caixa.extent[0],caixa.extent[1],caixa.extent[2]);
+    
+    
+    //shared_state.caixa->cast<curan::renderable::Box>()->set_scale(caixa.extent[0]*1e-3,caixa.extent[1]*1e-3,caixa.extent[2]*1e-3);
+    shared_state.caixa->cast<curan::renderable::Box>()->set_scale(1e-1,1e-1,1e-1);
+    shared_state.caixa->update_transform(box_transform_matrix);
+
+    //std::cout << "tranf matrix: \n" << box_transform_matrix << std::endl;
+
+    shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_transform(transform_matrix);
     shared_state.texture->cast<curan::renderable::DynamicTexture>()->update_texture([image_to_render](vsg::vec4Array2D& image)
     {
         updateBaseTexture3D(image,image_to_render);

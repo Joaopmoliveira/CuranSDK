@@ -66,6 +66,9 @@ int render(std::shared_ptr<SharedRobotState> state)
     infobox.geomInfo.position = vsg::vec3(1.0,1.0,0.05f);
     auto box = curan::renderable::Box::make(infobox);
     window << box;
+    
+    vsg::dmat4 homog;
+    box->update_transform(homog*vsg::scale())
 
     std::array<float,3> temp_pos = {0.0,0.0,0.0};
     std::atomic<std::array<float,3>> current_position;

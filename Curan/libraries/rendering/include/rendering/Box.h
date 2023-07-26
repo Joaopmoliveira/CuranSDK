@@ -15,10 +15,13 @@ namespace curan {
                 vsg::GeometryInfo geomInfo;
                 vsg::StateInfo stateInfo;
             };
-
+            vsg::ref_ptr<vsg::MatrixTransform> scale;
+            
             Box(Info& info);
 
             static vsg::ref_ptr<Renderable> make(Info& info);
+
+            void set_scale(double sx, double sy, double sz);
         };
     }
 }

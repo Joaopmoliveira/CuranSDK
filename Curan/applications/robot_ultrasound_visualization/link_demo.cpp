@@ -14,6 +14,8 @@
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
 #include "communication/ProtoFRI.h"
+#include "imageprocessing/igtl2itkConverter.h"
+#include "imageprocessing/BoundingBox4Reconstruction.h"
 
 bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::MessageBase::Pointer val){
 	igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();

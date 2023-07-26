@@ -112,8 +112,8 @@ void BoundingBox4Reconstruction::update()
 		std::set<gte::Vector3<double>> theSet;
 		list.remove_if(already_found{theSet} );
 		vertices = std::vector<gte::Vector3<double>>(list.begin(),list.end());
-		//for(const auto& vert : vertices)
-		//	std::printf("*( %f %f %f )\n",vert[0],vert[1],vert[2]);
+		/* for(const auto& vert : vertices)
+			std::printf("*( %f %f %f )\n",vert[0],vert[1],vert[2]); */
 		gte::MinimumVolumeBox3<double, true> bounding_box(0);
 
 		double volume = 0.0;
@@ -123,6 +123,8 @@ void BoundingBox4Reconstruction::update()
 
 	frame_data.clear();
 };
+
+/*
 
 void BoundingBox4Reconstruction::get_final_volume_vertices(array_type& box_data){
 	std::array<gte::Vector3<double>, 8> current_corners;
@@ -137,6 +139,7 @@ void BoundingBox4Reconstruction::get_final_volume_vertices(array_type& box_data)
 
 	box_data = current_corners;
 };
+*/
 
 void BoundingBox4Reconstruction::add_frames(std::vector<output_type::Pointer>& images_vector)
 {

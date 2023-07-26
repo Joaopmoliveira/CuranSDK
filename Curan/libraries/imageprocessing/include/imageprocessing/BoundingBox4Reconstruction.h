@@ -51,7 +51,9 @@ namespace curan{
 			Obtain the pointer to the 3D itk volume reconstructed
 			and filled under the hood with this class.
 			*/
-			void get_final_volume_vertices(array_type& box_data);
+			inline gte::OrientedBox3<double> get_final_volume_vertices(){
+				return volumetric_bounding_box;
+			}
 
 
 		private:
@@ -67,8 +69,6 @@ namespace curan{
 			bool update_internal_buffers();
 
 			std::vector<output_type::Pointer> frame_data;
-
-			output_type::Pointer out_volume;
 
 			bool volumes_initiated = false;
 			gte::OrientedBox3<double> volumetric_bounding_box;

@@ -34,9 +34,9 @@ void create_array_of_linear_images_in_x_direction(std::vector<imagetype::Pointer
 	image_orientation[1][2] = 0.0;
 	image_orientation[2][2] = 1.0;
 
-	image_origin[0] = 0.0;
+	/* image_origin[0] = 0.0;
 	image_origin[1] = 0.0;
-	image_origin[2] = 0.0;
+	image_origin[2] = 0.0; */
 
     curan::image::char_pixel_type pixel[width*height];
     for(size_t y = 0; y < height ; ++y){
@@ -62,15 +62,15 @@ void create_array_of_linear_images_in_x_direction(std::vector<imagetype::Pointer
         region_1.SetSize(size);
         region_1.SetIndex(start);
 
+        image_origin[0] = 0.0;
+	    image_origin[1] = 0.0;
+	    image_origin[2] = 1.0/(width-1)*z;
+
         image->SetRegions(region_1);
         image->SetDirection(image_orientation);
         image->SetOrigin(image_origin);
         image->SetSpacing(spacing);
         image->Allocate();
-
-        image_origin[0] = 0.0;
-	    image_origin[1] = 0.0;
-	    image_origin[2] = 1.0/(width-1)*z;
 
         auto pointer = image->GetBufferPointer();
         std::memcpy(pointer,pixel,sizeof(curan::image::char_pixel_type)*width*height);
@@ -102,17 +102,47 @@ int main(){
 
             auto val_elapsed_for_bound_box = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_bound_box - begin).count();
 
-            std::printf("added image - elapsed time: %d microseconds\n",val_elapsed_for_bound_box);
+            //std::printf("added image - elapsed time: %d microseconds\n",val_elapsed_for_bound_box);
 
             ++counter;
         }
-        curan::image::BoundingBox4Reconstruction::array_type box_data;
+        //curan::image::BoundingBox4Reconstruction::array_type box_data;
         
-        box_class.get_final_volume_vertices(box_data);
+        //box_class.get_final_volume_vertices(box_data);
+
+        auto box_data = box_class.get_final_volume_vertices();
+
+        std::array<gte::Vector3<double>, 8> current_corners;
+		current_corners[0] = box_data.center + box_data.axis[0] * box_data.extent[0] - box_data.axis[1] * box_data.extent[1] + box_data.axis[2] * box_data.extent[2];
+		current_corners[1] = box_data.center + box_data.axis[0] * box_data.extent[0] + box_data.axis[1] * box_data.extent[1] + box_data.axis[2] * box_data.extent[2];
+		current_corners[2] = box_data.center - box_data.axis[0] * box_data.extent[0] + box_data.axis[1] * box_data.extent[1] + box_data.axis[2] * box_data.extent[2];
+		current_corners[3] = box_data.center - box_data.axis[0] * box_data.extent[0] - box_data.axis[1] * box_data.extent[1] + box_data.axis[2] * box_data.extent[2];
+		current_corners[4] = box_data.center + box_data.axis[0] * box_data.extent[0] - box_data.axis[1] * box_data.extent[1] - box_data.axis[2] * box_data.extent[2];
+		current_corners[5] = box_data.center + box_data.axis[0] * box_data.extent[0] + box_data.axis[1] * box_data.extent[1] - box_data.axis[2] * box_data.extent[2];
+		current_corners[6] = box_data.center - box_data.axis[0] * box_data.extent[0] + box_data.axis[1] * box_data.extent[1] - box_data.axis[2] * box_data.extent[2];
+		current_corners[7] = box_data.center - box_data.axis[0] * box_data.extent[0] - box_data.axis[1] * box_data.extent[1] - box_data.axis[2] * box_data.extent[2];
 
         std::cout << "Final box vertices" << std::endl;
-        for(const auto& arr : box_data)
+        for(const auto& arr : current_corners)
             std::printf("( %f , %f , %f )\n",arr[0],arr[1],arr[2]);
+
+        std::printf("started volumetric reconstruction agani\n");
+        //size_t counter = 0;
+
+        for(auto img : image_array){
+            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+            box_class.add_frame(img);
+            box_class.update();
+
+            std::chrono::steady_clock::time_point elapsed_for_bound_box = std::chrono::steady_clock::now();
+
+            auto val_elapsed_for_bound_box = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_bound_box - begin).count();
+
+            //std::printf("added image - elapsed time: %d microseconds\n",val_elapsed_for_bound_box);
+
+            ++counter;
+        }
+
 
     } catch(std::exception& e) {
         std::cout << "exception was throuwn with error message :" << e.what() << std::endl;
