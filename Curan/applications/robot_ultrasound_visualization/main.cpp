@@ -142,21 +142,21 @@ int main (int argc, char** argv)
     create_info.convetion = vsg::CoordinateConvention::Y_UP;
     create_info.json_path = robot_path;
     create_info.number_of_links = 8;
-    state->robot = curan::renderable::SequencialLinks::make(create_info);
-    window << state->robot;
+    robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
+    window << robot_state->robot;
 
-    auto communication_callable = [state](){
-        communication(state);
+    auto communication_callable = [robot_state](){
+        communication(robot_state);
     };
     //here I should lauch the thread that does the communication and renders the image above the robotic system 
     std::thread communication_thread(communication_callable);
 
 
-   auto robotRenderableCasted = state->robot->cast<curan::renderable::SequencialLinks>();
+   auto robotRenderableCasted = robot_state->robot->cast<curan::renderable::SequencialLinks>();
 
-   while(window.run_once() && !state->should_kill_myself()) {
-      auto current_reading = state->read();
-      auto q_current = current_reading.getMeasuredJointPosition();
+   while(window.run_once() && !robot_state->should_kill_myself()) {
+      auto current_reading = robot_state->read();
+      auto q_current = robot_state.getMeasuredJointPosition();
       auto tau_current = current_reading.getExternalTorque();
 
 	   for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
