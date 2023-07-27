@@ -9,6 +9,7 @@
 #include "rendering/Renderable.h"
 #include "rendering/SequencialLinks.h"
 #include "rendering/DynamicTexture.h"
+#include "rendering/Box.h"
 #include <asio.hpp>
 #include "communication/Client.h"
 #include "communication/Server.h"
@@ -16,6 +17,11 @@
 #include "communication/ProtoFRI.h"
 #include "imageprocessing/igtl2itkConverter.h"
 #include "imageprocessing/BoundingBox4Reconstruction.h"
+#include "itkImage.h"
+#include "SharedRobotState.h"
+
+using OutputPixelType = unsigned char;
+using OutputImageType = itk::Image<OutputPixelType, 3>;
 
 bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::MessageBase::Pointer val){
 	igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
@@ -34,6 +40,17 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
         infotexture.builder = vsg::Builder::create();
         state->dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
         (*state->window_pointer) << *state->dynamic_texture;
+
+        curan::renderable::Box::Info infobox;
+        infobox.builder = vsg::Builder::create();
+        infobox.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+        infobox.geomInfo.dx = vsg::vec3(1.0f,0.0,0.0);
+        infobox.geomInfo.dy = vsg::vec3(0.0,1.0f,0.0);
+        infobox.geomInfo.dz = vsg::vec3(0.0,0.0,1.0f);
+        infobox.stateInfo.wireframe = true;
+        infobox.geomInfo.position = vsg::vec3(0.5,0.5,0.5);
+        state->caixa = curan::renderable::Box::make(infobox);
+        (*state->window_pointer) << state->caixa;
     }
     auto updateBaseTexture = [message_body](vsg::vec4Array2D& image)
     {
@@ -75,6 +92,70 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
     homogeneous_transformation(3,2) *= 1e-3;
     auto product = homogeneous_transformation*state->calibration_matrix;
     state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(product);
+
+    OutputImageType::Pointer image_to_render;
+    curan::image::igtl2ITK_im_convert(message_body, image_to_render);
+    const itk::SpacePrecisionType spacing[3] = {0.0001852,0.0001852,0.0001852};
+    image_to_render->SetSpacing(spacing);
+
+    itk::Matrix<double,3,3> itk_matrix;
+    for(size_t col = 0; col < 3; ++col)
+        for(size_t row = 0; row < 3; ++row)
+            itk_matrix(row,col) = product(col,row);
+
+    image_to_render->SetDirection(itk_matrix);
+    auto origin = image_to_render->GetOrigin();
+    origin[0] = product(3,0);
+    origin[1] = product(3,1);
+    origin[2] = product(3,2);
+    image_to_render->SetOrigin(origin);
+
+    if(state->add_image_to_box_specifier){
+        state->box_class.add_frame(image_to_render);
+        state->box_class.update();
+    }
+
+    auto caixa = state->box_class.get_final_volume_vertices();
+    vsg::dmat4 transform_matrix;
+
+    for(size_t col = 0; col < 3; ++col)
+        for(size_t row = 0; row < 3; ++row)
+            transform_matrix(col,row) = image_to_render->GetDirection()[row][col];
+
+    transform_matrix(3,0) = image_to_render->GetOrigin()[0];
+    transform_matrix(3,1) = image_to_render->GetOrigin()[1];
+    transform_matrix(3,2) = image_to_render->GetOrigin()[2];
+    
+    vsg::dmat3 rotation_0_1;
+
+    vsg::dmat4 box_transform_matrix = vsg::translate(0.0,0.0,0.0);
+
+    for(size_t col = 0; col < 3; ++col)
+        for(size_t row = 0; row < 3; ++row){
+            box_transform_matrix(col,row) = caixa.axis[col][row];
+            rotation_0_1(col,row) = box_transform_matrix(col,row);
+        }
+
+    vsg::dvec3 position_of_center_in_global_frame;
+    position_of_center_in_global_frame[0] = caixa.center[0];
+    position_of_center_in_global_frame[1] = caixa.center[1];
+    position_of_center_in_global_frame[2] = caixa.center[2];
+
+    vsg::dvec3 position_in_local_box_frame;
+    position_in_local_box_frame[0] = caixa.extent[0];
+    position_in_local_box_frame[1] = caixa.extent[1];
+    position_in_local_box_frame[2] = caixa.extent[2]; 
+
+    auto global_corner_position = position_of_center_in_global_frame-rotation_0_1*position_in_local_box_frame;
+
+    box_transform_matrix(3,0) = global_corner_position[0];
+    box_transform_matrix(3,1) = global_corner_position[1];
+    box_transform_matrix(3,2) = global_corner_position[2];
+    box_transform_matrix(3,3) = 1;
+
+    
+    state->caixa->cast<curan::renderable::Box>()->set_scale(caixa.extent[0]*2,caixa.extent[1]*2,caixa.extent[2]*2);
+    state->caixa->update_transform(box_transform_matrix);
 	return true;
 }
 
@@ -86,11 +167,8 @@ bool process_message(std::shared_ptr<SharedRobotState> state , size_t protocol_d
 	assert(val.IsNotNull());
 	if (er)
         return true;
-    std::cout << "Received message type: " << val->GetMessageType() << "\n";
     if (auto search = openigtlink_callbacks.find(val->GetMessageType()); search != openigtlink_callbacks.end())
         search->second(state,val);
-    else
-        std::cout << "No functionality for function received\n";
     return false;
 }
 
@@ -144,6 +222,18 @@ int communication(std::shared_ptr<SharedRobotState> state){
         throw std::runtime_error("missmatch between communication interfaces");
     }
 
+    auto beatifull_button = [&](){
+        std::cout << "please click any key to start defining the bounding box ...\n";
+        char c;
+        std::cin >> c;
+        state->add_image_to_box_specifier = true;
+        std::cout << "when the box is defined please click any key to stop defining the bounding box ...\n";
+        std::cin >> c;
+        state->add_image_to_box_specifier = false;
+    };
+    std::thread box_specified_button{beatifull_button};
+
 	context.run();
+    box_specified_button.join();
     return 0;
 }

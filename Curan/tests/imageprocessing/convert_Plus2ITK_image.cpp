@@ -44,8 +44,8 @@ using OutputImageType = itk::Image<OutputPixelType, 3>;
 using FilterType = itk::CastImageFilter<InputImageType, OutputImageType>;
 
 struct SharedState{
-    curan::image::BoundingBox4Reconstruction box_class;
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> texture;
+    curan::image::BoundingBox4Reconstruction box_class;
     vsg::ref_ptr<curan::renderable::Renderable> caixa;
     vsg::ref_ptr<curan::renderable::Renderable> volume;
     curan::renderable::Window & window;
@@ -122,7 +122,7 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infotexture.height = height;
         infotexture.width = width;
         infotexture.builder = vsg::Builder::create();
-        infotexture.spacing = {0.00024,0.00024,1};
+        infotexture.spacing = {0.0001852,0.0001852,1.0};
         infotexture.origin = {0.0,0.0,0.0};
         shared_state.texture = curan::renderable::DynamicTexture::make(infotexture);
         shared_state.window << *shared_state.texture;
@@ -133,6 +133,7 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
         infobox.geomInfo.dx = vsg::vec3(1.0f,0.0,0.0);
         infobox.geomInfo.dy = vsg::vec3(0.0,1.0f,0.0);
         infobox.geomInfo.dz = vsg::vec3(0.0,0.0,1.0f);
+        infobox.stateInfo.wireframe = true;
         infobox.geomInfo.position = vsg::vec3(0.5,0.5,0.5);
         shared_state.caixa = curan::renderable::Box::make(infobox);
         shared_state.window << shared_state.caixa;
@@ -148,23 +149,39 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
     transform_matrix(3,1) = image_to_render->GetOrigin()[1];
     transform_matrix(3,2) = image_to_render->GetOrigin()[2];
     
+    vsg::dmat3 rotation_0_1;
+
     vsg::dmat4 box_transform_matrix = vsg::translate(0.0,0.0,0.0);
 
     for(size_t col = 0; col < 3; ++col)
-        for(size_t row = 0; row < 3; ++row)
+        for(size_t row = 0; row < 3; ++row){
             box_transform_matrix(col,row) = caixa.axis[col][row];
+            rotation_0_1(col,row) = box_transform_matrix(col,row);
+        }
 
-    box_transform_matrix(3,0) = caixa.center[0];
-    box_transform_matrix(3,1) = caixa.center[1];
-    box_transform_matrix(3,2) = caixa.center[2];
+    vsg::dvec3 position_of_center_in_global_frame;
+    position_of_center_in_global_frame[0] = caixa.center[0];
+    position_of_center_in_global_frame[1] = caixa.center[1];
+    position_of_center_in_global_frame[2] = caixa.center[2];
+
+    vsg::dvec3 position_in_local_box_frame;
+    position_in_local_box_frame[0] = caixa.extent[0];
+    position_in_local_box_frame[1] = caixa.extent[1];
+    position_in_local_box_frame[2] = caixa.extent[2]; 
+
+    auto global_corner_position = position_of_center_in_global_frame-rotation_0_1*position_in_local_box_frame;
+
+    box_transform_matrix(3,0) = global_corner_position[0];
+    box_transform_matrix(3,1) = global_corner_position[1];
+    box_transform_matrix(3,2) = global_corner_position[2];
     box_transform_matrix(3,3) = 1;
 
     //std::cout << "centro caixa: " << caixa.extent[0] << std::endl;;
     //std::printf("extent (%f %f %f)\n",caixa.extent[0],caixa.extent[1],caixa.extent[2]);
     
     
-    //shared_state.caixa->cast<curan::renderable::Box>()->set_scale(caixa.extent[0]*1e-3,caixa.extent[1]*1e-3,caixa.extent[2]*1e-3);
-    shared_state.caixa->cast<curan::renderable::Box>()->set_scale(1e-1,1e-1,1e-1);
+    shared_state.caixa->cast<curan::renderable::Box>()->set_scale(caixa.extent[0]*2,caixa.extent[1]*2,caixa.extent[2]*2);
+    //shared_state.caixa->cast<curan::renderable::Box>()->set_scale(1e-1,1e-1,1e-1);
     shared_state.caixa->update_transform(box_transform_matrix);
 
     //std::cout << "tranf matrix: \n" << box_transform_matrix << std::endl;

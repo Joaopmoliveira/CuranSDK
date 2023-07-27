@@ -7,6 +7,7 @@
 #include "rendering/DynamicTexture.h"
 #include "rendering/Window.h"
 #include <Eigen/Dense>
+#include "imageprocessing/BoundingBox4Reconstruction.h"
 
 /*
 This is a class which wraps the atomic behavior we desired. 
@@ -33,7 +34,11 @@ public:
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> dynamic_texture;
     vsg::ref_ptr<curan::renderable::Renderable> robot;
     curan::renderable::Window* window_pointer = nullptr;
+    std::atomic<bool> add_image_to_box_specifier = false;
+    curan::image::BoundingBox4Reconstruction box_class;
+    vsg::ref_ptr<curan::renderable::Renderable> caixa;
     vsg::dmat4 calibration_matrix;
+
     static std::shared_ptr<SharedRobotState> make_shared();
     
     inline bool should_kill_myself(){

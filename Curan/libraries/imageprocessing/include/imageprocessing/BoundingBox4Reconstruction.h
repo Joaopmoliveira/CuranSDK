@@ -55,7 +55,7 @@ namespace curan{
 				return volumetric_bounding_box;
 			}
 
-
+			gte::OrientedBox3<double> volumetric_bounding_box;
 		private:
 
 			/*
@@ -69,9 +69,8 @@ namespace curan{
 			bool update_internal_buffers();
 
 			std::vector<output_type::Pointer> frame_data;
-
+			
 			bool volumes_initiated = false;
-			gte::OrientedBox3<double> volumetric_bounding_box;
 
 		};
     }
