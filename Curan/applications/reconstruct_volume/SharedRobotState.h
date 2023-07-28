@@ -7,6 +7,7 @@
 #include "rendering/DynamicTexture.h"
 #include "rendering/Window.h"
 #include <Eigen/Dense>
+#include "imageprocessing/IntegratedVolumeReconstructor.h"
 
 /*
 This is a class which wraps the atomic behavior we desired. 
@@ -32,6 +33,7 @@ class SharedRobotState : std::enable_shared_from_this<SharedRobotState>{
 public:
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> dynamic_texture;
     vsg::ref_ptr<curan::renderable::Renderable> robot;
+    vsg::ref_ptr<curan::renderable::Renderable> integrated_volume;
     curan::renderable::Window* window_pointer = nullptr;
     vsg::dmat4 calibration_matrix;
     static std::shared_ptr<SharedRobotState> make_shared();

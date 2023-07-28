@@ -1,5 +1,5 @@
 add_subdirectory(calibrate_ultrasound)
 add_subdirectory(robot_ultrasound_visualization)
 add_subdirectory(static_volume_specification)
-add_subdirectory(registration)
 add_subdirectory(friopenigtlinktracker)
+add_subdirectory(reconstruct_volume)

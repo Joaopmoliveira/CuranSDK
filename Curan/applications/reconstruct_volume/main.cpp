@@ -96,11 +96,13 @@ int main (int argc, char** argv)
 {
    std::signal(SIGINT, signal_handler);
    auto robot_state = SharedRobotState::make_shared();
+
    try{
    // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
    nlohmann::json calibration_data;
 	std::ifstream in("C:/Users/SURGROB7/optimization_result.json");
 	in >> calibration_data;
+
    std::string timestamp = calibration_data["timestamp"];
 	std::string homogenenous_transformation = calibration_data["homogeneous_transformation"];
 	double error = calibration_data["optimization_error"];
@@ -118,6 +120,9 @@ int main (int argc, char** argv)
        std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
       return 1;
    }
+
+
+
    curan::renderable::Window::Info info;
    info.api_dump = false;
    info.display = "";
@@ -138,6 +143,49 @@ int main (int argc, char** argv)
    create_info.number_of_links = 8;
    robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
    window << robot_state->robot;
+
+   try{
+   // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
+   nlohmann::json specified_box;
+	std::ifstream in("C:/Users/SURGROB7/specified_box.json");
+	in >> specified_box;
+   std::string timestamp_box = specified_box["timestamp"];
+ 
+   std::stringstream box_info;
+	std::string spacing_box = specified_box["spacing"];
+   box_info << spacing_box;
+   Eigen::MatrixXd spacing = convert_matrix(box_info);
+   std::string origin_box = specified_box["origin"];
+   box_info.str("");
+   box_info << origin_box;
+   Eigen::MatrixXd origin = convert_matrix(box_info);
+   std::string size_box = specified_box["size"];
+   box_info.str("");
+   box_info << size_box;
+   Eigen::MatrixXd size = convert_matrix(box_info);
+   std::string direction_box = specified_box["direction"];
+   box_info.str("");
+   box_info << direction_box;
+   Eigen::MatrixXd direction = convert_matrix(box_info);
+   //TODO : we need to assert the dimensions of the matrices to make sure that they are correct
+
+   std::array<double,3> vol_origin = {origin(0,0),origin(0,1),origin(0,2)};
+	std::array<double,3> vol_spacing = {spacing(0,0),spacing(0,1),spacing(0,2)};
+	std::array<double,3> vol_size = {size(0,0),size(0,1),size(0,2)};
+	std::array<std::array<double,3>,3> vol_direction;
+	vol_direction[0] = {direction(0,0),direction(1,0),direction(2,0)};
+	vol_direction[1] = {direction(0,1),direction(1,1),direction(2,1)};
+	vol_direction[2] = {direction(0,2),direction(1,2),direction(2,2)};
+	curan::image::IntegratedReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
+   robot_state->integrated_volume =  curan::image::IntegratedReconstructor::make(recon_info);
+   robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
+      .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
+   window << robot_state->integrated_volume;
+
+   } catch(...){
+       std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
+      return 1;
+   }
 
    auto communication_callable = [robot_state](){
       communication(robot_state);

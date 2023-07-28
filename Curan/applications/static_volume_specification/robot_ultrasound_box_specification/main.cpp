@@ -186,13 +186,13 @@ int main (int argc, char** argv)
    double new_spacing = std::cbrt((2*final_box.extent[0] *2*final_box.extent[1] *2*final_box.extent[2] )/(maximum_float_size));
 
    std::stringstream ss;
-   ss << new_spacing << " " << new_spacing << " " << new_spacing;
+   ss << new_spacing << " , " << new_spacing << " , " << new_spacing;
 	specified_box["spacing"] = ss.str();
    ss.str("");
-   ss << global_corner_position[0] << " "<< global_corner_position[1] << " " << global_corner_position[2];
+   ss << global_corner_position[0] << " , "<< global_corner_position[1] << " , " << global_corner_position[2];
    specified_box["origin"] = ss.str();
    ss.str("");
-   ss << 2*final_box.extent[0] << " " << 2*final_box.extent[1] << " " << 2*final_box.extent[2];
+   ss << 2*final_box.extent[0] << " , " << 2*final_box.extent[1] << " , " << 2*final_box.extent[2];
    specified_box["size"] = ss.str();
    ss.str("");
    Eigen::IOFormat CleanFmt(Eigen::StreamPrecision, 0, ", ", "\n", " ", " ");

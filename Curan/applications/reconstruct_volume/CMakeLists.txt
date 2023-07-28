@@ -17,6 +17,7 @@ endif(WIN32)
 
 target_link_libraries(RealTimeRobotReconstructor
 PUBLIC
+${ITK_LIBRARIES}
 communication
 imageprocessing
 KukaRobotLibrary 
