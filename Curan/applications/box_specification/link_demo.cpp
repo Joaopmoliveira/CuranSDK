@@ -229,7 +229,7 @@ int communication(std::shared_ptr<SharedRobotState> state){
         state->add_image_to_box_specifier = true;
         std::cout << "when the box is defined please click any key to stop defining the bounding box ...\n";
         std::cin >> c;
-        state->  = false;
+        state->add_image_to_box_specifier  = false;
     };
     std::thread box_specified_button{beatifull_button};
 
