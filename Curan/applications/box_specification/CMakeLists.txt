@@ -1,6 +1,9 @@
+find_package(ITK CONFIG REQUIRED)
+
+include(${ITK_USE_FILE})
+
 add_executable(RealTimeRobotBoxSpecifier
-MyLBRApp.cpp
-MyLBRClient.cpp
+main.cpp
 link_demo.cpp
 SharedRobotState.cpp
 )
@@ -14,11 +17,14 @@ endif(WIN32)
 
 target_link_libraries(RealTimeRobotBoxSpecifier
 PUBLIC
+${ITK_LIBRARIES}
+communication
+imageprocessing
 KukaRobotLibrary 
 FRILibrary
 robotParameters
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
-utils
+Eigen3::Eigen
 )

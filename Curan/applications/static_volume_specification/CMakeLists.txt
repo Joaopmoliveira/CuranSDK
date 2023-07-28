@@ -1,1 +1,0 @@
-add_subdirectory(robot_ultrasound_box_specification)
