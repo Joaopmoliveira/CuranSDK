@@ -1,3 +1,7 @@
+find_package(ITK CONFIG REQUIRED)
+
+include(${ITK_USE_FILE})
+
 add_executable(RealTimeRobotVisualizer
 main.cpp
 link_demo.cpp
@@ -13,6 +17,7 @@ endif(WIN32)
 
 target_link_libraries(RealTimeRobotVisualizer
 PUBLIC
+${ITK_LIBRARIES}
 communication
 imageprocessing
 KukaRobotLibrary 
