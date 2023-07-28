@@ -75,6 +75,24 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
     homogeneous_transformation(3,2) *= 1e-3;
     auto product = homogeneous_transformation*state->calibration_matrix;
     state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(product);
+
+    curan::image::InternalImageType::Pointer image_to_render;
+    curan::image::igtl2ITK_im_convert(message_body, image_to_render);
+    const itk::SpacePrecisionType spacing[3] = {0.0001852,0.0001852,0.0001852};
+    image_to_render->SetSpacing(spacing);
+
+    itk::Matrix<double,3,3> itk_matrix;
+    for(size_t col = 0; col < 3; ++col)
+        for(size_t row = 0; row < 3; ++row)
+            itk_matrix(row,col) = product(col,row);
+
+    image_to_render->SetDirection(itk_matrix);
+    auto origin = image_to_render->GetOrigin();
+    origin[0] = product(3,0);
+    origin[1] = product(3,1);
+    origin[2] = product(3,2);
+    image_to_render->SetOrigin(origin);
+    state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(image_to_render);
 	return true;
 }
 
@@ -144,6 +162,15 @@ int communication(std::shared_ptr<SharedRobotState> state){
         throw std::runtime_error("missmatch between communication interfaces");
     }
 
+    auto reconstruction_sequence = [&](){
+        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(8);
+        while(!context.stopped()){
+            state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->multithreaded_update(reconstruction_thread_pool);
+        }
+    };
+    std::thread volume_reconstruction_thead(reconstruction_sequence);
+
 	context.run();
+    volume_reconstruction_thead.join();
     return 0;
 }

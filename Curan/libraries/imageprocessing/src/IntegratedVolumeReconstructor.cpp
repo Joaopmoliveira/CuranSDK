@@ -56,15 +56,29 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info) : output_spac
     output_size[1] = std::ceil(volumetric_bounding_box.extent[1] * 2 / output_spacing[1]);
     output_size[2] = std::ceil(volumetric_bounding_box.extent[2] * 2 / output_spacing[2]);
 
-	gte::Vector<3, double> origin_gte = volumetric_bounding_box.center
-		- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
-		- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
-		- volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
+	vsg::dvec3 position_of_center_in_global_frame;
+    position_of_center_in_global_frame[0] = volumetric_bounding_box.center[0];
+    position_of_center_in_global_frame[1] = volumetric_bounding_box.center[1];
+    position_of_center_in_global_frame[2] = volumetric_bounding_box.center[2];
+
+    vsg::dvec3 position_in_local_box_frame;
+    position_in_local_box_frame[0] = volumetric_bounding_box.extent[0];
+    position_in_local_box_frame[1] = volumetric_bounding_box.extent[1];
+    position_in_local_box_frame[2] = volumetric_bounding_box.extent[2]; 
+
+    vsg::dmat3 rotation_0_1;
+
+    for(size_t col = 0; col < 3; ++col)
+        for(size_t row = 0; row < 3; ++row)
+            rotation_0_1(col,row) = volumetric_bounding_box.axis[col][row];
+        
+
+    auto global_corner_position = position_of_center_in_global_frame-rotation_0_1*position_in_local_box_frame;
 
     output_type::PointType output_origin;
-    output_origin[0] = origin_gte[0];
-    output_origin[1] = origin_gte[1];	
-    output_origin[2] = origin_gte[2];
+    output_origin[0] = global_corner_position[0];
+    output_origin[1] = global_corner_position[1];	
+    output_origin[2] = global_corner_position[2];
     
 
     vsg::vec3 origin = vsg::vec3(0.0,0.0,0.0);
@@ -203,7 +217,16 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info) : output_spac
     vsg::dvec3 mixture(output_size[0]* info.spacing[0],output_size[1]* info.spacing[1], output_size[2]* info.spacing[2]);
 
     auto scalling_transform = vsg::MatrixTransform::create(vsg::scale(mixture));
-    transform = vsg::MatrixTransform::create(vsg::translate(position));
+
+	vsg::dmat4 homogeneous_transformation;
+	for(size_t row = 0; row < 3 ; ++row)
+		for(size_t col = 0; col < 3; ++col)
+			homogeneous_transformation(col,row) = rotation_0_1(col,row);
+	homogeneous_transformation(3,0) = output_origin[0];
+	homogeneous_transformation(3,1) = output_origin[1];
+	homogeneous_transformation(3,2) = output_origin[2];
+	homogeneous_transformation(3,3) = 1.0;
+    transform = vsg::MatrixTransform::create(homogeneous_transformation);
     
     // add geometry
     scenegraph->addChild(vid);
@@ -268,11 +291,30 @@ IntegratedReconstructor& IntegratedReconstructor::add_frames(std::vector<input_t
 }
 
 bool IntegratedReconstructor::update(){
-	gte::Vector<3, double> output_origin = volumetric_bounding_box.center
-	- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
-	- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
-	- volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
+	vsg::dvec3 position_of_center_in_global_frame;
+    position_of_center_in_global_frame[0] = volumetric_bounding_box.center[0];
+    position_of_center_in_global_frame[1] = volumetric_bounding_box.center[1];
+    position_of_center_in_global_frame[2] = volumetric_bounding_box.center[2];
 
+    vsg::dvec3 position_in_local_box_frame;
+    position_in_local_box_frame[0] = volumetric_bounding_box.extent[0];
+    position_in_local_box_frame[1] = volumetric_bounding_box.extent[1];
+    position_in_local_box_frame[2] = volumetric_bounding_box.extent[2]; 
+
+    vsg::dmat3 rotation_0_1;
+
+    for(size_t col = 0; col < 3; ++col)
+        for(size_t row = 0; row < 3; ++row)
+            rotation_0_1(col,row) = volumetric_bounding_box.axis[col][row];
+        
+
+    auto global_corner_position = position_of_center_in_global_frame-rotation_0_1*position_in_local_box_frame;
+
+    output_type::PointType output_origin;
+    output_origin[0] = global_corner_position[0];
+    output_origin[1] = global_corner_position[1];	
+    output_origin[2] = global_corner_position[2];
+	
 	Eigen::Matrix4d ref_to_output_origin;
 	ref_to_output_origin(0, 0) = volumetric_bounding_box.axis[0][0];
 	ref_to_output_origin(1, 0) = volumetric_bounding_box.axis[0][1];
@@ -413,10 +455,29 @@ bool IntegratedReconstructor::update(){
 }
 
 bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool){
-	gte::Vector<3, double> output_origin = volumetric_bounding_box.center
-	- volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0]
-	- volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1]
-	- volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
+	vsg::dvec3 position_of_center_in_global_frame;
+	position_of_center_in_global_frame[0] = volumetric_bounding_box.center[0];
+    position_of_center_in_global_frame[1] = volumetric_bounding_box.center[1];
+    position_of_center_in_global_frame[2] = volumetric_bounding_box.center[2];
+
+    vsg::dvec3 position_in_local_box_frame;
+    position_in_local_box_frame[0] = volumetric_bounding_box.extent[0];
+    position_in_local_box_frame[1] = volumetric_bounding_box.extent[1];
+    position_in_local_box_frame[2] = volumetric_bounding_box.extent[2]; 
+
+    vsg::dmat3 rotation_0_1;
+
+    for(size_t col = 0; col < 3; ++col)
+        for(size_t row = 0; row < 3; ++row)
+            rotation_0_1(col,row) = volumetric_bounding_box.axis[col][row];
+        
+
+    auto global_corner_position = position_of_center_in_global_frame-rotation_0_1*position_in_local_box_frame;
+
+    output_type::PointType output_origin;
+    output_origin[0] = global_corner_position[0];
+    output_origin[1] = global_corner_position[1];	
+    output_origin[2] = global_corner_position[2];
 
 	Eigen::Matrix4d ref_to_output_origin;
 	ref_to_output_origin(0, 0) = volumetric_bounding_box.axis[0][0];

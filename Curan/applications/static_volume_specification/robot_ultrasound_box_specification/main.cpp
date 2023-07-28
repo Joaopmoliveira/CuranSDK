@@ -182,7 +182,7 @@ int main (int argc, char** argv)
    nlohmann::json specified_box;
 	specified_box["timestamp"] = return_current_time_and_date();
 
-   constexpr size_t maximum_float_size = 125.0e6;
+   constexpr size_t maximum_float_size = 125.0e6*0.5;
    double new_spacing = std::cbrt((2*final_box.extent[0] *2*final_box.extent[1] *2*final_box.extent[2] )/(maximum_float_size));
 
    std::stringstream ss;
