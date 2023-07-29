@@ -34,11 +34,11 @@ int main(int argc, char **argv) {
             auto updateBaseTexture = [&value](vsg::floatArray2D& image)
             {
                 using value_type = typename vsg::floatArray2D::value_type;
-                for (size_t r = 0; r < image.height(); ++r)
+                for (int r = 0; r < image.height(); ++r)
                 {
                     float r_ratio = static_cast<float>(r) / static_cast<float>(image.height() - 1);
                     value_type* ptr = &image.at(0, r);
-                    for (size_t c = 0; c < image.width(); ++c)
+                    for (int c = 0; c < image.width(); ++c)
                     {
                         float c_ratio = static_cast<float>(c) / static_cast<float>(image.width() - 1);
 
@@ -55,9 +55,9 @@ int main(int argc, char **argv) {
                 }
             };
             while(continue_updating){
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::sleep_for(std::chrono::milliseconds(30));
                 dynamic_texture->cast<curan::renderable::DynamicHeight>()->update_texture(updateBaseTexture);
-                value += 0.01;
+                value += 0.01f;
             }
             
 
