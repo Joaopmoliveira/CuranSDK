@@ -9,13 +9,12 @@ DynamicHeight::DynamicHeight(Info& info) : width{ info.width }, height{ info.hei
 
     obj_contained = vsg::Group::create();
 
-    textureData = vsg::vec4Array2D::create(width, height);
+    textureData = vsg::floatArray2D::create(width, height);
     textureData->properties.dataVariance = vsg::DYNAMIC_DATA;
     textureData->properties.format = VK_FORMAT_R32_SFLOAT;
 
     info.stateInfo.two_sided = true;
     info.stateInfo.displacementMap = textureData;
-    info.stateInfo.lighting = true;
 
     vsg::GeometryInfo geomInfo;
     geomInfo.dx = vsg::vec3(info.spacing[0]*info.width,0.0,0.0);
@@ -23,6 +22,10 @@ DynamicHeight::DynamicHeight(Info& info) : width{ info.width }, height{ info.hei
     geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
     geomInfo.position = vsg::vec3(info.origin[0]+(info.spacing[0]*info.width)/2.0,info.origin[1]+(info.spacing[1]*info.height)/2.0,info.origin[2]);
 
+    std::printf("dx : (%f %f %f)\n",geomInfo.dx[0],geomInfo.dx[1],geomInfo.dx[2]);
+    std::printf("dx : (%f %f %f)\n",geomInfo.dy[0],geomInfo.dy[1],geomInfo.dy[2]);
+    std::printf("dx : (%f %f %f)\n",geomInfo.dz[0],geomInfo.dz[1],geomInfo.dz[2]);
+    std::printf("dx : (%f %f %f)\n",geomInfo.position[0],geomInfo.position[1],geomInfo.position[2]);
     auto node = info.builder->createHeightField(geomInfo, info.stateInfo);
 
     obj_contained->addChild(node);

@@ -18,10 +18,11 @@ int main(int argc, char **argv) {
         curan::renderable::Window window{info};
 
         auto async_attacher = [&](){
-            std::this_thread::sleep_for(std::chrono::seconds(2));
             curan::renderable::DynamicHeight::Info infotexture;
             infotexture.height = 100;
             infotexture.width = 100;
+            infotexture.origin = {0.0,0.0,0.0};
+            infotexture.spacing = {0.01,0.01,0.01};
             infotexture.builder = vsg::Builder::create();
             auto dynamic_texture = curan::renderable::DynamicHeight::make(infotexture);
             dynamic_texture->update_transform(vsg::translate(0.0,0.0,0.0));
@@ -45,7 +46,7 @@ int main(int argc, char **argv) {
                         float distance_from_center = vsg::length(delta);
 
                         float intensity = (sin(1.0 * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
-                        *ptr = intensity*intensity;
+                        *ptr = intensity;
                         ++ptr;
                     }
                 }
