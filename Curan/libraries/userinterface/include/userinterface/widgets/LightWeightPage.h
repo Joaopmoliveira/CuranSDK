@@ -36,6 +36,10 @@ namespace curan {
 
 			LightWeightPage& set_post_signal(post_signal_callback call);
 
+			inline SkRect minimum_size(){
+				return scene->minimum_size();
+			}
+
 			inline LightWeightPage& set_dirtyness(bool var) {
 				is_dirty = var;
                 return *(this);
