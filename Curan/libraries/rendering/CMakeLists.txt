@@ -22,6 +22,7 @@ target_include_directories(renderable
 target_link_libraries(renderable PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
+vsgImGui::vsgImGui 
 utils
 )
 
