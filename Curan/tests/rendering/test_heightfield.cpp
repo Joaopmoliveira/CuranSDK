@@ -17,18 +17,21 @@ int main(int argc, char **argv) {
         info.window_size = size;
         curan::renderable::Window window{info};
 
+        std::atomic<bool> continue_updating = true;
+
         auto async_attacher = [&](){
             curan::renderable::DynamicHeight::Info infotexture;
-            infotexture.height = 100;
-            infotexture.width = 100;
+            infotexture.height = 200;
+            infotexture.width = 200;
+            infotexture.depth = 200;
             infotexture.origin = {0.0,0.0,0.0};
-            infotexture.spacing = {0.01,0.01,0.01};
+            infotexture.spacing = {0.005,0.005,0.005};
             infotexture.builder = vsg::Builder::create();
             auto dynamic_texture = curan::renderable::DynamicHeight::make(infotexture);
             dynamic_texture->update_transform(vsg::translate(0.0,0.0,0.0));
             window << dynamic_texture;
             float value = 1.0;
-            auto updateBaseTexture = [value](vsg::floatArray2D& image)
+            auto updateBaseTexture = [&value](vsg::floatArray2D& image)
             {
                 using value_type = typename vsg::floatArray2D::value_type;
                 for (size_t r = 0; r < image.height(); ++r)
@@ -45,18 +48,24 @@ int main(int argc, char **argv) {
 
                         float distance_from_center = vsg::length(delta);
 
-                        float intensity = (sin(1.0 * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
+                        float intensity = 0.1*(sin(1.0 * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
                         *ptr = intensity;
                         ++ptr;
                     }
                 }
             };
-            dynamic_texture->cast<curan::renderable::DynamicHeight>()->update_texture(updateBaseTexture);
+            while(continue_updating){
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                dynamic_texture->cast<curan::renderable::DynamicHeight>()->update_texture(updateBaseTexture);
+                value += 0.01;
+            }
+            
 
         };
         std::thread local_thread_attacher{async_attacher};
 
         window.run();
+        continue_updating = false;
         local_thread_attacher.join();
 
         window.transverse_identifiers(

@@ -3,7 +3,7 @@
 namespace curan {
 namespace renderable {
 
-DynamicHeight::DynamicHeight(Info& info) : width{ info.width }, height{ info.height } {
+DynamicHeight::DynamicHeight(Info& info) : width{ info.width }, height{ info.height } , depth{info.depth}{
     vsg::dvec3 position(0.0, 0.0, 0.0);
     transform = vsg::MatrixTransform::create(vsg::translate(position));
 
@@ -17,15 +17,11 @@ DynamicHeight::DynamicHeight(Info& info) : width{ info.width }, height{ info.hei
     info.stateInfo.displacementMap = textureData;
 
     vsg::GeometryInfo geomInfo;
-    geomInfo.dx = vsg::vec3(info.spacing[0]*info.width,0.0,0.0);
-    geomInfo.dy = vsg::vec3(0.0,info.spacing[1]*info.height,0.0);
-    geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
+    geomInfo.dx = vsg::vec3(info.spacing[0]*width,0.0,0.0);
+    geomInfo.dy = vsg::vec3(0.0,info.spacing[1]*height,0.0);
+    geomInfo.dz = vsg::vec3(0.0,0.0,info.spacing[2]*depth);
     geomInfo.position = vsg::vec3(info.origin[0]+(info.spacing[0]*info.width)/2.0,info.origin[1]+(info.spacing[1]*info.height)/2.0,info.origin[2]);
 
-    std::printf("dx : (%f %f %f)\n",geomInfo.dx[0],geomInfo.dx[1],geomInfo.dx[2]);
-    std::printf("dx : (%f %f %f)\n",geomInfo.dy[0],geomInfo.dy[1],geomInfo.dy[2]);
-    std::printf("dx : (%f %f %f)\n",geomInfo.dz[0],geomInfo.dz[1],geomInfo.dz[2]);
-    std::printf("dx : (%f %f %f)\n",geomInfo.position[0],geomInfo.position[1],geomInfo.position[2]);
     auto node = info.builder->createHeightField(geomInfo, info.stateInfo);
 
     obj_contained->addChild(node);

@@ -13,11 +13,13 @@ namespace curan {
 
             size_t width;
             size_t height;
+            size_t depth;
             vsg::ref_ptr<vsg::Data> textureData;
 
             struct Info {
                 size_t width = 100;
                 size_t height = 100;
+                size_t depth = 100;
                 std::array<double,3> origin;
                 std::array<double,3> spacing; 
                 vsg::StateInfo stateInfo;
