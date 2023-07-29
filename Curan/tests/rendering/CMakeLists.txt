@@ -238,3 +238,18 @@ vsgXchange::vsgXchange
 renderable
 )
 
+add_executable(test_user_interface_3d
+test_ui_rendering.cpp
+)
+
+target_compile_definitions(test_user_interface_3d PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_user_interface_3d PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_user_interface_3d
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+)
+
