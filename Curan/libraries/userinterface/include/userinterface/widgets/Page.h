@@ -32,6 +32,8 @@ namespace curan {
 
 			Page& stack(std::unique_ptr<Overlay> overlay);
 
+			SkRect minimum_size();
+
 			inline Page& set_dirtyness(bool var) {
 				if (page_stack.empty())
 					main_page->set_dirtyness(var);

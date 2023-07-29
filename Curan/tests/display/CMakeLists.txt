@@ -101,9 +101,6 @@ target_link_libraries(modified_skia_playground PUBLIC
 userinterface
 )
 
-
-
-
 add_executable(test_image_visualization test_image_visualization.cpp)
 
 target_compile_definitions(test_image_visualization PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -112,4 +109,12 @@ target_link_libraries(test_image_visualization
 PUBLIC
 userinterface
 ${ITK_LIBRARIES}
+)
+
+add_executable(test_minimum_window_size_computation test_minimum_window_size_computation.cpp)
+
+target_compile_definitions(test_minimum_window_size_computation PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_minimum_window_size_computation PUBLIC
+userinterface
 )
