@@ -28,9 +28,7 @@ namespace curan {
 		drawablefunction draw() override;
 		callablefunction call() override;
 
-		inline SkRect minimum_size(){
-			return SkRect::MakeWH(10,10);
-		}
+		SkRect minimum_size() override;
 
 		inline Container& set_color(SkColor color){
 			std::lock_guard<std::mutex> g{ get_mutex() };
