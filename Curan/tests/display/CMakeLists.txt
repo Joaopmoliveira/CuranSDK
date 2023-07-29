@@ -118,3 +118,11 @@ target_compile_definitions(test_minimum_window_size_computation PRIVATE CURAN_CO
 target_link_libraries(test_minimum_window_size_computation PUBLIC
 userinterface
 )
+
+add_executable(test_minimum_window_with_glfw test_gflw_plus_minimum_window_size.cpp)
+
+target_compile_definitions(test_minimum_window_with_glfw PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_minimum_window_with_glfw PUBLIC
+userinterface
+)

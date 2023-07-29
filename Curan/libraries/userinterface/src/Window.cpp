@@ -21,6 +21,10 @@ Window::~Window()
 	destroy();
 };
 
+void Window::set_minimum_size(SkRect minimum_size){
+	glfwSetWindowSizeLimits(window,minimum_size.width(),minimum_size.height(),GLFW_DONT_CARE,GLFW_DONT_CARE);
+}
+
 bool Window::swapBuffers()
 {
 	BackbufferInfo* backbuffer = fBackbuffers.get() + fCurrentBackbufferIndex;
