@@ -21,8 +21,10 @@ Window::~Window()
 	destroy();
 };
 
-void Window::set_minimum_size(SkRect minimum_size){
-	glfwSetWindowSizeLimits(window,minimum_size.width(),minimum_size.height(),GLFW_DONT_CARE,GLFW_DONT_CARE);
+void Window::set_minimum_size(SkRect minimum_size,float percent){
+	if(percent< 0.0 || percent > 1.0)
+		throw std::runtime_error("the maximum relative percentange for minimum size is between 0.0 and 1.0");
+	glfwSetWindowSizeLimits(window,minimum_size.width()*(1+percent),minimum_size.height()*(1+percent),GLFW_DONT_CARE,GLFW_DONT_CARE);
 }
 
 bool Window::swapBuffers()
