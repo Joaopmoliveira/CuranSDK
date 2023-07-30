@@ -18,6 +18,7 @@ struct Parameters{
 } params;
 
 void interface(vsg::CommandBuffer& cb){
+    std::printf("ran once!");
     ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
 
     ImGui::Text("Some useful message here.");                 // Display some text (you can use a format strings too)
@@ -49,6 +50,7 @@ int main(int argc, char **argv) {
         info.is_debug = false;
         info.screen_number = 0;
         info.title = "myviewer";
+        info.imgui_interface = ui_interface;
         curan::renderable::Window::WindowSize size{1000, 800};
         info.window_size = size;
         curan::renderable::Window window{info};
