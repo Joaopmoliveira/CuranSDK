@@ -94,9 +94,8 @@ Window::Window(Info& info) {
     camera = vsg::Camera::create(perspective, lookAt, viewportState);
 
     if(info.imgui_interface){
-        root_plus_floor->addChild(*info.imgui_interface);
-
-        // Add the ImGui event handler first to handle events early
+         auto renderImGui = vsgImGui::RenderImGui::create(window, *info.imgui_interface);
+        root_plus_floor->addChild(renderImGui);
         viewer->addEventHandler(vsgImGui::SendEventsToImGui::create());
     }
 
