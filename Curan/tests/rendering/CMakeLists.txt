@@ -253,3 +253,18 @@ renderable
 vsgImGui::vsgImGui
 )
 
+add_executable(test_robot_with_ui
+test_robot_with_ui.cpp
+)
+
+target_compile_definitions(test_robot_with_ui PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_robot_with_ui PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_robot_with_ui
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+)
+

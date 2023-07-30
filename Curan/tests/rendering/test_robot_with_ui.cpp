@@ -4,22 +4,35 @@
 #include "rendering/ImGUIInterface.h"
 #include <iostream>
 
-void interface(){
+
+struct Parameters{
+    bool showGui = true; // you can toggle this with your own EventHandler and key
+    bool showDemoWindow = false;
+    bool showSecondWindow = false;
+    bool showImPlotDemoWindow = false;
+    bool showLogoWindow = true;
+    bool showImagesWindow = false;
+    float clearColor[3]{0.2f, 0.2f, 0.4f}; // Unfortunately, this doesn't change dynamically in vsg
+    uint32_t counter = 0;
+    float dist = 0.f;
+} params;
+
+void interface(vsg::CommandBuffer& cb){
     ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
 
     ImGui::Text("Some useful message here.");                 // Display some text (you can use a format strings too)
-    ImGui::Checkbox("Demo Window", &params->showDemoWindow); // Edit bools storing our window open/close state
-    ImGui::Checkbox("Another Window", &params->showSecondWindow);
-    ImGui::Checkbox("ImPlot Demo Window", &params->showImPlotDemoWindow);
+    ImGui::Checkbox("Demo Window", &params.showDemoWindow); // Edit bools storing our window open/close state
+    ImGui::Checkbox("Another Window", &params.showSecondWindow);
+    ImGui::Checkbox("ImPlot Demo Window", &params.showImPlotDemoWindow);
 
-    ImGui::SliderFloat("float", &params->dist, 0.0f, 1.0f);        // Edit 1 float using a slider from 0.0f to 1.0f
-    ImGui::ColorEdit3("clear color", (float*)&params->clearColor); // Edit 3 floats representing a color
+    ImGui::SliderFloat("float", &params.dist, 0.0f, 1.0f);        // Edit 1 float using a slider from 0.0f to 1.0f
+    ImGui::ColorEdit3("clear color", (float*)&params.clearColor); // Edit 3 floats representing a color
 
     if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
-        params->counter++;
+        params.counter++;
 
     ImGui::SameLine();
-    ImGui::Text("counter = %d", params->counter);
+    ImGui::Text("counter = %d", params.counter);
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
@@ -27,8 +40,8 @@ void interface(){
 
 int main(int argc, char **argv) {
     try {
-        curan::renderable::ImGUIInterface::Info info{interface};
-        auto ui_interface = curan::renderable::ImGUIInterface::make();
+        curan::renderable::ImGUIInterface::Info info_gui{interface};
+        auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
         curan::renderable::Window::Info info;
         info.api_dump = false;
         info.display = "";
@@ -51,6 +64,8 @@ int main(int argc, char **argv) {
         std::atomic<bool> continue_updating = true;
 
         auto async_attacher = [&](){
+            double angle = 0.0;
+            double time = 0.0;
             while(continue_updating.load()){
                 auto robot = robotRenderable->cast<curan::renderable::SequencialLinks>();
                 for(size_t index = 0; index < 7 ; ++index)
@@ -61,9 +76,6 @@ int main(int argc, char **argv) {
             }
         };
         std::thread local_thread_attacher{async_attacher};
-
-        // Add the ImGui event handler first to handle events early
-        viewer->addEventHandler(vsgImGui::SendEventsToImGui::create());
 
         window.run();
         continue_updating.store(false);
