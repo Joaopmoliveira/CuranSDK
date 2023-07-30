@@ -18,7 +18,6 @@ struct Parameters{
 } params;
 
 void interface(vsg::CommandBuffer& cb){
-    std::printf("ran once!");
     ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
 
     ImGui::Text("Some useful message here.");                 // Display some text (you can use a format strings too)
@@ -47,14 +46,14 @@ int main(int argc, char **argv) {
         info.api_dump = false;
         info.display = "";
         info.full_screen = false;
-        info.is_debug = false;
+        info.is_debug = true;
         info.screen_number = 0;
         info.title = "myviewer";
         info.imgui_interface = ui_interface;
         curan::renderable::Window::WindowSize size{1000, 800};
         info.window_size = size;
         curan::renderable::Window window{info};
-
+        
         std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
         curan::renderable::SequencialLinks::Info create_info;
         create_info.convetion = vsg::CoordinateConvention::Y_UP;
@@ -78,7 +77,7 @@ int main(int argc, char **argv) {
             }
         };
         std::thread local_thread_attacher{async_attacher};
-
+        
         window.run();
         continue_updating.store(false);
         local_thread_attacher.join();

@@ -8,33 +8,6 @@
 namespace curan {
 namespace renderable {
 
-vsg::ref_ptr<vsg::Node> create_bottom()
-{
-    auto builder = vsg::Builder::create();
-
-    auto scene = vsg::Group::create();
-    auto options = vsg::Options::create();
-    options->add(vsgXchange::all::create());
-
-    std::filesystem::path path_to_texture = CURAN_COPIED_RESOURCE_PATH"/base_pattern/CheckerBoardSeemlessPattern2.jpg";
-    auto textureData = vsg::read_cast<vsg::Data>(path_to_texture.c_str(),options);
-
-    if(textureData) 
-        utilities::cout <<  "Failed to load the checkered pattern\n";
-
-    vsg::StateInfo stateInfo;
-    stateInfo.two_sided = true;
-    stateInfo.image = textureData;
-    vsg::GeometryInfo geomInfo;
-    geomInfo.position.set(0.0, 0.0, 0);
-    geomInfo.dx.set(2, 0.0, 0.0);
-    geomInfo.dy.set(0.0, 2, 0.0);
-
-    scene->addChild(builder->createQuad(geomInfo, stateInfo));
-
-    return scene;
-}
-
 Window::Window(Info& info) {
     traits = vsg::WindowTraits::create();
     traits->windowTitle = info.title;
@@ -93,17 +66,34 @@ Window::Window(Info& info) {
     viewportState = vsg::ViewportState::create(window->extent2D());
     camera = vsg::Camera::create(perspective, lookAt, viewportState);
 
-    if(info.imgui_interface){
-        root_plus_floor->addChild(*info.imgui_interface);
 
-        // Add the ImGui event handler first to handle events early
+    // The commandGraph will contain a 2 stage renderGraph 1) 3D scene 2) ImGui (by default also includes clear depth buffers)
+    commandGraph = vsg::CommandGraph::create(window);
+    auto renderGraph = vsg::RenderGraph::create(window);
+    commandGraph->addChild(renderGraph);
+
+    // create the normal 3D view of the scene
+    auto view = vsg::View::create(camera);
+    view->addChild(vsg::createHeadlight());
+    view->addChild(root_plus_floor);
+
+    renderGraph->addChild(view);
+
+    if(info.imgui_interface){
+        ImGui::CreateContext();
+        auto renderImGui = vsgImGui::RenderImGui::create(window, *info.imgui_interface);
+        renderGraph->addChild(renderImGui);
         viewer->addEventHandler(vsgImGui::SendEventsToImGui::create());
     }
 
     viewer->addEventHandler(vsg::CloseHandler::create(viewer));
     viewer->addEventHandler(vsg::Trackball::create(camera));
-    commandGraph = vsg::createCommandGraphForView(window, camera, root_plus_floor);
-    viewer->assignRecordAndSubmitTaskAndPresentation({ commandGraph });
+    viewer->assignRecordAndSubmitTaskAndPresentation({commandGraph});
+
+
+    //commandGraph = vsg::createCommandGraphForView(window, camera, root_plus_floor);
+    //viewer->assignRecordAndSubmitTaskAndPresentation({ commandGraph });
+
 
     if (!resourceHints)
     {
