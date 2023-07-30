@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
         info.is_debug = true;
         info.screen_number = 0;
         info.title = "myviewer";
-        //info.imgui_interface = ui_interface;
+        info.imgui_interface = ui_interface;
         curan::renderable::Window::WindowSize size{1000, 800};
         info.window_size = size;
         curan::renderable::Window window{info};
