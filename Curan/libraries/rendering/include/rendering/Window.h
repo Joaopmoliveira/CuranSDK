@@ -5,6 +5,8 @@
 #include <vsgXchange/all.h>
 #include <variant>
 #include "Renderable.h"
+#include "ImGUIInterface.h"
+#include <optional>
 
 namespace curan {
     namespace renderable {
@@ -37,7 +39,7 @@ namespace curan {
                 std::string title = "noname";
                 bool full_screen;
                 std::variant<bool, WindowSize> window_size;
-
+                std::optional<vsg::ref_ptr<ImGUIInterface>> imgui_interface;
             };
 
             Window(Info& info);
