@@ -94,6 +94,7 @@ Window::Window(Info& info) {
     camera = vsg::Camera::create(perspective, lookAt, viewportState);
 
     if(info.imgui_interface){
+        ImGui::CreateContext();
          auto renderImGui = vsgImGui::RenderImGui::create(window, *info.imgui_interface);
         root_plus_floor->addChild(renderImGui);
         viewer->addEventHandler(vsgImGui::SendEventsToImGui::create());
