@@ -18,7 +18,6 @@
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "rendering/DynamicTexture.h"
-#include "rendering/PhaseWiredBox.h"
 #include "rendering/Box.h"
 #include <iostream>
 #include <map>

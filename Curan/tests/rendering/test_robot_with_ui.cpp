@@ -1,50 +1,34 @@
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "rendering/SequencialLinks.h"
-#include "rendering/DynamicTexture.h"
+#include "rendering/ImGUIInterface.h"
 #include <iostream>
 
-#include <vsgImGui/RenderImGui.h>
-#include <vsgImGui/SendEventsToImGui.h>
-#include <vsgImGui/Texture.h>
-#include <vsgImGui/imgui.h>
-#include <vsgImGui/implot.h>
+void interface(){
+    ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
 
-struct ImGUIInterface : public vsg::Inherit<vsg::Command, ImGUIInterface> {
+    ImGui::Text("Some useful message here.");                 // Display some text (you can use a format strings too)
+    ImGui::Checkbox("Demo Window", &params->showDemoWindow); // Edit bools storing our window open/close state
+    ImGui::Checkbox("Another Window", &params->showSecondWindow);
+    ImGui::Checkbox("ImPlot Demo Window", &params->showImPlotDemoWindow);
 
-    using im_gui_callable = std::function<void(vsg::CommandBuffer& cb)>;
+    ImGui::SliderFloat("float", &params->dist, 0.0f, 1.0f);        // Edit 1 float using a slider from 0.0f to 1.0f
+    ImGui::ColorEdit3("clear color", (float*)&params->clearColor); // Edit 3 floats representing a color
 
-    struct Info {
-        im_gui_callable callable;
+    if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
+        params->counter++;
 
-        Info(im_gui_callable in_callable) : callable{in_callable}{
+    ImGui::SameLine();
+    ImGui::Text("counter = %d", params->counter);
 
-        }
-    };
-
-    im_gui_callable callable;
-            
-    ImGUIInterface(Info& info) : callable{info.callable}{
-    }
-
-    // we need to compile textures before we can use them for rendering
-    void compile(vsg::Context& context) override
-    {
-
-    }
-
-    void record(vsg::CommandBuffer& cb) const override
-    {
-        callable(cb);
-    }
-
-    static vsg::ref_ptr<ImGUIInterface> make(Info& info){
-        return ImGUIInterface::create(info);
-    }
-};
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
+}
 
 int main(int argc, char **argv) {
     try {
+        curan::renderable::ImGUIInterface::Info info{interface};
+        auto ui_interface = curan::renderable::ImGUIInterface::make();
         curan::renderable::Window::Info info;
         info.api_dump = false;
         info.display = "";

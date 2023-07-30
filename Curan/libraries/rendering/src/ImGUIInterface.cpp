@@ -1,4 +1,4 @@
-#include "renderable/ImGUIInterface.h"
+#include "rendering/ImGUIInterface.h"
 
 namespace curan{
 namespace renderable{
@@ -12,12 +12,12 @@ void ImGUIInterface::compile(vsg::Context& context)
 
 }
 
-void ImGUIInterface::record(vsg::CommandBuffer& cb)
+void ImGUIInterface::record(vsg::CommandBuffer& cb) const
 {
     callable(cb);
 }
 
-static vsg::ref_ptr<ImGUIInterface> ImGUIInterface::make(Info& info){
+vsg::ref_ptr<ImGUIInterface> ImGUIInterface::make(Info& info){
     return ImGUIInterface::create(info);
 }
 

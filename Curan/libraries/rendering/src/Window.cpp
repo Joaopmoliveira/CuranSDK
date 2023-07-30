@@ -93,6 +93,13 @@ Window::Window(Info& info) {
     viewportState = vsg::ViewportState::create(window->extent2D());
     camera = vsg::Camera::create(perspective, lookAt, viewportState);
 
+    if(info.imgui_interface){
+        root_plus_floor->addChild(*info.imgui_interface);
+
+        // Add the ImGui event handler first to handle events early
+        viewer->addEventHandler(vsgImGui::SendEventsToImGui::create());
+    }
+
     viewer->addEventHandler(vsg::CloseHandler::create(viewer));
     viewer->addEventHandler(vsg::Trackball::create(camera));
     commandGraph = vsg::createCommandGraphForView(window, camera, root_plus_floor);
