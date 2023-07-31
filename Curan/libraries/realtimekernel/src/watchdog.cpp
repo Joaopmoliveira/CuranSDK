@@ -9,18 +9,15 @@
 #include <array>
 #include <csignal>
 
-// Asio context
 asio::io_context io_context;
-
-constexpr auto maximum_delay_in_milliseconds = std::chrono::milliseconds(10);
-
-struct Client;
-
-void safety_shutdown(Client* control_law);
-
 void signal_handler(int signal){
     io_context.stop();
 };
+
+constexpr auto maximum_delay_in_milliseconds = std::chrono::milliseconds(10);
+struct Client;
+
+void safety_shutdown(Client* control_law);
 
 struct Client{
   asio::high_resolution_timer timer;
@@ -68,7 +65,6 @@ void do_request_sensors_acquistion(Client& client) {
       return ;
     }
     else{
-      std::cout << "timer expired" << std::endl;
       client.context.stop();
       return ;
     } 
@@ -137,9 +133,6 @@ void do_read_control_action(Client& client){
                     return ;
                   } 
                   memcpy(&control_action, client.allocated_memory_buffer.data(), sizeof(double));
-                  
-
-                  // TODO: data_sent set at the end of state machine
                   client.data_sent = true;
 
             });
@@ -153,7 +146,6 @@ int main(int argc, char* argv[])
   asio::ip::tcp::socket sensor_socket(io_context);
   asio::ip::tcp::resolver sensor_resolver(io_context);
   asio::connect(sensor_socket, sensor_resolver.resolve("localhost","50000"));
-
 
   asio::ip::tcp::socket client_socket(io_context);
   asio::ip::tcp::resolver client_resolver(io_context);
