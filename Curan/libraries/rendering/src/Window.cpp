@@ -48,7 +48,7 @@ Window::Window(Info& info) {
 
     window = vsg::Window::create(traits);
     if (!window)
-        throw std::runtime_error("Could not create windows");
+        throw std::runtime_error("Could not create window");
 
     viewer = vsg::Viewer::create();
     viewer->addWindow(window);
@@ -90,11 +90,6 @@ Window::Window(Info& info) {
     viewer->addEventHandler(vsg::Trackball::create(camera));
     viewer->assignRecordAndSubmitTaskAndPresentation({commandGraph});
 
-
-    //commandGraph = vsg::createCommandGraphForView(window, camera, root_plus_floor);
-    //viewer->assignRecordAndSubmitTaskAndPresentation({ commandGraph });
-
-
     if (!resourceHints)
     {
         resourceHints = vsg::ResourceHints::create();
@@ -110,7 +105,10 @@ Window::~Window() {
 }
 
 bool Window::run_once() {
+    std::lock_guard<std::mutex> g{mut};
     bool val = viewer->advanceToNextFrame();
+    if(!val)
+        return val;
     viewer->handleEvents();
     viewer->update();
     viewer->recordAndSubmit();
@@ -122,6 +120,13 @@ void Window::run() {
     // rendering main loop
     while (viewer->advanceToNextFrame()) {
         auto start = std::chrono::steady_clock::now();
+        std::lock_guard<std::mutex> g{mut};
+        auto iter = deleted_resource_manager.begin();
+        while(iter!=deleted_resource_manager.end()){
+            --(*iter).first;
+            if((*iter).first<1)
+                iter = deleted_resource_manager.erase(iter);
+        }
         viewer->handleEvents();
         viewer->update();
         viewer->recordAndSubmit();
@@ -131,7 +136,33 @@ void Window::run() {
     }
 }
 
+bool Window::erase(const std::string& identifier){
+    // first we need to check if the identifier exists, once this is done we eliminate it from the map and from the vector
+    // of children of the vector in the root 
+    std::lock_guard<std::mutex> g{mut};
+    auto search = contained_objects.find(identifier);
+    if (search == contained_objects.end())
+        return false;
+    //the resources might still be in use in previous frames in flight, therefore we store them 
+    //in a list that will keep them alive until we have looped through all the frames that were using them
+    //in the past    
+    // frame [0] -current (delete the resource from scene graph) frame[1] still using it ... frame[number_of_images] still using it...
+    deleted_resource_manager.push_back({number_of_images,search->second});
+    //we remove all the frames from both the internal map and the scene graph from vsg to guarantee that they are no
+    //longer used for the next frames that come due
+    contained_objects.erase(search);
+    auto to_delete = root_plus_floor->children.end();
+    for(auto ite = root_plus_floor->children.begin(); ite < root_plus_floor->children.end(); ++ite)
+        if((*ite)->cast<Renderable>()->identifier().compare(identifier)){
+            to_delete = ite;
+            break;
+        }
+    root_plus_floor->children.erase(to_delete);
+    return true;
+}
+
 Window& operator<<(Window& ref, vsg::ref_ptr<Renderable> renderable) {
+    std::lock_guard<std::mutex> g{ref.mut};
     if (!renderable->obj_contained)
         return ref;
     if (!ref.window) {
@@ -140,7 +171,7 @@ Window& operator<<(Window& ref, vsg::ref_ptr<Renderable> renderable) {
     }
     vsg::observer_ptr<vsg::Viewer> observer_viewer(ref.viewer);
     renderable->partial_async_attachment({ observer_viewer,ref.root });
-    auto ok = ref.contained_objects.insert({ renderable->identifier,renderable }).second;
+    auto ok = ref.contained_objects.insert({ renderable->identifier(),renderable }).second;
     if (!ok)
         throw std::runtime_error("inserted object that already exists");
     ref.viewer->addUpdateOperation(renderable);
