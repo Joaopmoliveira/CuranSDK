@@ -106,6 +106,14 @@ Window::~Window() {
 
 bool Window::run_once() {
     std::lock_guard<std::mutex> g{mut};
+    auto iter = deleted_resource_manager.begin();
+    while(iter!=deleted_resource_manager.end()){
+        --(*iter).first;
+        if((*iter).first<1)
+            iter = deleted_resource_manager.erase(iter);
+        else
+            ++iter;
+    }
     bool val = viewer->advanceToNextFrame();
     if(!val)
         return val;
@@ -126,6 +134,8 @@ void Window::run() {
             --(*iter).first;
             if((*iter).first<1)
                 iter = deleted_resource_manager.erase(iter);
+            else
+                ++iter;
         }
         viewer->handleEvents();
         viewer->update();
