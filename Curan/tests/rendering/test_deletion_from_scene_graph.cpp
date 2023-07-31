@@ -18,28 +18,39 @@ int main(int argc, char **argv) {
 
         auto async_attacher = [&](){
             std::this_thread::sleep_for(std::chrono::seconds(2));
-            curan::renderable::Box::Info create_info;
-            create_info.geomInfo.dx = vsg::vec3(0.5,0.0,0.0);
-            create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
-            create_info.geomInfo.dz = vsg::vec3(0.0,0.0,0.5);
-            create_info.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
-            create_info.identifier = "mybox";
-            create_info.builder = vsg::Builder::create();
-            vsg::ref_ptr<curan::renderable::Renderable> box = curan::renderable::Box::make(create_info);
-            box->update_transform(vsg::translate(1.0,1.0,1.0));
-            window << box;
+            {
+                curan::renderable::Box::Info create_info;
+                create_info.geomInfo.dx = vsg::vec3(0.5,0.0,0.0);
+                create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
+                create_info.geomInfo.dz = vsg::vec3(0.0,0.0,0.5);
+                create_info.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
+                create_info.identifier = "mybox";
+                create_info.builder = vsg::Builder::create();
+                vsg::ref_ptr<curan::renderable::Renderable> box = curan::renderable::Box::make(create_info);
+                box->update_transform(vsg::translate(1.0,1.0,1.0));
+                window << box;
+            }
 
             std::this_thread::sleep_for(std::chrono::seconds(5));
             window.erase("mybox");
             std::this_thread::sleep_for(std::chrono::seconds(5));
 
-            window << box;
+            {
+                curan::renderable::Box::Info create_info;
+                create_info.geomInfo.dx = vsg::vec3(0.5,0.0,0.0);
+                create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
+                create_info.geomInfo.dz = vsg::vec3(0.0,0.0,0.5);
+                create_info.geomInfo.position = vsg::vec3(0.0,0.0,0.0);
+                create_info.identifier = "mybox";
+                create_info.builder = vsg::Builder::create();
+                vsg::ref_ptr<curan::renderable::Renderable> box = curan::renderable::Box::make(create_info);
+                box->update_transform(vsg::translate(1.0,1.0,1.0));
+                window << box;
+            }
         };
         std::thread local_thread_attacher{async_attacher};
 
         window.run();
-        continue_updating.store(false);
-        local_thread.join();
         local_thread_attacher.join();
 
         window.transverse_identifiers(
