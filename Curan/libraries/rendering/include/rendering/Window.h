@@ -64,6 +64,8 @@ namespace curan {
 
             bool erase(const std::string& identifier);
 
+            bool erase(vsg::ref_ptr<Renderable> renderable);
+
             friend Window& operator<<(Window& ref, vsg::ref_ptr<Renderable> renderable);
         };
 
