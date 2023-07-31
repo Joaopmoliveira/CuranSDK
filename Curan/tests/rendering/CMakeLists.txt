@@ -268,3 +268,17 @@ renderable
 vsgImGui::vsgImGui
 )
 
+add_executable(test_scenegraph_deletion
+test_deletion_from_scene_graph.cpp
+)
+
+target_compile_definitions(test_scenegraph_deletion PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_scenegraph_deletion PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_scenegraph_deletion
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+)
