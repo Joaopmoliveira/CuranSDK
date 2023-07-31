@@ -22,46 +22,13 @@ void signal_handler(int signal){
     io_context.stop();
 };
 
-struct DeserializiedSensorHeader{
-    unsigned char number_sensors_present = 0;
-    
-    DeserializiedSensorHeader(){}
-
-};
-
-struct DeserializiedSensorData{
-    std::vector<unsigned char> buffer;
-
-    DeserializiedSensorData(){}
-
-    void update(DeserializiedSensorHeader desireazlied_header){
-        buffer.resize(desireazlied_header.number_sensors_present);
-    }
-};
-
-void unpack_header_sensor_data(std::array<unsigned char,10>& memory_buffer,DeserializiedSensorHeader& header){
-    size_t offset = 0;
-    unsigned char number_sensors_present;
-    std::memcpy(&number_sensors_present,memory_buffer.data(), sizeof(unsigned char));
-    offset += sizeof(unsigned char);
-    header.number_sensors_present = number_sensors_present;
-}
-
-void unpack_body_sensor_data(std::array<unsigned char,10>& memory_buffer,DeserializiedSensorData& sensor_data,DeserializiedSensorHeader& header){
-    sensor_data.update(header);
-    std::memcpy(sensor_data.buffer.data(),memory_buffer.data(), header.number_sensors_present);
-}
-
 struct Client{
   asio::high_resolution_timer timer;
   bool data_sent = false;
-  std::array<unsigned char,10> allocated_memory_buffer;
+  std::array<unsigned char,10000> allocated_memory_buffer;
   asio::io_context& context;
   asio::ip::tcp::socket sensor_socket_;
   asio::ip::tcp::socket client_socket_;
-  DeserializiedSensorHeader header;
-  DeserializiedSensorData body;
-  unsigned long int bytesRead = 0;
 
   explicit Client(asio::io_context& in_context,
                     asio::ip::tcp::socket&& sensor_socket,
@@ -106,9 +73,6 @@ void do_request_sensors_acquistion(Client& client) {
       return ;
     } 
   });
-  client.allocated_memory_buffer[0]=1;
-  size_t message_size = sizeof(unsigned char);
-
     asio::async_write( client.sensor_socket_,asio::buffer(client.allocated_memory_buffer),asio::transfer_exactly(message_size),
     [ &client](asio::error_code ec, size_t /*length*/) {
         if (ec) {
@@ -128,8 +92,6 @@ void do_read_sensors_ack(Client& client){
                   } 
                   unpack_header_sensor_data(client.allocated_memory_buffer,client.header);
                   do_read_sensors_updated_list(client);
-                  std::cout << "NSensors: "<< (unsigned int) client.header.number_sensors_present << "\n";
-                  client.bytesRead += 1;
 
             });
 }
@@ -141,7 +103,6 @@ void do_read_sensors_updated_list(Client& client){
                     return ;
                   }                   
                   unpack_body_sensor_data(client.allocated_memory_buffer,client.body,client.header);
-                  std::cout << "\nsensors written: ";
                   for(auto && sensor_data :  client.body.buffer ){
                     std::cout << (unsigned int) sensor_data ;
                   }
@@ -175,12 +136,9 @@ void do_read_control_action(Client& client){
                     client.context.stop();
                     return ;
                   } 
-                  // TODO: get control action
-                  double control_action;
                   memcpy(&control_action, client.allocated_memory_buffer.data(), sizeof(double));
                   
-                  std::cout << "control action: "<< control_action << "\n";
-                  client.bytesRead += 1;
+
                   // TODO: data_sent set at the end of state machine
                   client.data_sent = true;
 

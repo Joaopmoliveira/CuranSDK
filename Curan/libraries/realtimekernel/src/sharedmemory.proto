@@ -1,0 +1,27 @@
+{
+    "shared_memory_name" : "KAZAMAS",
+    "messages" : [
+        {
+        "message" : "gps_reading",
+        "fields" : [
+            {"name" : "counter", "type" : "int", "array" : 1},
+            {"name" : "latitude", "type" : "double" , "array" : 1},
+            {"name" : "longitude", "type" : "double" , "array" : 1},
+            {"name" : "height", "type" : "double" , "array" : 1},
+            {"name" : "velocity", "type" : "double" , "array" : 3},
+            {"name" : "acceleration", "type" : "double" , "array" : 3},
+            {"name" : "gforce", "type" : "double" , "array" : 1},
+            {"name" : "orientation", "type" : "double" , "array" : 3},
+            {"name" : "angular_velocity", "type" : "double" , "array" : 3},
+            {"name" : "standard_deviation", "type" : "double" , "array" : 3}
+        ]
+        },
+        {
+        "message" : "grayscale_image_1",
+        "fields" : [
+            {"name" : "counter", "type" : "int", "array" : 1},
+            {"name" : "data", "type" : "bytes", "array" : 5880000 }
+        ]  
+        }
+        ]
+}
