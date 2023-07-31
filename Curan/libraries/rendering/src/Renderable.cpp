@@ -3,7 +3,7 @@
 namespace curan {
 namespace renderable {
 
-Renderable::Renderable() : identifier{ "object" + std::to_string(number) } {
+Renderable::Renderable() : _identifier{ "object" + std::to_string(number) } {
     ++number;
 }
 

@@ -37,14 +37,14 @@ Window::Window(Info& info) {
     ambientLight->name = "ambient";
     ambientLight->color.set(1.0, 1.0, 1.0);
     ambientLight->intensity = 0.01f;
-    root->addChild(ambientLight);
+    root_plus_floor->addChild(ambientLight);
 
     auto directionalLight = vsg::DirectionalLight::create();
     directionalLight->name = "directional";
     directionalLight->color.set(1.0, 1.0, 1.0);
     directionalLight->intensity = 0.4f;
     directionalLight->direction.set(0.0, 0.0, -1.0);
-    root->addChild(directionalLight);
+    root_plus_floor->addChild(directionalLight);
 
     window = vsg::Window::create(traits);
     if (!window)
@@ -54,7 +54,7 @@ Window::Window(Info& info) {
     viewer->addWindow(window);
 
     vsg::ComputeBounds computeBounds;
-    root->accept(computeBounds);
+    root_plus_floor->accept(computeBounds);
 
     vsg::dvec3 centre = vsg::dvec3(0.0,0.0,0.0);
     double radius = 10;
@@ -160,14 +160,20 @@ bool Window::erase(const std::string& identifier){
     deleted_resource_manager.push_back({number_of_images,search->second});
     //we remove all the frames from both the internal map and the scene graph from vsg to guarantee that they are no
     //longer used for the next frames that come due
-    contained_objects.erase(search);
-    auto to_delete = root_plus_floor->children.end();
-    for(auto ite = root_plus_floor->children.begin(); ite < root_plus_floor->children.end(); ++ite)
-        if((*ite)->cast<Renderable>()->identifier().compare(identifier)){
+
+    auto to_delete = root->children.end();
+    for(auto ite = root->children.begin(); ite < root->children.end(); ++ite){
+        // in the scene graph, what actually gets attached is
+        // the homogeneous transformation of each renderable, not the object itself, thus we
+        // compare each homogeneous transformation with the one stored in the previous map
+        if(search->second->transform == *ite){ 
             to_delete = ite;
             break;
         }
-    root_plus_floor->children.erase(to_delete);
+    }
+    contained_objects.erase(search);
+    if(to_delete!=root->children.end())
+        root->children.erase(to_delete);
     return true;
 }
 
