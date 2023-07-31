@@ -53,3 +53,15 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_reconstruction_save_solution test_multithreaded_save_solution.cpp)
+
+target_compile_definitions(test_reconstruction_save_solution PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_reconstruction_save_solution PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_reconstruction_save_solution
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)
