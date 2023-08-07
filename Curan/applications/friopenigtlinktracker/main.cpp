@@ -652,7 +652,7 @@ int main(int argc, char* argv[]) {
 
 	std::thread thred{ state_machine };
 
-	int port_fri = 50010;
+	unsigned short port_fri = 50010;
 
 	curan::communication::interface_fri fri_interface;
 	curan::communication::Server::Info construction_joints{ io_context,fri_interface ,port_fri };

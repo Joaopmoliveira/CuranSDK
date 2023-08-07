@@ -11,8 +11,9 @@ src/Sphere.cpp
 src/Window.cpp
 src/SequencialLinks.cpp
 src/Floor.cpp
-#src/PhaseWiredBox.cpp
+src/DynamicHeight.cpp
 src/Volume.cpp
+src/ImGUIInterface.cpp
 )
 
 target_include_directories(renderable
@@ -22,6 +23,7 @@ target_include_directories(renderable
 target_link_libraries(renderable PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
+vsgImGui::vsgImGui 
 utils
 )
 

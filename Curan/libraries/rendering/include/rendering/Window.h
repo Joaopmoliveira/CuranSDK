@@ -5,6 +5,11 @@
 #include <vsgXchange/all.h>
 #include <variant>
 #include "Renderable.h"
+#include "ImGUIInterface.h"
+#include <optional>
+#include <list>
+#include <utility>
+#include <mutex>
 
 namespace curan {
     namespace renderable {
@@ -20,8 +25,10 @@ namespace curan {
             vsg::ref_ptr<vsg::CommandGraph> commandGraph;
             vsg::ref_ptr<vsg::ProjectionMatrix> perspective;
             vsg::ref_ptr<vsg::ViewportState> viewportState;
-
+            size_t number_of_images = 0;
             std::unordered_map<std::string, vsg::ref_ptr<Renderable>> contained_objects;
+            std::list<std::pair<size_t,vsg::ref_ptr<Renderable>>> deleted_resource_manager;
+            std::mutex mut;
         public:
 
             struct WindowSize {
@@ -37,7 +44,7 @@ namespace curan {
                 std::string title = "noname";
                 bool full_screen;
                 std::variant<bool, WindowSize> window_size;
-
+                std::optional<vsg::ref_ptr<ImGUIInterface>> imgui_interface;
             };
 
             Window(Info& info);
@@ -51,8 +58,13 @@ namespace curan {
             using tranverser = std::function<void(const std::unordered_map<std::string, vsg::ref_ptr<Renderable>>&)>;
 
             inline void transverse_identifiers(tranverser&& transv) {
+                std::lock_guard<std::mutex> g{mut};
                 transv(contained_objects);
             }
+
+            bool erase(const std::string& identifier);
+
+            bool erase(vsg::ref_ptr<Renderable> renderable);
 
             friend Window& operator<<(Window& ref, vsg::ref_ptr<Renderable> renderable);
         };

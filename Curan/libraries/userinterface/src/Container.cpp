@@ -57,6 +57,24 @@ void Container::framebuffer_resize(){
 	}
 }
 
+SkRect Container::minimum_size(){
+    std::lock_guard<std::mutex> g{ get_mutex() };
+
+	if(!compiled)
+		throw std::runtime_error("cannot query positions while container not compiled");
+	auto iter_rect = rectangles_of_contained_layouts.begin();
+	auto iter_drawables = contained_layouts.begin();
+	SkRect potential_largest_container = SkRect::MakeWH(1,1);
+	for (; iter_rect != rectangles_of_contained_layouts.end() && iter_drawables != contained_layouts.end(); ++iter_rect, ++iter_drawables) {
+		SkRect rect = *iter_rect;
+		SkRect minimum_size = (*iter_drawables)->minimum_size();
+		SkRect temp = rect.MakeWH(minimum_size.width()/rect.width(),minimum_size.height()/rect.height());
+		potential_largest_container.fRight = (temp.width()>potential_largest_container.width()) ? temp.width() : potential_largest_container.width();
+		potential_largest_container.fBottom =  (temp.height()>potential_largest_container.height()) ? temp.height() : potential_largest_container.height();
+	}
+	return potential_largest_container;
+}
+
 Container& Container::linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal){
 	std::lock_guard<std::mutex> g{ get_mutex() };
 
@@ -99,6 +117,12 @@ Container& Container::operator<<(std::unique_ptr<Drawable> drawable){
     return *(this);
 }
 
+void validate_minimum_width_and_height(const std::vector<SkRect>& rectangles){
+	for(const auto & rect : rectangles)
+		if(rect.width()<0.000001 || rect.height()<0.000001)
+			throw std::runtime_error("the size of one or more of the supplied widgets is too close to zero");
+}
+
 void Container::compile(){
 	if (contained_layouts.size() == 0)
 		return;
@@ -107,6 +131,7 @@ void Container::compile(){
 		if(contained_layouts.size()!=rectangles_of_contained_layouts.size())
 			throw std::runtime_error("missmatch between the number of contained layout and rectangles");
 		compiled = true;
+		validate_minimum_width_and_height(rectangles_of_contained_layouts);
 		return;
 	}
 	switch (arragement) {
@@ -138,6 +163,7 @@ void Container::compile(){
 		break;
 	}
 	compiled = true;
+	validate_minimum_width_and_height(rectangles_of_contained_layouts);
 }
 
 }

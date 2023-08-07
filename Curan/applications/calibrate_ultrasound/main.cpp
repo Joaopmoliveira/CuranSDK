@@ -172,8 +172,9 @@ int main(int argc, char* argv[]) {
    		return ss.str();
 	};
 
+	Eigen::IOFormat CleanFmt(Eigen::StreamPrecision, 0, ", ", "\n", " ", " ");
 	std::stringstream optimized_values;
-	optimized_values << transformation_matrix << std::endl;
+	optimized_values << transformation_matrix.format(CleanFmt) << std::endl;
 	
 	// Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the 
 	// tracker transformation ()

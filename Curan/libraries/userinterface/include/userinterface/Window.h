@@ -87,6 +87,7 @@ namespace curan {
 
 			std::vector<Signal> process_pending_signals();
 			[[nodiscard]] bool recreateDisplay();
+			void set_minimum_size(SkRect minimum_size,float percent = 0.1);
 			BackbufferInfo* getAvailableBackBuffer();
 			static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 		};

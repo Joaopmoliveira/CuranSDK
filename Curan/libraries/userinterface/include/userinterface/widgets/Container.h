@@ -28,6 +28,8 @@ namespace curan {
 		drawablefunction draw() override;
 		callablefunction call() override;
 
+		SkRect minimum_size() override;
+
 		inline Container& set_color(SkColor color){
 			std::lock_guard<std::mutex> g{ get_mutex() };
 			layout_color = color;

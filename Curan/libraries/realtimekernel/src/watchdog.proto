@@ -1,0 +1,11 @@
+// The watchdog message contains a timestamp associated with each stage of the machine state measured from the perspective of the watchdog
+// and a flag indicating which sensor measurment is currently present in the shared memory
+
+syntax = "proto3";
+
+message WatchDogMessage {
+  int32 time_to_terminate_readings = 1;
+  int32 time_to_terminate_control = 2;
+  bool is_depth_camera_1_present = 3;
+  bool is_gps_sensor_reading_present = 4;
+}

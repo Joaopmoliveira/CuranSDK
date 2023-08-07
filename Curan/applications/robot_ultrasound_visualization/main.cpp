@@ -58,17 +58,6 @@ void signal_handler(int signal)
 
 Eigen::MatrixXd convert_matrix(std::stringstream& data)
 {
- 
-    // the inspiration for creating this function was drawn from here (I did NOT copy and paste the code)
-    // https://stackoverflow.com/questions/34247057/how-to-read-csv-file-and-assign-to-eigen-matrix
-     
-    // the input is the file: "fileToOpen.csv":
-    // a,b,c
-    // d,e,f
-    // This function converts input file data into the Eigen matrix format
- 
- 
- 
     // the matrix entries are stored in this variable row-wise. For example if we have the matrix:
     // M=[a b c 
     //    d e f]
@@ -140,13 +129,15 @@ int main (int argc, char** argv)
    info.window_size = size;
    curan::renderable::Window window{info};
    robot_state->window_pointer = &window;
-   //std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
-   //curan::renderable::SequencialLinks::Info create_info;
-   //create_info.convetion = vsg::CoordinateConvention::Y_UP;
-   //create_info.json_path = robot_path;
-   //create_info.number_of_links = 8;
-   //robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
-   //window << robot_state->robot;
+
+
+   std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
+   curan::renderable::SequencialLinks::Info create_info;
+   create_info.convetion = vsg::CoordinateConvention::Y_UP;
+   create_info.json_path = robot_path;
+   create_info.number_of_links = 8;
+   robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
+   window << robot_state->robot;
 
    auto communication_callable = [robot_state](){
       communication(robot_state);

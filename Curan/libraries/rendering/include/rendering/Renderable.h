@@ -21,7 +21,7 @@ namespace curan {
                 {}
             };
 
-            std::string identifier;
+            std::string _identifier;
             vsg::ref_ptr<vsg::Group> obj_contained;
             vsg::ref_ptr<vsg::MatrixTransform> transform;
             vsg::ref_ptr<vsg::Viewer> owner_viewer;
@@ -31,8 +31,12 @@ namespace curan {
 
             Renderable();
 
+            inline std::string identifier(){
+                return _identifier;
+            }
+
             inline void set_identifier(const std::string& ident) {
-                identifier = ident;
+                _identifier = ident;
             }
 
             inline void update_transform(const vsg::dmat4& in_matrix) {

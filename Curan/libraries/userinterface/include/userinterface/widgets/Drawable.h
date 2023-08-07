@@ -57,6 +57,7 @@ namespace curan {
 			virtual void compile() = 0;
 			virtual drawablefunction draw() = 0;
 			virtual callablefunction call() = 0;
+			virtual SkRect minimum_size();
 		};
 	}
 }

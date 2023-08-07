@@ -15,5 +15,9 @@ bool Drawable::is_leaf(){
     return true;
 }
 
+SkRect Drawable::minimum_size(){
+    return size;
+}
+
 }
 }
