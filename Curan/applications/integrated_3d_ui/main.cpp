@@ -5,12 +5,7 @@
 #include <iostream>
 
 struct Parameters{
-    bool showGui = true; // you can toggle this with your own EventHandler and key
-    bool showDemoWindow = false;
-    bool showSecondWindow = false;
-    bool showImPlotDemoWindow = false;
-    bool showLogoWindow = true;
-    bool showImagesWindow = false;
+    
     float clearColor[3]{0.2f, 0.2f, 0.4f}; // Unfortunately, this doesn't change dynamically in vsg
     uint32_t counter = 0;
     float dist = 0.f;
