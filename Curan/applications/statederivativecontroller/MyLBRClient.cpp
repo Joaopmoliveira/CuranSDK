@@ -523,13 +523,14 @@ void MyLBRClient::command() {
     //  Geometrical Jacobian matrix (Siciliano: Modelling, Planning and Control)
     robot->getJacobian(J, iiwa->q, pointPosition, 7);                         // Jacobian matrix, wrt. point on flange (pointPosition), expressed in base coordinates
     
-    
     // This is a normal damper that removes energy from all joints (makes it easier to mvoe the robot in free space)
-    auto torques = -iiwa->M * 10 * iiwa->qDot;
     //this adds the joint limits to the robot control (it takes our control commands and it shapes it to avoid torque limits)
-    VectorNd SJSTorque = addConstraints(torques, 0.005);
-
-    computeLinVelToJointTorqueCmd(torqueLinTask, nullSpace, iiwa->qDot, this->output, this->desStartRot); // Fixed rotation for now.
+    //VectorNd SJSTorque = addConstraints(torques, 0.005);
+    Eigen::Vector3d desired_velocity = Eigen::Vector3d::Zero();
+    Eigen::Matrix3d desired_orientation = Eigen::Matrix3d::Identity();
+    Eigen::VectorXd torqueLinTask = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS);
+    Eigen::MatrixXd nullSpace = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
+    computeLinVelToJointTorqueCmd(0.005,J,iiwa->M,p_0_cur,R_0_7, iiwa->qDot,desired_velocity, desired_orientation,torqueLinTask, nullSpace); // Fixed rotation for now.
 
 	// Apply damping torques in nullspace.
 	const double dampingQ = 5;
@@ -537,23 +538,12 @@ void MyLBRClient::command() {
 	Eigen::MatrixXd torqueCommand = torqueLinTask + nullSpace*dampingTorque;
 		
 	// Limit torques to stop at the robot's joint limits.
-	addConstraints(torqueCommand, this->jointTorqueCommand, this->mc->robot, this->sampleTime, this->qDot);
-	this->jointTorqueCommand[6] = 20*this->jointTorqueCommand[6];
+	VectorNd SJSTorque = addConstraints(torqueCommand, 0.005);
+	//this->jointTorqueCommand[6] = 20*this->jointTorqueCommand[6];
 
-    constexpr bool executeJointPositionControl = false;
-    if constexpr (executeJointPositionControl)
-    {
-        for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-            _qApplied[i] = _qCurr[i];
-            _torques[i] = 0.0;
-        }
-    }
-    else
-    {
-        for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
-            _qApplied[i] = _qCurr[i] + 0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime);
-            _torques[i] = SJSTorque[i];
-        }
+    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+        _qApplied[i] = _qCurr[i] + 0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime);
+        _torques[i] = SJSTorque[i];
     }
 
     if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
