@@ -21,8 +21,7 @@ namespace curan {
 
             static vsg::ref_ptr<Renderable> make(Info& info);
 
-            void orientation(const vsg::vec3&);
-            void origin(const vsg::vec3&);
+            void norm(const double& in);
         };
     }
 }

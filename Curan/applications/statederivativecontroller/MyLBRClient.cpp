@@ -40,6 +40,14 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #endif
 
 
+Eigen::MatrixXd getLambdaLeastSquares(const Eigen::MatrixXd &M, const Eigen::MatrixXd& J, const double& k)
+{
+    Eigen::MatrixXd Iden = Eigen::MatrixXd::Identity(J.rows(), J.rows());
+    Eigen::MatrixXd Lambda_Inv = J * M.inverse() * J.transpose() + (k*k)*Iden;
+    Eigen::MatrixXd Lambda = Lambda_Inv.inverse();
+    return Lambda;
+}
+
 void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::MatrixXd &jacobian, const Eigen::MatrixXd & massMatrix , const Eigen::Vector3d& posCurr , const Eigen::Matrix3d& R_0_E ,const Eigen::VectorXd &qDot, const Eigen::Vector3d &desLinVelocity, const Eigen::Matrix3d &desRotation,Eigen::VectorXd &jointTorqueCommand, Eigen::MatrixXd &nullSpace)
 {
 	// Operational Space Control (OSC)
@@ -114,14 +122,6 @@ void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::Matri
 	jointTorqueCommand = torquePos + nullSpaceTranslation * torqueRot; // Prioritize positional torques. 
 	// Set nullspace.
 	nullSpace = nullSpaceTranslation * nullSpaceRotation;
-}
-
-Eigen::MatrixXd getLambdaLeastSquares(const Eigen::MatrixXd &M, const Eigen::MatrixXd& J, const double& k)
-{
-    Eigen::MatrixXd Iden = Eigen::MatrixXd::Identity(J.rows(), J.rows());
-    Eigen::MatrixXd Lambda_Inv = J * M.inverse() * J.transpose() + (k*k)*Iden;
-    Eigen::MatrixXd Lambda = Lambda_Inv.inverse();
-    return Lambda;
 }
 
 //******************************************************************************

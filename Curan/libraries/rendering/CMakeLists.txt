@@ -14,6 +14,7 @@ src/Floor.cpp
 src/DynamicHeight.cpp
 src/Volume.cpp
 src/ImGUIInterface.cpp
+src/Arrow.cpp
 )
 
 target_include_directories(renderable
