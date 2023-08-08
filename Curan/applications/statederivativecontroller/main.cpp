@@ -21,7 +21,6 @@ constexpr unsigned short DEFAULT_PORTID = 30200;
 
 curan::utilities::SafeQueue<KUKA::FRI::LBRState> recordings;
 
-
 void signal_handler(int signal)
 {
     recordings.invalidate();
