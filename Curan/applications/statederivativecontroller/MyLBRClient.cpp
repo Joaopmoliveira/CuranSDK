@@ -40,19 +40,16 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #endif
 
 
-void computeLinVelToJointTorqueCmd(const kuka::Robot* robot, const RobotParameters* iiwa,const Eigen::VectorXd &qDot, const Eigen::Vector3d &desLinVelocity, const Eigen::Matrix3d &desRotation,Eigen::VectorXd &jointTorqueCommand, Eigen::MatrixXd &nullSpace)
+void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::MatrixXd &jacobian, const Eigen::MatrixXd & massMatrix , const Eigen::Vector3d& posCurr , const Eigen::Matrix3d& R_0_E ,const Eigen::VectorXd &qDot, const Eigen::Vector3d &desLinVelocity, const Eigen::Matrix3d &desRotation,Eigen::VectorXd &jointTorqueCommand, Eigen::MatrixXd &nullSpace)
 {
 	// Operational Space Control (OSC)
 
 	// Compute goal position based on desired velocity.
-	Eigen::Vector3d posCurr = motiongenerator::RobotHelper::getAbsFrameOfToolInMeter(this->robot).translation();
-	Eigen::Vector3d posDes  = posCurr + desLinVelocity * this->dt;
+	Eigen::Vector3d posDes  = posCurr + desLinVelocity * sample_time;
 
 	// Set matrices for current robot configuration.
-	const Eigen::MatrixXd jacobian    = motiongenerator::RobotHelper::getJacobian(this->robot);
-	const Eigen::MatrixXd jacobianPos = jacobian.block(0,0,3, this->robot->getNumJoints());
-	const Eigen::MatrixXd jacobianRot = jacobian.block(3,0,3, this->robot->getNumJoints());
-	const Eigen::MatrixXd massMatrix = motiongenerator::RobotHelper::getMassMatrix(this->robot);
+	const Eigen::MatrixXd jacobianPos = jacobian.block(0,0,3, NUMBER_OF_JOINTS);
+	const Eigen::MatrixXd jacobianRot = jacobian.block(3,0,3, NUMBER_OF_JOINTS);
 	Eigen::MatrixXd lambda    = getLambdaLeastSquares(massMatrix,jacobian   ,0.3);
 	Eigen::MatrixXd lambdaPos = getLambdaLeastSquares(massMatrix,jacobianPos,0.3);
 	Eigen::MatrixXd lambdaRot = getLambdaLeastSquares(massMatrix,jacobianRot,0.3);
@@ -81,7 +78,6 @@ void computeLinVelToJointTorqueCmd(const kuka::Robot* robot, const RobotParamete
 	const double maxRotSpeed = 2.0;
     const double angularStiffness = 800;
     const double angularDamping   = 40;
-	Eigen::Matrix3d R_0_E  = motiongenerator::RobotHelper::getAbsFrameOfToolInMeter(this->robot).rotation();
 	Eigen::Matrix3d R_E_Ed = R_0_E.transpose() * desRotation;
 	// Convert rotation error in eef frame to axis angle representation.
     Eigen::AngleAxisd E_AxisAngle(R_E_Ed);
@@ -523,12 +519,26 @@ void MyLBRClient::command() {
     robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
     robot->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7);              // 3x1 position of flange (body = 7), expressed in base coordinates
     robot->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);                                // 3x3 rotation matrix of flange, expressed in base coordinates
+    
     //  Geometrical Jacobian matrix (Siciliano: Modelling, Planning and Control)
-    //robot->getJacobian(J, iiwa->q, pointPosition, 7);                         // Jacobian matrix, wrt. point on flange (pointPosition), expressed in base coordinates
+    robot->getJacobian(J, iiwa->q, pointPosition, 7);                         // Jacobian matrix, wrt. point on flange (pointPosition), expressed in base coordinates
+    
+    
     // This is a normal damper that removes energy from all joints (makes it easier to mvoe the robot in free space)
     auto torques = -iiwa->M * 10 * iiwa->qDot;
     //this adds the joint limits to the robot control (it takes our control commands and it shapes it to avoid torque limits)
     VectorNd SJSTorque = addConstraints(torques, 0.005);
+
+    computeLinVelToJointTorqueCmd(torqueLinTask, nullSpace, iiwa->qDot, this->output, this->desStartRot); // Fixed rotation for now.
+
+	// Apply damping torques in nullspace.
+	const double dampingQ = 5;
+	Eigen::VectorXd dampingTorque = -iiwa->M * dampingQ * iiwa->qDot;
+	Eigen::MatrixXd torqueCommand = torqueLinTask + nullSpace*dampingTorque;
+		
+	// Limit torques to stop at the robot's joint limits.
+	addConstraints(torqueCommand, this->jointTorqueCommand, this->mc->robot, this->sampleTime, this->qDot);
+	this->jointTorqueCommand[6] = 20*this->jointTorqueCommand[6];
 
     constexpr bool executeJointPositionControl = false;
     if constexpr (executeJointPositionControl)
