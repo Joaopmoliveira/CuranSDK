@@ -39,6 +39,95 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #define NCoef 1
 #endif
 
+
+void computeLinVelToJointTorqueCmd(const kuka::Robot* robot, const RobotParameters* iiwa,const Eigen::VectorXd &qDot, const Eigen::Vector3d &desLinVelocity, const Eigen::Matrix3d &desRotation,Eigen::VectorXd &jointTorqueCommand, Eigen::MatrixXd &nullSpace)
+{
+	// Operational Space Control (OSC)
+
+	// Compute goal position based on desired velocity.
+	Eigen::Vector3d posCurr = motiongenerator::RobotHelper::getAbsFrameOfToolInMeter(this->robot).translation();
+	Eigen::Vector3d posDes  = posCurr + desLinVelocity * this->dt;
+
+	// Set matrices for current robot configuration.
+	const Eigen::MatrixXd jacobian    = motiongenerator::RobotHelper::getJacobian(this->robot);
+	const Eigen::MatrixXd jacobianPos = jacobian.block(0,0,3, this->robot->getNumJoints());
+	const Eigen::MatrixXd jacobianRot = jacobian.block(3,0,3, this->robot->getNumJoints());
+	const Eigen::MatrixXd massMatrix = motiongenerator::RobotHelper::getMassMatrix(this->robot);
+	Eigen::MatrixXd lambda    = getLambdaLeastSquares(massMatrix,jacobian   ,0.3);
+	Eigen::MatrixXd lambdaPos = getLambdaLeastSquares(massMatrix,jacobianPos,0.3);
+	Eigen::MatrixXd lambdaRot = getLambdaLeastSquares(massMatrix,jacobianRot,0.3);
+
+	// ############################################################################################
+	// Compute positional part.
+	// ############################################################################################
+
+	auto maxCartSpeed = 0.3;
+    const double stiffness = 400;
+	const double damping   = 40;
+	Eigen::Vector3d posErr  = posDes - posCurr;
+	Eigen::Vector3d velCurr = jacobianPos * qDot;
+	Eigen::Vector3d velDes  = desLinVelocity + (stiffness / damping) * posErr;
+	// Limit velocity to maxCartSpeed.
+	velDes = velDes.norm() == 0.0
+		? velDes * 0.0
+		: velDes * std::min(1.0, maxCartSpeed / velDes.norm());
+	// Compute positional force command.
+	Eigen::Vector3d forcePos = damping * (velDes - velCurr);
+
+	// ############################################################################################
+	// Compute rotation part.
+	// ############################################################################################
+
+	const double maxRotSpeed = 2.0;
+    const double angularStiffness = 800;
+    const double angularDamping   = 40;
+	Eigen::Matrix3d R_0_E  = motiongenerator::RobotHelper::getAbsFrameOfToolInMeter(this->robot).rotation();
+	Eigen::Matrix3d R_E_Ed = R_0_E.transpose() * desRotation;
+	// Convert rotation error in eef frame to axis angle representation.
+    Eigen::AngleAxisd E_AxisAngle(R_E_Ed);
+    Eigen::Vector3d E_u = E_AxisAngle.axis();
+    double angleErr     = E_AxisAngle.angle();
+	// Convert axis to base frame.
+    Eigen::Vector3d O_u = R_0_E * E_u;
+	// Compute rotational error. (Scaled axis angle)
+	Eigen::Vector3d rotErr     = O_u * angleErr;
+	Eigen::Vector3d rotVelCurr = jacobianRot * qDot;
+	Eigen::Vector3d rotVelDes  = (angularStiffness / angularDamping) * rotErr; // + 0 desired 
+	// Limit rotational velocity to maxRotSpeed.
+	rotVelDes = rotVelDes.norm() == 0.0
+		? rotVelDes * 0.0
+		: rotVelDes * std::min(1.0, maxRotSpeed / rotVelDes.norm());
+	// Compute rotational force command.
+	Eigen::Vector3d forceRot = angularDamping * (rotVelDes - rotVelCurr);
+
+	// ############################################################################################
+	// Compute positional and rotational nullspace.
+	// ############################################################################################
+	
+	Eigen::MatrixXd I       = Eigen::MatrixXd::Identity(NUMBER_OF_JOINTS, NUMBER_OF_JOINTS);
+	Eigen::MatrixXd jbarPos = massMatrix.inverse() * jacobianPos.transpose() * lambdaPos;
+	Eigen::MatrixXd jbarRot = massMatrix.inverse() * jacobianRot.transpose() * lambdaRot;
+	Eigen::MatrixXd nullSpaceTranslation = I - jacobianPos.transpose() * jbarPos.transpose();
+	Eigen::MatrixXd nullSpaceRotation    = I - jacobianRot.transpose() * jbarRot.transpose();
+
+	// Compute positional and rotation torque from force commands.
+	Eigen::VectorXd torquePos = jacobianPos.transpose() * lambdaPos * forcePos;
+	Eigen::VectorXd torqueRot = jacobianRot.transpose() * lambdaRot * forceRot;
+
+	// Set torque command.
+	jointTorqueCommand = torquePos + nullSpaceTranslation * torqueRot; // Prioritize positional torques. 
+	// Set nullspace.
+	nullSpace = nullSpaceTranslation * nullSpaceRotation;
+}
+
+Eigen::MatrixXd getLambdaLeastSquares(const Eigen::MatrixXd &M, const Eigen::MatrixXd& J, const double& k)
+{
+    Eigen::MatrixXd Iden = Eigen::MatrixXd::Identity(J.rows(), J.rows());
+    Eigen::MatrixXd Lambda_Inv = J * M.inverse() * J.transpose() + (k*k)*Iden;
+    Eigen::MatrixXd Lambda = Lambda_Inv.inverse();
+    return Lambda;
+}
+
 //******************************************************************************
 MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_state{in_shared_state} {
     // Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)

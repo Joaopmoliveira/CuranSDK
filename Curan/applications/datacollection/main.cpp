@@ -182,10 +182,21 @@ int main(int argc, char* argv[]) {
 	thred_robot_control.join();
 	thred_robot_render.join();
 
+	nlohmann::json data_to_record;
+	std::string name = "datapoint";
 	std::ofstream file_with_data(filename);
-	for(const auto& homogeneous : list_of_homogenenous_readings){
-		
+	if(!file_with_data){
+		std::cout << "failure to open file\n";
+		return 1;
 	}
+	size_t recording_number = 1;
+	for(const auto& homogeneous : list_of_homogenenous_readings){
+		std::stringstream ss;
+		ss << homogeneous;
+		data_to_record[name+std::to_string(recording_number)] = ss.str();
+		++recording_number;
+	}
+	file_with_data << data_to_record;
 	return 0;
 	} catch(std::exception& e){
 		std::cout << "main Exception : " << e.what() << std::endl;
