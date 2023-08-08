@@ -181,6 +181,11 @@ int main(int argc, char* argv[]) {
 	robot_flag->clear();
 	thred_robot_control.join();
 	thred_robot_render.join();
+
+	std::ofstream file_with_data(filename);
+	for(const auto& homogeneous : list_of_homogenenous_readings){
+		
+	}
 	return 0;
 	} catch(std::exception& e){
 		std::cout << "main Exception : " << e.what() << std::endl;
