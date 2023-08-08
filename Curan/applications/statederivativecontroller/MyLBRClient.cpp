@@ -40,7 +40,7 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #endif
 
 //******************************************************************************
-MyLBRClient::MyLBRClient(curan::utilities::SafeQueue<KUKA::FRI::LBRState>& queue) : queue_of_states{queue} {
+MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_state{in_shared_state} {
     // Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
 
@@ -176,7 +176,9 @@ void MyLBRClient::monitor() {
 
     // Copy measured joint positions (radians) to _qcurr, which is a double
     memcpy(_qCurr, robotState().getMeasuredJointPosition(), NUMBER_OF_JOINTS * sizeof(double));
-    queue_of_states.push(robotState());
+    shared_state->robot_state.store(robotState());
+    shared_state->is_initialized.store(true);
+
 }
 //******************************************************************************
 
@@ -191,7 +193,8 @@ void MyLBRClient::waitForCommand()
         robotCommand().setTorque(_torques);
         robotCommand().setJointPosition(robotState().getIpoJointPosition());            // Just overlaying same position
     }
-    queue_of_states.push(robotState());
+    shared_state->robot_state.store(robotState());
+    shared_state->is_initialized.store(true);
 }
 
 VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
@@ -415,7 +418,9 @@ void MyLBRClient::command() {
     memcpy(_qOld, _qCurr, NUMBER_OF_JOINTS * sizeof(double));
     memcpy(_qCurr, robotState().getMeasuredJointPosition(), NUMBER_OF_JOINTS * sizeof(double));
     memcpy(_measured_torques, robotState().getMeasuredTorque(), NUMBER_OF_JOINTS * sizeof(double));
-    queue_of_states.push(robotState());
+
+    shared_state->robot_state.store(robotState());
+    shared_state->is_initialized.store(true);
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
         iiwa->q[i] = _qCurr[i];
         measured_torque[i] = _measured_torques[i];

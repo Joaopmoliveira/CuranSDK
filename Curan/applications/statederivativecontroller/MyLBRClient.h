@@ -38,7 +38,11 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include <memory>
 #include <atomic>
 #include <optional>
-#include "utils/SafeQueue.h"
+
+struct SharedState {
+    std::atomic<KUKA::FRI::LBRState> robot_state;
+    std::atomic<bool> is_initialized = true;
+};
 
 /**
  * \brief Template client implementation.
@@ -73,7 +77,7 @@ public:
     /**
     * \brief Constructor.
     */
-    MyLBRClient(curan::utilities::SafeQueue<KUKA::FRI::LBRState>&);
+    MyLBRClient(std::shared_ptr<SharedState> shared_state);
 
     /**
     * \brief Destructor.
@@ -114,7 +118,7 @@ private:
 
     std::unique_ptr<kuka::Robot> robot;
     std::unique_ptr<RobotParameters> iiwa;
-    curan::utilities::SafeQueue<KUKA::FRI::LBRState>& queue_of_states;
+    std::shared_ptr<SharedState> shared_state;
     RobotLimits myIIWALimits;
 
     double toolMass;
