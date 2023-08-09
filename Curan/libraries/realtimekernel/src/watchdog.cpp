@@ -78,7 +78,7 @@ void write_control(Client& client){
 }
 
 void request_sensors_acquistion(Client& client) {
-  copy_from_watchdog_message_to_shared_memory(client.allocated_memory_buffer.data(),client.message);
+  copy_from_watchdog_message_to_memory(client.allocated_memory_buffer.data(),client.message);
   asio::async_write( client.sensor_socket_,asio::buffer(client.allocated_memory_buffer),asio::transfer_exactly(watchdog_message_size),
     [ &client](asio::error_code ec, size_t /*length*/) {
         if (ec) {
@@ -96,7 +96,7 @@ void read_sensors_acknowledgment(Client& client){
         client.context.stop();
         return ;
       } 
-      copy_from_shared_memory_to_watchdog_message(client.allocated_memory_buffer.data(),client.message);
+      copy_from_memory_to_watchdog_message(client.allocated_memory_buffer.data(),client.message);
       warn_client_of_readings(client);
   });
 }
@@ -118,18 +118,13 @@ void read_client_acknowledgment(Client& client) {
         client.context.stop();
         return ;
       } 
-      copy_from_shared_memory_to_watchdog_message(client.allocated_memory_buffer.data(),client.message);
+      copy_from_memory_to_watchdog_message(client.allocated_memory_buffer.data(),client.message);
       client.data_sent = true;
   });
 }
 
 int main(int argc, char* argv[])
 {
-  std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
-    std::chrono::system_clock::now()
-  );
-  std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
-
   std::signal(SIGINT, signal_handler);
 
   asio::ip::tcp::socket sensor_socket(io_context);

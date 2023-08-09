@@ -114,7 +114,11 @@ int main(){
             io_context.stop();
         } 
         copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
-
+        std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now()
+        );
+        std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
+        message.sensors_receive_timestamp = millis_since_utc_epoch.count();
         if(counter % 5 == 0){
             const auto local_copy = global_shared_gps_reading.load();
             copy_from_gps_reading_to_shared_memory(shared_memory->get_shared_memory_address(),local_copy);
@@ -122,11 +126,19 @@ int main(){
                 std::lock_guard<std::mutex> g{camera_reading_mutex};
                 copy_from_grayscale_image_1_to_shared_memory(shared_memory->get_shared_memory_address(),global_shared_camera_reading);
             }
+            message.image_reading_present = true;
+            message.gps_reading_present = true;
         } else {
             auto local_copy = global_shared_gps_reading.load();
             copy_from_gps_reading_to_shared_memory(shared_memory->get_shared_memory_address(),local_copy);
+            message.image_reading_present = false;
+            message.gps_reading_present = true;
         }
-
+        std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now()
+        );
+        std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
+        message.sensors_send_timestamp = millis_since_utc_epoch.count();
         copy_from_watchdog_message_to_memory(asio_memory_buffer.data(),message);
         asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
         if(ec){
