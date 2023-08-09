@@ -7,6 +7,7 @@
     "glfw3",
     "nlohmann-json",
     "assimp",
+    "boost-interprocess",
     {
       "name": "skia",
       "features": [ "vulkan" ]

@@ -141,6 +141,11 @@ void do_read_control_action(Client& client){
 
 int main(int argc, char* argv[])
 {
+  std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+    std::chrono::system_clock::now()
+  );
+  std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
+  
   std::signal(SIGINT, signal_handler);
 
   asio::ip::tcp::socket sensor_socket(io_context);

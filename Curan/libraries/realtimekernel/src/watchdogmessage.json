@@ -13,8 +13,8 @@
             {"name" : "watchdog_client_reqst_timestamp", "type" : "size_t" , "array" : 1},
             {"name" : "watchdog_client_receive_timestamp", "type" : "size_t" , "array" : 1},
             {"name" : "client_receive_timestamp", "type" : "size_t" , "array" : 1},
-            {"name" : "gps_reading_present", "type" : "bool" , "array" : 1},
-            {"name" : "image_reading_present", "type" : "bool" , "array" : 1}
+            {"name" : "gps_reading_present", "type" : "int" , "array" : 1},
+            {"name" : "image_reading_present", "type" : "int" , "array" : 1}
         ]
         }
         ]

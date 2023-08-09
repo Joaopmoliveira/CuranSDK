@@ -4,4 +4,4 @@ add_subdirectory(userinterface)
 add_subdirectory(rendering)
 add_subdirectory(imageprocessing)
 add_subdirectory(optimization)
-
+add_subdirectory(realtimekernel)
