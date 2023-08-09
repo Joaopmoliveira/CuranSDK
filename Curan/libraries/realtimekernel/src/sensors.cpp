@@ -21,11 +21,40 @@ std::array<unsigned char,watchdog_message_size> asio_memory_buffer;
 auto shared_memory = SharedMemoryCreator::create();
 
 void gps_readings_thread(std::atomic<gps_reading>& global_shared_gps_reading,std::atomic<bool> continue_running){
+    gps_reading reading; 
+    reading.counter= 0;
+    while(continue_running.load()){
+         //should write to shared memory
+        reading.acceleration[0] = system_state_packet.body_acceleration[0];
+        reading.acceleration[1] = system_state_packet.body_acceleration[1];
+        reading.acceleration[2] = system_state_packet.body_acceleration[2];
+        reading.angular_velocity[0] = system_state_packet.angular_velocity[0];
+        reading.angular_velocity[1] = system_state_packet.angular_velocity[1];
+        reading.angular_velocity[2] = system_state_packet.angular_velocity[2];
+        reading.counter++;
+        reading.gforce = system_state_packet.g_force;
+        reading.height=system_state_packet.height;
+        reading.latitude = system_state_packet.latitude;
+        reading.longitude= system_state_packet.longitude;
+        reading.orientation[0] = system_state_packet.orientation[0];
+        reading.orientation[1] = system_state_packet.orientation[1];
+        reading.orientation[2] = system_state_packet.orientation[2];
+        reading.standard_deviation[0] = system_state_packet.standard_deviation[0];
+        reading.standard_deviation[1] = system_state_packet.standard_deviation[1];
+        reading.standard_deviation[2] = system_state_packet.standard_deviation[2];
+        reading.velocity[0]= system_state_packet.velocity[0];
+        reading.velocity[1]= system_state_packet.velocity[1];
+        reading.velocity[2]= system_state_packet.velocity[2];
 
+        global_shared_gps_reading.store(reading);
+    }
 }
 
 void image_reading_thread(std::vector<unsigned char>& image_memory_blob,std::mutex& camera_reading_mutex,grayscale_image_1& global_shared_camera_reading,std::atomic<bool> continue_running){
-
+    
+    while(continue_running.load()){
+        
+    }
 }
 
 void signal_handler(int val)
