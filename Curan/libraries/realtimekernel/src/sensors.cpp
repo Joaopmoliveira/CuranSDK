@@ -10,18 +10,17 @@
 #include <cmath>
 #include <type_traits>
 #include "header_creator.h"
+#include "watchdogmessage.h"
 
 asio::io_context io_context;
 asio::ip::tcp::socket* socket_pointer = nullptr;
-std::array<unsigned char,100000> asio_memory_buffer;
+constexpr watchdog_message_layout message_layout;
+constexpr size_t watchdog_message_size = message_layout.image_reading_present_address+message_layout.image_reading_present_size;
+std::array<unsigned char,watchdog_message_size> asio_memory_buffer;
 
 auto shared_memory = SharedMemoryCreator::create();
 
-struct shared_state{
-
-};
-
-void sensor_thread(shared_state& shared){
+void sensor_thread(){
 
 }
 
@@ -33,7 +32,7 @@ void signal_handler(int val)
 }
 
 int main(){
-    shared_state& shared
+    try{
     std::signal(SIGINT,signal_handler);
     unsigned int port = 50000;
     asio::ip::tcp::endpoint endpoit(asio::ip::tcp::v4(), port);
@@ -56,15 +55,19 @@ int main(){
         if(ec){
             std::printf("failed to send information\n terminating....\n");
             io_context.stop();
-        }
-        asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(message_size),ec);
+        } 
+
+        //now that 
+
+        asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
         if(ec){
             std::printf("failed to send information\n terminating....\n");
             io_context.stop();
         }
     }
+    sensor.join();
     }catch(...){
         std::cout << "failure was detected in either communication or shared memory operation\n";
     }
-    sensor.join();
+    
 }

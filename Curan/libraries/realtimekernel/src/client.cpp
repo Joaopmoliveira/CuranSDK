@@ -10,10 +10,13 @@
 #include <cmath>
 #include <type_traits>
 #include "header_acessor.h"
+#include "watchdogmessage.h"
 
 asio::io_context io_content;
+constexpr watchdog_message_layout message_layout;
+constexpr size_t watchdog_message_size = message_layout.image_reading_present_address+message_layout.image_reading_present_size;
 asio::ip::tcp::socket* socket_pointer = nullptr;
-std::array<unsigned char,10000> asio_memory_buffer;
+std::array<unsigned char,watchdog_message_size> asio_memory_buffer;
 
 void signal_handler(int val)
 {
@@ -40,19 +43,13 @@ int main(){
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
    while(!io_content.stopped()){
-        asio::read(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(sizeof(unsigned char)),ec);
-        if(ec){
-            std::printf("failed to send information\n terminating....\n");
-            io_content.stop();
-        }
-
-        asio::read(client_socket, asio::buffer(asio_memory_buffer), asio::transfer_exactly(sizeof(unsigned char)* number_sensors), ec);
+        asio::read(client_socket, asio::buffer(asio_memory_buffer), asio::transfer_exactly(watchdog_message_size), ec);
         if (ec) {
             std::printf("failed to read information\n terminating....\n");
             io_content.stop();
         }
 
-        asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(sizeof(double)),ec);
+        asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
         if(ec){
             std::printf("failed to send control action\n terminating....\n");
         }
