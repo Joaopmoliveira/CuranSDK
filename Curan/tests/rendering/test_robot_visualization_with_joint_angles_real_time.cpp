@@ -38,7 +38,7 @@ void interface(vsg::CommandBuffer& cb){
     ImGui::Begin("Angle Display"); // Create a window called "Hello, world!" and append into it.
     ImGui::BulletText("Move your mouse to change the data!");
     ImGui::BulletText("This example assumes 60 FPS. Higher FPS requires larger buffer size.");
-	std::array<ScrollingBuffer,NUMBER_OF_JOINTS> buffers;
+	static std::array<ScrollingBuffer,NUMBER_OF_JOINTS> buffers;
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 	auto local_copy = robot_joint_config.load();
@@ -53,14 +53,11 @@ void interface(vsg::CommandBuffer& cb){
         ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
         ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
-        std::cout << "joints : << ";
 		for(size_t index = 0; index < NUMBER_OF_JOINTS ; ++index){
 			std::string loc = "joint "+std::to_string(index);
-            std::cout << (float)local_copy[index] << "  ";
             buffers[index].AddPoint(t,(float)local_copy[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 		}
-        std::cout << "\n";
         ImPlot::EndPlot();
     }
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);

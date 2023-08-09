@@ -46,16 +46,12 @@ struct ScrollingBuffer {
 std::atomic<std::array<double,NUMBER_OF_JOINTS>> robot_joint_config;
 
 void interface(vsg::CommandBuffer& cb){
-    ImGui::Begin("Angle Display"); // Create a window called "Hello, world!" and append into it.
-    ImGui::BulletText("Move your mouse to change the data!");
-    ImGui::BulletText("This example assumes 60 FPS. Higher FPS requires larger buffer size.");
-	std::array<ScrollingBuffer,NUMBER_OF_JOINTS> buffers;
+    ImGui::Begin("Joint Angles"); // Create a window called "Hello, world!" and append into it.
+	static std::array<ScrollingBuffer,NUMBER_OF_JOINTS> buffers;
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 	auto local_copy = robot_joint_config.load();
-	for(size_t index = 0; index < NUMBER_OF_JOINTS ; ++index)
-		buffers[index].AddPoint(t,local_copy[index]);
-	
+    
     static float history = 10.0f;
     ImGui::SliderFloat("History",&history,1,30,"%.1f s");
 
@@ -68,6 +64,7 @@ void interface(vsg::CommandBuffer& cb){
         ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
 		for(size_t index = 0; index < NUMBER_OF_JOINTS ; ++index){
 			std::string loc = "joint "+std::to_string(index);
+            buffers[index].AddPoint(t,(float)local_copy[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 		}
         ImPlot::EndPlot();
