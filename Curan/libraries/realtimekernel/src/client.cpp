@@ -9,6 +9,7 @@
 #include <asio.hpp>
 #include <cmath>
 #include <type_traits>
+#include "header_acessor.h"
 
 asio::io_context io_content;
 asio::ip::tcp::socket* socket_pointer = nullptr;
@@ -16,7 +17,6 @@ std::array<unsigned char,10000> asio_memory_buffer;
 
 void signal_handler(int val)
 {
-    sincronizer.stop();
     if(socket_pointer!=nullptr)
         socket_pointer->shutdown(asio::ip::tcp::socket::shutdown_both);
     io_content.stop();
