@@ -20,40 +20,48 @@ std::array<unsigned char,watchdog_message_size> asio_memory_buffer;
 
 auto shared_memory = SharedMemoryCreator::create();
 
-void gps_readings_thread(std::atomic<gps_reading>& global_shared_gps_reading,std::atomic<bool> continue_running){
+void gps_readings_thread(std::atomic<gps_reading>& global_shared_gps_reading,std::atomic<bool>& continue_running){
     gps_reading reading; 
     reading.counter= 0;
+    double time = 0.0;
     while(continue_running.load()){
          //should write to shared memory
-        reading.acceleration[0] = system_state_packet.body_acceleration[0];
-        reading.acceleration[1] = system_state_packet.body_acceleration[1];
-        reading.acceleration[2] = system_state_packet.body_acceleration[2];
-        reading.angular_velocity[0] = system_state_packet.angular_velocity[0];
-        reading.angular_velocity[1] = system_state_packet.angular_velocity[1];
-        reading.angular_velocity[2] = system_state_packet.angular_velocity[2];
+        reading.acceleration[0] = std::sin(time);
+        reading.acceleration[1] = std::sin(time);
+        reading.acceleration[2] = std::sin(time);
+        reading.angular_velocity[0] = std::sin(time);
+        reading.angular_velocity[1] = std::sin(time);
+        reading.angular_velocity[2] = std::sin(time);
         reading.counter++;
-        reading.gforce = system_state_packet.g_force;
-        reading.height=system_state_packet.height;
-        reading.latitude = system_state_packet.latitude;
-        reading.longitude= system_state_packet.longitude;
-        reading.orientation[0] = system_state_packet.orientation[0];
-        reading.orientation[1] = system_state_packet.orientation[1];
-        reading.orientation[2] = system_state_packet.orientation[2];
-        reading.standard_deviation[0] = system_state_packet.standard_deviation[0];
-        reading.standard_deviation[1] = system_state_packet.standard_deviation[1];
-        reading.standard_deviation[2] = system_state_packet.standard_deviation[2];
-        reading.velocity[0]= system_state_packet.velocity[0];
-        reading.velocity[1]= system_state_packet.velocity[1];
-        reading.velocity[2]= system_state_packet.velocity[2];
+        reading.gforce = std::sin(time);
+        reading.height= std::sin(time);
+        reading.latitude = std::sin(time);
+        reading.longitude= std::sin(time);
+        reading.orientation[0] = std::sin(time);
+        reading.orientation[1] = std::sin(time);
+        reading.orientation[2] = std::sin(time);
+        reading.standard_deviation[0] = std::sin(time);
+        reading.standard_deviation[1] = std::sin(time);
+        reading.standard_deviation[2] = std::sin(time);
+        reading.velocity[0]= std::sin(time);
+        reading.velocity[1]= std::sin(time);
+        reading.velocity[2]= std::sin(time);
 
         global_shared_gps_reading.store(reading);
+        time += 0.0001;
     }
 }
 
-void image_reading_thread(std::vector<unsigned char>& image_memory_blob,std::mutex& camera_reading_mutex,grayscale_image_1& global_shared_camera_reading,std::atomic<bool> continue_running){
-    
+void image_reading_thread(std::vector<unsigned char>& image_memory_blob,std::mutex& camera_reading_mutex,grayscale_image_1& global_shared_camera_reading,std::atomic<bool>& continue_running){   
+    std::vector<unsigned char> local_blob;
+    local_blob.resize(image_memory_blob.size());
     while(continue_running.load()){
-        
+        //we need to lock everytime we want to manipulate the image_memory_blob adresss
+        {
+            std::lock_guard<std::mutex> lock(camera_reading_mutex);
+            ++global_shared_camera_reading.counter;
+            std::memcpy(image_memory_blob.data(), local_blob.data(), image_memory_blob.size());
+        }
     }
 }
 
@@ -81,8 +89,22 @@ int main(){
 
     socket_pointer = &client_socket;
 
-    std::thread gps_sensor{[&](){gps_readings_thread();}};
-    std::thread image_sensor{[&](){image_reading_thread();}};
+    constexpr grayscale_image_1_layout layout;
+    std::vector<unsigned char> image_memory_blob;
+    std::mutex camera_reading_mutex;
+    grayscale_image_1 global_shared_camera_reading;
+    image_memory_blob.resize(layout.data_size);
+    {
+        std::lock_guard<std::mutex> g{camera_reading_mutex};
+        global_shared_camera_reading.counter = 1;
+        global_shared_camera_reading.data = image_memory_blob.data();
+    }
+    std::atomic<gps_reading> global_shared_gps_reading;
+    std::atomic<bool> boolean_flag_of_gps_reader = true;
+    std::thread gps_sensor{[&](){gps_readings_thread(global_shared_gps_reading,boolean_flag_of_gps_reader);}};
+
+    std::atomic<bool> boolean_flag_of_image_reader = true;
+    std::thread image_sensor{[&](){image_reading_thread(image_memory_blob,camera_reading_mutex,global_shared_camera_reading,boolean_flag_of_image_reader);}};
 
     watchdog_message message;
    for(size_t counter = 0;!io_context.stopped(); ++counter){
@@ -93,7 +115,17 @@ int main(){
         } 
         copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
 
-        //now that 
+        if(counter % 5 == 0){
+            const auto local_copy = global_shared_gps_reading.load();
+            copy_from_gps_reading_to_shared_memory(shared_memory->get_shared_memory_address(),local_copy);
+            {
+                std::lock_guard<std::mutex> g{camera_reading_mutex};
+                copy_from_grayscale_image_1_to_shared_memory(shared_memory->get_shared_memory_address(),global_shared_camera_reading);
+            }
+        } else {
+            auto local_copy = global_shared_gps_reading.load();
+            copy_from_gps_reading_to_shared_memory(shared_memory->get_shared_memory_address(),local_copy);
+        }
 
         copy_from_watchdog_message_to_memory(asio_memory_buffer.data(),message);
         asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
