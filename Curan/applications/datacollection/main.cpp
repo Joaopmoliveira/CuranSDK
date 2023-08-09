@@ -17,6 +17,65 @@
 #include "friClientApplication.h"
 #include <csignal>
 
+// utility structure for realtime plot
+struct ScrollingBuffer {
+    int MaxSize;
+    int Offset;
+    ImVector<ImVec2> Data;
+    ScrollingBuffer(int max_size = 2000) {
+        MaxSize = max_size;
+        Offset  = 0;
+        Data.reserve(MaxSize);
+    }
+    void AddPoint(float x, float y) {
+        if (Data.size() < MaxSize)
+            Data.push_back(ImVec2(x,y));
+        else {
+            Data[Offset] = ImVec2(x,y);
+            Offset =  (Offset + 1) % MaxSize;
+        }
+    }
+    void Erase() {
+        if (Data.size() > 0) {
+            Data.shrink(0);
+            Offset  = 0;
+        }
+    }
+};
+
+std::atomic<std::array<double,NUMBER_OF_JOINTS>> robot_joint_config;
+
+void interface(vsg::CommandBuffer& cb){
+    ImGui::Begin("Angle Display"); // Create a window called "Hello, world!" and append into it.
+    ImGui::BulletText("Move your mouse to change the data!");
+    ImGui::BulletText("This example assumes 60 FPS. Higher FPS requires larger buffer size.");
+	std::array<ScrollingBuffer,NUMBER_OF_JOINTS> buffers;
+    static float t = 0;
+    t += ImGui::GetIO().DeltaTime;
+	auto local_copy = robot_joint_config.load();
+	for(size_t index = 0; index < NUMBER_OF_JOINTS ; ++index)
+		buffers[index].AddPoint(t,local_copy[index]);
+	
+    static float history = 10.0f;
+    ImGui::SliderFloat("History",&history,1,30,"%.1f s");
+
+    static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+
+    if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+        ImPlot::SetupAxes(NULL, NULL, flags, flags);
+        ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+        ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+		for(size_t index = 0; index < NUMBER_OF_JOINTS ; ++index){
+			std::string loc = "joint "+std::to_string(index);
+			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
+		}
+        ImPlot::EndPlot();
+    }
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
+}
+
 constexpr unsigned short DEFAULT_PORTID = 30200;
 
 curan::utilities::SafeQueue<KUKA::FRI::LBRState> recordings;
@@ -49,7 +108,7 @@ void robot_control(curan::utilities::SafeQueue<KUKA::FRI::LBRState>& to_record,s
 	}
 }
 
-void render_robot_scene(std::atomic<std::array<double,NUMBER_OF_JOINTS>>& robot_joint_config){
+void render_robot_scene(std::atomic<std::array<double,NUMBER_OF_JOINTS>>& robot_config){
 	curan::renderable::Window::Info info;
    info.api_dump = false;
    info.display = "";
@@ -71,7 +130,7 @@ void render_robot_scene(std::atomic<std::array<double,NUMBER_OF_JOINTS>>& robot_
    window << robot;
    while(!recordings.is_invalid()){
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
-		auto local = robot_joint_config.load();
+		auto local = robot_config.load();
 		for(size_t joint_index = 0 ; joint_index < NUMBER_OF_JOINTS; ++joint_index)
         	robot->cast<curan::renderable::SequencialLinks>()->set(joint_index,local[joint_index]);
    }
@@ -142,7 +201,6 @@ int main(int argc, char* argv[]) {
 	};
 
 	std::thread thred_robot_control{ robot_functional_control };
-	std::atomic<std::array<double,NUMBER_OF_JOINTS>> robot_joint_config;
 	auto robot_render = [&]() {
 		render_robot_scene(robot_joint_config);
 	};

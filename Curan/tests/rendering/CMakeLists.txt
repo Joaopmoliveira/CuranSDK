@@ -282,3 +282,34 @@ vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
 )
+
+
+add_executable(test_arrow
+test_arrow.cpp
+)
+
+target_compile_definitions(test_arrow PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_arrow PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_arrow
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+)
+
+add_executable(test_robot_and_imgui_plot
+test_robot_visualization_with_joint_angles_real_time.cpp
+)
+
+target_compile_definitions(test_robot_and_imgui_plot PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_robot_and_imgui_plot PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_robot_and_imgui_plot
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+)

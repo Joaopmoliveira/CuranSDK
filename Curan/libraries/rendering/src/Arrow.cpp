@@ -10,9 +10,11 @@ Arrow::Arrow(Info& info) {
     obj_contained = vsg::Group::create();
 
     vsg::GeometryInfo geomInfo;
-    geomInfo.dx.set(0.2f, 0.0f, 0.0f);
-    geomInfo.dy.set(0.0f, 0.2f, 0.0f);
-    geomInfo.dz.set(0.0f, 0.0f, 0.2f);
+    geomInfo.dx.set(info.relative_size*0.5f, 0.0f, 0.0f);
+    geomInfo.dy.set(0.0f, info.relative_size*0.5f, 0.0f);
+    geomInfo.dz.set(0.0f, 0.0f, 1.0f);
+    geomInfo.position = vsg::vec3(0.0f,0.0f,0.5f);
+    
 
     vsg::StateInfo stateInfo;
     stateInfo.lighting = true;
@@ -21,13 +23,16 @@ Arrow::Arrow(Info& info) {
 
     auto vectornorm = builder->createCylinder(geomInfo, stateInfo);
 
-    geomInfo.dx.set(0.2f, 0.0f, 0.0f);
-    geomInfo.dy.set(0.0f, 0.2f, 0.0f);
-    geomInfo.dz.set(0.0f, 0.0f, 0.2f);
+    geomInfo.dx.set(info.relative_size, 0.0f, 0.0f);
+    geomInfo.dy.set(0.0f, info.relative_size, 0.0f);
+    geomInfo.dz.set(0.0f, 0.0f, 3.0f*info.relative_size);
+    geomInfo.position = vsg::vec3(0.0f,0.0f,0.0f);
+    geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+
     auto orientationtip = builder->createCone(geomInfo,stateInfo);
     scale->addChild(vectornorm);
     tip->addChild(orientationtip);
-    norm(0.2);
+    //norm(0.2);
     obj_contained->addChild(scale);
     obj_contained->addChild(tip);
 
