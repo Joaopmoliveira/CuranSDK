@@ -16,6 +16,9 @@ add_executable(Client
 src/client.cpp
 )
 
+target_compile_definitions(Client PRIVATE vsgXchange_FOUND)
+target_compile_definitions(Client PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
 target_include_directories(Sensors PUBLIC 
 ${Boost_INCLUDE_DIRS}
 )
@@ -39,7 +42,12 @@ if(UNIX AND NOT APPLE)
     Threads::Threads
     asio
     rt
-    atomic)
+    atomic
+    vsg::vsg
+    vsgXchange::vsgXchange
+    renderable
+    vsgImGui::vsgImGui
+    )
 
 else()
 
@@ -49,6 +57,10 @@ else()
 
     target_link_libraries(Client PUBLIC 
     asio
+    vsg::vsg
+    vsgXchange::vsgXchange
+    renderable
+    vsgImGui::vsgImGui
     )
 
     target_link_libraries(WatchDog PUBLIC 

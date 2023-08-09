@@ -134,10 +134,10 @@ int main(){
             message.image_reading_present = false;
             message.gps_reading_present = true;
         }
-        std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+        currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now()
         );
-        std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
+        millis_since_utc_epoch = currently.time_since_epoch();
         message.sensors_send_timestamp = millis_since_utc_epoch.count();
         copy_from_watchdog_message_to_memory(asio_memory_buffer.data(),message);
         asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
