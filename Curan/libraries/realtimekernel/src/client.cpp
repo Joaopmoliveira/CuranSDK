@@ -43,8 +43,6 @@ struct ScrollingBuffer {
 
 constexpr size_t number_of_display_variables = 3;
 
-
-
 asio::io_context io_content;
 asio::ip::tcp::socket* socket_pointer = nullptr;
 
@@ -120,9 +118,8 @@ void render_scene(const watchdog_message& message,const std::vector<unsigned cha
              if(message.image_reading_present)
                 copy_from_shared_memory_to_grayscale_image_1(shared_memory_copy.data(),image);
         }
-        if(!window.run_once())
-            return ;
-            
+        window.run_once();  
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));          
     }
 
 };
@@ -134,7 +131,7 @@ int main(){
     constexpr size_t watchdog_message_size = message_layout.image_reading_present_address+message_layout.image_reading_present_size;
     std::array<unsigned char,watchdog_message_size> asio_memory_buffer;
 
-    unsigned int port = 50001;
+    unsigned int port = 50010;
     asio::ip::tcp::endpoint endpoit(asio::ip::tcp::v4(), port);
     asio::ip::tcp::acceptor acceptor(io_content,endpoit);
 
@@ -158,6 +155,7 @@ int main(){
         render_scene(message,shared_memory_blob,shared_access,continue_running);
     };
     std::thread renderer{callable};
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
     auto shared_memory = SharedMemoryAccessor::create();
    while(!io_content.stopped()){
         asio::read(client_socket, asio::buffer(asio_memory_buffer), asio::transfer_exactly(watchdog_message_size), ec);
@@ -165,7 +163,7 @@ int main(){
             std::printf("failed to read information\n terminating....\n");
             io_content.stop();
         }
-
+        std::cout << "message read\n";
         {
             std::lock_guard<std::mutex> g{shared_access};
             copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
@@ -178,13 +176,19 @@ int main(){
         
         {
             std::lock_guard<std::mutex> g{shared_access};
+            if(shared_memory->get_shared_memory_address()==nullptr){
+                std::cout << "failure to create shared memory\n";
+                return 1;
+            }
             std::memcpy(shared_memory_blob.data(),shared_memory->get_shared_memory_address(),1);
         }
         
         copy_from_watchdog_message_to_memory(asio_memory_buffer.data(),message);
         asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
+        std::cout << "wrote message\n";
         if(ec){
             std::printf("failed to send control action\n terminating....\n");
+            io_content.stop();
         }
     }
     continue_running = false;

@@ -113,6 +113,7 @@ int main(){
             std::printf("failed to send information\n terminating....\n");
             io_context.stop();
         } 
+        std::cout << "message read\n";
         copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
         std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now()
