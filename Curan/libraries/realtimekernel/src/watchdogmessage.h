@@ -52,7 +52,7 @@ struct watchdog_message_layout
 
 };
 
-void copy_from_watchdog_message_to_shared_memory( unsigned char* memory , const watchdog_message & tmp)
+void copy_from_watchdog_message_to_memory( unsigned char* memory , const watchdog_message & tmp)
 { 
 	constexpr watchdog_message_layout mapping;
 
@@ -81,7 +81,7 @@ void copy_from_watchdog_message_to_shared_memory( unsigned char* memory , const 
 }
 
 
-void copy_from_shared_memory_to_watchdog_message( const unsigned char*  memory,watchdog_message & tmp)
+void copy_from_memory_to_watchdog_message( const unsigned char*  memory,watchdog_message & tmp)
 { 
 	constexpr watchdog_message_layout mapping;
 

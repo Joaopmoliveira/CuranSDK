@@ -20,7 +20,11 @@ std::array<unsigned char,watchdog_message_size> asio_memory_buffer;
 
 auto shared_memory = SharedMemoryCreator::create();
 
-void sensor_thread(){
+void gps_readings_thread(std::atomic<gps_reading>& global_shared_gps_reading,std::atomic<bool> continue_running){
+
+}
+
+void image_reading_thread(std::vector<unsigned char>& image_memory_blob,std::mutex& camera_reading_mutex,grayscale_image_1& global_shared_camera_reading,std::atomic<bool> continue_running){
 
 }
 
@@ -48,24 +52,30 @@ int main(){
 
     socket_pointer = &client_socket;
 
-    std::thread sensor{[&](){sensor_thread();}};
+    std::thread gps_sensor{[&](){gps_readings_thread();}};
+    std::thread image_sensor{[&](){image_reading_thread();}};
 
+    watchdog_message message;
    for(size_t counter = 0;!io_context.stopped(); ++counter){
-        asio::read(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(sizeof(unsigned char)),ec);
+        asio::read(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
         if(ec){
             std::printf("failed to send information\n terminating....\n");
             io_context.stop();
         } 
+        copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
 
         //now that 
 
+        copy_from_watchdog_message_to_memory(asio_memory_buffer.data(),message);
         asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
         if(ec){
             std::printf("failed to send information\n terminating....\n");
             io_context.stop();
         }
+        
     }
-    sensor.join();
+    gps_sensor.join();
+    image_sensor.join();
     }catch(...){
         std::cout << "failure was detected in either communication or shared memory operation\n";
     }

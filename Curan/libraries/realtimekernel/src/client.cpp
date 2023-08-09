@@ -18,8 +18,7 @@ constexpr size_t watchdog_message_size = message_layout.image_reading_present_ad
 asio::ip::tcp::socket* socket_pointer = nullptr;
 std::array<unsigned char,watchdog_message_size> asio_memory_buffer;
 
-void signal_handler(int val)
-{
+void signal_handler(int val){
     if(socket_pointer!=nullptr)
         socket_pointer->shutdown(asio::ip::tcp::socket::shutdown_both);
     io_content.stop();
@@ -41,14 +40,18 @@ int main(){
     };
     socket_pointer = &client_socket;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
+    watchdog_message message;
    while(!io_content.stopped()){
         asio::read(client_socket, asio::buffer(asio_memory_buffer), asio::transfer_exactly(watchdog_message_size), ec);
         if (ec) {
             std::printf("failed to read information\n terminating....\n");
             io_content.stop();
         }
+        copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
 
+        //now that 
+
+        copy_from_watchdog_message_to_memory(asio_memory_buffer.data(),message);
         asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
         if(ec){
             std::printf("failed to send control action\n terminating....\n");
