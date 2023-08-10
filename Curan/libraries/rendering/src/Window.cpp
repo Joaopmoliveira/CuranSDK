@@ -33,24 +33,12 @@ Window::Window(Info& info) : number_of_images{5} {
     root_plus_floor->addChild(newnode);
     root_plus_floor->addChild(root);
 
-    auto ambientLight = vsg::AmbientLight::create();
-    ambientLight->name = "ambient";
-    ambientLight->color.set(1.0, 1.0, 1.0);
-    ambientLight->intensity = 0.01f;
-    root_plus_floor->addChild(ambientLight);
-
-    auto directionalLight = vsg::DirectionalLight::create();
-    directionalLight->name = "directional";
-    directionalLight->color.set(1.0, 1.0, 1.0);
-    directionalLight->intensity = 0.4f;
-    directionalLight->direction.set(0.0, 0.0, -1.0);
-    root_plus_floor->addChild(directionalLight);
-
     window = vsg::Window::create(traits);
     if (!window)
         throw std::runtime_error("Could not create window");
 
     viewer = vsg::Viewer::create();
+    
     viewer->addWindow(window);
 
     vsg::ComputeBounds computeBounds;
@@ -73,7 +61,20 @@ Window::Window(Info& info) : number_of_images{5} {
 
     // create the normal 3D view of the scene
     auto view = vsg::View::create(camera);
-    view->addChild(vsg::createHeadlight());
+    
+    auto ambientLight = vsg::AmbientLight::create();
+    ambientLight->name = "ambient";
+    ambientLight->color.set(.5, .5, .5);
+    ambientLight->intensity = 0.01f;
+   
+    auto directionalLight = vsg::DirectionalLight::create();
+    directionalLight->name = "directional";
+    directionalLight->color.set(.5f, .5f, .5f);
+    directionalLight->intensity = 1.0f;
+    directionalLight->direction.set(0.0, 0.0, -1.0);
+    
+    view->addChild(directionalLight);
+    view->addChild(ambientLight);
     view->addChild(root_plus_floor);
 
     renderGraph->addChild(view);

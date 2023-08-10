@@ -56,6 +56,7 @@ void signal_handler(int val){
 // variables are global to simplify the call to the interface command
 grayscale_image_1 image;
 gps_reading gps_read;
+watchdog_message global_message;
 
 void interface(vsg::CommandBuffer& cb){
     ImGui::Begin("Angle Display"); // Create a window called "Hello, world!" and append into it.
@@ -83,6 +84,35 @@ void interface(vsg::CommandBuffer& cb){
     }
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
+
+    ImGui::Begin("Timing Display"); // Create a window called "Hello, world!" and append into it.
+    ImGui::BulletText("Delay in timing issues");
+	static ScrollingBuffer sensors_receive_timestamp;
+    static ScrollingBuffer sensors_send_timestamp;
+    static ScrollingBuffer watchdog_sensor_receive_timestamp;
+    static ScrollingBuffer watchdog_client_reqst_timestamp;
+    static ScrollingBuffer client_receive_timestamp;
+
+    sensors_receive_timestamp.AddPoint(t,(double)global_message.sensors_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+    sensors_send_timestamp.AddPoint(t,(double)global_message.sensors_send_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+    watchdog_sensor_receive_timestamp.AddPoint(t,(double)global_message.watchdog_sensor_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+    watchdog_client_reqst_timestamp.AddPoint(t,(double)global_message.watchdog_client_reqst_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+    client_receive_timestamp.AddPoint(t,(double)global_message.client_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+
+    if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+        ImPlot::SetupAxes(NULL, NULL, flags, flags);
+        ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+        ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+		ImPlot::PlotLine("S_rec", &sensors_receive_timestamp.Data[0].x, &sensors_receive_timestamp.Data[0].y, sensors_receive_timestamp.Data.size(), 0, sensors_receive_timestamp.Offset, 2 * sizeof(float));
+        ImPlot::PlotLine("S_sed",  &sensors_send_timestamp.Data[0].x, &sensors_send_timestamp.Data[0].y, sensors_send_timestamp.Data.size(), 0, sensors_send_timestamp.Offset, 2 * sizeof(float));
+        ImPlot::PlotLine("W_rec",  &watchdog_sensor_receive_timestamp.Data[0].x, &watchdog_sensor_receive_timestamp.Data[0].y, watchdog_sensor_receive_timestamp.Data.size(), 0, watchdog_sensor_receive_timestamp.Offset, 2 * sizeof(float));
+        ImPlot::PlotLine("W_cli",  &watchdog_client_reqst_timestamp.Data[0].x, &watchdog_client_reqst_timestamp.Data[0].y, watchdog_client_reqst_timestamp.Data.size(), 0, watchdog_client_reqst_timestamp.Offset, 2 * sizeof(float));
+        ImPlot::PlotLine("C_rec",  &client_receive_timestamp.Data[0].x, &client_receive_timestamp.Data[0].y, client_receive_timestamp.Data.size(), 0, client_receive_timestamp.Offset, 2 * sizeof(float));
+        ImPlot::EndPlot();
+    }
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
 };
 
 void render_scene(const watchdog_message& message,const std::vector<unsigned char>& shared_memory_copy,std::mutex& shared_memory_acess){
@@ -103,7 +133,8 @@ void render_scene(const watchdog_message& message,const std::vector<unsigned cha
     info.window_size = size;
     curan::renderable::Window window{info};
 
-    std::filesystem::path swingcar_path = CURAN_COPIED_RESOURCE_PATH"/swing/swincar.obj";
+
+    std::filesystem::path swingcar_path = CURAN_COPIED_RESOURCE_PATH"/swing/R4F_stable.glb";
     curan::renderable::Mesh::Info create_info;
     create_info.convetion = vsg::CoordinateConvention::Y_UP;
     create_info.mesh_path = swingcar_path;
@@ -113,6 +144,7 @@ void render_scene(const watchdog_message& message,const std::vector<unsigned cha
     while(window.run_once()){
         {
             std::lock_guard<std::mutex> g{shared_memory_acess};
+            global_message = message;
             if(message.gps_reading_present)
                 copy_from_shared_memory_to_gps_reading(shared_memory_copy.data(),gps_read);
         }
@@ -167,6 +199,7 @@ int main(){
             std::printf("failed to read information\n terminating....\n");
             io_content.stop();
         }
+
         {
             std::lock_guard<std::mutex> g{shared_access};
             copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
@@ -176,6 +209,8 @@ int main(){
             std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
             message.client_receive_timestamp = millis_since_utc_epoch.count();
         }
+
+        std::printf("message: cli-%d wat-%d sens-%d\n",message.client_receive_timestamp,message.watchdog_sensor_reqst_timestamp,message.sensors_receive_timestamp);
         
         {
             std::lock_guard<std::mutex> g{shared_access};
