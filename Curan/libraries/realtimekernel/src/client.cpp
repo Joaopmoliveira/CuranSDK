@@ -14,6 +14,7 @@
 
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
+#include "rendering/Mesh.h"
 
 // utility structure for realtime plot
 struct ScrollingBuffer {
@@ -58,8 +59,7 @@ gps_reading gps_read;
 
 void interface(vsg::CommandBuffer& cb){
     ImGui::Begin("Angle Display"); // Create a window called "Hello, world!" and append into it.
-    ImGui::BulletText("Move your mouse to change the data!");
-    ImGui::BulletText("This example assumes 60 FPS. Higher FPS requires larger buffer size.");
+    ImGui::BulletText("Acceleration in realtime");
 	static std::array<ScrollingBuffer,number_of_display_variables> buffers;
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
@@ -85,13 +85,10 @@ void interface(vsg::CommandBuffer& cb){
     ImGui::End();
 };
 
-void render_scene(const watchdog_message& message,const std::vector<unsigned char>& shared_memory_copy,std::mutex& shared_memory_acess,std::atomic<bool>& continue_running){
-    constexpr grayscale_image_1_layout layout;
+void render_scene(const watchdog_message& message,const std::vector<unsigned char>& shared_memory_copy,std::mutex& shared_memory_acess){
     std::vector<unsigned char> shared_memory_blob;
-    shared_memory_blob.resize(layout.data_size);
-    grayscale_image_1 image;
+    shared_memory_blob.resize(shared_memory_copy.size());
     image.data = shared_memory_blob.data();
-    gps_reading gps_read;
     curan::renderable::ImGUIInterface::Info info_gui{interface};
     auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
     curan::renderable::Window::Info info;
@@ -105,8 +102,15 @@ void render_scene(const watchdog_message& message,const std::vector<unsigned cha
     curan::renderable::Window::WindowSize size{1000, 800};
     info.window_size = size;
     curan::renderable::Window window{info};
-    while(continue_running.load()){
-        //now that 
+
+    std::filesystem::path swingcar_path = CURAN_COPIED_RESOURCE_PATH"/swing/swincar.obj";
+    curan::renderable::Mesh::Info create_info;
+    create_info.convetion = vsg::CoordinateConvention::Y_UP;
+    create_info.mesh_path = swingcar_path;
+    vsg::ref_ptr<curan::renderable::Renderable> swingcar = curan::renderable::Mesh::make(create_info);
+    window << swingcar;
+
+    while(window.run_once()){
         {
             std::lock_guard<std::mutex> g{shared_memory_acess};
             if(message.gps_reading_present)
@@ -117,11 +121,9 @@ void render_scene(const watchdog_message& message,const std::vector<unsigned cha
             std::lock_guard<std::mutex> g{shared_memory_acess};
              if(message.image_reading_present)
                 copy_from_shared_memory_to_grayscale_image_1(shared_memory_copy.data(),image);
-        }
-        window.run_once();  
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));          
+        }     
     }
-
+    std::raise(SIGINT);
 };
 
 int main(){
@@ -145,25 +147,26 @@ int main(){
     socket_pointer = &client_socket;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     watchdog_message message;
-
+    auto shared_memory = SharedMemoryAccessor::create();
     constexpr grayscale_image_1_layout layout;
     std::vector<unsigned char> shared_memory_blob;
-    shared_memory_blob.resize(layout.data_size);
+    shared_memory_blob.resize(shared_memory->size());
     std::mutex shared_access;
-    std::atomic<bool> continue_running = true;
     auto callable = [&](){
-        render_scene(message,shared_memory_blob,shared_access,continue_running);
+        render_scene(message,shared_memory_blob,shared_access);
     };
     std::thread renderer{callable};
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    auto shared_memory = SharedMemoryAccessor::create();
+
+    if(shared_memory->get_shared_memory_address()==nullptr){
+        std::cout << "failure to create shared memory\n";
+        return 1;
+    }
    while(!io_content.stopped()){
         asio::read(client_socket, asio::buffer(asio_memory_buffer), asio::transfer_exactly(watchdog_message_size), ec);
         if (ec) {
             std::printf("failed to read information\n terminating....\n");
             io_content.stop();
         }
-        std::cout << "message read\n";
         {
             std::lock_guard<std::mutex> g{shared_access};
             copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
@@ -176,21 +179,15 @@ int main(){
         
         {
             std::lock_guard<std::mutex> g{shared_access};
-            if(shared_memory->get_shared_memory_address()==nullptr){
-                std::cout << "failure to create shared memory\n";
-                return 1;
-            }
-            std::memcpy(shared_memory_blob.data(),shared_memory->get_shared_memory_address(),1);
+            std::memcpy(shared_memory_blob.data(),shared_memory->get_shared_memory_address(),shared_memory->size());
         }
         
         copy_from_watchdog_message_to_memory(asio_memory_buffer.data(),message);
         asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
-        std::cout << "wrote message\n";
         if(ec){
             std::printf("failed to send control action\n terminating....\n");
             io_content.stop();
         }
     }
-    continue_running = false;
     renderer.join();
 }

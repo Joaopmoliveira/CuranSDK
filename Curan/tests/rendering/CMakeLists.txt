@@ -313,3 +313,19 @@ vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
 )
+
+
+add_executable(test_swing_car
+swing_car_display.cpp
+)
+
+target_compile_definitions(test_swing_car PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_swing_car PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_swing_car
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+)

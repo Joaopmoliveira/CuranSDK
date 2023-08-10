@@ -3,7 +3,6 @@
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <memory>
-
 struct gps_reading
 {	int counter;
 	double latitude;
@@ -166,5 +165,7 @@ public:
 	inline unsigned char* get_shared_memory_address(){
 		return static_cast<unsigned char*>(region.get_address());
 	}
-};
+	inline size_t size(){
+		return 5880160;
+	}};
 

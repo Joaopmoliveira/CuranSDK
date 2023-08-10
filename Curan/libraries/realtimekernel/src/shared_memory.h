@@ -1,7 +1,6 @@
 
 #include <cassert>
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <memory>
 struct gps_reading
 {	int counter;
@@ -137,30 +136,28 @@ void copy_from_shared_memory_to_grayscale_image_1( const unsigned char*  memory,
 	std::memcpy( tmp.data,memory+mapping.data_address , mapping.data_size );
 
 }
-struct SharedMemoryAccessor{
+struct SharedMemory{
 private:
-	boost::interprocess::shared_memory_object shm;
-	boost::interprocess::mapped_region region;
-
-	explicit SharedMemoryAccessor() :shm{boost::interprocess::open_only, "KAZAMAS", boost::interprocess::read_write}{
-		region = boost::interprocess::mapped_region{shm, boost::interprocess::read_write};
+	boost::interprocess::managed_shared_memory  managed_shm;
+	unsigned char * mapped_memory = nullptr;
+	explicit SharedMemory() {
+		managed_shm = boost::interprocess::managed_shared_memory{boost::interprocess::open_or_create, "KAZAMAS",1048576};
+		mapped_memory = (unsigned char*) managed_shm.allocate( 5880160);
 	}
 
 public:
 
-	static std::unique_ptr<SharedMemoryAccessor> create(){
-		std::unique_ptr<SharedMemoryAccessor> unique = std::unique_ptr<SharedMemoryAccessor>(new SharedMemoryAccessor{});
+	static std::unique_ptr<SharedMemory> create(){
+		std::unique_ptr<SharedMemory> unique = std::unique_ptr<SharedMemory>(new SharedMemory{});
 		return unique;
 	}
 
-	~SharedMemoryAccessor(){
+	~SharedMemory(){
 
 	}
 
 	unsigned char* get_shared_memory_address(){
-		return static_cast<unsigned char*>(region.get_address());
+		return mapped_memory;
 	}
-	inline size_t size(){
-		return 5880160;
-	}};
+};
 

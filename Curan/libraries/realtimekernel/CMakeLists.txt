@@ -19,10 +19,26 @@ src/client.cpp
 target_compile_definitions(Client PRIVATE vsgXchange_FOUND)
 target_compile_definitions(Client PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
+add_executable(simple_shared_memory_example 
+src/simple_shared_memory_example.cpp
+)
+
+add_executable(test_shared_memory_example 
+src/simple_shared_memory_example.cpp
+)
+
 target_include_directories(Sensors PUBLIC 
 ${Boost_INCLUDE_DIRS}
 )
 target_include_directories(Client PUBLIC 
+${Boost_INCLUDE_DIRS}
+)
+
+target_include_directories(simple_shared_memory_example PUBLIC 
+${Boost_INCLUDE_DIRS}
+)
+
+target_include_directories(test_shared_memory_example PUBLIC 
 ${Boost_INCLUDE_DIRS}
 )
 
@@ -65,4 +81,12 @@ else()
 
     target_link_libraries(WatchDog PUBLIC 
     asio)
+
+    target_link_libraries(simple_shared_memory_example PUBLIC 
+    asio)
+
+    target_link_libraries(test_shared_memory_example PUBLIC 
+    asio)
+
+    
 endif()

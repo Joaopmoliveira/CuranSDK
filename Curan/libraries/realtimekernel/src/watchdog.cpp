@@ -61,7 +61,7 @@ void warn_client_of_readings(Client& ref);
 void read_client_acknowledgment(Client& ref);
 
 void write_control(Client& client){
-  std::cout << "write control\n";
+  //std::cout << "write control\n";
   client.timer.expires_from_now(maximum_delay_in_milliseconds);
   client.timer.async_wait([&](asio::error_code ec) { // handles what happens when timer ends
     if(client.data_sent){
@@ -86,7 +86,7 @@ void write_control(Client& client){
 }
 
 void request_sensors_acquistion(Client& client) {
-  std::cout << "request_sensors_acquistion\n";
+  //std::cout << "request_sensors_acquistion\n";
   std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
     std::chrono::system_clock::now()
   );
@@ -104,7 +104,7 @@ void request_sensors_acquistion(Client& client) {
 };
 
 void read_sensors_acknowledgment(Client& client){
-  std::cout << "read_sensors_acknowledgment\n";
+  //std::cout << "read_sensors_acknowledgment\n";
   asio::async_read( client.sensor_socket_, asio::buffer(client.allocated_memory_buffer),asio::transfer_exactly(watchdog_message_size), 
     [ &client](asio::error_code ec, size_t /*length*/) {
       if (ec) {
@@ -121,7 +121,7 @@ void read_sensors_acknowledgment(Client& client){
   });
 }
 void warn_client_of_readings(Client& client){
-  std::cout << "warn_client_of_readings\n";
+  //std::cout << "warn_client_of_readings\n";
   std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
     std::chrono::system_clock::now()
   );
@@ -139,7 +139,7 @@ void warn_client_of_readings(Client& client){
 }
 
 void read_client_acknowledgment(Client& client) {
-  std::cout << "read_client_acknowledgment\n";
+  //std::cout << "read_client_acknowledgment\n";
   asio::async_read( client.client_socket_, asio::buffer(client.allocated_memory_buffer),asio::transfer_exactly(watchdog_message_size), 
     [ &client](asio::error_code ec, size_t /*length*/) {
       if (ec) {

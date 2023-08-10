@@ -48,7 +48,8 @@ void gps_readings_thread(std::atomic<gps_reading>& global_shared_gps_reading,std
         reading.velocity[2]= std::sin(time);
 
         global_shared_gps_reading.store(reading);
-        time += 0.0001;
+        time += 0.01;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -62,6 +63,7 @@ void image_reading_thread(std::vector<unsigned char>& image_memory_blob,std::mut
             ++global_shared_camera_reading.counter;
             std::memcpy(image_memory_blob.data(), local_blob.data(), image_memory_blob.size());
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -112,8 +114,8 @@ int main(){
         if(ec){
             std::printf("failed to send information\n terminating....\n");
             io_context.stop();
+            break;
         } 
-        std::cout << "message read\n";
         copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
         std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now()
@@ -145,9 +147,13 @@ int main(){
         if(ec){
             std::printf("failed to send information\n terminating....\n");
             io_context.stop();
+            break;
         }
         
     }
+    std::raise(SIGINT);
+    boolean_flag_of_gps_reader = false;
+    boolean_flag_of_image_reader = false;
     gps_sensor.join();
     image_sensor.join();
     }catch(...){

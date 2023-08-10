@@ -227,6 +227,8 @@ int main(int argc, char* argv[]){
                            << "\tunsigned char* get_shared_memory_address(){\n"
                            << "\t\treturn static_cast<unsigned char*>(region.get_address());\n"
                            << "\t}\n"
+                           << "\tinline size_t size(){\n" 
+                           << "\t\treturn "  << global_memory_index << ";\n\t}"
                            << "};"  << std::endl;
 
     std::stringstream out_header_file_create;
@@ -256,6 +258,9 @@ int main(int argc, char* argv[]){
                            << "\tinline unsigned char* get_shared_memory_address(){\n"
                            << "\t\treturn static_cast<unsigned char*>(region.get_address());\n"
                            << "\t}\n"
+
+                           << "\tinline size_t size(){\n" 
+                           << "\t\treturn "  << global_memory_index << ";\n\t}"
                            << "};" << std::endl;
 
     std::ofstream ostrmacess("header_acessor.h", std::ios::out);
