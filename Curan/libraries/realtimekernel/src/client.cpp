@@ -53,66 +53,200 @@ void signal_handler(int val){
     io_content.stop();
 }
 
+int counter;
+	double latitude;
+	double longitude;
+	double height;
+	double velocity[3];
+	double acceleration[3];
+	double gforce;
+	double orientation[3];
+	double angular_velocity[3];
+	double standard_deviation[3];
+
+struct Params{
+    bool showAcceleration = false; // you can toggle this with your own EventHandler and key
+    bool showTiming = false;
+    bool showGlobalCoordinates = false;
+    bool showVelocity = false;
+    bool showOrientation = true;
+    bool showAngularVelocity = false;
+    bool showStandardDeviation = false;
+} parameters;
+
 // variables are global to simplify the call to the interface command
 grayscale_image_1 image;
 gps_reading gps_read;
 watchdog_message global_message;
 
 void interface(vsg::CommandBuffer& cb){
-    ImGui::Begin("Angle Display"); // Create a window called "Hello, world!" and append into it.
-    ImGui::BulletText("Acceleration in realtime");
-	static std::array<ScrollingBuffer,number_of_display_variables> buffers;
+    ImGui::Begin("General Information"); // Create a window called "Hello, world!" and append into it.
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
+
+    constexpr ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
     
     static float history = 10.0f;
     ImGui::SliderFloat("History",&history,1,30,"%.1f s");
-
-    static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
-
-    if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
-        ImPlot::SetupAxes(NULL, NULL, flags, flags);
-        ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
-        ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
-        ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
-		for(size_t index = 0; index < number_of_display_variables ; ++index){
-			std::string loc = "accel "+std::to_string(index);
-            buffers[index].AddPoint(t,(float)gps_read.acceleration[index]);
-			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
-		}
-        ImPlot::EndPlot();
-    }
+    ImGui::Checkbox("Show Acceleration", &parameters.showAcceleration); // Edit bools storing our window open/close state
+    ImGui::Checkbox("Show Sample Times", &parameters.showTiming);
+    ImGui::Checkbox("Show World Coordinates", &parameters.showGlobalCoordinates);
+    ImGui::Checkbox("Show Velocity", &parameters.showVelocity);
+    ImGui::Checkbox("Show Orientation", &parameters.showOrientation);
+    ImGui::Checkbox("Show Angular Velocities", &parameters.showAngularVelocity);
+    ImGui::Checkbox("Show Stander Deviations", &parameters.showStandardDeviation);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
 
-    ImGui::Begin("Timing Display"); // Create a window called "Hello, world!" and append into it.
-    ImGui::BulletText("Delay in timing issues");
-	static ScrollingBuffer sensors_receive_timestamp;
-    static ScrollingBuffer sensors_send_timestamp;
-    static ScrollingBuffer watchdog_sensor_receive_timestamp;
-    static ScrollingBuffer watchdog_client_reqst_timestamp;
-    static ScrollingBuffer client_receive_timestamp;
+	static std::array<ScrollingBuffer,number_of_display_variables> acceleration_buffers;
+    static std::array<ScrollingBuffer,number_of_display_variables> standard_deviation_buffers;
+    static std::array<ScrollingBuffer,number_of_display_variables> velocity_buffers;
+    static std::array<ScrollingBuffer,number_of_display_variables> orientation_buffers;
+    static std::array<ScrollingBuffer,number_of_display_variables> angular_velocity_buffers;
 
-    sensors_receive_timestamp.AddPoint(t,(double)global_message.sensors_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
-    sensors_send_timestamp.AddPoint(t,(double)global_message.sensors_send_timestamp-global_message.watchdog_sensor_reqst_timestamp);
-    watchdog_sensor_receive_timestamp.AddPoint(t,(double)global_message.watchdog_sensor_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
-    watchdog_client_reqst_timestamp.AddPoint(t,(double)global_message.watchdog_client_reqst_timestamp-global_message.watchdog_sensor_reqst_timestamp);
-    client_receive_timestamp.AddPoint(t,(double)global_message.client_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
-
-    if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
-        ImPlot::SetupAxes(NULL, NULL, flags, flags);
-        ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
-        ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
-        ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
-		ImPlot::PlotLine("S_rec", &sensors_receive_timestamp.Data[0].x, &sensors_receive_timestamp.Data[0].y, sensors_receive_timestamp.Data.size(), 0, sensors_receive_timestamp.Offset, 2 * sizeof(float));
-        ImPlot::PlotLine("S_sed",  &sensors_send_timestamp.Data[0].x, &sensors_send_timestamp.Data[0].y, sensors_send_timestamp.Data.size(), 0, sensors_send_timestamp.Offset, 2 * sizeof(float));
-        ImPlot::PlotLine("W_rec",  &watchdog_sensor_receive_timestamp.Data[0].x, &watchdog_sensor_receive_timestamp.Data[0].y, watchdog_sensor_receive_timestamp.Data.size(), 0, watchdog_sensor_receive_timestamp.Offset, 2 * sizeof(float));
-        ImPlot::PlotLine("W_cli",  &watchdog_client_reqst_timestamp.Data[0].x, &watchdog_client_reqst_timestamp.Data[0].y, watchdog_client_reqst_timestamp.Data.size(), 0, watchdog_client_reqst_timestamp.Offset, 2 * sizeof(float));
-        ImPlot::PlotLine("C_rec",  &client_receive_timestamp.Data[0].x, &client_receive_timestamp.Data[0].y, client_receive_timestamp.Data.size(), 0, client_receive_timestamp.Offset, 2 * sizeof(float));
-        ImPlot::EndPlot();
+	for(size_t index = 0; index < number_of_display_variables ; ++index){
+        acceleration_buffers[index].AddPoint(t,(float)gps_read.acceleration[index]);
+        velocity_buffers[index].AddPoint(t,(float)gps_read.velocity[index]);
+        orientation_buffers[index].AddPoint(t,(float)gps_read.orientation[index]);
+        angular_velocity_buffers[index].AddPoint(t,(float)gps_read.angular_velocity[index]);
+        standard_deviation_buffers[index].AddPoint(t,(float)gps_read.standard_deviation[index]);
     }
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    ImGui::End();
+        
+    if(parameters.showAcceleration){
+        ImGui::Begin("Acceleration"); // Create a window called "Hello, world!" and append into it.
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+            ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+		    for(size_t index = 0; index < number_of_display_variables ; ++index){
+			    std::string loc = "accel "+std::to_string(index);
+			    ImPlot::PlotLine(loc.data(), &acceleration_buffers[index].Data[0].x, &acceleration_buffers[index].Data[0].y, acceleration_buffers[index].Data.size(), 0, acceleration_buffers[index].Offset, 2 * sizeof(float));
+		    }
+            ImPlot::EndPlot();
+        }
+        ImGui::End();
+    }
+
+	static ScrollingBuffer longitude_buffer;
+    static ScrollingBuffer latitude_buffer;
+    static ScrollingBuffer height_buffer;
+
+    longitude_buffer.AddPoint(t,(float)gps_read.longitude);
+    latitude_buffer.AddPoint(t,(float)gps_read.latitude);
+    height_buffer.AddPoint(t,(float)gps_read.height);
+
+    if(parameters.showGlobalCoordinates){
+        ImGui::Begin("Coordinates"); // Create a window called "Hello, world!" and append into it.
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+            ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+            ImPlot::PlotLine("longitute", &longitude_buffer.Data[0].x, &longitude_buffer.Data[0].y, longitude_buffer.Data.size(), 0, longitude_buffer.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine("latitude", &latitude_buffer.Data[0].x, &latitude_buffer.Data[0].y, latitude_buffer.Data.size(), 0, latitude_buffer.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine("height", &height_buffer.Data[0].x, &height_buffer.Data[0].y, height_buffer.Data.size(), 0, height_buffer.Offset, 2 * sizeof(float));
+            ImPlot::EndPlot();
+        }
+        ImGui::End();
+    }
+
+    if(parameters.showVelocity){
+        ImGui::Begin("Velocity"); // Create a window called "Hello, world!" and append into it.
+	    static std::array<ScrollingBuffer,number_of_display_variables> velocity_buffers;
+
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+            ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+		    for(size_t index = 0; index < number_of_display_variables ; ++index){
+			    std::string loc = "vel "+std::to_string(index);
+			    ImPlot::PlotLine(loc.data(), &velocity_buffers[index].Data[0].x, &velocity_buffers[index].Data[0].y, velocity_buffers[index].Data.size(), 0, velocity_buffers[index].Offset, 2 * sizeof(float));
+		    }
+            ImPlot::EndPlot();
+        }
+        ImGui::End();
+    }
+
+    if(parameters.showOrientation){
+        ImGui::Begin("Orientation"); // Create a window called "Hello, world!" and append into it.
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+            ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+		    for(size_t index = 0; index < number_of_display_variables ; ++index){
+			    std::string loc = "angl "+std::to_string(index);
+			    ImPlot::PlotLine(loc.data(), &orientation_buffers[index].Data[0].x, &orientation_buffers[index].Data[0].y, orientation_buffers[index].Data.size(), 0, orientation_buffers[index].Offset, 2 * sizeof(float));
+		    }
+            ImPlot::EndPlot();
+        }
+        ImGui::End();
+    }
+
+    if(parameters.showAngularVelocity){
+        ImGui::Begin("Angular Velocity"); // Create a window called "Hello, world!" and append into it.
+
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+            ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+		    for(size_t index = 0; index < number_of_display_variables ; ++index){
+			    std::string loc = "angl vel "+std::to_string(index);
+			    ImPlot::PlotLine(loc.data(), &angular_velocity_buffers[index].Data[0].x, &angular_velocity_buffers[index].Data[0].y, angular_velocity_buffers[index].Data.size(), 0, angular_velocity_buffers[index].Offset, 2 * sizeof(float));
+		    }
+            ImPlot::EndPlot();
+        }
+        ImGui::End();
+    }
+
+    if(parameters.showStandardDeviation){
+        ImGui::Begin("Uncertanty"); // Create a window called "Hello, world!" and append into it.
+	
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+            ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+		    for(size_t index = 0; index < number_of_display_variables ; ++index){
+			    std::string loc = "var "+std::to_string(index);
+			    ImPlot::PlotLine(loc.data(), &standard_deviation_buffers[index].Data[0].x, &standard_deviation_buffers[index].Data[0].y, standard_deviation_buffers[index].Data.size(), 0, standard_deviation_buffers[index].Offset, 2 * sizeof(float));
+		    }
+            ImPlot::EndPlot();
+        }
+        ImGui::End();
+    }
+
+    if(parameters.showTiming){
+        ImGui::Begin("Sample Times"); // Create a window called "Hello, world!" and append into it.
+	    static ScrollingBuffer sensors_receive_timestamp;
+        static ScrollingBuffer sensors_send_timestamp;
+        static ScrollingBuffer watchdog_sensor_receive_timestamp;
+        static ScrollingBuffer watchdog_client_reqst_timestamp;
+        static ScrollingBuffer client_receive_timestamp;
+
+        sensors_receive_timestamp.AddPoint(t,(double)global_message.sensors_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+        sensors_send_timestamp.AddPoint(t,(double)global_message.sensors_send_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+        watchdog_sensor_receive_timestamp.AddPoint(t,(double)global_message.watchdog_sensor_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+        watchdog_client_reqst_timestamp.AddPoint(t,(double)global_message.watchdog_client_reqst_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+        client_receive_timestamp.AddPoint(t,(double)global_message.client_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+            ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+		    ImPlot::PlotLine("S_rec", &sensors_receive_timestamp.Data[0].x, &sensors_receive_timestamp.Data[0].y, sensors_receive_timestamp.Data.size(), 0, sensors_receive_timestamp.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine("S_sed",  &sensors_send_timestamp.Data[0].x, &sensors_send_timestamp.Data[0].y, sensors_send_timestamp.Data.size(), 0, sensors_send_timestamp.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine("W_rec",  &watchdog_sensor_receive_timestamp.Data[0].x, &watchdog_sensor_receive_timestamp.Data[0].y, watchdog_sensor_receive_timestamp.Data.size(), 0, watchdog_sensor_receive_timestamp.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine("W_cli",  &watchdog_client_reqst_timestamp.Data[0].x, &watchdog_client_reqst_timestamp.Data[0].y, watchdog_client_reqst_timestamp.Data.size(), 0, watchdog_client_reqst_timestamp.Offset, 2 * sizeof(float));
+            ImPlot::PlotLine("C_rec",  &client_receive_timestamp.Data[0].x, &client_receive_timestamp.Data[0].y, client_receive_timestamp.Data.size(), 0, client_receive_timestamp.Offset, 2 * sizeof(float));
+            ImPlot::EndPlot();
+        }
+        ImGui::End();
+    }
 };
 
 void render_scene(const watchdog_message& message,const std::vector<unsigned char>& shared_memory_copy,std::mutex& shared_memory_acess){
