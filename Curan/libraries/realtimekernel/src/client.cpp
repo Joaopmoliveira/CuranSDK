@@ -15,6 +15,7 @@
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "rendering/Mesh.h"
+#include "rendering/DynamicHeight.h"
 
 // utility structure for realtime plot
 struct ScrollingBuffer {
@@ -153,8 +154,6 @@ void interface(vsg::CommandBuffer& cb){
 
     if(parameters.showVelocity){
         ImGui::Begin("Velocity"); // Create a window called "Hello, world!" and append into it.
-	    static std::array<ScrollingBuffer,number_of_display_variables> velocity_buffers;
-
         if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
@@ -187,7 +186,6 @@ void interface(vsg::CommandBuffer& cb){
 
     if(parameters.showAngularVelocity){
         ImGui::Begin("Angular Velocity"); // Create a window called "Hello, world!" and append into it.
-
         if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
@@ -204,7 +202,6 @@ void interface(vsg::CommandBuffer& cb){
 
     if(parameters.showStandardDeviation){
         ImGui::Begin("Uncertanty"); // Create a window called "Hello, world!" and append into it.
-	
         if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
@@ -275,6 +272,51 @@ void render_scene(const watchdog_message& message,const std::vector<unsigned cha
     vsg::ref_ptr<curan::renderable::Renderable> swingcar = curan::renderable::Mesh::make(create_info);
     window << swingcar;
 
+    curan::renderable::DynamicHeight::Info infotexture;
+    infotexture.height = 100;
+    infotexture.width = 100;
+    infotexture.depth = 100;
+    infotexture.origin = {0.0,0.0,0.0};
+    infotexture.spacing = {0.005,0.005,0.005};
+    infotexture.builder = vsg::Builder::create();
+    auto dynamic_texture = curan::renderable::DynamicHeight::make(infotexture);
+    dynamic_texture->update_transform(vsg::rotate(vsg::radians(90.0),0.0,1.0,0.0)*vsg::translate(-1.0,-0.5,-2.0));
+    swingcar->append(dynamic_texture);
+
+    std::atomic<bool> continue_updating_heightfield = true;
+    auto callable = [&](){
+        float value = 1.0;
+        auto updateBaseTexture = [&value](vsg::floatArray2D& image)
+        {
+            using value_type = typename vsg::floatArray2D::value_type;
+            for (int r = 0; r < image.height(); ++r)
+            {
+                float r_ratio = static_cast<float>(r) / static_cast<float>(image.height() - 1);
+                value_type* ptr = &image.at(0, r);
+                for (int c = 0; c < image.width(); ++c)
+                {
+                    float c_ratio = static_cast<float>(c) / static_cast<float>(image.width() - 1);
+
+                    vsg::vec2 delta((r_ratio - 0.5f), (c_ratio - 0.5f));
+
+                    float angle = atan2(delta.x, delta.y);
+
+                    float distance_from_center = vsg::length(delta);
+
+                    float intensity = 0.1*(sin(1.0 * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
+                    *ptr = intensity;
+                    ++ptr;
+                }
+            }
+        };
+        while(continue_updating_heightfield){
+            std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            dynamic_texture->cast<curan::renderable::DynamicHeight>()->update_texture(updateBaseTexture);
+            value += 0.01f;
+        }
+    };
+    std::thread updater{callable};
+
     while(window.run_once()){
         {
             std::lock_guard<std::mutex> g{shared_memory_acess};
@@ -289,6 +331,8 @@ void render_scene(const watchdog_message& message,const std::vector<unsigned cha
                 copy_from_shared_memory_to_grayscale_image_1(shared_memory_copy.data(),image);
         }     
     }
+    continue_updating_heightfield = false;
+    updater.join();
     std::raise(SIGINT);
 };
 
@@ -344,8 +388,6 @@ int main(){
             message.client_receive_timestamp = millis_since_utc_epoch.count();
         }
 
-        std::printf("message: cli-%d wat-%d sens-%d\n",message.client_receive_timestamp,message.watchdog_sensor_reqst_timestamp,message.sensors_receive_timestamp);
-        
         {
             std::lock_guard<std::mutex> g{shared_access};
             std::memcpy(shared_memory_blob.data(),shared_memory->get_shared_memory_address(),shared_memory->size());

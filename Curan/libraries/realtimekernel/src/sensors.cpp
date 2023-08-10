@@ -11,6 +11,7 @@
 #include <type_traits>
 #include "header_creator.h"
 #include "watchdogmessage.h"
+#include <random>
 
 asio::io_context io_context;
 asio::ip::tcp::socket* socket_pointer = nullptr;
@@ -24,28 +25,51 @@ void gps_readings_thread(std::atomic<gps_reading>& global_shared_gps_reading,std
     gps_reading reading; 
     reading.counter= 0;
     double time = 0.0;
+    std::random_device rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> dis(-0.5, 0.5);
+    
     while(continue_running.load()){
          //should write to shared memory
-        reading.acceleration[0] = std::sin(time);
-        reading.acceleration[1] = std::sin(time);
-        reading.acceleration[2] = std::sin(time);
-        reading.angular_velocity[0] = std::sin(time);
-        reading.angular_velocity[1] = std::sin(time);
-        reading.angular_velocity[2] = std::sin(time);
+        double phase_offset = 0.0;
+        reading.acceleration[0] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.acceleration[1] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.acceleration[2] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.angular_velocity[0] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.angular_velocity[1] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.angular_velocity[2] = std::sin(time+phase_offset)+dis(gen);
         reading.counter++;
-        reading.gforce = std::sin(time);
-        reading.height= std::sin(time);
-        reading.latitude = std::sin(time);
-        reading.longitude= std::sin(time);
-        reading.orientation[0] = std::sin(time);
-        reading.orientation[1] = std::sin(time);
-        reading.orientation[2] = std::sin(time);
-        reading.standard_deviation[0] = std::sin(time);
-        reading.standard_deviation[1] = std::sin(time);
-        reading.standard_deviation[2] = std::sin(time);
-        reading.velocity[0]= std::sin(time);
-        reading.velocity[1]= std::sin(time);
-        reading.velocity[2]= std::sin(time);
+        phase_offset += 0.4;
+        reading.gforce = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.height= std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.latitude = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.longitude= std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.orientation[0] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.orientation[1] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.orientation[2] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.standard_deviation[0] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.standard_deviation[1] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.standard_deviation[2] = std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.velocity[0]= std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.velocity[1]= std::sin(time+phase_offset)+dis(gen);
+        phase_offset += 0.4;
+        reading.velocity[2]= std::sin(time+phase_offset)+dis(gen);
 
         global_shared_gps_reading.store(reading);
         time += 0.01;
