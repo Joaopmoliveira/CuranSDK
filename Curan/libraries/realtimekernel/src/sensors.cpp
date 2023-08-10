@@ -27,7 +27,7 @@ void gps_readings_thread(std::atomic<gps_reading>& global_shared_gps_reading,std
     double time = 0.0;
     std::random_device rd;  // Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-    std::uniform_real_distribution<> dis(-0.5, 0.5);
+    std::uniform_real_distribution<> dis(-0.05, 0.05);
     
     while(continue_running.load()){
          //should write to shared memory
@@ -141,7 +141,7 @@ int main(){
             break;
         } 
         copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
-        std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+        std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::microseconds>(
             std::chrono::system_clock::now()
         );
         std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
@@ -161,7 +161,7 @@ int main(){
             message.image_reading_present = false;
             message.gps_reading_present = true;
         }
-        currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+        currently = std::chrono::time_point_cast<std::chrono::microseconds>(
             std::chrono::system_clock::now()
         );
         millis_since_utc_epoch = currently.time_since_epoch();

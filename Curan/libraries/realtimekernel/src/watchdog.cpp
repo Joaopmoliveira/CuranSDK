@@ -77,7 +77,7 @@ void write_control(Client& client){
   //----------------------- here we should do our control law --------------------
 
   //------------------------------------------------------------------------------
-  std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+  std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::microseconds>(
     std::chrono::system_clock::now()
   );
   std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
@@ -87,7 +87,7 @@ void write_control(Client& client){
 
 void request_sensors_acquistion(Client& client) {
   //std::cout << "request_sensors_acquistion\n";
-  std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+  std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::microseconds>(
     std::chrono::system_clock::now()
   );
   std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
@@ -112,7 +112,7 @@ void read_sensors_acknowledgment(Client& client){
         return ;
       } 
       copy_from_memory_to_watchdog_message(client.allocated_memory_buffer.data(),client.message);
-      std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+      std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::microseconds>(
         std::chrono::system_clock::now()
       );
       std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
@@ -122,7 +122,7 @@ void read_sensors_acknowledgment(Client& client){
 }
 void warn_client_of_readings(Client& client){
   //std::cout << "warn_client_of_readings\n";
-  std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+  std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::microseconds>(
     std::chrono::system_clock::now()
   );
   std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
@@ -147,7 +147,7 @@ void read_client_acknowledgment(Client& client) {
         return ;
       } 
       copy_from_memory_to_watchdog_message(client.allocated_memory_buffer.data(),client.message);
-      std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+      std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::microseconds>(
         std::chrono::system_clock::now()
       );
       std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();

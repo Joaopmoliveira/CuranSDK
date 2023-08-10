@@ -224,11 +224,11 @@ void interface(vsg::CommandBuffer& cb){
         static ScrollingBuffer watchdog_client_reqst_timestamp;
         static ScrollingBuffer client_receive_timestamp;
 
-        sensors_receive_timestamp.AddPoint(t,(double)global_message.sensors_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
-        sensors_send_timestamp.AddPoint(t,(double)global_message.sensors_send_timestamp-global_message.watchdog_sensor_reqst_timestamp);
-        watchdog_sensor_receive_timestamp.AddPoint(t,(double)global_message.watchdog_sensor_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
-        watchdog_client_reqst_timestamp.AddPoint(t,(double)global_message.watchdog_client_reqst_timestamp-global_message.watchdog_sensor_reqst_timestamp);
-        client_receive_timestamp.AddPoint(t,(double)global_message.client_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp);
+        sensors_receive_timestamp.AddPoint(t,(double)1e-3*(global_message.sensors_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp));
+        sensors_send_timestamp.AddPoint(t,(double)1e-3*(global_message.sensors_send_timestamp-global_message.watchdog_sensor_reqst_timestamp));
+        watchdog_sensor_receive_timestamp.AddPoint(t,(double)1e-3*(global_message.watchdog_sensor_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp));
+        watchdog_client_reqst_timestamp.AddPoint(t,(double)1e-3*(global_message.watchdog_client_reqst_timestamp-global_message.watchdog_sensor_reqst_timestamp));
+        client_receive_timestamp.AddPoint(t,(double)1e-3*(global_message.client_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp));
 
         if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
@@ -324,6 +324,8 @@ void render_scene(const watchdog_message& message,const std::vector<unsigned cha
             if(message.gps_reading_present)
                 copy_from_shared_memory_to_gps_reading(shared_memory_copy.data(),gps_read);
         }
+
+        swingcar->cast<curan::renderable::Mesh>()->update_transform(vsg::translate(gps_read.latitude,gps_read.longitude,gps_read.height));
            
         {
             std::lock_guard<std::mutex> g{shared_memory_acess};
@@ -355,7 +357,6 @@ int main(){
         return 1;
     };
     socket_pointer = &client_socket;
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     watchdog_message message;
     auto shared_memory = SharedMemoryAccessor::create();
     constexpr grayscale_image_1_layout layout;
@@ -381,7 +382,7 @@ int main(){
         {
             std::lock_guard<std::mutex> g{shared_access};
             copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
-            std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::milliseconds>(
+            std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::microseconds>(
                 std::chrono::system_clock::now()
             );
             std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
