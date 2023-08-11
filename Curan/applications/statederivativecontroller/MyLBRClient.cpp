@@ -505,6 +505,7 @@ void MyLBRClient::command() {
     memcpy(_measured_torques, robotState().getMeasuredTorque(), NUMBER_OF_JOINTS * sizeof(double));
 
     shared_state->robot_state.store(robotState());
+    
     shared_state->is_initialized.store(true);
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
         iiwa->q[i] = _qCurr[i];
@@ -526,11 +527,22 @@ void MyLBRClient::command() {
     // This is a normal damper that removes energy from all joints (makes it easier to mvoe the robot in free space)
     //this adds the joint limits to the robot control (it takes our control commands and it shapes it to avoid torque limits)
     //VectorNd SJSTorque = addConstraints(torques, 0.005);
-    Eigen::Vector3d desired_velocity = Eigen::Vector3d::Zero();
+    Eigen::Matrix3d A;
+    A << -1.0 , 0.0 ,0.0 , 
+          0.0 , -1.0, 0.0 ,
+          0.0 , 0.0, -1.0 ;
+    Eigen::Vector3d equilibrium;
+    equilibrium << -0.6779 , -0.0049 , 0.4770;
+    Eigen::Vector3d b = -A*equilibrium;
+    Eigen::Vector3d desired_velocity = A*p_0_cur+b;
     Eigen::Matrix3d desired_orientation = Eigen::Matrix3d::Identity();
+    desired_orientation << -0.0185 , 0.0007 , -0.9998 ,
+                            0.3030 , 0.9530 , -0.0049 ,
+                            0.9528 , -0.3030 , -0.0179;
+                            
     Eigen::VectorXd torqueLinTask = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS);
     Eigen::MatrixXd nullSpace = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
-    computeLinVelToJointTorqueCmd(0.005,J,iiwa->M,p_0_cur,R_0_7, iiwa->qDot,desired_velocity, desired_orientation,torqueLinTask, nullSpace); // Fixed rotation for now.
+    computeLinVelToJointTorqueCmd(robotState().getSampleTime(),J,iiwa->M,p_0_cur,R_0_7, iiwa->qDot,desired_velocity, desired_orientation,torqueLinTask, nullSpace); // Fixed rotation for now.
 
 	// Apply damping torques in nullspace.
 	const double dampingQ = 5;
@@ -538,13 +550,19 @@ void MyLBRClient::command() {
 	Eigen::MatrixXd torqueCommand = torqueLinTask + nullSpace*dampingTorque;
 		
 	// Limit torques to stop at the robot's joint limits.
-	VectorNd SJSTorque = addConstraints(torqueCommand, 0.005);
+	//VectorNd SJSTorque = addConstraints(torqueCommand, 0.005);
+    //for now we use a damping torque but we would like to use the state-derivative torque
+    VectorNd SJSTorque = addConstraints(torqueCommand, 0.005); 
 	//this->jointTorqueCommand[6] = 20*this->jointTorqueCommand[6];
-
+    
+    std::array<double,NUMBER_OF_JOINTS> local_copy_of_torques;
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
         _qApplied[i] = _qCurr[i] + 0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime);
         _torques[i] = SJSTorque[i];
+        local_copy_of_torques[i] = torqueCommand(i,0);
     }
+
+    shared_state->joint_torques.store(local_copy_of_torques);
 
     if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
         robotCommand().setJointPosition(_qApplied);

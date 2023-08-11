@@ -87,16 +87,11 @@ void robot_control(curan::utilities::SafeQueue<KUKA::FRI::LBRState>& to_record,s
 	try{
 	curan::utilities::cout << "Lauching robot control thread\n";
 	MyLBRClient client = MyLBRClient(to_record);
-	KUKA::FRI::UdpConnection connection;
+	KUKA::FRI::UdpConnection connection{2};
 	KUKA::FRI::ClientApplication app(connection, client);
 	app.connect(DEFAULT_PORTID, NULL);
-	bool success = app.step();
-	if(success)
-		curan::utilities::cout << "Established first message between robot and host\n";
-	else
-	curan::utilities::cout << "Failed to established first message between robot and host\n";
-	while (success && flag->value())
-		success = app.step();
+	while (flag->value())
+		app.step();
 	app.disconnect();
 	return;
 	} catch(...){
@@ -106,7 +101,7 @@ void robot_control(curan::utilities::SafeQueue<KUKA::FRI::LBRState>& to_record,s
 }
 
 void render_robot_scene(std::atomic<std::array<double,NUMBER_OF_JOINTS>>& robot_config){
-	curan::renderable::Window::Info info;
+   curan::renderable::Window::Info info;
    info.api_dump = false;
    info.display = "";
    info.full_screen = false;
@@ -125,7 +120,10 @@ void render_robot_scene(std::atomic<std::array<double,NUMBER_OF_JOINTS>>& robot_
    create_info.number_of_links = 8;
    auto robot = curan::renderable::SequencialLinks::make(create_info);
    window << robot;
+
    while(!recordings.is_invalid()){
+		if(!window.run_once())
+			recordings.invalidate();
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
 		auto local = robot_config.load();
 		for(size_t joint_index = 0 ; joint_index < NUMBER_OF_JOINTS; ++joint_index)
@@ -223,13 +221,14 @@ int main(int argc, char* argv[]) {
 
 	std::list<Eigen::Matrix<double,4,4>> list_of_homogenenous_readings;
 	while(!recordings.is_invalid()){
-		if(recordings.wait_and_pop(state)){
+		if(recordings.try_pop(state)){
 			GetRobotConfiguration(local_mat,robot.get(),iiwa.get(),state);
 			list_of_homogenenous_readings.emplace_back(local_mat);
 			std::array<double,7> joint_config;
 			auto _qCurr = state.getMeasuredJointPosition();
 			memcpy(joint_config.data(), _qCurr, NUMBER_OF_JOINTS * sizeof(double));
 			robot_joint_config.store(joint_config);
+			std::this_thread::sleep_for(std::chrono::milliseconds(2));
 		}
 	}
 

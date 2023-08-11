@@ -115,7 +115,7 @@ void interface(vsg::CommandBuffer& cb){
         
     if(parameters.showAcceleration){
         ImGui::Begin("Acceleration"); // Create a window called "Hello, world!" and append into it.
-        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+        if (ImPlot::BeginPlot("##ACCEL", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
@@ -139,7 +139,7 @@ void interface(vsg::CommandBuffer& cb){
 
     if(parameters.showGlobalCoordinates){
         ImGui::Begin("Coordinates"); // Create a window called "Hello, world!" and append into it.
-        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+        if (ImPlot::BeginPlot("##COORD", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
@@ -154,7 +154,7 @@ void interface(vsg::CommandBuffer& cb){
 
     if(parameters.showVelocity){
         ImGui::Begin("Velocity"); // Create a window called "Hello, world!" and append into it.
-        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+        if (ImPlot::BeginPlot("##VELOCITY", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
@@ -170,7 +170,7 @@ void interface(vsg::CommandBuffer& cb){
 
     if(parameters.showOrientation){
         ImGui::Begin("Orientation"); // Create a window called "Hello, world!" and append into it.
-        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+        if (ImPlot::BeginPlot("##ORIENT", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
@@ -186,7 +186,7 @@ void interface(vsg::CommandBuffer& cb){
 
     if(parameters.showAngularVelocity){
         ImGui::Begin("Angular Velocity"); // Create a window called "Hello, world!" and append into it.
-        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+        if (ImPlot::BeginPlot("##ANGVEL", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
@@ -202,7 +202,7 @@ void interface(vsg::CommandBuffer& cb){
 
     if(parameters.showStandardDeviation){
         ImGui::Begin("Uncertanty"); // Create a window called "Hello, world!" and append into it.
-        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+        if (ImPlot::BeginPlot("##DEVIATION", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
@@ -230,7 +230,7 @@ void interface(vsg::CommandBuffer& cb){
         watchdog_client_reqst_timestamp.AddPoint(t,(double)1e-3*(global_message.watchdog_client_reqst_timestamp-global_message.watchdog_sensor_reqst_timestamp));
         client_receive_timestamp.AddPoint(t,(double)1e-3*(global_message.client_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp));
 
-        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,150))) {
+        if (ImPlot::BeginPlot("##SAMPLETIMES", ImVec2(-1,150))) {
             ImPlot::SetupAxes(NULL, NULL, flags, flags);
             ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
@@ -325,7 +325,7 @@ void render_scene(const watchdog_message& message,const std::vector<unsigned cha
                 copy_from_shared_memory_to_gps_reading(shared_memory_copy.data(),gps_read);
         }
 
-        swingcar->cast<curan::renderable::Mesh>()->update_transform(vsg::translate(gps_read.latitude,gps_read.longitude,gps_read.height));
+        //swingcar->cast<curan::renderable::Mesh>()->update_transform(vsg::translate(gps_read.latitude,gps_read.longitude,gps_read.height));
            
         {
             std::lock_guard<std::mutex> g{shared_memory_acess};

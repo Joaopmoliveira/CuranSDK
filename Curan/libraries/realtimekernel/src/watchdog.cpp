@@ -17,7 +17,7 @@ void signal_handler(int signal){
     io_context.stop();
 };
 
-constexpr auto maximum_delay_in_milliseconds = std::chrono::milliseconds(100);
+constexpr auto maximum_delay_in_milliseconds = std::chrono::milliseconds(10);
 struct Client;
 
 void safety_shutdown(Client* control_law);

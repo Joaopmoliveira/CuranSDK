@@ -41,6 +41,8 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 
 struct SharedState {
     std::atomic<KUKA::FRI::LBRState> robot_state;
+    std::atomic<std::array<double,3>> velocity;
+    std::atomic<std::array<double,7>> joint_torques;
     std::atomic<bool> is_initialized = true;
 };
 

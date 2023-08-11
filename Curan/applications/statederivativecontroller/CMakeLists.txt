@@ -22,4 +22,5 @@ robotParameters
 utils
 communication
 renderable
+atomic
 )

@@ -208,6 +208,7 @@ robotParameters
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+atomic
 )
 
 add_executable(test_empty_window
@@ -222,6 +223,7 @@ PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+atomic
 )
 
 add_executable(test_heightfield 
@@ -236,6 +238,7 @@ PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+atomic
 )
 
 add_executable(test_user_interface_3d
@@ -251,6 +254,7 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
+atomic
 )
 
 add_executable(test_robot_with_ui
@@ -312,6 +316,7 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
+atomic
 )
 
 
@@ -328,4 +333,5 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
+atomic
 )
