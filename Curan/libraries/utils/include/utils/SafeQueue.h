@@ -31,6 +31,12 @@ namespace curan {
 				data_cond.notify_one();
 			}
 
+			void clear(){
+				std::lock_guard<std::mutex> lk(mut);
+				std::queue<T> local_empty_data_queue;
+				std::swap( data_queue, local_empty_data_queue );
+			}
+
 			[[nodiscard]] bool wait_and_pop(T& value) {
 				std::unique_lock<std::mutex> lk(mut);
 				data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });

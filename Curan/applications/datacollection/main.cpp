@@ -44,6 +44,7 @@ struct ScrollingBuffer {
 };
 
 std::atomic<std::array<double,NUMBER_OF_JOINTS>> robot_joint_config;
+std::atomic<bool> record_data = false;
 
 void interface(vsg::CommandBuffer& cb){
     ImGui::Begin("Joint Angles"); // Create a window called "Hello, world!" and append into it.
@@ -51,6 +52,11 @@ void interface(vsg::CommandBuffer& cb){
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 	auto local_copy = robot_joint_config.load();
+
+	static bool local_record_data = false;
+	ImGui::Checkbox("Active Data Collection", &local_record_data); // Edit bools storing our window open/close state
+
+	record_data.store(local_record_data);
     
     static float history = 10.0f;
     ImGui::SliderFloat("History",&history,1,30,"%.1f s");
@@ -101,12 +107,15 @@ void robot_control(curan::utilities::SafeQueue<KUKA::FRI::LBRState>& to_record,s
 }
 
 void render_robot_scene(std::atomic<std::array<double,NUMBER_OF_JOINTS>>& robot_config){
+   curan::renderable::ImGUIInterface::Info info_gui{interface};
+   auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
    curan::renderable::Window::Info info;
    info.api_dump = false;
    info.display = "";
    info.full_screen = false;
    info.is_debug = false;
    info.screen_number = 0;
+   info.imgui_interface = ui_interface;
    info.title = "myviewer";
    curan::renderable::Window::WindowSize size{2000, 1200};
    info.window_size = size;
@@ -219,9 +228,24 @@ int main(int argc, char* argv[]) {
 	KUKA::FRI::LBRState state;
 	Eigen::Matrix<double,4,4> local_mat;
 
+	std::list<std::list<Eigen::Matrix<double,4,4>>> demonstrations;
 	std::list<Eigen::Matrix<double,4,4>> list_of_homogenenous_readings;
+	bool previous_state = record_data.load();
+	bool state_changed = record_data.load()!=previous_state;
 	while(!recordings.is_invalid()){
-		if(recordings.try_pop(state)){
+		auto snapshot_record_data = record_data.load();
+		state_changed = snapshot_record_data!=previous_state;
+		if(state_changed){
+			previous_state = snapshot_record_data;
+			if(previous_state){
+				recordings.clear();
+			}else {
+				demonstrations.emplace_back(list_of_homogenenous_readings);
+				std::list<Eigen::Matrix<double,4,4>> empty_readings;
+				std::swap(list_of_homogenenous_readings,empty_readings);
+			}
+		}
+		if(snapshot_record_data && recordings.try_pop(state)){
 			GetRobotConfiguration(local_mat,robot.get(),iiwa.get(),state);
 			list_of_homogenenous_readings.emplace_back(local_mat);
 			std::array<double,7> joint_config;
@@ -236,7 +260,8 @@ int main(int argc, char* argv[]) {
 	thred_robot_control.join();
 	thred_robot_render.join();
 
-	nlohmann::json data_to_record;
+	nlohmann::json jsondemonstrations;
+	std::string demo = "demonstration";
 	std::string name = "datapoint";
 	std::ofstream file_with_data(filename);
 	if(!file_with_data){
@@ -244,13 +269,22 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 	size_t recording_number = 1;
-	for(const auto& homogeneous : list_of_homogenenous_readings){
-		std::stringstream ss;
-		ss << homogeneous;
-		data_to_record[name+std::to_string(recording_number)] = ss.str();
-		++recording_number;
+	size_t demonstration_number = 1;
+	for(const auto & demoloc : demonstrations){
+		nlohmann::json data_to_record;
+		for(const auto& homogeneous : demoloc){
+			std::stringstream ss;
+			ss << homogeneous;
+			std::string data_point_name = name+std::to_string(recording_number);
+			data_to_record[data_point_name] = ss.str();
+			++recording_number;
+		}
+		std::string demonstration_name = demo + std::to_string(demonstration_number);
+		jsondemonstrations[demonstration_name] = data_to_record;
+		++demonstration_number;
 	}
-	file_with_data << data_to_record;
+
+	file_with_data << jsondemonstrations;
 	return 0;
 	} catch(std::exception& e){
 		std::cout << "main Exception : " << e.what() << std::endl;
