@@ -26,5 +26,5 @@ robotParameters
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
-Eigen3::Eigen
+utils
 )

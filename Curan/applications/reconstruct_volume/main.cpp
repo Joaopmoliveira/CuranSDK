@@ -41,6 +41,7 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include <thread>
 #include "link_demo.h"
 #include <nlohmann/json.hpp>
+#include "utils/Reader.h"
 
 // Variable with the default ID of the robotic system
 constexpr size_t portID = 30200;
@@ -56,48 +57,12 @@ void signal_handler(int signal)
   gSignalStatus = signal;
 }
 
-Eigen::MatrixXd convert_matrix(std::stringstream& data)
-{
-    // the matrix entries are stored in this variable row-wise. For example if we have the matrix:
-    // M=[a b c 
-    //    d e f]
-    // the entries are stored as matrixEntries=[a,b,c,d,e,f], that is the variable "matrixEntries" is a row vector
-    // later on, this vector is mapped into the Eigen matrix format
-    std::vector<double> matrixEntries;
- 
-    // this variable is used to store the row of the matrix that contains commas 
-     std::string matrixRowString;
- 
-    // this variable is used to store the matrix entry;
-     std::string matrixEntry;
- 
-    // this variable is used to track the number of rows
-    int matrixRowNumber = 0;
- 
- 
-    while (getline(data, matrixRowString)) // here we read a row by row of matrixDataFile and store every line into the string variable matrixRowString
-    {
-         std::stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
- 
-        while (getline(matrixRowStringStream, matrixEntry, ',')) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
-        {
-            matrixEntries.push_back(stod(matrixEntry));   //here we convert the string to double and fill in the row vector storing all the matrix entries
-        }
-        matrixRowNumber++; //update the column numbers
-    }
- 
-    // here we convet the vector variable into the matrix and return the resulting object, 
-    // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
-    return Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
- 
-}
-
 int main (int argc, char** argv)
 {
    std::signal(SIGINT, signal_handler);
    auto robot_state = SharedRobotState::make_shared();
 
-   try{
+try{
    // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
    nlohmann::json calibration_data;
 	std::ifstream in("C:/Users/SURGROB7/optimization_result.json");
@@ -110,16 +75,16 @@ int main (int argc, char** argv)
    std::cout << timestamp << std::endl;
    std::stringstream matrix_strm;
    matrix_strm << homogenenous_transformation;
-   auto calibration_matrix = convert_matrix(matrix_strm);
+   auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm);
    std::cout << "with the homogeneous matrix :\n" <<  calibration_matrix << std::endl;
    for(size_t row = 0 ; row < calibration_matrix.rows(); ++row)
       for(size_t col = 0; col < calibration_matrix.cols(); ++col)
         robot_state->calibration_matrix(col,row) = calibration_matrix(row,col);
 
-   } catch(...){
+} catch(...){
        std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
       return 1;
-   }
+}
 
    curan::renderable::Window::Info info;
    info.api_dump = false;
@@ -142,7 +107,7 @@ int main (int argc, char** argv)
    robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
    window << robot_state->robot;
 
-   try{
+try{
    // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
    nlohmann::json specified_box;
 	std::ifstream in("C:/Users/SURGROB7/specified_box.json");
@@ -153,21 +118,21 @@ int main (int argc, char** argv)
    std::stringstream spacing_box_info;
 	std::string spacing_box = specified_box["spacing"];
    spacing_box_info << spacing_box;
-   Eigen::MatrixXd spacing = convert_matrix(spacing_box_info);
+   Eigen::MatrixXd spacing = curan::utilities::convert_matrix(spacing_box_info);
    std::string origin_box = specified_box["origin"];
    std::stringstream origin_box_info;
    origin_box_info << origin_box;
-   Eigen::MatrixXd origin = convert_matrix(origin_box_info);
+   Eigen::MatrixXd origin = curan::utilities::convert_matrix(origin_box_info);
    std::string size_box = specified_box["size"];
    std::stringstream size_box_info;
    size_box_info << size_box;
 
-   Eigen::MatrixXd size = convert_matrix(size_box_info);
+   Eigen::MatrixXd size = curan::utilities::convert_matrix(size_box_info);
    std::string direction_box = specified_box["direction"];
    std::stringstream direction_box_info;
    direction_box_info << direction_box;
 
-   Eigen::MatrixXd direction = convert_matrix(direction_box_info);
+   Eigen::MatrixXd direction = curan::utilities::convert_matrix(direction_box_info);
 
    if(spacing.rows()!=1 || spacing.cols()!=3 ) 
       throw std::runtime_error("The supplied spacing has an incorrect dimension (expected : [1x3])");
@@ -195,10 +160,10 @@ int main (int argc, char** argv)
       .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
    window << robot_state->integrated_volume;
 
-   } catch(...){
+} catch(...){
        std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
       return 1;
-   }
+}
 
    auto communication_callable = [robot_state](){
       communication(robot_state);

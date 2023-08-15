@@ -5,6 +5,7 @@ src/Logger.cpp
 src/TheadPool.cpp
 src/MemoryUtils.cpp
 src/Cancelable.cpp
+src/Reader.cpp
 )
 
 target_include_directories(utils
@@ -19,4 +20,7 @@ IF (WIN32)
   add_compile_definitions(utils CURAN_WINDOWS)
 ENDIF()
 
-add_dependencies(utils curan_resources)
+add_dependencies(utils 
+curan_resources
+Eigen3::Eigen
+)
