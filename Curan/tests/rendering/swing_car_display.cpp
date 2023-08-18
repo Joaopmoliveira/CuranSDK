@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
         info.window_size = size;
         curan::renderable::Window window{info};
 
-        std::filesystem::path swingcar_path = CURAN_COPIED_RESOURCE_PATH"/swing/R4F_stable.glb";
+        std::filesystem::path swingcar_path = CURAN_COPIED_RESOURCE_PATH"/swing/R4F_stable_II.glb";
         curan::renderable::Mesh::Info create_info;
         create_info.convetion = vsg::CoordinateConvention::Y_UP;
         create_info.mesh_path = swingcar_path;

@@ -37,15 +37,15 @@ inline int components() const {
 constexpr double internal_pi = 3.14159265359;
 
 double gaussianPDF(const Eigen::Matrix<double, size_in, 1>& input,size_t k){
-	double normalization = 1.0/std::sqrt(2*internal_pi*nonlinear_activation_detsigma[k])
+	double normalization = 1.0/std::sqrt(std::pow(2*internal_pi,size_in)*nonlinear_activation_detsigma[k])
 	auto error = input-muk[k];
 	return normalization*std::exp(-0.5*error.transpose()*invSigmak[k]*error);
 }
 
 Eigen::Matrix<double, size_out, 1> likeliest(const Eigen::Matrix<double, size_in, 1>& input)
 {
-	assert(model.is_usable==true);
 	std::lock_guard<std::recursive_mutex> guard(mut);
+	assert(model.is_usable==true);
 	Eigen::Matrix<double, Eigen::Dynamic, 1> H = Eigen::Matrix<double, Eigen::Dynamic, 1>::Zero(components(), 1);
 				
 	// Loop through the gaussians to compute the posterior weights	
