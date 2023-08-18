@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 cmake_policy(SET CMP0091 NEW)
+cmake_policy(SET CMP0075 NEW)
 project(Curan)
 
 #Language definitions used throught the entire project
@@ -8,6 +9,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 if(WIN32)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif(WIN32)
+
+set(OPERATING_SYSTEM_REQUIRMENTS "")
+
+if(UNIX)
+  string(CONCAT OPERATING_SYSTEM_REQUIRMENTS "atomic")
+endif(UNIX)
+
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
 set(CMAKE_INSTALL_LIBDIR "${CMAKE_BINARY_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

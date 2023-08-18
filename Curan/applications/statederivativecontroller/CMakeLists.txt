@@ -22,4 +22,5 @@ robotParameters
 utils
 communication
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )

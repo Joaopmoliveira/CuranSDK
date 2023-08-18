@@ -11,6 +11,7 @@ target_link_libraries(Renderer
 PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 
@@ -24,6 +25,7 @@ target_link_libraries(VolumeAttempt
 PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(UpdateSceneAttempt
@@ -36,6 +38,7 @@ target_link_libraries(UpdateSceneAttempt
 PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(VolumeAttempt2
@@ -48,6 +51,7 @@ target_link_libraries(VolumeAttempt2
 PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 
@@ -62,6 +66,7 @@ target_link_libraries(VolumeAttempt3
 PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 find_package(ITK CONFIG REQUIRED)
@@ -79,6 +84,7 @@ PUBLIC
 ${ITK_LIBRARIES}
 vsg::vsg
 vsgXchange::vsgXchange
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(VolumeAttempt4
@@ -92,6 +98,7 @@ PUBLIC
 ${ITK_LIBRARIES}
 vsg::vsg
 vsgXchange::vsgXchange
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(VolumeAttempt5
@@ -105,6 +112,7 @@ PUBLIC
 ${ITK_LIBRARIES}
 vsg::vsg
 vsgXchange::vsgXchange
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_volume_api
@@ -119,6 +127,7 @@ ${ITK_LIBRARIES}
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_volume_api_update
@@ -133,6 +142,7 @@ ${ITK_LIBRARIES}
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_visualization_registration
@@ -148,6 +158,7 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 userinterface
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(RobotDisplay
@@ -159,6 +170,7 @@ target_compile_definitions(RobotDisplay PRIVATE CURAN_COPIED_RESOURCE_PATH="${po
 target_link_libraries(RobotDisplay
 PUBLIC
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_append_functionality
@@ -170,6 +182,7 @@ target_compile_definitions(test_append_functionality PRIVATE CURAN_COPIED_RESOUR
 target_link_libraries(test_append_functionality
 PUBLIC
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_append_dynamic_ultrasound
@@ -181,6 +194,7 @@ target_compile_definitions(test_append_dynamic_ultrasound PRIVATE CURAN_COPIED_R
 target_link_libraries(test_append_dynamic_ultrasound
 PUBLIC
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_robot_with_ultrasound
@@ -192,6 +206,7 @@ target_compile_definitions(test_robot_with_ultrasound PRIVATE CURAN_COPIED_RESOU
 target_link_libraries(test_robot_with_ultrasound
 PUBLIC
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_world_position
@@ -208,6 +223,7 @@ robotParameters
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_empty_window
@@ -222,6 +238,7 @@ PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_heightfield 
@@ -236,6 +253,7 @@ PUBLIC
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_user_interface_3d
@@ -251,6 +269,7 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_robot_with_ui
@@ -266,6 +285,7 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_scenegraph_deletion
@@ -281,6 +301,7 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 
@@ -297,6 +318,7 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 add_executable(test_robot_and_imgui_plot
@@ -312,6 +334,7 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
 
@@ -328,4 +351,5 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
