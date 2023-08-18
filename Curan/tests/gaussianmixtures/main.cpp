@@ -26,6 +26,8 @@ int main(){
     nlohmann::json testing = nlohmann::json::parse(testfile);
     size_t number_of_tests = testing["nTests"];
     double total_error = 0.0;
+    double max_error = -100000.0;
+    int iter = -1;
     for(size_t it = 0; it < number_of_tests ; ++it){
         nlohmann::json test =  testing["test"+std::to_string(it+1)];
         std::stringstream s;
@@ -41,7 +43,13 @@ int main(){
         double local_error = (ExpectedOutputMat-ConcreteOutput).norm();
         total_error += local_error;
         std::cout << "Error: " << local_error << "\n";
+        if(local_error > max_error){
+            std::cout << "Max found " << it;
+            iter = it;
+            max_error = local_error;
+        }
     }
-    std::printf("\nTotal Error : %f\nAverage Error: %f\n",total_error,total_error/number_of_tests);
+    std::printf("\nTotal Error : %f\nAverage Error: %f\nMax Error: %f\n",total_error,total_error/number_of_tests,max_error);
+    std::printf("\niteration of maximum %d \n",iter);
     return 0;
 }

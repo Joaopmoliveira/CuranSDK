@@ -39,7 +39,7 @@ inline int components() const {
 }
 
 double gaussianPDF(const Eigen::Matrix<double, size_in, 1>& input,size_t k){
-	double normalization = 1.0/std::sqrt(std::pow(2*internal_pi,size_in)*nonlinear_activation_detsigma[k]);
+	double normalization = 1.0/std::sqrt(std::pow(2.0*internal_pi,output_size()+input_size())*nonlinear_activation_detsigma[k]);
 	auto error = input-muk[k];
 	return normalization*std::exp(-0.5*error.transpose()*invSigmak[k]*error);
 }
