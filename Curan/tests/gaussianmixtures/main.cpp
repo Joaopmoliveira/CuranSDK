@@ -22,10 +22,26 @@ int main(){
         std::cout << model.bk[i];   
     }
 
-    std::ifstream modelfile{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/mymodel.txt"};
-
-    Eigen::Matrix<double,in_size,100> inputs = Eigen::Matrix<double,in_size,100>::Random();
-    for(const auto& in : inputs.colwise())
-        std::cout << "Input\n" << in << "\nOutput\n" << model.likeliest(in) << "\n";
+    std::ifstream testfile{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/testmymodel.txt"};
+    nlohmann::json testing = nlohmann::json::parse(testfile);
+    size_t number_of_tests = testing["nTests"];
+    double total_error = 0.0;
+    for(size_t it = 0; it < number_of_tests ; ++it){
+        nlohmann::json test =  testing["test"+std::to_string(it+1)];
+        std::stringstream s;
+        std::string input = test["input"];
+        s << input;
+        auto InputMat = curan::utilities::convert_matrix(s);
+        std::string output = test["output"];
+        s = std::stringstream{};
+        s << output;
+        auto ExpectedOutputMat = curan::utilities::convert_matrix(s);
+        auto ConcreteOutput = model.likeliest(InputMat);
+        std::cout << "\nInput\n" << InputMat << "\nCpp Output\n" << ConcreteOutput << "\nReal Output\n" << ExpectedOutputMat << "\n";
+        double local_error = (ExpectedOutputMat-ConcreteOutput).norm();
+        total_error += local_error;
+        std::cout << "Error: " << local_error << "\n";
+    }
+    std::printf("\nTotal Error : %f\nAverage Error: %f\n",total_error,total_error/number_of_tests);
     return 0;
 }
