@@ -535,6 +535,7 @@ void MyLBRClient::command() {
     equilibrium << -0.6779 , -0.0049 , 0.4770;
     Eigen::Vector3d b = -A*equilibrium;
     Eigen::Vector3d desired_velocity = A*p_0_cur+b;
+    
     Eigen::Matrix3d desired_orientation = Eigen::Matrix3d::Identity();
     desired_orientation << -0.0185 , 0.0007 , -0.9998 ,
                             0.3030 , 0.9530 , -0.0049 ,
@@ -542,12 +543,16 @@ void MyLBRClient::command() {
                             
     Eigen::VectorXd torqueLinTask = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS);
     Eigen::MatrixXd nullSpace = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
+
     computeLinVelToJointTorqueCmd(robotState().getSampleTime(),J,iiwa->M,p_0_cur,R_0_7, iiwa->qDot,desired_velocity, desired_orientation,torqueLinTask, nullSpace); // Fixed rotation for now.
 
 	// Apply damping torques in nullspace.
 	const double dampingQ = 5;
-	Eigen::VectorXd dampingTorque = -iiwa->M * dampingQ * iiwa->qDot;
-	Eigen::MatrixXd torqueCommand = torqueLinTask + nullSpace*dampingTorque;
+    Eigen::MatrixXd clamperQ = Eigen::MatrixXd::Zero(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
+    clamperQ(0,0) = 10;
+    Eigen::VectorXd dampingTorque = -iiwa->M * dampingQ * iiwa->qDot;
+    Eigen::VectorXd firstJointClamperTorque = -clamperQ*iiwa->q;
+	Eigen::MatrixXd torqueCommand = torqueLinTask + nullSpace*(dampingTorque+firstJointClamperTorque);
 		
 	// Limit torques to stop at the robot's joint limits.
 	//VectorNd SJSTorque = addConstraints(torqueCommand, 0.005);
