@@ -7,7 +7,7 @@
 namespace curan {
 namespace utilities {
 
-Eigen::MatrixXd convert_matrix(std::stringstream& data);
+Eigen::MatrixXd convert_matrix(std::stringstream& data, char var = ' ');
 
 }
 }
