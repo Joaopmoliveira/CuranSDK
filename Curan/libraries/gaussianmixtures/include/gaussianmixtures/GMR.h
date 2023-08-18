@@ -12,7 +12,7 @@ namespace gaussian {
 
 
 constexpr double internal_pi = 3.14159265359;
-
+constexpr double epsilon_acceptable = 0.001;
 
 template<int size_in, int size_out>
 class GMR {
@@ -60,8 +60,8 @@ Eigen::Matrix<double, size_out, 1> likeliest(const Eigen::Matrix<double, size_in
 	H /= sum + std::numeric_limits<double>::epsilon();
 
 	Eigen::Matrix<double, size_out, 1> out_mean = Eigen::Matrix<double, size_out, 1>::Zero();
-	for (int i = 0; i < components(); ++i)
-		out_mean +=  H(i, 0)*(Ak[i]*input+bk[i]);
+	for (int k = 0; k < components(); ++k)
+		out_mean +=  H(k, 0)*(Ak[k]*input+bk[k]);
 	
     return out_mean;
 };
@@ -84,28 +84,33 @@ friend std::istream& operator >> (std::istream& in, GMR& model)
 		std::string Ak = state_k["A"];
 		std::stringstream s;
 		s << Ak;
-		model.Ak.push_back(curan::utilities::convert_matrix(s));
-		s.str("");
-		s.clear();
+		auto A = curan::utilities::convert_matrix(s);
+		model.Ak.push_back(A);
+		s = std::stringstream{};
 		std::string bk = state_k["b"];
 		s << bk;
-		model.bk.push_back(curan::utilities::convert_matrix(s));
-		s.str("");
-		s.clear();
+		auto b = curan::utilities::convert_matrix(s);
+		model.bk.push_back(b);
+		s = std::stringstream{};
 		std::string Sigmak = state_k["Sigma"];
 		s << Sigmak;
 		auto Sigma = curan::utilities::convert_matrix(s);
 		model.invSigmak.push_back(Sigma.inverse());
 		model.nonlinear_activation_detsigma.push_back(Sigma.determinant());
 		std::string Muk = state_k["Mu"];
-		s.str("");
-		s.clear();
+		s = std::stringstream{};
 		s << Muk;
-        model.muk.push_back(curan::utilities::convert_matrix(s));
-		double priork = state_k["Prior"];
-        model.priork.push_back(priork);
+		auto mu = curan::utilities::convert_matrix(s);
+        model.muk.push_back(mu);
+		std::string priork = state_k["Prior"];
+        model.priork.push_back(stod(priork));
     }
-                
+	//check that the priors sum up to one
+	double sum = 0.0;
+	for(const auto & val : model.priork)
+		sum+=val;
+	if(sum<1.0-epsilon_acceptable ||  sum>1.0+epsilon_acceptable)
+		throw std::runtime_error("The priors from the file dont sum up to one (sum of priors) : "+std::to_string(sum));
 	// Model was read successfully.
 	model.is_usable = true;
 	return in;
@@ -115,8 +120,8 @@ public:
 
 	bool is_usable = false;
 
-	std::vector<Eigen::Matrix<double, size_out, size_in>> bk;
-	std::vector<Eigen::Matrix<double, size_out, 1>> Ak;
+	std::vector<Eigen::Matrix<double, size_out, 1>> bk;
+	std::vector<Eigen::Matrix<double, size_out, size_in>> Ak;
 	std::vector<Eigen::Matrix<double, size_in, size_in>> invSigmak;
 	std::vector<double> nonlinear_activation_detsigma;
 	std::vector<Eigen::Matrix<double, size_in, 1>> muk;

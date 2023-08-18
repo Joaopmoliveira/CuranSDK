@@ -3,7 +3,7 @@
 namespace curan {
 namespace utilities {
 
-Eigen::MatrixXd convert_matrix(std::stringstream& data)
+Eigen::MatrixXd convert_matrix(std::stringstream& data, char separation_char)
 {
     // the matrix entries are stored in this variable row-wise. For example if we have the matrix:
     // M=[a b c 
@@ -26,7 +26,7 @@ Eigen::MatrixXd convert_matrix(std::stringstream& data)
     {
          std::stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
  
-        while (getline(matrixRowStringStream, matrixEntry, ',')) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
+        while (getline(matrixRowStringStream, matrixEntry, separation_char)) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
         {
             matrixEntries.push_back(stod(matrixEntry));   //here we convert the string to double and fill in the row vector storing all the matrix entries
         }
