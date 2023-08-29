@@ -38,12 +38,30 @@ inline int components() const {
 	return nbStates;
 }
 
+template<bool debug_print>
 double gaussianPDF(const Eigen::Matrix<double, size_in, 1>& input,size_t k){
-	double normalization = 1.0/std::sqrt(std::pow(2*internal_pi,size_in)*nonlinear_activation_detsigma[k]);
+	double normalization = std::sqrt(std::pow(2*internal_pi,size_in)*nonlinear_activation_detsigma[k]+std::numeric_limits<double>::epsilon());
+	if(debug_print)
+		std::cout << "\nNormalization pi val :" << std::pow(2*internal_pi,size_in) << "\n";
+	if(debug_print)
+		std::cout << "\ndeterminant now" << nonlinear_activation_detsigma[k] << "\n";
+	if(debug_print)
+		std::cout << "\nnormalization\n" << 1.0/normalization << "\n";
+	if(debug_print)
+		std::cout << "\ninput \n" << input << "\n mean " << muk[k] << "\n"; 
 	auto error = input-muk[k];
-	return normalization*std::exp(-0.5*error.transpose()*invSigmak[k]*error);
+	if(debug_print)
+		std::cout << "\nerror \n" << error << "\n";
+	if(debug_print)
+		std::cout << "inverse \n " << invSigmak[k] << "\n";
+	double exponential_argument = -0.5*error.transpose().eval()*invSigmak[k]*error;
+	if(debug_print)
+		std::cout << "argument \n" << exponential_argument << std::endl;
+	double result = (1.0/normalization)*std::exp(exponential_argument+std::numeric_limits<double>::epsilon());
+	return result;
 }
 
+template<bool debug_print>
 Eigen::Matrix<double, size_out, 1> likeliest(const Eigen::Matrix<double, size_in, 1>& input)
 {
 	std::lock_guard<std::recursive_mutex> guard(mut);
@@ -53,17 +71,28 @@ Eigen::Matrix<double, size_out, 1> likeliest(const Eigen::Matrix<double, size_in
 	// Loop through the gaussians to compute the posterior weights	
 	double sum = 0.0;
 	for (int k = 0; k < components(); ++k){
-		H(k, 0) = priork[k] * gaussianPDF(input, k);
+		H(k, 0) = priork[k] * gaussianPDF<debug_print>(input, k);
 		sum += H(k, 0);
 	}
-
-	H /= sum + std::numeric_limits<double>::epsilon();
-
+	if(debug_print){
+		std::cout << H << std::endl; 
+		std::cout << "\nsum: " << sum << std::endl;
+	}
+		
+	H /= sum;
 	Eigen::Matrix<double, size_out, 1> out_mean = Eigen::Matrix<double, size_out, 1>::Zero();
-	for (int k = 0; k < components(); ++k)
+	for (int k = 0; k < components(); ++k){
 		out_mean +=  H(k, 0)*(Ak[k]*input+bk[k]);
+		if(debug_print)
+			std::printf("state %d Likelihood %f\n",k,H(k, 0));
+	}
 	
     return out_mean;
+};
+
+
+Eigen::Matrix<double, size_out, 1> likeliest(const Eigen::Matrix<double, size_in, 1>& input){
+	return likeliest<false>(input);
 };
 
 friend std::istream& operator >> (std::istream& in, GMR& model) 
