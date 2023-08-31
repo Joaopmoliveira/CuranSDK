@@ -248,3 +248,5 @@ int main(){
 
 # Process 1 (Watchdog)
 
+The last, and the most important process across this entire code base is the watchdog, this is the crux of the mecanism we propose to control the robot in realtime. 
+
