@@ -34,7 +34,7 @@ and a camera which provides an image with a fixed size, e.g. a 200x200 image wit
         ]
         },
         {
-        "message" : "grayscale_image_1",
+        "message" : "grayscale_image",
         "fields" : [
             {"name" : "counter", "type" : "int", "array" : 1},
             {"name" : "data", "type" : "bytes", "array" : 40000  }
@@ -45,6 +45,8 @@ and a camera which provides an image with a fixed size, e.g. a 200x200 image wit
 ```
 
 This file will be converted into two files, each called 
+
+
 
 # Process 2
 
