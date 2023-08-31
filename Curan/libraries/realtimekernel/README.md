@@ -12,7 +12,13 @@ These three processes communicate between eachother through two mechanism, throu
 
 # Compiler
 
-The compiler receives a json format which describes the layout of the memory. Once this process runs two header files are generated which can be used to read and write from the shared memory. Lets look at a Json file as an example. Assume that you have two periperals, 
+The compiler receives a json format which describes the layout of the memory. Once this process runs two header files are generated which can be used to read and write from the shared memory. Lets look at a Json file as an example. Assume that you have two periperals, one is a GPS which provides three readings:
+
+1. Velocity - array of three doubles
+2. Acceleration - array of three doubles
+3. Orientation - array of three doubles
+
+and a camera which provides an image with a fixed size, e.g. a 200x200 image with one byte per pixel. One can specify the json describing our fields from the peripherals as 
 
 ```json
 {
@@ -22,27 +28,23 @@ The compiler receives a json format which describes the layout of the memory. On
         "message" : "gps_reading",
         "fields" : [
             {"name" : "counter", "type" : "int", "array" : 1},
-            {"name" : "latitude", "type" : "double" , "array" : 1},
-            {"name" : "longitude", "type" : "double" , "array" : 1},
-            {"name" : "height", "type" : "double" , "array" : 1},
             {"name" : "velocity", "type" : "double" , "array" : 3},
             {"name" : "acceleration", "type" : "double" , "array" : 3},
-            {"name" : "gforce", "type" : "double" , "array" : 1},
             {"name" : "orientation", "type" : "double" , "array" : 3},
-            {"name" : "angular_velocity", "type" : "double" , "array" : 3},
-            {"name" : "standard_deviation", "type" : "double" , "array" : 3}
         ]
         },
         {
         "message" : "grayscale_image_1",
         "fields" : [
             {"name" : "counter", "type" : "int", "array" : 1},
-            {"name" : "data", "type" : "bytes", "array" : 5880000 }
+            {"name" : "data", "type" : "bytes", "array" : 40000  }
         ]  
         }
         ]
 }
 ```
+
+This file will be converted into two files, each called 
 
 # Process 2
 
