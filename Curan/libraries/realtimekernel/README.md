@@ -44,8 +44,43 @@ and a camera which provides an image with a fixed size, e.g. a 200x200 image wit
 }
 ```
 
-This file will be converted into two files, each called 
+This file will be converted into two files, each called header_creator.h and header_acessor.h. The header_creator.h file contains a class, called SharedMemoryCreator which creates the shared blob of memory, called "my_custom_name" with the necessary size to contains both the gps readings and the camera readings, i.e. in our example the size of the shared memory is 40000 (size of image in bytes) + 4 (size of counter of camera because an int is four bytes) + 4 (size of counter of gps because an int is four bytes) + 8 * 3 * 3 (size of a double in bytes multiplies by the number of scalars in each measurment of the gps multiplied by the number of measurments of the gps) = 40080 bytes in total
 
+The header_acessor.h file contains a class which acesses the shared memory created in the header_creator.h header file. 
+
+Both files contain the extra following classes
+1. The gps reading with the proper size
+```cpp
+
+struct gps_reading{
+    int counter;
+	double velocity[3];
+	double acceleration[3];
+	double orientation[3];
+};
+
+```
+
+2. The image reading
+```cpp
+
+struct grayscale_image{	
+    int counter;
+	unsigned char* data = nullptr;
+};
+
+```
+
+And both files contain the following methods to both read and write these classes
+
+```cpp
+void copy_from_gps_reading_to_shared_memory( unsigned char* memory , const gps_reading & tmp);
+void copy_from_shared_memory_to_gps_reading( const unsigned char*  memory,gps_reading & tmp);
+
+void copy_from_grayscale_image_to_shared_memory( unsigned char* memory , const grayscale_image & tmp);
+void copy_from_shared_memory_to_grayscale_image( const unsigned char*  memory,grayscale_image & tmp);
+```
+The names of these methods and classes are extracted directly from the Json file which contains the layout of the memory we wish to manipulate.
 
 
 # Process 2 (Reading sensors)
