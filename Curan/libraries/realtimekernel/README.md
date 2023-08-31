@@ -135,6 +135,7 @@ The last N+1 thread controls the frequency at which we read from these variables
 ```cpp
 int main(){
     // First we create the client to communicate with the watchdog
+    asio::io_context io_context;
     unsigned int port = 50000;
     asio::ip::tcp::endpoint endpoit(asio::ip::tcp::v4(), port);
     asio::ip::tcp::acceptor acceptor(io_context,endpoit);
@@ -198,7 +199,54 @@ Obviously the code was simplified to showcase how the application works. For ful
 
 # Process 3 (Custom control law)
 
-The third process is supposed to be as simple as possible, i.e. read the sensors and with this information compute the control law to actuate your sensors. This can be achieved through 
+The third process is supposed to be as simple as possible, i.e. read the sensors and with this information compute the control law to actuate your sensors. This can be achieved through something like 
+
+```cpp
+int main(){
+    asio::io_context io_context;
+    unsigned int port = 50010;
+    asio::ip::tcp::endpoint endpoit(asio::ip::tcp::v4(), port);
+    asio::ip::tcp::acceptor acceptor(io_content,endpoit);
+
+    asio::error_code ec;
+    asio::ip::tcp::socket client_socket = acceptor.accept();
+    if (ec){
+        std::cout << "failed to run, terminating....\n";
+        std::cout << ec.message() << std::endl;
+        return 1;
+    };
+
+    while(!io_context.stopped()){
+        asio::read(client_socket, asio::buffer(asio_memory_buffer), asio::transfer_exactly(watchdog_message_size), ec);
+        if (ec) {
+            std::printf("failed to read information\n terminating....\n");
+            io_content.stop();
+        }
+
+        {
+            std::lock_guard<std::mutex> g{shared_access};
+            copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
+            std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now()
+            );
+            std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
+            message.client_receive_timestamp = millis_since_utc_epoch.count();
+        }
+
+        {
+            std::lock_guard<std::mutex> g{shared_access};
+            std::memcpy(shared_memory_blob.data(),shared_memory->get_shared_memory_address(),shared_memory->size());
+        }
+        
+        copy_from_watchdog_message_to_memory(asio_memory_buffer.data(),message);
+        asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
+        if(ec){
+            std::printf("failed to send control action\n terminating....\n");
+            io_content.stop();
+        }
+    }
+}
+```
 
 # Process 1 (Watchdog)
 
