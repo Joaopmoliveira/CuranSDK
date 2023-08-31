@@ -203,6 +203,7 @@ The third process is supposed to be as simple as possible, i.e. read the sensors
 
 ```cpp
 int main(){
+    auto shared_memory = SharedMemoryAccessor::create();
     asio::io_context io_context;
     unsigned int port = 50010;
     asio::ip::tcp::endpoint endpoit(asio::ip::tcp::v4(), port);
@@ -216,6 +217,10 @@ int main(){
         return 1;
     };
 
+    reading_1 peripheral_1;
+    // ...
+    reading_N peripheral_N;
+
     while(!io_context.stopped()){
         asio::read(client_socket, asio::buffer(asio_memory_buffer), asio::transfer_exactly(watchdog_message_size), ec);
         if (ec) {
@@ -223,22 +228,15 @@ int main(){
             io_content.stop();
         }
 
-        {
-            std::lock_guard<std::mutex> g{shared_access};
-            copy_from_memory_to_watchdog_message(asio_memory_buffer.data(),message);
-            std::chrono::time_point currently = std::chrono::time_point_cast<std::chrono::microseconds>(
-                std::chrono::system_clock::now()
-            );
-            std::chrono::duration millis_since_utc_epoch = currently.time_since_epoch();
-            message.client_receive_timestamp = millis_since_utc_epoch.count();
-        }
+        copy_from_shared_memory_to_reading_1(shared_memory->get_shared_memory_address(),peripheral_1);
+        // ... 
+        copy_from_shared_memory_to_reading_N(shared_memory->get_shared_memory_address(),peripheral_N);
 
-        {
-            std::lock_guard<std::mutex> g{shared_access};
-            std::memcpy(shared_memory_blob.data(),shared_memory->get_shared_memory_address(),shared_memory->size());
-        }
-        
-        copy_from_watchdog_message_to_memory(asio_memory_buffer.data(),message);
+        //compute control law
+        // ...
+
+        //write control law into asio_memory_buffer
+
         asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
         if(ec){
             std::printf("failed to send control action\n terminating....\n");
