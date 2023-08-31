@@ -44,8 +44,8 @@ constexpr size_t in_size = 2;
 constexpr size_t out_size = 2;
 
 struct Transformation{
-    Eigen::Matrix<double,3,3> Rotation;
-    Eigen::Matrix<double,3,1> Translation;
+    Eigen::Matrix<double,3,3> rotation;
+    Eigen::Matrix<double,3,1> translation;
 };
 
 struct SharedState {

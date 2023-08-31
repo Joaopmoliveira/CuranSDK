@@ -17,8 +17,6 @@
 #include "friClientApplication.h"
 #include <csignal>
 
-
-
 constexpr unsigned short DEFAULT_PORTID = 30200;
 
 std::atomic<bool> progress = true;
@@ -60,12 +58,13 @@ struct ScrollingBuffer
 	}
 };
 
-std::atomic<std::array<double, NUMBER_OF_JOINTS>> robot_torques;
+constexpr size_t CartesianDimension = 3;
+std::atomic<std::array<double, CartesianDimension>> robot_torques;
 
 void interface(vsg::CommandBuffer &cb)
 {
-	ImGui::Begin("Joint Angles"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, NUMBER_OF_JOINTS> buffers;
+	ImGui::Begin("Desired Velocity"); // Create a window called "Hello, world!" and append into it.
+	static std::array<ScrollingBuffer, CartesianDimension> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
 	auto local_copy = robot_torques.load();
@@ -81,9 +80,9 @@ void interface(vsg::CommandBuffer &cb)
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for (size_t index = 0; index < NUMBER_OF_JOINTS; ++index)
+		for (size_t index = 0; index < CartesianDimension; ++index)
 		{
-			std::string loc = "torque " + std::to_string(index);
+			std::string loc = "dx_" + std::to_string(index);
 			buffers[index].AddPoint(t, (float)local_copy[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 		}
@@ -98,7 +97,7 @@ void robot_control(std::shared_ptr<SharedState> shared_state, std::shared_ptr<cu
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
-		MyLBRClient client = MyLBRClient(shared_state,CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/mymodel.txt");
+		MyLBRClient client = MyLBRClient(shared_state, CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel.txt");
 		KUKA::FRI::UdpConnection connection{2};
 		KUKA::FRI::ClientApplication app(connection, client);
 		app.connect(DEFAULT_PORTID, NULL);
@@ -148,7 +147,7 @@ int main(int argc, char *argv[])
 		info.window_size = size;
 		curan::renderable::Window window{info};
 
-		std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
+		std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";
 		curan::renderable::SequencialLinks::Info create_info;
 		create_info.convetion = vsg::CoordinateConvention::Y_UP;
 		create_info.json_path = robot_path;
@@ -167,6 +166,14 @@ int main(int argc, char *argv[])
 		Vector3d p_0_cur = Vector3d::Zero(3, 1);
 		Matrix3d R_0_7 = Matrix3d::Zero(3, 3);
 
+		curan::gaussian::GMR<in_size,out_size> model;
+		std::ifstream modelfile{CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel.txt"};
+    	modelfile >> model;
+
+    	Transformation transformation_to_model_coordinates;
+
+		std::array<double, CartesianDimension> desired_velocity_computed;
+
 		while (progress.load())
 		{
 			if (!window.run_once())
@@ -175,22 +182,22 @@ int main(int argc, char *argv[])
 			{
 				auto local_state = shared_state->robot_state.load();
 				for (size_t joint_index = 0; joint_index < NUMBER_OF_JOINTS; ++joint_index)
-				{
 					robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, local_state.getMeasuredJointPosition()[joint_index]);
-					robot_torques.store(shared_state->joint_torques.load());
-				}
 
 				// Get robot measurements
 				shared_state->is_initialized.store(true);
 				static bool first_time = true;
-				if (first_time){
+				if (first_time)
+				{
 					first_time = false;
 					for (int i = 0; i < NUMBER_OF_JOINTS; i++)
 					{
 						iiwa->q[i] = local_state.getMeasuredJointPosition()[i];
 						iiwa->qDot[i] = 0.0;
 					}
-				} else {
+				}
+				else
+				{
 					for (int i = 0; i < NUMBER_OF_JOINTS; i++)
 					{
 						iiwa->qDot[i] = (local_state.getMeasuredJointPosition()[i] - iiwa->q[i]) / local_state.getSampleTime();
@@ -204,13 +211,31 @@ int main(int argc, char *argv[])
 				robot_control->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
 				robot_control->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7); // 3x1 position of flange (body = 7), expressed in base coordinates
 				robot_control->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
+
+				// This is a normal damper that removes energy from all joints (makes it easier to mvoe the robot in free space)
+				// this adds the joint limits to the robot control (it takes our control commands and it shapes it to avoid torque limits)
+				// VectorNd SJSTorque = addConstraints(torques, 0.005);
+				Eigen::Vector3d transformed_position = transformation_to_model_coordinates.rotation * p_0_cur + transformation_to_model_coordinates.translation;
+				Eigen::Vector2d limit_cycle_portion = transformed_position.block(0, 0, 2, 1);
+
+				auto in_plane_velocity = model.likeliest(limit_cycle_portion);
+
+				Eigen::Vector3d desired_velocity_in_plane;
+				desired_velocity_in_plane << in_plane_velocity(0), in_plane_velocity(1), -transformed_position(2);
+
+				Eigen::Vector3d velocity_in_world_coordinates = transformation_to_model_coordinates.rotation.transpose() * desired_velocity_in_plane;
+				desired_velocity_computed[0] = velocity_in_world_coordinates(0,0);
+				desired_velocity_computed[1] = velocity_in_world_coordinates(1,0);
+				desired_velocity_computed[2] = velocity_in_world_coordinates(2,0);
+				robot_torques.store(desired_velocity_computed);
 			}
 		}
 		robot_flag->clear();
 		thred_robot_control.join();
 		return 0;
 	}
-	catch (std::exception &e){
+	catch (std::exception &e)
+	{
 		std::cout << "main Exception : " << e.what() << std::endl;
 	}
 }

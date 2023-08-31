@@ -150,3 +150,5 @@ The volume reconstruction code is essencially a copy of [IGSIO](https://github.c
 > -Filipe Varela (3D rendering patch of the library)
 > 
 > -Manuel Carvalho (Implementation of registration algorithms)
+>
+> - (You) Become a contributer!

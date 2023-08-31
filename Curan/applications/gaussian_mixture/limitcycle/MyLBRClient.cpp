@@ -130,6 +130,8 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std:
 
     std::ifstream modelfile{s};
     modelfile >> model;
+    transformation_to_model_coordinates.rotation = Eigen::Matrix<double,3,3>::Identity();
+    transformation_to_model_coordinates.translation = Eigen::Matrix<double,3,1>::Zero();
 
     // Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
@@ -226,7 +228,6 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std:
 //******************************************************************************
 MyLBRClient::~MyLBRClient() {
 }
-
 
 //******************************************************************************
 void MyLBRClient::onStateChange(KUKA::FRI::ESessionState oldState, KUKA::FRI::ESessionState newState) {
@@ -532,6 +533,8 @@ void MyLBRClient::command() {
     // This is a normal damper that removes energy from all joints (makes it easier to mvoe the robot in free space)
     //this adds the joint limits to the robot control (it takes our control commands and it shapes it to avoid torque limits)
     //VectorNd SJSTorque = addConstraints(torques, 0.005);
+    /*
+    
     Eigen::Vector3d transformed_position = transformation_to_model_coordinates.Rotation*p_0_cur + transformation_to_model_coordinates.Translation;
     Eigen::Vector2d limit_cycle_portion = transformed_position.block(0,0,2,1);
 
@@ -540,8 +543,9 @@ void MyLBRClient::command() {
     Eigen::Vector3d desired_velocity_in_plane;
     desired_velocity_in_plane << in_plane_velocity(0) , in_plane_velocity(1) , -transformed_position(2);
 
-    Eigen::Vector3d velocity_in_world_coordinates = transformation_to_model_coordinates.Rotation*desired_velocity_in_plane;
-    
+    Eigen::Vector3d velocity_in_world_coordinates = transformation_to_model_coordinates.Rotation.transpose()*desired_velocity_in_plane;
+    */
+    Eigen::Vector3d velocity_in_world_coordinates = Eigen::Vector3d::Zero(); 
     Eigen::Matrix3d desired_orientation = Eigen::Matrix3d::Identity();
     desired_orientation << -0.0185 , 0.0007 , -0.9998 ,
                             0.3030 , 0.9530 , -0.0049 ,
