@@ -134,24 +134,30 @@ The last N+1 thread controls the frequency at which we read from these variables
 
 ```cpp
 int main(){
-    std::atomic<double> reading_1;
+    std::atomic<double> ato_reading_1;
     auto callable_1 = [&](){
-        read_peripheral_1(reading_1);
+        read_peripheral_1(ato_reading_1);
     };
     std::thread thread_1{callable_1};
 
     // ...
 
-    std::atomic<double> reading_N;
+    std::atomic<double> ato_reading_N;
     auto callable_N = [&](){
-        read_peripheral_N(reading_N);
+        read_peripheral_N(ato_reading_N);
     };
     std::thread thread_N{callable_N};
 
+    auto shared_memory = SharedMemoryCreator::create();
+
     for(size_t counter = 0; ; ++counter){
-        auto atomic_reading_1 = reading_1;
+
+        //copy the atomic reading 1 into the automatically generated reading_1 struct ;
+        copy_from_reading_1_to_shared_memory(shared_memory->get_shared_memory_address(),reading_1);
         // ...
-        auto atomic_reading_N = reading_N;
+
+        //copy the atomic reading N into the automatically generated reading_N struct ;
+        copy_from_reading_N_to_shared_memory(shared_memory->get_shared_memory_address(),reading_N);
     }
 }
 ```
