@@ -48,7 +48,7 @@ This file will be converted into two files, each called
 
 
 
-# Process 2
+# Process 2 (Reading sensors)
 
 This process is a simple control loop which uses multithreading to manage multiple peripherals. Assume that you have N peripherals, then Process 1 will be composed of N+1 threads, where N threads read the sensors 
 
@@ -108,7 +108,7 @@ int main(){
 }
 ```
 
-# Process 2
+# Process 3 (Custom control law)
 
-# Process 3
+# Process 1 (Watchdog)
 
