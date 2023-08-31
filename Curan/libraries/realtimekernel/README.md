@@ -198,5 +198,7 @@ Obviously the code was simplified to showcase how the application works. For ful
 
 # Process 3 (Custom control law)
 
+The third process is supposed to be as simple as possible, i.e. read the sensors and with this information compute the control law to actuate your sensors. This can be achieved through 
+
 # Process 1 (Watchdog)
 
