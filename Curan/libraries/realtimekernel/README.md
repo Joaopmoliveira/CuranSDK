@@ -8,7 +8,41 @@ Our system is inspired in the Fast Research Interface provided by KUKA. Instead 
 3. Process 3 - reads sensors from peripherals in realtime and communicate with watchdog
 
 
-These three processes communicate between eachother through two mechanism, through sockets and through shared memory. 
+These three processes communicate between eachother through two mechanism, through sockets and through shared memory. The shared memory has a specific layout which we use to write the readings of the sensors (we want the communication between the processes to be as fast as possible).The socket communication is used as a syncronization mechanism to control who can access the shared memory at a given moment. To simplify the life of developers whilst manuseating the shared memory (which is manipulated with directy access the to a giant blob of memory) we implemented a compiler which generates classes to read and write into this shared memory. 
+
+# Compiler
+
+The compiler receives a json format which describes the layout of the memory. Once this process runs two header files are generated which can be used to read and write from the shared memory. Lets look at a Json file as an example. Assume that you have two periperals, 
+
+```json
+{
+    "shared_memory_name" : "my_custom_name",
+    "messages" : [
+        {
+        "message" : "gps_reading",
+        "fields" : [
+            {"name" : "counter", "type" : "int", "array" : 1},
+            {"name" : "latitude", "type" : "double" , "array" : 1},
+            {"name" : "longitude", "type" : "double" , "array" : 1},
+            {"name" : "height", "type" : "double" , "array" : 1},
+            {"name" : "velocity", "type" : "double" , "array" : 3},
+            {"name" : "acceleration", "type" : "double" , "array" : 3},
+            {"name" : "gforce", "type" : "double" , "array" : 1},
+            {"name" : "orientation", "type" : "double" , "array" : 3},
+            {"name" : "angular_velocity", "type" : "double" , "array" : 3},
+            {"name" : "standard_deviation", "type" : "double" , "array" : 3}
+        ]
+        },
+        {
+        "message" : "grayscale_image_1",
+        "fields" : [
+            {"name" : "counter", "type" : "int", "array" : 1},
+            {"name" : "data", "type" : "bytes", "array" : 5880000 }
+        ]  
+        }
+        ]
+}
+```
 
 # Process 2
 
