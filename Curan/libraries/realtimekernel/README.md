@@ -89,8 +89,9 @@ The memory layout of these classes on the shared memory is
  --------  --------  -------- (velocity) 8*3 bytes          |   copy_from_gps_reading_to_shared_memory  | 
  --------  --------  -------- (acceleration) 8*3 bytes      |   copy_from_shared_memory_to_gps_reading  | -> these two methods operate in this portion of the shared memory
  --------  --------  -------- (orientation) 8*3 bytes ______|
- ---- (image counter) 4 bytes  
- ---- ... ----- (image buffer) 40000 bytes
+
+ ---- (image counter) 4 bytes                -----|  copy_from_grayscale_image_to_shared_memory |
+ ---- ... ----- (image buffer) 40000 bytes   _____|  copy_from_shared_memory_to_grayscale_image | -> these two methods operate in this portion of the shared memory
         
 ```
 
