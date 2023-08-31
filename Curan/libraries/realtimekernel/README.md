@@ -82,6 +82,18 @@ void copy_from_shared_memory_to_grayscale_image( const unsigned char*  memory,gr
 ```
 The names of these methods and classes are extracted directly from the Json file which contains the layout of the memory we wish to manipulate.
 
+The memory layout of these classes on the shared memory is
+
+```
+ ---- (gps counter) 4 bytes                           ------|      
+ --------  --------  -------- (velocity) 8*3 bytes          |   copy_from_gps_reading_to_shared_memory
+ --------  --------  -------- (acceleration) 8*3 bytes      |   copy_from_shared_memory_to_gps_reading
+ --------  --------  -------- (orientation) 8*3 bytes ______|
+ ---- (image counter) 4 bytes  
+ ---- ... ----- (image buffer) 40000 bytes
+        
+```
+
 
 # Process 2 (Reading sensors)
 
