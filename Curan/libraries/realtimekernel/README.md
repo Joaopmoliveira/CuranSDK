@@ -134,6 +134,20 @@ The last N+1 thread controls the frequency at which we read from these variables
 
 ```cpp
 int main(){
+    // First we create the client to communicate with the watchdog
+    unsigned int port = 50000;
+    asio::ip::tcp::endpoint endpoit(asio::ip::tcp::v4(), port);
+    asio::ip::tcp::acceptor acceptor(io_context,endpoit);
+
+    asio::error_code ec;
+    asio::ip::tcp::socket client_socket = acceptor.accept();
+    if (ec){
+        std::cout << "failed to run, terminating....\n";
+        std::cout << ec.message() << std::endl;
+        return 1;
+    };
+
+
     std::atomic<double> ato_reading_1;
     auto callable_1 = [&](){
         read_peripheral_1(ato_reading_1);
@@ -150,7 +164,17 @@ int main(){
 
     auto shared_memory = SharedMemoryCreator::create();
 
+    std::array<unsigned char,watchdog_message_size> asio_memory_buffer;
+    watchdog_message message; //custom message to send to the watchdog
+
     for(size_t counter = 0; ; ++counter){
+        //receive message from watchdog in a blocking call
+        asio::read(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
+        if(ec){
+            std::printf("failed to send information\n terminating....\n");
+            io_context.stop();
+            break;
+        } 
 
         //copy the atomic reading 1 into the automatically generated reading_1 struct ;
         copy_from_reading_1_to_shared_memory(shared_memory->get_shared_memory_address(),reading_1);
@@ -158,9 +182,19 @@ int main(){
 
         //copy the atomic reading N into the automatically generated reading_N struct ;
         copy_from_reading_N_to_shared_memory(shared_memory->get_shared_memory_address(),reading_N);
+
+        //send message from watchdog in a blocking call
+        asio::write(client_socket,asio::buffer(asio_memory_buffer),asio::transfer_exactly(watchdog_message_size),ec);
+        if(ec){
+            std::printf("failed to send information\n terminating....\n");
+            io_context.stop();
+            break;
+        }
     }
 }
 ```
+
+Obviously the code was simplified to showcase how the application works. For full details please read the code in sensors.cpp to understand all the required mechanisms. 
 
 # Process 3 (Custom control law)
 
