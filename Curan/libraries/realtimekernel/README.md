@@ -322,3 +322,5 @@ Where the Client class contains a method called safety shutdown which is called 
 To clarify WHY the system works, look at the following table
 
 ![callback showcase](TimeSlots.png)
+
+If the durantion of the callback that processes the incoming and outgoing messages to process 2 and 3, the timer will be violated by shorter durations, whilst longer durations are equivalent to larger variances in the expiration of the timer. The process of actually receiving the assyncronous messages is dealt by the kernel of the operating system. This is still not hard realtime because process 1 can be stopped temporarily by the kernel of the operating system to execute another process. To avoid this problem one can isolate a core of the hardware just to execute the Watchdog, forbiding the operating system from running anything in our reserved core. This should bring the system to something close to hard realtime. 
