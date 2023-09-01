@@ -261,9 +261,12 @@ The last, and the most important process across this entire code base is the wat
 The wathdog achieves this through ASIO (Asyncronous Input and Output). We read messages and write messages in an assyncrounous fashion, meaning that our operations are nonblocking. Thus we can do the following:
 
 ```
-1. Start a timer with a deadline in P milliseconds    | 1. Submit a request to write a message to process 2 requesting the readinng of the sensors
-                                                      | 2. Read the acknolegement from process 2 that all sensors have been read
-                                                      | 3. Submit a request to process 3 to compute our control low
-                                                      | 4. Read the acknolegement from process 3 that the control law has been executed and store the control action for the next control loop               
+1.1. Start a timer with a deadline in P milliseconds    | 2.0. Write to actuators with desired voltages (or whatever the output is)
+                                                        | 2.1. Submit a request to write a message to process 2 requesting the readinng of the sensors
+                                                        | 2.2. Read the acknolegement from process 2 that all sensors have been read
+                                                        | 2.3. Submit a request to process 3 to compute our control low
+                                                        | 2.4. Read the acknolegement from process 3 that the control law has been executed and store the control action for the next control loop               
 ```
+
+The previous operatorion are NOT being executed in multiple threads, but instead one thread. If the timer expires before 2.4. is executed, then the system has failed to execute in the available timeslot. To check the timer, we pool a clock internally. Because the callbacks 2.x are very very short in time duration, we spend most of our time dedicated to checking if we have crossed the deadline. With this mechanism 
 
