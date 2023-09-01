@@ -269,4 +269,52 @@ The wathdog achieves this through ASIO (Asyncronous Input and Output). We read m
 ```
 
 The previous operatorion are NOT being executed in multiple threads, but instead one thread. If the timer expires before 2.4. is executed, then the system has failed to execute in the available timeslot. To check the timer, we pool a clock internally. Because the callbacks 2.x are very very short in time duration, we spend most of our time dedicated to checking if we have crossed the deadline. With this mechanism 
+we have tested it with an oscilascole and we achieved a system with a maximum delay of 5 microseconds. 
+Although the system works in linux with the desired time properties, that is not the case on windows, where the kernel call to the timer is not as strict as the linux one. 
 
+The code of the watchdog writes 
+
+```cpp
+struct Client;
+void safety_shutdown(Client* control_law);
+
+struct Client{
+  asio::high_resolution_timer timer;
+  bool data_sent = false;
+  std::array<unsigned char,watchdog_message_size> allocated_memory_buffer;
+  asio::io_context& context;
+  asio::ip::tcp::socket sensor_socket_;
+  asio::ip::tcp::socket client_socket_;
+  watchdog_message message;
+
+  explicit Client(asio::io_context& in_context,
+                    asio::ip::tcp::socket&& sensor_socket,
+                    asio::ip::tcp::socket&& client_socket
+                                                      ) : context{in_context} ,
+                                                         sensor_socket_{std::move(sensor_socket)},
+                                                        client_socket_{ std::move(client_socket) },
+                                                         timer{in_context}{}
+
+  Client(const Client & copyclient) = delete;
+
+  Client(Client && client) = delete;
+
+  ~Client(){
+    timer.cancel();
+    safety_shutdown(this);
+  }
+};
+
+void safety_shutdown(Client* control_law){
+   std::cout << "terminating with safety stop because something went wrong (shutting down controller)" << std::endl;
+   std::cout.flush();
+}
+
+void write_control(Client& ref);
+void request_sensors_acquistion(Client& ref);
+void read_sensors_acknowledgment(Client& ref);
+void warn_client_of_readings(Client& ref);
+void read_client_acknowledgment(Client& ref);
+```
+
+Where the Client class contains a method called safety shutdown which is called when the deadline of the timer is violated. In the safety_shutdown method you can write your custom safety handler, e.g. slowly bringing your autonomous device to a standstill. 
