@@ -318,3 +318,7 @@ void read_client_acknowledgment(Client& ref);
 ```
 
 Where the Client class contains a method called safety shutdown which is called when the deadline of the timer is violated. In the safety_shutdown method you can write your custom safety handler, e.g. slowly bringing your autonomous device to a standstill. 
+
+To clarify WHY the system works, look at the following table
+
+[callback showcase](TimeSlots.png)
