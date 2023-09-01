@@ -12,7 +12,7 @@ These three processes communicate between eachother through two mechanism, throu
 
 # Compiler
 
-The compiler receives a json format which describes the layout of the memory. Once this process runs two header files are generated which can be used to read and write from the shared memory. Lets look at a Json file as an example. Assume that you have two periperals, one is a GPS which provides three readings:
+The compiler reads a text file, in json format, which describes the layout of the memory. Once this process runs two header files are generated which can be used to read and write from the shared memory. Lets look at a json file as an example. Assume that you have two periperals, one is a GPS which provides three readings:
 
 1. Velocity - array of three doubles
 2. Acceleration - array of three doubles
@@ -44,11 +44,14 @@ and a camera which provides an image with a fixed size, e.g. a 200x200 image wit
 }
 ```
 
-This file will be converted into two files, each called header_creator.h and header_acessor.h. The header_creator.h file contains a class, called SharedMemoryCreator which creates the shared blob of memory, called "my_custom_name" with the necessary size to contains both the gps readings and the camera readings, i.e. in our example the size of the shared memory is 40000 (size of image in bytes) + 4 (size of counter of camera because an int is four bytes) + 4 (size of counter of gps because an int is four bytes) + 8 * 3 * 3 (size of a double in bytes multiplies by the number of scalars in each measurment of the gps multiplied by the number of measurments of the gps) = 40080 bytes in total
+Notice that we must specify three descriptors for each field of a message, the name, which will be used to generate methods as classes with it, a type, which controls how large the underlying type is, and the size which controls if the variable is an array or a scalar in memory. 
+
+From this file, two extra files will be produced, called header_creator.h and header_acessor.h. The header_creator.h file contains a class, called SharedMemoryCreator which creates the shared blob of memory, called "my_custom_name" with the necessary size to contains both the gps readings and the camera readings, i.e. in our example the size of the shared memory is 40000 (size of image in bytes) + 4 (size of counter of camera because an int is four bytes) + 4 (size of counter of gps because an int is four bytes) + 8 * 3 * 3 (size of a double in bytes multiplies by the number of scalars in each measurment of the gps multiplied by the number of measurments of the gps) = 40080 bytes in total
 
 The header_acessor.h file contains a class which acesses the shared memory created in the header_creator.h header file. 
 
 Both files contain the extra following classes
+
 1. The gps reading with the proper size
 ```cpp
 
@@ -98,7 +101,7 @@ The memory layout of these classes on the shared memory is
 
 # Process 2 (Reading sensors)
 
-This process is a simple control loop which uses multithreading to manage multiple peripherals. Assume that you have N peripherals, then Process 1 will be composed of N+1 threads, where N threads read the sensors 
+This process contains simple syncronous loops, and with multithreading, we can manage multiple peripherals. Assume that you have N peripherals, then process 2 will be composed of N+1 threads, where N threads read the sensors 
 
 ```cpp
 
@@ -148,7 +151,8 @@ int main(){
         return 1;
     };
 
-
+    // Now we lauch the threads which communicate with each peripheral individually
+    // =================================================
     std::atomic<double> ato_reading_1;
     auto callable_1 = [&](){
         read_peripheral_1(ato_reading_1);
@@ -162,9 +166,11 @@ int main(){
         read_peripheral_N(ato_reading_N);
     };
     std::thread thread_N{callable_N};
+    // =================================================
 
     auto shared_memory = SharedMemoryCreator::create();
 
+    // The watchdog receives a custom message with timing information so we prealocate it here before the loop
     std::array<unsigned char,watchdog_message_size> asio_memory_buffer;
     watchdog_message message; //custom message to send to the watchdog
 
@@ -195,7 +201,7 @@ int main(){
 }
 ```
 
-Obviously the code was simplified to showcase how the application works. For full details please read the code in sensors.cpp to understand all the required mechanisms. 
+Obviously the code was simplified to showcase how the application works. For full details please read the code in sensors.cpp to understand all the required mechanisms to guarantee the proper functioning of the system.
 
 # Process 3 (Custom control law)
 
@@ -246,7 +252,18 @@ int main(){
 }
 ```
 
+If you understood process 2, this code should be self explanatory
+
 # Process 1 (Watchdog)
 
-The last, and the most important process across this entire code base is the watchdog, this is the crux of the mecanism we propose to control the robot in realtime. 
+The last, and the most important process across this entire code base is the watchdog, this is the crux of the mecanism we propose to control the robot in realtime. Because we have slaves which are dedicated to read and compute the control law, our only concern left is the mechanism which guarantees that reading and writing happens in a given timeslot. 
+
+The wathdog achieves this through ASIO (Asyncronous Input and Output). We read messages and write messages in an assyncrounous fashion, meaning that our operations are nonblocking. Thus we can do the following:
+
+```
+1. Start a timer with a deadline in P milliseconds    | 1. Submit a request to write a message to process 2 requesting the readinng of the sensors
+                                                      | 2. Read the acknolegement from process 2 that all sensors have been read
+                                                      | 3. Submit a request to process 3 to compute our control low
+                                                      | 4. Read the acknolegement from process 3 that the control law has been executed and store the control action for the next control loop               
+```
 
