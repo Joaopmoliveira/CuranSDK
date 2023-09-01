@@ -321,4 +321,4 @@ Where the Client class contains a method called safety shutdown which is called 
 
 To clarify WHY the system works, look at the following table
 
-[callback showcase](TimeSlots.png)
+![callback showcase](TimeSlots.png)
