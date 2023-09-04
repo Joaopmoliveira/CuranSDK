@@ -59,7 +59,7 @@ struct ScrollingBuffer
 };
 
 constexpr size_t CartesianDimension = 3;
-std::atomic<std::array<double, CartesianDimension>> robot_torques;
+std::atomic<std::array<double, CartesianDimension>> velocities;
 
 void interface(vsg::CommandBuffer &cb)
 {
@@ -67,7 +67,7 @@ void interface(vsg::CommandBuffer &cb)
 	static std::array<ScrollingBuffer, CartesianDimension> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
-	auto local_copy = robot_torques.load();
+	auto local_copy = velocities.load();
 
 	static float history = 10.0f;
 	ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
@@ -166,69 +166,13 @@ int main(int argc, char *argv[])
 		Vector3d p_0_cur = Vector3d::Zero(3, 1);
 		Matrix3d R_0_7 = Matrix3d::Zero(3, 3);
 
-		curan::gaussian::GMR<in_size,out_size> model;
-		std::ifstream modelfile{CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel.txt"};
-    	modelfile >> model;
-
-    	Transformation transformation_to_model_coordinates;
-
-		std::array<double, CartesianDimension> desired_velocity_computed;
-
 		while (progress.load())
 		{
 			if (!window.run_once())
 				progress = false;
 			if (shared_state->is_initialized)
-			{
-				auto local_state = shared_state->robot_state.load();
-				for (size_t joint_index = 0; joint_index < NUMBER_OF_JOINTS; ++joint_index)
-					robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, local_state.getMeasuredJointPosition()[joint_index]);
-
-				// Get robot measurements
-				shared_state->is_initialized.store(true);
-				static bool first_time = true;
-				if (first_time)
-				{
-					first_time = false;
-					for (int i = 0; i < NUMBER_OF_JOINTS; i++)
-					{
-						iiwa->q[i] = local_state.getMeasuredJointPosition()[i];
-						iiwa->qDot[i] = 0.0;
-					}
-				}
-				else
-				{
-					for (int i = 0; i < NUMBER_OF_JOINTS; i++)
-					{
-						iiwa->qDot[i] = (local_state.getMeasuredJointPosition()[i] - iiwa->q[i]) / local_state.getSampleTime();
-						iiwa->q[i] = local_state.getMeasuredJointPosition()[i];
-					}
-				}
-
-				robot_control->getMassMatrix(iiwa->M, iiwa->q);
-				iiwa->M(6, 6) = 45 * iiwa->M(6, 6); // Correct mass of last body to avoid large accelerations
-				iiwa->Minv = iiwa->M.inverse();
-				robot_control->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
-				robot_control->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7); // 3x1 position of flange (body = 7), expressed in base coordinates
-				robot_control->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
-
-				// This is a normal damper that removes energy from all joints (makes it easier to mvoe the robot in free space)
-				// this adds the joint limits to the robot control (it takes our control commands and it shapes it to avoid torque limits)
-				// VectorNd SJSTorque = addConstraints(torques, 0.005);
-				Eigen::Vector3d transformed_position = transformation_to_model_coordinates.rotation * p_0_cur + transformation_to_model_coordinates.translation;
-				Eigen::Vector2d limit_cycle_portion = transformed_position.block(0, 0, 2, 1);
-
-				auto in_plane_velocity = model.likeliest(limit_cycle_portion);
-
-				Eigen::Vector3d desired_velocity_in_plane;
-				desired_velocity_in_plane << in_plane_velocity(0), in_plane_velocity(1), -transformed_position(2);
-
-				Eigen::Vector3d velocity_in_world_coordinates = transformation_to_model_coordinates.rotation.transpose() * desired_velocity_in_plane;
-				desired_velocity_computed[0] = velocity_in_world_coordinates(0,0);
-				desired_velocity_computed[1] = velocity_in_world_coordinates(1,0);
-				desired_velocity_computed[2] = velocity_in_world_coordinates(2,0);
-				robot_torques.store(desired_velocity_computed);
-			}
+				velocities.store(shared_state->velocity.load());
+			
 		}
 		robot_flag->clear();
 		thred_robot_control.join();
