@@ -141,11 +141,11 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std:
             std::cout << "partial success\n";
 	    nlohmann::json calibration_data = nlohmann::json::parse(transformfile);
 
-        auto rotationstring = calibration_data["rotation"];
+        std::string rotationstring = calibration_data["rotation"];
         std::cout << "partial success 1\n";
         std::stringstream s;
         s <<  rotationstring;
-        auto translationstring = calibration_data["translation"];
+        std::string translationstring = calibration_data["translation"];
         std::cout << "partial success 2\n";
         
         transformation_to_model_coordinates.rotation = curan::utilities::convert_matrix(s);
@@ -556,7 +556,7 @@ void MyLBRClient::command() {
     //VectorNd SJSTorque = addConstraints(torques, 0.005);
     
     
-    Eigen::Vector3d transformed_position = transformation_to_model_coordinates.rotation*p_0_cur + transformation_to_model_coordinates.translation;
+    Eigen::Vector3d transformed_position = transformation_to_model_coordinates.rotation.transpose()*(p_0_cur - transformation_to_model_coordinates.translation);
     Eigen::Vector2d limit_cycle_portion = transformed_position.block(0,0,2,1);
 
     auto in_plane_velocity = model.likeliest(limit_cycle_portion);
@@ -564,7 +564,7 @@ void MyLBRClient::command() {
     Eigen::Vector3d desired_velocity_in_plane;
     desired_velocity_in_plane << in_plane_velocity(0) , in_plane_velocity(1) , -transformed_position(2);
 
-    Eigen::Vector3d velocity_in_world_coordinates = transformation_to_model_coordinates.rotation.transpose()*desired_velocity_in_plane;
+    Eigen::Vector3d velocity_in_world_coordinates = transformation_to_model_coordinates.rotation*desired_velocity_in_plane;
     std::array<double,3> computed_velocity;
     computed_velocity[0] = velocity_in_world_coordinates(0,0);
     computed_velocity[1] = velocity_in_world_coordinates(1,0);
