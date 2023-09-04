@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <memory>
 #include <mutex>
+#include <iostream>
 
 namespace curan {
 namespace gaussian {
