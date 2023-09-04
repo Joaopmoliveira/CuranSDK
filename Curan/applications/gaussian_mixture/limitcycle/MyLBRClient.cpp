@@ -31,6 +31,7 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include "MyLBRClient.h"
 #include <chrono>
 #include <fstream>
+#include "utils/Reader.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979
@@ -137,12 +138,15 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std:
         nlohmann::json calibration_data;
 	    std::ifstream transformfile{transform_file};
 	    transformfile >> calibration_data;
-        transformation_to_model_coordinates.rotation = Eigen::Matrix<double,3,3>::Identity();
-        transformation_to_model_coordinates.translation = Eigen::Matrix<double,3,1>::Zero();
+        std::string rotationstring = calibration_data["rotation"];
+        std::stringstream s;
+        s <<  rotationstring;
+        std::string translationstring = calibration_data["translation"];
+        transformation_to_model_coordinates.rotation = curan::utilities::convert_matrix(s);
+        s = std::stringstream{};
+        s <<  translationstring;
+        transformation_to_model_coordinates.translation = curan::utilities::convert_matrix(s);
     }
-
-
-
 
     // Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
