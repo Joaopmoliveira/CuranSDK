@@ -98,7 +98,7 @@ void robot_control(std::shared_ptr<SharedState> shared_state, std::shared_ptr<cu
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
 		MyLBRClient client = MyLBRClient(shared_state, CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel.txt",CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mytransform.txt");
-		KUKA::FRI::UdpConnection connection{2};
+		KUKA::FRI::UdpConnection connection{};
 		KUKA::FRI::ClientApplication app(connection, client);
 		app.connect(DEFAULT_PORTID, NULL);
 		bool success = true;

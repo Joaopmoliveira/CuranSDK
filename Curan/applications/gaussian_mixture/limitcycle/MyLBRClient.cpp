@@ -556,9 +556,7 @@ void MyLBRClient::command() {
     auto in_plane_velocity = model.likeliest(limit_cycle_portion);
 
     Eigen::Vector3d desired_velocity_in_plane;
-    constexpr double z_offset = 0.1466;
-    constexpr double z_stiffness = 0.1466;
-    desired_velocity_in_plane << in_plane_velocity(0) , in_plane_velocity(1) , z_stiffness*(z_offset-transformed_position(2));
+    desired_velocity_in_plane << in_plane_velocity(0) , in_plane_velocity(1) , -transformed_position(2);
 
     Eigen::Vector3d velocity_in_world_coordinates = transformation_to_model_coordinates.rotation.transpose()*desired_velocity_in_plane;
     std::array<double,3> computed_velocity;
