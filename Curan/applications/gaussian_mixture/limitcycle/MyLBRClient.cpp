@@ -31,6 +31,7 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include "MyLBRClient.h"
 #include <chrono>
 #include <fstream>
+#include "utils/Reader.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979
@@ -126,12 +127,26 @@ void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::Matri
 }
 
 //******************************************************************************
-MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std::string& s) : shared_state{in_shared_state} {
+MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std::string& model_file,const std::string& transform_file) : shared_state{in_shared_state} {
 
-    std::ifstream modelfile{s};
-    modelfile >> model;
-    transformation_to_model_coordinates.rotation = Eigen::Matrix<double,3,3>::Identity();
-    transformation_to_model_coordinates.translation = Eigen::Matrix<double,3,1>::Zero();
+    {
+        std::ifstream modelfile{model_file};
+        modelfile >> model;
+    }
+
+    {   
+        nlohmann::json calibration_data;
+	    std::ifstream transformfile{transform_file};
+	    transformfile >> calibration_data;
+        std::string rotationstring = calibration_data["rotation"];
+        std::stringstream s;
+        s <<  rotationstring;
+        std::string translationstring = calibration_data["translation"];
+        transformation_to_model_coordinates.rotation = curan::utilities::convert_matrix(s);
+        s = std::stringstream{};
+        s <<  translationstring;
+        transformation_to_model_coordinates.translation = curan::utilities::convert_matrix(s);
+    }
 
     // Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
@@ -533,36 +548,45 @@ void MyLBRClient::command() {
     // This is a normal damper that removes energy from all joints (makes it easier to mvoe the robot in free space)
     //this adds the joint limits to the robot control (it takes our control commands and it shapes it to avoid torque limits)
     //VectorNd SJSTorque = addConstraints(torques, 0.005);
-    /*
     
-    Eigen::Vector3d transformed_position = transformation_to_model_coordinates.Rotation*p_0_cur + transformation_to_model_coordinates.Translation;
+    
+    Eigen::Vector3d transformed_position = transformation_to_model_coordinates.rotation*p_0_cur + transformation_to_model_coordinates.translation;
     Eigen::Vector2d limit_cycle_portion = transformed_position.block(0,0,2,1);
 
     auto in_plane_velocity = model.likeliest(limit_cycle_portion);
 
     Eigen::Vector3d desired_velocity_in_plane;
-    desired_velocity_in_plane << in_plane_velocity(0) , in_plane_velocity(1) , -transformed_position(2);
+    constexpr double z_offset = 0.1466;
+    constexpr double z_stiffness = 0.1466;
+    desired_velocity_in_plane << in_plane_velocity(0) , in_plane_velocity(1) , z_stiffness*(z_offset-transformed_position(2));
 
-    Eigen::Vector3d velocity_in_world_coordinates = transformation_to_model_coordinates.Rotation.transpose()*desired_velocity_in_plane;
-    */
-    Eigen::Vector3d velocity_in_world_coordinates = Eigen::Vector3d::Zero(); 
+    Eigen::Vector3d velocity_in_world_coordinates = transformation_to_model_coordinates.rotation.transpose()*desired_velocity_in_plane;
+    std::array<double,3> computed_velocity;
+    computed_velocity[0] = velocity_in_world_coordinates(0,0);
+    computed_velocity[1] = velocity_in_world_coordinates(1,0);
+    computed_velocity[2] = velocity_in_world_coordinates(2,0);
+    shared_state->velocity.store(computed_velocity);
+
+    //Eigen::Vector3d velocity_in_world_coordinates = Eigen::Vector3d::Zero(); 
+
     Eigen::Matrix3d desired_orientation = Eigen::Matrix3d::Identity();
     desired_orientation << -0.0185 , 0.0007 , -0.9998 ,
                             0.3030 , 0.9530 , -0.0049 ,
                             0.9528 , -0.3030 , -0.0179;
                             
-    Eigen::VectorXd torqueLinTask = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS);
-    Eigen::MatrixXd nullSpace = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
+    //Eigen::VectorXd torqueLinTask = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS);
+    //Eigen::MatrixXd nullSpace = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
 
-    computeLinVelToJointTorqueCmd(robotState().getSampleTime(),J,iiwa->M,p_0_cur,R_0_7, iiwa->qDot,velocity_in_world_coordinates, desired_orientation,torqueLinTask, nullSpace); // Fixed rotation for now.
-
+    //computeLinVelToJointTorqueCmd(robotState().getSampleTime(),J,iiwa->M,p_0_cur,R_0_7, iiwa->qDot,velocity_in_world_coordinates, desired_orientation,torqueLinTask, nullSpace); // Fixed rotation for now.
+    
 	// Apply damping torques in nullspace.
 	const double dampingQ = 5;
-    Eigen::MatrixXd clamperQ = Eigen::MatrixXd::Zero(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
-    clamperQ(0,0) = 10;
+    //Eigen::MatrixXd clamperQ = Eigen::MatrixXd::Zero(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
+    //clamperQ(0,0) = 10;
     Eigen::VectorXd dampingTorque = -iiwa->M * dampingQ * iiwa->qDot;
-    Eigen::VectorXd firstJointClamperTorque = -clamperQ*iiwa->q;
-	Eigen::MatrixXd torqueCommand = torqueLinTask + nullSpace*(dampingTorque+firstJointClamperTorque);
+    //Eigen::VectorXd firstJointClamperTorque = -clamperQ*iiwa->q;
+	//Eigen::MatrixXd torqueCommand = torqueLinTask + nullSpace*(dampingTorque+firstJointClamperTorque);
+    Eigen::MatrixXd torqueCommand = dampingTorque;
 		
 	// Limit torques to stop at the robot's joint limits.
 	//VectorNd SJSTorque = addConstraints(torqueCommand, 0.005);

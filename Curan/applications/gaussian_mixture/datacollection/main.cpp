@@ -93,7 +93,7 @@ void robot_control(curan::utilities::SafeQueue<KUKA::FRI::LBRState>& to_record,s
 	try{
 	curan::utilities::cout << "Lauching robot control thread\n";
 	MyLBRClient client = MyLBRClient(to_record);
-	KUKA::FRI::UdpConnection connection{2};
+	KUKA::FRI::UdpConnection connection{};
 	KUKA::FRI::ClientApplication app(connection, client);
 	app.connect(DEFAULT_PORTID, NULL);
 	while (flag->value())
