@@ -88,7 +88,7 @@ public:
     /**
     * \brief Constructor.
     */
-    MyLBRClient(std::shared_ptr<SharedState> shared_state,const std::string& s);
+    MyLBRClient(std::shared_ptr<SharedState> shared_state,const std::string& model_file,const std::string& transform_file);
 
     /**
     * \brief Destructor.

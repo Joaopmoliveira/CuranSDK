@@ -126,13 +126,23 @@ void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::Matri
 }
 
 //******************************************************************************
-MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std::string& model_file) : shared_state{in_shared_state} {
+MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std::string& model_file,const std::string& transform_file) : shared_state{in_shared_state} {
 
-    std::ifstream modelfile{model_file};
-    modelfile >> model;
+    {
+        std::ifstream modelfile{model_file};
+        modelfile >> model;
+    }
 
-    transformation_to_model_coordinates.rotation = Eigen::Matrix<double,3,3>::Identity();
-    transformation_to_model_coordinates.translation = Eigen::Matrix<double,3,1>::Zero();
+    {   
+        nlohmann::json calibration_data;
+	    std::ifstream transformfile{transform_file};
+	    transformfile >> calibration_data;
+        transformation_to_model_coordinates.rotation = Eigen::Matrix<double,3,3>::Identity();
+        transformation_to_model_coordinates.translation = Eigen::Matrix<double,3,1>::Zero();
+    }
+
+
+
 
     // Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
