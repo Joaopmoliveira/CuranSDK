@@ -107,9 +107,9 @@ void robot_control(std::shared_ptr<SharedState> shared_state, std::shared_ptr<cu
 		app.disconnect();
 		return;
 	}
-	catch (...)
+	catch (std::exception& e)
 	{
-		std::cout << "robot control exception\n";
+		std::cout << "robot control exception\n" << e.what() << std::endl;
 		return;
 	}
 }

@@ -135,13 +135,19 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std:
     }
 
     {   
-        nlohmann::json calibration_data;
+        std::cout << "arrived here! filepath:\n" << transform_file << std::endl;
 	    std::ifstream transformfile{transform_file};
-	    transformfile >> calibration_data;
-        std::string rotationstring = calibration_data["rotation"];
+        if(transformfile.is_open())
+            std::cout << "partial success\n";
+	    nlohmann::json calibration_data = nlohmann::json::parse(transformfile);
+
+        auto rotationstring = calibration_data["rotation"];
+        std::cout << "partial success 1\n";
         std::stringstream s;
         s <<  rotationstring;
-        std::string translationstring = calibration_data["translation"];
+        auto translationstring = calibration_data["translation"];
+        std::cout << "partial success 2\n";
+        
         transformation_to_model_coordinates.rotation = curan::utilities::convert_matrix(s);
         s = std::stringstream{};
         s <<  translationstring;
