@@ -1,1 +1,1 @@
-{"rotation":"1 0 0\n0 1 0\n0 0 1","translation":"-0.70567\n-0.2\n0.147"}
+{"rotation":"1 0 0\n0 1 0\n0 0 1","translation":"-0.70567\n0\n0.147"}
