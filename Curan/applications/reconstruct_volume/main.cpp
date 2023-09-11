@@ -42,6 +42,8 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include "link_demo.h"
 #include <nlohmann/json.hpp>
 #include "utils/Reader.h"
+#include <itkImage.h>
+#include "itkImageFileWriter.h"
 
 // Variable with the default ID of the robotic system
 constexpr size_t portID = 30200;
@@ -158,6 +160,43 @@ try{
    robot_state->integrated_volume =  curan::image::IntegratedReconstructor::make(recon_info);
    robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
       .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
+   
+   itk::Size<3U>  output_size;
+   output_size = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_output_size();
+   size_t width =   output_size[0] ;
+   size_t height =   output_size[1] ;
+   size_t depth =   output_size[2] ;
+   
+   using PixelType = float;
+   using ImageType = itk::Image<PixelType, 3>;
+   ImageType::Pointer itkVolume = ImageType::New();
+
+   // Set the size, spacing, and origin of the ITK Image
+
+
+   itkVolume->SetRegions(output_size);
+   itkVolume->SetSpacing(vol_spacing.data());
+   itkVolume->SetOrigin(vol_origin.data());
+
+   itkVolume->Allocate();
+
+   // Copy the volumetric data from integrated_volume to itkVolume
+   for (long long z = 0; z < depth; ++z) {
+         for (long long y = 0; y < height; ++y) {
+            for (long long x = 0; x < width; ++x) {
+               float pixel_value = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->at(x, y, z);
+               itkVolume->SetPixel({{x, y, z}}, pixel_value);
+            }
+         }
+   }
+
+   // Save the ITK Image as an MHA file
+   using WriterType = itk::ImageFileWriter<ImageType>;
+   WriterType::Pointer writer = WriterType::New();
+   writer->SetFileName("C:/Users/SURGROB7/reconstruction_results.mha");
+   writer->SetInput(itkVolume);
+   writer->Update();
+
    window << robot_state->integrated_volume;
 
 } catch(...){

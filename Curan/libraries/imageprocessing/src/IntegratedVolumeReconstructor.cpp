@@ -51,7 +51,6 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info) : output_spac
     output_directorion[1][2] = volumetric_bounding_box.axis[1][2];
     output_directorion[2][2] = volumetric_bounding_box.axis[2][2];
 
-	output_type::SizeType output_size;
     output_size[0] = std::ceil(volumetric_bounding_box.extent[0] * 2 / output_spacing[0]);
     output_size[1] = std::ceil(volumetric_bounding_box.extent[1] * 2 / output_spacing[1]);
     output_size[2] = std::ceil(volumetric_bounding_box.extent[2] * 2 / output_spacing[2]);
@@ -288,6 +287,14 @@ IntegratedReconstructor& IntegratedReconstructor::add_frames(std::vector<input_t
 	std::lock_guard<std::mutex> g{mut};
     frame_data.insert(std::end(frame_data), std::begin(images_vector), std::end(images_vector));
     return *(this);
+}
+
+vsg::ref_ptr<vsg::floatArray3D> IntegratedReconstructor::get_texture_data() {
+	return textureData;
+}
+
+itk::Size<3U> IntegratedReconstructor::get_output_size() {
+	return output_size;
 }
 
 bool IntegratedReconstructor::update(){

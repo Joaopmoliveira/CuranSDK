@@ -57,6 +57,7 @@ namespace curan{
                 Info(std::array<double,3> spacing,std::array<double,3> origin, std::array<double,3> size, std::array<std::array<double,3>,3> direction);
             };
             vsg::ref_ptr<vsg::floatArray3D> textureData;
+            output_type::SizeType output_size;
 
 	    static constexpr int INPUT_COMPONENTS = 1;
 
@@ -77,6 +78,10 @@ namespace curan{
         IntegratedReconstructor& add_frame(input_type::Pointer image_pointer);
 
         IntegratedReconstructor& add_frames(std::vector<input_type::Pointer>& images_vector);
+
+        vsg::ref_ptr<vsg::floatArray3D> get_texture_data();
+
+        itk::Size<3U> get_output_size();
 
 	    bool update();
 

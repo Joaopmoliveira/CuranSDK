@@ -3,11 +3,22 @@
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include <optional>
+#include <nlohmann/json.hpp> // Include the JSON library
+#include <random> // Include the random header for generating random numbers
 
-constexpr long width = 500;
-constexpr long height = 500;
+constexpr long width = 100;
+constexpr long height = 100;
 float spacing[3] = {0.002 , 0.002 , 0.002};
 float final_spacing [3] = {0.002 , 0.002 , 0.002};
+
+// Define a function to generate random numbers within a specified range
+double generateRandomNumber(double min, double max) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(min, max);
+    return dis(gen);
+}
+
 
 using imagetype = itk::Image<unsigned char,3>;
 
@@ -20,6 +31,7 @@ void create_array_of_images(std::vector<imagetype::Pointer>& desired_images){
 	image_origin[2] = 0.0;
 
     for(int z = 0; z < width ; ++z){
+        
         imagetype::Pointer image = imagetype::New();
         imagetype::IndexType start;
         start[0] = 0; // first index on X
@@ -34,7 +46,7 @@ void create_array_of_images(std::vector<imagetype::Pointer>& desired_images){
         imagetype::RegionType region_1;
         region_1.SetSize(size);
         region_1.SetIndex(start);
-
+        
 	    image_orientation(0,0) = 1.0;
 	    image_orientation(1,0) = 0.0;
 	    image_orientation(2,0) = 0.0;
@@ -103,7 +115,53 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
                 if(stopping_condition)
                     return;
 	        }
+
+
+
+            size_t width = image_array[0]->GetLargestPossibleRegion().GetSize()[0];
+            size_t height = image_array[0]->GetLargestPossibleRegion().GetSize()[1];
+            size_t depth = image_array.size(); // Depth is the number of images in the array
+
+
+           
+            using PixelType = float;
+            using ImageType = itk::Image<PixelType, 3>;
+            ImageType::Pointer itkVolume = ImageType::New();
+
+            // Set the size, spacing, and origin of the ITK Image
+            ImageType::SizeType size;
+            size[0] = width;
+            size[1] = height;
+            size[2] = depth;
+
+            itkVolume->SetRegions(size);
+            itkVolume->SetSpacing(vol_spacing.data());
+            itkVolume->SetOrigin(vol_origin.data());
+
+            itkVolume->Allocate();
+
+            // Copy the volumetric data from integrated_volume to itkVolume
+            for (long long z = 0; z < depth; ++z) {
+                for (long long y = 0; y < height; ++y) {
+                    for (long long x = 0; x < width; ++x) {
+                        float pixel_value = integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->at(x, y, z);
+                        itkVolume->SetPixel({{x, y, z}}, pixel_value);
+                    }
+                }
+            }
+
+            // Save the ITK Image as an MHA file
+            using WriterType = itk::ImageFileWriter<ImageType>;
+            WriterType::Pointer writer = WriterType::New();
+            writer->SetFileName("C:/Users/SURGROB7/reconstruction_results.mha");
+            writer->SetInput(itkVolume);
+            writer->Update();
+
+
             integrated_volume->cast<curan::image::IntegratedReconstructor>()->reset();
+            stopping_condition = true; // apagar isto
+
+
         }
 
         return ;

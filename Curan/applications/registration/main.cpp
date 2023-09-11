@@ -24,6 +24,8 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkCommand.h"
+#include <optional>
+#include <nlohmann/json.hpp>
 
 double pi = std::atan(1)*4;
 
@@ -141,13 +143,15 @@ int main(int argc, char** argv) {
   auto movingImageReader = MovingImageReaderType::New();
 
 
-  std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
+  //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
   //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/ct_fixed.mha"};
+  std::string dirName{"C:/Users/SURGROB7/reconstruction_results.mha"};
   fixedImageReader->SetFileName(dirName);
 
-  std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
+  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
   //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move.mha"};
   //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
+  std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"};
   movingImageReader->SetFileName(dirName2);
 
   try{
@@ -331,6 +335,36 @@ try{
      std::cerr << "Exception thrown : " << e.what() << std::endl;
     return 1;
 }
-// clean up done automatically thanks to ref_ptr<>
+
+const TransformType::ParametersType finalParameters =
+  registration->GetOutput()->Get()->GetParameters();
+auto finalTransform = TransformType::New();
+
+finalTransform->SetFixedParameters(
+  registration->GetOutput()->Get()->GetFixedParameters());
+finalTransform->SetParameters(finalParameters);
+
+TransformType::MatrixType matrix = finalTransform->GetMatrix();
+TransformType::OffsetType offset = finalTransform->GetOffset();
+std::cout << std::endl << "Matrix = " << std::endl << matrix << std::endl;
+std::cout << "Offset = " << std::endl << offset << std::endl;
+
+std::stringstream matrix_value;
+for (size_t y = 0; y < 3; ++y) {
+    for (size_t x = 0; x < 3; ++x) {
+        float matrix_entry = matrix[x][y];
+        matrix_value << matrix_entry << " ";
+    }
+     matrix_value << "\n ";
+}
+
+
+nlohmann::json registration_transformation;
+registration_transformation["Matrix"] = matrix_value.str();
+registration_transformation["Offset"] = offset;
+
+std::ofstream output_file{"C:/Users/SURGROB7/registration_results.json"};
+output_file << registration_transformation;
+
 return 0;
 }
