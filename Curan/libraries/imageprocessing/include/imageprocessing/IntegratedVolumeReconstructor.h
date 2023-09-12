@@ -58,6 +58,7 @@ namespace curan{
             };
             vsg::ref_ptr<vsg::floatArray3D> textureData;
             output_type::SizeType output_size;
+            
 
 	    static constexpr int INPUT_COMPONENTS = 1;
 
@@ -71,7 +72,7 @@ namespace curan{
 
         IntegratedReconstructor& set_compound(const curan::image::reconstruction::Compounding& new_compounding_strategy);
 
-        IntegratedReconstructor& set_fillstrategy(const curan::image::reconstruction::Compounding& new_compounding_strategy);
+        IntegratedReconstructor& set_fillstrategy(const curan::image::reconstruction::FillingStrategy& new_filling_strategy);
 
         IntegratedReconstructor& set_clipping(const Clipping& new_clipping);
 
@@ -82,6 +83,10 @@ namespace curan{
         vsg::ref_ptr<vsg::floatArray3D> get_texture_data();
 
         itk::Size<3U> get_output_size();
+
+		void add_kernel_descritor(curan::image::reconstruction::KernelDescriptor descriptor);
+
+		void fill_holes();
 
 	    bool update();
 

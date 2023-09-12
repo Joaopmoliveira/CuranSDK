@@ -63,7 +63,7 @@ namespace curan{
 
         StaticReconstructor& set_compound(const curan::image::reconstruction::Compounding& new_compounding_strategy);
 
-        StaticReconstructor& set_fillstrategy(const curan::image::reconstruction::Compounding& new_compounding_strategy);
+        StaticReconstructor& set_fillstrategy(const curan::image::reconstruction::FillingStrategy& new_filling_strategy);
 
         StaticReconstructor& set_clipping(const Clipping& new_clipping);
 
@@ -76,6 +76,10 @@ namespace curan{
 	    bool update();
 
 		bool multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool);
+	
+		void add_kernel_descritor(curan::image::reconstruction::KernelDescriptor descriptor);
+
+		void fill_holes();
 };
 
 

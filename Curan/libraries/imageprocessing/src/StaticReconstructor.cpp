@@ -94,11 +94,127 @@ StaticReconstructor& StaticReconstructor::set_compound(const curan::image::recon
     return *(this);
 }
 
-StaticReconstructor& StaticReconstructor::set_fillstrategy(const curan::image::reconstruction::Compounding& new_compounding_strategy){
+StaticReconstructor& StaticReconstructor::set_fillstrategy(const curan::image::reconstruction::FillingStrategy& new_filling_strategy){
 	std::lock_guard<std::mutex> g{mut};
-    compounding_strategy = new_compounding_strategy;
+    fillType = new_filling_strategy;
     return *(this);
 }
+void StaticReconstructor::add_kernel_descritor(curan::image::reconstruction::KernelDescriptor descriptor){
+	
+	if (fillType == descriptor.fillType) {
+		descriptor.Allocate();
+		kernels.push_back(descriptor);
+	}
+}
+
+void StaticReconstructor::fill_holes()
+{
+	char_pixel_type* inVolPtr = out_volume->GetBufferPointer();
+	short_pixel_type* accPtr = acummulation_buffer->GetBufferPointer();
+
+	//we need to create the output volume where the 
+	//voxels will be placed after the filling procedure is over
+	itk::ImageDuplicator<InternalImageType>::Pointer duplicator = itk::ImageDuplicator<InternalImageType>::New();
+	duplicator->SetInputImage(out_volume);
+	duplicator->Update();
+	InternalImageType::Pointer filled_volume = duplicator->GetOutput();
+	char_pixel_type* outPtr = filled_volume->GetBufferPointer();
+
+	auto outdata_ROI = out_volume->GetLargestPossibleRegion();
+	auto size_out = outdata_ROI.GetSize();
+	auto start_out = outdata_ROI.GetIndex();
+
+	uint64_t outExt[6];
+	outExt[0] = start_out[0];
+	outExt[1] = size_out[0] - 1;
+
+	outExt[2] = start_out[1];
+	outExt[3] = size_out[1] - 1;
+
+	outExt[4] = start_out[2];
+	outExt[5] = size_out[2] - 1;
+
+	// get increments for volume and for accumulation buffer
+	uint64_t byteIncVol[3] = { 0 }; //x,y,z
+
+	int idx;
+	uint64_t incr = reconstruction::INPUT_COMPONENTS;
+
+	for (idx = 0; idx < 3; ++idx)
+	{
+		byteIncVol[idx] = incr;
+		incr *= (outExt[idx * 2 + 1] - outExt[idx * 2] + 1);
+	}
+
+	// this will store the position of the pixel being looked at currently
+	uint64_t currentPos[3]; //x,y,z
+
+	uint64_t numVolumeComponents = reconstruction::INPUT_COMPONENTS;
+
+	// Set interpolation method - nearest neighbor or trilinear
+	bool (*apply)(char_pixel_type * inputData,
+		unsigned short* accData,
+		uint64_t * inputOffsets,
+		uint64_t * bounds,
+		uint64_t * wholeExtent,
+		uint64_t * thisPixel,
+		char_pixel_type & returnVal,
+		const reconstruction::KernelDescriptor * descriptor) = NULL;
+
+	switch (fillType)
+	{
+	case reconstruction::FillingStrategy::GAUSSIAN:
+		apply = &reconstruction::ApplyGaussian;
+		break;
+	case reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION:
+		apply = &reconstruction::ApplyGaussianAccumulation;
+		break;
+	case reconstruction::FillingStrategy::DISTANCE_WEIGHT_INVERSE:
+		apply = &reconstruction::ApplyDistanceWeightInverse;
+		break;
+	case reconstruction::FillingStrategy::NEAREST_NEIGHBOR:
+		apply = &reconstruction::ApplyNearestNeighbor;
+		break;
+	case reconstruction::FillingStrategy::STICK:
+		apply = &reconstruction::ApplySticks;
+		break;
+	default:
+	{
+		std::string s = "Unknown interpolation mode: " + std::to_string(fillType);
+		//utilities::cout << s;
+		return;
+	}
+	}
+	// iterate through each voxel. When the accumulation buffer is 0, fill that hole, and continue.
+	for (currentPos[2] = outExt[4]; currentPos[2] <= outExt[5]; currentPos[2]++)
+	{
+		for (currentPos[1] = outExt[2]; currentPos[1] <= outExt[3]; currentPos[1]++)
+		{
+			for (currentPos[0] = outExt[0]; currentPos[0] <= outExt[1]; currentPos[0]++)
+			{
+				// accumulator index should not depend on which individual component is being interpolated
+				int accIndex = (currentPos[0] * byteIncVol[0]) + (currentPos[1] * byteIncVol[1]) + (currentPos[2] * byteIncVol[2]);
+				if (accPtr[accIndex] == 0) // if not hit by accumulation during vtkIGSIOPasteSliceIntoVolume
+				{
+					bool result(false);
+					for (const auto kernel : kernels)
+					{
+						result = apply(inVolPtr, accPtr, byteIncVol, outExt, outExt, currentPos, outPtr[accIndex], &kernel);
+						if (result) {
+							break;
+						} // end checking interpolation success
+					}
+				} else // if hit, just use the apparent value
+				{
+					int volCompIndex = (currentPos[0] * byteIncVol[0]) + (currentPos[1] * byteIncVol[1]) + (currentPos[2] * byteIncVol[2]);
+					outPtr[volCompIndex] = inVolPtr[volCompIndex];
+				} // end accumulation check
+			} // end x loop
+		} // end y loop
+	} // end z loop
+
+	out_volume = filled_volume;
+};
 
 StaticReconstructor& StaticReconstructor::set_clipping(const Clipping& new_clipping){
 	std::lock_guard<std::mutex> g{mut};

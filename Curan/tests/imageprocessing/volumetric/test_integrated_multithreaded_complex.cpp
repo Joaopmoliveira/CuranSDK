@@ -51,13 +51,21 @@ void create_array_of_images(std::vector<imagetype::Pointer>& desired_images){
 	    image_orientation(1,0) = 0.0;
 	    image_orientation(2,0) = 0.0;
 
-	    image_orientation(0,1) = 0.0;
+/* 	    image_orientation(0,1) = 0.0;
 	    image_orientation(1,1) = cos(1.57079632679*z/(width-1));
 	    image_orientation(2,1) = sin(1.57079632679*z/(width-1));
 
 	    image_orientation(0,2) = 0.0;
 	    image_orientation(1,2) = -sin(1.57079632679*z/(width-1));
-	    image_orientation(2,2) = cos(1.57079632679*z/(width-1));
+	    image_orientation(2,2) = cos(1.57079632679*z/(width-1)); */
+
+        image_orientation(0,1) = 0.0;
+	    image_orientation(1,1) = 1;
+	    image_orientation(2,1) = 0;
+
+	    image_orientation(0,2) = 0.0;
+	    image_orientation(1,2) = 0;
+	    image_orientation(2,2) = 1;
 
         image->SetRegions(region_1);
         image->SetDirection(image_orientation);
@@ -65,17 +73,119 @@ void create_array_of_images(std::vector<imagetype::Pointer>& desired_images){
         image->SetSpacing(spacing);
         image->Allocate();
 
-        using IteratorType = itk::ImageRegionIteratorWithIndex<imagetype>;
+        image_origin[0] = 0.0;
+	    image_origin[1] = 0.0;
+	    image_origin[2] = 1.0/(width-1)*z;
+
+
+      using IteratorType = itk::ImageRegionIteratorWithIndex<imagetype>;
         IteratorType outputIt(image, image->GetRequestedRegion());
+        // //Sphere
+        // for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+        //     imagetype::IndexType idx = outputIt.GetIndex();
+        //     imagetype::PointType world_pos;
+        //     image->TransformIndexToPhysicalPoint(idx, world_pos);
+
+        //     // Calculate distance from center
+        //     imagetype::PointType center;
+        //     center[0] = width * final_spacing[0] / 2.0;
+        //     center[1] = height * final_spacing[1] / 2.0;
+        //     center[2] = width * final_spacing[2] / 2.0;
+        //     double distance = std::sqrt(
+        //         (world_pos[0] - center[0]) * (world_pos[0] - center[0]) +
+        //         (world_pos[1] - center[1]) * (world_pos[1] - center[1]) +
+        //         (world_pos[2] - center[2]) * (world_pos[2] - center[2]));
+
+        //     // Use the distance to determine voxel intensity
+        //     double max_radius = width * final_spacing[0] / 4.0;
+        //     unsigned char val;
+        //     if (distance > max_radius){
+        //         val = 0.0;
+        //     }else {
+        //         val = 255.0 * (1.0 - distance / max_radius);
+        //         }
+        //     outputIt.Set(val);
+
+
+        // //Cone
+        // double cone_height = static_cast<double>(height); 
+       
+        // for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+        //     imagetype::IndexType idx = outputIt.GetIndex();
+        //     double y = static_cast<double>(idx[1]);
+        //     double x = static_cast<double>(idx[0]);
+            
+        
+        //     // Calculate distance from the center and adjust intensity based on cone
+        //     double distance_from_center = std::sqrt((y - height / 2.0) * (y - height / 2.0) +
+        //                                             (z - width / 2.0) * (z - width / 2.0));
+        //     double cone_radius = (width - 1-x) * ((width-1) / (4.0 * cone_height));
+        //     unsigned char val;
+        //     if (distance_from_center <= cone_radius && 20<x) {
+        //         // Intensity increases as you move towards the apex of the cone
+        //         val = 255.0 * (1.0 - distance_from_center / cone_radius);
+        //     } else {
+        //         val = 0.0;
+        //     }
+        //     outputIt.Set(val);
+
+        //Cylinder
+        // for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+        //     imagetype::IndexType idx = outputIt.GetIndex();
+        //     imagetype::PointType world_pos;
+        //     image->TransformIndexToPhysicalPoint(idx, world_pos);
+
+        //     // Calculate distance from center
+        //     imagetype::PointType center;
+        //     center[0] = width * final_spacing[0] / 2.0;
+        //     center[1] = height * final_spacing[1] / 2.0;
+        //     center[2] = width * final_spacing[2] / 2.0;
+        //     double distance = std::sqrt(
+        //         (world_pos[1] - center[1]) * (world_pos[1] - center[1]) +
+        //         (world_pos[2] - center[2]) * (world_pos[2] - center[2]));
+
+        //     // Use the distance to determine voxel intensity
+        //     double max_radius = width * final_spacing[0] / 4.0;
+        //     unsigned char val;
+        //     if (distance > max_radius ){
+        //         val = 0.0;
+        //     }else {
+        //         val = 255.0 * (1.0 - distance / max_radius);
+        //         }
+        //     outputIt.Set(val);
+
+        //Cone
+        double cone_height = static_cast<double>(height); 
+       
         for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
             imagetype::IndexType idx = outputIt.GetIndex();
-            imagetype::PointType world_pos;
-            image->TransformIndexToPhysicalPoint(idx,world_pos);
-            constexpr float frequency = 2.0;
-            unsigned char val = 255.0*(sin(frequency*1.57079632679*world_pos[0])+1)*0.5*(cos(frequency*1.57079632679*world_pos[1])+1)*0.5*(sin(frequency*1.57079632679*world_pos[2])+1)*0.5;
-            val = 255.0;
+            double y = static_cast<double>(idx[1]);
+            double x = static_cast<double>(idx[0]);
+            
+
+            // Calculate distance from the center and adjust intensity based on cone
+            double distance_from_center = std::sqrt((y - height / 2.0) * (y - height / 2.0) +
+                                                    (z - width / 2.0) * (z - width / 2.0));
+            double cone_radius;                                       
+            if (x < width/2) {
+            // Linearly increase the sphere radius up to the midpoint of z-axis
+            cone_radius = x;
+            } else {
+            // Linearly decrease the sphere radius after the midpoint of z-axis
+            cone_radius = (width - x) ;
+             }
+            
+            unsigned char val;
+            if (distance_from_center <= cone_radius) {
+                // Intensity increases as you move towards the apex of the cone
+                val = 255.0 * (1.0 - distance_from_center / cone_radius);
+            } else {
+                val = 0.0;
+            }
             outputIt.Set(val);
+
         }
+        
         desired_images.push_back(image);
     }
 }
@@ -97,7 +207,7 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
         integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
             .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
         window << integrated_volume;
-        
+        auto reconstruction_start_time = std::chrono::steady_clock::now();
         auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(10);
         std::printf("started volumetric reconstruction\n");
         size_t counter = 0;
@@ -116,12 +226,42 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
                     return;
 	        }
 
+            auto reconstruction_end_time = std::chrono::steady_clock::now();
+/*             std::cout << "Started volumetric filling: \n";
+            integrated_volume.set_fillstrategy(curan::image::reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION);
+            curan::image::reconstruction::KernelDescriptor descript;
+            descript.fillType = curan::image::reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION;
+	        integrated_volume.add_kernel_descritor(descript);
+            integrated_volume.fill_holes(); */
+        
+            // Calculate and print the reconstruction time
+            auto reconstruction_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            reconstruction_end_time - reconstruction_start_time);
 
+            std::cout << "Reconstruction time: " << reconstruction_duration.count() << " milliseconds" << std::endl;
 
             size_t width = image_array[0]->GetLargestPossibleRegion().GetSize()[0];
             size_t height = image_array[0]->GetLargestPossibleRegion().GetSize()[1];
             size_t depth = image_array.size(); // Depth is the number of images in the array
+            std::stringstream texture_data_stream;
+            nlohmann::json volume_file;
+            volume_file["width"] = width;
+            volume_file["heigth"] = height;
+            volume_file["depth"] = depth;
+            for (size_t z = 0; z < depth; ++z) {
+                for (size_t y = 0; y < height; ++y) {
+                    for (size_t x = 0; x < width; ++x) {
+                        float pixel_value = integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->at(x, y, z);
+                        texture_data_stream << pixel_value << " ";
+                    }
+                }
+            }
 
+            // Add the texture data array to the JSON object
+            volume_file["data"] = texture_data_stream.str();
+            std::ofstream output_file{"test_run_5.json"};
+            output_file << volume_file; 
+            std::printf("Just printed the file\n");
 
            
             using PixelType = float;

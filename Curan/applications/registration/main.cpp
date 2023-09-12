@@ -104,9 +104,9 @@ public:
         moving_pointer_to_volume->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(vsg::radians(-pos[0]),1.0,0.0,0.0)*vsg::rotate(vsg::radians(-pos[1]),0.0,1.0,0.0)*vsg::rotate(vsg::radians(-pos[2]),0.0,0.0,1.0));
       }
   
-      std::cout << optimizer->GetCurrentIteration() << "   ";
+      /* std::cout << optimizer->GetCurrentIteration() << "   ";
       std::cout << optimizer->GetValue() << "   ";
-      std::cout << optimizer->GetCurrentPosition() << std::endl;
+      std::cout << optimizer->GetCurrentPosition() << std::endl; */
       std::this_thread::sleep_for(std::chrono::milliseconds(0));
 
     } else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
@@ -152,6 +152,7 @@ int main(int argc, char** argv) {
   //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move.mha"};
   //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
   std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"};
+  //std::string dirName2{"C:/Users/SURGROB7/precious_phantom_transformed.mha"};
   movingImageReader->SetFileName(dirName2);
 
   try{
@@ -201,7 +202,7 @@ translation[0] = 0.0;
 translation[1] = 0.0;
 translation[2] = 0.0;
 //initialTransform->SetRotation(rotation);
-initialTransform->SetTranslation(translation);
+//initialTransform->SetTranslation(translation);
 
 registration->SetInitialTransform(initialTransform);
 
@@ -346,8 +347,10 @@ finalTransform->SetParameters(finalParameters);
 
 TransformType::MatrixType matrix = finalTransform->GetMatrix();
 TransformType::OffsetType offset = finalTransform->GetOffset();
+//TransformType::TranslationType translation = finalTransform->GetTranslation();
 std::cout << std::endl << "Matrix = " << std::endl << matrix << std::endl;
 std::cout << "Offset = " << std::endl << offset << std::endl;
+//std::cout << "Translation = " << std::endl << translation << std::endl;
 
 std::stringstream matrix_value;
 for (size_t y = 0; y < 3; ++y) {
@@ -365,6 +368,49 @@ registration_transformation["Offset"] = offset;
 
 std::ofstream output_file{"C:/Users/SURGROB7/registration_results.json"};
 output_file << registration_transformation;
+
+
+
+
+
+// SAVE RESULTS
+  using ResampleFilterType =
+    itk::ResampleImageFilter<ImageType, ImageType>;
+  auto resampler = ResampleFilterType::New();
+
+  ImageType::Pointer fixedImage = fixedImageReader->GetOutput();
+
+  resampler->SetTransform(finalTransform);
+  resampler->SetInput(movingImageReader->GetOutput());
+  resampler->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
+  resampler->SetOutputOrigin(fixedImage->GetOrigin());
+  resampler->SetOutputSpacing(fixedImage->GetSpacing());
+  resampler->SetOutputDirection(fixedImage->GetDirection());
+  resampler->SetDefaultPixelValue(1);
+
+  using OutputPixelType = unsigned char;
+  using OutputImageType = itk::Image<PixelType, Dimension>;
+  using CastFilterType =
+    itk::CastImageFilter<ImageType, OutputImageType>;
+  using RescaleFilterType =
+    itk::RescaleIntensityImageFilter<ImageType, OutputImageType>;
+  using WriterType = itk::ImageFileWriter<OutputImageType>;
+
+  auto writer = WriterType::New();
+  auto caster = CastFilterType::New();
+  auto rescaleFilter = RescaleFilterType::New();
+
+  std::string Output1{"outputImagefile.mha"};
+  writer->SetFileName(Output1);
+
+  caster->SetInput(resampler->GetOutput());
+  rescaleFilter->SetInput(resampler->GetOutput());
+  writer->SetInput(rescaleFilter->GetOutput());
+
+  rescaleFilter->SetOutputMinimum(0);
+  rescaleFilter->SetOutputMaximum(255);
+  
+  writer->Update();
 
 return 0;
 }

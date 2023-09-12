@@ -44,6 +44,7 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include "utils/Reader.h"
 #include <itkImage.h>
 #include "itkImageFileWriter.h"
+#include "itkImportImageFilter.h"
 
 // Variable with the default ID of the robotic system
 constexpr size_t portID = 30200;
@@ -77,7 +78,7 @@ try{
    std::cout << timestamp << std::endl;
    std::stringstream matrix_strm;
    matrix_strm << homogenenous_transformation;
-   auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm);
+   auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm,',');
    std::cout << "with the homogeneous matrix :\n" <<  calibration_matrix << std::endl;
    for(size_t row = 0 ; row < calibration_matrix.rows(); ++row)
       for(size_t col = 0; col < calibration_matrix.cols(); ++col)
@@ -95,8 +96,8 @@ try{
    info.is_debug = false;
    info.screen_number = 0;
    info.title = "myviewer";
-   curan::renderable::Window::WindowSize size{2000, 1200};
-   info.window_size = size;
+   curan::renderable::Window::WindowSize size_window{2000, 1200};
+   info.window_size = size_window;
    curan::renderable::Window window{info};
    robot_state->window_pointer = &window;
 
@@ -109,7 +110,7 @@ try{
    robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
    window << robot_state->robot;
 
-try{
+/* try{ */
    // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
    nlohmann::json specified_box;
 	std::ifstream in("C:/Users/SURGROB7/specified_box.json");
@@ -120,21 +121,21 @@ try{
    std::stringstream spacing_box_info;
 	std::string spacing_box = specified_box["spacing"];
    spacing_box_info << spacing_box;
-   Eigen::MatrixXd spacing = curan::utilities::convert_matrix(spacing_box_info);
+   Eigen::MatrixXd spacing = curan::utilities::convert_matrix(spacing_box_info,',');
    std::string origin_box = specified_box["origin"];
    std::stringstream origin_box_info;
    origin_box_info << origin_box;
-   Eigen::MatrixXd origin = curan::utilities::convert_matrix(origin_box_info);
+   Eigen::MatrixXd origin = curan::utilities::convert_matrix(origin_box_info,',');
    std::string size_box = specified_box["size"];
    std::stringstream size_box_info;
    size_box_info << size_box;
 
-   Eigen::MatrixXd size = curan::utilities::convert_matrix(size_box_info);
+   Eigen::MatrixXd size = curan::utilities::convert_matrix(size_box_info,',');
    std::string direction_box = specified_box["direction"];
    std::stringstream direction_box_info;
    direction_box_info << direction_box;
 
-   Eigen::MatrixXd direction = curan::utilities::convert_matrix(direction_box_info);
+   Eigen::MatrixXd direction = curan::utilities::convert_matrix(direction_box_info,',');
 
    if(spacing.rows()!=1 || spacing.cols()!=3 ) 
       throw std::runtime_error("The supplied spacing has an incorrect dimension (expected : [1x3])");
@@ -159,50 +160,15 @@ try{
    
    robot_state->integrated_volume =  curan::image::IntegratedReconstructor::make(recon_info);
    robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
-      .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
+      .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
    
-   itk::Size<3U>  output_size;
-   output_size = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_output_size();
-   size_t width =   output_size[0] ;
-   size_t height =   output_size[1] ;
-   size_t depth =   output_size[2] ;
    
-   using PixelType = float;
-   using ImageType = itk::Image<PixelType, 3>;
-   ImageType::Pointer itkVolume = ImageType::New();
-
-   // Set the size, spacing, and origin of the ITK Image
-
-
-   itkVolume->SetRegions(output_size);
-   itkVolume->SetSpacing(vol_spacing.data());
-   itkVolume->SetOrigin(vol_origin.data());
-
-   itkVolume->Allocate();
-
-   // Copy the volumetric data from integrated_volume to itkVolume
-   for (long long z = 0; z < depth; ++z) {
-         for (long long y = 0; y < height; ++y) {
-            for (long long x = 0; x < width; ++x) {
-               float pixel_value = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->at(x, y, z);
-               itkVolume->SetPixel({{x, y, z}}, pixel_value);
-            }
-         }
-   }
-
-   // Save the ITK Image as an MHA file
-   using WriterType = itk::ImageFileWriter<ImageType>;
-   WriterType::Pointer writer = WriterType::New();
-   writer->SetFileName("C:/Users/SURGROB7/reconstruction_results.mha");
-   writer->SetInput(itkVolume);
-   writer->Update();
-
    window << robot_state->integrated_volume;
 
-} catch(...){
+/* } catch(...){
        std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
       return 1;
-}
+} */
 
    auto communication_callable = [robot_state](){
       communication(robot_state);
@@ -213,6 +179,50 @@ try{
    window.run();
    robot_state->kill_yourself();
    communication_thread.join();
+
+
+
+   itk::Size<3U>  output_size;
+   output_size = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_output_size();
+   size_t width =   output_size[0] ;
+   size_t height =   output_size[1] ;
+   size_t depth =   output_size[2] ;
+   
+   using PixelType = float;
+   using ImageType = itk::Image<PixelType, 3>;
+   ImageType::Pointer itkVolume = ImageType::New();
+
+   using ImportFilterType = itk::ImportImageFilter<PixelType, 3>;
+   auto importFilter = ImportFilterType::New();
+   ImportFilterType::IndexType start;
+   start.Fill(0);
+   
+   ImportFilterType::RegionType region;
+   region.SetIndex(start);
+   region.SetSize(output_size);
+   
+   importFilter->SetRegion(region);
+   
+   const itk::SpacePrecisionType output_origin[3] = {origin(0,0)*1000,origin(0,1)*1000,origin(0,2)*1000};
+   importFilter->SetOrigin(output_origin);
+
+   const itk::SpacePrecisionType output_spacing[3] = {spacing(0,0)*1000,spacing(0,1)*1000,spacing(0,2)*1000};
+   importFilter->SetSpacing(output_spacing);
+   const unsigned int numberOfPixels = output_size[0] * output_size[1] * output_size[2];
+
+   const bool importImageFilterWillOwnTheBuffer = false;
+   float * my_beatiful_pointer = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->data();
+   importFilter->SetImportPointer(my_beatiful_pointer, numberOfPixels, importImageFilterWillOwnTheBuffer);
+
+
+   // Save the ITK Image as an MHA file
+   using WriterType = itk::ImageFileWriter<ImageType>;
+   WriterType::Pointer writer = WriterType::New();
+   writer->SetFileName("C:/Users/SURGROB7/reconstruction_results.mha");
+   writer->SetInput(importFilter->GetOutput());
+   writer->Update();
+
+
    std::cout << "terminated the program" << std::endl;
    return 0;
 }

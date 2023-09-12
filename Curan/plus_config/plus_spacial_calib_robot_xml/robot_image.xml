@@ -33,7 +33,7 @@
       Id="VideoDevice" 
       Type="ICCapturing"  
 	  AcquisitionRate="25"
-	  LocalTimeOffsetSec="-0.1219"
+	  LocalTimeOffsetSec="-0.085"
       DeviceName="DFG/USB2pro"
       VideoNorm="PAL_B"
       VideoFormat="Y800"
