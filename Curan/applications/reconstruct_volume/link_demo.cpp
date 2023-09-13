@@ -34,6 +34,16 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
         infotexture.builder = vsg::Builder::create();
         state->dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
         (*state->window_pointer) << *state->dynamic_texture;
+
+        int clip_origin_x = (int)std::floor(x/2.0);
+        int clip_origin_y = (int)std::floor(y/2.0);
+
+        curan::image::Clipping desired_clip;
+        desired_clip.clipRectangleOrigin[0] = clip_origin_x;
+        desired_clip.clipRectangleOrigin[1] = clip_origin_y;
+        desired_clip.clipRectangleSize[0] = x-clip_origin_x;
+        desired_clip.clipRectangleSize[1] = y-clip_origin_y;
+        /* state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_clipping(desired_clip); */
     }
     auto updateBaseTexture = [message_body](vsg::vec4Array2D& image)
     {

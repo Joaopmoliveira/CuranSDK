@@ -62,6 +62,10 @@ void create_array_of_linear_images_in_x_direction(std::vector<imagetype::Pointer
         image->SetDirection(image_orientation);
         image->SetOrigin(image_origin);
         image->SetSpacing(spacing);
+
+        
+
+
         image->Allocate();
 
         image_origin[0] = 0.0;
@@ -87,7 +91,29 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
 	    vol_direction[1] = {0.0,1.0,0.0};
 	    vol_direction[2] = {0.0,0.0,1.0};
 	    curan::image::IntegratedReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
+
+        /* int clip_origin_x = (int)std::floor(0*width/2.0);
+        int clip_origin_y = (int)std::floor(0*height/2.0); */
+
+        int clip_origin_x = 5;
+        int clip_origin_y = 5;
+
+        curan::image::Clipping desired_clip;
+        desired_clip.clipRectangleOrigin[0] = 0;
+        desired_clip.clipRectangleOrigin[1] = 0;
+        desired_clip.clipRectangleSize[0] = 498;
+        desired_clip.clipRectangleSize[1] = 499;
+
+/*         desired_clip.clipRectangleOrigin[0] = 0;
+        desired_clip.clipRectangleOrigin[1] = 0;
+        desired_clip.clipRectangleSize[0] = width;
+        desired_clip.clipRectangleSize[1] = height-1; */
+
+
         auto integrated_volume =  curan::image::IntegratedReconstructor::make(recon_info);
+
+        integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_clipping(desired_clip);
+
         integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
             .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
         window << integrated_volume;
@@ -103,7 +129,7 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
 		    integrated_volume->cast<curan::image::IntegratedReconstructor>()->multithreaded_update(reconstruction_thread_pool);
             std::chrono::steady_clock::time_point elapsed_for_reconstruction = std::chrono::steady_clock::now();
             auto val_elapsed_for_reconstruction = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_reconstruction - begin).count();
-            std::printf("added image (volume reconstruction %d)\n",val_elapsed_for_reconstruction);
+            //std::printf("added image (volume reconstruction %d)\n",val_elapsed_for_reconstruction);
             ++counter;
             if(stopping_condition)
                 return;
@@ -137,7 +163,17 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
 	    my_itk_image->SetSpacing(output_spacing);
 
         itk::Image<unsigned char, 3>::DirectionType output_directorion;
-        //output_directorion = ;
+        output_directorion[0][0] = 1.0;
+        output_directorion[1][0] = 0.0;
+        output_directorion[2][0] = 0.0;
+
+        output_directorion[0][1] = 0.0;
+        output_directorion[1][1] = 1.0;
+        output_directorion[2][1] = 0.0;
+
+        output_directorion[0][2] = 0.0;
+        output_directorion[1][2] = 0.0;
+        output_directorion[2][2] = 1.0;
     	my_itk_image->SetDirection(output_directorion);
 	    my_itk_image->Allocate(true);
 

@@ -65,7 +65,7 @@ Window::Window(Info& info) : number_of_images{5} {
     auto ambientLight = vsg::AmbientLight::create();
     ambientLight->name = "ambient";
     ambientLight->color.set(.5, .5, .5);
-    ambientLight->intensity = 0.01f;
+    ambientLight->intensity = 0.1f;
    
     auto directionalLight = vsg::DirectionalLight::create();
     directionalLight->name = "directional";

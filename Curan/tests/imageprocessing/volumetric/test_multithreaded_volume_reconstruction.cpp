@@ -427,9 +427,12 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
             ++counter;
 	    }
         std::cout << "Started volumetric filling: \n";
-        reconstructor.set_fillstrategy(curan::image::reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION);
+        reconstructor.set_fillstrategy(curan::image::reconstruction::FillingStrategy::GAUSSIAN);
         curan::image::reconstruction::KernelDescriptor descript;
-        descript.fillType = curan::image::reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION;
+        descript.fillType = curan::image::reconstruction::FillingStrategy::GAUSSIAN;
+        descript.size = 10;
+	    descript.stdev = 1;
+	    descript.minRatio = 0.1;
 	    reconstructor.add_kernel_descritor(descript);
         reconstructor.fill_holes();
         

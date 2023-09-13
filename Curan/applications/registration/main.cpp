@@ -82,6 +82,11 @@ public:
   using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
   using OptimizerPointer = const OptimizerType *;
   curan::renderable::Volume* moving_pointer_to_volume = nullptr;
+  itk::SmartPointer<RegistrationType> registration;
+
+  void set_registration(itk::SmartPointer<RegistrationType> in_registration){
+    registration = in_registration;
+  }
 
   void set_pointer(curan::renderable::Volume* in_moving_pointer_to_volume){
     moving_pointer_to_volume = in_moving_pointer_to_volume;
@@ -97,11 +102,55 @@ public:
     if (itk::StartEvent().CheckEvent(&event))
     {
       std::cout << "Iteration     Value          Position" << std::endl;
+
     } else if (itk::IterationEvent().CheckEvent(&event))
     {
-      auto pos = optimizer->GetCurrentPosition();
-      if(moving_pointer_to_volume!=nullptr){
-        moving_pointer_to_volume->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(vsg::radians(-pos[0]),1.0,0.0,0.0)*vsg::rotate(vsg::radians(-pos[1]),0.0,1.0,0.0)*vsg::rotate(vsg::radians(-pos[2]),0.0,0.0,1.0));
+      /* auto pos = optimizer->GetCurrentPosition();
+    
+      auto finalTransform = TransformType::New();
+      finalTransform->SetParameters(pos);
+      auto fixed_params = registration->GetOutput()->Get()->GetFixedParameters();
+      finalTransform->SetFixedParameters(fixed_params);
+
+      std::cout << "\nFixed params : \n" << fixed_params << "\n";
+
+      TransformType::MatrixType matrix = finalTransform->GetMatrix();
+      TransformType::OffsetType offset = finalTransform->GetOffset();
+      auto current_transform = vsg::translate(0.0,0.0,0.0);
+
+      current_transform(3,0) = offset[0]/1000.0;
+      current_transform(3,1) = offset[1]/1000.0;
+      current_transform(3,2) = offset[2]/1000.0;
+
+      for(size_t row = 0; row < 3; ++row )
+        for(size_t col = 0; col < 3; ++col)
+          current_transform(col,row) = matrix(row,col); */
+
+      const TransformType::ParametersType finalParameters = registration->GetOutput()->Get()->GetParameters();
+      auto finalTransform = TransformType::New();
+
+      finalTransform->SetFixedParameters(registration->GetOutput()->Get()->GetFixedParameters());
+      finalTransform->SetParameters(finalParameters);
+
+      TransformType::MatrixType matrix = finalTransform->GetMatrix();
+      TransformType::OffsetType offset = finalTransform->GetOffset();
+      auto current_transform = vsg::translate(0.0,0.0,0.0);
+
+      /* current_transform(3,0) = offset[0]/1000.0;
+      current_transform(3,1) = offset[1]/1000.0;
+      current_transform(3,2) = offset[2]/1000.0; */
+
+      current_transform(3,0) = finalParameters[3]/1000.0;
+      current_transform(3,1) = finalParameters[4]/1000.0;
+      current_transform(3,2) = finalParameters[5]/1000.0;
+
+      for(size_t row = 0; row < 3; ++row )
+        for(size_t col = 0; col < 3; ++col)
+          current_transform(row,col) = matrix(row,col); 
+        
+      if(moving_pointer_to_volume!=nullptr) {
+        moving_pointer_to_volume->update_transform(current_transform);
+        std::cout << "current transform: \n" << current_transform << std::endl;
       }
   
       /* std::cout << optimizer->GetCurrentIteration() << "   ";
@@ -145,14 +194,15 @@ int main(int argc, char** argv) {
 
   //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
   //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/ct_fixed.mha"};
-  std::string dirName{"C:/Users/SURGROB7/reconstruction_results.mha"};
+  //std::string dirName{"C:/Users/SURGROB7/reconstruction_results.mha"};
+  std::string dirName{"C:/Users/SURGROB7/Desktop/Manuel_Carvalho/reconstruction_results1.mha"};
   fixedImageReader->SetFileName(dirName);
 
   //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
   //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move.mha"};
   //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
-  std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"};
-  //std::string dirName2{"C:/Users/SURGROB7/precious_phantom_transformed.mha"};
+  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"};
+  std::string dirName2{"C:/Users/SURGROB7/Desktop/Manuel_Carvalho/precious_phantom_transformed.mha"};
   movingImageReader->SetFileName(dirName2);
 
   try{
@@ -281,6 +331,19 @@ try{
     auto volume_fixed = curan::renderable::Volume::make(volumeinfo);
     window << volume_fixed;
 
+    auto direction = pointer2fixedimage->GetDirection();
+    auto origin = pointer2fixedimage->GetOrigin();
+    auto fixed_homogenenous_transformation = vsg::translate(0.0,0.0,0.0);
+    fixed_homogenenous_transformation(3,0) = origin[0]/1000.0;
+    fixed_homogenenous_transformation(3,1) = origin[1]/1000.0;
+    fixed_homogenenous_transformation(3,2) = origin[2]/1000.0;
+
+    for(size_t row = 0; row < 3; ++row)
+      for(size_t col = 0; col < 3; ++col)
+        fixed_homogenenous_transformation(col,row) = direction(row,col);
+
+    volume_fixed->cast<curan::renderable::Volume>()->update_transform(fixed_homogenenous_transformation);
+
     auto casted_volume_fixed = volume_fixed->cast<curan::renderable::Volume>();
     auto updater = [pointer2fixedimage](vsg::floatArray3D& image){
         updateBaseTexture3D(image, pointer2fixedimage);
@@ -311,6 +374,8 @@ try{
     using CommanddType2 = CommandIterationUpdate;
     auto observer = CommanddType2::New();
     observer->set_pointer(casted_volume_moving);
+    observer->set_registration(registration);
+    std::cout << std::endl << "transform_fixed_parameters before = " << std::endl << registration->GetOutput()->Get()->GetFixedParameters() << std::endl;
     optimizer->AddObserver(itk::StartEvent(), observer);
     optimizer->AddObserver(itk::IterationEvent(), observer);
     optimizer->AddObserver(itk::EndEvent(), observer);
@@ -337,12 +402,10 @@ try{
     return 1;
 }
 
-const TransformType::ParametersType finalParameters =
-  registration->GetOutput()->Get()->GetParameters();
+const TransformType::ParametersType finalParameters = registration->GetOutput()->Get()->GetParameters();
 auto finalTransform = TransformType::New();
 
-finalTransform->SetFixedParameters(
-  registration->GetOutput()->Get()->GetFixedParameters());
+finalTransform->SetFixedParameters(registration->GetOutput()->Get()->GetFixedParameters());
 finalTransform->SetParameters(finalParameters);
 
 TransformType::MatrixType matrix = finalTransform->GetMatrix();
@@ -370,8 +433,19 @@ std::ofstream output_file{"C:/Users/SURGROB7/registration_results.json"};
 output_file << registration_transformation;
 
 
+//APAGAR
 
+std::cout << std::endl << "NUMBER PARAMETERS = " << std::endl << finalTransform->GetNumberOfParameters() << std::endl;
+std::cout << std::endl << "Matrix = " << std::endl << finalTransform->GetMatrix() << std::endl;
+std::cout << std::endl << "CENTER = " << std::endl << finalTransform->GetCenter() << std::endl;
+std::cout << std::endl << "OFFSET = " << std::endl << finalTransform->GetOffset() << std::endl;
+std::cout << std::endl << "transform_parameters = " << std::endl << finalTransform->GetParameters() << std::endl;
+std::cout << std::endl << "transform_fixed_parameters = " << std::endl << finalTransform->GetFixedParameters() << std::endl;
 
+std::cout << "final translaction: " << finalTransform->GetTranslation() << std::endl;
+  std::cout << "final versor: " << finalTransform->GetVersor() << std::endl;
+
+std::cout << std::endl << "optimizer parameters = " << std::endl << optimizer->GetCurrentPosition() << std::endl;
 
 // SAVE RESULTS
   using ResampleFilterType =

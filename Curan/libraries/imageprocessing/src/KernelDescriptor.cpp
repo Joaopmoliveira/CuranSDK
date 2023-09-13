@@ -79,7 +79,7 @@ void KernelDescriptor::Allocate(){
 	case reconstruction::FillingStrategy::DISTANCE_WEIGHT_INVERSE:
 	{
 		if (kernel != nullptr)
-			//delete[] kernel;
+			delete[] kernel;
 		kernel = new float[size * size * size];
 
 		float range = (size - 1) / 2.;
@@ -110,7 +110,7 @@ void KernelDescriptor::Allocate(){
 	case reconstruction::FillingStrategy::GAUSSIAN:
 	{
 		if (kernel != nullptr)
-			//delete[] kernel;
+			delete[] kernel;
 		kernel = new float[size * size * size];
 
 		float range = (size - 1) / 2.;
@@ -145,7 +145,7 @@ void KernelDescriptor::Allocate(){
 	case reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION:
 	{
 		if (kernel != nullptr)
-			//delete[] kernel;
+			delete[] kernel;
 		kernel = new float[size * size * size];
 
 		float range = (size - 1) / 2.;

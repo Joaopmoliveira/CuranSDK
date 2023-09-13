@@ -162,7 +162,6 @@ try{
    robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
       .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
    
-   
    window << robot_state->integrated_volume;
 
 /* } catch(...){
@@ -187,6 +186,8 @@ try{
    size_t width =   output_size[0] ;
    size_t height =   output_size[1] ;
    size_t depth =   output_size[2] ;
+
+   
    
    using PixelType = float;
    using ImageType = itk::Image<PixelType, 3>;
@@ -210,10 +211,19 @@ try{
    importFilter->SetSpacing(output_spacing);
    const unsigned int numberOfPixels = output_size[0] * output_size[1] * output_size[2];
 
+   std::cout << "\norientation before: " << direction << std::endl;
+   
+   itk::Matrix<double> orientation;
+   for(size_t row = 0; row < 3; ++row)
+      for(size_t col = 0; col < 3; ++col)
+         orientation(row,col) = direction(row,col);
+   importFilter->SetDirection(orientation);
+
+   std::cout << "\norientation after: " << orientation << std::endl;
+
    const bool importImageFilterWillOwnTheBuffer = false;
    float * my_beatiful_pointer = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->data();
    importFilter->SetImportPointer(my_beatiful_pointer, numberOfPixels, importImageFilterWillOwnTheBuffer);
-
 
    // Save the ITK Image as an MHA file
    using WriterType = itk::ImageFileWriter<ImageType>;
