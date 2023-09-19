@@ -65,3 +65,15 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_clipping_reconstruction test_clipped_region.cpp)
+
+target_compile_definitions(test_clipping_reconstruction PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_clipping_reconstruction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_clipping_reconstruction
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)

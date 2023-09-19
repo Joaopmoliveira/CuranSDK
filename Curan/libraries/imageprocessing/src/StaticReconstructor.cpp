@@ -302,26 +302,24 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 		int inputExtent[6] = { 0, 0, 0, 0, 0, 0};
 		double clipRectangleOrigin [2]; // array size 2
 		double clipRectangleSize [2]; // array size 2
+
+		auto local_size = img->GetLargestPossibleRegion().GetSize();
+		auto local_origin = img->GetOrigin();
+
 		if(clipping){
 			clipRectangleOrigin[0] = (*clipping).clipRectangleOrigin[0];
 			clipRectangleOrigin[1] = (*clipping).clipRectangleOrigin[1];
-
 			clipRectangleSize[0] = (*clipping).clipRectangleSize[0];
 			clipRectangleSize[1] = (*clipping).clipRectangleSize[1];
-
-			inputExtent[1] = clipRectangleSize[0];
-			inputExtent[3] = clipRectangleSize[1];
 		} else {
-			auto local_size = img->GetLargestPossibleRegion().GetSize();
-			auto local_origin = img->GetOrigin();
 			clipRectangleOrigin[0] = local_origin[0];
 			clipRectangleOrigin[1] = local_origin[1];
 			clipRectangleSize[0] = local_size.GetSize()[0]-1;
 			clipRectangleSize[1] = local_size.GetSize()[1]-1;
-
-			inputExtent[1] = clipRectangleSize[0];
-			inputExtent[3] = clipRectangleSize[1];
 		}	
+
+		inputExtent[1] = local_size.GetSize()[0]-1;
+		inputExtent[3] = local_size.GetSize()[1]-1;
 
 		paste_slice_info.clipRectangleOrigin = clipRectangleOrigin;
 	    paste_slice_info.clipRectangleSize = clipRectangleSize;

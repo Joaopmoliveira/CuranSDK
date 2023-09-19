@@ -371,6 +371,7 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 	output_pixel_type* outPtr = insertionParams->outPtr;
 	unsigned short* accPtr = insertionParams->accPtr;
 	input_pixel_type* inPtr = insertionParams->inPtr;
+	size_t counter_inPtr = 0; //TODO : erase this;
 	int* inExt = insertionParams->inExt;
 	unsigned int* accOverflowCount = insertionParams->accOverflowCount;
 
@@ -464,17 +465,20 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 	inPtr += inExt[0]+inExt[2]*insertionParams->in_size[0]+inExt[4]*insertionParams->in_size[0]*insertionParams->in_size[1];
 	switch(interpolationMode){
 	case LINEAR_INTERPOLATION:
-	for (int idZ = inExt[4]; idZ <= inExt[5]; idZ++, inPtr += inIncZ)
+	for (int idZ = inExt[4]; idZ <= inExt[5]; idZ++, inPtr += inIncZ, counter_inPtr +=inIncZ )
 	{
-		for (int idY = inExt[2]; idY <= inExt[3]; idY++, inPtr += inIncY)
+		for (int idY = inExt[2]; idY <= inExt[3]; idY++, inPtr += inIncY, counter_inPtr +=inIncY)
 		{
-			for (int idX = inExt[0]; idX <= inExt[1]; idX++, inPtr += numscalars)
+			for (int idX = inExt[0]; idX <= inExt[1]; idX++, inPtr += numscalars, counter_inPtr +=numscalars)
 			{
 				// check if we are within the current clip extent
 				if (idX < clipExt[0] || idX > clipExt[1] || idY < clipExt[2] || idY > clipExt[3])
 				{
 					continue;
 				}
+
+				std::printf("pos: (%d %d %d) counter : %d\n",idX,idY,idZ,counter_inPtr);
+
 				//scale the input from pixels to mm 
 				inPoint[0] = idX * inSpacing[0];
 				inPoint[1] = idY * inSpacing[1];

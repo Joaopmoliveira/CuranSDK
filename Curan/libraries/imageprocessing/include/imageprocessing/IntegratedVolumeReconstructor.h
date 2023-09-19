@@ -58,6 +58,7 @@ namespace curan{
             };
             vsg::ref_ptr<vsg::floatArray3D> textureData;
             output_type::SizeType output_size;
+            itk::Image<curan::image::char_pixel_type, 3U> *  volume_temp;
             
 
 	    static constexpr int INPUT_COMPONENTS = 1;
@@ -81,6 +82,7 @@ namespace curan{
         IntegratedReconstructor& add_frames(std::vector<input_type::Pointer>& images_vector);
 
         vsg::ref_ptr<vsg::floatArray3D> get_texture_data();
+   
 
         itk::Size<3U> get_output_size();
 

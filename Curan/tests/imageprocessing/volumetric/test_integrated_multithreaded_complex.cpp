@@ -2,14 +2,16 @@
 #include "rendering/Volume.h"
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
+#include <itkImage.h>
+#include "itkImportImageFilter.h"
 #include <optional>
 #include <nlohmann/json.hpp> // Include the JSON library
 #include <random> // Include the random header for generating random numbers
 
 constexpr long width = 100;
 constexpr long height = 100;
-float spacing[3] = {0.002 , 0.002 , 0.002};
-float final_spacing [3] = {0.002 , 0.002 , 0.002};
+float spacing[3] = {0.01 , 0.01 , 0.01}; //0.002
+float final_spacing [3] = {0.01, 0.01 , 0.01}; //0.002
 
 // Define a function to generate random numbers within a specified range
 double generateRandomNumber(double min, double max) {
@@ -51,22 +53,22 @@ void create_array_of_images(std::vector<imagetype::Pointer>& desired_images){
 	    image_orientation(1,0) = 0.0;
 	    image_orientation(2,0) = 0.0;
 
-/* 	    image_orientation(0,1) = 0.0;
+	    image_orientation(0,1) = 0.0;
 	    image_orientation(1,1) = cos(1.57079632679*z/(width-1));
 	    image_orientation(2,1) = sin(1.57079632679*z/(width-1));
 
 	    image_orientation(0,2) = 0.0;
 	    image_orientation(1,2) = -sin(1.57079632679*z/(width-1));
-	    image_orientation(2,2) = cos(1.57079632679*z/(width-1)); */
+	    image_orientation(2,2) = cos(1.57079632679*z/(width-1));
 
-        image_orientation(0,1) = 0.0;
+/*         image_orientation(0,1) = 0.0;
 	    image_orientation(1,1) = 1;
 	    image_orientation(2,1) = 0;
 
 	    image_orientation(0,2) = 0.0;
 	    image_orientation(1,2) = 0;
 	    image_orientation(2,2) = 1;
-
+ */
         image->SetRegions(region_1);
         image->SetDirection(image_orientation);
         image->SetOrigin(image_origin);
@@ -130,32 +132,32 @@ void create_array_of_images(std::vector<imagetype::Pointer>& desired_images){
         //     outputIt.Set(val);
 
         //Cylinder
-        // for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
-        //     imagetype::IndexType idx = outputIt.GetIndex();
-        //     imagetype::PointType world_pos;
-        //     image->TransformIndexToPhysicalPoint(idx, world_pos);
+        for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
+            imagetype::IndexType idx = outputIt.GetIndex();
+            imagetype::PointType world_pos;
+            image->TransformIndexToPhysicalPoint(idx, world_pos);
 
         //     // Calculate distance from center
-        //     imagetype::PointType center;
-        //     center[0] = width * final_spacing[0] / 2.0;
-        //     center[1] = height * final_spacing[1] / 2.0;
-        //     center[2] = width * final_spacing[2] / 2.0;
-        //     double distance = std::sqrt(
-        //         (world_pos[1] - center[1]) * (world_pos[1] - center[1]) +
-        //         (world_pos[2] - center[2]) * (world_pos[2] - center[2]));
+            imagetype::PointType center;
+            center[0] = width * final_spacing[0] / 2.0;
+            center[1] = height * final_spacing[1] / 2.0;
+            center[2] = width * final_spacing[2] / 2.0;
+            double distance = std::sqrt(
+            (world_pos[1] - center[1]) * (world_pos[1] - center[1]) +
+            (world_pos[2] - center[2]) * (world_pos[2] - center[2]));
 
         //     // Use the distance to determine voxel intensity
-        //     double max_radius = width * final_spacing[0] / 4.0;
-        //     unsigned char val;
-        //     if (distance > max_radius ){
-        //         val = 0.0;
-        //     }else {
-        //         val = 255.0 * (1.0 - distance / max_radius);
-        //         }
-        //     outputIt.Set(val);
+            double max_radius = width * final_spacing[0] / 4.0;
+            unsigned char val;
+            if (distance > max_radius ){
+                val = 0.0;
+            }else {
+        val =  (1.0 - distance / max_radius)*255;
+        }
+           outputIt.Set(val);
 
         //Cone
-        double cone_height = static_cast<double>(height); 
+/*         double cone_height = static_cast<double>(height); 
        
         for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
             imagetype::IndexType idx = outputIt.GetIndex();
@@ -182,7 +184,7 @@ void create_array_of_images(std::vector<imagetype::Pointer>& desired_images){
             } else {
                 val = 0.0;
             }
-            outputIt.Set(val);
+            outputIt.Set(val);*/
 
         }
         
@@ -227,22 +229,31 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
 	        }
 
             auto reconstruction_end_time = std::chrono::steady_clock::now();
-/*             std::cout << "Started volumetric filling: \n";
-            integrated_volume.set_fillstrategy(curan::image::reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION);
+            std::cout << "Started volumetric filling: \n";
+ 
+            itk::Size<3U>  output_size;
+            output_size = integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_output_size();
+            size_t width =   output_size[0] ;
+            size_t height =   output_size[1] ;
+            size_t depth =   output_size[2] ;
+
+            integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_fillstrategy(curan::image::reconstruction::FillingStrategy::NEAREST_NEIGHBOR);
             curan::image::reconstruction::KernelDescriptor descript;
-            descript.fillType = curan::image::reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION;
-	        integrated_volume.add_kernel_descritor(descript);
-            integrated_volume.fill_holes(); */
-        
+            descript.fillType = curan::image::reconstruction::FillingStrategy::NEAREST_NEIGHBOR;
+            descript.size = 7;
+	        descript.stdev = 10;
+	        descript.minRatio = 0.01;
+	        integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_kernel_descritor(descript);
+            //std::memcpy(my_beatiful_pointer,image->GetBufferPointer(),numberOfPixels*sizeof(float));
+            integrated_volume->cast<curan::image::IntegratedReconstructor>()->fill_holes();
+   
+
             // Calculate and print the reconstruction time
             auto reconstruction_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
             reconstruction_end_time - reconstruction_start_time);
 
             std::cout << "Reconstruction time: " << reconstruction_duration.count() << " milliseconds" << std::endl;
 
-            size_t width = image_array[0]->GetLargestPossibleRegion().GetSize()[0];
-            size_t height = image_array[0]->GetLargestPossibleRegion().GetSize()[1];
-            size_t depth = image_array.size(); // Depth is the number of images in the array
             std::stringstream texture_data_stream;
             nlohmann::json volume_file;
             volume_file["width"] = width;
@@ -256,7 +267,6 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
                     }
                 }
             }
-
             // Add the texture data array to the JSON object
             volume_file["data"] = texture_data_stream.str();
             std::ofstream output_file{"test_run_5.json"};
@@ -290,12 +300,12 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
                 }
             }
 
-            // Save the ITK Image as an MHA file
+            /* // Save the ITK Image as an MHA file
             using WriterType = itk::ImageFileWriter<ImageType>;
             WriterType::Pointer writer = WriterType::New();
             writer->SetFileName("C:/Users/SURGROB7/reconstruction_results.mha");
             writer->SetInput(itkVolume);
-            writer->Update();
+            writer->Update(); */
 
 
             integrated_volume->cast<curan::image::IntegratedReconstructor>()->reset();

@@ -247,13 +247,6 @@ IntegratedReconstructor::IntegratedReconstructor(const Info& info) : output_spac
 	acummulation_buffer->SetDirection(output_directorion);
 	acummulation_buffer->Allocate(true);
 
-	out_volume = output_type::New();
-	out_volume->SetRegions(output_region);
-	out_volume->SetOrigin(output_origin);
-	out_volume->SetSpacing(output_spacing);
-	out_volume->SetDirection(output_directorion);
-	out_volume->Allocate(true);
-
     if (info.identifier)
         set_identifier(*info.identifier);
 }
@@ -289,114 +282,226 @@ void IntegratedReconstructor::add_kernel_descritor(curan::image::reconstruction:
 }
 
 void IntegratedReconstructor::fill_holes()
-{
-	/* char_pixel_type* inVolPtr = out_volume->GetBufferPointer();
-	short_pixel_type* accPtr = acummulation_buffer->GetBufferPointer();
+{			using PixelType = float;
+            using ImportFilterType = itk::ImportImageFilter<PixelType, 3>;
+            auto importFilter = ImportFilterType::New();
+            ImportFilterType::IndexType start;
+            start.Fill(0);
 
-	//we need to create the output volume where the 
-	//voxels will be placed after the filling procedure is over
-	itk::ImageDuplicator<InternalImageType>::Pointer duplicator = itk::ImageDuplicator<InternalImageType>::New();
-	duplicator->SetInputImage(out_volume);
-	duplicator->Update();
-	InternalImageType::Pointer filled_volume = duplicator->GetOutput();
-	char_pixel_type* outPtr = filled_volume->GetBufferPointer();
+			vsg::dvec3 position_of_center_in_global_frame;
+			position_of_center_in_global_frame[0] = volumetric_bounding_box.center[0];
+			position_of_center_in_global_frame[1] = volumetric_bounding_box.center[1];
+			position_of_center_in_global_frame[2] = volumetric_bounding_box.center[2];
 
-	auto outdata_ROI = out_volume->GetLargestPossibleRegion();
-	auto size_out = outdata_ROI.GetSize();
-	auto start_out = outdata_ROI.GetIndex();
+			vsg::dvec3 position_in_local_box_frame;
+			position_in_local_box_frame[0] = volumetric_bounding_box.extent[0];
+			position_in_local_box_frame[1] = volumetric_bounding_box.extent[1];
+			position_in_local_box_frame[2] = volumetric_bounding_box.extent[2]; 
 
-	uint64_t outExt[6];
-	outExt[0] = start_out[0];
-	outExt[1] = size_out[0] - 1;
+			vsg::dmat3 rotation_0_1;
 
-	outExt[2] = start_out[1];
-	outExt[3] = size_out[1] - 1;
+			for(size_t col = 0; col < 3; ++col)
+				for(size_t row = 0; row < 3; ++row)
+					rotation_0_1(col,row) = volumetric_bounding_box.axis[col][row];
+				
 
-	outExt[4] = start_out[2];
-	outExt[5] = size_out[2] - 1;
+			auto global_corner_position = position_of_center_in_global_frame-rotation_0_1*position_in_local_box_frame;
 
-	// get increments for volume and for accumulation buffer
-	uint64_t byteIncVol[3] = { 0 }; //x,y,z
+            const itk::SpacePrecisionType output_origin[3] ={global_corner_position[0],global_corner_position[1],global_corner_position[2]};
+            itk::Matrix<double>  ref_to_output_origin;
+           	ref_to_output_origin(0, 0) = volumetric_bounding_box.axis[0][0];
+			ref_to_output_origin(1, 0) = volumetric_bounding_box.axis[0][1];
+			ref_to_output_origin(2, 0) = volumetric_bounding_box.axis[0][2];
+		
+			ref_to_output_origin(0, 1) = volumetric_bounding_box.axis[1][0];
+			ref_to_output_origin(1, 1) = volumetric_bounding_box.axis[1][1];
+			ref_to_output_origin(2, 1) = volumetric_bounding_box.axis[1][2];
+		
+			ref_to_output_origin(0, 2) = volumetric_bounding_box.axis[2][0];
+			ref_to_output_origin(1, 2) = volumetric_bounding_box.axis[2][1];
+			ref_to_output_origin(2, 2) = volumetric_bounding_box.axis[2][2];
+		
 
-	int idx;
-	uint64_t incr = reconstruction::INPUT_COMPONENTS;
+            ImportFilterType::RegionType region;
+            region.SetIndex(start);
+            region.SetSize(output_size);
+            importFilter->SetRegion(region);
+           	importFilter->SetSpacing(output_origin);
+            importFilter->SetSpacing(output_spacing);
+			importFilter->SetDirection(ref_to_output_origin);
+            const unsigned int numberOfPixels = output_size[0] * output_size[1] * output_size[2];
+	
+			double max_val1 = -100000;
 
-	for (idx = 0; idx < 3; ++idx)
-	{
-		byteIncVol[idx] = incr;
-		incr *= (outExt[idx * 2 + 1] - outExt[idx * 2] + 1);
-	}
+            const bool importImageFilterWillOwnTheBuffer = false;
+            float * my_beatiful_pointer = textureData->data();
 
-	// this will store the position of the pixel being looked at currently
-	uint64_t currentPos[3]; //x,y,z
+			for(auto iter_val = textureData->begin();iter_val!=textureData->end(); ++iter_val)
+				max_val1 = (*iter_val>max_val1) ? *iter_val : max_val1;
 
-	uint64_t numVolumeComponents = reconstruction::INPUT_COMPONENTS;
+            importFilter->SetImportPointer(my_beatiful_pointer, numberOfPixels, importImageFilterWillOwnTheBuffer);
+            using RescaleFilterType = itk::RescaleIntensityImageFilter<itk::Image<float, 3>, itk::Image<float, 3>>;
+            using CastFilterType = itk::CastImageFilter<itk::Image<float, 3>, itk::Image<unsigned char, 3>>;
 
-	// Set interpolation method - nearest neighbor or trilinear
-	bool (*apply)(char_pixel_type * inputData,
-		unsigned short* accData,
-		uint64_t * inputOffsets,
-		uint64_t * bounds,
-		uint64_t * wholeExtent,
-		uint64_t * thisPixel,
-		char_pixel_type & returnVal,
-		const reconstruction::KernelDescriptor * descriptor) = NULL;
+            RescaleFilterType::Pointer rescaleFilter = RescaleFilterType::New();
+            CastFilterType::Pointer castFilter = CastFilterType::New();
 
-	switch (fillType)
-	{
-	case reconstruction::FillingStrategy::GAUSSIAN:
-		apply = &reconstruction::ApplyGaussian;
-		break;
-	case reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION:
-		apply = &reconstruction::ApplyGaussianAccumulation;
-		break;
-	case reconstruction::FillingStrategy::DISTANCE_WEIGHT_INVERSE:
-		apply = &reconstruction::ApplyDistanceWeightInverse;
-		break;
-	case reconstruction::FillingStrategy::NEAREST_NEIGHBOR:
-		apply = &reconstruction::ApplyNearestNeighbor;
-		break;
-	case reconstruction::FillingStrategy::STICK:
-		apply = &reconstruction::ApplySticks;
-		break;
-	default:
-	{
-		std::string s = "Unknown interpolation mode: " + std::to_string(fillType);
-		//utilities::cout << s;
-		return;
-	}
-	}
-	// iterate through each voxel. When the accumulation buffer is 0, fill that hole, and continue.
-	for (currentPos[2] = outExt[4]; currentPos[2] <= outExt[5]; currentPos[2]++)
-	{
-		for (currentPos[1] = outExt[2]; currentPos[1] <= outExt[3]; currentPos[1]++)
-		{
-			for (currentPos[0] = outExt[0]; currentPos[0] <= outExt[1]; currentPos[0]++)
+            rescaleFilter->SetInput(importFilter->GetOutput());
+            rescaleFilter->SetOutputMaximum(255.0);
+            rescaleFilter->SetOutputMinimum(0.0);
+            castFilter->SetInput(rescaleFilter->GetOutput());
+            castFilter->Update();
+
+            auto volume_temp = castFilter->GetOutput();
+
+			char_pixel_type* inVolPtr = volume_temp->GetBufferPointer();
+			short_pixel_type* accPtr = acummulation_buffer->GetBufferPointer();
+
+			//we need to create the output volume where the 
+			//voxels will be placed after the filling procedure is over
+			itk::ImageDuplicator<InternalImageType>::Pointer duplicator = itk::ImageDuplicator<InternalImageType>::New();
+			duplicator->SetInputImage(volume_temp);
+			duplicator->Update();
+			InternalImageType::Pointer filled_volume = duplicator->GetOutput();
+			char_pixel_type* outPtr = filled_volume->GetBufferPointer();
+			auto outdata_ROI = volume_temp->GetLargestPossibleRegion();
+			auto size_out = outdata_ROI.GetSize();
+			auto start_out = outdata_ROI.GetIndex();
+
+			uint64_t outExt[6];
+			outExt[0] = start_out[0];
+			outExt[1] = size_out[0] - 1;
+
+			outExt[2] = start_out[1];
+			outExt[3] = size_out[1] - 1;
+
+			outExt[4] = start_out[2];
+			outExt[5] = size_out[2] - 1;
+
+			// get increments for volume and for accumulation buffer
+			uint64_t byteIncVol[3] = { 0 }; //x,y,z
+
+			int idx;
+			uint64_t incr = reconstruction::INPUT_COMPONENTS;
+			for (idx = 0; idx < 3; ++idx)
 			{
-				// accumulator index should not depend on which individual component is being interpolated
-				int accIndex = (currentPos[0] * byteIncVol[0]) + (currentPos[1] * byteIncVol[1]) + (currentPos[2] * byteIncVol[2]);
-				if (accPtr[accIndex] == 0) // if not hit by accumulation during vtkIGSIOPasteSliceIntoVolume
-				{
-					bool result(false);
-					for (const auto kernel : kernels)
-					{
-						result = apply(inVolPtr, accPtr, byteIncVol, outExt, outExt, currentPos, outPtr[accIndex], &kernel);
-						if (result) {
-							break;
-						} // end checking interpolation success
-					}
-				} else // if hit, just use the apparent value
-				{
-					int volCompIndex = (currentPos[0] * byteIncVol[0]) + (currentPos[1] * byteIncVol[1]) + (currentPos[2] * byteIncVol[2]);
-					outPtr[volCompIndex] = inVolPtr[volCompIndex];
-				} // end accumulation check
-			} // end x loop
-		} // end y loop
-	} // end z loop
+				byteIncVol[idx] = incr;
+				incr *= (outExt[idx * 2 + 1] - outExt[idx * 2] + 1);
+			}
 
-	out_volume = filled_volume; */
-	return;
-};
+			// this will store the position of the pixel being looked at currently
+			uint64_t currentPos[3]; //x,y,z
+
+			uint64_t numVolumeComponents = reconstruction::INPUT_COMPONENTS;
+
+			// Set interpolation method - nearest neighbor or trilinear
+			bool (*apply)(char_pixel_type * inputData,
+				unsigned short* accData,
+				uint64_t * inputOffsets,
+				uint64_t * bounds,
+				uint64_t * wholeExtent,
+				uint64_t * thisPixel,
+				char_pixel_type & returnVal,
+				const reconstruction::KernelDescriptor * descriptor) = NULL;
+
+			switch (fillType)
+			{
+			case reconstruction::FillingStrategy::GAUSSIAN:
+				apply = &reconstruction::ApplyGaussian;
+				break;
+			case reconstruction::FillingStrategy::GAUSSIAN_ACCUMULATION:
+				apply = &reconstruction::ApplyGaussianAccumulation;
+				break;
+			case reconstruction::FillingStrategy::DISTANCE_WEIGHT_INVERSE:
+				apply = &reconstruction::ApplyDistanceWeightInverse;
+				break;
+			case reconstruction::FillingStrategy::NEAREST_NEIGHBOR:
+				apply = &reconstruction::ApplyNearestNeighbor;
+				break;
+			case reconstruction::FillingStrategy::STICK:
+				apply = &reconstruction::ApplySticks;
+				break;
+			default:
+			{
+				std::string s = "Unknown interpolation mode: " + std::to_string(fillType);
+				//utilities::cout << s;
+				return;
+			}
+			}
+			// iterate through each voxel. When the accumulation buffer is 0, fill that hole, and continue.
+			for (currentPos[2] = outExt[4]; currentPos[2] <= outExt[5]; currentPos[2]++)
+			{
+				for (currentPos[1] = outExt[2]; currentPos[1] <= outExt[3]; currentPos[1]++)
+				{
+					for (currentPos[0] = outExt[0]; currentPos[0] <= outExt[1]; currentPos[0]++)
+					{
+						// accumulator index should not depend on which individual component is being interpolated
+						int accIndex = (currentPos[0] * byteIncVol[0]) + (currentPos[1] * byteIncVol[1]) + (currentPos[2] * byteIncVol[2]);
+						if (accPtr[accIndex] == 0) // if not hit by accumulation during vtkIGSIOPasteSliceIntoVolume
+						{
+							bool result(false);
+							for (const auto kernel : kernels)
+							{
+								result = apply(inVolPtr, accPtr, byteIncVol, outExt, outExt, currentPos, outPtr[accIndex], &kernel);
+								if (result) {
+									break;
+								} // end checking interpolation success
+							}
+						} else // if hit, just use the apparent value
+						{
+							int volCompIndex = (currentPos[0] * byteIncVol[0]) + (currentPos[1] * byteIncVol[1]) + (currentPos[2] * byteIncVol[2]);
+							outPtr[volCompIndex] = inVolPtr[volCompIndex];
+						} // end accumulation check
+					} // end x loop
+				} // end y loop
+			} // end z loop		
+			/*
+			
+            using ImportFilterType1 = itk::ImportImageFilter<unsigned char, 3>;
+			auto new_importFilter = ImportFilterType1::New();
+            ImportFilterType1::IndexType starts;
+            starts.Fill(0);
+            ImportFilterType1::RegionType regions;
+            region.SetIndex(starts);
+            region.SetSize(output_size);
+			
+            importFilter->SetRegion(region);
+           	importFilter->SetSpacing(output_origin);
+            importFilter->SetSpacing(output_spacing);
+			importFilter->SetDirection(ref_to_output_origin);
+
+			auto new_beatiful_pointer = filled_volume->GetBufferPointer();
+			new_importFilter->SetImportPointer(new_beatiful_pointer, numberOfPixels, importImageFilterWillOwnTheBuffer);
+			*/
+			using CastFilterType1 = itk::CastImageFilter<itk::Image<unsigned char,3> , itk::Image<float, 3>>;
+			using RescaleFilterType1 = itk::RescaleIntensityImageFilter<itk::Image<float, 3>, itk::Image<float, 3>>;
+			
+			CastFilterType1::Pointer new_castFilter = CastFilterType1::New();
+            RescaleFilterType1::Pointer new_rescaleFilter = RescaleFilterType1::New();
+
+			new_castFilter->SetInput(filled_volume);
+
+            new_rescaleFilter->SetInput(new_castFilter->GetOutput());
+            new_rescaleFilter->SetOutputMaximum(1.0);
+            new_rescaleFilter->SetOutputMinimum(0.0);
+			new_castFilter->Update();
+
+			/* for(auto iter_val = new_castFilter->GetOutput->begin();iter_val!=new_castFilterget-->end(); ++iter_val)
+				max_val1 = (*iter_val>max_val1) ? *iter_val : max_val1;
+
+				std::printf("\n max values is : %f\n",max_val1); */
+
+			auto image=new_castFilter->GetOutput();
+
+			std::printf("\n size of destination: (%d %d %d ) pixel size (%d)\n size of origin : (%d %d %d ) pixel size: (%d)\n copied block: %d",textureData->width(),textureData->height(),textureData->depth(),textureData->stride(),output_size[0],output_size[1],output_size[2],sizeof(float),numberOfPixels*sizeof(float));
+			std::printf("\n Print adress source: %d\n",(int)image->GetBufferPointer());
+			std::printf("\n Print adress destination : %d\n",(int)textureData->data());
+			
+			std::printf("\n Image size from itk: %d\n",image->GetLargestPossibleRegion().GetSize()[0]*image->GetLargestPossibleRegion().GetSize()[1]*image->GetLargestPossibleRegion().GetSize()[2]);
+			std::memcpy(textureData->data(), image->GetBufferPointer(), (size_t)(textureData->size()/2.0));
+			textureData->dirty();
+		return;
+	};
 
 IntegratedReconstructor& IntegratedReconstructor::set_clipping(const Clipping& new_clipping){
 	std::lock_guard<std::mutex> g{mut};
@@ -666,9 +771,6 @@ bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::Th
 	ref_to_image(3, 2) = 0.0;
 	ref_to_image(3, 3) = 1.0;
 
-	// cicle throught all frames and insert
-	// them in the output buffer, one at a time
-
 	std::vector<input_type::Pointer> local_image_copies;
 	{
 		std::lock_guard<std::mutex> g{mut};
@@ -682,26 +784,25 @@ bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::Th
 	    int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
 		double clipRectangleOrigin [2]; // array size 2
 		double clipRectangleSize [2]; // array size 2
+
+		auto local_size = img->GetLargestPossibleRegion().GetSize();
+		auto local_origin = img->GetOrigin();
+
 		if(clipping){
 			clipRectangleOrigin[0] = (*clipping).clipRectangleOrigin[0];
 			clipRectangleOrigin[1] = (*clipping).clipRectangleOrigin[1];
-
 			clipRectangleSize[0] = (*clipping).clipRectangleSize[0];
 			clipRectangleSize[1] = (*clipping).clipRectangleSize[1];
-
-			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
-			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
 		} else {
-			auto local_size = img->GetLargestPossibleRegion().GetSize();
-			auto local_origin = img->GetOrigin();
-			clipRectangleOrigin[0] = local_origin[0];
-			clipRectangleOrigin[1] = local_origin[1];
+			clipRectangleOrigin[0] = 0;
+			clipRectangleOrigin[1] = 0;
 			clipRectangleSize[0] = local_size.GetSize()[0]-1;
 			clipRectangleSize[1] = local_size.GetSize()[1]-1;
+		}
 
-			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
-			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
-		}	
+		inputFrameExtentForCurrentThread[1] = local_size.GetSize()[0]-1;
+		inputFrameExtentForCurrentThread[3] = local_size.GetSize()[1]-1;
+
 		paste_slice_info.clipRectangleOrigin = clipRectangleOrigin;
 	    paste_slice_info.clipRectangleSize = clipRectangleSize;
 		paste_slice_info.inExt = inputFrameExtentForCurrentThread;
