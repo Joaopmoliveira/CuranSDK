@@ -27,16 +27,23 @@
 #include <optional>
 #include <nlohmann/json.hpp>
 
-double pi = std::atan(1) * 4;
+const double pi = std::atan(1) * 4;
 
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using TransformType = itk::VersorRigid3DTransform<double>;
-
+using CommandType = CommandIterationUpdate;
 using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
 using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageType, ImageType>;
 using RegistrationType = itk::ImageRegistrationMethodv4<ImageType, ImageType, TransformType>;
+using OutputPixelType = unsigned char;
+using OutputImageType = itk::Image<PixelType, Dimension>;
+using CastFilterType = itk::CastImageFilter<ImageType, OutputImageType>;
+using RescaleFilterType = itk::RescaleIntensityImageFilter<ImageType, OutputImageType>;
+using WriterType = itk::ImageFileWriter<OutputImageType>;
+using FixedImageReaderType = itk::ImageFileReader<ImageType>;
+using MovingImageReaderType = itk::ImageFileReader<ImageType>;
 
 void updateBaseTexture3D(vsg::floatArray3D &image, ImageType::Pointer image_to_render)
 {
@@ -50,12 +57,9 @@ void updateBaseTexture3D(vsg::floatArray3D &image, ImageType::Pointer image_to_r
   rescale->SetOutputMinimum(0.0);
   rescale->SetOutputMaximum(1.0);
 
-  try
-  {
+  try{
     rescale->Update();
-  }
-  catch (const itk::ExceptionObject &e)
-  {
+  } catch (const itk::ExceptionObject &e){
     std::cerr << "Error: " << e << std::endl;
     throw std::runtime_error("error");
   }
@@ -64,8 +68,7 @@ void updateBaseTexture3D(vsg::floatArray3D &image, ImageType::Pointer image_to_r
 
   using IteratorType = itk::ImageRegionIteratorWithIndex<ImageType>;
   IteratorType outputIt(out, out->GetRequestedRegion());
-  for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt)
-  {
+  for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
     ImageType::IndexType idx = outputIt.GetIndex();
     image.set(idx[0], idx[1], idx[2], outputIt.Get());
   }
@@ -105,11 +108,7 @@ public:
   void Execute(const itk::Object *object, const itk::EventObject &event) override
   {
     auto optimizer = static_cast<OptimizerPointer>(object);
-    if (itk::StartEvent().CheckEvent(&event))
-    {
-      // std::cout << "Iteration     Value          Position" << std::endl;
-    }
-    else if (itk::IterationEvent().CheckEvent(&event))
+    if (itk::IterationEvent().CheckEvent(&event))
     {
       auto pos = optimizer->GetCurrentPosition();
 
@@ -132,20 +131,8 @@ public:
           current_transform(row, col) = matrix(row, col);
 
       if (moving_pointer_to_volume != nullptr)
-      {
         moving_pointer_to_volume->update_transform(current_transform);
-        // std::cout << "current transform: \n" << current_transform << std::endl;
-      }
       std::this_thread::sleep_for(std::chrono::milliseconds(0));
-    }
-    else if (itk::MultiResolutionIterationEvent().CheckEvent(&event))
-    {
-      // std::cout << "aaaa" << std::endl;
-    }
-    else if (itk::EndEvent().CheckEvent(&event))
-    {
-      // std::cout << "Finish" << std::endl;
-      // std::cout << std::endl << std::endl;
     }
   }
 };
@@ -168,21 +155,16 @@ int main(int argc, char **argv)
 
   auto initialTransform = TransformType::New();
 
-  using FixedImageReaderType = itk::ImageFileReader<ImageType>;
-  using MovingImageReaderType = itk::ImageFileReader<ImageType>;
   auto fixedImageReader = FixedImageReaderType::New();
   auto movingImageReader = MovingImageReaderType::New();
 
   fixedImageReader->SetFileName("C:/Users/SURGROB7/Desktop/Manuel_Carvalho/reconstruction_results1.mha");
   movingImageReader->SetFileName("C:/Users/SURGROB7/Desktop/Manuel_Carvalho/precious_phantom_transformed.mha");
 
-  try
-  {
+  try{
     fixedImageReader->Update();
     movingImageReader->Update();
-  }
-  catch (...)
-  {
+  } catch (...) {
     return 1;
   }
 
@@ -219,8 +201,6 @@ int main(int argc, char **argv)
   translation[0] = 0.0;
   translation[1] = 0.0;
   translation[2] = 0.0;
-  // initialTransform->SetRotation(rotation);
-  // initialTransform->SetTranslation(translation);
 
   registration->SetInitialTransform(initialTransform);
 
@@ -305,9 +285,6 @@ int main(int argc, char **argv)
   fixed_homogenenous_transformation(3, 1) = origin[1] / 1000.0;
   fixed_homogenenous_transformation(3, 2) = origin[2] / 1000.0;
 
-  std::cout << "Direction static: \n"
-            << direction << std::endl;
-
   for (size_t row = 0; row < 3; ++row)
     for (size_t col = 0; col < 3; ++col)
       fixed_homogenenous_transformation(col, row) = direction(row, col);
@@ -315,10 +292,7 @@ int main(int argc, char **argv)
   volume_fixed->cast<curan::renderable::Volume>()->update_transform(fixed_homogenenous_transformation);
 
   auto casted_volume_fixed = volume_fixed->cast<curan::renderable::Volume>();
-  auto updater = [pointer2fixedimage](vsg::floatArray3D &image)
-  {
-    updateBaseTexture3D(image, pointer2fixedimage);
-  };
+  auto updater = [pointer2fixedimage](vsg::floatArray3D &image){ updateBaseTexture3D(image, pointer2fixedimage); };
   casted_volume_fixed->update_volume(updater);
 
   ImageType::RegionType region_moving = pointer2movingimage->GetLargestPossibleRegion();
@@ -336,15 +310,12 @@ int main(int argc, char **argv)
   window << volume_moving;
 
   auto casted_volume_moving = volume_moving->cast<curan::renderable::Volume>();
-  auto updater_moving = [pointer2movingimage](vsg::floatArray3D &image)
-  {
-    updateBaseTexture3D(image, pointer2movingimage);
-  };
+  auto updater_moving = [pointer2movingimage](vsg::floatArray3D &image) { updateBaseTexture3D(image, pointer2movingimage); };
 
   casted_volume_moving->update_volume(updater_moving);
 
-  using CommanddType2 = CommandIterationUpdate;
-  auto observer = CommanddType2::New();
+
+  auto observer = CommandType::New();
   observer->set_pointer(casted_volume_moving);
   observer->set_registration(registration);
   optimizer->AddObserver(itk::StartEvent(), observer);
@@ -404,13 +375,7 @@ int main(int argc, char **argv)
   resampler->SetOutputDirection(fixedImage->GetDirection());
   resampler->SetDefaultPixelValue(1);
 
-  using OutputPixelType = unsigned char;
-  using OutputImageType = itk::Image<PixelType, Dimension>;
-  using CastFilterType =
-      itk::CastImageFilter<ImageType, OutputImageType>;
-  using RescaleFilterType =
-      itk::RescaleIntensityImageFilter<ImageType, OutputImageType>;
-  using WriterType = itk::ImageFileWriter<OutputImageType>;
+
 
   auto writer = WriterType::New();
   auto caster = CastFilterType::New();
