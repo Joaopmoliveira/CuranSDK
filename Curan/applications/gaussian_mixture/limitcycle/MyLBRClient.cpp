@@ -86,7 +86,7 @@ void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::Matri
 	// ############################################################################################
 
 	const double maxRotSpeed = 2.0;
-    const double angularStiffness = 800;
+    const double angularStiffness = 1200;
     const double angularDamping   = 40;
 	Eigen::Matrix3d R_E_Ed = R_0_E.transpose() * desRotation;
 	// Convert rotation error in eef frame to axis angle representation.
@@ -121,7 +121,9 @@ void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::Matri
 	Eigen::VectorXd torqueRot = jacobianRot.transpose() * lambdaRot * forceRot;
 
 	// Set torque command.
-	jointTorqueCommand = torquePos + nullSpaceTranslation * torqueRot; // Prioritize positional torques. 
+	jointTorqueCommand = torquePos + nullSpaceTranslation * torqueRot; // Prioritize positional torques.
+    jointTorqueCommand = torqueRot + nullSpaceRotation * torquePos; // Prioritize positional torques.
+
 	// Set nullspace.
 	nullSpace = nullSpaceTranslation * nullSpaceRotation;
 }
