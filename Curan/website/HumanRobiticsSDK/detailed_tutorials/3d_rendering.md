@@ -24,63 +24,73 @@ renderable
 
 # Empty Scene
 
-To render a 3D scene we have a couple of requirments in our lab. We must have the flexibility do add objects at runtime, we must be able to delete objects from a scene, add objects whilst the program is running. This is how you can create a basic empty scene. 
+To render a 3D scene we have a couple of requirments in our lab: 
+1. We must have the flexibility do add objects at runtime, 
+2. we must be able to delete objects from a scene
+3. add objects whilst the program is running
+
+To achieve this goal we developed a custom API for us. Lets take a look at how we can start and create an empty scene. Start by including the necessary header files
 
 ```cpp
-#include "rendering/SequencialLinks.h"
 #include "rendering/Window.h"
-#include "rendering/Renderable.h"
-#include "rendering/Sphere.h"
 #include <iostream>
+```
 
+Once the necessary header files have been included we can define our main function and declare the structure which is used to create an empty window
+
+```cpp
 int main(int argc, char **argv) {
-    try {
-        curan::renderable::Window::Info info;
-        info.api_dump = false;
-        info.display = "";
-        info.full_screen = false;
-        info.is_debug = false;
-        info.screen_number = 0;
-        info.title = "myviewer";
-        curan::renderable::Window::WindowSize size{1000, 800};
-        info.window_size = size;
-        curan::renderable::Window window{info};
+    curan::renderable::Window::Info info;
+    info.api_dump = false;
+    info.display = "";
+    info.full_screen = false;
+    info.is_debug = false;
+    info.screen_number = 0;
+    info.title = "myviewer";
+    curan::renderable::Window::WindowSize size{1000, 800};
+    info.window_size = size;
+    curan::renderable::Window window{info};
+```
 
-        window.run();
+most of these names should be self explanatory, you can request Vulkan to enter in debug mode to output information in case something went wrong with the rendering pipeline we set for ourselfs. You also define the size of the window we want to create. Now that the window is created the Vulkan resources required to render our empty scene will be controlled by this class. Once the destructor of the class is called the resources will be released in the proper sequence. We are ready to render our scene
 
-        window.transverse_identifiers(
-            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
-                   &map) {
-                for (auto &p : map){
-                    std::cout << "Object contained: " << p.first << '\n';
-                }
+```cpp
+    window.run();
+```
 
-            });
+The run method is simple. The requests from the windowing system are processed and appended to the window, our geometries are rendered in loop. This method only returns either when a close event has been triggered or something went seriously wrong in our rendering pipeline, e.g. the swapchain could not return a valid image for us to render into. Once we return we can transverse the objects which are currently rendered on the scene as 
 
-    } catch (const std::exception& e) {
-        std::cerr << "Exception thrown : " << e.what() << std::endl;
-        return 1;
-    }
+```cpp
+    window.transverse_identifiers(
+        [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
+            &map) {
+        for (auto &p : map) 
+            std::cout << "Object contained: " << p.first << '\n';
+    });
     return 0;
 }
 ```
-This source code will create an empty window which we can rotate and move.
+Because the scene is empty no output will be produced to the output stream. This source code will create an empty window which we can rotate and move
 ![empty_world](/assets/images/empty_world.png)
 
-The wired floor is automatically added to the scene to facilitate the visualization by inexperienced personell viewing our demos (simmilar to the background of blender). The code blocks once the window.run() method is called. Now assume that we add a function in a thread that goes to do something like waiting for a connection to be established and once this connection is established we want to add a box to the scene. This is how you would achieve this behavior.
+The wired floor is automatically added to the scene to facilitate the visualization by inexperienced personel viewing our demos (similar to the background of blender).
 
 # Add asyncronous box
 
+Now imagine that you want to add a red box to the scene once an external signal has been received from a peripheral (think TCP/UDP connection or USB connection). This requires the need for assyncronous additions to the scene graph. We tried to make this procedure as simple as possible. Lets take a look at the function which will be called once this signal is received from the outside world. First we need to include the necessary header files
+
 ```cpp
-#include "rendering/SequencialLinks.h"
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "rendering/Sphere.h"
 #include <iostream>
 #include <chrono>
+```
 
+the function which will be called receives a window reference (the window is an object that cannot be coppied). Creates the structure which defines the properties of the sphere whilst the only requirment is to call the "<<" operator, e.g. put the Renderable object inside our window
+
+```cpp
 int mimic_waiting_for_connection(curan::renderable::Window& window){
-    std::this_thread::sleep_for(std::chrono::seconds(10)); //mimic waiting for a connection that takes 10 seconds
     curan::renderable::Box::Info create_info;
     create_info.geomInfo.dx = vsg::vec3(0.5,0.0,0.0);
     create_info.geomInfo.dy = vsg::vec3(0.0,0.5,0.0);
@@ -91,49 +101,52 @@ int mimic_waiting_for_connection(curan::renderable::Window& window){
     vsg::ref_ptr<curan::renderable::Renderable> box = curan::renderable::Box::make(create_info);
     window << box;
 };
+```
 
+now we can write the code that sets up our window as before
+
+```cpp
 int main(int argc, char **argv) {
-    try {
-        curan::renderable::Window::Info info;
-        info.api_dump = false;
-        info.display = "";
-        info.full_screen = false;
-        info.is_debug = false;
-        info.screen_number = 0;
-        info.title = "myviewer";
-        curan::renderable::Window::WindowSize size{1000, 800};
-        info.window_size = size;
-        curan::renderable::Window window{info};
-        std::thread connect_thread(mimic_waiting_for_connection(window));
-        window.run();
-        connect_thread.join();
+    curan::renderable::Window::Info info;
+    info.api_dump = false;
+    info.display = "";
+    info.full_screen = false;
+    info.is_debug = false;
+    info.screen_number = 0;
+    info.title = "myviewer";
+    curan::renderable::Window::WindowSize size{1000, 800};
+    info.window_size = size;
+    curan::renderable::Window window{info};
+```
 
-        window.transverse_identifiers(
-            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
-                   &map) {
-                for (auto &p : map){
-                    std::cout << "Object contained: " << p.first << '\n';
-                }
+now we can define a lambda which we will launch before running our window. Notice that this lambda captures a reference to our window. Once this lambda is called the thread will wait for 10000 miliseconds before calling the function that appends the box. This gives enought time to mimic an external signal
 
-            });
+```cpp
+    auto external_signal = [&](){
+        std::this_thread::sleep_for(std::chrono::miliseconds(10000));
+        mimic_waiting_for_connection(window);
+    };
+```
 
-    } catch (const std::exception& e) {
-        std::cerr << "Exception thrown : " << e.what() << std::endl;
-        return 1;
-    }
+finaly we can launch a thread which will execute our function. 
+
+```cpp
+    std::thread connect_thread(external_signal);
+    window.run();
+    connect_thread.join();
     return 0;
 }
 
 ```
 
-This code adds objects to our scene asyncrounously, which means that we never block the entire scene while waiting for our object. The scene is now 
+The scene after 10 seconds is now 
 ![world_with_box](/assets/images/world_with_box.png)
 
 For a reference of objects that you can add to the scene look and the classes available inside the renderer library. There are two special objects which need a bit more attention. 
 
 # SequencialLinks
 
-How to create a robot is one of them. So in Curan you can create an Object called Sequencial Links. The API we use follows the Denavit-Harterberg convention. To define the robot in a file you need to write a json file describing where the meshes are, whats their relative transformation with respect to the previous link. Here is the json format of the LBR Med where you specify where the meshes are relative to the json file.
+How to create a robot is one of them. So in Curan you can create an object of the type SequencialLinks. Because of its wide addoption we use the Denavit-Harterberg convention. To define a custom robot you must first write the parameters that correspond to the frames of the links of your robot and then move the meshes to the correct relative pose (I would advise using MeshLab for these purpouses). Once you have done this, write a text file in json format. The following snippit of json shows the D-H parameters of the LBR Med. Notice the path string detailing the obj extension
 
 ```json
 [
@@ -197,7 +210,8 @@ How to create a robot is one of them. So in Curan you can create an Object calle
 
 ```
 
-Thus your file structure would look something like this
+your file structure would look something like this
+
 ```
 some directory ---
                  |-> arm.json
@@ -211,15 +225,19 @@ some directory ---
                  |-> Link7Modified.obj
 ```
 
-Now in your C++ code you can just launch a function which appends the robot to the window and then moves the robot in real time
+now in your C++ code you can just launch a function which appends the robot to the window and then moves the robot in real time. Lets take a look at how one can do this. First you need to include the necessary header files
 
 ```cpp
 #include "rendering/SequencialLinks.h"
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
-#include "rendering/Sphere.h"
 #include <iostream>
 
+```
+
+then you can define the function which receives a window and a flag indicating if the window has been closed or not. This function reads the arm.json file which contains the D-H parameters and the relative paths to the mesh files of the robot
+
+```cpp
 void move_robot(curan::renderable::Window& window, std::atomic<bool>& continue_updating){
     std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
     curan::renderable::SequencialLinks::Info create_info;
@@ -228,7 +246,11 @@ void move_robot(curan::renderable::Window& window, std::atomic<bool>& continue_u
     create_info.number_of_links = 8;
     vsg::ref_ptr<curan::renderable::Renderable> robotRenderable = curan::renderable::SequencialLinks::make(create_info);
     window << robotRenderable;
+```
 
+now that we have added the robot to the window we can update the angles of the links of the robot as shown in the following snippet of code
+
+```cpp
     double angle = 0.0;
     double time = 0.0;
     while(continue_updating.load()){
@@ -240,44 +262,41 @@ void move_robot(curan::renderable::Window& window, std::atomic<bool>& continue_u
         time += 0.016;
     }
 }
-
-int main(int argc, char **argv) {
-    try {
-        curan::renderable::Window::Info info;
-        info.api_dump = false;
-        info.display = "";
-        info.full_screen = false;
-        info.is_debug = false;
-        info.screen_number = 0;
-        info.title = "myviewer";
-        curan::renderable::Window::WindowSize size{1000, 800};
-        info.window_size = size;
-        curan::renderable::Window window{info};
-
-        std::atomic<bool> continue_updating = true;
-        std::thread local_thread{move_robot(window,continue_updating)};
-
-        window.run();
-        continue_updating.store(false);
-        local_thread.join();
-
-        window.transverse_identifiers(
-            [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
-                   &map) {
-                for (auto &p : map){
-                    std::cout << "Object contained: " << p.first << '\n';
-                }
-
-            });
-
-    } catch (const std::exception& e) {
-        std::cerr << "Exception thrown : " << e.what() << std::endl;
-        return 1;
-    }
-    return 0;
-}
-
 ```
 
-And finaly this is the result of all of our hard work
+now we define our main function, where we initialize our window
+
+```cpp
+int main(int argc, char **argv) {
+    curan::renderable::Window::Info info;
+    info.api_dump = false;
+    info.display = "";
+    info.full_screen = false;
+    info.is_debug = false;
+    info.screen_number = 0;
+    info.title = "myviewer";
+    curan::renderable::Window::WindowSize size{1000, 800};
+    info.window_size = size;
+    curan::renderable::Window window{info};
+```
+
+and we can initialize our atomic boolean variable to feed into the move robot function. First we can define a lambda 
+to execute in a parallel thread
+
+```cpp
+    std::atomic<bool> continue_updating = true;
+    auto update_robot_pose = [&](){
+        move_robot(window,continue_updating);
+    };
+    std::thread local_thread{update_robot_pose};
+
+    window.run();
+    continue_updating.store(false);
+    local_thread.join();
+
+    return 0;
+}
+```
+
+and finaly this is the result of all of our hard work
 ![world_with_box](/assets/images/sequencial_links.png)
