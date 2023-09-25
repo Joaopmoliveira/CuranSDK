@@ -15,7 +15,7 @@ communication
 )
 ```
 
-This automatically links against the necessary third_party libraries as needed. Now lets go and look into some code. As you have already seen we have emplyed threads throught the previous examples, and we went to great lenghts to guarantee  that we wait for threadsafe flags, as in the chapter [Utilities](#utilities). Now we will employ a similar tought process. The library which we base ourselfs on is called ASIO (Asyncrounous Input and Output). This is one of the great marvels of C++ in my opinion. 
+This automatically links against the necessary third_party libraries as needed. Now lets go and look into some code. As you have already seen we have emplyed threads throught the previous examples, and we went to great lenghts to guarantee  that we wait for threadsafe flags, as in the chapter [Utilities](/utilities/). Now we will employ a similar tought process. The library which we base ourselfs on is called ASIO (Asyncrounous Input and Output). This is one of the great marvels of C++ in my opinion. 
 
 Asio works based on a very important object, the 'asio::io_context'. This object is used to syncronize communcation calls and so much more that I cannot describe all the ways in which is used. In curan, to simplify your life while trying to use custom procotols we designed a class which is 
 

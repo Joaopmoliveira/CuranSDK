@@ -9,9 +9,9 @@ Once you have understood the layout of the curan project we are ready to dwelve 
 ## All the tutorials currently available
 
 * Utilities : [Utilities](/utilities/)
-* User Interface : [User Interface](/utilities/)
-* 3D Rendering : [3D Rendering](/utilities/)
-* Optimization : [Optimization](/utilities/)
-* Communication : [Communication](/utilities/)
-* Image Processing : [Image Processing](/utilities/)
-* Building Complex Programs : [Complex Programs](/utilities/)
+* User Interface : [User Interface](/user_interface/)
+* 3D Rendering : [3D Rendering](/3d_rendering/)
+* Optimization : [Optimization](/optimization/)
+* Communication : [Communication](/communication/)
+* Image Processing : [Image Processing](/image_processing/)
+* Building Complex Programs : [Complex Programs](/complex_programs/)

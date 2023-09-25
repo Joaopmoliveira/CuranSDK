@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 }
 ```
 This source code will create an empty window which we can rotate and move.
-![empty_world](assets/images/empty_world.png)
+![empty_world](/assets/images/empty_world.png)
 
 The wired floor is automatically added to the scene to facilitate the visualization by inexperienced personell viewing our demos (simmilar to the background of blender). The code blocks once the window.run() method is called. Now assume that we add a function in a thread that goes to do something like waiting for a connection to be established and once this connection is established we want to add a box to the scene. This is how you would achieve this behavior.
 
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
 ```
 
 This code adds objects to our scene asyncrounously, which means that we never block the entire scene while waiting for our object. The scene is now 
-![world_with_box](assets/images/world_with_box.png)
+![world_with_box](/assets/images/world_with_box.png)
 
 For a reference of objects that you can add to the scene look and the classes available inside the renderer library. There are two special objects which need a bit more attention. 
 
@@ -280,4 +280,4 @@ int main(int argc, char **argv) {
 ```
 
 And finaly this is the result of all of our hard work
-![world_with_box](assets/images/sequencial_links.png)
+![world_with_box](/assets/images/sequencial_links.png)
