@@ -25,16 +25,12 @@ struct already_found{
 void BoundingBox4Reconstruction::update()
 {
 	std::vector<gte::Vector3<double>> vertices;
-
-	// We multiply by four because each 
-	// image has four courners
 	vertices.resize(frame_data.size() * 4);
 
 	int increment = 0;
 	int counter = 0 ;
 
-	for (auto& img : frame_data)
-	{
+	for (auto& img : frame_data){
 		auto size = img->GetLargestPossibleRegion().GetSize();
 		int height = size[1];
 		int width = size[0];

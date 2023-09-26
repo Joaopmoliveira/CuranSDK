@@ -33,7 +33,6 @@ using PixelType = float;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using TransformType = itk::VersorRigid3DTransform<double>;
-using CommandType = CommandIterationUpdate;
 using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
 using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageType, ImageType>;
 using RegistrationType = itk::ImageRegistrationMethodv4<ImageType, ImageType, TransformType>;
@@ -74,16 +73,16 @@ void updateBaseTexture3D(vsg::floatArray3D &image, ImageType::Pointer image_to_r
   }
 }
 
-class CommandIterationUpdate : public itk::Command
+class CommandType : public itk::Command
 {
 public:
-  using Self = CommandIterationUpdate;
+  using Self = CommandType;
   using Superclass = itk::Command;
   using Pointer = itk::SmartPointer<Self>;
   itkNewMacro(Self);
 
 protected:
-  CommandIterationUpdate() = default;
+  CommandType() = default;
 
 public:
   using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
@@ -314,7 +313,6 @@ int main(int argc, char **argv)
 
   casted_volume_moving->update_volume(updater_moving);
 
-
   auto observer = CommandType::New();
   observer->set_pointer(casted_volume_moving);
   observer->set_registration(registration);
@@ -374,8 +372,6 @@ int main(int argc, char **argv)
   resampler->SetOutputSpacing(fixedImage->GetSpacing());
   resampler->SetOutputDirection(fixedImage->GetDirection());
   resampler->SetDefaultPixelValue(1);
-
-
 
   auto writer = WriterType::New();
   auto caster = CastFilterType::New();
