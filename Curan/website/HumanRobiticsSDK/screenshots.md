@@ -71,7 +71,7 @@ this gives you an idea if the relative position of the system is proper.
 
 > warning: **To run this application you should start the FRIPlusBridge previously described**
 
-Although a trivial task, we wrote a software solution that shows you the pose of the robot in real time as you specify the region of interest in space you wish to reconstruct. 
+Although a trivial task, we wrote a software solution that shows you the pose of the robot in real time as you specify the region of interest in space you wish to reconstruct. Two main reasons for this, first because its fun, second because it gives you some idea of how large this box is with respect to the size of the world.
 
 # Do volumetric reconstruction in real-time with high fidelity and low latency
 
