@@ -13,7 +13,12 @@ We use our custom UI to render things on screen. This UI has been improved and w
 
 # Select a region of interest with the flange of the robot
 
+Although a trivial task, we wrote a software solution that shows you the pose of the robot in real time as you specify the region of interest in space you wish to reconstruct. 
+
 # Do volumetric reconstruction in real-time with high fidelity and low latency
+
+Humans, similarly to control systems, trive with low latency solutions. We found that previous volumetric reconstruction techniques were unsatisfactory to our needs. Thus we wrote our own volumetric reconstructor, which is thightly integrated with Vulkan to improve latency of the display and the events in the real world. 
 
 # Control the robot with Learning from Demonstration frame-works
 
+To encode behavior in the robotic system, we prove control systems that 
