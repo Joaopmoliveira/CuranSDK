@@ -14,4 +14,4 @@ This folder contains our main applications avaialable in our build system. They 
 
 6. registration - An executable that takes two volumes, one which contains the CAT-MRI of the cranium and the reconstructed volume and outputs the rigid transformation between them.
 
-7. robot_ultrasound_visualization - An executable that showcases 
+7. robot_ultrasound_visualization - An executable that showcases the rendering in real time and shows the ultrasound image in space
