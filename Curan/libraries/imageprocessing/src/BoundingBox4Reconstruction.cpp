@@ -8,16 +8,12 @@ namespace curan {
 namespace image {
 
 BoundingBox4Reconstruction::BoundingBox4Reconstruction() 
-{
-	volumes_initiated = false;
-}
+{ }
 
 BoundingBox4Reconstruction::~BoundingBox4Reconstruction()
-{
-}
+{ }
 
-struct already_found
-{
+struct already_found{
   std::set<gte::Vector3<double>> & theSet;
 
   bool operator()(const gte::Vector3<double>& s) const
@@ -48,53 +44,42 @@ void BoundingBox4Reconstruction::update()
 		img->TransformIndexToPhysicalPoint(origin_pixel, origin_position);
 
 		vertices[increment] = gte::Vector3<double>({ origin_position[0], origin_position[1], origin_position[2] });
-		//std::printf("image %d - \n\tvertex 1 : ( %f %f %f )\n",counter,vertices[increment][0],vertices[increment][1],vertices[increment][2]);
 
 		output_type::IndexType origin_along_width = { width - 1,0,0 };
 		output_type::PointType origin_along_width_position;
 		img->TransformIndexToPhysicalPoint(origin_along_width, origin_along_width_position);
 
 		vertices[increment + 1] = gte::Vector3<double>({ origin_along_width_position[0], origin_along_width_position[1], origin_along_width_position[2] });
-		//std::printf("\tvertex 2 : ( %f %f %f )\n",vertices[increment+1][0],vertices[increment+1][1],vertices[increment+1][2]);
 
 		output_type::IndexType origin_along_width_and_height = { width - 1,height - 1,0 };
 		output_type::PointType origin_along_width_and_height_position;
 		img->TransformIndexToPhysicalPoint(origin_along_width_and_height, origin_along_width_and_height_position);
 
 		vertices[increment + 2] = gte::Vector3<double>({ origin_along_width_and_height_position[0], origin_along_width_and_height_position[1], origin_along_width_and_height_position[2] });
-		//std::printf("\tvertex 3 : ( %f %f %f )\n",vertices[increment+2][0],vertices[increment+2][1],vertices[increment+2][2]);
 
 		output_type::IndexType origin_along_height = { 0,height - 1,0 };
 		output_type::PointType origin_along_height_position;
 		img->TransformIndexToPhysicalPoint(origin_along_height, origin_along_height_position);
 
 		vertices[increment + 3] = gte::Vector3<double>({ origin_along_height_position[0], origin_along_height_position[1], origin_along_height_position[2] });
-		//std::printf("\tvertex 4 : ( %f %f %f )\n",vertices[increment+3][0],vertices[increment+3][1],vertices[increment+3][2]);
 		increment += 4;
 		++counter;
 	};
 
+	std::vector<gte::Vector3<double>> previous_and_current_verticies;
+	previous_and_current_verticies.insert( previous_and_current_verticies.end(), vertices.begin(), vertices.end() );
+	previous_and_current_verticies.insert( previous_and_current_verticies.end(), current_vertices.begin(), current_vertices.end());
+	gte::ConvexHull3<double> convex_hull;
+	convex_hull(previous_and_current_verticies,0);
+	current_vertices.clear();
+	auto vert = convex_hull.GetVertices();
+	for(const auto& ind : vert)
+		current_vertices.push_back(previous_and_current_verticies[ind]);
+
 	double volume = 0.0;
 	gte::MinimumVolumeBox3<double, true> bounding_box{10};
-	bounding_box(vertices.size(), vertices.data(), 4, volumetric_bounding_box, volume);
+	bounding_box(current_vertices.size(), current_vertices.data(), 4, volumetric_bounding_box, volume);
 };
-
-/*
-
-void BoundingBox4Reconstruction::get_final_volume_vertices(array_type& box_data){
-	std::array<gte::Vector3<double>, 8> current_corners;
-	current_corners[0] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
-	current_corners[1] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
-	current_corners[2] = volumetric_bounding_box.center - volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
-	current_corners[3] = volumetric_bounding_box.center - volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] + volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
-	current_corners[4] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] - volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
-	current_corners[5] = volumetric_bounding_box.center + volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] - volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
-	current_corners[6] = volumetric_bounding_box.center - volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] + volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] - volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
-	current_corners[7] = volumetric_bounding_box.center - volumetric_bounding_box.axis[0] * volumetric_bounding_box.extent[0] - volumetric_bounding_box.axis[1] * volumetric_bounding_box.extent[1] - volumetric_bounding_box.axis[2] * volumetric_bounding_box.extent[2];
-
-	box_data = current_corners;
-};
-*/
 
 void BoundingBox4Reconstruction::add_frames(std::vector<output_type::Pointer>& images_vector)
 {
