@@ -77,8 +77,9 @@ void BoundingBox4Reconstruction::update()
 		current_vertices.push_back(previous_and_current_verticies[ind]);
 
 	double volume = 0.0;
-	gte::MinimumVolumeBox3<double, true> bounding_box{10};
+	gte::MinimumVolumeBox3<double, true> bounding_box{0};
 	bounding_box(current_vertices.size(), current_vertices.data(), 4, volumetric_bounding_box, volume);
+	frame_data.clear();
 };
 
 void BoundingBox4Reconstruction::add_frames(std::vector<output_type::Pointer>& images_vector)
