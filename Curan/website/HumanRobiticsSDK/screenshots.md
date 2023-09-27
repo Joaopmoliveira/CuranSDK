@@ -165,8 +165,6 @@ Encoding information to a robotic system is a cumborsome task which is both time
 > Limit Cycle Learning from Demonstration
 
 
-
-
 # Close to Hard-Realtime Control
 
 RealTime systems are complex beasts, with intricate scheduling problems, thus they are usually very expensive pieces of software. We provide our solution which tries to come close to a realtime system, which meets our specifications. 
