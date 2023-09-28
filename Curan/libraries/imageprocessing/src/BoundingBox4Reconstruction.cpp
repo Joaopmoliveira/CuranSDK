@@ -27,6 +27,10 @@ void BoundingBox4Reconstruction::update()
 	std::vector<gte::Vector3<double>> vertices;
 	vertices.resize(frame_data.size() * 4);
 
+	// we use this to check if the convex hull changed to integrate the new vertices, 
+	// if it did not, then we jump the computation of the minimumbounding box
+	size_t last_index = vertices.size()-1;
+
 	int increment = 0;
 	int counter = 0 ;
 
@@ -63,19 +67,45 @@ void BoundingBox4Reconstruction::update()
 	};
 
 	std::vector<gte::Vector3<double>> previous_and_current_verticies;
+	
 	previous_and_current_verticies.insert( previous_and_current_verticies.end(), vertices.begin(), vertices.end() );
 	previous_and_current_verticies.insert( previous_and_current_verticies.end(), current_vertices.begin(), current_vertices.end());
+
+	//std::printf("(current verticies %d ) , (new vertices %d)\n",current_vertices.size(),vertices.size());
+
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+
+
 	gte::ConvexHull3<double> convex_hull;
 	convex_hull(previous_and_current_verticies,0);
-	current_vertices.clear();
-	auto vert = convex_hull.GetVertices();
-	for(const auto& ind : vert)
+	current_vertices = std::vector<gte::Vector3<double>>{};
+	auto conex_hull_verticies = convex_hull.GetVertices();
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	
+	std::cout << "Time difference convex= " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]\n";
+	//std::printf("(size of convex hull %d )\n",conex_hull_verticies.size());
+
+	bool did_convex_hull_change = false;
+	for(const auto& ind : conex_hull_verticies){
+		if(ind <= last_index)
+			did_convex_hull_change = true;
 		current_vertices.push_back(previous_and_current_verticies[ind]);
+	}
+		
 
 	double volume = 0.0;
-	gte::MinimumVolumeBox3<double, true> bounding_box{0};
-	bounding_box(current_vertices.size(), current_vertices.data(), 4, volumetric_bounding_box, volume);
+	begin = std::chrono::steady_clock::now();
+	
+	if(did_convex_hull_change){
+		gte::MinimumVolumeBox3<double, true> bounding_box{10};
+		bounding_box(current_vertices.size(), current_vertices.data(), 4, volumetric_bounding_box, volume);
+	}
+
 	frame_data.clear();
+ 	end = std::chrono::steady_clock::now();
+ 	std::cout << "Time difference bounding= " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]\n" ;
+	//std::printf("========================================\n");
 };
 
 void BoundingBox4Reconstruction::add_frames(std::vector<output_type::Pointer>& images_vector)
