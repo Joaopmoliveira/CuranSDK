@@ -14,4 +14,5 @@ Once you have understood the layout of the curan project we are ready to dwelve 
 * Optimization : [Optimization](/optimization/)
 * Communication : [Communication](/communication/)
 * Image Processing : [Image Processing](/image_processing/)
+* RealTime Control : [RealTime Control](/realtimecontrol/)
 * Building Complex Programs : [Complex Programs](/complex_programs/)

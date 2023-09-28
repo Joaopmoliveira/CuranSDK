@@ -151,4 +151,6 @@ The volume reconstruction code is essencially a copy of [IGSIO](https://github.c
 > 
 > -Manuel Carvalho (Implementation of registration algorithms)
 >
+> -Rui Coelho (Implementation of the RealTime kernel)
+>
 > - (You) Become a contributer!

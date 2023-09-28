@@ -5,7 +5,7 @@
 layout: home
 ---
 
-Curan is a medical toolkit written in c++ which simplifies integration with third-party dependecies and provides solutions for your custom medical needs. 
+Curan is a medical toolkit written in C++ which simplifies integration with third-party dependecies and provides solutions for your custom medical needs. 
 
 You can find the source code for Curan at GitHub:
 [Curan](https://github.com/Human-Robotics-Lab/Curan/tree/main)
@@ -15,7 +15,6 @@ If you find that you don't have authorization to acess the github repository of 
 On with our adventure into programming. This is hopefully a detaild view of how to use and understand the project layout. 
 
 [Human-Robotics-Lab-organization]: https://github.com/Human-Robotics-Lab
-
 
 If you want to start on this path, read the [build intructions](/build_intructions/) on how to compile Curan in your personal machine. Currently we have only tested Curan in Windows and Ubunto, although most libraries should work out of the box in Mac OS. 
 
