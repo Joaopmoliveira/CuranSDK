@@ -83,8 +83,7 @@ void BoundingBox4Reconstruction::update()
 	auto conex_hull_verticies = convex_hull.GetVertices();
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	
-	std::cout << "Time difference convex= " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]\n";
-	//std::printf("(size of convex hull %d )\n",conex_hull_verticies.size());
+	auto timediff_convex = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 
 	bool did_convex_hull_change = false;
 	for(const auto& ind : conex_hull_verticies){
@@ -104,8 +103,7 @@ void BoundingBox4Reconstruction::update()
 
 	frame_data.clear();
  	end = std::chrono::steady_clock::now();
- 	std::cout << "Time difference bounding= " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]\n" ;
-	//std::printf("========================================\n");
+	//std::printf("convex: %d bounding : %d\n",timediff_convex,std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
 };
 
 void BoundingBox4Reconstruction::add_frames(std::vector<output_type::Pointer>& images_vector)
