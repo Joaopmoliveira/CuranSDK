@@ -455,24 +455,7 @@ void IntegratedReconstructor::fill_holes()
 					} // end x loop
 				} // end y loop
 			} // end z loop		
-			/*
-			
-            using ImportFilterType1 = itk::ImportImageFilter<unsigned char, 3>;
-			auto new_importFilter = ImportFilterType1::New();
-            ImportFilterType1::IndexType starts;
-            starts.Fill(0);
-            ImportFilterType1::RegionType regions;
-            region.SetIndex(starts);
-            region.SetSize(output_size);
-			
-            importFilter->SetRegion(region);
-           	importFilter->SetSpacing(output_origin);
-            importFilter->SetSpacing(output_spacing);
-			importFilter->SetDirection(ref_to_output_origin);
 
-			auto new_beatiful_pointer = filled_volume->GetBufferPointer();
-			new_importFilter->SetImportPointer(new_beatiful_pointer, numberOfPixels, importImageFilterWillOwnTheBuffer);
-			*/
 			using CastFilterType1 = itk::CastImageFilter<itk::Image<unsigned char,3> , itk::Image<float, 3>>;
 			using RescaleFilterType1 = itk::RescaleIntensityImageFilter<itk::Image<float, 3>, itk::Image<float, 3>>;
 			
@@ -485,18 +468,9 @@ void IntegratedReconstructor::fill_holes()
             new_rescaleFilter->SetOutputMaximum(1.0);
             new_rescaleFilter->SetOutputMinimum(0.0);
 			new_castFilter->Update();
-
-			/* for(auto iter_val = new_castFilter->GetOutput->begin();iter_val!=new_castFilterget-->end(); ++iter_val)
-				max_val1 = (*iter_val>max_val1) ? *iter_val : max_val1;
-
-				std::printf("\n max values is : %f\n",max_val1); */
-
 			auto image=new_castFilter->GetOutput();
 
 			std::printf("\n size of destination: (%d %d %d ) pixel size (%d)\n size of origin : (%d %d %d ) pixel size: (%d)\n copied block: %d",textureData->width(),textureData->height(),textureData->depth(),textureData->stride(),output_size[0],output_size[1],output_size[2],sizeof(float),numberOfPixels*sizeof(float));
-			std::printf("\n Print adress source: %d\n",(int)image->GetBufferPointer());
-			std::printf("\n Print adress destination : %d\n",(int)textureData->data());
-			
 			std::printf("\n Image size from itk: %d\n",image->GetLargestPossibleRegion().GetSize()[0]*image->GetLargestPossibleRegion().GetSize()[1]*image->GetLargestPossibleRegion().GetSize()[2]);
 			std::memcpy(textureData->data(), image->GetBufferPointer(), (size_t)(textureData->size()/2.0));
 			textureData->dirty();
