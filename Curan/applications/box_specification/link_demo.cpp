@@ -110,7 +110,10 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
     origin[2] = product(3,2);
     image_to_render->SetOrigin(origin);
 
-    if(state->add_image_to_box_specifier){
+    static size_t counter = 0;
+    constexpr size_t update_rate = 4;
+    ++counter;
+    if(state->add_image_to_box_specifier && counter % update_rate == 0){
         state->box_class.add_frame(image_to_render);
         state->box_class.update();
     }

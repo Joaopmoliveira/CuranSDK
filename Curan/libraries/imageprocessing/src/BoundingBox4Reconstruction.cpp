@@ -70,12 +70,7 @@ void BoundingBox4Reconstruction::update()
 	
 	previous_and_current_verticies.insert( previous_and_current_verticies.end(), vertices.begin(), vertices.end() );
 	previous_and_current_verticies.insert( previous_and_current_verticies.end(), current_vertices.begin(), current_vertices.end());
-
-	//std::printf("(current verticies %d ) , (new vertices %d)\n",current_vertices.size(),vertices.size());
-
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-
 
 	gte::ConvexHull3<double> convex_hull;
 	convex_hull(previous_and_current_verticies,0);
@@ -103,7 +98,7 @@ void BoundingBox4Reconstruction::update()
 
 	frame_data.clear();
  	end = std::chrono::steady_clock::now();
-	//std::printf("convex: %d bounding : %d\n",timediff_convex,std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+	std::printf("convex: %d bounding : %d\n",timediff_convex,std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
 };
 
 void BoundingBox4Reconstruction::add_frames(std::vector<output_type::Pointer>& images_vector)
