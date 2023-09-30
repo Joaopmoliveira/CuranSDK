@@ -9,8 +9,15 @@
 #include "MyLBRClient.h"
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
+#include <csignal>
 
 constexpr unsigned short DEFAULT_PORTID = 30200;
+
+asio::io_context context;
+
+void signal_handler(int signal){
+	context.stop();
+}
 
 void robot_control(std::shared_ptr<SharedState> shared_state,std::shared_ptr<curan::utilities::Flag> flag) {
 	try{
@@ -20,20 +27,8 @@ void robot_control(std::shared_ptr<SharedState> shared_state,std::shared_ptr<cur
 	KUKA::FRI::ClientApplication app(connection, client);
 	app.connect(DEFAULT_PORTID, NULL);
 	bool success = app.step();
-	if(success)
-		curan::utilities::cout << "Established first message between robot and host\n";
-	else
-		curan::utilities::cout << "Failed to established first message between robot and host\n";
-	try
-	{
-		while (success && flag->value())
-		{
-			success = app.step();
-		}
-	}
-	catch (std::exception& e) {
-		return;
-	}
+	while (success && flag->value())
+		success = app.step();
 	app.disconnect();
 	return;
 	} catch(...){
@@ -159,7 +154,7 @@ struct PlusSpecification {
 
 void start_tracking(curan::communication::Server& server,std::shared_ptr<curan::utilities::Flag> flag, std::shared_ptr<SharedState> shared_state) {
 try{
-	asio::io_context& context = server.get_context();
+	asio::io_context& in_context = server.get_context();
 	igtl::TimeStamp::Pointer ts;
 	ts = igtl::TimeStamp::New();
 	// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
@@ -174,7 +169,7 @@ try{
 	std::unique_ptr<ToolData> myTool = std::make_unique<ToolData>(toolMass, toolCOM, toolInertia);
 	robot->attachToolToRobotModel(myTool.get());
 
-	while (!context.stopped()) {
+	while (!in_context.stopped()) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		int val = 50;
 		std::string name = "empty";
@@ -215,7 +210,7 @@ try{
 		}
 	}
 } catch(...){	
-	curan::utilities::cout << "exception was thrown\n";
+	curan::utilities::cout << "exception was thrown in the communication loop\n";
 }
 }
 
@@ -233,7 +228,7 @@ void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage>& me
 }
 
 void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<curan::utilities::Flag> flag, std::shared_ptr<SharedState> shared_state) {
-	asio::io_context& context = server.get_context();
+	asio::io_context& in_context = server.get_context();
 
 	// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
 	kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
@@ -241,7 +236,7 @@ void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<c
 	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
 	auto iiwa = std::make_unique<RobotParameters>(); // myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
 
-	while (!context.stopped()) {
+	while (!in_context.stopped()) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		int val = 50;
 		curan::utilities::cout << "waiting for outside value\n";
@@ -251,7 +246,7 @@ void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<c
 			val = specification.framerate;
 			name = specification.name;
 		}
-		while (!context.stopped()) {
+		while (flag->value()) {
 			const auto start = std::chrono::high_resolution_clock::now();
 
 			std::shared_ptr<curan::communication::FRIMessage> message = std::shared_ptr<curan::communication::FRIMessage>(new curan::communication::FRIMessage());
@@ -274,6 +269,8 @@ void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<c
 
 int main(int argc, char* argv[]) {
 	try{
+	    // Install a signal handler
+    std::signal(SIGINT, signal_handler);
 	
 	std::cout << "How to use: \nCall the executable as FRIBrigde Name_of_device Time_between_messages(milliseconds), \ne.g. : FRIBrigde Flange 40\n";
 	if(argc!=3){
@@ -296,9 +293,8 @@ int main(int argc, char* argv[]) {
 	specification.name = std::string(argv[1]);
 	
 	unsigned short port = 50000;
-	asio::io_context io_context;
 	curan::communication::interface_igtl igtlink_interface;
-	curan::communication::Server::Info construction{ io_context,igtlink_interface ,port };
+	curan::communication::Server::Info construction{ context,igtlink_interface ,port };
 	curan::communication::Server server{ construction };
 	auto state_flag = curan::utilities::Flag::make_shared_flag();
 	state_flag->clear();
@@ -323,7 +319,6 @@ int main(int argc, char* argv[]) {
 		if (!temp.compare("STP_TDATA")) {
 			curan::utilities::cout << "received request to stop processing images\n";
 			state_flag->clear();
-			server.get_context().stop();
 			return;
 		}
 	};
@@ -351,7 +346,7 @@ int main(int argc, char* argv[]) {
 	unsigned short port_fri = 50010;
 
 	curan::communication::interface_fri fri_interface;
-	curan::communication::Server::Info construction_joints{ io_context,fri_interface ,port_fri };
+	curan::communication::Server::Info construction_joints{ context,fri_interface ,port_fri };
 	curan::communication::Server server_joints{ construction_joints };
 
 	auto joint_tracking = [state_flag, &server_joints, shared_state](){
@@ -360,7 +355,7 @@ int main(int argc, char* argv[]) {
 	std::thread thred_joint{ joint_tracking };
 
 	curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
-	io_context.run();
+	context.run();
 	robot_flag->clear();
 	thred_robot_control.join();
 	thred.join();
