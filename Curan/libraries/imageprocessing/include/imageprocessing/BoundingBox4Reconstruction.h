@@ -29,6 +29,8 @@ namespace curan{
 				return volumetric_bounding_box;
 			}
 
+			void reset();
+
 			gte::OrientedBox3<double> volumetric_bounding_box;
 		private:
 			std::vector<output_type::Pointer> frame_data;

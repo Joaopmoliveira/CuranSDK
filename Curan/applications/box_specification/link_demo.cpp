@@ -52,6 +52,7 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
         state->caixa = curan::renderable::Box::make(infobox);
         (*state->window_pointer) << state->caixa;
     }
+
     auto updateBaseTexture = [message_body](vsg::vec4Array2D& image)
     {
         try{
@@ -113,7 +114,13 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
     static size_t counter = 0;
     constexpr size_t update_rate = 4;
     ++counter;
-    if(state->add_image_to_box_specifier && counter % update_rate == 0){
+
+    static bool previous_state = state->restart_volumetric_box.load();
+    if(previous_state!=state->restart_volumetric_box.load())
+        state->box_class.reset();
+    previous_state = state->restart_volumetric_box.load();
+
+    if(previous_state && counter % update_rate == 0){
         state->box_class.add_frame(image_to_render);
         state->box_class.update();
     }
@@ -201,9 +208,9 @@ int communication(std::shared_ptr<SharedRobotState> state){
 	}
 	};
 	auto connectionstatus = client.connect(lam);
-    if(!connectionstatus){
+    if(!connectionstatus)
         throw std::runtime_error("missmatch between communication interfaces");
-    }
+    
 
     curan::communication::interface_fri fri_interface;
 	curan::communication::Client::Info fri_construction{ context,fri_interface };
@@ -221,22 +228,11 @@ int communication(std::shared_ptr<SharedRobotState> state){
 	}
 	};
 	auto fri_connectionstatus = fri_client.connect(lam_fri);
-    if(!fri_connectionstatus){
-        throw std::runtime_error("missmatch between communication interfaces");
-    }
 
-    auto beatifull_button = [&](){
-        std::cout << "please click any key to start defining the bounding box ...\n";
-        char c;
-        std::cin >> c;
-        state->add_image_to_box_specifier = true;
-        std::cout << "when the box is defined please click any key to stop defining the bounding box ...\n";
-        std::cin >> c;
-        state->add_image_to_box_specifier  = false;
-    };
-    std::thread box_specified_button{beatifull_button};
+    if(!fri_connectionstatus)
+        throw std::runtime_error("missmatch between communication interfaces");
+    
 
 	context.run();
-    box_specified_button.join();
     return 0;
 }

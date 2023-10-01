@@ -58,6 +58,17 @@ void signal_handler(int signal)
   gSignalStatus = signal;
 }
 
+void interface(vsg::CommandBuffer& cb,std::shared_ptr<SharedRobotState>& robot_state){
+   ImGui::Begin("Box Specification Selection");
+   static float t = 0;
+   t += ImGui::GetIO().DeltaTime;
+   static bool local_record_data = false;
+   ImGui::Checkbox("New Box Selection", &local_record_data); 
+   robot_state->restart_volumetric_box.store(local_record_data);
+   ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+   ImGui::End();
+}
+
 int main (int argc, char** argv)
 {
    std::signal(SIGINT, signal_handler);
@@ -84,6 +95,9 @@ int main (int argc, char** argv)
        std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
       return 1;
    }
+
+   curan::renderable::ImGUIInterface::Info info_gui{[&](vsg::CommandBuffer& cb){interface(cb,robot_state);}};
+   auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
    curan::renderable::Window::Info info;
    info.api_dump = false;
    info.display = "";
@@ -91,6 +105,7 @@ int main (int argc, char** argv)
    info.is_debug = false;
    info.screen_number = 0;
    info.title = "myviewer";
+   info.imgui_interface = ui_interface;
    curan::renderable::Window::WindowSize size{2000, 1200};
    info.window_size = size;
    curan::renderable::Window window{info};
