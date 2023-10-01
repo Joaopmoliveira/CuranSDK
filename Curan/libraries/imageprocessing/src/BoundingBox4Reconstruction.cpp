@@ -13,13 +13,10 @@ BoundingBox4Reconstruction::BoundingBox4Reconstruction()
 BoundingBox4Reconstruction::~BoundingBox4Reconstruction()
 { }
 
-struct already_found{
-  std::set<gte::Vector3<double>> & theSet;
-
-  bool operator()(const gte::Vector3<double>& s) const
-  {
-     return !theSet.insert(s).second;
-  }
+void BoundingBox4Reconstruction::reset(){
+	current_vertices = std::vector<gte::Vector3<double>>{};
+	volumetric_bounding_box = gte::OrientedBox3<double>{};
+	frame_data = std::vector<output_type::Pointer>{};
 };
 
 void BoundingBox4Reconstruction::update()

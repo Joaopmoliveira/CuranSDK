@@ -110,10 +110,8 @@ try{
    robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
    window << robot_state->robot;
 
-/* try{ */
-   // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
    nlohmann::json specified_box;
-	std::ifstream in("C:/Users/SURGROB7/specified_box.json");
+	std::ifstream in("specified_box.json");
 	in >> specified_box;
 
    std::string timestamp_box = specified_box["timestamp"];
@@ -158,28 +156,31 @@ try{
 	vol_direction[2] = {direction(0,2),direction(1,2),direction(2,2)};
 	curan::image::IntegratedReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
    
-   robot_state->integrated_volume =  curan::image::IntegratedReconstructor::make(recon_info);
+   robot_state->integrated_volume = curan::image::IntegratedReconstructor::make(recon_info);
    robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
       .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
    
    window << robot_state->integrated_volume;
 
-/* } catch(...){
-       std::cout << "failure to read the calibration data, \nplease provide a file \"optimization_result.json\" \nwith the calibration of the set up";
-      return 1;
-} */
-
    auto communication_callable = [robot_state](){
       communication(robot_state);
    };
-   //here I should lauch the thread that does the communication and renders the image above the robotic system 
    std::thread communication_thread(communication_callable);
 
    window.run();
    robot_state->kill_yourself();
    communication_thread.join();
 
-
+   /* robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_fillstrategy(curan::image::reconstruction::FillingStrategy::NEAREST_NEIGHBOR);
+            curan::image::reconstruction::KernelDescriptor descript;
+          
+   descript.fillType = curan::image::reconstruction::FillingStrategy::STICK;
+   descript.size = 3.0;
+   descript.stdev = 0.5;
+   descript.minRatio = 0.5;
+   robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_kernel_descritor(descript);
+   robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->fill_holes();
+ */
 
    itk::Size<3U>  output_size;
    output_size = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_output_size();
@@ -187,8 +188,6 @@ try{
    size_t height =   output_size[1] ;
    size_t depth =   output_size[2] ;
 
-   
-   
    using PixelType = float;
    using ImageType = itk::Image<PixelType, 3>;
    ImageType::Pointer itkVolume = ImageType::New();
@@ -211,7 +210,6 @@ try{
    importFilter->SetSpacing(output_spacing);
    const unsigned int numberOfPixels = output_size[0] * output_size[1] * output_size[2];
 
-   std::cout << "\norientation before: " << direction << std::endl;
    
    itk::Matrix<double> orientation;
    for(size_t row = 0; row < 3; ++row)
@@ -219,16 +217,14 @@ try{
          orientation(row,col) = direction(row,col);
    importFilter->SetDirection(orientation);
 
-   std::cout << "\norientation after: " << orientation << std::endl;
 
    const bool importImageFilterWillOwnTheBuffer = false;
    float * my_beatiful_pointer = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->data();
    importFilter->SetImportPointer(my_beatiful_pointer, numberOfPixels, importImageFilterWillOwnTheBuffer);
 
-   // Save the ITK Image as an MHA file
    using WriterType = itk::ImageFileWriter<ImageType>;
    WriterType::Pointer writer = WriterType::New();
-   writer->SetFileName("C:/Users/SURGROB7/reconstruction_results.mha");
+   writer->SetFileName("reconstruction_results.mha");
    writer->SetInput(importFilter->GetOutput());
    writer->Update();
 

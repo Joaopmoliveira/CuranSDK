@@ -10,8 +10,8 @@
 
 constexpr long width = 100;
 constexpr long height = 100;
-float spacing[3] = {0.01 , 0.01 , 0.01}; //0.002
-float final_spacing [3] = {0.01, 0.01 , 0.01}; //0.002
+float spacing[3] = {0.01 , 0.01 , 0.01}; 
+float final_spacing [3] = {0.01, 0.01 , 0.01};
 
 // Define a function to generate random numbers within a specified range
 double generateRandomNumber(double min, double max) {

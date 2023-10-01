@@ -38,6 +38,7 @@ public:
     curan::image::BoundingBox4Reconstruction box_class;
     vsg::ref_ptr<curan::renderable::Renderable> caixa;
     vsg::dmat4 calibration_matrix;
+    std::atomic<bool> restart_volumetric_box = false;
 
     static std::shared_ptr<SharedRobotState> make_shared();
     

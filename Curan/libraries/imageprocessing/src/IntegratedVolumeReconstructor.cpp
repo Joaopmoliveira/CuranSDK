@@ -472,7 +472,8 @@ void IntegratedReconstructor::fill_holes()
 
 			std::printf("\n size of destination: (%d %d %d ) pixel size (%d)\n size of origin : (%d %d %d ) pixel size: (%d)\n copied block: %d",textureData->width(),textureData->height(),textureData->depth(),textureData->stride(),output_size[0],output_size[1],output_size[2],sizeof(float),numberOfPixels*sizeof(float));
 			std::printf("\n Image size from itk: %d\n",image->GetLargestPossibleRegion().GetSize()[0]*image->GetLargestPossibleRegion().GetSize()[1]*image->GetLargestPossibleRegion().GetSize()[2]);
-			std::memcpy(textureData->data(), image->GetBufferPointer(), (size_t)(textureData->size()/2.0));
+			//std::memcpy(textureData->data(), image->GetBufferPointer(), (size_t)(textureData->size()/2.0));
+			std::memcpy(textureData->data(), image->GetBufferPointer(), numberOfPixels*sizeof(float));
 			textureData->dirty();
 		return;
 	};
@@ -597,26 +598,24 @@ bool IntegratedReconstructor::update(){
 	    int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
 		double clipRectangleOrigin [2]; // array size 2
 		double clipRectangleSize [2]; // array size 2
+		
+		auto local_size = img->GetLargestPossibleRegion().GetSize();
+		auto local_origin = img->GetOrigin();
+
 		if(clipping){
 			clipRectangleOrigin[0] = (*clipping).clipRectangleOrigin[0];
 			clipRectangleOrigin[1] = (*clipping).clipRectangleOrigin[1];
-
 			clipRectangleSize[0] = (*clipping).clipRectangleSize[0];
 			clipRectangleSize[1] = (*clipping).clipRectangleSize[1];
-
-			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
-			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
 		} else {
-			auto local_size = img->GetLargestPossibleRegion().GetSize();
-			auto local_origin = img->GetOrigin();
-			clipRectangleOrigin[0] = local_origin[0];
-			clipRectangleOrigin[1] = local_origin[1];
+			clipRectangleOrigin[0] = 0;
+			clipRectangleOrigin[1] = 0;
 			clipRectangleSize[0] = local_size.GetSize()[0]-1;
 			clipRectangleSize[1] = local_size.GetSize()[1]-1;
+		}
 
-			inputFrameExtentForCurrentThread[1] = clipRectangleSize[0];
-			inputFrameExtentForCurrentThread[3] = clipRectangleSize[1];
-		}	
+		inputFrameExtentForCurrentThread[1] = local_size.GetSize()[0]-1;
+		inputFrameExtentForCurrentThread[3] = local_size.GetSize()[1]-1;
 		paste_slice_info.clipRectangleOrigin = clipRectangleOrigin;
 	    paste_slice_info.clipRectangleSize = clipRectangleSize;
 		paste_slice_info.inExt = inputFrameExtentForCurrentThread;

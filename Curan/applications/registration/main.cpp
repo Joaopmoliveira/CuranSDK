@@ -112,14 +112,20 @@ public:
       auto pos = optimizer->GetCurrentPosition();
 
       const TransformType::ParametersType finalParameters = registration->GetOutput()->Get()->GetParameters();
+      std::cout << "parameters: " << finalParameters << "\n";
+      const TransformType::ParametersType finalFixedParameters = registration->GetOutput()->Get()->GetFixedParameters();
+      std::cout << "fixed parameters: " << finalFixedParameters << "\n";
       auto finalTransform = TransformType::New();
 
-      finalTransform->SetFixedParameters(registration->GetOutput()->Get()->GetFixedParameters());
+      finalTransform->SetFixedParameters(finalFixedParameters);
       finalTransform->SetParameters(pos);
 
       TransformType::MatrixType matrix = finalTransform->GetMatrix();
       TransformType::OffsetType offset = finalTransform->GetOffset();
       auto current_transform = vsg::translate(0.0, 0.0, 0.0);
+
+      std::cout << "Transformation Matrix: \n" << matrix << std::endl;
+      std::cout << "Transformation Offset: \n" << offset << std::endl;
 
       current_transform(3, 0) = finalParameters[3] / 1000.0;
       current_transform(3, 1) = finalParameters[4] / 1000.0;
@@ -131,6 +137,8 @@ public:
 
       if (moving_pointer_to_volume != nullptr)
         moving_pointer_to_volume->update_transform(current_transform);
+        //moving_pointer_to_volume->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(vsg::radians(-pos[0]),1.0,0.0,0.0)*vsg::rotate(vsg::radians(-pos[1]),0.0,1.0,0.0)*vsg::rotate(vsg::radians(-pos[2]),0.0,0.0,1.0));
+        //std::cout << "pos: " << pos << "\n";
       std::this_thread::sleep_for(std::chrono::milliseconds(0));
     }
   }
@@ -157,8 +165,18 @@ int main(int argc, char **argv)
   auto fixedImageReader = FixedImageReaderType::New();
   auto movingImageReader = MovingImageReaderType::New();
 
-  fixedImageReader->SetFileName("C:/Users/SURGROB7/Desktop/Manuel_Carvalho/reconstruction_results1.mha");
-  movingImageReader->SetFileName("C:/Users/SURGROB7/Desktop/Manuel_Carvalho/precious_phantom_transformed.mha");
+  //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
+  //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/ct_fixed.mha"};
+  //std::string dirName{"C:/Users/SURGROB7/reconstruction_results.mha"};
+  std::string dirName{"C:/Users/SURGROB7/Desktop/Manuel_Carvalho/precious_phantom1.mha"};
+  fixedImageReader->SetFileName(dirName);
+
+  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
+  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move.mha"};
+  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
+  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"};
+  std::string dirName2{"C:/Users/SURGROB7/Desktop/Manuel_Carvalho/precious_phantom_transformed.mha"};
+  movingImageReader->SetFileName(dirName2);
 
   try{
     fixedImageReader->Update();
@@ -177,6 +195,7 @@ int main(int argc, char **argv)
       itk::CenteredTransformInitializer<TransformType,
                                         ImageType,
                                         ImageType>;
+  
   auto initializer = TransformInitializerType::New();
 
   initializer->SetTransform(initialTransform);
@@ -331,6 +350,9 @@ int main(int argc, char **argv)
   TransformType::MatrixType matrix = finalTransform->GetMatrix();
   TransformType::OffsetType offset = finalTransform->GetOffset();
 
+  std::cout << "Transformation Matrix: \n" << matrix << std::endl;
+  std::cout << "Transformation Offset: \n" << offset << std::endl;
+
   std::stringstream matrix_value;
   for (size_t y = 0; y < 3; ++y)
   {
@@ -377,7 +399,7 @@ int main(int argc, char **argv)
   auto caster = CastFilterType::New();
   auto rescaleFilter = RescaleFilterType::New();
 
-  std::string Output1{"outputImagefile.mha"};
+  std::string Output1{"Registration_output_image.mha"};
   writer->SetFileName(Output1);
 
   caster->SetInput(resampler->GetOutput());

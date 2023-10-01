@@ -8,7 +8,7 @@
 <Device
 		Id="ROBOT"
 		Type="OpenIGTLinkTracker"
-		LocalTimeOffsetSec="0"
+		LocalTimeOffsetSec="0.0"
 		ServerAddress="172.31.1.148"
 		ServerPort="50000"
 		MessageType="TDATA"
@@ -19,7 +19,7 @@
 		SendTimeoutSec="0.2"
 		UseLastTransformsOnReceiveTimeout="true"
 		ReconnectOnReceiveTimeout="true" 
-		ReceiveTimeoutSec ="0.5">
+		ReceiveTimeoutSec ="6.5">
 		<DataSources>
 			<DataSource Type="Tool" Id="Flange" /> 
 		</DataSources>
@@ -33,7 +33,7 @@
       Id="VideoDevice" 
       Type="ICCapturing"  
 	  AcquisitionRate="25"
-	  LocalTimeOffsetSec="-0.085"
+	  LocalTimeOffsetSec="0.0"
       DeviceName="DFG/USB2pro"
       VideoNorm="PAL_B"
       VideoFormat="Y800"
