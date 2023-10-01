@@ -176,8 +176,7 @@ try{
 		val = specification.framerate;
 		name = specification.name;
 		std::string device_name = "FlangeTo" + name;
-		curan::utilities::cout << "name to outside:" << device_name << "\nstarting communication!\n";
-
+		flag->wait();
 		while (flag->value()) {
 			const auto start = std::chrono::high_resolution_clock::now();
 			ts->GetTime();
@@ -247,8 +246,6 @@ void start_joint_tracking(curan::communication::Server& server,std::shared_ptr<c
 	while (!in_context.stopped()) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		int val = 50;
-		curan::utilities::cout << "waiting for outside value\n";
-		flag->wait();
 		std::string name = "empty";
 		{
 			val = specification.framerate;
@@ -310,6 +307,7 @@ int main(int argc, char* argv[]) {
 		if (err) {
 			return;
 		}
+		std::cout << "Receivd message\n";
 		auto temp = pointer->GetMessageType();
 		if (!temp.compare("STT_TDATA")) {
 			igtl::StartTrackingDataMessage::Pointer tracking = igtl::StartTrackingDataMessage::New();
@@ -319,13 +317,13 @@ int main(int argc, char* argv[]) {
 				std::string s{ tracking->GetCoordinateName() };
 				int framerate = tracking->GetResolution();
 				state_flag->set();
-				curan::utilities::cout << "message coordinate name: (" << s << ") , frame rate: " << framerate << "\n";
+				std::cout << "message coordinate name: (" << s << ") , frame rate: " << framerate << "\n";
 			} else 
-				curan::utilities::cout << "failed to unpack plus message\n";
+				std::cout << "failed to unpack plus message\n";
 			return;
 		}
 		if (!temp.compare("STP_TDATA")) {
-			curan::utilities::cout << "received request to stop processing images\n";
+			std::cout << "received request to stop processing images\n";
 			state_flag->clear();
 			return;
 		}
