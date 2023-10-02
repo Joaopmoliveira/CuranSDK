@@ -36,7 +36,7 @@ where we define an ASIO context to deal with our assyncronous calls, we define a
 	curan::communication::interface_igtl igtlink_interface;
 ```
 
-this is the hardest part to explain. Imagine you have two people, where both want to communicate between eachother. If they do not speak the same language, then its impossible for them to establish meaninfull communication. To solve this problem we define aprior the language that the server will use to communicate with us, the client. This interface contains a state machine which deals with any protocol specific calls whilst reading and writing these custom messages (more on this later). 
+this is the hardest part to explain. Imagine you have two people, where both want to communicate between eachother. If they do not speak the same language, then its impossible for them to establish meaninfull communication. To solve this problem we define aprior the language that the server will use to communicate with us, the client. This interface contains a state machine which deals with any protocol specific calls whilst reading and writing these custom messages (more on this later). For now we will use the OpenIGTLink protocol to communicate between our two machines. 
 
 Once we have defined the language we will use to communicate with the server we can create our client 
 
@@ -51,6 +51,10 @@ Once we have defined the language we will use to communicate with the server we 
 ```
 
 this simple application does not do anything. In the next sections we will show how you can custimize your client behavior. 
+
+## Customize your behavior 
+
+Obviously you want to do things with the messages exchanged between the client and the server. 
 
 ## Add your own custom protocol to the library
 
