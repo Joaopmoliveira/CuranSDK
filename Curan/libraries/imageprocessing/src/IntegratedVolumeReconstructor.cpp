@@ -472,7 +472,6 @@ void IntegratedReconstructor::fill_holes()
 
 			std::printf("\n size of destination: (%d %d %d ) pixel size (%d)\n size of origin : (%d %d %d ) pixel size: (%d)\n copied block: %d",textureData->width(),textureData->height(),textureData->depth(),textureData->stride(),output_size[0],output_size[1],output_size[2],sizeof(float),numberOfPixels*sizeof(float));
 			std::printf("\n Image size from itk: %d\n",image->GetLargestPossibleRegion().GetSize()[0]*image->GetLargestPossibleRegion().GetSize()[1]*image->GetLargestPossibleRegion().GetSize()[2]);
-			//std::memcpy(textureData->data(), image->GetBufferPointer(), (size_t)(textureData->size()/2.0));
 			std::memcpy(textureData->data(), image->GetBufferPointer(), numberOfPixels*sizeof(float));
 			textureData->dirty();
 		return;

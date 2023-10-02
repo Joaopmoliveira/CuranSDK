@@ -44,7 +44,7 @@ using WriterType = itk::ImageFileWriter<OutputImageType>;
 using FixedImageReaderType = itk::ImageFileReader<ImageType>;
 using MovingImageReaderType = itk::ImageFileReader<ImageType>;
 
-void updateBaseTexture3D(vsg::floatArray3D &image, ImageType::Pointer image_to_render)
+void updateBaseTexture3D(vsg::floatArray3D &image, ImageType::Pointer image_to_render )
 {
   using FilterType = itk::CastImageFilter<ImageType, ImageType>;
   auto filter = FilterType::New();
@@ -112,9 +112,9 @@ public:
       auto pos = optimizer->GetCurrentPosition();
 
       const TransformType::ParametersType finalParameters = registration->GetOutput()->Get()->GetParameters();
-      std::cout << "parameters: " << finalParameters << "\n";
+      //std::cout << "parameters: " << finalParameters << "\n";
       const TransformType::ParametersType finalFixedParameters = registration->GetOutput()->Get()->GetFixedParameters();
-      std::cout << "fixed parameters: " << finalFixedParameters << "\n";
+      //std::cout << "fixed parameters: " << finalFixedParameters << "\n";
       auto finalTransform = TransformType::New();
 
       finalTransform->SetFixedParameters(finalFixedParameters);
@@ -124,8 +124,8 @@ public:
       TransformType::OffsetType offset = finalTransform->GetOffset();
       auto current_transform = vsg::translate(0.0, 0.0, 0.0);
 
-      std::cout << "Transformation Matrix: \n" << matrix << std::endl;
-      std::cout << "Transformation Offset: \n" << offset << std::endl;
+      //std::cout << "Transformation Matrix: \n" << matrix << std::endl;
+      //std::cout << "Transformation Offset: \n" << offset << std::endl;
 
       current_transform(3, 0) = finalParameters[3] / 1000.0;
       current_transform(3, 1) = finalParameters[4] / 1000.0;
@@ -144,8 +144,29 @@ public:
   }
 };
 
-int main(int argc, char **argv)
+template <typename TImage>
+void
+DeepCopy(typename TImage::Pointer input, typename TImage::Pointer output)
 {
+  output->SetRegions(input->GetLargestPossibleRegion());
+  output->Allocate();
+
+  itk::ImageRegionConstIterator<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+  itk::ImageRegionIterator<TImage>      outputIterator(output, output->GetLargestPossibleRegion());
+
+  while (!inputIterator.IsAtEnd())
+  {
+    outputIterator.Set(inputIterator.Get());
+    ++inputIterator;
+    ++outputIterator;
+  }
+}
+
+std::tuple<double,TransformType::Pointer> solve_registration(ImageType::Pointer fixed_image, ImageType::Pointer no_copy_moving_image, curan::renderable::Renderable* volume_moving){
+  
+  auto moving_image = ImageType::New();
+  DeepCopy<ImageType>(no_copy_moving_image, moving_image);
+
   auto metric = MetricType::New();
   auto optimizer = OptimizerType::New();
   auto registration = RegistrationType::New();
@@ -162,34 +183,8 @@ int main(int argc, char **argv)
 
   auto initialTransform = TransformType::New();
 
-  auto fixedImageReader = FixedImageReaderType::New();
-  auto movingImageReader = MovingImageReaderType::New();
-
-  //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_ct.mha"};
-  //std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/ct_fixed.mha"};
-  //std::string dirName{"C:/Users/SURGROB7/reconstruction_results.mha"};
-  std::string dirName{"C:/Users/SURGROB7/Desktop/Manuel_Carvalho/precious_phantom1.mha"};
-  fixedImageReader->SetFileName(dirName);
-
-  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/training_001_mr_T1.mha"};
-  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move.mha"};
-  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/mri_move_transf.mha"};
-  //std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"};
-  std::string dirName2{"C:/Users/SURGROB7/Desktop/Manuel_Carvalho/precious_phantom_transformed.mha"};
-  movingImageReader->SetFileName(dirName2);
-
-  try{
-    fixedImageReader->Update();
-    movingImageReader->Update();
-  } catch (...) {
-    return 1;
-  }
-
-  ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
-  ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
-
-  registration->SetFixedImage(pointer2fixedimage);
-  registration->SetMovingImage(pointer2movingimage);
+  registration->SetFixedImage(fixed_image);
+  registration->SetMovingImage(moving_image);
 
   using TransformInitializerType =
       itk::CenteredTransformInitializer<TransformType,
@@ -199,13 +194,15 @@ int main(int argc, char **argv)
   auto initializer = TransformInitializerType::New();
 
   initializer->SetTransform(initialTransform);
-  initializer->SetFixedImage(fixedImageReader->GetOutput());
-  initializer->SetMovingImage(movingImageReader->GetOutput());
+  initializer->SetFixedImage(fixed_image);
+  initializer->SetMovingImage(moving_image);
 
   initializer->MomentsOn();
 
   initializer->InitializeTransform();
+  registration->SetMovingInitialTransform(initialTransform);
 
+/*
   using VersorType = TransformType::VersorType;
   using VectorType = VersorType::VectorType;
   VersorType rotation;
@@ -221,7 +218,7 @@ int main(int argc, char **argv)
   translation[2] = 0.0;
 
   registration->SetInitialTransform(initialTransform);
-
+*/
   using OptimizerScalesType = OptimizerType::ScalesType;
   OptimizerScalesType optimizerScales(
       initialTransform->GetNumberOfParameters());
@@ -270,10 +267,63 @@ int main(int argc, char **argv)
   registration->SetMetricSamplingPercentage(samplingPercentage);
   registration->MetricSamplingReinitializeSeed(121213);
 
-  ImageType::RegionType region = pointer2fixedimage->GetLargestPossibleRegion();
+  ImageType::RegionType region = fixed_image->GetLargestPossibleRegion();
   ImageType::SizeType size_itk = region.GetSize();
-  ImageType::SpacingType spacing = pointer2fixedimage->GetSpacing();
+  ImageType::SpacingType spacing = fixed_image->GetSpacing();
 
+  auto observer = CommandType::New();
+  //observer->set_pointer(volume_moving->cast<curan::renderable::Volume>());
+  observer->set_registration(registration);
+  optimizer->AddObserver(itk::StartEvent(), observer);
+  optimizer->AddObserver(itk::IterationEvent(), observer);
+  optimizer->AddObserver(itk::EndEvent(), observer);
+
+  try{
+registration->Update();
+  }
+  catch (const itk::ExceptionObject & err)
+  {
+    std::cout << "ExceptionObject caught !" << std::endl;
+    std::cout << err << std::endl;
+    throw err;
+  }
+  
+
+  const TransformType::ParametersType finalParameters = registration->GetOutput()->Get()->GetParameters();
+  auto finalTransform = TransformType::New();
+
+  finalTransform->SetFixedParameters(registration->GetOutput()->Get()->GetFixedParameters());
+  finalTransform->SetParameters(finalParameters);
+
+  return {optimizer->GetCurrentMetricValue(),finalTransform};
+}
+
+int main(int argc, char **argv)
+{
+
+  constexpr size_t number_of_iterations = 10;
+
+  auto fixedImageReader = FixedImageReaderType::New();
+  auto movingImageReader = MovingImageReaderType::New();
+
+  std::string dirName{"C:/Users/SURGROB7/reconstruction_results.mha"};
+  fixedImageReader->SetFileName(dirName);
+
+  std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"};
+  movingImageReader->SetFileName(dirName2);
+
+  try{
+    fixedImageReader->Update();
+    movingImageReader->Update();
+  } catch (...) {
+    std::printf("i failed\n");
+    return 1;
+  }
+
+  ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
+  ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
+
+  /*
   curan::renderable::Window::Info info;
   info.api_dump = false;
   info.display = "";
@@ -285,13 +335,17 @@ int main(int argc, char **argv)
   info.window_size = size;
   curan::renderable::Window window{info};
 
+  ImageType::RegionType region_fixed = pointer2fixedimage->GetLargestPossibleRegion();
+  ImageType::SizeType size_itk_fixed = region_fixed.GetSize();
+  ImageType::SpacingType spacing_fixed = pointer2fixedimage->GetSpacing();
+
   curan::renderable::Volume::Info volumeinfo;
-  volumeinfo.width = size_itk.GetSize()[0];
-  volumeinfo.height = size_itk.GetSize()[1];
-  volumeinfo.depth = size_itk.GetSize()[2];
-  volumeinfo.spacing_x = spacing[0];
-  volumeinfo.spacing_y = spacing[1];
-  volumeinfo.spacing_z = spacing[2];
+  volumeinfo.width = size_itk_fixed.GetSize()[0];
+  volumeinfo.height = size_itk_fixed.GetSize()[1];
+  volumeinfo.depth = size_itk_fixed.GetSize()[2];
+  volumeinfo.spacing_x = spacing_fixed[0];
+  volumeinfo.spacing_y = spacing_fixed[1];
+  volumeinfo.spacing_z = spacing_fixed[2];
 
   auto volume_fixed = curan::renderable::Volume::make(volumeinfo);
   window << volume_fixed;
@@ -331,21 +385,34 @@ int main(int argc, char **argv)
   auto updater_moving = [pointer2movingimage](vsg::floatArray3D &image) { updateBaseTexture3D(image, pointer2movingimage); };
 
   casted_volume_moving->update_volume(updater_moving);
+*/
 
-  auto observer = CommandType::New();
-  observer->set_pointer(casted_volume_moving);
-  observer->set_registration(registration);
-  optimizer->AddObserver(itk::StartEvent(), observer);
-  optimizer->AddObserver(itk::IterationEvent(), observer);
-  optimizer->AddObserver(itk::EndEvent(), observer);
+std::printf("eye\n");
+std::vector<std::tuple<double,TransformType::Pointer>> full_runs;
+for(size_t iteration = 0; iteration < number_of_iterations; ++iteration)
+      full_runs.emplace_back(solve_registration(pointer2fixedimage,pointer2movingimage,nullptr));
 
+  /*
   std::thread mover_thread{[&](){
-    registration->Update();
-      const TransformType::ParametersType finalParameters = registration->GetOutput()->Get()->GetParameters();
-  auto finalTransform = TransformType::New();
+    for(size_t iteration = 0; iteration < number_of_iterations; ++iteration)
+      full_runs.emplace_back(solve_registration(pointer2fixedimage,pointer2movingimage,nullptr));
+  }};
+  */
 
-  finalTransform->SetFixedParameters(registration->GetOutput()->Get()->GetFixedParameters());
-  finalTransform->SetParameters(finalParameters);
+  size_t minimum_index = 0;
+  size_t current_index = 0;
+  double minimum_val = 1000000000000000000;
+  for(const auto& possible : full_runs){
+    if(minimum_val> std::get<0>(possible)){
+      minimum_index =current_index;
+      minimum_val = std::get<0>(possible);
+      
+    }
+    std::printf("optimzie3d value: %f\n",std::get<0>(possible));
+    ++current_index;
+  }
+
+  auto finalTransform = std::get<1>(full_runs[minimum_index]);
 
   TransformType::MatrixType matrix = finalTransform->GetMatrix();
   TransformType::OffsetType offset = finalTransform->GetOffset();
@@ -354,15 +421,15 @@ int main(int argc, char **argv)
   std::cout << "Transformation Offset: \n" << offset << std::endl;
 
   std::stringstream matrix_value;
-  for (size_t y = 0; y < 3; ++y)
-  {
-    for (size_t x = 0; x < 3; ++x)
-    {
+  for (size_t y = 0; y < 3; ++y){
+    for (size_t x = 0; x < 3; ++x){
       float matrix_entry = matrix[x][y];
       matrix_value << matrix_entry << " ";
     }
     matrix_value << "\n ";
   }
+
+  /*
   auto current_transform = vsg::translate(0.0, 0.0, 0.0);
 
   current_transform(3, 0) = finalParameters[3] / 1000.0;
@@ -374,6 +441,7 @@ int main(int argc, char **argv)
       current_transform(row, col) = matrix(row, col);
 
   volume_moving->cast<curan::renderable::Volume>()->update_transform(current_transform);
+*/
 
   nlohmann::json registration_transformation;
   registration_transformation["Matrix"] = matrix_value.str();
@@ -386,6 +454,7 @@ int main(int argc, char **argv)
   auto resampler = ResampleFilterType::New();
 
   ImageType::Pointer fixedImage = fixedImageReader->GetOutput();
+
 
   resampler->SetTransform(finalTransform);
   resampler->SetInput(movingImageReader->GetOutput());
@@ -410,10 +479,8 @@ int main(int argc, char **argv)
   rescaleFilter->SetOutputMaximum(255);
 
   writer->Update();
-    }
-  };
 
-  window.run();
-  mover_thread.join();
+  //window.run();
+  //mover_thread.join();
   return 0;
 }
