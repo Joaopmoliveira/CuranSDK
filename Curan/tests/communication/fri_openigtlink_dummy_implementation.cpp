@@ -77,6 +77,23 @@ int main(){
 	construction_joints.endpoints = endpoints;
 	curan::communication::Client client_joints{ construction_joints };
     auto connectionstatus = client_joints.connect(client_callback);
+
+    std::shared_ptr<curan::communication::FRIMessage> message = std::make_shared<curan::communication::FRIMessage>();
+    for(size_t link = 0 ; link < curan::communication::FRIMessage::n_joints ; ++link){
+		message->angles[link] = 10;
+	    message->external_torques[link] = 10;
+	    message->measured_torques[link] = 10; 
+    }
+
+	message->serialize();
+
+	auto callable = [message]() {
+		return asio::buffer(message->get_buffer(),message->get_body_size()+message->get_header_size());
+	};
+	auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+
+    client_joints.write(to_send);
+    
     io_context.run();
     server_thread.join();
     parser.join();
