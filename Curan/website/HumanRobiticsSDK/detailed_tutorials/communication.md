@@ -19,6 +19,10 @@ This automatically links against the necessary third_party libraries as needed. 
 
 Asio works based on a very important object, the 'asio::io_context'. This object is used to syncronize communcation calls and so much more that I cannot describe all the ways in which is used.
 
+Usually in this context you have both clients and servers communicating with eachother (in the case of TCP being the underlying protocol). 
+
+## Client
+
 A typical communication loop will start with the definition of our main function 
 
 ```cpp
@@ -54,7 +58,14 @@ this simple application does not do anything. In the next sections we will show 
 
 ## Customize your behavior 
 
-Obviously you want to do things with the messages exchanged between the client and the server. 
+Obviously you want to do things with the messages exchanged between the client and the server. To send a message from our client to our server you need a tool introduced in the [Utilities](/utilities/) library related with Memory blocks. Read the description of these classes before moving along in this tutorial. 
+
+Assuming that you have read this description, we can implement 
+
+
+## Server
+
+## Customize your behavior 
 
 ## Add your own custom protocol to the library
 

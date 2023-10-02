@@ -363,3 +363,5 @@ int main(){
 ```
 
 Internally this code uses condition variables to force threads to sleep. This saves the CPU of waiting uncessaryly while instead we ask the operating system to wake us up when necessary.
+
+## Memory
