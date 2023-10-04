@@ -71,7 +71,7 @@ The run method is simple. The requests from the windowing system are processed a
 }
 ```
 Because the scene is empty no output will be produced to the output stream. This source code will create an empty window which we can rotate and move
-![empty_world](/assets/images/empty_world.png)
+![empty_world]({{ site.baseurl }}/assets/images/empty_world.png)
 
 The wired floor is automatically added to the scene to facilitate the visualization by inexperienced personel viewing our demos (similar to the background of blender).
 
@@ -140,7 +140,7 @@ finaly we can launch a thread which will execute our function.
 ```
 
 The scene after 10 seconds is now 
-![world_with_box](/assets/images/world_with_box.png)
+![world_with_box]({{ site.baseurl }}/assets/images/world_with_box.png)
 
 For a reference of objects that you can add to the scene look and the classes available inside the renderer library. There are two special objects which need a bit more attention. 
 
@@ -299,4 +299,4 @@ to execute in a parallel thread
 ```
 
 and finaly this is the result of all of our hard work
-![world_with_box](/assets/images/sequencial_links.png)
+![world_with_box]({{ site.baseurl }}/assets/images/sequencial_links.png)
