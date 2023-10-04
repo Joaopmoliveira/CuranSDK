@@ -111,6 +111,7 @@ public:
     void Execute(const itk::Object *object, const itk::EventObject &event) override
     {
         auto optimizer = static_cast<OptimizerPointer>(object);
+        std::cout << optimizer->GetCurrentPosition() << "\n";
     }
 };
 
@@ -133,12 +134,8 @@ void DeepCopy(typename TImage::Pointer input, typename TImage::Pointer output)
     }
 }
 
-std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer fixed_image, ImageType::Pointer no_copy_moving_image, curan::renderable::Renderable *volume_moving)
+std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer fixed_image, ImageType::Pointer moving_image, curan::renderable::Renderable *volume_moving)
 {
-
-    auto moving_image = ImageType::New();
-    DeepCopy<ImageType>(no_copy_moving_image, moving_image);
-
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
     auto registration = RegistrationType::New();
@@ -153,15 +150,29 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
     metric->SetUseMovingImageGradientFilter(false);
     metric->SetUseFixedImageGradientFilter(false);
 
-    auto initialTransform = TransformType::New();
+    using TransformInitializerType =
+    itk::CenteredTransformInitializer<TransformType,
+    ImageType,
+    ImageType>;
+    TransformInitializerType::Pointer initializer = TransformInitializerType::New();
 
+    TransformType::Pointer transform = TransformType::New();
+
+    initializer->SetTransform(transform);
+    initializer->SetFixedImage(fixed_image);
+    initializer->SetMovingImage(moving_image);
+    initializer->InitializeTransform();
+    transform->SetRotation(0,0,0);
+
+    registration->SetInitialTransform(transform);
+    registration->InPlaceOn();
     registration->SetFixedImage(fixed_image);
     registration->SetMovingImage(moving_image);
 
     using OptimizerScalesType = OptimizerType::ScalesType;
     OptimizerScalesType optimizerScales(
-        initialTransform->GetNumberOfParameters());
-    const double translationScale = 1.0;
+        transform->GetNumberOfParameters());
+    const double translationScale = 1.0/1000;
     optimizerScales[0] = 1.0;
     optimizerScales[1] = 1.0;
     optimizerScales[2] = 1.0;
@@ -220,8 +231,7 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
         throw err;
     }
 
-    auto finalTransform = registration->GetTransform()->Clone();
-    return {optimizer->GetCurrentMetricValue(), finalTransform};
+    return {optimizer->GetCurrentMetricValue(), transform};
 }
 
 int main(int argc, char **argv)
@@ -243,9 +253,9 @@ int main(int argc, char **argv)
 
     ImageType::Pointer pointer2fixedimage = movingImageReader->GetOutput();
     float origin_fixed[3];
-    origin_fixed[0] = 0.0;
-    origin_fixed[1] = 0.0;
-    origin_fixed[2] = 0.0;
+    origin_fixed[0] = 1.0;
+    origin_fixed[1] = 1.0;
+    origin_fixed[2] = 1.0;
 
     pointer2fixedimage->SetOrigin(origin_fixed);
     ImageType::Pointer pointer2movingimage = ImageType::New();
@@ -262,16 +272,16 @@ int main(int argc, char **argv)
     auto matrix_ramdom_rotation = random_rotation.matrix();
 
     Eigen::Vector3f random_translation = Eigen::Vector3f::Random();
-    random_translation *= 10;
+    random_translation *= 100;
 
     for(size_t col = 0; col < 3; ++col)
         for(size_t row = 0; row < 3; ++row)
             mat(row,col) = matrix_ramdom_rotation(row,col);
     pointer2movingimage->SetDirection(mat);
     float origin[3];
-    origin[0] = random_translation[0];
-    origin[1] = random_translation[1];
-    origin[2] = random_translation[2];
+    origin[0] = random_translation[0]+origin_fixed[0];
+    origin[1] = random_translation[1]+origin_fixed[1];
+    origin[2] = random_translation[2]+origin_fixed[2];
     pointer2movingimage->SetOrigin(origin);
 
     std::cout << "\tFixed image direction:\n" <<  pointer2fixedimage->GetDirection() << "\tFixed Image Origin:\n" << pointer2fixedimage->GetOrigin()  << "\n\tFixed Image Spacing:\n" << pointer2fixedimage->GetSpacing() << "\n\n";
