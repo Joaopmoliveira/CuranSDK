@@ -77,3 +77,27 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_reconstruction_common_image test_reconstruction_common_image.cpp)
+
+target_compile_definitions(test_reconstruction_common_image PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_reconstruction_common_image PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_reconstruction_common_image
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+add_executable(test_reconstruction_itk_copy new_copy_of_registration.cpp)
+
+target_compile_definitions(test_reconstruction_itk_copy PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_reconstruction_itk_copy PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_reconstruction_itk_copy
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)
