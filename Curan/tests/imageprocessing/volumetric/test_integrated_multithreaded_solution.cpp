@@ -289,6 +289,7 @@ itk::Matrix<double> image_orientation;
         desired_images.push_back(image);
     }
 }
+
 void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stopping_condition){
     try{
 	    std::vector<imagetype::Pointer> image_array;
