@@ -13,23 +13,23 @@ Usually when developing code you want to have an integrated tool, such as visual
 Once this step is complete make sure you have acess to the Curan source code on [github](https://github.com/Human-Robotics-Lab/Curan/tree/main)
 
 2. Now you need to install the Vulkan SDK in your machine. Download the correct version from [this website](https://vulkan.lunarg.com/#new_tab)
-![vulkan website](/assets/images/vulkan_sdk.png)
+![vulkan website]({{ site.baseurl }}/assets/images/vulkan_sdk.png)
 
 3. On windows install visual studio community edition with all the C++ compilers and Cmake tools
-![visual studio community](/assets/images/visual_studio_community.png)
+![visual studio community]({{ site.baseurl }}/assets/images/visual_studio_community.png)
 On linux install the build essencial tools in your command line with : sudo apt-get install build-essencials
 
-4. Install the Visual Studio Code IDE from [this website](/assets/images/vulkan_studio_code.png) 
+4. Install the Visual Studio Code IDE from [this website]({{ site.baseurl }}/assets/images/vulkan_studio_code.png) 
 
 5. Open your Github Desktop application and download Curan into a local folder (use a short path, e.g. C:/Dev/Curan) in your machine
-![github desktop](/assets/images/github_desktop.png) 
+![github desktop]({{ site.baseurl }}/assets/images/github_desktop.png) 
 
 6. Now that you have Curan on your machine you can open a command line, go to the folder where you installed curan and write, e.g. cd C:/Dev/Curan
 and write "code ." This will open the visual studio code and click that you trust the authors of this folder. Now go to the extensions inside visual studio and install the vcpkg extensions, the cmake extensions and the mycrosoft c++ extensions.
-![visual studio extensions](/assets/images/visual_studio_extensions.png) 
+![visual studio extensions]({{ site.baseurl }}/assets/images/visual_studio_extensions.png) 
 
 7. Enable all extensions. Now if you go back to your folder in visual studio. There should be a file in the root directory of your project called .vscode with a settings.json description of the build configuration of the project as shown in the 
-![image of vscode root path](/assets/images/visualstudio_settings.png) 
+![image of vscode root path]({{ site.baseurl }}/assets/images/visualstudio_settings.png) 
 
 8. Now that the file has been generated we are almost done with the configuration of the project. You need to change the following properties, (If on Windows)
 ```json

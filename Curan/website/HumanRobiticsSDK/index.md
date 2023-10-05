@@ -17,6 +17,6 @@ On with our adventure into programming. This is hopefully a detaild view of how 
 
 [Human-Robotics-Lab-organization]: https://github.com/Human-Robotics-Lab
 
-If you want to start on this path, read the [build intructions](/build_intructions/) on how to compile Curan in your personal machine. Currently we have only tested Curan in Windows and Ubunto, although most libraries should work out of the box in Mac OS. 
+If you want to start on this path, read the [build intructions]({{ site.baseurl }}/build_intructions/) on how to compile Curan in your personal machine. Currently we have only tested Curan in Windows and Ubunto, although most libraries should work out of the box in Mac OS. 
 
-If you already have Curan installed in your machine, then take a look at some of the [tutorials](/tutorials/) we provide to guide you through the API of Curan. 
+If you already have Curan installed in your machine, then take a look at some of the [tutorials]({{ site.baseurl }}/tutorials/) we provide to guide you through the API of Curan. 

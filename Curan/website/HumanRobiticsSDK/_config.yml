@@ -23,7 +23,7 @@ email: joaomoliveira1996@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
   Bridge the gap between what you envision and what you achieve with HumanRoboticsSDK
 #baseurl: "/CuranWeb" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
+url: "CuranWeb/" # the base hostname & protocol for your site, e.g. http://example.com
 github_username:  Joaopmoliveira
 
 # Build settings
