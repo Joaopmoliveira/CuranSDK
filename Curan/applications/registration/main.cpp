@@ -374,9 +374,9 @@ int main(int argc, char **argv)
     std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
 
     std::vector<Eigen::Vector3d> initial_configs;
-    for (double angle_x = 0; angle_x < 350.0; angle_x += 90.0)
-        for (double angle_y = 0; angle_y < 350.0; angle_y += 90.0)
-            for (double angle_z = 0; angle_z < 350.0; angle_z += 90.0)
+    for (double angle_x = 0.0; angle_x < 350.0; angle_x += 90.0)
+        for (double angle_y = 0.0; angle_y < 350.0; angle_y += 90.0)
+            for (double angle_z = 0.0; angle_z < 350.0; angle_z += 90.0)
             {
                 Eigen::Vector3d rot;
                 rot << angle_x, angle_y, angle_z;
