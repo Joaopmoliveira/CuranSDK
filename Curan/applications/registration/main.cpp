@@ -152,6 +152,7 @@ struct info_solve_registration{
 
 std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_registration & info_registration) 
 {
+    std::printf("Initial Configuration: %f %f %f\n",info_registration.initial_rotation[0],info_registration.initial_rotation[1],info_registration.initial_rotation[2]);
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
     auto registration = RegistrationType::New();
