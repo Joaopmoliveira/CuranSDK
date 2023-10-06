@@ -33,19 +33,19 @@ We use our custom UI to render things on screen. This UI has been improved and w
 
 Once the program is launched, a window is created where by default the connection with Plus is not established. Launch the PlusServer to collect both pose and images from the robotic system
 
-![github desktop]({{ site.baseurl }}/assets/images/ultrasound_calibration_ui.png) 
+![ultrasound_calibration_ui]({{ site.baseurl }}/assets/images/ultrasound_calibration_ui.PNG) 
 
 once you have launched PlusServer you can click the connect button. If everything works smoothly, the button will turn green, indicating that the connection to Plus was succefull
 
-![github desktop]({{ site.baseurl }}/assets/images/ultrasound_calibration_connected.png) 
+![ultrasound_calibration_connected]({{ site.baseurl }}/assets/images/ultrasound_calibration_connected.PNG) 
 
 now, the application is receiving an ultrasound image, and we need to filter the positions of the wires in real time from said image. To do this, a series of filters are used, which can be calibrated in real time, so that you can validade if they are working properly or not. Notice that the UI is overlayed over the real image, thus you can verify the quality of the segmentation in real time
 
-![github desktop]({{ site.baseurl }}/assets/images/ultrasound_calibration_filter_options.png) 
+![ultrasound_calibration_filter_options]({{ site.baseurl }}/assets/images/ultrasound_calibration_filter_options.PNG) 
 
 to check where the application is identifying wires you can request it to show the wire positions in real time. 
 
-![github desktop]({{ site.baseurl }}/assets/images/ultrasound_calibration_circles.png) 
+![ultrasound_calibration_circles]({{ site.baseurl }}/assets/images/ultrasound_calibration_circles.PNG) 
 
 by default if you want to segment N wires, the application will initialy only segment N wires, but as soon as you start the data collection, i.e. put the positions of the wires in a containers a move the robot, the application segmentes N+3 wires, and computes the distance from the previous wires (which is assumed to be correct) and selects which wire of the current frame belongs to the previous segmented wires. This provides robustness to the segmentation in real time. Once you decide you have collected enough data you can terminate the application, i.e. close the window, and a json file will be produced in the current directory of the shell where the application is running. This file looks something like 
 
@@ -59,9 +59,6 @@ by default if you want to segment N wires, the application will initialy only se
 
 where a timestamp is associated with the homogeneous transformation estimated, the optimization error, so that processes further down the stream can decide if the error is small enough and a string, containing the estimated homogeneous transformation.
 
-
-
-
 # Visualize the calibrated ultrasound image with the robot display
 
 > warning: **To run this application you should start the FRIPlusBridge previously described**
@@ -70,7 +67,7 @@ where a timestamp is associated with the homogeneous transformation estimated, t
 
 You have just performed the calibration of your setup and you want to test if everything is perfect, according to your specifications. We wrote an application where you can see the rendered robot, next to the ultrasound image positioned with respect to the flange of the robotic system 
 
-![github desktop]({{ site.baseurl }}/assets/images/robot_ultrasound_visualization.png) 
+![robot_ultrasound_visualization]({{ site.baseurl }}/assets/images/robot_ultrasound_visualization.PNG) 
 
 this gives you an idea if the relative position of the system is proper. 
 
@@ -84,16 +81,16 @@ Although a trivial task, we wrote a software solution that shows you the pose of
 
 Once you launch the executable the application starts with a default box as shown in the following Figure
 
-![github desktop]({{ site.baseurl }}/assets/images/roi_specification_begin.png) 
+![roi_specification_begin]({{ site.baseurl }}/assets/images/roi_specification_begin.PNG) 
 
 once you signal the program, through the command line, that you want to start collecting poses of the ultrasound image which defines your region of interest you will see this box collapse around the ultrasound image in its current configuration
 
-![github desktop]({{ site.baseurl }}/assets/images/roi_specification_box0.png) 
+![roi_specification_box0]({{ site.baseurl }}/assets/images/roi_specification_box0.PNG) 
 
 as you impose motion on the robotic system the code computes the convex hull of all the points previously recorded in the ultrasound images and then, with a smaller subset of points, computes the minimum bounding box which contains these points
 
-![github desktop]({{ site.baseurl }}/assets/images/roi_specification_box1.png) 
-![github desktop]({{ site.baseurl }}/assets/images/roi_specification_box2.png) 
+![roi_specification_box1]({{ site.baseurl }}/assets/images/roi_specification_box1.PNG) 
+![roi_specification_box2]({{ site.baseurl }}/assets/images/roi_specification_box2.PNG) 
 
 this guarantees two things, you are using the all your memory in this region of interest to record the phenomena that is of interest, and the algorithm can keep up in real time with your motion. 
 
@@ -130,13 +127,14 @@ Once you start the executable, the application starts rendering the volume in th
 
 Consider the following data collection where a relatively high velocity was imposed on the end effector of the transducer.
 
-![github desktop]({{ site.baseurl }}/assets/images/roi_specification_box0.png) 
+![roi_specification_box0]({{ site.baseurl }}/assets/images/roi_specification_box0.PNG) 
+![empty_world]({{ site.baseurl }}/assets/images/empty_world.png)
 
 as you can see, there are larger gaps inbetween the images. Although there are volumetric algorithms which fill these empty voxels, we prefer to only add the information as obtained from our peripherals. 
 
 If a slower data collection is imposed then the quality of the reconstruction improves considerably. 
 
-![github desktop]({{ site.baseurl }}/assets/images/roi_specification_box0.png) 
+![roi_specification_box0]({{ site.baseurl }}/assets/images/roi_specification_box0.PNG) 
 
 With our solution, we are able to render this volume with 5 milliseconds of delay between obtaining an image and injecting it into the desired bounding box and rendering it on screen.
 
