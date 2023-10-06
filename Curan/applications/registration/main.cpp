@@ -142,30 +142,8 @@ public:
     }
 };
 
-template <typename TImage>
-void DeepCopy(typename TImage::Pointer input, typename TImage::Pointer output)
+std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer fixed_image, ImageType::Pointer moving_image, curan::renderable::Volume *volume_moving, const Eigen::Matrix<double, 4, 4> &moving_homogenenous)
 {
-    output->SetRegions(input->GetLargestPossibleRegion());
-    output->Allocate();
-    output->SetSpacing(input->GetSpacing());
-    output->SetOrigin(input->GetOrigin());
-    output->SetDirection(input->GetDirection());
-    itk::ImageRegionConstIterator<TImage> inputIterator(input, input->GetLargestPossibleRegion());
-    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
-
-    while (!inputIterator.IsAtEnd())
-    {
-        outputIterator.Set(inputIterator.Get());
-        ++inputIterator;
-        ++outputIterator;
-    }
-}
-
-std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer fixed_image, ImageType::Pointer no_copy_moving_image, curan::renderable::Volume *volume_moving, const Eigen::Matrix<double, 4, 4> &moving_homogenenous)
-{
-    auto moving_image = ImageType::New();
-    DeepCopy<ImageType>(no_copy_moving_image, moving_image);
-
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
     auto registration = RegistrationType::New();
