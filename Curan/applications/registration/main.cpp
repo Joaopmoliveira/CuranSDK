@@ -191,7 +191,6 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
     initializer->SetTransform(initialTransform);
     initializer->SetFixedImage(fixed_image);
     initializer->SetMovingImage(moving_image);
-    initializer->MomentsOn();
     initializer->InitializeTransform();
 
     Eigen::Vector3f random_rotation = Eigen::Vector3f::Random();
@@ -284,7 +283,7 @@ constexpr size_t number_of_iterations = 10;
   auto fixedImageReader = FixedImageReaderType::New();
   auto movingImageReader = MovingImageReaderType::New();
 
-  std::string dirName{"C:/Users/SURGROB7/reconstruction_results.mha"};
+  std::string dirName{CURAN_COPIED_RESOURCE_PATH"/reconstruction_results.mha"};
   fixedImageReader->SetFileName(dirName);
 
   std::string dirName2{CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"};
@@ -294,7 +293,8 @@ constexpr size_t number_of_iterations = 10;
     fixedImageReader->Update();
     movingImageReader->Update();
   } catch (...) {
-    std::printf("i failed\n");
+    std::string error_name = "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n"+std::string(CURAN_COPIED_RESOURCE_PATH);
+    std::printf(error_name.c_str());
     return 1;
   }
 

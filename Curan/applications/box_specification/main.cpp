@@ -36,7 +36,7 @@ int main (int argc, char** argv)
    try{
    // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
    nlohmann::json calibration_data;
-	std::ifstream in("C:/Users/SURGROB7/optimization_result.json");
+	std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/optimization_result.json");
 	in >> calibration_data;
    std::string timestamp = calibration_data["timestamp"];
 	std::string homogenenous_transformation = calibration_data["homogeneous_transformation"];
@@ -141,10 +141,8 @@ int main (int argc, char** argv)
    specified_box["direction"] = ss.str();
 
 	// write prettified JSON to another file
-	std::ofstream o("specified_box.json");
+	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/specified_box.json");
 	o << specified_box;
 	std::cout << specified_box << std::endl;
-
-   std::cout << "terminated the program" << std::endl;
    return 0;
 }

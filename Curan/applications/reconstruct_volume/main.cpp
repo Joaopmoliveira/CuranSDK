@@ -68,7 +68,7 @@ int main (int argc, char** argv)
 try{
    // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
    nlohmann::json calibration_data;
-	std::ifstream in("C:/Users/SURGROB7/optimization_result.json");
+	std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/optimization_result.json");
 	in >> calibration_data;
 
    std::string timestamp = calibration_data["timestamp"];
@@ -111,7 +111,7 @@ try{
    window << robot_state->robot;
 
    nlohmann::json specified_box;
-	std::ifstream in("specified_box.json");
+	std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/specified_box.json");
 	in >> specified_box;
 
    std::string timestamp_box = specified_box["timestamp"];
@@ -224,7 +224,7 @@ try{
 
    using WriterType = itk::ImageFileWriter<ImageType>;
    WriterType::Pointer writer = WriterType::New();
-   writer->SetFileName("reconstruction_results.mha");
+   writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/reconstruction_results.mha");
    writer->SetInput(importFilter->GetOutput());
    writer->Update();
 

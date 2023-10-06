@@ -9,10 +9,10 @@
 
 int main(int argc, char* argv[]) {
 	using namespace curan::ui;
-	auto projeto = curan::utilities::ThreadPool::create(4);
+	auto shared_pool = curan::utilities::ThreadPool::create(4);
 
 	ConfigurationData data;
-	data.shared_pool = projeto;
+	data.shared_pool = shared_pool;
 	std::cout << "the received port is: " << data.port << "\n";
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
 	DisplayParams param{ std::move(context),2200,1800 };
@@ -186,11 +186,11 @@ int main(int argc, char* argv[]) {
 	calibration_data["optimization_error"] = summary.final_cost;
 
 	// write prettified JSON to another file
-	std::ofstream o("optimization_result.json");
+	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/optimization_result.json");
 	o << calibration_data;
 	std::cout << calibration_data << std::endl;
 
-	std::ofstream data_to_matlab("data_to_matlab.json");
+	std::ofstream data_to_matlab(CURAN_COPIED_RESOURCE_PATH"/data_to_matlab.json");
 	data_to_matlab << flange_data_to_matlab << std::endl;
 	return 0;
 }
