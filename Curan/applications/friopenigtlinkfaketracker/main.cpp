@@ -279,7 +279,21 @@ int main(int argc, char *argv[])
 		robot_flag->set();
 
 		auto shared_state = std::make_shared<SharedState>();
-
+		std::atomic<bool> keep_going = true;
+		std::thread state_updater{[&](){
+			State current_state;
+			double time = 0.0;
+			while(keep_going){
+				for(auto& current_t : current_state.external_torques)
+					current_t = std::sin(time);
+				for(auto& current_t : current_state.measured_torques)
+					current_t = std::sin(time);
+				for(auto& current_t : current_state.joint_config)
+					current_t = std::sin(time);
+				shared_state->robot_state.store(current_state);
+				std::this_thread::sleep_for(std::chrono::milliseconds(16));
+			}
+		}};
 
 		auto state_machine = [state_flag, &server, shared_state]()
 		{
@@ -302,6 +316,7 @@ int main(int argc, char *argv[])
 
 		curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
 		context.run();
+		keep_going.store(false);
 		robot_flag->clear();
 		thred.join();
 		return 0;
