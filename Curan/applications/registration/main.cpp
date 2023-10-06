@@ -142,7 +142,15 @@ public:
     }
 };
 
-std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer fixed_image, ImageType::Pointer moving_image, curan::renderable::Volume *volume_moving, const Eigen::Matrix<double, 4, 4> &moving_homogenenous)
+struct info_solve_registration{
+    ImageType::Pointer fixed_image;
+    ImageType::Pointer moving_image;
+    curan::renderable::Volume *volume_moving;
+    const Eigen::Matrix<double, 4, 4>& moving_homogenenous;
+    const Eigen::Vector3d& initial_rotation;
+};
+
+std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_registration & info_registration) 
 {
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
@@ -167,18 +175,15 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
     TransformInitializerType::Pointer initializer =
         TransformInitializerType::New();
     initializer->SetTransform(initialTransform);
-    initializer->SetFixedImage(fixed_image);
-    initializer->SetMovingImage(moving_image);
+    initializer->SetFixedImage(info_registration.fixed_image);
+    initializer->SetMovingImage(info_registration.moving_image);
     initializer->InitializeTransform();
 
-    Eigen::Vector3f random_rotation = Eigen::Vector3f::Random();
-    random_rotation *= 10;
-
-    initialTransform->SetRotation(random_rotation[0], random_rotation[1], random_rotation[2]);
+    initialTransform->SetRotation(info_registration.initial_rotation[0]*(pi/180), info_registration.initial_rotation[1]*(pi/180), info_registration.initial_rotation[2]*(pi/180));
 
     registration->InPlaceOn();
-    registration->SetFixedImage(fixed_image);
-    registration->SetMovingImage(moving_image);
+    registration->SetFixedImage(info_registration.fixed_image);
+    registration->SetMovingImage(info_registration.moving_image);
     registration->SetInitialTransform(initialTransform);
 
     using OptimizerScalesType = OptimizerType::ScalesType;
@@ -229,17 +234,17 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
     registration->SetMetricSamplingPercentage(samplingPercentage);
     registration->MetricSamplingReinitializeSeed(121213);
 
-    ImageType::RegionType region = fixed_image->GetLargestPossibleRegion();
+    ImageType::RegionType region = info_registration.fixed_image->GetLargestPossibleRegion();
     ImageType::SizeType size_itk = region.GetSize();
-    ImageType::SpacingType spacing = fixed_image->GetSpacing();
+    ImageType::SpacingType spacing = info_registration.fixed_image->GetSpacing();
 
     CommandType::Pointer observer = CommandType::New();
     optimizer->AddObserver(itk::StartEvent(), observer);
     optimizer->AddObserver(itk::IterationEvent(), observer);
     optimizer->AddObserver(itk::EndEvent(), observer);
-    observer->moving_homogenenous = moving_homogenenous;
+    observer->moving_homogenenous = info_registration.moving_homogenenous;
     observer->initialTransform = initialTransform;
-    observer->moving_pointer_to_volume = volume_moving;
+    observer->moving_pointer_to_volume = info_registration.volume_moving;
     try
     {
         registration->Update();
@@ -256,8 +261,6 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
 
 int main(int argc, char **argv)
 {
-constexpr size_t number_of_iterations = 10;
-
   auto fixedImageReader = FixedImageReaderType::New();
   auto movingImageReader = MovingImageReaderType::New();
 
@@ -365,9 +368,28 @@ constexpr size_t number_of_iterations = 10;
 
     std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
 
+    std::vector<Eigen::Vector3d> initial_configs = {
+        {0.0,0.0,0.0},
+        {0.0,90.0,0.0},
+        {0.0,180.0,0.0},
+        {0.0,270.0,0.0},
+        {90.0,0.0,0.0},
+        {90.0,90.0,0.0},
+        {90.0,180.0,0.0},
+        {90.0,270.0,0.0},
+        {180.0,0.0,0.0},
+        {180.0,90.0,0.0},
+        {180.0,180.0,0.0},
+        {180.0,270.0,0.0},
+        {270.0,0.0,0.0},
+        {270.0,90.0,0.0},
+        {270.0,180.0,0.0},
+        {270.0,270.0,0.0},
+    };
+
     std::thread run_registration_algorithm{[&](){
-        for (size_t iteration = 0; iteration < number_of_iterations; std::printf("\nIteration %d\n", iteration), ++iteration)
-            full_runs.emplace_back(solve_registration(pointer2fixedimage, pointer2movingimage, casted_volume_moving, mat_moving_here));
+        for (const auto& initial_config : initial_configs)
+            full_runs.emplace_back(solve_registration({pointer2fixedimage, pointer2movingimage, casted_volume_moving, mat_moving_here,initial_config}));
     }};
 
     window.run();
