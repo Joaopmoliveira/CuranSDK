@@ -193,23 +193,16 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
     initializer->SetMovingImage(moving_image);
     initializer->MomentsOn();
     initializer->InitializeTransform();
-    initialTransform->SetRotation(0.0, 0.0, 0.0);
 
-    TransformType::Pointer transform = TransformType::New();
+    Eigen::Vector3f random_rotation = Eigen::Vector3f::Random();
+    random_rotation *= 10;
 
-    initializer->SetTransform(transform);
-    initializer->SetFixedImage(fixed_image);
-    initializer->SetMovingImage(moving_image);
-    initializer->InitializeTransform();
-    transform->SetRotation(0,0,0);
+    initialTransform->SetRotation(random_rotation[0], random_rotation[1], random_rotation[2]);
 
-    registration->SetInitialTransform(transform);
     registration->InPlaceOn();
     registration->SetFixedImage(fixed_image);
     registration->SetMovingImage(moving_image);
     registration->SetInitialTransform(initialTransform);
-
-    initialTransform->GetFixedParameters();
 
     using OptimizerScalesType = OptimizerType::ScalesType;
     OptimizerScalesType optimizerScales(
@@ -281,7 +274,7 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
         throw err;
     }
 
-    return {optimizer->GetCurrentMetricValue(), transform};
+    return {optimizer->GetCurrentMetricValue(), initialTransform};
 }
 
 int main(int argc, char **argv)
@@ -416,6 +409,14 @@ constexpr size_t number_of_iterations = 10;
     }
 
     auto finalTransform = std::get<1>(full_runs[minimum_index]);
+
+    for (size_t row = 0; row < 3; ++row)
+        for (size_t col = 0; col < 3; ++col)
+            moving_homogenenous_transformation(col, row) = finalTransform->GetMatrix()(row, col);
+    moving_homogenenous_transformation(3,0) = finalTransform->GetOffset()[0];
+    moving_homogenenous_transformation(3,1) = finalTransform->GetOffset()[1];
+    moving_homogenenous_transformation(3,2) = finalTransform->GetOffset()[2];
+    casted_volume_moving->update_transform(moving_homogenenous_transformation);
 
     auto origin_fixed_mine = pointer2fixedimage->GetOrigin();
 
