@@ -92,12 +92,8 @@ public:
     using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
     using OptimizerPointer = const OptimizerType *;
     curan::renderable::Volume *moving_pointer_to_volume = nullptr;
-    itk::SmartPointer<RegistrationType> registration;
-
-    void set_registration(itk::SmartPointer<RegistrationType> in_registration)
-    {
-        registration = in_registration;
-    }
+    Eigen::Matrix<double, 4, 4> moving_homogenenous;
+    TransformType::Pointer initialTransform;
 
     void set_pointer(curan::renderable::Volume *in_moving_pointer_to_volume)
     {
@@ -111,7 +107,38 @@ public:
     void Execute(const itk::Object *object, const itk::EventObject &event) override
     {
         auto optimizer = static_cast<OptimizerPointer>(object);
-        std::cout << optimizer->GetCurrentPosition() << "\n";
+        TransformType::Pointer transform = TransformType::New();
+        auto vals = optimizer->GetCurrentPosition();
+        // std::cout << vals << "\n";
+        transform->SetParameters(optimizer->GetCurrentPosition());
+        transform->SetFixedParameters(initialTransform->GetFixedParameters());
+        TransformType::MatrixType matrix = transform->GetMatrix();
+        TransformType::OffsetType offset = transform->GetOffset();
+
+        Eigen::Matrix<double, 4, 4> estimated_unknown_transformation = Eigen::Matrix<double, 4, 4>::Identity();
+
+        for (size_t col = 0; col < 3; ++col)
+            for (size_t row = 0; row < 3; ++row)
+                estimated_unknown_transformation(row, col) = matrix(row, col);
+
+        estimated_unknown_transformation(0, 3) = offset[0];
+        estimated_unknown_transformation(1, 3) = offset[1];
+        estimated_unknown_transformation(2, 3) = offset[2];
+
+        auto estimated_overlap = estimated_unknown_transformation.inverse() * moving_homogenenous;
+
+        auto moving_homogenenous_transformation = vsg::translate(0.0, 0.0, 0.0);
+
+        for (size_t row = 0; row < 4; ++row)
+            for (size_t col = 0; col < 4; ++col)
+                moving_homogenenous_transformation(col, row) = estimated_overlap(row, col);
+
+        moving_homogenenous_transformation(3,0) *= 1e-3;
+        moving_homogenenous_transformation(3,1) *= 1e-3;
+        moving_homogenenous_transformation(3,2) *= 1e-3;
+
+        if(moving_pointer_to_volume)
+            moving_pointer_to_volume->update_transform(moving_homogenenous_transformation);
     }
 };
 
@@ -134,8 +161,11 @@ void DeepCopy(typename TImage::Pointer input, typename TImage::Pointer output)
     }
 }
 
-std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer fixed_image, ImageType::Pointer moving_image, curan::renderable::Renderable *volume_moving)
+std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer fixed_image, ImageType::Pointer no_copy_moving_image, curan::renderable::Volume *volume_moving, const Eigen::Matrix<double, 4, 4> &moving_homogenenous)
 {
+    auto moving_image = ImageType::New();
+    DeepCopy<ImageType>(no_copy_moving_image, moving_image);
+
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
     auto registration = RegistrationType::New();
@@ -151,10 +181,19 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
     metric->SetUseFixedImageGradientFilter(false);
 
     using TransformInitializerType =
-    itk::CenteredTransformInitializer<TransformType,
-    ImageType,
-    ImageType>;
-    TransformInitializerType::Pointer initializer = TransformInitializerType::New();
+        itk::CenteredTransformInitializer<TransformType,
+                                          ImageType,
+                                          ImageType>;
+
+    auto initialTransform = TransformType::New();
+    TransformInitializerType::Pointer initializer =
+        TransformInitializerType::New();
+    initializer->SetTransform(initialTransform);
+    initializer->SetFixedImage(fixed_image);
+    initializer->SetMovingImage(moving_image);
+    initializer->MomentsOn();
+    initializer->InitializeTransform();
+    initialTransform->SetRotation(0.0, 0.0, 0.0);
 
     TransformType::Pointer transform = TransformType::New();
 
@@ -168,11 +207,14 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
     registration->InPlaceOn();
     registration->SetFixedImage(fixed_image);
     registration->SetMovingImage(moving_image);
+    registration->SetInitialTransform(initialTransform);
+
+    initialTransform->GetFixedParameters();
 
     using OptimizerScalesType = OptimizerType::ScalesType;
     OptimizerScalesType optimizerScales(
-        transform->GetNumberOfParameters());
-    const double translationScale = 1.0/1000;
+        initialTransform->GetNumberOfParameters());
+    constexpr double translationScale = 1.0 / 1000.0;
     optimizerScales[0] = 1.0;
     optimizerScales[1] = 1.0;
     optimizerScales[2] = 1.0;
@@ -221,7 +263,15 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
     ImageType::SizeType size_itk = region.GetSize();
     ImageType::SpacingType spacing = fixed_image->GetSpacing();
 
-    try{
+    CommandType::Pointer observer = CommandType::New();
+    optimizer->AddObserver(itk::StartEvent(), observer);
+    optimizer->AddObserver(itk::IterationEvent(), observer);
+    optimizer->AddObserver(itk::EndEvent(), observer);
+    observer->moving_homogenenous = moving_homogenenous;
+    observer->initialTransform = initialTransform;
+    observer->moving_pointer_to_volume = volume_moving;
+    try
+    {
         registration->Update();
     }
     catch (const itk::ExceptionObject &err)
@@ -236,64 +286,173 @@ std::tuple<double, TransformType::Pointer> solve_registration(ImageType::Pointer
 
 int main(int argc, char **argv)
 {
-
     constexpr size_t number_of_iterations = 5;
-
     auto movingImageReader = MovingImageReaderType::New();
 
     std::string dirName2{CURAN_COPIED_RESOURCE_PATH "/precious_phantom/precious_phantom.mha"};
     movingImageReader->SetFileName(dirName2);
 
-    try{
+    try
+    {
         movingImageReader->Update();
-    } catch (...) {
+    }
+    catch (...)
+    {
         std::printf("Failed to read the Precious Phantom\n");
         return 1;
     }
 
     ImageType::Pointer pointer2fixedimage = movingImageReader->GetOutput();
-    float origin_fixed[3];
-    origin_fixed[0] = 1.0;
-    origin_fixed[1] = 1.0;
-    origin_fixed[2] = 1.0;
+    {
+        float origin_fixed[3];
+        origin_fixed[0] = 1.0;
+        origin_fixed[1] = 1.0;
+        origin_fixed[2] = 1.0;
 
-    pointer2fixedimage->SetOrigin(origin_fixed);
+        Eigen::Vector3f axis_along_rotation = Eigen::Vector3f::Random() * 10;
+        axis_along_rotation.normalize();
+        Eigen::AngleAxis<float> random_rotation(0.4, axis_along_rotation);
+        auto matrix_ramdom_rotation = random_rotation.matrix();
+
+        Eigen::Vector3f random_translation = Eigen::Vector3f::Random();
+        random_translation *= 10;
+
+        itk::Matrix<double, 3, 3> mat_fixed_random;
+        mat_fixed_random.SetIdentity();
+
+        for (size_t col = 0; col < 3; ++col)
+            for (size_t row = 0; row < 3; ++row)
+                mat_fixed_random(row, col) = matrix_ramdom_rotation(row, col);
+        pointer2fixedimage->SetDirection(mat_fixed_random);
+
+        pointer2fixedimage->SetOrigin(origin_fixed);
+    }
+
     ImageType::Pointer pointer2movingimage = ImageType::New();
-    DeepCopy<ImageType>(pointer2fixedimage,pointer2movingimage);
+    DeepCopy<ImageType>(pointer2fixedimage, pointer2movingimage);
 
-    itk::Matrix<double,3,3> mat;
-    mat.SetIdentity();
+    srand((unsigned int)time(0));
 
-    srand((unsigned int) time(0));
+    {
+        Eigen::Vector3f axis_along_rotation = Eigen::Vector3f::Random() * 10;
+        axis_along_rotation.normalize();
+        Eigen::AngleAxis<float> random_rotation(0.4, axis_along_rotation);
+        auto matrix_ramdom_rotation = random_rotation.matrix();
 
-    Eigen::Vector3f axis_along_rotation = Eigen::Vector3f::Random();
-    axis_along_rotation.normalize();
-    Eigen::AngleAxis<float> random_rotation(0.4,axis_along_rotation );
-    auto matrix_ramdom_rotation = random_rotation.matrix();
+        Eigen::Vector3f random_translation = Eigen::Vector3f::Random();
+        random_translation *= 10;
 
-    Eigen::Vector3f random_translation = Eigen::Vector3f::Random();
-    random_translation *= 100;
+        itk::Matrix<double, 3, 3> mat_moving;
+        mat_moving.SetIdentity();
 
-    for(size_t col = 0; col < 3; ++col)
-        for(size_t row = 0; row < 3; ++row)
-            mat(row,col) = matrix_ramdom_rotation(row,col);
-    pointer2movingimage->SetDirection(mat);
-    float origin[3];
-    origin[0] = random_translation[0]+origin_fixed[0];
-    origin[1] = random_translation[1]+origin_fixed[1];
-    origin[2] = random_translation[2]+origin_fixed[2];
-    pointer2movingimage->SetOrigin(origin);
+        for (size_t col = 0; col < 3; ++col)
+            for (size_t row = 0; row < 3; ++row)
+                mat_moving(row, col) = matrix_ramdom_rotation(row, col);
+        pointer2movingimage->SetDirection(mat_moving);
+        float origin[3];
+        origin[0] = random_translation[0];
+        origin[1] = random_translation[1];
+        origin[2] = random_translation[2];
+        pointer2movingimage->SetOrigin(origin);
+    }
 
-    std::cout << "\tFixed image direction:\n" <<  pointer2fixedimage->GetDirection() << "\tFixed Image Origin:\n" << pointer2fixedimage->GetOrigin()  << "\n\tFixed Image Spacing:\n" << pointer2fixedimage->GetSpacing() << "\n\n";
-    std::cout << "\tMoving image direction:\n" <<  pointer2movingimage->GetDirection() << "\tMoving Image Origin:\n" << pointer2movingimage->GetOrigin() << "\n\tMoving Image Spacing:\n" << pointer2movingimage->GetSpacing() << "\n\n";
+    Eigen::Matrix<double, 4, 4> mat_moving_here = Eigen::Matrix<double, 4, 4>::Identity();
+    for (size_t col = 0; col < 3; ++col)
+        for (size_t row = 0; row < 3; ++row)
+            mat_moving_here(row, col) = pointer2movingimage->GetDirection()(row, col);
+
+    mat_moving_here(0, 3) = pointer2movingimage->GetOrigin()[0];
+    mat_moving_here(1, 3) = pointer2movingimage->GetOrigin()[1];
+    mat_moving_here(2, 3) = pointer2movingimage->GetOrigin()[2];
+
+    curan::renderable::Window::Info info;
+    info.api_dump = false;
+    info.display = "";
+    info.full_screen = false;
+    info.is_debug = false;
+    info.screen_number = 0;
+    info.title = "myviewer";
+    curan::renderable::Window::WindowSize size{1000, 800};
+    info.window_size = size;
+    curan::renderable::Window window{info};
+
+    ImageType::RegionType region_fixed = pointer2fixedimage->GetLargestPossibleRegion();
+    ImageType::SizeType size_itk_fixed = region_fixed.GetSize();
+    ImageType::SpacingType spacing_fixed = pointer2fixedimage->GetSpacing();
+
+    curan::renderable::Volume::Info volumeinfo;
+    volumeinfo.width = size_itk_fixed.GetSize()[0];
+    volumeinfo.height = size_itk_fixed.GetSize()[1];
+    volumeinfo.depth = size_itk_fixed.GetSize()[2];
+    volumeinfo.spacing_x = spacing_fixed[0];
+    volumeinfo.spacing_y = spacing_fixed[1];
+    volumeinfo.spacing_z = spacing_fixed[2];
+
+    auto volume_fixed = curan::renderable::Volume::make(volumeinfo);
+    window << volume_fixed;
+
+    auto direction = pointer2fixedimage->GetDirection();
+    auto origin = pointer2fixedimage->GetOrigin();
+    auto fixed_homogenenous_transformation = vsg::translate(0.0, 0.0, 0.0);
+    fixed_homogenenous_transformation(3, 0) = origin[0] / 1000.0;
+    fixed_homogenenous_transformation(3, 1) = origin[1] / 1000.0;
+    fixed_homogenenous_transformation(3, 2) = origin[2] / 1000.0;
+
+    for (size_t row = 0; row < 3; ++row)
+        for (size_t col = 0; col < 3; ++col)
+            fixed_homogenenous_transformation(col, row) = direction(row, col);
+
+    volume_fixed->cast<curan::renderable::Volume>()->update_transform(fixed_homogenenous_transformation);
+
+    auto casted_volume_fixed = volume_fixed->cast<curan::renderable::Volume>();
+    auto updater = [pointer2fixedimage](vsg::floatArray3D &image)
+    { updateBaseTexture3D(image, pointer2fixedimage); };
+    casted_volume_fixed->update_volume(updater);
+
+    ImageType::RegionType region_moving = pointer2movingimage->GetLargestPossibleRegion();
+    ImageType::SizeType size_itk_moving = region_moving.GetSize();
+    ImageType::SpacingType spacing_moving = pointer2movingimage->GetSpacing();
+
+    volumeinfo.width = size_itk_moving.GetSize()[0];
+    volumeinfo.height = size_itk_moving.GetSize()[1];
+    volumeinfo.depth = size_itk_moving.GetSize()[2];
+    volumeinfo.spacing_x = spacing_moving[0];
+    volumeinfo.spacing_y = spacing_moving[1];
+    volumeinfo.spacing_z = spacing_moving[2];
+
+    auto volume_moving = curan::renderable::Volume::make(volumeinfo);
+    window << volume_moving;
+
+    auto casted_volume_moving = volume_moving->cast<curan::renderable::Volume>();
+    auto updater_moving = [pointer2movingimage](vsg::floatArray3D &image)
+    { updateBaseTexture3D(image, pointer2movingimage); };
+
+    casted_volume_moving->update_volume(updater_moving);
+
+    auto moving_homogenenous_transformation = vsg::translate(0.0, 0.0, 0.0);
+    moving_homogenenous_transformation(3, 0) = pointer2movingimage->GetOrigin()[0] / 1000.0;
+    moving_homogenenous_transformation(3, 1) = pointer2movingimage->GetOrigin()[1] / 1000.0;
+    moving_homogenenous_transformation(3, 2) = pointer2movingimage->GetOrigin()[2] / 1000.0;
+
+    for (size_t row = 0; row < 3; ++row)
+        for (size_t col = 0; col < 3; ++col)
+            moving_homogenenous_transformation(col, row) = pointer2movingimage->GetDirection()(row, col);
+
+    casted_volume_moving->update_transform(moving_homogenenous_transformation);
 
     std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
-    for (size_t iteration = 0; iteration < number_of_iterations; std::printf("\nIteration %d\n",iteration),++iteration)
-        full_runs.emplace_back(solve_registration(pointer2fixedimage, pointer2movingimage, nullptr));
+
+    std::thread run_registration_algorithm{[&](){
+        for (size_t iteration = 0; iteration < number_of_iterations; std::printf("\nIteration %d\n", iteration), ++iteration)
+            full_runs.emplace_back(solve_registration(pointer2fixedimage, pointer2movingimage, casted_volume_moving, mat_moving_here));
+    }};
+
+    window.run();
+    run_registration_algorithm.join();
 
     size_t minimum_index = 0;
     size_t current_index = 0;
-    double minimum_val = 1000000000000000000;
+    double minimum_val = 1e20;
     for (const auto &possible : full_runs)
     {
         if (minimum_val > std::get<0>(possible))
@@ -301,16 +460,15 @@ int main(int argc, char **argv)
             minimum_index = current_index;
             minimum_val = std::get<0>(possible);
         }
-        std::printf("optimized value: %f\n", std::get<0>(possible));
         ++current_index;
     }
 
     auto finalTransform = std::get<1>(full_runs[minimum_index]);
 
+    auto origin_fixed_mine = pointer2fixedimage->GetOrigin();
+
     TransformType::MatrixType matrix = finalTransform->GetMatrix();
     TransformType::OffsetType offset = finalTransform->GetOffset();
-
-    std::cout << "\n\tOptimized Direction:\n" << matrix << "\tOptimized Origin:\n" << offset << "\n\n";
 
     std::stringstream matrix_value;
     for (size_t y = 0; y < 3; ++y)
@@ -327,7 +485,7 @@ int main(int argc, char **argv)
     registration_transformation["Matrix"] = matrix_value.str();
     registration_transformation["Offset"] = offset;
 
-    std::ofstream output_file{"C:/Users/SURGROB7/registration_results.json"};
+    std::ofstream output_file{CURAN_COPIED_RESOURCE_PATH "/registration_results.json"};
     output_file << registration_transformation;
     return 0;
 }

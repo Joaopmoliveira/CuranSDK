@@ -112,9 +112,8 @@ public:
       auto pos = optimizer->GetCurrentPosition();
 
       const TransformType::ParametersType finalParameters = registration->GetOutput()->Get()->GetParameters();
-      //std::cout << "parameters: " << finalParameters << "\n";
       const TransformType::ParametersType finalFixedParameters = registration->GetOutput()->Get()->GetFixedParameters();
-      //std::cout << "fixed parameters: " << finalFixedParameters << "\n";
+
       auto finalTransform = TransformType::New();
 
       finalTransform->SetFixedParameters(finalFixedParameters);
@@ -123,9 +122,6 @@ public:
       TransformType::MatrixType matrix = finalTransform->GetMatrix();
       TransformType::OffsetType offset = finalTransform->GetOffset();
       auto current_transform = vsg::translate(0.0, 0.0, 0.0);
-
-      //std::cout << "Transformation Matrix: \n" << matrix << std::endl;
-      //std::cout << "Transformation Offset: \n" << offset << std::endl;
 
       current_transform(3, 0) = finalParameters[3] / 1000.0;
       current_transform(3, 1) = finalParameters[4] / 1000.0;
@@ -137,8 +133,7 @@ public:
 
       if (moving_pointer_to_volume != nullptr)
         moving_pointer_to_volume->update_transform(current_transform);
-        //moving_pointer_to_volume->update_transform(vsg::translate(-pos[3]/1000,-pos[4]/1000,-pos[5]/1000)*vsg::rotate(vsg::radians(-pos[0]),1.0,0.0,0.0)*vsg::rotate(vsg::radians(-pos[1]),0.0,1.0,0.0)*vsg::rotate(vsg::radians(-pos[2]),0.0,0.0,1.0));
-        //std::cout << "pos: " << pos << "\n";
+
       std::this_thread::sleep_for(std::chrono::milliseconds(0));
     }
   }
@@ -185,40 +180,8 @@ std::tuple<double,TransformType::Pointer> solve_registration(ImageType::Pointer 
 
   registration->SetFixedImage(fixed_image);
   registration->SetMovingImage(moving_image);
-
-  using TransformInitializerType =
-      itk::CenteredTransformInitializer<TransformType,
-                                        ImageType,
-                                        ImageType>;
-  
-  auto initializer = TransformInitializerType::New();
-
-  initializer->SetTransform(initialTransform);
-  initializer->SetFixedImage(fixed_image);
-  initializer->SetMovingImage(moving_image);
-
-  initializer->MomentsOn();
-
-  initializer->InitializeTransform();
-  registration->SetMovingInitialTransform(initialTransform);
-
-/*
-  using VersorType = TransformType::VersorType;
-  using VectorType = VersorType::VectorType;
-  VersorType rotation;
-  VectorType axis;
-  axis[0] = 0.0;
-  axis[1] = 1.0;
-  axis[2] = 0.0;
-  constexpr double angle = 3.141592;
-  rotation.Set(axis, angle);
-  VectorType translation;
-  translation[0] = 0.0;
-  translation[1] = 0.0;
-  translation[2] = 0.0;
-
   registration->SetInitialTransform(initialTransform);
-*/
+
   using OptimizerScalesType = OptimizerType::ScalesType;
   OptimizerScalesType optimizerScales(
       initialTransform->GetNumberOfParameters());
@@ -279,23 +242,15 @@ std::tuple<double,TransformType::Pointer> solve_registration(ImageType::Pointer 
   optimizer->AddObserver(itk::EndEvent(), observer);
 
   try{
-registration->Update();
-  }
-  catch (const itk::ExceptionObject & err)
-  {
+    registration->Update();
+  } catch (const itk::ExceptionObject & err){
     std::cout << "ExceptionObject caught !" << std::endl;
     std::cout << err << std::endl;
     throw err;
   }
   
-
-  const TransformType::ParametersType finalParameters = registration->GetOutput()->Get()->GetParameters();
-  auto finalTransform = TransformType::New();
-
-  finalTransform->SetFixedParameters(registration->GetOutput()->Get()->GetFixedParameters());
-  finalTransform->SetParameters(finalParameters);
-
-  return {optimizer->GetCurrentMetricValue(),finalTransform};
+  auto final_transform = registration->GetTransform()->Clone();
+  return {optimizer->GetCurrentMetricValue(),final_transform};
 }
 
 int main(int argc, char **argv)
@@ -323,7 +278,6 @@ int main(int argc, char **argv)
   ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
   ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
 
-  /*
   curan::renderable::Window::Info info;
   info.api_dump = false;
   info.display = "";
@@ -385,9 +339,7 @@ int main(int argc, char **argv)
   auto updater_moving = [pointer2movingimage](vsg::floatArray3D &image) { updateBaseTexture3D(image, pointer2movingimage); };
 
   casted_volume_moving->update_volume(updater_moving);
-*/
 
-std::printf("eye\n");
 std::vector<std::tuple<double,TransformType::Pointer>> full_runs;
 for(size_t iteration = 0; iteration < number_of_iterations; ++iteration)
       full_runs.emplace_back(solve_registration(pointer2fixedimage,pointer2movingimage,nullptr));
