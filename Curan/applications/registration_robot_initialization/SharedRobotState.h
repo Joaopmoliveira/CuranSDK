@@ -7,7 +7,6 @@
 #include "rendering/DynamicTexture.h"
 #include "rendering/Window.h"
 #include <Eigen/Dense>
-#include "imageprocessing/IntegratedVolumeReconstructor.h"
 
 /*
 This is a class which wraps the atomic behavior we desired. 
@@ -29,14 +28,12 @@ or not.
 class SharedRobotState : std::enable_shared_from_this<SharedRobotState>{
     
     std::atomic<bool> commit_senpuko;
-    std::atomic<bool> should_stop_optimization = false;
+
     SharedRobotState();
 public:
-    std::optional<vsg::ref_ptr<curan::renderable::Renderable>> dynamic_texture;
+    std::atomic<bool> is_optimization_running = false;
     vsg::ref_ptr<curan::renderable::Renderable> robot;
-    vsg::ref_ptr<curan::renderable::Renderable> integrated_volume;
     curan::renderable::Window* window_pointer = nullptr;
-    vsg::dmat4 calibration_matrix;
     static std::shared_ptr<SharedRobotState> make_shared();
     
     inline bool should_kill_myself(){

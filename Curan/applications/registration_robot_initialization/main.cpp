@@ -16,10 +16,11 @@ void interface(vsg::CommandBuffer &cb, std::shared_ptr<SharedRobotState> &robot_
     t += ImGui::GetIO().DeltaTime;
     static bool local_record_data = false;
     ImGui::Checkbox("Start Robot Positioning", &local_record_data);
-    if (true)
-        local_record_data;
+    if (robot_state->is_optimization_running.load())
+        ImGui::TextColored(ImVec4{1.0,0.0,0.0,1.0},"Optimization Currently Running...Please Wait");
+    else{
 
-    robot_state->restart_volumetric_box.store(local_record_data);
+    }
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
 }
