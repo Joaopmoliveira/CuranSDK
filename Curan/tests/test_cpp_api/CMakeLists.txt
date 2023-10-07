@@ -3,3 +3,5 @@ add_executable(cpp_generic_api_testing main.cpp)
 target_link_libraries(cpp_generic_api_testing PUBLIC 
 utils
 )
+
+add_executable(test_variant_callback_implementation test_variant_storage_api.cpp)

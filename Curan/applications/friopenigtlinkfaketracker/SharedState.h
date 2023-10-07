@@ -4,9 +4,6 @@
 #include <array>
 #include <memory>
 #include <atomic>
-#include "rendering/DynamicTexture.h"
-#include "rendering/Window.h"
-#include <Eigen/Dense>
 
 /*
 This is a class which wraps the atomic behavior we desired. 
@@ -25,24 +22,15 @@ To transmit information about the status of the application
 the class has a method which can query if this thread should die
 or not. 
 */
-class SharedRobotState : std::enable_shared_from_this<SharedRobotState>{
-    
-    std::atomic<bool> commit_senpuko;
 
-    SharedRobotState();
-public:
-    std::atomic<bool> is_optimization_running = false;
-    vsg::ref_ptr<curan::renderable::Renderable> robot;
-    curan::renderable::Window* window_pointer = nullptr;
-    static std::shared_ptr<SharedRobotState> make_shared();
-    
-    inline bool should_kill_myself(){
-        return commit_senpuko.load(std::memory_order_relaxed);
-    }
+struct State{
+    std::array<double,7> joint_config;
+    std::array<double,7> external_torques;
+    std::array<double,7> measured_torques;
+};
 
-    inline void kill_yourself(){
-        commit_senpuko.store(true,std::memory_order_relaxed);
-    }
+struct SharedState {
+    std::atomic<State> robot_state;
 };
 
 #endif

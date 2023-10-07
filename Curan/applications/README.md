@@ -12,6 +12,9 @@ This folder contains our main applications avaialable in our build system. They 
 > friopenigtlinktracker
 - An executable that connects to the robot and records the current joint configuration and pose of the ultrasound image and creates two servers, server A broadcasts the current homogenenous transformation in the OpenIGTLink protocol, whilst server B broadcasts the joint configurations of the robot.
 
+> friopenigtlinkfaketracker
+- An executable that mimics the connection to the robot and records the current joint configuration and pose of the ultrasound image and creates two servers, server A broadcasts the current homogenenous transformation in the OpenIGTLink protocol, whilst server B broadcasts the joint configurations of the robot. This is usefull for testing purpouses.
+
 > gaussian_mixture
 - A series of executables that implement the control law in real time given a pre-trained Gaussian Mixture Model
 

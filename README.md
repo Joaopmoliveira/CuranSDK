@@ -147,10 +147,10 @@ The volume reconstruction code is essencially a copy of [IGSIO](https://github.c
 
 > -João Oliveira (Lead developer)
 > 
-> -Filipe Varela (3D rendering patch of the library)
+> -Filipe Varela (commited to the 3D rendering patch of the library)
 > 
-> -Manuel Carvalho (Implementation of registration algorithms)
+> -Manuel Carvalho (commited to the implementation of registration algorithms)
 >
-> -Rui Coelho (Implementation of the RealTime kernel)
+> -Rui Coelho (commited to the implementation of the RealTime kernel)
 >
 > - (You) Become a contributer!

@@ -9,17 +9,20 @@
 
 const double pi = std::atan(1) * 4;
 
-void interface(vsg::CommandBuffer& cb,std::shared_ptr<SharedRobotState>& robot_state){
-   ImGui::Begin("Box Specification Selection");
-   static float t = 0;
-   t += ImGui::GetIO().DeltaTime;
-   static bool local_record_data = false;
-   ImGui::Checkbox("Start Robot Positioning", &local_record_data); 
-   if(true)
-    local_record_data;
-   robot_state->restart_volumetric_box.store(local_record_data);
-   ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-   ImGui::End();
+void interface(vsg::CommandBuffer &cb, std::shared_ptr<SharedRobotState> &robot_state)
+{
+    ImGui::Begin("Box Specification Selection");
+    static float t = 0;
+    t += ImGui::GetIO().DeltaTime;
+    static bool local_record_data = false;
+    ImGui::Checkbox("Start Robot Positioning", &local_record_data);
+    if (robot_state->is_optimization_running.load())
+        ImGui::TextColored(ImVec4{1.0,0.0,0.0,1.0},"Optimization Currently Running...Please Wait");
+    else{
+
+    }
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
 }
 
 int main(int argc, char **argv)
@@ -48,6 +51,9 @@ int main(int argc, char **argv)
     ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
     ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
 
+    curan::renderable::ImGUIInterface::Info info_gui{[&](vsg::CommandBuffer &cb)
+                                                     { interface(cb, robot_state); }};
+    auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
     curan::renderable::Window::Info info;
     info.api_dump = false;
     info.display = "";
@@ -123,18 +129,6 @@ int main(int argc, char **argv)
 
     casted_volume_moving->update_transform(moving_homogenenous_transformation);
 
-    bool not_satisfied = true;
-
-
-    while(not_satisfied){
-        //first attempt to position the image with the robot
-
-
-        //then try to do a full run with a couple of iterations
-
-
-    }
-
     Eigen::Matrix<double, 4, 4> mat_moving_here = Eigen::Matrix<double, 4, 4>::Identity();
     for (size_t col = 0; col < 3; ++col)
         for (size_t row = 0; row < 3; ++row)
@@ -146,69 +140,59 @@ int main(int argc, char **argv)
 
     std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
 
-    std::vector<Eigen::Vector3d> initial_configs;
-    for (double angle_x = 0.0; angle_x < 350.0; angle_x += 90.0)
-        for (double angle_y = 0.0; angle_y < 350.0; angle_y += 90.0)
-            for (double angle_z = 0.0; angle_z < 350.0; angle_z += 90.0)
-            {
-                Eigen::Vector3d rot;
-                rot << angle_x, angle_y, angle_z;
-                initial_configs.emplace_back(rot);
-            }
-
-    std::thread run_registration_algorithm{[&]()
-                                           {
-                                               for (const auto &initial_config : initial_configs)
-                                                   full_runs.emplace_back(solve_registration({pointer2fixedimage, pointer2movingimage, casted_volume_moving, mat_moving_here, initial_config}));
-                                               size_t minimum_index = 0;
-                                               size_t current_index = 0;
-                                               double minimum_val = 1e20;
-                                               for (const auto &possible : full_runs)
-                                               {
-                                                   if (minimum_val > std::get<0>(possible))
-                                                   {
-                                                       minimum_index = current_index;
-                                                       minimum_val = std::get<0>(possible);
-                                                   }
-                                                   ++current_index;
-                                               }
-
-                                               auto finalTransform = std::get<1>(full_runs[minimum_index]);
-
-                                               for (size_t row = 0; row < 3; ++row)
-                                                   for (size_t col = 0; col < 3; ++col)
-                                                       moving_homogenenous_transformation(col, row) = finalTransform->GetMatrix()(row, col);
-                                               moving_homogenenous_transformation(3, 0) = finalTransform->GetOffset()[0];
-                                               moving_homogenenous_transformation(3, 1) = finalTransform->GetOffset()[1];
-                                               moving_homogenenous_transformation(3, 2) = finalTransform->GetOffset()[2];
-                                               casted_volume_moving->update_transform(moving_homogenenous_transformation);
-
-                                               auto origin_fixed_mine = pointer2fixedimage->GetOrigin();
-
-                                               TransformType::MatrixType matrix = finalTransform->GetMatrix();
-                                               TransformType::OffsetType offset = finalTransform->GetOffset();
-
-                                               std::stringstream matrix_value;
-                                               for (size_t y = 0; y < 3; ++y)
-                                               {
-                                                   for (size_t x = 0; x < 3; ++x)
-                                                   {
-                                                       float matrix_entry = matrix[x][y];
-                                                       matrix_value << matrix_entry << " ";
-                                                   }
-                                                   matrix_value << "\n ";
-                                               }
-
-                                               nlohmann::json registration_transformation;
-                                               registration_transformation["Matrix"] = matrix_value.str();
-                                               registration_transformation["Offset"] = offset;
-
-                                               std::ofstream output_file{CURAN_COPIED_RESOURCE_PATH "/registration_results.json"};
-                                               output_file << registration_transformation;
-                                           }};
+    std::thread run_registration_algorithm{[&](){
+        for (const auto &initial_config : initial_configs)
+            full_runs.emplace_back(solve_registration({pointer2fixedimage, pointer2movingimage, casted_volume_moving, mat_moving_here, initial_config}));
+    }};
 
     window.run();
     run_registration_algorithm.join();
+
+    size_t minimum_index = 0;
+    size_t current_index = 0;
+    double minimum_val = 1e20;
+    for (const auto &possible : full_runs)
+    {
+        if (minimum_val > std::get<0>(possible))
+        {
+            minimum_index = current_index;
+            minimum_val = std::get<0>(possible);
+        }
+        ++current_index;
+    }
+
+    auto finalTransform = std::get<1>(full_runs[minimum_index]);
+
+    for (size_t row = 0; row < 3; ++row)
+        for (size_t col = 0; col < 3; ++col)
+            moving_homogenenous_transformation(col, row) = finalTransform->GetMatrix()(row, col);
+    moving_homogenenous_transformation(3, 0) = finalTransform->GetOffset()[0];
+    moving_homogenenous_transformation(3, 1) = finalTransform->GetOffset()[1];
+    moving_homogenenous_transformation(3, 2) = finalTransform->GetOffset()[2];
+    casted_volume_moving->update_transform(moving_homogenenous_transformation);
+
+    auto origin_fixed_mine = pointer2fixedimage->GetOrigin();
+
+    TransformType::MatrixType matrix = finalTransform->GetMatrix();
+    TransformType::OffsetType offset = finalTransform->GetOffset();
+
+    std::stringstream matrix_value;
+    for (size_t y = 0; y < 3; ++y)
+    {
+        for (size_t x = 0; x < 3; ++x)
+        {
+            float matrix_entry = matrix[x][y];
+            matrix_value << matrix_entry << " ";
+        }
+        matrix_value << "\n ";
+    }
+
+    nlohmann::json registration_transformation;
+    registration_transformation["Matrix"] = matrix_value.str();
+    registration_transformation["Offset"] = offset;
+
+    std::ofstream output_file{CURAN_COPIED_RESOURCE_PATH "/registration_results.json"};
+    output_file << registration_transformation;
 
     return 0;
 }
