@@ -96,7 +96,7 @@ namespace curan {
 				return user_space_was_updated;
 			};
 			 
-			inline bool update_processed(){
+			inline void update_processed(){
 				user_space_was_updated = false;
 			}
 		};
