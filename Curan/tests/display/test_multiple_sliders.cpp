@@ -88,10 +88,10 @@ int main() {
 		auto page = Page{std::move(container2),SK_ColorBLACK};
 		page.propagate_size_change(rec);
 
-		auto button_callback = [&page](Button* slider,ConfigDraw* config) {
+		auto button_callback = [&page](Button* slider,Press press,ConfigDraw* config) {
 			page.stack(std::move(create_option_page()));
 		};
-		buttonoptions_pointer->set_callback(button_callback);
+		buttonoptions_pointer->add_press_call(button_callback);
 
 		auto width = rec.width();
 		auto height = rec.height();

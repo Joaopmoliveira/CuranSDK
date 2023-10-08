@@ -228,11 +228,11 @@ int main() {
 		auto buttonoptions = Button::make("Options",resources);
 		buttonoptions->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 
-		auto button_callback = [&resources](Button* button,ConfigDraw* config) {
+		auto button_callback = [&resources](Button* button,Press press,ConfigDraw* config) {
 			if(config->stack_page!=nullptr)
 				config->stack_page->stack(create_option_page(resources));
 		};
-		buttonoptions->set_callback(button_callback);
+		buttonoptions->add_press_call(button_callback);
 
 		auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 		*buttoncontainer << std::move(button) << std::move(buttonoptions);
