@@ -26,7 +26,7 @@ namespace curan {
                 virtual Internal2DImageType::Pointer update_and_return_out() = 0;
             };
 
-            class Filter : utilities::Lockable<Filter> {
+            class Filter : utilities::Lockable {
 
                 bool is_updated = true;
                 Internal2DImageType::Pointer input;
@@ -40,7 +40,7 @@ namespace curan {
                 Internal2DImageType::Pointer get_output();
             };
 
-            class ImportFilter : public Implementation, utilities::Lockable<ImportFilter> {
+            class ImportFilter : public Implementation, utilities::Lockable {
             public:
 
                 using ImportFilterType = itk::ImportImageFilter<char_pixel_type, 2>;
@@ -75,7 +75,7 @@ namespace curan {
                 }
             };
 
-            class CircleFilter : public Implementation, utilities::Lockable<CircleFilter> {
+            class CircleFilter : public Implementation, utilities::Lockable {
             public:
 
                 using HoughTransformFilterType = itk::HoughTransform2DCirclesImageFilter<char_pixel_type, char_pixel_type, double>;
@@ -111,7 +111,7 @@ namespace curan {
                 }
             };
             
-            class ThreholdFilter : public Implementation, utilities::Lockable<ThreholdFilter> {
+            class ThreholdFilter : public Implementation, utilities::Lockable {
             public:
 
                 struct Info {
@@ -147,7 +147,7 @@ namespace curan {
                 }
             };
 
-            class CannyFilter : public Implementation, utilities::Lockable<CannyFilter> {
+            class CannyFilter : public Implementation, utilities::Lockable {
             public:
 
                 using real_pixel_type = double;
@@ -188,7 +188,7 @@ namespace curan {
                 }
             };
 
-            class BinarizeFilter : public Implementation, utilities::Lockable<BinarizeFilter> {
+            class BinarizeFilter : public Implementation, utilities::Lockable {
             public:
 
                 struct Info {

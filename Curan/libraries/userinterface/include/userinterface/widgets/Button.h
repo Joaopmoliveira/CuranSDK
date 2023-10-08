@@ -12,11 +12,7 @@
 namespace curan {
 	namespace ui {
 
-		class Button;
-		struct ConfigDraw;
-		using buttoncallback = std::function<void(Button*, ConfigDraw*)>;
-
-		class Button : public  Drawable , utilities::Lockable<Button>,SignalProcessor<Button> {
+		class Button : public  Drawable , public utilities::Lockable, public SignalProcessor<Button> {
 		public:
 
 		enum class ButtonStates {
@@ -40,7 +36,6 @@ namespace curan {
 			sk_sp<SkTextBlob> text;
 			sk_sp<SkImage> icon_data;
 			ButtonStates current_state = ButtonStates::WAITING;
-			std::optional<buttoncallback> callback;
 			IconResources& system_icons;
 			bool compiled = false;
 
@@ -66,12 +61,6 @@ namespace curan {
 			inline Button& set_font_source(sk_sp<SkTypeface> in_typeface) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				typeface = in_typeface;
-                return *(this);
-			}
-
-			inline Button& set_callback(buttoncallback in) {
-				std::lock_guard<std::mutex> g{ get_mutex() };
-				callback = in;
                 return *(this);
 			}
 

@@ -8,15 +8,17 @@ namespace curan
 {
 	namespace ui
 	{
+		struct ConfigDraw;
+
 		template <typename S>
 		struct SignalProcessor
 		{
-			using move_event = std::function<void(S*, Move)>;
-			using press_event = std::function<void(S *, Press)>;
-			using scroll_event = std::function<void(S *, Scroll)>;
-			using unpress_event = std::function<void(S *, Unpress)>;
-			using key_event = std::function<void(S *, Key)>;
-			using itemdropped_event = std::function<void(S *, ItemDropped)>;
+			using move_event = std::function<void(S*, Move, ConfigDraw* )>;
+			using press_event = std::function<void(S *, Press, ConfigDraw* )>;
+			using scroll_event = std::function<void(S *, Scroll, ConfigDraw* )>;
+			using unpress_event = std::function<void(S *, Unpress, ConfigDraw* )>;
+			using key_event = std::function<void(S *, Key, ConfigDraw* )>;
+			using itemdropped_event = std::function<void(S *, ItemDropped, ConfigDraw* )>;
 
 			std::list<move_event> callbacks_move;
 			std::list<press_event> callbacks_press;

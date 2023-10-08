@@ -11,7 +11,7 @@
 
 namespace curan {
 	namespace ui {
-		class TextBlob : public  Drawable, utilities::Lockable<TextBlob>, SignalProcessor<TextBlob>{
+		class TextBlob : public  Drawable, public utilities::Lockable, public SignalProcessor<TextBlob>{
 			SkPaint paint;
 			SkColor text_color;
 			SkColor background_color;

@@ -9,7 +9,7 @@
 namespace curan {
 	namespace ui {
 
-		class Container : public Drawable , utilities::Lockable<Container>{
+		class Container : public Drawable , utilities::Lockable{
 		public:
 
         enum class ContainerType{

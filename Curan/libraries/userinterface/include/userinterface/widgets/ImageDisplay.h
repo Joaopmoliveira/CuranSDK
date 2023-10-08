@@ -15,7 +15,7 @@ namespace curan {
 		using custom_step = std::function<void(SkCanvas*, SkRect)>;
 		using skia_image_producer = std::function<sk_sp<SkImage>(void)>;
 
-		class ImageDisplay : public  Drawable, utilities::Lockable<ImageDisplay>, SignalProcessor<ImageDisplay>{
+		class ImageDisplay : public  Drawable, public utilities::Lockable, public SignalProcessor<ImageDisplay>{
 			int width = -1;
 			int height = -1;
 			bool compiled = false;

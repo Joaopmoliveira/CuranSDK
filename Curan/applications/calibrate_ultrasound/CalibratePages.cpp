@@ -117,7 +117,7 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 
 	auto button = Button::make("Display Circles",resources);
 	button->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255,30,144,255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
-	button->set_callback([&processing](Button* button, ConfigDraw* config) {
+	button->add_press_call([&processing](Button* button, Press press ,ConfigDraw* config) {
 			bool temp = processing->show_circles.load();
 			processing->show_circles.store(!temp);
 	});

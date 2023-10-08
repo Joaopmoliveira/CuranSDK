@@ -46,10 +46,10 @@ namespace curan {
 			std::list<Message> received_messages;
 		};
 
-		class OpenIGTLinkViewer : public Drawable, utilities::Lockable<OpenIGTLinkViewer>,SignalProcessor<OpenIGTLinkViewer>{
+		class OpenIGTLinkViewer : public Drawable, public utilities::Lockable, public SignalProcessor<OpenIGTLinkViewer>{
 			MessageContainer container;
 			Press last_pressed_position;
-			SkRect widget_rect;
+			SkRect widget_rect; 
 			std::array<sk_sp<SkTextBlob>, 4> table_headers;
 			SkFont text_font;
 			SkPaint paint;

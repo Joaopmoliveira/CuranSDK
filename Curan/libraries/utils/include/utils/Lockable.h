@@ -5,8 +5,6 @@
 
 namespace curan {
 	namespace utilities {
-
-		template<typename Derived>
 		class Lockable {
 			std::mutex mut;
 
