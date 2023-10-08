@@ -14,6 +14,10 @@ target_link_libraries(RealTimeRoboticRegistration
 PUBLIC
 ${ITK_LIBRARIES}
 vsg::vsg
+communication
 vsgXchange::vsgXchange
 renderable
+utils
+KukaRobotLibrary
+robotParameters
 )

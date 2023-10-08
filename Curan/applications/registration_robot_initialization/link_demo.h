@@ -4,7 +4,6 @@
 #include <vsg/all.h>
 #include <vsgXchange/all.h>
 #include <iostream>
-#include "SharedRobotState.h"
 #include <iostream>
 #include "Robot.h"
 #include "ToolData.h"
@@ -18,7 +17,8 @@
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
 #include "communication/ProtoFRI.h"
+#include "registration_robot_utilities.h"
 
-int communication(std::shared_ptr<SharedRobotState> state);
+int communication(info_solve_registration& registration);
 
 #endif

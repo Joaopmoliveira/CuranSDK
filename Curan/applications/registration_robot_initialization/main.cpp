@@ -4,23 +4,36 @@
 #include "rendering/Volume.h"
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
-#include "registration_robot_utilities.h"
-#include "SharedRobotState.h"
+#include "link_demo.h"
+#include "utils/TheadPool.h"
 
 const double pi = std::atan(1) * 4;
 
-void interface(vsg::CommandBuffer& cb,std::atomic<bool>& optimization_running){
+void interface(vsg::CommandBuffer& cb,info_solve_registration& registration){
     ImGui::Begin("Box Specification Selection");
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
     static bool local_record_data = false;
-    if (optimization_running.load()){
+    static bool previous = local_record_data;
+    
+    if (registration.optimization_running.load()){
         ImGui::TextColored(ImVec4{1.0,0.0,0.0,1.0},"Optimization Currently Running...Please Wait");
         local_record_data = false;
     } else {
         ImGui::TextColored(ImVec4{0.0,1.0,0.0,1.0},"Can initialize solution with the LBR Med");
     }
     ImGui::Checkbox("Start Robot Positioning", &local_record_data);
+    if(!local_record_data && local_record_data!=previous) 
+    {
+        curan::utilities::Job job{};
+        job.description = "Execution of registration";
+        job.function_to_execute = [&](){
+            registration.optimization_running.store(true);
+            registration.full_runs.emplace_back(solve_registration(registration));
+            registration.optimization_running.store(false);
+        };
+        registration.thread_pool->submit(job);
+    }
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
 }
@@ -33,13 +46,10 @@ int main(int argc, char **argv)
     fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH "/reconstruction_results.mha");
     movingImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH "/precious_phantom/precious_phantom.mha");
 
-    try
-    {
+    try{
         fixedImageReader->Update();
         movingImageReader->Update();
-    }
-    catch (...)
-    {
+    } catch (...) {
         std::string error_name = "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n" + std::string(CURAN_COPIED_RESOURCE_PATH);
         std::printf(error_name.c_str());
         return 1;
@@ -48,8 +58,23 @@ int main(int argc, char **argv)
     ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
     ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
 
+    // now is the trickie part, I think the best strategy is to launch a threadpool and submit the registration algorithm
+    auto thread_pool = curan::utilities::ThreadPool::create(2);
+    CurrentInitialPose initial_pose;
+    std::vector<std::tuple<double,TransformType::Pointer>> full_runs;
     std::atomic<bool> variable = false;
-    curan::renderable::ImGUIInterface::Info info_gui{[&](vsg::CommandBuffer& cb){interface(cb,variable);}};
+
+    info_solve_registration registration_shared{
+        pointer2fixedimage,
+        pointer2movingimage,
+        nullptr,
+        initial_pose,
+        variable,
+        thread_pool,
+        full_runs
+    };
+
+    curan::renderable::ImGUIInterface::Info info_gui{[&](vsg::CommandBuffer& cb){interface(cb,registration_shared);}};
     auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
     curan::renderable::Window::Info info;
     info.api_dump = false;
@@ -127,9 +152,6 @@ int main(int argc, char **argv)
 
     casted_volume_moving->update_transform(moving_homogenenous_transformation);
 
-
-    // now is the trickie part, I think the best strategy is to launch a threadpool and submit the registration algorithm
-
     Eigen::Matrix<double, 4, 4> mat_moving_here = Eigen::Matrix<double, 4, 4>::Identity();
     for (size_t col = 0; col < 3; ++col)
         for (size_t row = 0; row < 3; ++row)
@@ -139,7 +161,16 @@ int main(int argc, char **argv)
     mat_moving_here(1, 3) = pointer2movingimage->GetOrigin()[1];
     mat_moving_here(2, 3) = pointer2movingimage->GetOrigin()[2];
 
-    full_runs.emplace_back(solve_registration({pointer2fixedimage, pointer2movingimage, casted_volume_moving, mat_moving_here, initial_config}));
+    initial_pose.update_matrix(mat_moving_here);
+    registration_shared.volume_moving = casted_volume_moving;
+    curan::utilities::Job job{};
+    job.description = "Execution of registration";
+    job.function_to_execute = [&](){
+        variable.store(true);
+        full_runs.emplace_back(solve_registration(registration_shared));
+        variable.store(false);
+    };
+    thread_pool->submit(job);
 
     window.run();
 

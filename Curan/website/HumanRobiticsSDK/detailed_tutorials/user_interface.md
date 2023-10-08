@@ -84,6 +84,10 @@ The last portion of the code takes the signals placed in the interal queue of th
 
 To sum up, the previous source code creates a window through the [GLFW library](https://www.glfw.org/) which appends signals to the 'std::unique_ptr<Window> viewer' object. The types of signals Curan propagates are Empty,Move, Press, Scroll, Unpress, ItemDropped, Key. The move is a mouse movement, the Press is a mouse press, the Scroll is the scroll with a mouse, the unpress is when the mouse is released, itemdropped is when you drag a item into the window and key is a keyboard press. To obtain which signals have been propagated to our window we can query the internal buffer of the window.
 
+## Widgets and Pages
+
+Its impossible to properly explain how a widget library works without having an idea of the internals of the library, at least thats usually my opinion when using tools from other developers. 
+
 ## Buttons
 
 This while loop runs until the window is closed. Now obviously you don't want to program all types of objects like buttons and so on, everytime you want this type of behavior. Curan has a light Widget implementation which you can use for your goals. Lets see how curan goes about defining this widget behavior

@@ -21,6 +21,22 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkCommand.h"
+#include <vsg/all.h>
+#include <vsgXchange/all.h>
+#include <iostream>
+#include <iostream>
+#include "Robot.h"
+#include "ToolData.h"
+#include "robotParameters.h"
+#include "rendering/Window.h"
+#include "rendering/Renderable.h"
+#include "rendering/SequencialLinks.h"
+#include "rendering/DynamicTexture.h"
+#include <asio.hpp>
+#include "communication/Client.h"
+#include "communication/Server.h"
+#include "communication/ProtoIGTL.h"
+#include "communication/ProtoFRI.h"
 
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
@@ -135,14 +151,35 @@ public:
     }
 };
 
-struct info_solve_registration
-{
+struct CurrentInitialPose {
+    Eigen::Matrix<double, 4, 4> mat_moving_here = Eigen::Matrix<double, 4, 4>::Identity();
+    std::mutex mut;
+
+    void update_matrix(const Eigen::Matrix<double, 4, 4>& supply){
+        std::lock_guard<std::mutex> g{mut};
+        mat_moving_here = supply;
+    }
+
+    Eigen::Matrix<double,4,4> get_matrix(){
+        std::lock_guard<std::mutex> g{mut};
+        return mat_moving_here;
+    }
+};
+
+struct info_solve_registration{
     ImageType::Pointer fixed_image;
     ImageType::Pointer moving_image;
     curan::renderable::Volume *volume_moving;
+    CurrentInitialPose& moving_homogenenous;
+    std::atomic<bool>& optimization_running;
+    std::shared_ptr<curan::utilities::ThreadPool> thread_pool;
+    std::vector<std::tuple<double,TransformType::Pointer>>& full_runs;
+    vsg::ref_ptr<curan::renderable::Renderable> robot_render;
+    std::unique_ptr<kuka::Robot> robot; 
+    std::unique_ptr<RobotParameters> iiwa;
 };
 
-std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_registration &info_registration)
+std::tuple<double, TransformType::Pointer> solve_registration(info_solve_registration &info_registration)
 {
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
@@ -232,7 +269,7 @@ std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_r
     optimizer->AddObserver(itk::StartEvent(), observer);
     optimizer->AddObserver(itk::IterationEvent(), observer);
     optimizer->AddObserver(itk::EndEvent(), observer);
-    observer->moving_homogenenous = info_registration.moving_homogenenous;
+    observer->moving_homogenenous = info_registration.moving_homogenenous.get_matrix();
     observer->initialTransform = initialTransform;
     observer->moving_pointer_to_volume = info_registration.volume_moving;
     try
