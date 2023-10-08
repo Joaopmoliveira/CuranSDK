@@ -37,6 +37,8 @@
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
 #include "communication/ProtoFRI.h"
+#include "utils/TheadPool.h"
+#include "rendering/Volume.h"
 
 using PixelType = float;
 constexpr unsigned int Dimension = 3;

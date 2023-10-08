@@ -1,11 +1,9 @@
 
 #include <optional>
 #include <nlohmann/json.hpp>
-#include "rendering/Volume.h"
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "link_demo.h"
-#include "utils/TheadPool.h"
 
 const double pi = std::atan(1) * 4;
 
