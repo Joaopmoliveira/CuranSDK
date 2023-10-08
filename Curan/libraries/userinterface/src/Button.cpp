@@ -109,7 +109,9 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 				auto previous_state = get_current_state();
 				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos,arg.ypos)) {
-					current_state_local = ButtonStates::PRESSED;					
+					current_state_local = ButtonStates::PRESSED;	
+					for(const auto& localcall : callbacks_press)
+                		localcall(this,arg,config);				
 				}
 				else
 					current_state_local = ButtonStates::WAITING;
