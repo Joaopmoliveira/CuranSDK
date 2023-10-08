@@ -1,19 +1,4 @@
-#include <vsg/all.h>
-#include <vsgXchange/all.h>
-#include <iostream>
 #include "link_demo.h"
-#include "Robot.h"
-#include "ToolData.h"
-#include "robotParameters.h"
-#include "rendering/Window.h"
-#include "rendering/Renderable.h"
-#include "rendering/SequencialLinks.h"
-#include "rendering/DynamicTexture.h"
-#include <asio.hpp>
-#include "communication/Client.h"
-#include "communication/Server.h"
-#include "communication/ProtoIGTL.h"
-#include "communication/ProtoFRI.h"
 
 bool process_joint_message(info_solve_registration &state, const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
 {
