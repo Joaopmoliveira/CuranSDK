@@ -172,11 +172,12 @@ struct info_solve_registration{
     curan::renderable::Volume *volume_moving;
     CurrentInitialPose& moving_homogenenous;
     std::atomic<bool>& optimization_running;
+    std::atomic<bool>& robot_client_commands_volume_init;
     std::shared_ptr<curan::utilities::ThreadPool> thread_pool;
     std::vector<std::tuple<double,TransformType::Pointer>>& full_runs;
-    vsg::ref_ptr<curan::renderable::Renderable> robot_render;
     std::unique_ptr<kuka::Robot> robot; 
     std::unique_ptr<RobotParameters> iiwa;
+    vsg::ref_ptr<curan::renderable::Renderable> robot_render;
 };
 
 std::tuple<double, TransformType::Pointer> solve_registration(info_solve_registration &info_registration)

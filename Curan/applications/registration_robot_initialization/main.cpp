@@ -34,6 +34,9 @@ void interface(vsg::CommandBuffer& cb,info_solve_registration& registration){
         };
         registration.thread_pool->submit(job);
     }
+
+    registration.robot_client_commands_volume_init.store(local_record_data);
+
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
 }
@@ -63,6 +66,7 @@ int main(int argc, char **argv)
     CurrentInitialPose initial_pose;
     std::vector<std::tuple<double,TransformType::Pointer>> full_runs;
     std::atomic<bool> variable = false;
+    std::atomic<bool> robot_client_commands_volume_init = false;
 
     info_solve_registration registration_shared{
         pointer2fixedimage,
@@ -70,8 +74,11 @@ int main(int argc, char **argv)
         nullptr,
         initial_pose,
         variable,
+        robot_client_commands_volume_init,
         thread_pool,
-        full_runs
+        full_runs,
+        nullptr,
+        nullptr
     };
 
     curan::renderable::ImGUIInterface::Info info_gui{[&](vsg::CommandBuffer& cb){interface(cb,registration_shared);}};
@@ -87,6 +94,14 @@ int main(int argc, char **argv)
     curan::renderable::Window::WindowSize size{1000, 800};
     info.window_size = size;
     curan::renderable::Window window{info};
+
+    std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/arm.json";
+    curan::renderable::SequencialLinks::Info create_info;
+    create_info.convetion = vsg::CoordinateConvention::Y_UP;
+    create_info.json_path = robot_path;
+    create_info.number_of_links = 8;
+    registration_shared.robot_render = curan::renderable::SequencialLinks::make(create_info);
+    window << registration_shared.robot_render;
 
     ImageType::RegionType region_fixed = pointer2fixedimage->GetLargestPossibleRegion();
     ImageType::SizeType size_itk_fixed = region_fixed.GetSize();

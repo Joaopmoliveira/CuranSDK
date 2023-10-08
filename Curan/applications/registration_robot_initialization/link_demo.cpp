@@ -17,10 +17,13 @@
 
 bool process_joint_message(info_solve_registration &state, const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
 {
+	Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
+    Vector3d p_0_cur;
+    Matrix3d R_0_7;
 	if (er)
 		return true;
 	static std::array<double,NUMBER_OF_JOINTS> _qOld = message->angles;
-	
+
 	for (int i = 0; i < NUMBER_OF_JOINTS; i++){
 		state.iiwa->q[i] = message->angles[i];
 		state.iiwa->qDot[i] = (message->angles[i] - _qOld[i]) / 0.005;
@@ -37,7 +40,11 @@ bool process_joint_message(info_solve_registration &state, const size_t &protoco
 	for (size_t joint_index = 0; joint_index < curan::communication::FRIMessage::n_joints; ++joint_index)
 		state.robot_render->cast<curan::renderable::SequencialLinks>()->set(joint_index, message->angles[joint_index]);
 
-	
+	Eigen::Matrix<double,4,4> mat_current = Eigen::Matrix<double,4,4>::Identity();
+	mat_current.block(0,0,3,3) = R_0_7;
+	mat_current.block(0,3,3,1) = p_0_cur;
+	if(state.robot_client_commands_volume_init.load())
+		state.moving_homogenenous.update_matrix(mat_current);
 	return false;
 }
 

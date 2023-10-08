@@ -5,7 +5,6 @@ include(${ITK_USE_FILE})
 add_executable(RealTimeRoboticRegistration
 main.cpp
 link_demo.cpp
-SharedRobotState.cpp
 )
 
 target_compile_definitions(RealTimeRoboticRegistration PRIVATE vsgXchange_FOUND)
