@@ -7,6 +7,7 @@
 #include "utils/Lockable.h"
 #include <optional>
 #include "IconResources.h"
+#include "SignalProcessor.h"
 
 namespace curan {
 	namespace ui {
@@ -15,7 +16,7 @@ namespace curan {
 		struct ConfigDraw;
 		using buttoncallback = std::function<void(Button*, ConfigDraw*)>;
 
-		class Button : public  Drawable , utilities::Lockable<Button> {
+		class Button : public  Drawable , utilities::Lockable<Button>,SignalProcessor<Button> {
 		public:
 
 		enum class ButtonStates {

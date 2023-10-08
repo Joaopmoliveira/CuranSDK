@@ -6,6 +6,7 @@
 #include "utils/Lockable.h"
 #include <optional>
 #include "IconResources.h"
+#include "SignalProcessor.h"
 
 namespace curan {
 	namespace ui {
@@ -14,7 +15,7 @@ namespace curan {
 
 		using slidercallback = std::function<void(Slider*, ConfigDraw*)>;
 
-		class Slider : public  Drawable, utilities::Lockable<Slider> {
+		class Slider : public  Drawable, utilities::Lockable<Slider>, SignalProcessor<Slider>{
 		public:
 			enum class SliderStates {
 				WAITING,

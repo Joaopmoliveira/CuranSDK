@@ -7,10 +7,11 @@
 #include "utils/Lockable.h"
 #include <optional>
 #include "IconResources.h"
+#include "SignalProcessor.h"
 
 namespace curan {
 	namespace ui {
-		class TextBlob : public  Drawable, utilities::Lockable<TextBlob>{
+		class TextBlob : public  Drawable, utilities::Lockable<TextBlob>, SignalProcessor<TextBlob>{
 			SkPaint paint;
 			SkColor text_color;
 			SkColor background_color;

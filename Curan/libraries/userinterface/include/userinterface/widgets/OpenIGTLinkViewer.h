@@ -13,6 +13,7 @@
 #include "Drawable.h"
 #include "utils/Lockable.h"
 #include "utils/Cancelable.h"
+#include "SignalProcessor.h"
 
 namespace curan {
 	namespace ui {
@@ -45,7 +46,7 @@ namespace curan {
 			std::list<Message> received_messages;
 		};
 
-		class OpenIGTLinkViewer : public Drawable, utilities::Lockable<OpenIGTLinkViewer>{
+		class OpenIGTLinkViewer : public Drawable, utilities::Lockable<OpenIGTLinkViewer>,SignalProcessor<OpenIGTLinkViewer>{
 			MessageContainer container;
 			Press last_pressed_position;
 			SkRect widget_rect;
