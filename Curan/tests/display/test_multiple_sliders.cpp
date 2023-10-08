@@ -83,8 +83,6 @@ int main() {
 		*container2 << std::move(button) << std::move(buttonoptions);
 		container2->set_divisions({ 0.0 , 0.5 , 1.0 });
 
-		auto rec = viewer->get_size();
-
 		auto page = Page{std::move(container2),SK_ColorBLACK};
 		page.update_page(viewer.get());
 
