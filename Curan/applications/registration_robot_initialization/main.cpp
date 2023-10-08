@@ -30,11 +30,8 @@ int main(int argc, char **argv)
     auto fixedImageReader = FixedImageReaderType::New();
     auto movingImageReader = MovingImageReaderType::New();
 
-    std::string dirName{CURAN_COPIED_RESOURCE_PATH "/reconstruction_results.mha"};
-    fixedImageReader->SetFileName(dirName);
-
-    std::string dirName2{CURAN_COPIED_RESOURCE_PATH "/precious_phantom/precious_phantom.mha"};
-    movingImageReader->SetFileName(dirName2);
+    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH "/reconstruction_results.mha");
+    movingImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH "/precious_phantom/precious_phantom.mha");
 
     try
     {
@@ -60,7 +57,7 @@ int main(int argc, char **argv)
     info.full_screen = false;
     info.is_debug = false;
     info.screen_number = 0;
-    info.
+    info.imgui_interface = ui_interface;
     info.title = "myviewer";
     curan::renderable::Window::WindowSize size{1000, 800};
     info.window_size = size;
@@ -130,6 +127,9 @@ int main(int argc, char **argv)
 
     casted_volume_moving->update_transform(moving_homogenenous_transformation);
 
+
+    // now is the trickie part, I think the best strategy is to launch a threadpool and submit the registration algorithm
+
     Eigen::Matrix<double, 4, 4> mat_moving_here = Eigen::Matrix<double, 4, 4>::Identity();
     for (size_t col = 0; col < 3; ++col)
         for (size_t row = 0; row < 3; ++row)
@@ -139,15 +139,9 @@ int main(int argc, char **argv)
     mat_moving_here(1, 3) = pointer2movingimage->GetOrigin()[1];
     mat_moving_here(2, 3) = pointer2movingimage->GetOrigin()[2];
 
-    std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
-
-    std::thread run_registration_algorithm{[&](){
-        for (const auto &initial_config : initial_configs)
-            full_runs.emplace_back(solve_registration({pointer2fixedimage, pointer2movingimage, casted_volume_moving, mat_moving_here, initial_config}));
-    }};
+    full_runs.emplace_back(solve_registration({pointer2fixedimage, pointer2movingimage, casted_volume_moving, mat_moving_here, initial_config}));
 
     window.run();
-    run_registration_algorithm.join();
 
     size_t minimum_index = 0;
     size_t current_index = 0;
