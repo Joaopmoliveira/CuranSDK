@@ -1,3 +1,6 @@
+#ifndef LINK_REGISTRATION_ROBOT_HEADER
+#define LINK_REGISTRATION_ROBOT_HEADER
+
 #include "itkImage.h"
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
@@ -39,6 +42,7 @@
 #include "communication/ProtoFRI.h"
 #include "utils/TheadPool.h"
 #include "rendering/Volume.h"
+#include <tuple>
 
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
@@ -288,3 +292,5 @@ std::tuple<double, TransformType::Pointer> solve_registration(info_solve_registr
 
     return {optimizer->GetCurrentMetricValue(), initialTransform};
 }
+
+#endif
