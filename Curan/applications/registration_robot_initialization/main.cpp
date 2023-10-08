@@ -9,18 +9,18 @@
 
 const double pi = std::atan(1) * 4;
 
-void interface(vsg::CommandBuffer &cb, std::shared_ptr<SharedRobotState> &robot_state)
-{
+void interface(vsg::CommandBuffer& cb,std::atomic<bool>& optimization_running){
     ImGui::Begin("Box Specification Selection");
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
     static bool local_record_data = false;
-    ImGui::Checkbox("Start Robot Positioning", &local_record_data);
-    if (robot_state->is_optimization_running.load())
+    if (optimization_running.load()){
         ImGui::TextColored(ImVec4{1.0,0.0,0.0,1.0},"Optimization Currently Running...Please Wait");
-    else{
-
+        local_record_data = false;
+    } else {
+        ImGui::TextColored(ImVec4{0.0,1.0,0.0,1.0},"Can initialize solution with the LBR Med");
     }
+    ImGui::Checkbox("Start Robot Positioning", &local_record_data);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
 }
@@ -51,8 +51,8 @@ int main(int argc, char **argv)
     ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
     ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
 
-    curan::renderable::ImGUIInterface::Info info_gui{[&](vsg::CommandBuffer &cb)
-                                                     { interface(cb, robot_state); }};
+    std::atomic<bool> variable = false;
+    curan::renderable::ImGUIInterface::Info info_gui{[&](vsg::CommandBuffer& cb){interface(cb,variable);}};
     auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
     curan::renderable::Window::Info info;
     info.api_dump = false;
@@ -60,6 +60,7 @@ int main(int argc, char **argv)
     info.full_screen = false;
     info.is_debug = false;
     info.screen_number = 0;
+    info.
     info.title = "myviewer";
     curan::renderable::Window::WindowSize size{1000, 800};
     info.window_size = size;
