@@ -18,7 +18,7 @@ namespace curan {
 			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 			SkPaint bluring_paint;
 			SkSamplingOptions options;
-
+			SkRect previous_size;
         public:
 
 			explicit Page(std::unique_ptr<Container> container,SkColor background);
@@ -27,13 +27,13 @@ namespace curan {
 
 			bool propagate_signal(Signal sig, ConfigDraw* config);
 
-			Page& propagate_size_change(SkRect& new_size);
+			Page& propagate_size_change(const SkRect& new_size);
 
 			Page& pop();
 
 			Page& stack(std::unique_ptr<Overlay> overlay);
 
-			void update_page(Window* window);
+			void update_page(const Window* window);
 
 			inline SkRect minimum_size(){
 				return main_page->minimum_size();

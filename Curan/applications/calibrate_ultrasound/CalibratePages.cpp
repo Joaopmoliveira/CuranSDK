@@ -113,8 +113,6 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 
-
-
 	auto button = Button::make("Display Circles",resources);
 	button->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255,30,144,255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
 	button->add_press_call([&processing](Button* button, Press press ,ConfigDraw* config) {

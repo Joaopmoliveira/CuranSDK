@@ -29,7 +29,7 @@ bool Page::propagate_signal(Signal sig, ConfigDraw* config){
 		return main_page->propagate_signal(sig, config);
 }
 
-Page& Page::propagate_size_change(SkRect& new_size){
+Page& Page::propagate_size_change(const SkRect& new_size){
 	main_page->propagate_size_change(new_size);
 	for (auto& pag : page_stack)
 		pag->propagate_size_change(new_size);
@@ -43,13 +43,15 @@ Page& Page::pop(){
 }
 
 Page& Page::stack(std::unique_ptr<Overlay> overlay){
-	page_stack.emplace_back(overlay->take_ownership());
+	auto local = overlay->take_ownership();
+	local->propagate_size_change(previous_size);
+	page_stack.emplace_back(std::move(local));
 	return *(this);
 }
  
-void Page::update_page(Window* window){
-	auto rec = window->get_size();
-	propagate_size_change(rec);
+void Page::update_page(const Window* window){
+	previous_size = window->get_size();
+	propagate_size_change(previous_size);
 }
 
 }

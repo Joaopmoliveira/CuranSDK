@@ -49,7 +49,7 @@ LightWeightPage& LightWeightPage::set_post_signal(post_signal_callback call){
     return *(this);
 }
 
-LightWeightPage& LightWeightPage::propagate_size_change(SkRect& new_size){
+LightWeightPage& LightWeightPage::propagate_size_change(const SkRect& new_size){
 	if(scene){
 		scene->set_position(new_size);
 		scene->framebuffer_resize();
