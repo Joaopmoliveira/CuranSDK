@@ -86,15 +86,12 @@ int main() {
 		auto rec = viewer->get_size();
 
 		auto page = Page{std::move(container2),SK_ColorBLACK};
-		page.propagate_size_change(rec);
+		page.update_page(viewer.get());
 
 		auto button_callback = [&page](Button* slider,Press press,ConfigDraw* config) {
 			page.stack(std::move(create_option_page()));
 		};
 		buttonoptions_pointer->add_press_call(button_callback);
-
-		auto width = rec.width();
-		auto height = rec.height();
 
 		ConfigDraw config_draw{ &page };
 
@@ -104,9 +101,9 @@ int main() {
 			auto temp_height = pointer_to_surface->height();
 			auto temp_width = pointer_to_surface->width();
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
-			if (temp_height != height || temp_width != width) {
-				rec = SkRect::MakeWH(temp_width, temp_height);
-				page.propagate_size_change(rec);
+			if (viewer->was_updated()) {
+		    	page.update_page(viewer.get());
+				viewer->update_processed();
 			}
 			page.draw(canvas);
 			auto signals = viewer->process_pending_signals();

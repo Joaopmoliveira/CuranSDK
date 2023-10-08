@@ -449,6 +449,7 @@ bool Window::initialize()
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 	}
 	fCurrentBackbufferIndex = imageCount;
+	user_space_was_updated = true;
 	return true;
 }
 
@@ -768,6 +769,7 @@ bool Window::recreateDisplay()
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 	}
 	fCurrentBackbufferIndex = imageCount;
+	user_space_was_updated = true;
 	return true;
 }
 

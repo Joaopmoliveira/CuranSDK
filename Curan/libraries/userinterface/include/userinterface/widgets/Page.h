@@ -10,6 +10,7 @@ namespace curan {
 	namespace ui {
 
 		class Overlay;
+		class Window;
 
 		class Page {
 			std::unique_ptr<LightWeightPage> main_page;
@@ -31,6 +32,8 @@ namespace curan {
 			Page& pop();
 
 			Page& stack(std::unique_ptr<Overlay> overlay);
+
+			void update_page(Window* window);
 
 			inline SkRect minimum_size(){
 				return main_page->minimum_size();

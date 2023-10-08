@@ -242,12 +242,8 @@ int main() {
 		*widgetcontainer << std::move(buttoncontainer) << std::move(container);
 		widgetcontainer->set_divisions({ 0.0 , 0.1 , 1.0 });
 
-		auto rec = viewer->get_size();
 		auto page = Page{std::move(widgetcontainer),SK_ColorBLACK};
-		page.propagate_size_change(rec);
-
-		auto width = rec.width();
-		auto height = rec.height();
+		page.update_page(viewer.get());
 
 		std::atomic<bool> continue_running = true;
 
@@ -264,9 +260,9 @@ int main() {
 			auto temp_height = pointer_to_surface->height();
 			auto temp_width = pointer_to_surface->width();
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
-			if (temp_height != height || temp_width != width) {
-				rec = SkRect::MakeWH(temp_width, temp_height);
-				page.propagate_size_change(rec);
+			if (viewer->was_updated()) {
+		    	page.update_page(viewer.get());
+				viewer->update_processed();
 			}
 			page.draw(canvas);
 			auto signals = viewer->process_pending_signals();

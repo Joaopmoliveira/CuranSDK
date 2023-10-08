@@ -1,5 +1,6 @@
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Overlay.h"
+#include "userinterface/Window.h"
 
 namespace curan {
 namespace ui {
@@ -44,6 +45,11 @@ Page& Page::pop(){
 Page& Page::stack(std::unique_ptr<Overlay> overlay){
 	page_stack.emplace_back(overlay->take_ownership());
 	return *(this);
+}
+ 
+void Page::update_page(Window* window){
+	auto rec = window->get_size();
+	propagate_size_change(rec);
 }
 
 }

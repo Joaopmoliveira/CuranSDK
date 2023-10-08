@@ -65,6 +65,7 @@ namespace curan {
 			VkImageUsageFlags usageFlags;
 			size_t currentFrame = 0;
 			bool framebufferResized = false;
+			bool user_space_was_updated = false;
 			std::string windowName;
 		public:
 			GLFWwindow* window = nullptr;
@@ -90,6 +91,14 @@ namespace curan {
 			void set_minimum_size(SkRect minimum_size,float percent = 0.1);
 			BackbufferInfo* getAvailableBackBuffer();
 			static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+
+			inline bool was_updated(){
+				return user_space_was_updated;
+			};
+			 
+			inline bool update_processed(){
+				user_space_was_updated = false;
+			}
 		};
 	}
 }
