@@ -12,7 +12,7 @@
 #include "itkImageRegistrationMethodv4.h"
 #include "itkMeanSquaresImageToImageMetricv4.h"
 #include "itkEuler3DTransform.h"
-#include "itkMattesMutualInformationImageToImageMetricv4.h"
+#include "itkMattesMutualInformationImageToImageMetric.h"
 #include "itkVersorRigid3DTransform.h"
 #include "itkCenteredTransformInitializer.h"
 #include "itkRegularStepGradientDescentOptimizerv4.h"
@@ -49,10 +49,10 @@ using PixelType = float;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using TransformType = itk::VersorRigid3DTransform<double>;
-//using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
-using OptimizerType = itk::VersorRigid3DTransformOptimizer;
+using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+//using OptimizerType = itk::VersorRigid3DTransformOptimizer;
 using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageType, ImageType>;
-using RegistrationType = itk::ImageRegistrationMethodv4<ImageType, ImageType, TransformType>;
+using RegistrationType = itk::ImageRegistrationMethodv4<ImageType, ImageType,TransformType>;
 using OutputPixelType = unsigned char;
 using OutputImageType = itk::Image<PixelType, Dimension>;
 using CastFilterType = itk::CastImageFilter<ImageType, OutputImageType>;

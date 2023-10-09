@@ -63,7 +63,7 @@ int communication(info_solve_registration &state)
 	curan::communication::interface_fri fri_interface;
 	curan::communication::Client::Info fri_construction{context, fri_interface};
 	asio::ip::tcp::resolver fri_resolver(context);
-	auto fri_endpoints = fri_resolver.resolve("localhost", std::to_string(50010));
+	auto fri_endpoints = fri_resolver.resolve("172.31.1.148", std::to_string(50010));
 	fri_construction.endpoints = fri_endpoints;
 	curan::communication::Client fri_client{fri_construction};
 
