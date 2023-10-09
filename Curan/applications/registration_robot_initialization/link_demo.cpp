@@ -8,11 +8,13 @@ bool process_joint_message(info_solve_registration &state, const size_t &protoco
 	if (er)
 		return true;
 	static std::array<double,NUMBER_OF_JOINTS> _qOld = message->angles;
-
+	//std::cout << "angles received: ";
 	for (int i = 0; i < NUMBER_OF_JOINTS; i++){
 		state.iiwa->q[i] = message->angles[i];
 		state.iiwa->qDot[i] = (message->angles[i] - _qOld[i]) / 0.005;
+		//std::printf(" %f ",message->angles[i]);
 	}
+	//std::cout << "\n";
 
 	_qOld = message->angles;
 	state.robot->getMassMatrix(state.iiwa->M, state.iiwa->q);
@@ -28,8 +30,11 @@ bool process_joint_message(info_solve_registration &state, const size_t &protoco
 	Eigen::Matrix<double,4,4> mat_current = Eigen::Matrix<double,4,4>::Identity();
 	mat_current.block(0,0,3,3) = R_0_7;
 	mat_current.block(0,3,3,1) = p_0_cur;
-	if(state.robot_client_commands_volume_init.load())
+	if(state.robot_client_commands_volume_init.load()){
 		state.moving_homogenenous.update_matrix(mat_current);
+		std::cout << "matrix in question: " << mat_current << "\n";
+	}
+		
 	return false;
 }
 
@@ -54,7 +59,7 @@ int communication(info_solve_registration &state)
 	curan::communication::interface_fri fri_interface;
 	curan::communication::Client::Info fri_construction{context, fri_interface};
 	asio::ip::tcp::resolver fri_resolver(context);
-	auto fri_endpoints = fri_resolver.resolve("172.31.1.148", std::to_string(50010));
+	auto fri_endpoints = fri_resolver.resolve("localhost", std::to_string(50010));
 	fri_construction.endpoints = fri_endpoints;
 	curan::communication::Client fri_client{fri_construction};
 
