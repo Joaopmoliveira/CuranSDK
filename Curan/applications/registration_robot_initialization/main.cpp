@@ -14,25 +14,41 @@ void interface(vsg::CommandBuffer &cb, info_solve_registration &registration)
     t += ImGui::GetIO().DeltaTime;
     static bool local_record_data = false;
     static bool previous = local_record_data;
-
+    
     if (registration.optimization_running.load())
     {
         ImGui::TextColored(ImVec4{1.0, 0.0, 0.0, 1.0}, "Optimization Currently Running...Please Wait");
         local_record_data = false;
     }
-    else
-    {
+    else{
         ImGui::TextColored(ImVec4{0.0, 1.0, 0.0, 1.0}, "Can initialize solution with the LBR Med");
+        ImGui::Checkbox("Start Robot Positioning", &local_record_data);
     }
-    ImGui::Checkbox("Start Robot Positioning", &local_record_data);
-    
+
     if (!local_record_data && local_record_data != previous)
     {
         std::cout << "Initializing the new batch of tasks\n";
+
+        auto homogenenous_transformation = registration.moving_homogenenous.get_matrix();
+        itk::Matrix<double, 3, 3> mat_moving;
+        mat_moving.SetIdentity();
+
+        for (size_t col = 0; col < 3; ++col)
+            for (size_t row = 0; row < 3; ++row)
+                mat_moving(row, col) = homogenenous_transformation(row, col);
+
+        registration.moving_image->SetDirection(mat_moving);
+
+        float origin[3];
+        origin[0] = homogenenous_transformation(0,3);
+        origin[1] = homogenenous_transformation(1,3);
+        origin[2] = homogenenous_transformation(2,3);
+
+        registration.moving_image->SetOrigin(origin);
+        
         curan::utilities::Job job{};
         job.description = "Execution of registration";
-        job.function_to_execute = [&]()
-        {
+        job.function_to_execute = [&](){
             registration.optimization_running.store(true);
             registration.full_runs.emplace_back(solve_registration(registration));
             registration.optimization_running.store(false);
@@ -41,7 +57,6 @@ void interface(vsg::CommandBuffer &cb, info_solve_registration &registration)
     }
 
     registration.robot_client_commands_volume_init.store(local_record_data);
-    
     previous = local_record_data;
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);

@@ -32,7 +32,11 @@ bool process_joint_message(info_solve_registration &state, const size_t &protoco
 	mat_current.block(0,3,3,1) = p_0_cur;
 	if(state.robot_client_commands_volume_init.load()){
 		state.moving_homogenenous.update_matrix(mat_current);
-		std::cout << "matrix in question: " << mat_current << "\n";
+		auto transform = vsg::translate(0.0,0.0,0.0);
+		for(size_t col = 0; col < 4; ++col)
+			for(size_t row = 0; row < 4; ++row)
+				transform(col,row) = mat_current(row,col);
+		state.volume_moving->update_transform(transform);
 	}
 		
 	return false;

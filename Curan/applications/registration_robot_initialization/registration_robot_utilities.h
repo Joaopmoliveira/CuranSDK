@@ -43,12 +43,14 @@
 #include "utils/TheadPool.h"
 #include "rendering/Volume.h"
 #include <tuple>
+#include "itkVersorRigid3DTransformOptimizer.h"
 
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
-using TransformType = itk::Euler3DTransform<double>;
-using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+using TransformType = itk::VersorRigid3DTransform<double>;
+//using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+using OptimizerType = itk::VersorRigid3DTransformOptimizer;
 using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageType, ImageType>;
 using RegistrationType = itk::ImageRegistrationMethodv4<ImageType, ImageType, TransformType>;
 using OutputPixelType = unsigned char;
