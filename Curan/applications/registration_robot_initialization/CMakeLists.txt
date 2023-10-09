@@ -20,4 +20,5 @@ renderable
 utils
 KukaRobotLibrary
 robotParameters
+${OPERATING_SYSTEM_REQUIRMENTS}
 )

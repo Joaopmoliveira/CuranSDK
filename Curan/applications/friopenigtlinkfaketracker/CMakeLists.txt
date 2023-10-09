@@ -12,4 +12,5 @@ tasksLib
 robotParameters
 utils
 communication
+${OPERATING_SYSTEM_REQUIRMENTS}
 )
