@@ -5,7 +5,7 @@ include(${ITK_USE_FILE})
 add_executable(RealTimeRoboticRegistration
 main.cpp
 link_demo.cpp
-SharedRobotState.cpp
+registration_robot_utilities.cpp
 )
 
 target_compile_definitions(RealTimeRoboticRegistration PRIVATE vsgXchange_FOUND)
@@ -14,6 +14,11 @@ target_link_libraries(RealTimeRoboticRegistration
 PUBLIC
 ${ITK_LIBRARIES}
 vsg::vsg
+communication
 vsgXchange::vsgXchange
 renderable
+utils
+KukaRobotLibrary
+robotParameters
+${OPERATING_SYSTEM_REQUIRMENTS}
 )

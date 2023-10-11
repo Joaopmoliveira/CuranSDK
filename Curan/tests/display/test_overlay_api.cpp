@@ -228,11 +228,11 @@ int main() {
 		auto buttonoptions = Button::make("Options",resources);
 		buttonoptions->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 
-		auto button_callback = [&resources](Button* button,ConfigDraw* config) {
+		auto button_callback = [&resources](Button* button,Press press,ConfigDraw* config) {
 			if(config->stack_page!=nullptr)
 				config->stack_page->stack(create_option_page(resources));
 		};
-		buttonoptions->set_callback(button_callback);
+		buttonoptions->add_press_call(button_callback);
 
 		auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 		*buttoncontainer << std::move(button) << std::move(buttonoptions);
@@ -242,12 +242,8 @@ int main() {
 		*widgetcontainer << std::move(buttoncontainer) << std::move(container);
 		widgetcontainer->set_divisions({ 0.0 , 0.1 , 1.0 });
 
-		auto rec = viewer->get_size();
 		auto page = Page{std::move(widgetcontainer),SK_ColorBLACK};
-		page.propagate_size_change(rec);
-
-		auto width = rec.width();
-		auto height = rec.height();
+		page.update_page(viewer.get());
 
 		std::atomic<bool> continue_running = true;
 
@@ -264,9 +260,9 @@ int main() {
 			auto temp_height = pointer_to_surface->height();
 			auto temp_width = pointer_to_surface->width();
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
-			if (temp_height != height || temp_width != width) {
-				rec = SkRect::MakeWH(temp_width, temp_height);
-				page.propagate_size_change(rec);
+			if (viewer->was_updated()) {
+		    	page.update_page(viewer.get());
+				viewer->update_processed();
 			}
 			page.draw(canvas);
 			auto signals = viewer->process_pending_signals();

@@ -22,11 +22,7 @@ int main(int argc, char* argv[]) {
 	std::shared_ptr<ProcessingMessage> processing;
 	auto page = create_main_page(data,processing,resources);
 
-	auto rec = viewer->get_size();
-	page.propagate_size_change(rec);
-
-	auto width = rec.width();
-	auto height = rec.height();
+	page.update_page(viewer.get());
 
 	ConfigDraw config{&page};
 
@@ -36,9 +32,9 @@ int main(int argc, char* argv[]) {
 		auto temp_height = pointer_to_surface->height();
 		auto temp_width = pointer_to_surface->width();
 		SkCanvas* canvas = pointer_to_surface->getCanvas();
-		if (temp_height != height || temp_width != width) {
-			rec = SkRect::MakeWH(temp_width, temp_height);
-			page.propagate_size_change(rec);
+		if (viewer->was_updated()) {
+	    	page.update_page(viewer.get());
+			viewer->update_processed();
 		}
 		page.draw(canvas);
 		auto signals = viewer->process_pending_signals();

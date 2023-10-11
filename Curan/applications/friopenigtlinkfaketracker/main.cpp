@@ -148,7 +148,7 @@ void start_tracking(curan::communication::Server &server, std::shared_ptr<curan:
 	}
 }
 
-void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage> &message, std::shared_ptr<SharedState> &shared_state)
+void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage> &message, std::shared_ptr<SharedState> shared_state)
 {
 	auto robot_state = shared_state->robot_state.load();
 	auto _qCurr = robot_state.joint_config;
@@ -171,35 +171,35 @@ void start_joint_tracking(curan::communication::Server &server, std::shared_ptr<
 
 	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
 	auto iiwa = std::make_unique<RobotParameters>();	// myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
+	int val = 50;
+	std::string name = "empty";
+
+	val = specification.framerate;
+	name = specification.name;
 
 	while (!in_context.stopped())
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		int val = 50;
-		std::string name = "empty";
+
+		const auto start = std::chrono::high_resolution_clock::now();
+
+		std::shared_ptr<curan::communication::FRIMessage> message = std::shared_ptr<curan::communication::FRIMessage>(new curan::communication::FRIMessage());
+
+		GetRobotConfiguration(message, shared_state);
+		//std::printf("Sending robot configuration: ");
+		//for(const auto& val : shared_state->robot_state.load().joint_config)
+		//	std::printf(" %f ",val);
+		//std::printf("\n");
+		message->serialize();
+
+		auto callable = [message]()
 		{
-			val = specification.framerate;
-			name = specification.name;
-		}
-		while (flag->value())
-		{
-			const auto start = std::chrono::high_resolution_clock::now();
+			return asio::buffer(message->get_buffer(), message->get_body_size() + message->get_header_size());
+		};
+		auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+		server.write(to_send);
 
-			std::shared_ptr<curan::communication::FRIMessage> message = std::shared_ptr<curan::communication::FRIMessage>(new curan::communication::FRIMessage());
-
-			GetRobotConfiguration(message, shared_state);
-			message->serialize();
-
-			auto callable = [message]()
-			{
-				return asio::buffer(message->get_buffer(), message->get_body_size() + message->get_header_size());
-			};
-			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
-			server.write(to_send);
-
-			const auto end = std::chrono::high_resolution_clock::now();
-			std::this_thread::sleep_for(std::chrono::milliseconds((int)(1000.0 / val)) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-		}
+		const auto end = std::chrono::high_resolution_clock::now();
+		std::this_thread::sleep_for(std::chrono::milliseconds((int)(1000.0 / val)) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
 }
 
@@ -280,20 +280,22 @@ int main(int argc, char *argv[])
 
 		auto shared_state = std::make_shared<SharedState>();
 		std::atomic<bool> keep_going = true;
-		std::thread state_updater{[&](){
-			State current_state;
-			double time = 0.0;
-			while(keep_going){
-				for(auto& current_t : current_state.external_torques)
-					current_t = std::sin(time);
-				for(auto& current_t : current_state.measured_torques)
-					current_t = std::sin(time);
-				for(auto& current_t : current_state.joint_config)
-					current_t = std::sin(time);
-				shared_state->robot_state.store(current_state);
-				std::this_thread::sleep_for(std::chrono::milliseconds(16));
-			}
-		}};
+		std::thread state_updater{[&]()
+								  {
+									  State current_state;
+									  double time = 0.0;
+									  while (keep_going){
+										  for (auto &current_t : current_state.external_torques)
+											  current_t = std::sin(time);
+										  for (auto &current_t : current_state.measured_torques)
+											  current_t = std::sin(time);
+										  for (auto &current_t : current_state.joint_config)
+											  current_t = std::sin(time);
+										  shared_state->robot_state.store(current_state);
+										  time += 0.016;
+										  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+									  }
+								  }};
 
 		auto state_machine = [state_flag, &server, shared_state]()
 		{

@@ -4,13 +4,16 @@
 #include <variant>
 #include <string>
 #include <vector>
-
+#include <list>
+#include <functional>
 #include "definitions/UIdefinitions.h"
 
-namespace curan {
-	namespace ui {
-		struct Empty {
-
+namespace curan
+{
+	namespace ui
+	{
+		struct Empty
+		{
 		};
 
 		struct Move
@@ -39,7 +42,8 @@ namespace curan {
 			double ypos;
 		};
 
-		struct Key {
+		struct Key
+		{
 			char pressed_char;
 		};
 
@@ -49,17 +53,17 @@ namespace curan {
 			std::vector<std::string> paths;
 		};
 
-		using Signal = std::variant<Empty,Move, Press, Scroll, Unpress, ItemDropped, Key>;
+		using Signal = std::variant<Empty, Move, Press, Scroll, Unpress, ItemDropped, Key>;
 
-		void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+		void cursor_position_callback(GLFWwindow *window, double xpos, double ypos);
 
-		void cursor_position_click_callback(GLFWwindow* window, int button, int action, int mods);
+		void cursor_position_click_callback(GLFWwindow *window, int button, int action, int mods);
 
-		void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+		void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
-		void item_droped_callback(GLFWwindow* window, int count, const char** paths);
+		void item_droped_callback(GLFWwindow *window, int count, const char **paths);
 
-		void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+		void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 	}
 }
 

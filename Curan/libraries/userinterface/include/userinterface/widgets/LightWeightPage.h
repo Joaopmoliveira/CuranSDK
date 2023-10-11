@@ -32,7 +32,7 @@ namespace curan {
 
 			bool propagate_signal(Signal sig, ConfigDraw* config);
 
-			LightWeightPage& propagate_size_change(SkRect& new_size);
+			LightWeightPage& propagate_size_change(const SkRect& new_size);
 
 			LightWeightPage& set_post_signal(post_signal_callback call);
 

@@ -353,3 +353,21 @@ renderable
 vsgImGui::vsgImGui
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+
+
+add_executable(test_red_warning
+test_the_ui_with_blocking_call.cpp
+)
+
+target_compile_definitions(test_red_warning PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_red_warning PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_red_warning
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
+)

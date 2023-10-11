@@ -24,8 +24,6 @@ Button::Button(const std::string& in_button_text,IconResources& system_icons) : 
 	SkFontStyle fontStyle;
 	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
 	typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-	callback = std::nullopt;
 }
 
 Button::~Button(){
@@ -111,12 +109,9 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 				auto previous_state = get_current_state();
 				auto current_state_local = get_current_state();
 				if (interacts(arg.xpos,arg.ypos)) {
-					current_state_local = ButtonStates::PRESSED;
-					if (callback) {
-						auto val = *callback;
-						val(this, config);
-					}
-					
+					current_state_local = ButtonStates::PRESSED;	
+					for(const auto& localcall : callbacks_press)
+                		localcall(this,arg,config);				
 				}
 				else
 					current_state_local = ButtonStates::WAITING;

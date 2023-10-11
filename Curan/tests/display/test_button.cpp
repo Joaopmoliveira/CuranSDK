@@ -14,7 +14,7 @@ int main() {
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		auto callback = [](Button* button, ConfigDraw* config) {
+		auto callback = [](Button* button, Press press,ConfigDraw* config) {
 			std::cout << "received signal!\n";
 		};
 
@@ -22,7 +22,7 @@ int main() {
 		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 200);
 		button->set_position(rect);
 		button->compile();
-		button->set_callback(callback);
+		button->add_press_call(callback);
 
 		auto caldraw = button->draw();
 		auto calsignal = button->call();

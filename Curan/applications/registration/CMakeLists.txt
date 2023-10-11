@@ -14,4 +14,5 @@ ${ITK_LIBRARIES}
 vsg::vsg
 vsgXchange::vsgXchange
 renderable
+${OPERATING_SYSTEM_REQUIRMENTS}
 )

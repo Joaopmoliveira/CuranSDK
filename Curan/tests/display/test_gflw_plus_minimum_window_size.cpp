@@ -32,14 +32,10 @@ int main() {
 		*container2 << std::move(container) << std::move(button3);
 		container2->set_divisions({ 0.0 , 0.5 , 1.0 });
 
-		auto rec = viewer->get_size();
 		Page page = Page{std::move(container2),SK_ColorBLACK};
-		page.propagate_size_change(rec);
+		page.update_page(viewer.get());
 
         viewer->set_minimum_size(page.minimum_size());
-
-		auto width = rec.width();
-		auto height = rec.height();
 
 		ConfigDraw config;
 
@@ -49,9 +45,9 @@ int main() {
 			auto temp_height = pointer_to_surface->height();
 			auto temp_width = pointer_to_surface->width();
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
-			if (temp_height != height || temp_width != width) {
-				rec = SkRect::MakeWH(temp_width, temp_height);
-				page.propagate_size_change(rec);
+			if (viewer->was_updated()) {
+				page.update_page(viewer.get());
+				viewer->update_processed();
 			}
 			page.draw(canvas);
 			auto signals = viewer->process_pending_signals();

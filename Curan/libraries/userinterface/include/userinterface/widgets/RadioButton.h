@@ -3,16 +3,16 @@
 
 #include "Drawable.h"
 #include "definitions/UIdefinitions.h"
-#include "utils/Cancelable.h"
 #include "utils/Lockable.h"
 #include <optional>
 #include <string>
 #include <vector>
+#include "SignalProcessor.h"
 
 namespace curan {
 	namespace ui {
 
-		class RadioButton : public  Drawable, utilities::Lockable<RadioButton>, utilities::Connectable<RadioButton> {
+		class RadioButton : public  Drawable, public utilities::Lockable, public SignalProcessor<RadioButton> {
 		public:
 			enum class Arrangement {
 				VERTICAL,

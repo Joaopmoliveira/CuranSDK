@@ -113,18 +113,16 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 
-
-
 	auto button = Button::make("Display Circles",resources);
 	button->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255,30,144,255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
-	button->set_callback([&processing](Button* button, ConfigDraw* config) {
+	button->add_press_call([&processing](Button* button, Press press ,ConfigDraw* config) {
 			bool temp = processing->show_circles.load();
 			processing->show_circles.store(!temp);
 	});
 
 	auto button2 = Button::make("Options",resources);
 	button2->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255,30,144,255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
-	button2->set_callback([&processing,&resources](Button* button, ConfigDraw* config) {
+	button2->add_press_call([&processing,&resources](Button* button, Press press ,ConfigDraw* config) {
 			config->stack_page->stack(create_filtercontroler_overlay(processing,resources));
 	});
 
@@ -155,7 +153,7 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, flag, data);
 	processing->port = data.port;
 
-	auto start_connection_callback = [&data,processing](Button* button, ConfigDraw* config) {
+	auto start_connection_callback = [&data,processing](Button* button, Press press ,ConfigDraw* config) {
 		if (!processing->connection_status->value()) {
 			curan::utilities::Job val;
 			val.description = "connection thread";
@@ -171,10 +169,10 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 
 	auto start_connection = Button::make("Connect",resources);
 	start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
-	start_connection->set_callback(start_connection_callback);
+	start_connection->add_press_call(start_connection_callback);
 	auto start_connection_pointer = start_connection.get();
 
-	auto change_recording_status = [processing](Button* button, ConfigDraw* config) {
+	auto change_recording_status = [processing](Button* button,Press press , ConfigDraw* config) {
 		auto val = !processing->should_record.load();
 		processing->should_record.store(val);
 		SkColor color = (val) ? SK_ColorCYAN : SK_ColorBLACK;
@@ -183,15 +181,15 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 
 	auto button_start_collection = Button::make("Data Collection",resources);
 	button_start_collection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
-	button_start_collection->set_callback(change_recording_status);
+	button_start_collection->add_press_call(change_recording_status);
 	auto button_start_collection_pointer = button_start_collection.get();
-	button_start_collection->set_callback([processing](Button* button, ConfigDraw* config){
+	button_start_collection->add_press_call([processing](Button* button,Press press , ConfigDraw* config){
 		processing->should_record = !processing->should_record;
 	});
 
 	auto button_options = Button::make("Options",resources);
 	button_options->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
-	button_options->set_callback([&processing,&resources](Button* button, ConfigDraw* config) {
+	button_options->add_press_call([&processing,&resources](Button* button,Press press , ConfigDraw* config) {
 		config->stack_page->stack(create_options_overlay(processing,resources));
 	});
 
