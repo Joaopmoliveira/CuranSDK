@@ -172,20 +172,16 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	start_connection->add_press_call(start_connection_callback);
 	auto start_connection_pointer = start_connection.get();
 
-	auto change_recording_status = [processing](Button* button,Press press , ConfigDraw* config) {
+
+	auto button_start_collection = Button::make("Data Collection",resources);
+	button_start_collection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	button_start_collection->add_press_call([processing](Button* button,Press press , ConfigDraw* config) {
 		auto val = !processing->should_record.load();
 		processing->should_record.store(val);
 		SkColor color = (val) ? SK_ColorCYAN : SK_ColorBLACK;
 		button->set_waiting_color(color);
-	};
-
-	auto button_start_collection = Button::make("Data Collection",resources);
-	button_start_collection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
-	button_start_collection->add_press_call(change_recording_status);
-	auto button_start_collection_pointer = button_start_collection.get();
-	button_start_collection->add_press_call([processing](Button* button,Press press , ConfigDraw* config){
-		processing->should_record = !processing->should_record;
 	});
+	auto button_start_collection_pointer = button_start_collection.get();
 
 	auto button_options = Button::make("Options",resources);
 	button_options->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
