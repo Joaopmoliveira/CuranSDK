@@ -296,6 +296,8 @@ int main(int argc, char **argv)
     mat_moving_here(1, 3) = pointer2movingimage->GetOrigin()[1];
     mat_moving_here(2, 3) = pointer2movingimage->GetOrigin()[2];
 
+    std::cout << "\n mat_moving_here: \n" << mat_moving_here << std::endl;
+
     curan::renderable::Window::Info info;
     info.api_dump = false;
     info.display = "";
@@ -373,15 +375,9 @@ int main(int argc, char **argv)
 
     std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
 
-    std::vector<Eigen::Vector3d> initial_configs;
-    for (double angle_x = 0.0; angle_x < 350.0; angle_x += 90.0)
-        for (double angle_y = 0.0; angle_y < 350.0; angle_y += 90.0)
-            for (double angle_z = 0.0; angle_z < 350.0; angle_z += 90.0)
-            {
-                Eigen::Vector3d rot;
-                rot << angle_x, angle_y, angle_z;
-                initial_configs.emplace_back(rot);
-            }
+    std::array<Eigen::Vector3d,10> initial_configs;
+    for(auto & vals : initial_configs)
+        vals = Eigen::Vector3d::Random();
 
     std::thread run_registration_algorithm{[&]()
                                            {

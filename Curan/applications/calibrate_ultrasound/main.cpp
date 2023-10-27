@@ -60,6 +60,14 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
+	constexpr size_t number_of_initial_guesses = 20;
+	struct initial_guess_and_cost{
+		double final_cost;
+		std::vector<double> initial_guess;
+		ceres::Solver::Summary summary;
+	};
+	std::array<initial_guess_and_cost,number_of_initial_guesses> random_solutions_to_test;
+
 	constexpr size_t number_of_strings = 3;
 	constexpr size_t number_of_variables = 6 + 4 * number_of_strings;
 	double variables[number_of_variables];
@@ -111,8 +119,10 @@ int main(int argc, char* argv[]) {
 		++counter;
 	}
 
-	for (auto& val : variables)
-		val = 0.0;
+	ceres::Solver::Options options;
+	options.max_num_iterations = 2500;
+	options.linear_solver_type = ceres::DENSE_QR;
+	options.minimizer_progress_to_stdout = true;
 
 	ceres::Problem problem;
 	for (const auto& data : optimizationdata.wire_data) {
@@ -122,14 +132,30 @@ int main(int argc, char* argv[]) {
 		problem.AddResidualBlock(cost_function, nullptr, variables);
 	}
 
-	ceres::Solver::Options options;
-	options.max_num_iterations = 2500;
-	options.linear_solver_type = ceres::DENSE_QR;
-	options.minimizer_progress_to_stdout = true;
+	for(auto& potential_solution : random_solutions_to_test){
+		potential_solution.initial_guess.resize(number_of_variables);
+		for (auto& val : potential_solution.initial_guess)
+			val = 0.0;
+		
+		ceres::Solve(options, &problem, &potential_solution.summary);
+		potential_solution.final_cost = potential_solution.summary.final_cost;
+	}
 
-	ceres::Solver::Summary summary;
-	ceres::Solve(options, &problem, &summary);
-	std::cout << summary.BriefReport() << "\n";
+	size_t minimum = 0 ;
+	size_t i = 0 ;
+	double minimum_value = 1e10;
+	assert(random_solutions_to_test.size()>0);
+	for(const auto& potential_solution : random_solutions_to_test){
+		if(potential_solution.final_cost< minimum_value){
+			minimum = i;
+			minimum_value = potential_solution.final_cost;
+		}
+		++i;
+	}
+
+	auto best_run = random_solutions_to_test[minimum];
+
+	std::cout << best_run.summary.BriefReport() << "\n";
 
 	double t1 = cos(variables[2]);
     double t2 = sin(variables[2]);

@@ -8,7 +8,7 @@
 <Device
 		Id="ROBOT"
 		Type="OpenIGTLinkTracker"
-		LocalTimeOffsetSec="-0.123"
+		LocalTimeOffsetSec="0.132"
 		ServerAddress="172.31.1.148"
 		ServerPort="50000"
 		MessageType="TDATA"
