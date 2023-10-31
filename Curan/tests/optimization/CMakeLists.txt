@@ -3,3 +3,9 @@ add_executable(test_optimization_strategy test_optimization_strategy.cpp)
 target_link_libraries(test_optimization_strategy PUBLIC
 optimization
 )
+
+add_executable(test_optimization_matlab test_optimization_for_matlab.cpp)
+
+target_link_libraries(test_optimization_matlab PUBLIC
+optimization
+)
