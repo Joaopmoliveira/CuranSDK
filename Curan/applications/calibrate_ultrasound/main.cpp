@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
 	nlohmann::json calibration_data;
 	calibration_data["timestamp"] = return_current_time_and_date();
 	calibration_data["homogeneous_transformation"] = optimized_values.str();
-	calibration_data["optimization_error"] = summary.final_cost;
+	calibration_data["optimization_error"] = best_run.summary.final_cost;
 
 	// write prettified JSON to another file
 	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/optimization_result.json");
