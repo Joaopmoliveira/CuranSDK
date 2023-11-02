@@ -187,7 +187,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 				observation_n.segmented_wires = *possible_arrangement;
 				segmented_wires = observation_n.segmented_wires;
 				processor->list_of_recorded_points.push_back(observation_n);
-				std::printf("recorded another point cols size: %d \n",segmented_wires.cols());
+				std::printf("recorded another point cols size: %d \n",(int)segmented_wires.cols());
 			} else{
 				std::printf("possible arrangement failure \n");
 			}

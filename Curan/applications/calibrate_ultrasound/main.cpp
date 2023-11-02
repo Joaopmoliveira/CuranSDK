@@ -7,6 +7,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "CalibratePages.h"
 
+#include <random>
+
 int main(int argc, char* argv[]) {
 	using namespace curan::ui;
 	auto shared_pool = curan::utilities::ThreadPool::create(4);
@@ -70,7 +72,6 @@ int main(int argc, char* argv[]) {
 
 	constexpr size_t number_of_strings = 3;
 	constexpr size_t number_of_variables = 6 + 4 * number_of_strings;
-	double variables[number_of_variables];
 
 	curan::optim::WireData optimizationdata;
 	optimizationdata.wire_data.reserve(number_of_strings * processing->list_of_recorded_points.size());
@@ -124,19 +125,24 @@ int main(int argc, char* argv[]) {
 	options.linear_solver_type = ceres::DENSE_QR;
 	options.minimizer_progress_to_stdout = true;
 
-	ceres::Problem problem;
-	for (const auto& data : optimizationdata.wire_data) {
-		ceres::CostFunction* cost_function =
-			new ceres::AutoDiffCostFunction<curan::optim::WiredResidual, 2, number_of_variables>(
-				new curan::optim::WiredResidual(data));
-		problem.AddResidualBlock(cost_function, nullptr, variables);
-	}
+   double lower_bound = -10.0;
+   double upper_bound = +10.0;
+   std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
+   std::default_random_engine re;
 
 	for(auto& potential_solution : random_solutions_to_test){
 		potential_solution.initial_guess.resize(number_of_variables);
 		for (auto& val : potential_solution.initial_guess)
-			val = 0.0;
-		
+			val = unif(re);
+
+		ceres::Problem problem;
+		for (const auto& data : optimizationdata.wire_data) {
+			ceres::CostFunction* cost_function =
+				new ceres::AutoDiffCostFunction<curan::optim::WiredResidual, 2, number_of_variables>(
+					new curan::optim::WiredResidual(data));
+			problem.AddResidualBlock(cost_function, nullptr, potential_solution.initial_guess.data());
+		}
+
 		ceres::Solve(options, &problem, &potential_solution.summary);
 		potential_solution.final_cost = potential_solution.summary.final_cost;
 	}
@@ -154,15 +160,14 @@ int main(int argc, char* argv[]) {
 	}
 
 	auto best_run = random_solutions_to_test[minimum];
-
 	std::cout << best_run.summary.BriefReport() << "\n";
 
-	double t1 = cos(variables[2]);
-    double t2 = sin(variables[2]);
-    double t3 = cos(variables[1]);
-	double t4 = sin(variables[1]);
-    double t5 = cos(variables[0]);
-    double t6 = sin(variables[0]);
+	double t1 = cos(best_run.initial_guess[2]);
+    double t2 = sin(best_run.initial_guess[2]);
+    double t3 = cos(best_run.initial_guess[1]);
+	double t4 = sin(best_run.initial_guess[1]);
+    double t5 = cos(best_run.initial_guess[0]);
+    double t6 = sin(best_run.initial_guess[0]);
 
 	Eigen::Matrix<double,4,4> transformation_matrix = Eigen::Matrix<double,4,4>::Identity();
 	transformation_matrix(0,0) = t1 * t3;
@@ -177,9 +182,9 @@ int main(int argc, char* argv[]) {
 	transformation_matrix(1,2) = t2 * t4 * t5 - t1 * t6;
 	transformation_matrix(2,2) = t3 * t5;
 
-	transformation_matrix(0,3) = variables[3];
-	transformation_matrix(1,3) = variables[4];
-	transformation_matrix(2,3) = variables[5];
+	transformation_matrix(0,3) = best_run.initial_guess[3];
+	transformation_matrix(1,3) = best_run.initial_guess[4];
+	transformation_matrix(2,3) = best_run.initial_guess[5];
 
 	std::cout << "Initial: \n" << Eigen::Matrix<double,4,4>::Identity() << std::endl;
 	std::cout << "Final: \n" << transformation_matrix << std::endl;
