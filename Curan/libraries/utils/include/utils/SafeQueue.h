@@ -72,7 +72,7 @@ namespace curan {
 
 			[[nodiscard]] int size() {
 				std::lock_guard<std::mutex> lk(mut);
-				return data_queue.size();
+				return (int)data_queue.size();
 			}
 
 			void invalidate() {

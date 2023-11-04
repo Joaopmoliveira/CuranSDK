@@ -39,7 +39,7 @@ drawablefunction TextBlob::draw() {
 		auto size = get_size();
 
 		SkRect drawable = size;
-		drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
+		drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
 
 		float text_offset_x = drawable.centerX() - widget_rect_text.width() / 2.0f;
 		float text_offset_y = drawable.centerY() + widget_rect_text.height() / 2.0f;
@@ -90,7 +90,7 @@ void TextBlob::framebuffer_resize() {
 }
 
 void TextBlob::compile(){
-	auto text_font = SkFont(typeface, font_size, 1.0f, 0.0f);
+	auto text_font = SkFont(typeface, (float)font_size, 1.0f, 0.0f);
 	text_font.setEdging(SkFont::Edging::kAntiAlias);
 	text_font.measureText(text_to_compile.data(), text_to_compile.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(text_to_compile.c_str(), text_font);

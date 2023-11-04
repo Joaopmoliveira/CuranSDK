@@ -41,10 +41,10 @@ drawablefunction Slider::draw() {
         auto size = get_size();
 
         SkRect drawable = size;
-        drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
+        drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
 
         paint.setColor(slider_color);
-		canvas->drawRoundRect(drawable, drawable.height() / 2.0, drawable.height() / 2.0, paint);
+		canvas->drawRoundRect(drawable, drawable.height() / 2.0f, drawable.height() / 2.0f, paint);
 
         switch (current_state) {
         case SliderStates::WAITING:
@@ -59,7 +59,7 @@ drawablefunction Slider::draw() {
         }
 
         SkRect dragable = SkRect::MakeXYWH(drawable.x()+ drawable.width() * current_value, drawable.y(), drawable.width() * dragable_percent_size, drawable.height());
-		canvas->drawRoundRect(dragable, drawable.height() / 2.0, drawable.height() / 2.0,paint);
+		canvas->drawRoundRect(dragable, drawable.height() / 2.0f, drawable.height() / 2.0f,paint);
     };
     return lamb;
 }
@@ -82,8 +82,8 @@ callablefunction Slider::call() {
 						auto widget_rect = get_position();
 						auto size = get_size();
 						SkRect drawable = size;
-						drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
-						auto offset_x = (arg.xpos - drawable.x()) / size.width();
+						drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
+						auto offset_x = ((float)arg.xpos - drawable.x()) / size.width();
 						auto current_val = get_current_value();
 						current_val += offset_x-read_trigger();
 						trigger(offset_x);

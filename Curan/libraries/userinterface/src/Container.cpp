@@ -161,6 +161,9 @@ void Container::compile(){
 			}
 		}
 		break;
+	default :
+		throw std::runtime_error("the Arrangement must be either vertical or horizontal");
+		break;
 	}
 	compiled = true;
 	validate_minimum_width_and_height(rectangles_of_contained_layouts);

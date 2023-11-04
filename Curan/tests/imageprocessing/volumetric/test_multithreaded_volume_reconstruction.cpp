@@ -15,7 +15,7 @@ float final_spacing [3] = {0.01 , 0.01 , 0.01};
 void updateBaseTexture3DMultiThreaded(vsg::floatArray3D& image, curan::image::StaticReconstructor::output_type::Pointer image_to_render,std::shared_ptr<curan::utilities::ThreadPool> shared_pool)
 {
     auto size =  image_to_render->GetLargestPossibleRegion().GetSize();
-    int fullExt[6] = {0,size[0]-1, 0,size[1]-1, 0 ,size[2]-1 };
+    int fullExt[6] = {0,(int)size[0]-1, 0,(int)size[1]-1, 0 ,(int)size[2]-1 };
     if(fullExt[1]<0)
         fullExt[1] = 0;
     if(fullExt[3]<0)
@@ -32,9 +32,7 @@ void updateBaseTexture3DMultiThreaded(vsg::floatArray3D& image, curan::image::St
 	int executed = 0;
 	size_t index = 0;
 	for(const auto& split : splitting){
-		curan::utilities::Job job;
-		job.description = "partial volume rendering copy";
-		job.function_to_execute = [&](){
+        auto lamb = [&](){
 			try{
                 auto buffer = image_to_render->GetBufferPointer()+split[0]+split[2]*size[0]+split[4]*size[0]*size[1];
                 for(size_t zind = split[4]; zind<=split[5] ; ++zind){
@@ -54,6 +52,7 @@ void updateBaseTexture3DMultiThreaded(vsg::floatArray3D& image, curan::image::St
 				std::cout << "exception was thrown with error message: " << e.what() << std::endl;
 			}
 		};
+		curan::utilities::Job job{"partial volume rendering copy",lamb};
 		++index;
 		shared_pool->submit(std::move(job));
 	}

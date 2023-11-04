@@ -21,15 +21,13 @@ std::vector<Eigen::Matrix<double, 4, 4>> WireData::parse_flange_data(const std::
 			start = true;
 		}
 		if (start) {
-		double valdouble;
-		const char* const first = local.data();
-		const char* const last = first + local.size();
-		const std::from_chars_result res = std::from_chars(first, last, valdouble);
-		if (res.ec == std::errc{}) {
-			values.push_back(valdouble);
-		}
-		start = false;
-		local = std::string();
+			double valdouble;
+			const char* const first = local.data();
+			const char* const last = first + local.size();
+			const std::from_chars_result res = std::from_chars(first, last, valdouble);
+			if (res.ec == std::errc{})
+				values.push_back(valdouble);
+			local = std::string();
 		}
 	}
 	assertm(values.size() == number_of_observations * 4 * 4, "the values do not match as they should");
@@ -64,10 +62,8 @@ std::vector<Eigen::Matrix<double, 3, Eigen::Dynamic>> WireData::parse_wire_posit
 			const char* const first = local.data();
 			const char* const last = first + local.size();
 			const std::from_chars_result res = std::from_chars(first, last, valdouble);
-			if (res.ec == std::errc{}) {
+			if (res.ec == std::errc{})
 				values.push_back(valdouble);
-			}
-			start = false;
 			local = std::string();
 		}
 	}

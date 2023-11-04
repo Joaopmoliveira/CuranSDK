@@ -69,20 +69,16 @@ void create_variable_layout(curan::ui::IconResources& resources) {
 void create_nested_layout_propagate(curan::ui::IconResources& resources){
 	std::unique_ptr<curan::ui::Button> button = curan::ui::Button::make("Touch!",resources);
 	button->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
-	auto temporary_storage_button1 = button.get();
 
 	std::unique_ptr<curan::ui::Button> button2 = curan::ui::Button::make("Touch2!",resources);
 	button2->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
-	auto temporary_storage_button2 = button2.get();
 
 	std::unique_ptr<curan::ui::Button> button3 = curan::ui::Button::make("Touch3!",resources);
 	button3->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
-	auto temporary_storage_button3 = button3.get();
 
 
 	std::unique_ptr<curan::ui::Button> button4 = curan::ui::Button::make("Touch4!",resources);
 	button4->set_click_color(SK_ColorRED).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(100,200));
-	auto temporary_storage_button4 = button4.get();
 
 	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
 	*container << std::move(button) << std::move(button2) << std::move(button3);

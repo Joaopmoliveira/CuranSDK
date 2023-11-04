@@ -205,7 +205,6 @@ int main() {
 		*container2 << std::move(button) << std::move(container);
 		container2->set_divisions({ 0.0 , 0.1 , 1.0 });
 
-		auto rec = viewer->get_size();
 		auto page = Page{std::move(container2),SK_ColorBLACK};
 		page.update_page(viewer.get());
 
@@ -221,8 +220,7 @@ int main() {
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
-			auto temp_height = pointer_to_surface->height();
-			auto temp_width = pointer_to_surface->width();
+
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
 			if (viewer->was_updated()) {
 		    	page.update_page(viewer.get());

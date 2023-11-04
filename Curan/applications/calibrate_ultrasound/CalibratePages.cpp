@@ -148,18 +148,12 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	*displaycontainer << std::move(igtlink_viewer) << std::move(image_display);
 	displaycontainer->set_divisions({ 0.0 , 0.5 , 1.0 });
 
-	auto flag = curan::utilities::Flag::make_shared_flag();
-
-	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, flag, data);
+	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, data);
 	processing->port = data.port;
 
 	auto start_connection_callback = [&data,processing](Button* button, Press press ,ConfigDraw* config) {
-		if (!processing->connection_status->value()) {
-			curan::utilities::Job val;
-			val.description = "connection thread";
-			val.function_to_execute = [processing]() {
-				processing->communicate();
-			};
+		if (!processing->connection_status.value()) {
+			curan::utilities::Job val{"connection thread",[processing]() { processing->communicate();}};
 			data.shared_pool->submit(val);
 		}
 		else {

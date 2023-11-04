@@ -14,38 +14,34 @@ namespace curan {
 	*	the methods are protected by a mutex, thus
 	*	avoiding race conditions.
 	*/
-		class Flag : std::enable_shared_from_this<Flag>
+		class Flag
 		{
+		public:
+
 			Flag() : flag_{ false } {}
 
-		public:
-			
-			/*
-			This guarantees that the user cannot violate the shared flag, and given that be finition 
-			a shared flag is shared across threads then we need a smart pointer to handle memory allocation
-			*/
-			static std::shared_ptr<Flag> make_shared_flag();
+			Flag(bool var) : flag_{ var } {}
 
-			/*
-			Return a copy of this shared flag with a common incrementer and 
-			common undelrying pointer
-			*/
-			std::shared_ptr<Flag> makecommoncopy();
+			Flag(const Flag&) = delete;
+
+			Flag& operator=(const Flag&) = delete;
 
 			/*
 			Activates the flag, i.e. the boolean value is set to true
 			*/
-			void set();
-
-			/*
-			Deactivates the flag, i.e. the boolean value is set to false
-			*/
-			void clear();
+			inline void set(bool val){
+				std::lock_guard g(mutex_);
+				flag_ = val;
+				cond_var_.notify_all();
+			}
 
 			/*
 			Waits for the boolean value to be turned to true by some thread.
 			*/
-			void wait();
+			inline void wait(){
+				std::unique_lock lock(mutex_);
+				cond_var_.wait(lock, [this]() { return flag_; });
+			}
 
 			/*
 			Return the current value of the underlying flag

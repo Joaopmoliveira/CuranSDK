@@ -733,7 +733,8 @@ bool ApplySticks(char_pixel_type* inputData,
 		// for all sticks with this weight, use them in the result
 		for (int i = 0; i < descrip->numSticksInList; i++) {
 			if (weights[i] == maxWeight) {
-				sumWeightedValues += (values[i] * weights[i]);
+				double val = values[i];
+				sumWeightedValues += val* weights[i];
 				sumWeights += weights[i];
 				numSticksUsed++;
 				weights[i] = 0.0;
@@ -768,7 +769,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 	char_pixel_type* outPtr = outData->GetBufferPointer();
 	unsigned short* accPtr = insertionParams->accPtr;
 	InternalImageType::Pointer inData = insertionParams->inData;
-	char_pixel_type* inPtr = inData->GetBufferPointer();
+
 	int* inExt = insertionParams->inExt;
 	unsigned int* accOverflowCount = insertionParams->accOverflowCount;
 
@@ -847,8 +848,6 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 
 	int e0, e1, e2, e3;
 
-	inIncX = 0;
-
 	e0 = inExt[0];
 	e1 = inExt[1];
 	e2 = inExt[2];
@@ -889,7 +888,7 @@ void UnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParams* insertionPara
 	// [ x x x x x x x x x x  x  x  x  x] [x  x   x  x  x  x  x  x  x  x  x  x  x  x] [ x x x x x x x x x x x x x x]
 	// lets think y and x first
 	// offset = inExt[0] (the x offset (should be null)) + inExt[2]*size_in[0] (we shift the extent to the line of x which corresponds to us) + inExt[4]*size_
-	inPtr = inData->GetBufferPointer()+inExt[0]+inExt[2]*size_in[0]+inExt[4]*size_in[0]*size_in[1];
+	char_pixel_type* inPtr = inData->GetBufferPointer()+inExt[0]+inExt[2]*size_in[0]+inExt[4]*size_in[0]*size_in[1];
 
 
 	for (int idZ = inExt[4]; idZ <= inExt[5]; idZ++, inPtr += inIncZ)

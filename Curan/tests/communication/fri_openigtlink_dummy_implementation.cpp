@@ -41,6 +41,7 @@ int server_function(){
     return 0;
     } catch(...){
         std::cout << "exception thrown\n";
+        return 0;
     }
 }
 
@@ -59,8 +60,8 @@ int client_callback(const size_t& loc, const std::error_code& err, std::shared_p
 void utilities_parser(){
     while(!io_context.stopped()){
         std::string previous_string;
-        curan::utilities::cout.outputqueue.wait_and_pop(previous_string);
-        std::cout << previous_string << "\n";
+        if(curan::utilities::cout.outputqueue.wait_and_pop(previous_string))
+            std::cout << previous_string << "\n";
     }
 
 }

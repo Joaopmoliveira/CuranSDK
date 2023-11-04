@@ -103,17 +103,10 @@ void process_image_message(SharedState& shared_state,igtl::MessageBase::Pointer 
     origin[2] *= 1e-3;
     image_to_render->SetOrigin(origin);
 
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     shared_state.box_class.add_frame(image_to_render);
     shared_state.box_class.update();
     auto caixa = shared_state.box_class.get_final_volume_vertices();
 
-    std::chrono::steady_clock::time_point elapsed_for_bound_box = std::chrono::steady_clock::now();
-    auto val_elapsed_for_bound_box = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_bound_box - begin).count();
-    //std::printf("added image - elapsed time: %d microseconds\n",val_elapsed_for_bound_box);
-
-
-    //igtl2ITK_im_convert(imageMessage, image_to_render);
     if(!shared_state.texture){
         int width, height, depth = 0;
         imageMessage->GetDimensions(width,height,depth);
@@ -260,7 +253,6 @@ int main(){
     volumeinfo.spacing_y = final_spacing[1]*1e3;
     volumeinfo.spacing_z = final_spacing[2]*1e3;
     auto volume = curan::renderable::Volume::make(volumeinfo);
-	auto casted_volume = volume->cast<curan::renderable::Volume>();
     window << volume;
 
     SharedState shared_state = SharedState{window,io_context,volume}; 

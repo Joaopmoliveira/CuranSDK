@@ -70,7 +70,7 @@ void create_variable_layout(curan::ui::IconResources& resources) {
 
 	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::VARIABLE_CONTAINER,curan::ui::Container::Arrangement::UNDEFINED);
 	*container << std::move(button) << std::move(button2) << std::move(button3);
-	container->set_variable_layout({ SkRect::MakeLTRB(0.0,0.0,0.3333,1.0),SkRect::MakeLTRB(0.3333,0.0,0.6666,1.0),SkRect::MakeLTRB(0.6666,0.0,1.0,1.0) });
+	container->set_variable_layout({ SkRect::MakeLTRB(0.0f,0.0f,0.3333f,1.0f),SkRect::MakeLTRB(0.3333f,0.0f,0.6666f,1.0f),SkRect::MakeLTRB(0.6666f,0.0f,1.0f,1.0f) });
 
 	container->compile();
 
@@ -141,7 +141,7 @@ void create_vertical_layout_propagate(curan::ui::IconResources& resources) {
 
 	std::unique_ptr<curan::ui::Container> container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
 	*container << std::move(button) << std::move(button2) << std::move(button3);
-	container->set_divisions({ 0.0 , 0.33333 , 0.66666 , 1.0 });
+	container->set_divisions({ 0.0f , 0.33333f , 0.66666f , 1.0f });
 
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container->set_position(my_small_window);

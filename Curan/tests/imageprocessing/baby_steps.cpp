@@ -128,7 +128,6 @@ void create_array_of_images(std::vector<imagetype::Pointer>& desired_images){
             image->TransformIndexToPhysicalPoint(idx,world_pos);
             constexpr float frequency = 2.0;
             unsigned char val = 255.0*(sin(frequency*1.57079632679*world_pos[0])+1)*0.5*(cos(frequency*1.57079632679*world_pos[1])+1)*0.5*(sin(frequency*1.57079632679*world_pos[2])+1)*0.5;
-            val = 255.0;
             outputIt.Set(val);
         }
         desired_images.push_back(image);

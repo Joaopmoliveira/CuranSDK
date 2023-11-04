@@ -80,7 +80,7 @@ struct PlusSpecification
 	std::string name;
 } specification;
 
-void start_tracking(curan::communication::Server &server, std::shared_ptr<curan::utilities::Flag> flag, std::shared_ptr<SharedState> shared_state)
+void start_tracking(curan::communication::Server &server, curan::utilities::Flag& flag, std::shared_ptr<SharedState> shared_state)
 {
 	try
 	{
@@ -107,8 +107,8 @@ void start_tracking(curan::communication::Server &server, std::shared_ptr<curan:
 			val = specification.framerate;
 			name = specification.name;
 			std::string device_name = "FlangeTo" + name;
-			flag->wait();
-			while (flag->value())
+			flag.wait();
+			while (flag.value())
 			{
 				const auto start = std::chrono::high_resolution_clock::now();
 				ts->GetTime();
@@ -162,7 +162,7 @@ void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage> &me
 	}
 }
 
-void start_joint_tracking(curan::communication::Server &server, std::shared_ptr<curan::utilities::Flag> flag, std::shared_ptr<SharedState> shared_state)
+void start_joint_tracking(curan::communication::Server &server, curan::utilities::Flag& flag, std::shared_ptr<SharedState> shared_state)
 {
 	asio::io_context &in_context = server.get_context();
 
@@ -239,9 +239,9 @@ int main(int argc, char *argv[])
 		curan::communication::interface_igtl igtlink_interface;
 		curan::communication::Server::Info construction{context, igtlink_interface, port};
 		curan::communication::Server server{construction};
-		auto state_flag = curan::utilities::Flag::make_shared_flag();
-		state_flag->clear();
-		curan::communication::interface_igtl callme = [state_flag, &server](const size_t &custom, const std::error_code &err, igtl::MessageBase::Pointer pointer)
+		curan::utilities::Flag state_flag;
+		state_flag.set(false);
+		curan::communication::interface_igtl callme = [&](const size_t &custom, const std::error_code &err, igtl::MessageBase::Pointer pointer)
 		{
 			if (err)
 			{
@@ -258,7 +258,7 @@ int main(int argc, char *argv[])
 				{
 					std::string s{tracking->GetCoordinateName()};
 					int framerate = tracking->GetResolution();
-					state_flag->set();
+					state_flag.set(true);
 					std::cout << "message coordinate name: (" << s << ") , frame rate: " << framerate << "\n";
 				}
 				else
@@ -268,15 +268,15 @@ int main(int argc, char *argv[])
 			if (!temp.compare("STP_TDATA"))
 			{
 				std::cout << "received request to stop processing images\n";
-				state_flag->clear();
+				state_flag.set(false);
 				return;
 			}
 		};
 
 		auto val = server.connect(callme);
 
-		auto robot_flag = curan::utilities::Flag::make_shared_flag();
-		robot_flag->set();
+		curan::utilities::Flag robot_flag;
+		robot_flag.set(true);
 
 		auto shared_state = std::make_shared<SharedState>();
 		std::atomic<bool> keep_going = true;
@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
 									  }
 								  }};
 
-		auto state_machine = [state_flag, &server, shared_state]()
+		auto state_machine = [&state_flag, &server, shared_state]()
 		{
 			start_tracking(server, state_flag, shared_state);
 		};
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 		curan::communication::Server::Info construction_joints{context, fri_interface, port_fri};
 		curan::communication::Server server_joints{construction_joints};
 
-		auto joint_tracking = [state_flag, &server_joints, shared_state]()
+		auto joint_tracking = [&state_flag, &server_joints, shared_state]()
 		{
 			start_joint_tracking(server_joints, state_flag, shared_state);
 		};
@@ -319,7 +319,7 @@ int main(int argc, char *argv[])
 		curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
 		context.run();
 		keep_going.store(false);
-		robot_flag->clear();
+		robot_flag.set(false);
 		thred.join();
 		return 0;
 	}

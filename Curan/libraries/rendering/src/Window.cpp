@@ -16,7 +16,7 @@ Window::Window(Info& info) : number_of_images{5} {
 
     std::visit(utilities::overloaded{
                 [this](bool arg) { traits->fullscreen = true; },
-                [this](WindowSize size) { traits->width, traits->height; traits->fullscreen = false; }
+                [this](WindowSize size) { traits->width; traits->height; traits->fullscreen = false; }
         }, info.window_size);
 
     traits->screenNum = info.screen_number;
@@ -130,7 +130,6 @@ bool Window::run_once() {
 void Window::run() {
     // rendering main loop
     while (viewer->advanceToNextFrame()) {
-        auto start = std::chrono::steady_clock::now();
         std::lock_guard<std::mutex> g{mut};
         auto iter = deleted_resource_manager.begin();
         while(iter!=deleted_resource_manager.end()){
@@ -145,8 +144,6 @@ void Window::run() {
         viewer->update();
         viewer->recordAndSubmit();
         viewer->present();
-        auto end = std::chrono::steady_clock::now();
-        //std::printf("Elapsed time in mili: %d \n",(int)std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
     }
 }
 

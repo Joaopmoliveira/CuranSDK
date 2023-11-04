@@ -260,7 +260,6 @@ registration->SetInitialTransform(initialTransform);
   optimizer->SetLearningRate(1);
   optimizer->SetMinimumStepLength(0.001);
   optimizer->SetReturnBestParametersAndValue(true);
-  optimizer->SetNumberOfThreads(8);
   itk::SizeValueType value{10};
   optimizer->SetConvergenceWindowSize(value);
     optimizer->SetRelaxationFactor(0.8);
@@ -367,7 +366,6 @@ registration->MetricSamplingReinitializeSeed(121213);
   resampler->SetTransform(finalTransform);
   resampler->SetInput(movingImageReader->GetOutput());
 
-  auto outputtemporary = movingImageReader->GetOutput();
   using ConstIteratorType = itk::ImageRegionConstIterator<MovingImageType>;
   using IteratorType = itk::ImageRegionIterator<MovingImageType>;
 

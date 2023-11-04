@@ -3,9 +3,9 @@
 
 std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(Eigen::Matrix<double, 3, Eigen::Dynamic>& current, Eigen::Matrix<double, 3, Eigen::Dynamic>& previous, double threshold) {
 	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> distance_matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(current.cols(), previous.cols());
-	for (size_t distance_row = 0; distance_row < current.cols(); ++distance_row) {
+	for (int distance_row = 0; distance_row < current.cols(); ++distance_row) {
 		Eigen::Matrix<double, 3, 1> current_col = current.col(distance_row);
-		for (size_t distance_col = 0; distance_col < previous.cols(); ++distance_col) {
+		for (int distance_col = 0; distance_col < previous.cols(); ++distance_col) {
 			Eigen::Matrix<double, 3, 1> previous_col = previous.col(distance_col);
 			distance_matrix(distance_row, distance_col) = (previous_col - current_col).norm();
 		}
@@ -253,7 +253,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	end = std::chrono::steady_clock::now();
 	auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 	if(time_elapsed>40)
-		std::printf("warning: reduce brightness of image because processing size is too large (%d milliseconds)\n",time_elapsed);
+		std::printf("warning: reduce brightness of image because processing size is too large (%lld milliseconds)\n",time_elapsed);
 	return true;
 }
 
@@ -286,13 +286,13 @@ void ProcessingMessage::communicate() {
 	auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	construction.endpoints = endpoints;
 	Client client{ construction };
-	connection_status->set();
+	connection_status.set(true);
 
 	auto lam = [this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 		try{
 			if (process_message(protocol_defined_val, er, val))
 			{
-				connection_status->clear();
+				connection_status.set(false);
 				attempt_stop();
 			}
 		}catch(...){

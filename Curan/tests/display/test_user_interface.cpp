@@ -437,6 +437,9 @@ private:
 		uint32_t instanceVersion = VK_MAKE_VERSION(1, 0, 0);;
 		// Provided by VK_VERSION_1_1
 		VkResult res = vkEnumerateInstanceVersion(&instanceVersion);
+		if (res != VkResult::VK_SUCCESS) {
+			return false;
+		}
 
 		uint32_t apiVersion = VK_MAKE_VERSION(1, 0, 0);
 		if (instanceVersion >= VK_MAKE_VERSION(1, 1, 0)) {
@@ -492,7 +495,7 @@ private:
 
 		res = vkCreateInstance(&instance_create, nullptr, &instance);
 
-		if (res < 0) {
+		if (res != VkResult::VK_SUCCESS) {
 			return false;
 		}
 
@@ -600,6 +603,7 @@ private:
 			instanceExtensionNames.data(),
 			(uint32_t)deviceExtensionNames.size(),
 			deviceExtensionNames.data());
+		return true;
 	}
 	bool init_instance_extensions_and_layers(std::vector<VkExtensionProperties>& instanceExtensions, std::vector<VkLayerProperties>& instanceLayers) {
 		VkResult res;
@@ -1202,7 +1206,9 @@ public:
 				throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 		fCurrentBackbufferIndex = imageCount;
+		return true;
 	}
+
 	void destroy()
 	{
 		vkDeviceWaitIdle(device);
@@ -1237,7 +1243,7 @@ public:
 		int size = signal_queue.size();
 		for (int index = 0; index < size; ++index) {
 			Signal signal;
-			bool val = signal_queue.try_pop(signal);
+			signal_queue.try_pop(signal);
 		}
 		std::cout << "signals processed" << size << "/n";
 	}
@@ -1520,7 +1526,9 @@ public:
 				throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 		fCurrentBackbufferIndex = imageCount;
+		return true;
 	}
+	
 	BackbufferInfo* getAvailableBackBuffer()
 	{
 		if (fBackbuffers == nullptr)

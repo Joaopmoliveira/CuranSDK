@@ -24,6 +24,7 @@ namespace curan {
 		public:
 
 			Drawable();
+			virtual ~Drawable() = default;
 
 			inline Drawable& set_position(SkRect pos) {
 				widget_rect = pos;

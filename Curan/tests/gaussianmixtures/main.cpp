@@ -11,7 +11,7 @@ int main2(){
     std::ifstream modelfile{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/mymodel.txt"};
     modelfile >> model;
     for(size_t i = 0; i< model.components(); ++i){
-        std::printf("\n==============\nComponent %ld\n",i);
+        std::printf("\n==============\nComponent %llu\n",i);
         std::printf("==============\n-Prior %f\n",model.priork[i]);
         std::printf("\n==============\n-Mu \n==============\n");
         std::cout << model.muk[i];
@@ -29,7 +29,7 @@ int main2(){
     double total_error = 0.0;
     constexpr bool print_input_output = false;
     double max_error = -100000.0;
-    int index = -1; 
+    size_t index = std::numeric_limits<size_t>::max(); 
     for(size_t it = 0; it < number_of_tests ; ++it){
         nlohmann::json test =  testing["test"+std::to_string(it+1)];
         std::stringstream s;
@@ -54,21 +54,9 @@ int main2(){
             std::cout << "Error: " << local_error << "\n";
     }
 
-    std::cout << "Maximum error validation:\n";
-    size_t it = index;
-    nlohmann::json test =  testing["test"+std::to_string(it+1)];
-    std::stringstream s;
-    std::string input = test["input"];
-    s << input;
-    auto InputMat = curan::utilities::convert_matrix(s);
-    std::string output = test["output"];
-    s = std::stringstream{};
-    s << output;
-    auto ExpectedOutputMat = curan::utilities::convert_matrix(s);
-    auto ConcreteOutput = model.likeliest<true>(InputMat);
     for(const auto & det :model.nonlinear_activation_detsigma)
         std::cout<< "det :" << det << "\n";
-
+    
     std::printf("\nTotal Error : %f\nAverage Error: %f\n Max Error : %f index : %d\n",total_error,total_error/number_of_tests,max_error,index);
     return 0;
 }

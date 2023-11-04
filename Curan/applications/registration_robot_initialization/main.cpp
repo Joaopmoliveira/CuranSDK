@@ -46,13 +46,12 @@ void interface(vsg::CommandBuffer &cb, info_solve_registration &registration)
 
         registration.moving_image->SetOrigin(origin);
         
-        curan::utilities::Job job{};
-        job.description = "Execution of registration";
-        job.function_to_execute = [&](){
+        curan::utilities::Job job{"Execution of registration",[&](){
             registration.optimization_running.store(true);
             registration.full_runs.emplace_back(solve_registration(registration));
             registration.optimization_running.store(false);
-        };
+        }};
+
         registration.thread_pool->submit(job); 
     }
 
@@ -203,15 +202,15 @@ int main(int argc, char **argv)
 
     initial_pose.update_matrix(mat_moving_here);
     registration_shared.volume_moving = casted_volume_moving;
-    curan::utilities::Job job{};
-    job.description = "Execution of registration";
-    job.function_to_execute = [&]()
+
+    curan::utilities::Job job{"Execution of registration",[&]()
     {
         variable.store(true);
         full_runs.emplace_back(solve_registration(registration_shared));
         variable.store(false);
-    };
+    }};
     thread_pool->submit(job);
+    
     auto communication_callable = [&]()
     {
         communication(registration_shared);

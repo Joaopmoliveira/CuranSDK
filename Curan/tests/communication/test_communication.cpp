@@ -124,7 +124,7 @@ int main() {
 		construction.endpoints = endpoints;
 		Client client{ construction };
 		auto connectionstatus = client.connect(bar);
-		auto val = io_context.run();
+		io_context.run();
 		curan::utilities::cout << "stopped running";
 		laucher.join();
 	}

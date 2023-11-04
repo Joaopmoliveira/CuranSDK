@@ -83,7 +83,7 @@ void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::Matri
 	// Compute rotation part.
 	// ############################################################################################
 
-	const double maxRotSpeed = 2.0;
+	const double maxRotSpeed = 4.0;
     const double angularStiffness = 800;
     const double angularDamping   = 40;
 	Eigen::Matrix3d R_E_Ed = R_0_E.transpose() * desRotation;

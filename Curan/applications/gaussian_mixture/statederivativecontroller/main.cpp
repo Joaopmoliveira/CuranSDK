@@ -91,7 +91,7 @@ void interface(vsg::CommandBuffer &cb)
 	ImGui::End();
 }
 
-void robot_control(std::shared_ptr<SharedState> shared_state, std::shared_ptr<curan::utilities::Flag> flag)
+void robot_control(std::shared_ptr<SharedState> shared_state, curan::utilities::Flag& flag)
 {
 	try
 	{
@@ -101,7 +101,7 @@ void robot_control(std::shared_ptr<SharedState> shared_state, std::shared_ptr<cu
 		KUKA::FRI::ClientApplication app(connection, client);
 		app.connect(DEFAULT_PORTID, NULL);
 		bool success = true;
-		while (flag->value())
+		while (success && flag.value())
 			success = app.step();
 		app.disconnect();
 		return;
@@ -119,13 +119,13 @@ int main(int argc, char *argv[])
 	std::signal(SIGINT, signal_handler);
 	try
 	{
-		auto robot_flag = curan::utilities::Flag::make_shared_flag();
-		robot_flag->set();
+		curan::utilities::Flag robot_flag;
+		robot_flag.set(true);
 
 		auto shared_state = std::make_shared<SharedState>();
 		shared_state->is_initialized.store(false);
 
-		auto robot_functional_control = [shared_state, robot_flag]()
+		auto robot_functional_control = [shared_state, &robot_flag]()
 		{
 			robot_control(shared_state, robot_flag);
 		};
@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
 				robot_control->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
 			}
 		}
-		robot_flag->clear();
+		robot_flag.set(false);
 		thred_robot_control.join();
 		return 0;
 	}
