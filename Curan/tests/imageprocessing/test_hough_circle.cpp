@@ -83,9 +83,8 @@ int main(int argc, char* argv[]) {
         std::cout << "Radius: " << (*itCircles)->GetRadiusInObjectSpace()[0]
             << std::endl;
 
-        for (double angle = 0; angle <= itk::Math::twopi;
-            angle += itk::Math::pi / 60.0)
-        {
+        double angle = 0.0;
+        for (size_t index_around_circle = 0; index_around_circle <= 60; ++index_around_circle,angle += itk::Math::pi / 60.0){
             const HoughTransformFilterType::CircleType::PointType centerPoint =
                 (*itCircles)->GetCenterInObjectSpace();
             using IndexValueType = ImageType::IndexType::IndexValueType;

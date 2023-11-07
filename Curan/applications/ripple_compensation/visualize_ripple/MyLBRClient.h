@@ -35,7 +35,6 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include "Robot.h"
 #include "ToolData.h"
 #include "robotParameters.h"
-#include "gaussianmixtures/GMR.h"
 #include <memory>
 #include <atomic>
 #include <optional>

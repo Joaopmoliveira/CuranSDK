@@ -16,7 +16,7 @@ Window::Window(Info& info) : number_of_images{5} {
 
     std::visit(utilities::overloaded{
                 [this](bool arg) { traits->fullscreen = true; },
-                [this](WindowSize size) { traits->width; traits->height; traits->fullscreen = false; }
+                [this](WindowSize size) { traits->width = size.width; traits->height= size.height; traits->fullscreen = false; }
         }, info.window_size);
 
     traits->screenNum = info.screen_number;

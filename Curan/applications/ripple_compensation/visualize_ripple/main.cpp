@@ -56,9 +56,9 @@ struct ScrollingBuffer
 
 constexpr size_t Joints = 7;
 
-void interface(std::shared_ptr<SharedState> shared_state,vsg::CommandBuffer &cb)
+void inter(std::shared_ptr<SharedState> shared_state,vsg::CommandBuffer &cb)
 {
-	ImGui::Begin("Desired Velocity"); // Create a window called "Hello, world!" and append into it.
+	ImGui::Begin("Joint Torques"); // Create a window called "Hello, world!" and append into it.
 	static std::array<ScrollingBuffer, Joints> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
@@ -92,7 +92,7 @@ void robot_control(std::shared_ptr<SharedState> shared_state, curan::utilities::
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
-		MyLBRClient client = MyLBRClient(shared_state, CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel.txt",CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mytransform.txt");
+		MyLBRClient client = MyLBRClient(shared_state);
 		KUKA::FRI::UdpConnection connection{};
 		KUKA::FRI::ClientApplication app(connection, client);
 		app.connect(DEFAULT_PORTID, NULL);
@@ -113,8 +113,7 @@ int main(int argc, char *argv[])
 {
 	// Install a signal handler
 	std::signal(SIGINT, signal_handler);
-	try
-	{
+
 		curan::utilities::Flag robot_flag;
 		robot_flag.set(true);
 
@@ -129,7 +128,7 @@ int main(int argc, char *argv[])
 		std::thread thred_robot_control{robot_functional_control};
 
 		curan::renderable::Window::Info info;
-		curan::renderable::ImGUIInterface::Info info_gui{interface};
+		curan::renderable::ImGUIInterface::Info info_gui{[shared_state](vsg::CommandBuffer &cb){inter(shared_state,cb);}};
 		auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
 		info.api_dump = false;
 		info.display = "";
@@ -150,31 +149,9 @@ int main(int argc, char *argv[])
 		auto robot = curan::renderable::SequencialLinks::make(create_info);
 		window << robot;
 
-		// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
-		kuka::Robot::robotName myName(kuka::Robot::LBRiiwa); // Select the robot here
+		window.run();
 
-		auto robot_control = std::make_unique<kuka::Robot>(myName); // myLBR = Model
-		auto iiwa = std::make_unique<RobotParameters>();			// myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
-
-		Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
-														// Positions and orientations
-		Vector3d p_0_cur = Vector3d::Zero(3, 1);
-		Matrix3d R_0_7 = Matrix3d::Zero(3, 3);
-
-		while (progress.load())
-		{
-			if (!window.run_once())
-				progress = false;
-			if (shared_state->is_initialized)
-				velocities.store(shared_state->velocity.load());
-			
-		}
 		robot_flag.set(false);
 		thred_robot_control.join();
 		return 0;
-	}
-	catch (std::exception &e)
-	{
-		std::cout << "main Exception : " << e.what() << std::endl;
-	}
 }

@@ -11,7 +11,7 @@ namespace curan {
         struct Arrow : public vsg::Inherit<Renderable, Arrow> {
             struct Info {
                 std::optional<std::string> identifier;
-                float relative_size = 0.01;
+                float relative_size = 0.01f;
             };
             // we need two transforms, one connected to the cylinder, which we 
             // scale and another associated with the tip of the arrow

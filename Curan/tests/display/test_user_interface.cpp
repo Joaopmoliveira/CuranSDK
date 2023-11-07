@@ -1243,9 +1243,11 @@ public:
 		int size = signal_queue.size();
 		for (int index = 0; index < size; ++index) {
 			Signal signal;
-			signal_queue.try_pop(signal);
+			if(signal_queue.try_pop(signal)){
+				std::cout << "coule not pop because something went wrong\n";
+			}
 		}
-		std::cout << "signals processed" << size << "/n";
+		std::cout << "signals processed" << size << "\n";
 	}
 	bool recreateDisplay()
 	{

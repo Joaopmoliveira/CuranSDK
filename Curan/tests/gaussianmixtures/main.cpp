@@ -57,7 +57,7 @@ int main2(){
     for(const auto & det :model.nonlinear_activation_detsigma)
         std::cout<< "det :" << det << "\n";
     
-    std::printf("\nTotal Error : %f\nAverage Error: %f\n Max Error : %f index : %d\n",total_error,total_error/number_of_tests,max_error,index);
+    std::printf("\nTotal Error : %f\nAverage Error: %f\n Max Error : %f index : %lld\n",total_error,total_error/number_of_tests,max_error,index);
     return 0;
 }
 

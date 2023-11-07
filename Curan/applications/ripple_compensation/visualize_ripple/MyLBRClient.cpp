@@ -31,7 +31,6 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #include "MyLBRClient.h"
 #include <chrono>
 #include <fstream>
-#include "utils/Reader.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979
@@ -129,32 +128,7 @@ void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::Matri
 }
 
 //******************************************************************************
-MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state,const std::string& model_file,const std::string& transform_file) : shared_state{in_shared_state} {
-
-    {
-        std::ifstream modelfile{model_file};
-        modelfile >> model;
-    }
-
-    {   
-        std::cout << "arrived here! filepath:\n" << transform_file << std::endl;
-	    std::ifstream transformfile{transform_file};
-        if(transformfile.is_open())
-            std::cout << "partial success\n";
-	    nlohmann::json calibration_data = nlohmann::json::parse(transformfile);
-
-        std::string rotationstring = calibration_data["rotation"];
-        std::cout << "partial success 1\n";
-        std::stringstream s;
-        s <<  rotationstring;
-        std::string translationstring = calibration_data["translation"];
-        std::cout << "partial success 2\n";
-        
-        transformation_to_model_coordinates.rotation = curan::utilities::convert_matrix(s);
-        s = std::stringstream{};
-        s <<  translationstring;
-        transformation_to_model_coordinates.translation = curan::utilities::convert_matrix(s);
-    }
+MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_state{in_shared_state} {
 
     // Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
     kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
@@ -324,6 +298,7 @@ void MyLBRClient::command() {
     // Limit torques to stop at the robot's joint limits.
 	//VectorNd SJSTorque = addConstraints(torqueCommand, 0.005);
     //for now we use a damping torque but we would like to use the state-derivative torque
+    Eigen::VectorXd torqueCommand = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS,1);
     VectorNd SJSTorque = addConstraints(torqueCommand, 0.005); 
     
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) 
