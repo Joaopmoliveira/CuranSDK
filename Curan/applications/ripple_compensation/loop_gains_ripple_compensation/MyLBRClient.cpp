@@ -127,11 +127,7 @@ void MyLBRClient::command() {
 		iiwa->qDot[i] = (_qCurr[i] - _qOld[i]) / sampleTime;
 	}
 
-	Data dat;
-	dat.current_pos = _qCurr[0];
-	dat.current_torque = measured_torque[0];
-	dat.current_vel = iiwa->qDot[0];
-	list_of_data.push_back(dat);
+	double temporary1 = run_filter(data_freq, properties_freq, { iiwa->qDot[0],_qCurr[0] - _qOld[0],measured_torque[0] });
 
 	for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
 		_qApplied[i] = _qCurr[i];

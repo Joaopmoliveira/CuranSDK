@@ -8,13 +8,6 @@
 #include <memory>
 #include "FilterRipple.h"
 
-struct Data {
-    double current_torque;
-    double current_pos;
-    double current_vel;
-    double commanded_torque;
-};
-
 /**
  * \brief Template client implementation.
  */
@@ -48,7 +41,7 @@ public:
     /**
     * \brief Constructor.
     */
-    MyLBRClient(std::list<Data>& list_of_data);
+    MyLBRClient();
 
     /**
     * \brief Destructor.
@@ -87,8 +80,9 @@ public:
 private:
     VectorNd addConstraints(const VectorNd& tauStack, double dt);
 
-    std::list<Data>& list_of_data;
-
+    FilterData data_freq;
+    FilterProperties properties_freq{ 5.0,320.0 };
+    
     std::unique_ptr<kuka::Robot> robot;
     std::unique_ptr<RobotParameters> iiwa;
     RobotLimits myIIWALimits;
