@@ -40,93 +40,6 @@ or otherwise, without the prior written consent of KUKA Roboter GmbH.
 #define NCoef 1
 #endif
 
-
-Eigen::MatrixXd getLambdaLeastSquares(const Eigen::MatrixXd &M, const Eigen::MatrixXd& J, const double& k)
-{
-    Eigen::MatrixXd Iden = Eigen::MatrixXd::Identity(J.rows(), J.rows());
-    Eigen::MatrixXd Lambda_Inv = J * M.inverse() * J.transpose() + (k*k)*Iden;
-    Eigen::MatrixXd Lambda = Lambda_Inv.inverse();
-    return Lambda;
-}
-
-void computeLinVelToJointTorqueCmd(const double& sample_time, const Eigen::MatrixXd &jacobian, const Eigen::MatrixXd & massMatrix , const Eigen::Vector3d& posCurr , const Eigen::Matrix3d& R_0_E ,const Eigen::VectorXd &qDot, const Eigen::Vector3d &desLinVelocity, const Eigen::Matrix3d &desRotation,Eigen::VectorXd &jointTorqueCommand, Eigen::MatrixXd &nullSpace)
-{
-	// Operational Space Control (OSC)
-
-	// Compute goal position based on desired velocity.
-	Eigen::Vector3d posDes  = posCurr + desLinVelocity * sample_time;
-
-	// Set matrices for current robot configuration.
-	const Eigen::MatrixXd jacobianPos = jacobian.block(0,0,3, NUMBER_OF_JOINTS);
-	const Eigen::MatrixXd jacobianRot = jacobian.block(3,0,3, NUMBER_OF_JOINTS);
-	Eigen::MatrixXd lambda    = getLambdaLeastSquares(massMatrix,jacobian   ,0.3);
-	Eigen::MatrixXd lambdaPos = getLambdaLeastSquares(massMatrix,jacobianPos,0.3);
-	Eigen::MatrixXd lambdaRot = getLambdaLeastSquares(massMatrix,jacobianRot,0.3);
-
-	// ############################################################################################
-	// Compute positional part.
-	// ############################################################################################
-
-	auto maxCartSpeed = 0.3;
-    const double stiffness = 400;
-	const double damping   = 40;
-	Eigen::Vector3d posErr  = posDes - posCurr;
-	Eigen::Vector3d velCurr = jacobianPos * qDot;
-	Eigen::Vector3d velDes  = desLinVelocity + (stiffness / damping) * posErr;
-	// Limit velocity to maxCartSpeed.
-	velDes = velDes.norm() == 0.0
-		? velDes * 0.0
-		: velDes * std::min(1.0, maxCartSpeed / velDes.norm());
-	// Compute positional force command.
-	Eigen::Vector3d forcePos = damping * (velDes - velCurr);
-
-	// ############################################################################################
-	// Compute rotation part.
-	// ############################################################################################
-
-	const double maxRotSpeed = 2.0;
-    const double angularStiffness = 1200;
-    const double angularDamping   = 40;
-	Eigen::Matrix3d R_E_Ed = R_0_E.transpose() * desRotation;
-	// Convert rotation error in eef frame to axis angle representation.
-    Eigen::AngleAxisd E_AxisAngle(R_E_Ed);
-    Eigen::Vector3d E_u = E_AxisAngle.axis();
-    double angleErr     = E_AxisAngle.angle();
-	// Convert axis to base frame.
-    Eigen::Vector3d O_u = R_0_E * E_u;
-	// Compute rotational error. (Scaled axis angle)
-	Eigen::Vector3d rotErr     = O_u * angleErr;
-	Eigen::Vector3d rotVelCurr = jacobianRot * qDot;
-	Eigen::Vector3d rotVelDes  = (angularStiffness / angularDamping) * rotErr; // + 0 desired 
-	// Limit rotational velocity to maxRotSpeed.
-	rotVelDes = rotVelDes.norm() == 0.0
-		? rotVelDes * 0.0
-		: rotVelDes * std::min(1.0, maxRotSpeed / rotVelDes.norm());
-	// Compute rotational force command.
-	Eigen::Vector3d forceRot = angularDamping * (rotVelDes - rotVelCurr);
-
-	// ############################################################################################
-	// Compute positional and rotational nullspace.
-	// ############################################################################################
-	
-	Eigen::MatrixXd I       = Eigen::MatrixXd::Identity(NUMBER_OF_JOINTS, NUMBER_OF_JOINTS);
-	Eigen::MatrixXd jbarPos = massMatrix.inverse() * jacobianPos.transpose() * lambdaPos;
-	Eigen::MatrixXd jbarRot = massMatrix.inverse() * jacobianRot.transpose() * lambdaRot;
-	Eigen::MatrixXd nullSpaceTranslation = I - jacobianPos.transpose() * jbarPos.transpose();
-	Eigen::MatrixXd nullSpaceRotation    = I - jacobianRot.transpose() * jbarRot.transpose();
-
-	// Compute positional and rotation torque from force commands.
-	Eigen::VectorXd torquePos = jacobianPos.transpose() * lambdaPos * forcePos;
-	Eigen::VectorXd torqueRot = jacobianRot.transpose() * lambdaRot * forceRot;
-
-	// Set torque command.
-	jointTorqueCommand = torquePos + nullSpaceTranslation * torqueRot; // Prioritize positional torques.
-    jointTorqueCommand = torqueRot + nullSpaceRotation * torquePos; // Prioritize positional torques.
-
-	// Set nullspace.
-	nullSpace = nullSpaceTranslation * nullSpaceRotation;
-}
-
 //******************************************************************************
 MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_state{in_shared_state} {
 
@@ -195,17 +108,17 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_
     robot->attachToolToRobotModel(myTool);
 
     _qInitial[0] = 0.0 * M_PI / 180;
-    _qInitial[1] = 0.0 * M_PI / 180;
+    _qInitial[1] = -45.0 * M_PI / 180;
     _qInitial[2] = 0.0 * M_PI / 180;
-    _qInitial[3] = 0.0 * M_PI / 180;
+    _qInitial[3] = 45.0 * M_PI / 180;
     _qInitial[4] = 0.0 * M_PI / 180;
-    _qInitial[5] = 0.0 * M_PI / 180;
+    _qInitial[5] = 90.0 * M_PI / 180;
     _qInitial[6] = 0.0 * M_PI / 180;
 
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
         _qCurr[i] = _qInitial[i];
         _qOld[i] = _qInitial[i];
-        _qApplied[i] = 0.0;
+        _qApplied[i] = _qInitial[i];
         _torques[i] = 0.0;
         _measured_torques[i] = 0.0;
     }
@@ -291,6 +204,12 @@ void MyLBRClient::command() {
     memcpy(_qOld, _qCurr, NUMBER_OF_JOINTS * sizeof(double));
     memcpy(_qCurr, robotState().getMeasuredJointPosition(), NUMBER_OF_JOINTS * sizeof(double));
     memcpy(_measured_torques, robotState().getMeasuredTorque(), NUMBER_OF_JOINTS * sizeof(double));
+
+    static bool copy_current_vals_into_qapplied = true;
+    if(copy_current_vals_into_qapplied)
+        for (int i = 0; i < NUMBER_OF_JOINTS; i++) 
+            _qApplied[i] = _qCurr[i]; 
+    copy_current_vals_into_qapplied = false;
 
     shared_state->robot_state.store(robotState());
     shared_state->is_initialized.store(true);
