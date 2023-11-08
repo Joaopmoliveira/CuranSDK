@@ -17,8 +17,7 @@ constexpr unsigned short DEFAULT_PORTID = 30200;
 
 std::atomic<bool> progress = true;
 
-void signal_handler(int signal)
-{
+void signal_handler(int signal){
 	progress.store(false);
 }
 
@@ -28,14 +27,12 @@ struct ScrollingBuffer
 	int MaxSize;
 	int Offset;
 	ImVector<ImVec2> Data;
-	ScrollingBuffer(int max_size = 2000)
-	{
+	ScrollingBuffer(int max_size = 2000){
 		MaxSize = max_size;
 		Offset = 0;
 		Data.reserve(MaxSize);
 	}
-	void AddPoint(float x, float y)
-	{
+	void AddPoint(float x, float y){
 		if (Data.size() < MaxSize)
 			Data.push_back(ImVec2(x, y));
 		else
@@ -44,8 +41,7 @@ struct ScrollingBuffer
 			Offset = (Offset + 1) % MaxSize;
 		}
 	}
-	void Erase()
-	{
+	void Erase(){
 		if (Data.size() > 0)
 		{
 			Data.shrink(0);
@@ -59,7 +55,7 @@ constexpr size_t Joints = 7;
 void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
 {
 	ImGui::Begin("Joint Torques"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, Joints> buffers;
+	static std::array<ScrollingBuffer, Joints> measured_torques;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
 
@@ -67,7 +63,7 @@ void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
 	if(shared_state->is_initialized.load())
 		local_copy = shared_state->robot_state.load();
 
-	static float history = 10.0f;
+	static float history = 30.0f;
 	ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
 
 	static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
@@ -82,8 +78,28 @@ void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
 		{
 			std::string loc = "tau_" + std::to_string(index);
 			if(shared_state->is_initialized.load())
-				buffers[index].AddPoint(t, (float)local_copy.getMeasuredTorque()[index]);
-			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
+				measured_torques[index].AddPoint(t, (float)local_copy.getMeasuredTorque()[index]);
+			ImPlot::PlotLine(loc.data(), &measured_torques[index].Data[0].x, &measured_torques[index].Data[0].y, measured_torques[index].Data.size(), 0, measured_torques[index].Offset, 2 * sizeof(float));
+		}
+		ImPlot::EndPlot();
+	}
+	ImGui::End();
+
+	static std::array<ScrollingBuffer, Joints> commanded_torques;
+	
+	ImGui::Begin("Commanded Joint Torques"); // Create a window called "Hello, world!" and append into it.
+	if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, 150)))
+	{
+		ImPlot::SetupAxes(NULL, NULL, flags, flags);
+		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
+		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
+		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
+		for (size_t index = 0; index < Joints; ++index)
+		{
+			std::string loc = "cmd_" + std::to_string(index);
+			if(shared_state->is_initialized.load())
+				commanded_torques[index].AddPoint(t, (float)local_copy.getCommandedTorque()[index]);
+			ImPlot::PlotLine(loc.data(), &commanded_torques[index].Data[0].x, &commanded_torques[index].Data[0].y, commanded_torques[index].Data.size(), 0, commanded_torques[index].Offset, 2 * sizeof(float));
 		}
 		ImPlot::EndPlot();
 	}
@@ -125,13 +141,6 @@ int main(int argc, char *argv[])
 	auto shared_state = std::make_shared<SharedState>();
 	shared_state->is_initialized.store(false);
 
-	auto robot_functional_control = [shared_state, &robot_flag]()
-	{
-		robot_control(shared_state, robot_flag);
-	};
-
-	std::thread thred_robot_control{robot_functional_control};
-
 	curan::renderable::Window::Info info;
 	curan::renderable::ImGUIInterface::Info info_gui{[shared_state](vsg::CommandBuffer &cb)
 													 { inter(shared_state, cb); }};
@@ -154,6 +163,13 @@ int main(int argc, char *argv[])
 	create_info.number_of_links = 8;
 	auto robot = curan::renderable::SequencialLinks::make(create_info);
 	window << robot;
+
+	auto robot_functional_control = [shared_state, &robot_flag]()
+	{
+		robot_control(shared_state, robot_flag);
+	};
+
+	std::thread thred_robot_control{robot_functional_control};
 
 	window.run();
 
