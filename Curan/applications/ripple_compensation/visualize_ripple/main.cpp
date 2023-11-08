@@ -56,7 +56,7 @@ struct ScrollingBuffer
 
 constexpr size_t Joints = 7;
 
-void inter(std::shared_ptr<SharedState> shared_state,vsg::CommandBuffer &cb)
+void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
 {
 	ImGui::Begin("Joint Torques"); // Create a window called "Hello, world!" and append into it.
 	static std::array<ScrollingBuffer, Joints> buffers;
@@ -87,7 +87,7 @@ void inter(std::shared_ptr<SharedState> shared_state,vsg::CommandBuffer &cb)
 	ImGui::End();
 }
 
-void robot_control(std::shared_ptr<SharedState> shared_state, curan::utilities::Flag& flag)
+void robot_control(std::shared_ptr<SharedState> shared_state, curan::utilities::Flag &flag)
 {
 	try
 	{
@@ -102,9 +102,10 @@ void robot_control(std::shared_ptr<SharedState> shared_state, curan::utilities::
 		app.disconnect();
 		return;
 	}
-	catch (std::exception& e)
+	catch (std::exception &e)
 	{
-		std::cout << "robot control exception\n" << e.what() << std::endl;
+		std::cout << "robot control exception\n"
+				  << e.what() << std::endl;
 		return;
 	}
 }
@@ -114,44 +115,45 @@ int main(int argc, char *argv[])
 	// Install a signal handler
 	std::signal(SIGINT, signal_handler);
 
-		curan::utilities::Flag robot_flag;
-		robot_flag.set(true);
+	curan::utilities::Flag robot_flag;
+	robot_flag.set(true);
 
-		auto shared_state = std::make_shared<SharedState>();
-		shared_state->is_initialized.store(false);
+	auto shared_state = std::make_shared<SharedState>();
+	shared_state->is_initialized.store(false);
 
-		auto robot_functional_control = [shared_state, &robot_flag]()
-		{
-			robot_control(shared_state, robot_flag);
-		};
+	auto robot_functional_control = [shared_state, &robot_flag]()
+	{
+		robot_control(shared_state, robot_flag);
+	};
 
-		std::thread thred_robot_control{robot_functional_control};
+	std::thread thred_robot_control{robot_functional_control};
 
-		curan::renderable::Window::Info info;
-		curan::renderable::ImGUIInterface::Info info_gui{[shared_state](vsg::CommandBuffer &cb){inter(shared_state,cb);}};
-		auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
-		info.api_dump = false;
-		info.display = "";
-		info.full_screen = false;
-		info.is_debug = false;
-		info.screen_number = 0;
-		info.imgui_interface = ui_interface;
-		info.title = "myviewer";
-		curan::renderable::Window::WindowSize size{2000, 1200};
-		info.window_size = size;
-		curan::renderable::Window window{info};
+	curan::renderable::Window::Info info;
+	curan::renderable::ImGUIInterface::Info info_gui{[shared_state](vsg::CommandBuffer &cb)
+													 { inter(shared_state, cb); }};
+	auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
+	info.api_dump = false;
+	info.display = "";
+	info.full_screen = false;
+	info.is_debug = false;
+	info.screen_number = 0;
+	info.imgui_interface = ui_interface;
+	info.title = "myviewer";
+	curan::renderable::Window::WindowSize size{2000, 1200};
+	info.window_size = size;
+	curan::renderable::Window window{info};
 
-		std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";
-		curan::renderable::SequencialLinks::Info create_info;
-		create_info.convetion = vsg::CoordinateConvention::Y_UP;
-		create_info.json_path = robot_path;
-		create_info.number_of_links = 8;
-		auto robot = curan::renderable::SequencialLinks::make(create_info);
-		window << robot;
+	std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";
+	curan::renderable::SequencialLinks::Info create_info;
+	create_info.convetion = vsg::CoordinateConvention::Y_UP;
+	create_info.json_path = robot_path;
+	create_info.number_of_links = 8;
+	auto robot = curan::renderable::SequencialLinks::make(create_info);
+	window << robot;
 
-		window.run();
+	window.run();
 
-		robot_flag.set(false);
-		thred_robot_control.join();
-		return 0;
+	robot_flag.set(false);
+	thred_robot_control.join();
+	return 0;
 }
