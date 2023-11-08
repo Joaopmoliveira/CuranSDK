@@ -142,7 +142,7 @@ struct H4:  H<H4> {
     }
 };
 
-int main(){
+int function123(){
     // first we will try to allocate each signal with distinct values
     A a{10};
     B b{20};
@@ -191,4 +191,24 @@ int main(){
     h4.call(a);
     h4.call(b);
     h4.call(c);
+    return 0;
+}
+
+int main(){
+    std::list<std::unique_ptr<double>> values;
+    for(int i = 0; i< 10; ++i)
+        values.emplace_back(std::make_unique<double>((double)i));
+    
+    std::printf("values are:\n");
+    for(const auto& val : values)
+        std::printf(" %f ",*val);
+    std::printf("\n");
+
+    values.remove_if([](std::unique_ptr<double> & val){return *val == 1.0;});
+
+    std::printf("modified values are:\n");
+    for(const auto& val : values)
+        std::printf(" %f ",*val);
+    std::printf("\n");
+    return 0;
 }

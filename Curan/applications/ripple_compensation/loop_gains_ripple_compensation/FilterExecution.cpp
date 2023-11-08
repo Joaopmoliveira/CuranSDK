@@ -10,6 +10,8 @@ constexpr size_t portID = 30200;
 
 int main (int argc, char** argv)
 {
+	std::deque<Observation> observations;
+	
 	// create new client
 	MyLBRClient client{  };
 

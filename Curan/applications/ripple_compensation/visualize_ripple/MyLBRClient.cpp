@@ -198,6 +198,10 @@ void MyLBRClient::waitForCommand()
     shared_state->is_initialized.store(true);
 }
 
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
 //******************************************************************************
 void MyLBRClient::command() {
     // Get robot measurements
@@ -213,12 +217,30 @@ void MyLBRClient::command() {
 
     shared_state->robot_state.store(robotState());
     shared_state->is_initialized.store(true);
-
+    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+        iiwa->q[i] = _qCurr[i];
+        measured_torque[i] = _measured_torques[i];
+    }
+    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+        iiwa->qDot[i] = (_qCurr[i] - _qOld[i]) / sampleTime;
+    }
+    robot->getMassMatrix(iiwa->M, iiwa->q);
+    iiwa->M(6, 6) = 45 * iiwa->M(6, 6);                                       // Correct mass of last body to avoid large accelerations
+    iiwa->Minv = iiwa->M.inverse();
+    robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
+    robot->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7);              // 3x1 position of flange (body = 7), expressed in base coordinates
+    robot->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);                                // 3x3 rotation matrix of flange, expressed in base coordinates
     // Limit torques to stop at the robot's joint limits.
 	//VectorNd SJSTorque = addConstraints(torqueCommand, 0.005);
     //for now we use a damping torque but we would like to use the state-derivative torque
     Eigen::VectorXd torqueCommand = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS,1);
+    static bool positive = true;
+    double last_joint_torque = (positive) ? 10 : -10 ;
+    torqueCommand[NUMBER_OF_JOINTS-1] = last_joint_torque;
     VectorNd SJSTorque = addConstraints(torqueCommand, 0.005); 
+
+    if(sgn(SJSTorque[NUMBER_OF_JOINTS-1])!=sgn(torqueCommand[NUMBER_OF_JOINTS-1])) // if the sign is different we need to change the direction of the actuation;
+        positive = !positive;
     
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) 
         _torques[i] = SJSTorque[i];

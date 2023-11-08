@@ -8,6 +8,16 @@
 #include <memory>
 #include "FilterRipple.h"
 
+struct Observation {
+    double estimated_ripple;
+    double pos;
+    double external_torques;
+    double measured_torques;
+    double P_gain = 0.0;
+    double D_gain = 0.0;
+};
+
+
 /**
  * \brief Template client implementation.
  */
@@ -41,7 +51,7 @@ public:
     /**
     * \brief Constructor.
     */
-    MyLBRClient();
+    MyLBRClient(std::deque<Observation>& observations);
 
     /**
     * \brief Destructor.
