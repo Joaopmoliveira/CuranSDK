@@ -62,7 +62,10 @@ void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
 	static std::array<ScrollingBuffer, Joints> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
-	auto local_copy = shared_state->robot_state.load();
+
+	KUKA::FRI::LBRState local_copy;
+	if(shared_state->is_initialized.load())
+		local_copy = shared_state->robot_state.load();
 
 	static float history = 10.0f;
 	ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
@@ -78,7 +81,8 @@ void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
 		for (size_t index = 0; index < Joints; ++index)
 		{
 			std::string loc = "tau_" + std::to_string(index);
-			buffers[index].AddPoint(t, (float)local_copy.getMeasuredTorque()[index]);
+			if(shared_state->is_initialized.load())
+				buffers[index].AddPoint(t, (float)local_copy.getMeasuredTorque()[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 		}
 		ImPlot::EndPlot();
