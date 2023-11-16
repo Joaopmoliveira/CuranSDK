@@ -126,3 +126,14 @@ target_compile_definitions(test_minimum_window_with_glfw PRIVATE CURAN_COPIED_RE
 target_link_libraries(test_minimum_window_with_glfw PUBLIC
 userinterface
 )
+
+add_executable(test_resampling_gui test_multiple_plane_specification.cpp)
+
+target_compile_definitions(test_resampling_gui PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_resampling_gui
+PUBLIC
+userinterface
+Eigen3::Eigen
+${ITK_LIBRARIES}
+)

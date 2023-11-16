@@ -19,7 +19,7 @@ void ImageDisplay::update_image(image_provider provider) {
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	SkPixmap pixelmap;
 	provider(pixelmap);
-	auto image = SkImage::MakeFromRaster(pixelmap, nullptr, nullptr);
+	auto image = SkSurfaces::WrapPixels(pixelmap)->makeImageSnapshot();
 	auto lam = [image, provider, pixelmap]() {
 		return image;
 	};
@@ -68,10 +68,10 @@ drawablefunction ImageDisplay::draw() {
 				init_y_new = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
 
 
-				testing = SkRect::MakeXYWH(init_x_new, init_y_new, scale_factor * image_width, 0.5*scale_factor * image_height);
+				testing = SkRect::MakeXYWH(init_x_new, init_y_new, scale_factor * image_width, 0.5f*scale_factor * image_height);
 			}
 
-			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0 / 3, 1.0 / 3 });
+			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
 			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt);
 			canvas->drawRect(current_selected_image_rectangle, paint_square);
 		}
@@ -132,7 +132,7 @@ ImageDisplay& ImageDisplay::update_batch(custom_step call, image_provider provid
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	SkPixmap pixelmap;
 	provider(pixelmap);
-	auto image = SkImage::MakeFromRaster(pixelmap, nullptr, nullptr);
+	auto image = SkSurfaces::WrapPixels(pixelmap)->makeImageSnapshot();
 	auto lam = [image, provider, pixelmap]() {
 		return image;
 	};

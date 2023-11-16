@@ -33,13 +33,13 @@ void create_skia_image(ImageMessage& message) {
 	}
 
 	auto pix = SkPixmap(message.information, message.image->GetScalarPointer(), message.information.bytesPerPixel() * message.information.width());
-	message.skia_image = SkImage::MakeRasterCopy(pix);
+	message.skia_image = SkSurfaces::WrapPixels(pix)->makeImageSnapshot();
 };
 
 void set_skia_image(ImageMessage& message) {
 	if (message.image->GetImageSize() == message.information.bytesPerPixel() * message.information.width() * message.information.height()) {
 		auto pix = SkPixmap(message.information, message.image->GetScalarPointer(), message.information.bytesPerPixel() * message.information.width());
-		message.skia_image = SkImage::MakeRasterCopy(pix);
+		message.skia_image = SkSurfaces::WrapPixels(pix)->makeImageSnapshot();
 	}
 };
 
