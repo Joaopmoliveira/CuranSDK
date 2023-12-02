@@ -34,12 +34,12 @@ class BiDimensionalTraveler{
 
     template<TravelerDirection direction>
     void increment(){
-        current_index[to_underlying(direction)] = current_index[to_underlying(direction)]+1 % size_index[direction];
+        current_index[to_underlying(direction)] = current_index[to_underlying(direction)]+1 % size_index[to_underlying(direction)];
     };
 
     template<TravelerDirection direction>
     void decrement(){
-        current_index[to_underlying(direction)] = current_index[to_underlying(direction)]-1 % size_index[direction];
+        current_index[to_underlying(direction)] = current_index[to_underlying(direction)]-1 % size_index[to_underlying(direction)];
     }; 
 
     template<TravelerDirection direction>
