@@ -137,3 +137,11 @@ userinterface
 Eigen3::Eigen
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_collect_demonstration_data collect_demonstration_data.cpp)
+
+target_compile_definitions(test_collect_demonstration_data PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_collect_demonstration_data PUBLIC
+userinterface
+)
