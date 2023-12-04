@@ -32,6 +32,12 @@ int main()
             path.moveTo(36, 148);
             path.quadTo(66, 188, 120, 136);
             canvas->drawPath(path, paint);
+            glfwPollEvents();
+            auto signals = viewer->process_pending_signals();
+
+			bool val = viewer->swapBuffers();
+			if (!val)
+				std::cout << "failed to swap buffers\n";
             auto end = std::chrono::high_resolution_clock::now();
             std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
         }
