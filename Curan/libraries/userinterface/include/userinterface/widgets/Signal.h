@@ -44,7 +44,10 @@ namespace curan
 
 		struct Key
 		{
-			char pressed_char;
+			int key;
+			int scancode;
+			int action; 
+			int mods;
 		};
 
 		struct ItemDropped

@@ -31,6 +31,7 @@ int main() {
 			canvas->drawCircle(point,5.0, paint_square);
 			glfwPollEvents();
 			auto signals = viewer->process_pending_signals();
+			
 
 			bool val = viewer->swapBuffers();
 			if (!val)

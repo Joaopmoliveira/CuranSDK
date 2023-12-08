@@ -137,3 +137,12 @@ userinterface
 Eigen3::Eigen
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_panel_api capture_trajectories_from_screen.cpp)
+
+target_compile_definitions(test_panel_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_panel_api
+PUBLIC
+userinterface
+)
