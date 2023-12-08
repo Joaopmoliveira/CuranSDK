@@ -11,6 +11,11 @@
 namespace curan {
 	namespace ui {
 
+
+		struct image_wrapper{
+			
+		};
+
 		using image_provider = std::function<void(SkPixmap&)>;
 		using custom_step = std::function<void(SkCanvas*, SkRect)>;
 		using skia_image_producer = std::function<sk_sp<SkImage>(void)>;

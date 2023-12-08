@@ -20,7 +20,7 @@ constexpr typename std::underlying_type<E>::type to_underlying(E e) noexcept {
 }
 
 enum class TravelerDirection{
-    X,
+    X = 0,
     Y,
     Z
 };
