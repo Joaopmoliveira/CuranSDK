@@ -29,18 +29,11 @@ void function(curan::ui::ImageDisplay* image_display){
         return ;
     }
   
-    
     ImageType::Pointer pointer_to_block_of_memory = ImageReader->GetOutput();
-    auto lam = [pointer_to_block_of_memory](SkPixmap& requested) {
-        ImageType::RegionType region = pointer_to_block_of_memory->GetLargestPossibleRegion();
-        ImageType::SizeType size_itk = region.GetSize();
-	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-	    size_t row_size = size_itk.GetSize()[0] * sizeof(char);
-	    SkPixmap map{inf,pointer_to_block_of_memory->GetBufferPointer(),row_size};
-	    requested = map;
-	    return;
-    };
-    image_display->update_image(lam);
+    ImageType::SizeType size_itk =  pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+    auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(),pointer_to_block_of_memory->GetPixelContainer()->Size()*sizeof(PixelType),pointer_to_block_of_memory);
+    curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
+    image_display->update_image(wrapper);
 }
 
 int main() {

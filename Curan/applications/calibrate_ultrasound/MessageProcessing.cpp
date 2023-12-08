@@ -236,19 +236,21 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 				}
 			}
 		};
-		processor->processed_viwer->update_batch(special_custom,lam);
+
+		ImageType::Pointer pointer_to_block_of_memory = rescale->GetOutput();
+    	ImageType::SizeType size_itk =  pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+    	auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(),pointer_to_block_of_memory->GetPixelContainer()->Size()*sizeof(char),pointer_to_block_of_memory);
+    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
+		processor->processed_viwer->update_batch(special_custom,wrapper);
 	}
 	else {
 		processor->processed_viwer->clear_custom_drawingcall();
 		//ImageType::Pointer localImage = rescale->GetOutput();
-		ImageType::Pointer localImage = rescale->GetOutput();
-		auto lam = [message_body,localImage, x, y](SkPixmap& requested) {
-			auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-			size_t row_size = x * sizeof(unsigned char);
-			SkPixmap map{ inf,localImage->GetBufferPointer(),row_size };
-			requested = map;
-		};
-		processor->processed_viwer->update_image(lam);
+		ImageType::Pointer pointer_to_block_of_memory = rescale->GetOutput();
+    	ImageType::SizeType size_itk =  pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+    	auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(),pointer_to_block_of_memory->GetPixelContainer()->Size()*sizeof(char),pointer_to_block_of_memory);
+    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
+		processor->processed_viwer->update_image(wrapper);
 	}
 	end = std::chrono::steady_clock::now();
 	auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
