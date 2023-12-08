@@ -29,20 +29,28 @@ namespace curan {
 
 		typedef std::function<asio::const_buffer()> binding;
 
-		class CaptureBuffer final : public MemoryBuffer {
+class CaptureBuffer final : public MemoryBuffer
+{
 
-			explicit CaptureBuffer(std::function<asio::const_buffer()>&& val);
+    template <typename T>
+    explicit CaptureBuffer(void* buff,size_t size,T u):_u{u}{
+	    buffer_ = asio::buffer(buff,size);
+    }
 
-		public:
-			static std::shared_ptr<MemoryBuffer> make_shared(binding&& val);
+public:
+    template <typename T>
+    static std::shared_ptr<MemoryBuffer> make_shared(void* in_buff,size_t size,T u){
+        std::shared_ptr<CaptureBuffer> buff = std::shared_ptr<CaptureBuffer>{ new CaptureBuffer{in_buff,size,u} };
+	    return buff;
+    }
 
-			inline const asio::const_buffer* begin() const override { return &buffer_; }
-			inline const asio::const_buffer* end() const override { return &buffer_ + 1; }
+    inline const asio::const_buffer *begin() const override { return &buffer_; }
+    inline const asio::const_buffer *end() const override { return &buffer_ + 1; }
 
-		private:
-			binding val_;
-			asio::const_buffer buffer_;
-		};
+private:
+    std::any _u;
+    asio::const_buffer buffer_;
+};
 
 		class CopyBuffer final : public MemoryBuffer {
 			explicit CopyBuffer(char* data, size_t size);

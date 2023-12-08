@@ -17,10 +17,18 @@ void function(curan::ui::ImageDisplay* image_display){
     using ImageReaderType = itk::ImageFileReader<ImageType>;
     auto ImageReader = ImageReaderType::New();
 
-    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/itk_data_manel/BrainProtonDensitySlice.png"};
+    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/dicom_sample/mri_brain/233.dcm"};
     ImageReader->SetFileName(dirName);
-    ImageReader->Update();
+    try{
+          ImageReader->Update();
 
+    }     
+    catch (const itk::ExceptionObject& ex)
+    {
+        std::cout << ex << std::endl;
+        return ;
+    }
+  
     
     ImageType::Pointer pointer_to_block_of_memory = ImageReader->GetOutput();
     auto lam = [pointer_to_block_of_memory](SkPixmap& requested) {

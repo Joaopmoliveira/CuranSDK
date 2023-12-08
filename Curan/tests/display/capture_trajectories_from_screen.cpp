@@ -9,72 +9,6 @@
 #include <iostream>
 #include <thread>
 
-struct Stroke{
-	SkPath rendered_path;
-	std::vector<SkPoint> recorded_points;
-
-	Stroke(std::vector<SkPoint> in_recorded_points){
-		if(in_recorded_points.size()==0){
-			return;
-		}
-		recorded_points = in_recorded_points;
-		rendered_path.moveTo(recorded_points.front());
-		for(const auto & point : recorded_points){
-			rendered_path.lineTo(point);
-		}
-	}
-
-	double distance(SkPoint point){
-		double minimum = std::numeric_limits<double>::max();
-		for(const auto& r : recorded_points){
-			float local = (r-point).distanceToOrigin();
-			if(minimum>local)
-				minimum = local;
-		}
-		return minimum;
-	}
-
-};
-
-class Panel : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<Panel>
-{
-private:
-	SkColor hover_color;
-	SkColor waiting_color;
-	SkPaint paint;
-	bool compiled = false;
-	std::list<Stroke> strokes;
-	bool magnifying_glass = false;
-
-	Panel(){
-
-	}
-
-public:
-	static std::unique_ptr<Panel> make(){
-
-	}
-
-	void compile() override{
-
-	}
-
-	~Panel(){
-
-	}
-
-	curan::ui::drawablefunction draw() override{
-
-	}
-
-	curan::ui::callablefunction call() override{
-
-	}
-
-
-};
-
-
 constexpr int default_window_size = 100;
 
 struct ZoomIn{
@@ -164,6 +98,72 @@ struct ZoomIn{
 	}
 };
 
+struct Stroke{
+	SkPath rendered_path;
+	std::vector<SkPoint> recorded_points;
+
+	Stroke(std::vector<SkPoint> in_recorded_points){
+		if(in_recorded_points.size()==0){
+			return;
+		}
+		recorded_points = in_recorded_points;
+		rendered_path.moveTo(recorded_points.front());
+		for(const auto & point : recorded_points){
+			rendered_path.lineTo(point);
+		}
+	}
+
+	double distance(SkPoint point){
+		double minimum = std::numeric_limits<double>::max();
+		for(const auto& r : recorded_points){
+			float local = (r-point).distanceToOrigin();
+			if(minimum>local)
+				minimum = local;
+		}
+		return minimum;
+	}
+
+};
+
+class Panel : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<Panel>
+{
+private:
+	SkColor hover_color;
+	SkColor waiting_color;
+	SkPaint paint;
+	bool compiled = false;
+	std::list<Stroke> strokes;
+	bool magnifying_glass = false;
+
+	Panel(){
+
+	}
+
+public:
+	static std::unique_ptr<Panel> make(){
+
+	}
+
+	void compile() override{
+
+	}
+
+	~Panel(){
+
+	}
+
+	curan::ui::drawablefunction draw() override{
+
+	}
+
+	curan::ui::callablefunction call() override{
+
+	}
+
+
+};
+
+
 int main()
 {
 	try
@@ -172,7 +172,7 @@ int main()
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
 		std::unique_ptr<Context> context = std::make_unique<Context>();
 
-		DisplayParams param{std::move(context), 1200, 800};
+		DisplayParams param{std::move(context), 2200, 1800};
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 		viewer->get_size();
 

@@ -12,8 +12,11 @@ namespace curan {
 	namespace ui {
 
 
-		struct image_wrapper{
-			
+		struct ImageWrapper{
+			template<typename T>
+			ImageWrapper(T u,void* buffer,size_t width,size_t height){
+
+			}
 		};
 
 		using image_provider = std::function<void(SkPixmap&)>;

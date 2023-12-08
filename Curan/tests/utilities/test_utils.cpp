@@ -166,11 +166,8 @@ void test_memory_buffers() {
 		std::string value_to_control = "1_2_3_4_5_6_7_8_9_10_12";
 		std::cout << "Expected buffer is: " << value_to_control << "\n";
 		std::shared_ptr<std::string> shared_memory_to_control = std::shared_ptr<std::string>(new std::string(value_to_control));
-		auto lambda = [shared_memory_to_control]() {
-			return asio::buffer(shared_memory_to_control->data(), shared_memory_to_control->size());
-			
-		};
-		buff_of_interest = curan::utilities::CaptureBuffer::make_shared(lambda);
+
+		buff_of_interest = curan::utilities::CaptureBuffer::make_shared(shared_memory_to_control->data(), shared_memory_to_control->size(),shared_memory_to_control);
 		//value to constrol is deleted as well as the local copy of the shared_memory_control, but the shared_pointer is
 		//stored into the lamda which is then copied into the capture memory buffer
 	}
