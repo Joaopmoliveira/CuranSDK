@@ -114,14 +114,14 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 	using namespace curan::ui;
 
 	auto button = Button::make("Display Circles",resources);
-	button->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255,30,144,255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
+	button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 	button->add_press_call([&processing](Button* button, Press press ,ConfigDraw* config) {
 			bool temp = processing->show_circles.load();
 			processing->show_circles.store(!temp);
 	});
 
 	auto button2 = Button::make("Options",resources);
-	button2->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255,30,144,255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
+	button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 	button2->add_press_call([&processing,&resources](Button* button, Press press ,ConfigDraw* config) {
 			config->stack_page->stack(create_filtercontroler_overlay(processing,resources));
 	});

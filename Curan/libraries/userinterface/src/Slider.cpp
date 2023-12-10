@@ -64,6 +64,11 @@ drawablefunction Slider::draw() {
     return lamb;
 }
 
+SkRect Slider::minimum_size(){
+	auto size = get_size();
+	return SkRect::MakeWH(size.width()+20,size.height()+20);
+}
+
 callablefunction Slider::call() {
 	auto lamb = [this](Signal sig, ConfigDraw* config) {
 		bool interacted = false;

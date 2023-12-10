@@ -20,6 +20,7 @@ namespace curan {
 			SkColor backgroundcolor = SK_ColorWHITE;
 			post_signal_callback post_signal_processing;
 			SkRect cached_minimum_size;
+			SkPaint paint;
 			bool is_tight;
 
 			LightWeightPage(std::unique_ptr<Container> contained, SkColor backgroundcolor, SkRect computed_minimum_size,bool tight = false);

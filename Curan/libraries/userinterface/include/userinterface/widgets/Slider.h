@@ -48,6 +48,7 @@ namespace curan {
 
 			drawablefunction draw() override;
 			callablefunction call() override;
+			SkRect minimum_size() override;
 
 			void compile() override;
 

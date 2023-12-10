@@ -8,6 +8,9 @@ LightWeightPage::LightWeightPage(std::unique_ptr<Container> contained, SkColor b
 		return;
 	};
 	is_dirty = true;
+	paint.setStyle(SkPaint::kFill_Style);
+	paint.setColor(SkColorSetARGB(75,255,255,255));
+
 }
 
 LightWeightPage::~LightWeightPage(){
@@ -26,6 +29,9 @@ std::unique_ptr<LightWeightPage> LightWeightPage::make(std::unique_ptr<Container
 
 LightWeightPage& LightWeightPage::draw(SkCanvas* canvas){
 	if (is_dirty) {
+		if(is_tight)
+			canvas->drawRoundRect(scene->get_position(),10,10,paint);
+		
 		canvas->drawColor(backgroundcolor);
 		for (auto& drawcall : compiled_scene.callable_draw)
 			drawcall(canvas);
@@ -52,9 +58,22 @@ LightWeightPage& LightWeightPage::set_post_signal(post_signal_callback call){
 
 LightWeightPage& LightWeightPage::propagate_size_change(const SkRect& new_size){
 	if(scene){
+		if(is_tight){
+			constexpr size_t default_padding = 100;
+			SkRect centered_minimum_position = SkRect::MakeXYWH(new_size.centerX()-cached_minimum_size.width()/2.0f,new_size.centerY()-cached_minimum_size.height()/2.0f,default_padding+cached_minimum_size.width(),default_padding+cached_minimum_size.height());
+			if( new_size.width()>centered_minimum_position.width() && new_size.height()>centered_minimum_position.height()){
+				scene->set_position(centered_minimum_position);
+				scene->framebuffer_resize();
+			} else {
+				scene->set_position(new_size);
+				scene->framebuffer_resize();		
+			}
 
-		scene->set_position(new_size);
-		scene->framebuffer_resize();
+		} else {
+			scene->set_position(new_size);
+			scene->framebuffer_resize();
+		}
+
 	}
     return *(this);
 }
