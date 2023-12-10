@@ -106,7 +106,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 	auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	*slidercontainer << std::move(container) << std::move(container1) << std::move(container2) << std::move(container3) << std::move(container4) << std::move(container5) << std::move(container6);
 
-	return Overlay::make(std::move(slidercontainer),SK_ColorTRANSPARENT);
+	return Overlay::make(std::move(slidercontainer),SK_ColorTRANSPARENT,true);
 }
 
 
@@ -131,7 +131,7 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 	viwers_container->set_divisions({0.0 , 0.5 , 1.0});
 	viwers_container->set_color(SK_ColorTRANSPARENT);
 	
-	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125));
+	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125),true);
 }
 
 curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {

@@ -154,3 +154,11 @@ target_compile_definitions(test_collect_demonstration_data PRIVATE CURAN_COPIED_
 target_link_libraries(test_collect_demonstration_data PUBLIC
 userinterface
 )
+
+add_executable(study_skia_transformations study_skia_transformations.cpp)
+
+target_compile_definitions(study_skia_transformations PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(study_skia_transformations PUBLIC
+userinterface
+)

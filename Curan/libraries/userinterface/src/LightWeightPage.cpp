@@ -3,7 +3,7 @@
 namespace curan {
 namespace ui {
 
-LightWeightPage::LightWeightPage(std::unique_ptr<Container> contained, SkColor backgroundcolor): scene{std::move(contained)},backgroundcolor{backgroundcolor}{
+LightWeightPage::LightWeightPage(std::unique_ptr<Container> contained, SkColor backgroundcolor,SkRect computed_minimum_size, bool tight):cached_minimum_size{computed_minimum_size},scene{std::move(contained)},backgroundcolor{backgroundcolor}, is_tight{tight}{
     post_signal_processing = [](Signal sig, bool page_interaction, ConfigDraw* config) {
 		return;
 	};
@@ -14,11 +14,12 @@ LightWeightPage::~LightWeightPage(){
 	
 }
 
-std::unique_ptr<LightWeightPage> LightWeightPage::make(std::unique_ptr<Container> contained, SkColor backgroundcolor){
+std::unique_ptr<LightWeightPage> LightWeightPage::make(std::unique_ptr<Container> contained, SkColor backgroundcolor, bool tight){
 	compilation_results results;
 	contained->compile();
 	contained->linearize_container(results.callable_draw, results.callable_signal);
-	std::unique_ptr<LightWeightPage> page = std::unique_ptr<LightWeightPage>(new LightWeightPage{std::move(contained),backgroundcolor});
+	auto min_size = contained->minimum_size();
+	std::unique_ptr<LightWeightPage> page = std::unique_ptr<LightWeightPage>(new LightWeightPage{std::move(contained),backgroundcolor,min_size,tight});
 	page->compiled_scene = results;
 	return page;
 }
@@ -51,6 +52,7 @@ LightWeightPage& LightWeightPage::set_post_signal(post_signal_callback call){
 
 LightWeightPage& LightWeightPage::propagate_size_change(const SkRect& new_size){
 	if(scene){
+
 		scene->set_position(new_size);
 		scene->framebuffer_resize();
 	}

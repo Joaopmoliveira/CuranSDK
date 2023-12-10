@@ -19,12 +19,14 @@ namespace curan {
 			compilation_results compiled_scene;
 			SkColor backgroundcolor = SK_ColorWHITE;
 			post_signal_callback post_signal_processing;
+			SkRect cached_minimum_size;
+			bool is_tight;
 
-			LightWeightPage(std::unique_ptr<Container> contained, SkColor backgroundcolor);
+			LightWeightPage(std::unique_ptr<Container> contained, SkColor backgroundcolor, SkRect computed_minimum_size,bool tight = false);
 
         public:
 
-			static std::unique_ptr<LightWeightPage> make(std::unique_ptr<Container> contained, SkColor backgroundcolor);
+			static std::unique_ptr<LightWeightPage> make(std::unique_ptr<Container> contained, SkColor backgroundcolor, bool tight = false);
 
 			~LightWeightPage();
 
@@ -37,7 +39,7 @@ namespace curan {
 			LightWeightPage& set_post_signal(post_signal_callback call);
 
 			inline SkRect minimum_size(){
-				return scene->minimum_size();
+				return cached_minimum_size;
 			}
 
 			inline LightWeightPage& set_dirtyness(bool var) {
