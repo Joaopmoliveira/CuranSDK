@@ -1,5 +1,5 @@
-#ifndef CURAN_IMAGE_DISPLAY_HEADER_FILE_
-#define CURAN_IMAGE_DISPLAY_HEADER_FILE_
+#ifndef CURAN_IMAGE_WRAPPER_HEADER_FILE_
+#define CURAN_IMAGE_WRAPPER_HEADER_FILE_
 
 #include "definitions/UIdefinitions.h"
 #include "utils/MemoryUtils.h"
@@ -14,3 +14,5 @@ namespace curan {
 		};
     }
 }
+
+#endif
