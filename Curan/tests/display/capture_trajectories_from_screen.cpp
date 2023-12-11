@@ -214,8 +214,6 @@ private:
 
 	}
 
-
-
 public:
 	static std::unique_ptr<Panel> make(curan::ui::IconResources& other){
 		std::unique_ptr<Panel> button = std::unique_ptr<Panel>(new Panel{other});

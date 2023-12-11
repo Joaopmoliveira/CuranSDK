@@ -144,7 +144,7 @@ if(!compiled)
 	auto container = get_container();
 	canvas->clipRect(widget_rect);
 	canvas->clear(SK_ColorBLACK);
-	center_debug_mode = { widget_rect.fRight - debug_mode_radius,widget_rect.fTop + debug_mode_radius };
+	center_debug_mode = { widget_rect.fRight - debug_mode_radius*2,widget_rect.fTop + debug_mode_radius };
 	if (!in_debug_mode) {
 		canvas->drawCircle(center_debug_mode, debug_mode_radius, paint);
 		canvas->drawTextBlob(debug_glyph, center_debug_mode.fX, center_debug_mode.fY - debug_glyph->bounds().centerY(), paint_text);

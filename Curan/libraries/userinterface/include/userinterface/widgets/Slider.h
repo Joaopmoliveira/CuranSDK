@@ -36,7 +36,7 @@ namespace curan {
 			std::array<float, 2> limits = { 0.0f,100.0f };
 			float current_value = 0.5;
 			float value_pressed = 0.5;
-			float dragable_percent_size = 0.1f;;
+			float dragable_percent_size = 0.1f;
 
 			Slider(const std::array<float,2>& in_limits);
 
@@ -69,6 +69,8 @@ namespace curan {
 
 			inline Slider& set_current_value(float in_current_value) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
+				if (in_current_value < 0.0) in_current_value = 0.0;
+				if (in_current_value > 1.0) in_current_value = 1.0;
 				current_value = in_current_value;
 				return *(this);
 			}
