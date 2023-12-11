@@ -313,7 +313,6 @@ public:
 				auto minimum_index = strokes.end();
 				for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)
 				{
-					
 					double local = begin->second.distance(zoom_in.get_coordinates());
 					if (minimum > local)
 					{
@@ -321,12 +320,20 @@ public:
 						minimum_index = begin;
 					}
 					canvas->drawPath(begin->second.rendered_path, paint_stroke);
-					auto point = begin->second.recorded_points[0];
-					std::string indentifier = "s"+std::to_string(begin->first);
-					paint_stroke.setStrokeWidth(1);
-					canvas->drawSimpleText(indentifier.data(),indentifier.size(),SkTextEncoding::kUTF8 ,point.fX+10,point.fY+10,text_font, paint_stroke);
-					paint_stroke.setStrokeWidth(12);
 				}
+
+				for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)
+				{
+					auto point = begin->second.recorded_points[0];
+					paint_square.setColor(SkColorSetARGB(255,0,0,0));
+					canvas->drawCircle(SkPoint::Make(point.fX+10,point.fY+10),20,paint_square);
+					paint_square.setColor(SK_ColorRED);
+					std::string indentifier = "s"+std::to_string(begin->first);
+					paint_stroke.setStrokeWidth(0.5f);
+					canvas->drawSimpleText(indentifier.data(),indentifier.size(),SkTextEncoding::kUTF8 ,point.fX+10,point.fY+10,text_font, paint_stroke);
+					paint_stroke.setStrokeWidth(8);
+				}			
+
 				if (minimum_index != strokes.end() && minimum < 20.0f)
 				{
 					paint_stroke.setStrokeWidth(12);
@@ -341,10 +348,13 @@ public:
 				for (auto begin = strokes.begin(); begin != strokes.end(); ++begin){
 					canvas->drawPath(begin->second.rendered_path, paint_stroke);
 					auto point = begin->second.recorded_points[0];
+					paint_square.setColor(SkColorSetARGB(125,0,0,0));
+					canvas->drawCircle(SkPoint::Make(point.fX+15,point.fY+10),20,paint_square);
+					paint_square.setColor(SK_ColorRED);
 					std::string indentifier = "s"+std::to_string(begin->first);
-					paint_stroke.setStrokeWidth(1);
+					paint_stroke.setStrokeWidth(0.5f);
 					canvas->drawSimpleText(indentifier.data(),indentifier.size(),SkTextEncoding::kUTF8 ,point.fX+10,point.fY+10,text_font, paint_stroke);
-					paint_stroke.setStrokeWidth(12);
+					paint_stroke.setStrokeWidth(8);
 				}
 			}
 

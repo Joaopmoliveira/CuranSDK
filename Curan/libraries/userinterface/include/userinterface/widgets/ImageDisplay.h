@@ -8,17 +8,10 @@
 #include <list>
 #include "SignalProcessor.h"
 #include "utils/MemoryUtils.h"
+#include "ImageWrapper.h"
 
 namespace curan {
 	namespace ui {
-
-
-		struct ImageWrapper{
-			std::shared_ptr<utilities::MemoryBuffer> buffer;
-			SkImageInfo image_info;
-			sk_sp<SkImage> image;
-			ImageWrapper(std::shared_ptr<utilities::MemoryBuffer> buffer,size_t width,size_t height,SkColorType color = SkColorType::kGray_8_SkColorType, SkAlphaType opaqueness = SkAlphaType::kOpaque_SkAlphaType);
-		};
 
 		using custom_step = std::function<void(SkCanvas*, SkRect)>;
 		using skia_image_producer = std::function<sk_sp<SkImage>(void)>;

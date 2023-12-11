@@ -15,6 +15,7 @@ src/Slider.cpp
 src/TextBlob.cpp
 src/OpenIGTLinkViewer.cpp
 src/ImageDisplay.cpp
+src/ImageWrapper.cpp
 )
 
 target_include_directories(userinterface
