@@ -11,6 +11,7 @@
 #include <iostream>
 #include <thread>
 #include <unordered_map>
+#include "userinterface/widgets/ImageWrapper.h"
 
 constexpr int default_window_size = 50;
 constexpr int default_padding = 50;
@@ -165,6 +166,9 @@ private:
 	SkMatrix panel_matrix_transform;
 	curan::ui::IconResources& system_icons;
 	SkFont text_font;
+
+	std::optional<curan::ui::ImageWrapper> old_image = std::nullopt;
+	std::optional<curan::ui::ImageWrapper>  images_to_render = std::nullopt;
 
 	std::array<float, 3> color_phase_offset;
 
