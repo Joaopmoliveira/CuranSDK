@@ -10,7 +10,6 @@ ImageDisplay::ImageDisplay()  {
 
 }
 
-
 std::unique_ptr<ImageDisplay> ImageDisplay::make() {
 	std::unique_ptr<ImageDisplay> image_display = std::unique_ptr<ImageDisplay>( new ImageDisplay());
 	return image_display;

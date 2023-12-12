@@ -6,6 +6,7 @@
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/Drawable.h"
 #include "userinterface/widgets/Overlay.h"
+#include "userinterface/widgets/ImageWrapper.h"
 #include "utils/Lockable.h"
 #include "userinterface/widgets/SignalProcessor.h"
 #include <iostream>
@@ -165,6 +166,8 @@ private:
 	SkMatrix panel_matrix_transform;
 	curan::ui::IconResources& system_icons;
 	SkFont text_font;
+	std::optional<curan::ui::ImageWrapper> _background;
+	std::optional<curan::ui::ImageWrapper> old_background;
 
 	std::array<float, 3> color_phase_offset;
 
@@ -237,6 +240,22 @@ public:
 		}
 		set_size(pos);
     	return ;
+	}
+
+	void background(curan::ui::ImageWrapper new_background){
+		_background = new_background;
+	}
+
+	std::optional<curan::ui::ImageWrapper> background(){
+		std::optional<curan::ui::ImageWrapper> copy = _background;
+		_background = std::nullopt;
+		return copy;
+	}
+
+	std::optional<curan::ui::ImageWrapper> get_old_background(){
+		auto back = background();
+		old_background = back;
+		return old_background;
 	}
 
 	std::unique_ptr<curan::ui::Overlay> create_options_overlay()
