@@ -3,6 +3,7 @@
 #include <iostream>
 #include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/widgets/ComputeImageBounds.h"
+
 namespace curan {
 namespace ui {
 
@@ -35,41 +36,14 @@ drawablefunction ImageDisplay::draw() {
 		paint_square.setAntiAlias(true);
 		paint_square.setStrokeWidth(4);
 		paint_square.setColor(SK_ColorGREEN);
-		//canvas->drawRect(widget_rect, paint_square);
+
 		if (old_image) {
 			auto val = *old_image;
 			auto image_display_surface = (*old_image).image;
-			float image_width = image_display_surface->width();
-			float image_height = image_display_surface->height();
-			
-			float current_selected_width = widget_rect.width();
-			float current_selected_height = widget_rect.height();
-			float scale_factor = std::min(current_selected_width * 0.9f / image_width, current_selected_height * 0.95f / image_height);
-			float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-			float init_y = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
-
-			current_selected_image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, scale_factor * image_height);
-
-			SkRect testing = widget_rect;
-			float init_x_new = 0;
-			float init_y_new = 0;
-			if (current_selected_width * 0.9f / image_width < current_selected_height * 0.95f / image_height) { // the width is the largest dimension which must be scalled 
-				init_x_new = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-				init_y_new = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
-				float local_scalling = current_selected_image_rectangle.height()/image_height;
-				testing = SkRect::MakeXYWH(init_x_new, init_y_new, local_scalling * image_width, scale_factor * image_height);
-			}
-			else { //the height is the largest dimension which must be scalled
-				init_x_new = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-				init_y_new = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
-
-
-				testing = SkRect::MakeXYWH(init_x_new, init_y_new, scale_factor * image_width, 0.5f*scale_factor * image_height);
-			}
+			current_selected_image_rectangle = compute_bounded_rectangle(widget_rect,image_display_surface->width(),image_display_surface->height());
 
 			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
 			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt);
-			//canvas->drawRect(current_selected_image_rectangle, paint_square);
 		}
 
 		auto custom_drawing = get_custom_drawingcall();

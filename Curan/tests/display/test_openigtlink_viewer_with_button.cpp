@@ -182,7 +182,6 @@ int main() {
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 		auto igtlink_viewer = OpenIGTLinkViewer::make();
-		igtlink_viewer->set_size(SkRect::MakeWH(600,500));
 		auto igtlink_viewer_pointer = igtlink_viewer.get();
 
 		auto image_display = ImageDisplay::make();
