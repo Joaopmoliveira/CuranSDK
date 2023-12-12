@@ -2,6 +2,7 @@ find_package(ITK CONFIG REQUIRED)
 
 include(${ITK_USE_FILE})
 
+# ---------------------------------------
 
 add_executable(modified_test_user_interface test_user_interface.cpp)
 
@@ -13,6 +14,8 @@ utils
 userinterface
 )
 
+# ---------------------------------------
+
 add_executable(modified_test_library_userinterface test_library_userinterface.cpp)
 
 target_compile_definitions(modified_test_library_userinterface PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -20,6 +23,8 @@ target_compile_definitions(modified_test_library_userinterface PRIVATE CURAN_COP
 target_link_libraries(modified_test_library_userinterface PUBLIC
 userinterface
 )
+
+# ---------------------------------------
 
 add_executable(modified_test_button test_button.cpp)
 
@@ -29,6 +34,8 @@ target_link_libraries(modified_test_button PUBLIC
 userinterface
 )
 
+# ---------------------------------------
+
 add_executable(modified_test_slider test_slider.cpp)
 
 target_compile_definitions(modified_test_slider PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -36,6 +43,8 @@ target_compile_definitions(modified_test_slider PRIVATE CURAN_COPIED_RESOURCE_PA
 target_link_libraries(modified_test_slider PUBLIC
 userinterface
 )
+
+# ---------------------------------------
 
 add_executable(modified_test_textblob test_textblob.cpp)
 
@@ -45,6 +54,8 @@ target_link_libraries(modified_test_textblob PUBLIC
 userinterface
 )
 
+# ---------------------------------------
+
 add_executable(modified_test_openigtlinkviewer test_openigtlink_display.cpp)
 
 target_compile_definitions(modified_test_openigtlinkviewer PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -52,6 +63,8 @@ target_compile_definitions(modified_test_openigtlinkviewer PRIVATE CURAN_COPIED_
 target_link_libraries(modified_test_openigtlinkviewer PUBLIC
 userinterface
 )
+
+# ---------------------------------------
 
 add_executable(modified_test_container_logic test_container_logic.cpp)
 
@@ -61,6 +74,8 @@ target_link_libraries(modified_test_container_logic PUBLIC
 userinterface
 )
 
+# ---------------------------------------
+
 add_executable(modified_test_page test_container_with_window.cpp)
 
 target_compile_definitions(modified_test_page PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -68,6 +83,8 @@ target_compile_definitions(modified_test_page PRIVATE CURAN_COPIED_RESOURCE_PATH
 target_link_libraries(modified_test_page PUBLIC
 userinterface
 )
+
+# ---------------------------------------
 
 add_executable(modified_test_page_juntion test_openigtlink_viewer_with_button.cpp)
 
@@ -77,6 +94,8 @@ target_link_libraries(modified_test_page_juntion PUBLIC
 userinterface
 )
 
+# ---------------------------------------
+
 add_executable(modified_test_overlay_api test_overlay_api.cpp)
 
 target_compile_definitions(modified_test_overlay_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -84,6 +103,8 @@ target_compile_definitions(modified_test_overlay_api PRIVATE CURAN_COPIED_RESOUR
 target_link_libraries(modified_test_overlay_api PUBLIC
 userinterface
 )
+
+# ---------------------------------------
 
 add_executable(modified_test_multiple_sliders test_multiple_sliders.cpp)
 
@@ -93,6 +114,8 @@ target_link_libraries(modified_test_multiple_sliders PUBLIC
 userinterface
 )
 
+# ---------------------------------------
+
 add_executable(modified_skia_playground skia_playground.cpp)
 
 target_compile_definitions(modified_skia_playground PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -100,6 +123,8 @@ target_compile_definitions(modified_skia_playground PRIVATE CURAN_COPIED_RESOURC
 target_link_libraries(modified_skia_playground PUBLIC
 userinterface
 )
+
+# ---------------------------------------
 
 add_executable(test_image_visualization test_image_visualization.cpp)
 
@@ -111,6 +136,8 @@ userinterface
 ${ITK_LIBRARIES}
 )
 
+# ---------------------------------------
+
 add_executable(test_minimum_window_size_computation test_minimum_window_size_computation.cpp)
 
 target_compile_definitions(test_minimum_window_size_computation PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -119,6 +146,8 @@ target_link_libraries(test_minimum_window_size_computation PUBLIC
 userinterface
 )
 
+# ---------------------------------------
+
 add_executable(test_minimum_window_with_glfw test_gflw_plus_minimum_window_size.cpp)
 
 target_compile_definitions(test_minimum_window_with_glfw PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -126,6 +155,8 @@ target_compile_definitions(test_minimum_window_with_glfw PRIVATE CURAN_COPIED_RE
 target_link_libraries(test_minimum_window_with_glfw PUBLIC
 userinterface
 )
+
+# ---------------------------------------
 
 add_executable(test_resampling_gui test_multiple_plane_specification.cpp)
 
@@ -138,14 +169,19 @@ Eigen3::Eigen
 ${ITK_LIBRARIES}
 )
 
+# ---------------------------------------
+
 add_executable(test_panel_api capture_trajectories_from_screen.cpp)
 
 target_compile_definitions(test_panel_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(test_panel_api
 PUBLIC
+${ITK_LIBRARIES}
 userinterface
 )
+
+# ---------------------------------------
 
 add_executable(test_collect_demonstration_data collect_demonstration_data.cpp)
 
@@ -154,6 +190,8 @@ target_compile_definitions(test_collect_demonstration_data PRIVATE CURAN_COPIED_
 target_link_libraries(test_collect_demonstration_data PUBLIC
 userinterface
 )
+
+# ---------------------------------------
 
 add_executable(study_skia_transformations study_skia_transformations.cpp)
 

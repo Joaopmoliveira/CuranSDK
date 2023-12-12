@@ -13,9 +13,55 @@
 #include <thread>
 #include <unordered_map>
 #include "userinterface/widgets/ImageWrapper.h"
+#include "userinterface/widgets/ComputeImageBounds.h"
 
-constexpr int default_window_size = 50;
-constexpr int default_padding = 50;
+#include "itkRescaleIntensityImageFilter.h"
+#include "itkCastImageFilter.h"
+
+#include "itkImage.h"
+#include "itkImageFileReader.h"
+
+constexpr int default_window_size = 100;
+
+
+using DicomPixelType = unsigned short;
+using PixelType = unsigned char;
+constexpr unsigned int Dimension = 3;
+using ImageType = itk::Image<PixelType, Dimension>;
+using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
+
+std::optional<curan::ui::ImageWrapper> get_image(){
+    using ImageReaderType = itk::ImageFileReader<DICOMImageType>;
+    auto ImageReader = ImageReaderType::New();
+
+    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/dicom_sample/mri_brain/233.dcm"};
+    ImageReader->SetFileName(dirName);
+
+	using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
+  	auto rescale = RescaleType::New();
+  	rescale->SetInput(ImageReader->GetOutput());
+  	rescale->SetOutputMinimum(0);
+  	rescale->SetOutputMaximum(itk::NumericTraits<PixelType>::max());
+
+  	using FilterType = itk::CastImageFilter<DICOMImageType,ImageType>;
+  	auto filter = FilterType::New();
+  	filter->SetInput(rescale->GetOutput());
+
+    try{
+          filter->Update();
+
+    }     
+    catch (const itk::ExceptionObject& ex)
+    {
+        std::cout << ex << std::endl;
+        return std::nullopt;
+    }
+  
+    ImageType::Pointer pointer_to_block_of_memory = filter->GetOutput();
+    ImageType::SizeType size_itk =  pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+    auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(),pointer_to_block_of_memory->GetPixelContainer()->Size()*sizeof(PixelType),pointer_to_block_of_memory);
+    return curan::ui::ImageWrapper{buff,size_itk[0],size_itk[1]};
+}
 
 struct ZoomIn
 {
@@ -164,21 +210,16 @@ private:
 	SkPaint background_paint;
 	std::unordered_map<size_t,Stroke> strokes;
 	std::vector<SkPoint> current_stroke;
-	SkMatrix panel_matrix_transform;
+	SkRect background_rect;
 	curan::ui::IconResources& system_icons;
 	SkFont text_font;
-	std::optional<curan::ui::ImageWrapper> _background;
-	std::optional<curan::ui::ImageWrapper> old_background;
-
-	std::optional<curan::ui::ImageWrapper> old_image = std::nullopt;
-	std::optional<curan::ui::ImageWrapper>  images_to_render = std::nullopt;
+	std::optional<curan::ui::ImageWrapper> background;
 
 	std::array<float, 3> color_phase_offset;
 
 	bool is_pressed = false;
 	bool is_highlighting = false;
 	ZoomIn zoom_in;
-	std::unique_ptr<curan::ui::LightWeightPage> options_overlay;
 
 	SkSamplingOptions options;
 	sk_sp<SkImageFilter> imgfilter;
@@ -188,8 +229,9 @@ private:
 		++counter;
 	}
 
-	Panel(curan::ui::IconResources& other) : system_icons{other} 
+	Panel(curan::ui::IconResources& other,std::optional<curan::ui::ImageWrapper> image_wrapper) : system_icons{other} 
 	{		
+		background = image_wrapper;
 		paint_square.setStyle(SkPaint::kFill_Style);
 		paint_square.setAntiAlias(true);
 		paint_square.setStrokeWidth(4);
@@ -203,7 +245,7 @@ private:
 		paint_stroke.setStyle(SkPaint::kStroke_Style);
 		paint_stroke.setAntiAlias(true);
 		paint_stroke.setStrokeWidth(8);
-		paint_stroke.setColor(SK_ColorGRAY);
+		paint_stroke.setColor(SK_ColorGREEN);
 
 		current_stroke.reserve(1000);
 
@@ -222,8 +264,8 @@ private:
 	}
 
 public:
-	static std::unique_ptr<Panel> make(curan::ui::IconResources& other){
-		std::unique_ptr<Panel> button = std::unique_ptr<Panel>(new Panel{other});
+	static std::unique_ptr<Panel> make(curan::ui::IconResources& other,std::optional<curan::ui::ImageWrapper> image_wrapper){
+		std::unique_ptr<Panel> button = std::unique_ptr<Panel>(new Panel{other,image_wrapper});
 		return button;
 	}
 
@@ -237,89 +279,10 @@ public:
 
 	void framebuffer_resize() override {
 		auto pos = get_position();
-		if(options_overlay){
-			auto min_size = options_overlay->minimum_size();
-			SkRect centered_minimum_position = SkRect::MakeXYWH(pos.centerX()-min_size.width()/2.0f,pos.centerY()-min_size.height()/2.0f,default_padding+min_size.width(),default_padding+min_size.height());
-			options_overlay->propagate_size_change(centered_minimum_position);
-		}
+		background_rect = (background) ? curan::ui::compute_bounded_rectangle(pos,(*background).image->width(),(*background).image->height()) : pos;
+		
 		set_size(pos);
     	return ;
-	}
-
-	void background(curan::ui::ImageWrapper new_background){
-		_background = new_background;
-	}
-
-	std::optional<curan::ui::ImageWrapper> background(){
-		std::optional<curan::ui::ImageWrapper> copy = _background;
-		_background = std::nullopt;
-		return copy;
-	}
-
-	std::optional<curan::ui::ImageWrapper> get_old_background(){
-		auto back = background();
-		old_background = back;
-		return old_background;
-	}
-
-	std::unique_ptr<curan::ui::Overlay> create_options_overlay()
-	{
-		using namespace curan::ui;
-
-		auto button = Button::make("zoom", system_icons);
-		button->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255, 30, 144, 255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
-		button->add_press_call([this](Button *button, Press press, ConfigDraw *config){
-			if (zoom_in)
-				zoom_in.deactivate();
-			else
-				zoom_in.activate(); }
-		);
-
-		auto button2 = Button::make("highlight", system_icons);
-		button2->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255, 30, 144, 255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
-		button2->add_press_call([this](Button *button, Press press, ConfigDraw *config){
-		is_highlighting = !is_highlighting;
-			if (!current_stroke.empty()){
-				insert_in_map(current_stroke);
-				current_stroke.clear();
-			} 
-		});
-
-		auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-		*viwers_container << std::move(button) << std::move(button2);
-		viwers_container->set_divisions({0.0, 0.5, 1.0});
-		viwers_container->set_color(SK_ColorTRANSPARENT);
-
-    	auto post_sig = [this](Signal sig, bool page_interaction, ConfigDraw* config) {
-		std::visit(curan::utilities::overloaded{
-		[](Empty arg) {
-
-			},
-		[](Move arg) {
-
-			},
-		[this,page_interaction](Press arg) {
-				if (!page_interaction && options_overlay){
-					options_overlay = nullptr;
-					return;
-				}
-			},
-		[](Scroll arg) {;
-
-			},
-		[](Unpress arg) {
-
-			},
-		[](Key arg) {
-
-			},
-		[](ItemDropped arg) {;
-
-		} },
-		sig);
-	};
-
-		return Overlay::make(std::move(viwers_container),post_sig,SkColorSetARGB(10, 125, 125, 125));
 	}
 
 	curan::ui::drawablefunction draw() override
@@ -329,6 +292,15 @@ public:
 			auto widget_rect = get_position();
 			SkAutoCanvasRestore restore{canvas, true};
 			canvas->drawRect(widget_rect,background_paint);
+
+			if(background){
+				auto val = *background;
+				auto image_display_surface = val.image;
+				background_rect = curan::ui::compute_bounded_rectangle(widget_rect,image_display_surface->width(),image_display_surface->height());
+				SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
+				canvas->drawImageRect(image_display_surface, background_rect, opt);
+			} 
+
 			canvas->drawPoints(SkCanvas::PointMode::kPoints_PointMode, current_stroke.size(), current_stroke.data(), paint_square);
 			if (is_highlighting)
 			{
@@ -385,14 +357,6 @@ public:
 			{
 				zoom_in.draw(canvas);
 			}
-
-			if(options_overlay){
-				auto image = canvas->getSurface()->makeImageSnapshot();
-				canvas->drawImage(image, 0, 0, options, &bluring_paint);
-				options_overlay->draw(canvas);
-			}
-
-
 		};
 		return lamb;
 	}
@@ -401,9 +365,6 @@ public:
 	{
 		auto lamb = [this](curan::ui::Signal sig, curan::ui::ConfigDraw *config){
 			bool interacted = false;
-			if(options_overlay)
-				return options_overlay->propagate_signal(sig,config);
-			
 			std::visit(curan::utilities::overloaded{
 				[](curan::ui::Empty arg) {
 
@@ -443,14 +404,21 @@ public:
 				},
 				[&](curan::ui::Key arg){
 					if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS){
-						if(options_overlay){
-							options_overlay = nullptr;
-							return;
-						}
-						auto overlay = create_options_overlay();
-						options_overlay = std::move(overlay->take_ownership());
-						framebuffer_resize();
+						if (zoom_in)
+							zoom_in.deactivate();
+						else
+							zoom_in.activate(); 
+						return ;
 					}
+
+					if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS){
+						is_highlighting = !is_highlighting;
+						if (!current_stroke.empty()){
+							insert_in_map(current_stroke);
+							current_stroke.clear();
+						} 
+					}
+					
 				},
 				[](curan::ui::ItemDropped arg) {
 
@@ -470,14 +438,17 @@ int main() {
 		DisplayParams param{ std::move(context),2200,1200 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		auto panel = Panel::make(resources);
-		SkRect rect = SkRect::MakeXYWH(0, 0, 2200, 1200);
-		panel->set_position(rect);
-		panel->compile();
-		panel->framebuffer_resize();
+		std::unique_ptr<Panel> image_display = Panel::make(resources,get_image());
+		Panel* panel_pointer = image_display.get();
 
-		auto caldraw = panel->draw();
-		auto calsignal = panel->call();
+		auto button = Button::make("Connect",resources);
+		button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
+
+		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+		*container << std::move(button) << std::move(image_display);
+		container->set_divisions({ 0.0 , 0.1 , 1.0 });
+
+    	curan::ui::Page page{std::move(container),SK_ColorBLACK};
 
 		ConfigDraw config_draw;
 
@@ -485,15 +456,19 @@ int main() {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
-			canvas->drawColor(SK_ColorWHITE);
-			caldraw(canvas);
-			glfwPollEvents();
-			auto signals = viewer->process_pending_signals();
-			if (!signals.empty())
-				calsignal(signals.back(),&config_draw);
-			bool val = viewer->swapBuffers();
-			if (!val)
-				std::cout << "failed to swap buffers\n";
+			if (viewer->was_updated()) {
+		    	page.update_page(viewer.get());
+				viewer->update_processed();
+			}
+        	page.draw(canvas);
+        	auto signals = viewer->process_pending_signals();
+        	if (!signals.empty())
+            	page.propagate_signal(signals.back(),&config_draw);
+        	glfwPollEvents();
+    
+        	bool val = viewer->swapBuffers();
+        	if (!val)
+            	std::cout << "failed to swap buffers\n";
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
