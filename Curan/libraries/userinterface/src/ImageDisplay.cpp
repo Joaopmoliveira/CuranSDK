@@ -2,7 +2,7 @@
 #include "utils/TheadPool.h"
 #include <iostream>
 #include "userinterface/widgets/ConfigDraw.h"
-
+#include "userinterface/widgets/ComputeImageBounds.h"
 namespace curan {
 namespace ui {
 
@@ -35,12 +35,13 @@ drawablefunction ImageDisplay::draw() {
 		paint_square.setAntiAlias(true);
 		paint_square.setStrokeWidth(4);
 		paint_square.setColor(SK_ColorGREEN);
-		canvas->drawRect(widget_rect, paint_square);
-		if (image) {
-			auto val = *image;
-			auto image_display_surface = (*image).image;
+		//canvas->drawRect(widget_rect, paint_square);
+		if (old_image) {
+			auto val = *old_image;
+			auto image_display_surface = (*old_image).image;
 			float image_width = image_display_surface->width();
 			float image_height = image_display_surface->height();
+			
 			float current_selected_width = widget_rect.width();
 			float current_selected_height = widget_rect.height();
 			float scale_factor = std::min(current_selected_width * 0.9f / image_width, current_selected_height * 0.95f / image_height);
@@ -68,7 +69,7 @@ drawablefunction ImageDisplay::draw() {
 
 			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
 			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt);
-			canvas->drawRect(current_selected_image_rectangle, paint_square);
+			//canvas->drawRect(current_selected_image_rectangle, paint_square);
 		}
 
 		auto custom_drawing = get_custom_drawingcall();
@@ -97,7 +98,9 @@ void ImageDisplay::framebuffer_resize() {
 
 std::optional<ImageWrapper> ImageDisplay::get_image_wrapper() {
 	std::lock_guard<std::mutex> g(get_mutex());
-	return images_to_render;
+	auto copy = images_to_render;
+	images_to_render = std::nullopt;
+	return copy;
 }
 
 ImageDisplay& ImageDisplay::override_image_wrapper(ImageWrapper wrapper) {
