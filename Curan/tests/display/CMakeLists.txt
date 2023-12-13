@@ -200,3 +200,15 @@ target_compile_definitions(study_skia_transformations PRIVATE CURAN_COPIED_RESOU
 target_link_libraries(study_skia_transformations PUBLIC
 userinterface
 )
+
+# ---------------------------------------
+
+add_executable(test_slidingpanel_api panel_with_slider.cpp)
+
+target_compile_definitions(test_slidingpanel_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_slidingpanel_api
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+)

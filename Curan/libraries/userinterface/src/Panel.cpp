@@ -71,6 +71,7 @@ namespace ui{
 		auto lamb = [this](SkCanvas *canvas)
 		{
 			auto widget_rect = get_position();
+			
 			SkAutoCanvasRestore restore{canvas, true};
 			canvas->drawRect(widget_rect,background_paint);
 
@@ -127,7 +128,7 @@ namespace ui{
 				if (minimum_index != strokes.end() && minimum < 0.02f)
 				{
 					paint_stroke.setStrokeWidth(14);
-					paint_stroke.setColor(SkColorSetARGB(125, 0x00, 0xFF, 0x00));
+					paint_stroke.setColor(SkColorSetARGB(125,0x00, 0xFF, 0xFF));
 					if(minimum_index->second.normalized_recorded_points.size()==1) canvas->drawPoint(minimum_index->second.begin_point,paint_stroke);
 					else canvas->drawPath(minimum_index->second.rendered_path, paint_stroke);
 					paint_stroke.setStrokeWidth(8);
@@ -199,7 +200,7 @@ namespace ui{
 					
 				},
 				[&](curan::ui::Press arg){
-					if(!interacts(arg.xpos,arg.ypos))
+					if(!interacts(arg.xpos,arg.ypos) || is_highlighting)
 						return;
 					if(current_stroke.normalized_recorded_points.size()==1){
 						insert_in_map(current_stroke);

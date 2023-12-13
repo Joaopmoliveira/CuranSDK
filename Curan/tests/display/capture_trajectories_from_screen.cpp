@@ -11,8 +11,6 @@
 #include "itkImage.h"
 #include "itkImageFileReader.h"
 
-
-
 using DicomPixelType = unsigned short;
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 3;
