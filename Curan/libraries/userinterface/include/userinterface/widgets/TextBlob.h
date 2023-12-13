@@ -51,8 +51,7 @@ namespace curan {
 				background_color = in_background_color;
 				return *(this);
 			}
-
-			void framebuffer_resize() override;
+			
 			void compile() override;
 		};
 	}

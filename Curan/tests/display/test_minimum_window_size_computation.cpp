@@ -91,7 +91,7 @@ void create_nested_layout_propagate(curan::ui::IconResources& resources){
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container2->set_position(my_small_window);
 	container2->compile();
-	container2->framebuffer_resize();
+	container2->framebuffer_resize(my_small_window);
 
     auto minimum_size = container->minimum_size();
     std::printf("expected\n\twidth: (%f) height: (%f)\n",200.0f,600.0f);

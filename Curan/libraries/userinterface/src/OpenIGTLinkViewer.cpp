@@ -329,9 +329,6 @@ if(!compiled)
 	return lamb;
 }
 
-void OpenIGTLinkViewer::framebuffer_resize() {
-
-}
 
 void OpenIGTLinkViewer::compile(){
 	std::string type = "Type";

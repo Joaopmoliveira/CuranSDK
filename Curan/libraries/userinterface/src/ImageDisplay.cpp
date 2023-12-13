@@ -66,10 +66,6 @@ callablefunction ImageDisplay::call() {
 	return lamb;
 }
 
-void ImageDisplay::framebuffer_resize() {
-
-}
-
 std::optional<ImageWrapper> ImageDisplay::get_image_wrapper() {
 	std::lock_guard<std::mutex> g(get_mutex());
 	auto copy = images_to_render;

@@ -21,6 +21,7 @@ namespace curan {
 		class Drawable {
 			SkRect widget_rect = SkRect::MakeLTRB(10,10,100,100);
 			SkRect size = SkRect::MakeWH(100, 100);
+
 		public:
 
 			Drawable();
@@ -53,12 +54,13 @@ namespace curan {
 				return (drawable.fLeft < x && drawable.fRight > x && drawable.fTop < y && drawable.fBottom > y) ? true : false;
 			}
 
-			virtual void framebuffer_resize();
+			virtual void framebuffer_resize(const SkRect& new_page_size);
 			virtual bool is_leaf();
 			virtual void compile() = 0;
 			virtual drawablefunction draw() = 0;
 			virtual callablefunction call() = 0;
 			virtual SkRect minimum_size();
+
 		};
 	}
 }

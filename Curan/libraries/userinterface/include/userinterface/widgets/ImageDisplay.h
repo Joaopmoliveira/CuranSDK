@@ -34,7 +34,7 @@ namespace curan {
 
 			drawablefunction draw() override;
 			callablefunction call() override;
-			void framebuffer_resize() override;
+
 			void compile() override;
 
 			std::optional<ImageWrapper> get_image_wrapper();

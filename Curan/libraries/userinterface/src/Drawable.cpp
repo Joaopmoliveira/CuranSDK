@@ -7,7 +7,7 @@ Drawable::Drawable(){
 
 }
 
-void Drawable::framebuffer_resize(){
+void Drawable::framebuffer_resize(const SkRect& new_page_size){
     return ;
 }
 

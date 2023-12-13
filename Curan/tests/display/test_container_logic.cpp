@@ -108,7 +108,7 @@ void create_horizontal_layout_propagate(curan::ui::IconResources& resources) {
 
 	container->compile();
 
-	container->framebuffer_resize();
+	container->framebuffer_resize(my_small_window);
 
 	std::cout << "Container layout";
 	std::cout << "Expected:\n";
@@ -148,7 +148,7 @@ void create_vertical_layout_propagate(curan::ui::IconResources& resources) {
 
 	container->compile();
 
-	container->framebuffer_resize();
+	container->framebuffer_resize(my_small_window);
 
 	std::cout << "Container layout";
 	std::cout << "Expected:\n";
@@ -194,7 +194,7 @@ void create_nested_layout_propagate(curan::ui::IconResources& resources){
 	SkRect my_small_window = SkRect::MakeLTRB(50, 50, 950, 950);
 	container2->set_position(my_small_window);
 	container2->compile();
-	container2->framebuffer_resize();
+	container2->framebuffer_resize(my_small_window);
 
 	std::cout << "Container layout";
 	std::cout << "Expected:\n";
@@ -239,7 +239,7 @@ void test_linearization(curan::ui::IconResources& resources) {
 
 	container2->set_position(my_small_window);
 	container2->compile();
-	container2->framebuffer_resize();
+	container2->framebuffer_resize(my_small_window);
 
 	std::vector<curan::ui::drawablefunction> temp_draw;
 	std::vector<curan::ui::callablefunction> temp_call;

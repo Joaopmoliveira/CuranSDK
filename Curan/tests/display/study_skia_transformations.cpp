@@ -6,29 +6,27 @@
 #include <iostream>
 #include <thread>
 
+
+void function(SkPoint p, SkMatrix mat){
+	SkMatrix inverse;
+	mat.invert(&inverse);
+	auto p1 = mat.mapPoint(p);
+	auto p2 = inverse.mapPoint(p);
+	std::printf("direct (%f %f) inverse (%f %f)\n",p1.fX,p1.fY,p2.fX,p2.fY);
+}
+
 int main(){
-    SkRect src = SkRect::MakeXYWH(0,0,1000,800);
-    SkRect dst = SkRect::MakeXYWH(300,300,400,400);
-    SkMatrix matrix;
-    matrix.setAll(-1, -1, -1, -1, -1, -1, -1, -1, -1);
-    if(!matrix.setRectToRect(src, dst, SkMatrix::kFill_ScaleToFit)){
-        return 1;
-    }
-    std::cout << "\n";
-    matrix.dump();
-    std::cout << "\n";
+    SkRect panel = SkRect::MakeLTRB(0,0,220,180);
+	SkRect container = SkRect::MakeLTRB(10,10,110,110);
+    SkRect dst = SkRect::MakeLTRB(0.0,0.0,1.0,1.0);
 
-    SkMatrix inverse_mat;
-    SkVector vec_other_way;
-    if(matrix.invert(&inverse_mat)){
-        vec_other_way = inverse_mat.mapPoint(SkPoint::Make(300,300));
-        std::printf("vector is: %f %f\n",vec_other_way.fX,vec_other_way.fY);
-        vec_other_way = matrix.mapPoint(SkPoint::Make(50,50));
-        std::printf("vector is: %f %f\n",vec_other_way.fX,vec_other_way.fY);
-    }
+    //SkMatrix matrix = SkMatrix::MakeRectToRect(container,dst,SkMatrix::ScaleToFit::kFill_ScaleToFit).preConcat(SkMatrix::MakeRectToRect(panel,container,SkMatrix::ScaleToFit::kStart_ScaleToFit));
 
-    
-
+	function(SkPoint::Make(1.0,1.0),SkMatrix::Translate(SkVector::Make(container.x(),container.y())));
+	function(SkPoint::Make(1.0,1.0),SkMatrix::MakeRectToRect(container,dst,SkMatrix::ScaleToFit::kFill_ScaleToFit));
+    function(SkPoint::Make(0.0,0.0),SkMatrix::MakeRectToRect(container,dst,SkMatrix::ScaleToFit::kFill_ScaleToFit));
+	function(SkPoint::Make(110.0,110.0),SkMatrix::MakeRectToRect(container,dst,SkMatrix::ScaleToFit::kFill_ScaleToFit));
+	function(SkPoint::Make(9.0,9.0),SkMatrix::MakeRectToRect(container,dst,SkMatrix::ScaleToFit::kFill_ScaleToFit));
     return 0;
 }
 

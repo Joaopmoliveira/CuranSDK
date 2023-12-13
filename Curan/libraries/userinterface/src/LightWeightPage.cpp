@@ -63,15 +63,15 @@ LightWeightPage& LightWeightPage::propagate_size_change(const SkRect& new_size){
 			SkRect centered_minimum_position = SkRect::MakeXYWH(new_size.centerX()-cached_minimum_size.width()/2.0f,new_size.centerY()-cached_minimum_size.height()/2.0f,default_padding+cached_minimum_size.width(),default_padding+cached_minimum_size.height());
 			if( new_size.width()>centered_minimum_position.width() && new_size.height()>centered_minimum_position.height()){
 				scene->set_position(centered_minimum_position);
-				scene->framebuffer_resize();
+				scene->framebuffer_resize(new_size);
 			} else {
 				scene->set_position(new_size);
-				scene->framebuffer_resize();		
+				scene->framebuffer_resize(new_size);		
 			}
 
 		} else {
 			scene->set_position(new_size);
-			scene->framebuffer_resize();
+			scene->framebuffer_resize(new_size);
 		}
 
 	}
