@@ -138,18 +138,24 @@ enum MaskUsed
 	DIRTY
 };
 
+enum Direction
+{
+	X = 0,
+	Y = 1,
+	Z = 2
+};
+
 struct Mask
 {
 	MaskUsed _mask_flag = MaskUsed::CLEAN;
 	std::unordered_map<size_t, curan::ui::Stroke> recorded_strokes;
 	Mask()
-	{
-	}
+	{}
 	Mask(const Mask &m) = delete;
 	Mask &operator=(const Mask &m) = delete;
 };
 
-constexpr size_t size_of_slider_in_height = 30;
+constexpr size_t size_of_slider_in_height = 30; 
 
 class SlidingPanel : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<SlidingPanel>
 {
@@ -161,8 +167,19 @@ public:
 		HOVER,
 	};
 
+
+	struct image_info{
+		std::optional<curan::ui::ImageWrapper> image;
+		double width_spacing = 1;
+		double height_spacing = 1;
+	};
+
 private:
-	std::optional<sliding_panel_callback> callback_slide;
+
+	using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
+
+	ImageType::Pointer contained_volume;
+	ExtractFilterType::Pointer extract_filter;
 
 	SkRect reserved_slider_space;
 	SkRect reserved_drawing_space;
@@ -185,7 +202,7 @@ private:
 	curan::ui::IconResources &system_icons;
 	SkFont text_font;
 
-	std::optional<curan::ui::ImageWrapper> background;
+	image_info background;
 
 	bool is_pressed = false;
 	bool is_highlighting = false;
@@ -205,28 +222,79 @@ private:
 	SkColor slider_color = SK_ColorGRAY;
 
 	SliderStates current_state = SliderStates::WAITING;
-
+	Direction direction = Direction::X;
 	SkPaint slider_paint;
 
 	void query_if_required()
 	{
-		_current_index = std::floor(current_value * (masks.size() - 1));
-		static size_t previous = _current_index;
-		if (previous != _current_index)
-			if (callback_slide)
-				background = (*callback_slide)(_current_index);
+		_current_index = std::round(current_value * (masks.size() - 1));
+		static size_t previous = _current_index-1;
+		if (previous != _current_index){
+			background = extract_slice_from_volume(_current_index);
+		}
 		previous = _current_index;
 	}
 
 	Mask &current_mask()
 	{
-		_current_index = std::floor(current_value * (masks.size() - 1));
+		_current_index = std::round(current_value * (masks.size() - 1));
 		return masks[_current_index];
 	}
 
-	SlidingPanel(curan::ui::IconResources &other, size_t contained_values, std::optional<sliding_panel_callback> sliding_callback) : system_icons{other}
+	image_info extract_slice_from_volume(size_t index)
 	{
-		reset(contained_values, sliding_callback);
+		extract_filter = ExtractFilterType::New();
+		extract_filter->SetDirectionCollapseToSubmatrix();
+		extract_filter->SetInput(contained_volume);
+
+		ImageType::RegionType inputRegion = contained_volume->GetBufferedRegion();
+		ImageType::SpacingType spacing = contained_volume->GetSpacing();
+		ImageType::SizeType size = inputRegion.GetSize();
+		
+		auto copy_size = size;
+		size[direction] = 1;
+
+		ImageType::IndexType start = inputRegion.GetIndex();
+		start[direction] = index;
+		ImageType::RegionType desiredRegion;
+		desiredRegion.SetSize(size);
+		desiredRegion.SetIndex(start);
+		extract_filter->SetExtractionRegion(desiredRegion);
+		extract_filter->UpdateLargestPossibleRegion();
+
+		ImageType::Pointer pointer_to_block_of_memory = extract_filter->GetOutput();
+		ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+		auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
+		
+		auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
+
+		image_info info;
+
+		switch(direction){
+		case Direction::X:
+			info.image = curan::ui::ImageWrapper{buff, extracted_size[1], extracted_size[2]};
+			info.width_spacing = spacing[1];
+			info.height_spacing = spacing[2];
+			break;
+		case Direction::Y:
+			info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[2]};
+			info.width_spacing = spacing[0];
+			info.height_spacing = spacing[2];
+			break;
+		case Direction::Z:
+			info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[1]};
+			info.width_spacing = spacing[0];
+			info.height_spacing = spacing[1];
+			break;
+		}
+
+		return info;
+	}
+
+	SlidingPanel(curan::ui::IconResources &other, ImageType::Pointer in_contained_volume,Direction in_direction) : system_icons{other}
+	{
+		update_volume(in_contained_volume,in_direction);
+		query_if_required();
 		paint_square.setStyle(SkPaint::kFill_Style);
 		paint_square.setAntiAlias(true);
 		paint_square.setStrokeWidth(4);
@@ -269,9 +337,9 @@ private:
 	}
 
 public:
-	static std::unique_ptr<SlidingPanel> make(curan::ui::IconResources &other, size_t contained_values)
+	static std::unique_ptr<SlidingPanel> make(curan::ui::IconResources &other,ImageType::Pointer in_contained_volume,Direction in_direction)
 	{
-		std::unique_ptr<SlidingPanel> button = std::unique_ptr<SlidingPanel>(new SlidingPanel{other, contained_values, std::nullopt});
+		std::unique_ptr<SlidingPanel> button = std::unique_ptr<SlidingPanel>(new SlidingPanel{other, in_contained_volume, in_direction});
 		return button;
 	}
 
@@ -283,22 +351,35 @@ public:
 	{
 	}
 
-	void reset(size_t contained_values, std::optional<sliding_panel_callback> slider_callback)
-	{
-		_current_index = std::floor(current_value * (contained_values - 1));
+	void update_volume(ImageType::Pointer in_contained_volume,Direction in_direction){
+		contained_volume = in_contained_volume;
+		direction = in_direction;
+		ImageType::RegionType inputRegion = contained_volume->GetBufferedRegion();
+		ImageType::SizeType size = inputRegion.GetSize();
+		_current_index = std::floor(current_value * (size[direction] - 1));
 		masks.clear();
-		masks = std::vector<Mask>(contained_values);
-		dragable_percent_size = 1.0 / contained_values;
-		if (slider_callback)
-			callback_slide = *slider_callback;
+		masks = std::vector<Mask>(size[direction]);
+		dragable_percent_size = 1.0 / size[direction];
 	}
 
 	void framebuffer_resize(const SkRect &new_page_size) override
 	{
 		auto pos = get_position();
-		reserved_slider_space = SkRect::MakeLTRB(pos.fLeft, pos.fTop, pos.fRight, pos.fTop + size_of_slider_in_height);
-		reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft, pos.fTop + size_of_slider_in_height, pos.fRight, pos.fBottom);
-		background_rect = (background) ? curan::ui::compute_bounded_rectangle(reserved_drawing_space, (*background).image->width(), (*background).image->height()) : pos;
+		reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft, pos.fTop, pos.fRight, pos.fBottom - size_of_slider_in_height);
+		reserved_slider_space = SkRect::MakeLTRB(pos.fLeft, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom);
+		double width = 1;
+		double height = 1;
+		assert(background.image && "failed to assert that the optional is filled");
+
+		if( background.width_spacing*(*background.image).image->width() > background.height_spacing*(*background.image).image->height() ){
+			height = (*background.image).image->height()*background.height_spacing/background.width_spacing;
+			width = (*background.image).image->width();
+		} else {
+			height = (*background.image).image->height();
+			width = (*background.image).image->width()*background.width_spacing/background.height_spacing;
+		}
+
+		background_rect = curan::ui::compute_bounded_rectangle(reserved_drawing_space,width,height);
 		homogenenous_transformation = SkMatrix::MakeRectToRect(background_rect, SkRect::MakeWH(1.0, 1.0), SkMatrix::ScaleToFit::kFill_ScaleToFit);
 		homogenenous_transformation.invert(&inverse_homogenenous_transformation);
 
@@ -412,14 +493,11 @@ public:
 			SkAutoCanvasRestore restore{canvas, true};
 			canvas->drawRect(widget_rect, background_paint);
 
-			if (background)
-			{
-				auto val = *background;
+			if (background.image){
+				auto val = *background.image;
 				auto image_display_surface = val.image;
-				background_rect = curan::ui::compute_bounded_rectangle(widget_rect, image_display_surface->width(), image_display_surface->height());
 				SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{1.0f / 3.0f, 1.0f / 3.0f});
 				canvas->drawImageRect(image_display_surface, background_rect, opt);
-				canvas->drawRect(background_rect, paint_stroke);
 			}
 
 			canvas->drawPoints(SkCanvas::PointMode::kPoints_PointMode, current_stroke.transformed_recorded_points.size(), current_stroke.transformed_recorded_points.data(), paint_stroke);
@@ -527,10 +605,13 @@ public:
 			SkRect dragable = SkRect::MakeXYWH(reserved_slider_space.x() + (reserved_slider_space.width() * (1 - dragable_percent_size)) * current_value, reserved_slider_space.y(), reserved_slider_space.width() * dragable_percent_size, reserved_slider_space.height());
 			SkRect contained_squares = SkRect::MakeXYWH(reserved_slider_space.x(), reserved_slider_space.y(), reserved_slider_space.width() * dragable_percent_size, reserved_slider_space.height());
 			canvas->drawRoundRect(reserved_slider_space, reserved_slider_space.height() / 2.0f, reserved_slider_space.height() / 2.0f, slider_paint);
+			size_t increment_mask = 0;
 			for (const auto &mask : masks)
 			{
+				slider_paint.setColor((increment_mask == _current_index) ? SK_ColorGREEN : hover_color );
 				canvas->drawRoundRect(contained_squares, contained_squares.height() / 2.0f, contained_squares.height() / 2.0f, slider_paint);
 				contained_squares.offset(dragable.width(), 0);
+				++increment_mask;
 			}
 			slider_paint.setStyle(SkPaint::kFill_Style);
 			switch (current_state)
@@ -564,7 +645,7 @@ public:
 														static curan::ui::Move previous_arg = arg;
 														auto previous_state = get_current_state();
 														auto current_state_local = get_current_state();
-														if (reserved_drawing_space.contains(arg.xpos, arg.ypos))
+														if (reserved_drawing_space.contains(arg.xpos, arg.ypos) && current_state_local!=SliderStates::PRESSED)
 														{
 															if (!is_highlighting)
 															{
@@ -580,22 +661,15 @@ public:
 																interacted = true;
 															}
 															zoom_in.store_position(SkPoint::Make((float)arg.xpos, (float)arg.ypos), get_size());
-														}
-														else if (reserved_slider_space.contains(arg.xpos, arg.ypos))
-														{
-															if (previous_state != SliderStates::PRESSED)
-																current_state_local = SliderStates::HOVER;
-															else
-															{
-																auto offset_x = ((float)arg.xpos - reserved_slider_space.x()) / reserved_slider_space.width();
-																auto current_val = get_current_value();
-																current_val += offset_x - read_trigger();
-																trigger(offset_x);
-																set_current_value(current_val);
-															}
-														}
-														else
+														} else if (get_position().contains(arg.xpos, arg.ypos) && current_state_local==SliderStates::PRESSED){
+															auto offset_x = ((float)arg.xpos - reserved_slider_space.x()) / reserved_slider_space.width();
+															auto current_val = get_current_value();
+															current_val += offset_x - read_trigger();
+															trigger(offset_x);
+															set_current_value(current_val);
+														}	else 
 															current_state_local = SliderStates::WAITING;
+															
 
 														if (previous_state != current_state_local)
 															interacted = true;
@@ -632,7 +706,7 @@ public:
 													{
 														auto previous_state = get_current_state();
 														auto current_state_local = get_current_state();
-														if (reserved_slider_space.contains(arg.xpos, arg.ypos))
+														if (get_position().contains(arg.xpos, arg.ypos))
 														{
 															auto offsetx = (float)arg.xoffset / reserved_slider_space.width();
 															auto offsety = (float)arg.yoffset / reserved_slider_space.width();
@@ -710,50 +784,17 @@ int main()
 		DisplayParams param{std::move(context), 2200, 1200};
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, 40);
+		auto volume = get_volume(CURAN_COPIED_RESOURCE_PATH "/dicom_sample/mri_brain");
+	 	if (!volume)
+			 return 1;
+
+		std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, *volume, Direction::Z);
 		SlidingPanel *panel_pointer = image_display.get();
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);
 
 		curan::ui::Page page{std::move(container), SK_ColorBLACK};
-		std::optional<ImageType::Pointer> volume = std::nullopt;
-
-		
-		std::thread t{[&](){
-						  volume = get_volume(CURAN_COPIED_RESOURCE_PATH "/dicom_sample/mri_brain");
-						  if (!volume)
-							  return;
-
-						  using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
-						  auto extractFilter = ExtractFilterType::New();
-						  extractFilter->SetDirectionCollapseToSubmatrix();
-						  extractFilter->SetInput(*volume);
-
-						  ImageType::RegionType inputRegion = (*volume)->GetBufferedRegion();
-						  ImageType::SizeType size = inputRegion.GetSize();
-						  auto copy_size = size;
-						  size[2] = 1; // we extract along z direction
-						
-						  auto image_provider = [=](size_t index)
-						  {
-							  ImageType::IndexType start = inputRegion.GetIndex();
-							  start[2] = index;
-							  ImageType::RegionType desiredRegion;
-							  desiredRegion.SetSize(size);
-							  desiredRegion.SetIndex(start);
-							  extractFilter->SetExtractionRegion(desiredRegion);
-							  extractFilter->UpdateLargestPossibleRegion();
-						  	  
-							  ImageType::Pointer pointer_to_block_of_memory = extractFilter->GetOutput();
-    						  ImageType::SizeType size_itk =  pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
-                              auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(),pointer_to_block_of_memory->GetPixelContainer()->Size()*sizeof(PixelType),pointer_to_block_of_memory);
-                              return curan::ui::ImageWrapper{buff,size_itk[0],size_itk[1]};
-						  };
-
-						  panel_pointer->reset(copy_size[2],image_provider);
-						  
-		}};
 
 		ConfigDraw config_draw;
 
@@ -779,7 +820,6 @@ int main()
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
-		t.join();
 		return 0;
 	}
 	catch (const std::exception &e)
