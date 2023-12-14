@@ -126,12 +126,12 @@ int main()
 
         std::thread t{ [minipage_pointer,&resources,volume](){
                 std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-                std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, *volume, curan::ui::Direction::Z);
+                std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, *volume, curan::ui::Direction::Y);
 
 		        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		        *container << std::move(image_display);
 
-                minipage_pointer->construct(std::move(container),SK_ColorBLACK);
+                minipage_pointer->construct(std::move(container),SK_ColorWHITE);
             }
         };
 

@@ -22,6 +22,7 @@ void MiniPage::compile(){
 void MiniPage::construct(std::unique_ptr<Container> container,SkColor background){
     std::lock_guard<std::mutex> g{get_mutex()};
     main_page = std::move(LightWeightPage::make(std::move(container),background));
+    main_page->propagate_size_change(get_position());
 }
 
 MiniPage::~MiniPage(){
@@ -46,7 +47,7 @@ callablefunction MiniPage::call(){
 
 void MiniPage::framebuffer_resize(const SkRect& new_page_size){
     std::lock_guard<std::mutex> g{get_mutex()};
-    main_page->propagate_size_change(new_page_size);
+    main_page->propagate_size_change(get_position());
 }
 
 }
