@@ -117,7 +117,12 @@ int main()
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);
 
-		curan::ui::Page page{std::move(container), SK_ColorBLACK};
+        std::unique_ptr<curan::ui::MiniPage> minipage = curan::ui::MiniPage::make(container, SK_ColorBLACK);
+
+        auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+		*minimage_container << std::move(minipage);
+
+		curan::ui::Page page{std::move(minimage_container), SK_ColorBLACK};
 
 		ConfigDraw config_draw;
 

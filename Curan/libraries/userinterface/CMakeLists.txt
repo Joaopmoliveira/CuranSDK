@@ -18,13 +18,21 @@ src/ImageDisplay.cpp
 src/ImageWrapper.cpp
 src/Interactive.cpp
 src/Panel.cpp
+src/MiniPage.cpp
+src/SliderPanel.cpp
 )
+
+find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)
+
+include(${ITK_USE_FILE})
+
 
 target_include_directories(userinterface
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 
 target_link_libraries(userinterface PUBLIC
+${ITK_LIBRARIES}
 asio
 utils
 OpenIGTLink

@@ -212,3 +212,15 @@ PUBLIC
 ${ITK_LIBRARIES}
 userinterface
 )
+
+# ---------------------------------------
+
+add_executable(test_minipage_with_panelslider test_minipage_with_panelslider.cpp)
+
+target_compile_definitions(test_minipage_with_panelslider PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_minipage_with_panelslider
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+)
