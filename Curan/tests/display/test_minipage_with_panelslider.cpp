@@ -5,6 +5,7 @@
 #include "userinterface/widgets/definitions/Interactive.h"
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/SliderPanel.h"
+#include "userinterface/widgets/MiniPage.h"
 
 #include <unordered_map>
 #include <optional>
@@ -111,18 +112,28 @@ int main()
 		if (!volume)
 			return 1;
 
-		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, *volume, curan::ui::Direction::Z);
-		curan::ui::SlidingPanel *panel_pointer = image_display.get();
+		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, *volume, curan::ui::Direction::Y);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);
 
-        std::unique_ptr<curan::ui::MiniPage> minipage = curan::ui::MiniPage::make(container, SK_ColorBLACK);
-
+        std::unique_ptr<curan::ui::MiniPage> minipage = curan::ui::MiniPage::make(std::move(container), SK_ColorBLACK);
+        curan::ui::MiniPage* minipage_pointer = minipage.get();
         auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*minimage_container << std::move(minipage);
 
 		curan::ui::Page page{std::move(minimage_container), SK_ColorBLACK};
+
+        std::thread t{ [minipage_pointer,&resources,volume](){
+                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, *volume, curan::ui::Direction::Z);
+
+		        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+		        *container << std::move(image_display);
+
+                minipage_pointer->construct(std::move(container),SK_ColorBLACK);
+            }
+        };
 
 		ConfigDraw config_draw;
 
@@ -148,6 +159,7 @@ int main()
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
+        t.join();
 		return 0;
 	}
 	catch (const std::exception &e)
