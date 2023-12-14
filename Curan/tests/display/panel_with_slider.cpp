@@ -32,40 +32,6 @@ constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
 
-std::optional<curan::ui::ImageWrapper> get_image()
-{
-	using ImageReaderType = itk::ImageFileReader<DICOMImageType>;
-	auto ImageReader = ImageReaderType::New();
-
-	std::string dirName{CURAN_COPIED_RESOURCE_PATH "/dicom_sample/mri_brain/233.dcm"};
-	ImageReader->SetFileName(dirName);
-
-	using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
-	auto rescale = RescaleType::New();
-	rescale->SetInput(ImageReader->GetOutput());
-	rescale->SetOutputMinimum(0);
-	rescale->SetOutputMaximum(itk::NumericTraits<PixelType>::max());
-
-	using FilterType = itk::CastImageFilter<DICOMImageType, ImageType>;
-	auto filter = FilterType::New();
-	filter->SetInput(rescale->GetOutput());
-
-	try
-	{
-		filter->Update();
-	}
-	catch (const itk::ExceptionObject &ex)
-	{
-		std::cout << ex << std::endl;
-		return std::nullopt;
-	}
-
-	ImageType::Pointer pointer_to_block_of_memory = filter->GetOutput();
-	ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
-	auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
-	return curan::ui::ImageWrapper{buff, size_itk[0], size_itk[1]};
-}
-
 std::optional<ImageType::Pointer> get_volume(std::string path)
 {
 	using ReaderType = itk::ImageSeriesReader<DICOMImageType>;
@@ -187,7 +153,6 @@ private:
 
 	SkColor colbuton = {SK_ColorRED};
 	SkPaint paint_square;
-	SkPaint bluring_paint;
 	SkPaint paint_stroke;
 	SkPaint background_paint;
 	SkPaint paint_points;
@@ -315,8 +280,6 @@ private:
 		paint_points.setStrokeWidth(1);
 		paint_points.setColor(SK_ColorLTGRAY);
 
-		imgfilter = SkImageFilters::Blur(10, 10, nullptr);
-		bluring_paint.setImageFilter(imgfilter);
 		options = SkSamplingOptions();
 
 		const char *fontFamily = nullptr;
