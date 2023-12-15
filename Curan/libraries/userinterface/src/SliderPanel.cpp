@@ -175,6 +175,7 @@ namespace ui {
 
 	SlidingPanel::SlidingPanel(curan::ui::IconResources &other, ImageType::Pointer in_contained_volume, Direction in_direction) : system_icons{other}
 	{
+		set_current_state(SliderStates::WAITING);
 		update_volume(in_contained_volume, in_direction);
 		query_if_required();
 		paint_square.setStyle(SkPaint::kFill_Style);
@@ -197,6 +198,11 @@ namespace ui {
 		paint_points.setStrokeWidth(1);
 		paint_points.setColor(SK_ColorLTGRAY);
 
+		highlighted_panel.setStyle(SkPaint::kStroke_Style);
+		highlighted_panel.setAntiAlias(true);
+		highlighted_panel.setStrokeWidth(8);
+		highlighted_panel.setColor(SK_ColorLTGRAY);
+
 		options = SkSamplingOptions();
 
 		const char *fontFamily = nullptr;
@@ -206,6 +212,7 @@ namespace ui {
 
 		text_font = SkFont(typeface, 20, 1.0f, 0.0f);
 		text_font.setEdging(SkFont::Edging::kAntiAlias);
+
 	}
 
 	void SlidingPanel::insert_in_map(const curan::ui::PointCollection &future_stroke)
@@ -246,12 +253,10 @@ namespace ui {
 	void SlidingPanel::framebuffer_resize(const SkRect &new_page_size)
 	{
 		auto pos = get_position();
-		reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft, pos.fTop, pos.fRight, pos.fBottom - size_of_slider_in_height);
-		reserved_slider_space = SkRect::MakeLTRB(pos.fLeft, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom);
+		reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft+8, pos.fTop+8, pos.fRight, pos.fBottom - size_of_slider_in_height-8);
+		reserved_slider_space = SkRect::MakeLTRB(pos.fLeft+8, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom-8);
 		double width = 1;
 		double height = 1;
-
-		size_t address = (size_t) this;
 
 		assert(background.image && "failed to assert that the optional is filled");
 
@@ -283,7 +288,9 @@ namespace ui {
 		{
 			auto widget_rect = get_position();
 			SkAutoCanvasRestore restore{canvas, true};
+			highlighted_panel.setColor(get_hightlight_color());
 			canvas->drawRect(widget_rect, background_paint);
+			canvas->drawRect(widget_rect, highlighted_panel);
 
 			if (background.image)
 			{
@@ -312,8 +319,10 @@ namespace ui {
 			size_t increment_mask = 0;
 			for (const auto &mask : masks)
 			{
-				slider_paint.setColor((increment_mask == _current_index) ? SK_ColorGREEN : hover_color);
-				canvas->drawRoundRect(contained_squares, contained_squares.height() / 2.0f, contained_squares.height() / 2.0f, slider_paint);
+				if(mask){
+					slider_paint.setColor((increment_mask == _current_index) ? SK_ColorGREEN : hover_color);
+					canvas->drawRoundRect(contained_squares, contained_squares.height() / 2.0f, contained_squares.height() / 2.0f, slider_paint);
+				}
 				contained_squares.offset(dragable.width(), 0);
 				++increment_mask;
 			}
@@ -357,9 +366,13 @@ namespace ui {
 																	insert_in_map(current_stroke);
 																	current_stroke.clear();
 															}
+															set_hightlight_color(SK_ColorDKGRAY);
+															is_pressed = false;
+															std::printf("my adress is: %llu\n",(size_t) this);
 															return;
 														}
-															
+														set_hightlight_color(SK_ColorRED);
+														
 														static curan::ui::Move previous_arg = arg;
 														auto previous_state = get_current_state();
 														auto current_state_local = get_current_state();
@@ -389,6 +402,7 @@ namespace ui {
 															current_val += offset_x - read_trigger();
 															trigger(offset_x);
 															set_current_value(current_val);
+															interacted = true;
 														}
 														else
 															current_state_local = SliderStates::WAITING;
@@ -400,6 +414,18 @@ namespace ui {
 													},
 													[&](curan::ui::Press arg)
 													{
+														//quick reject in case of outside the panel area
+														if(!get_position().contains(arg.xpos,arg.ypos)){
+															set_current_state(SliderStates::WAITING);
+															if (!current_stroke.empty()){
+																	insert_in_map(current_stroke);
+																	current_stroke.clear();
+															}
+															is_pressed = false;
+															set_hightlight_color(SK_ColorDKGRAY);
+															return;
+														}
+														set_hightlight_color(SK_ColorRED);
 														auto previous_state = get_current_state();
 														auto current_state_local = get_current_state();
 														if (reserved_drawing_space.contains(arg.xpos, arg.ypos))
@@ -417,6 +443,7 @@ namespace ui {
 														{
 															trigger((arg.xpos - reserved_slider_space.x()) / reserved_slider_space.width());
 															current_state_local = SliderStates::PRESSED;
+															interacted = true;
 														}
 														else
 															current_state_local = SliderStates::WAITING;
@@ -426,21 +453,27 @@ namespace ui {
 													},
 													[&](curan::ui::Scroll arg)
 													{
+														//quick reject in case of outside the panel area
+														if(!get_position().contains(arg.xpos,arg.ypos)){
+															set_current_state(SliderStates::WAITING);
+															if (!current_stroke.empty()){
+																	insert_in_map(current_stroke);
+																	current_stroke.clear();
+															}
+															is_pressed = false;
+															set_hightlight_color(SK_ColorDKGRAY);
+															return;
+														}
+														set_hightlight_color(SK_ColorRED);
 														auto previous_state = get_current_state();
-														auto current_state_local = get_current_state();
-														if (get_position().contains(arg.xpos, arg.ypos))
-														{
-															auto offsetx = (float)arg.xoffset / reserved_slider_space.width();
-															auto offsety = (float)arg.yoffset / reserved_slider_space.width();
-															auto current_val = get_current_value();
-															current_val += (std::abs(offsetx) > std::abs(offsety)) ? offsetx : offsety;
-															set_current_value(current_val);
-															current_state_local = SliderStates::SCROLL;
-														}
-														else
-														{
-															current_state_local = SliderStates::WAITING;
-														}
+														auto current_state_local = previous_state;
+
+														auto offsetx = (float)arg.xoffset / reserved_slider_space.width();
+														auto offsety = (float)arg.yoffset / reserved_slider_space.width();
+														auto current_val = get_current_value();
+														current_val += (std::abs(offsetx) > std::abs(offsety)) ? offsetx : offsety;
+														set_current_value(current_val);
+														current_state_local = SliderStates::SCROLL;
 														if (previous_state != current_state_local)
 															interacted = true;
 														set_current_state(current_state_local);
@@ -448,12 +481,22 @@ namespace ui {
 													[&](curan::ui::Unpress arg)
 													{
 														is_pressed = false;
+														//quick reject in case of outside the panel area
+														if(!get_position().contains(arg.xpos,arg.ypos)){
+															set_current_state(SliderStates::WAITING);
+															if (!current_stroke.empty()){
+																	insert_in_map(current_stroke);
+																	current_stroke.clear();
+															}
+															set_hightlight_color(SK_ColorDKGRAY);
+															return;
+														}
+														set_hightlight_color(SK_ColorDKGRAY);
 														if (!current_stroke.empty())
 														{
 															insert_in_map(current_stroke);
 															current_stroke.clear();
 														}
-														interacted = true;
 														auto previous_state = get_current_state();
 														auto current_state_local = get_current_state();
 														if (reserved_slider_space.contains(arg.xpos, arg.ypos))
@@ -468,6 +511,8 @@ namespace ui {
 													{
 														if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
 														{
+															if(get_hightlight_color()!=SK_ColorRED)
+																return;
 															if (zoom_in)
 																zoom_in.deactivate();
 															else
@@ -477,6 +522,8 @@ namespace ui {
 
 														if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS)
 														{
+															if(get_hightlight_color()!=SK_ColorRED)
+																return;
 															is_highlighting = !is_highlighting;
 															if (!current_stroke.empty())
 															{

@@ -129,25 +129,55 @@ void create_three_page_horizontal_slider(curan::ui::IconResources& resources, Im
     minipage->construct(std::move(container),SK_ColorBLACK);
 };
 
-std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,ImageType::Pointer volume) {
+std::unique_ptr<curan::ui::Overlay> create_layout_page(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,ImageType::Pointer volume) {
 	using namespace curan::ui;
 
-	auto button = Button::make("Layout","layout1x1.png",resources);
+	auto button = Button::make(" ","layout1x1.png",resources);
 	button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
 	button->add_press_call([&resources,minipage,volume](Button* button, Press press ,ConfigDraw* config) {
 		create_one_page_horizontal_slider(resources,volume,minipage);
 	});
 
-	auto button2 = Button::make("Layout","layout1x2.png",resources);
+	auto button2 = Button::make(" ","layout1x2.png",resources);
 	button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
 	button2->add_press_call([&resources,minipage,volume](Button* button, Press press ,ConfigDraw* config) {
 		create_two_page_horizontal_slider(resources,volume,minipage);
 	});
 
-	auto button3 = Button::make("Layout","layout1x3.png",resources);
+	auto button3 = Button::make(" ","layout1x3.png",resources);
 	button3->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
 	button3->add_press_call([&resources,minipage,volume](Button* button, Press press ,ConfigDraw* config) {
 		create_three_page_horizontal_slider(resources,volume,minipage);
+	});
+
+	auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*viwers_container << std::move(button) << std::move(button2) << std::move(button3);
+	viwers_container->set_color(SK_ColorTRANSPARENT);
+	
+	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125),true);
+}
+
+std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,ImageType::Pointer volume) {
+	using namespace curan::ui;
+
+	auto button = Button::make("Layout",resources);
+	button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+	button->add_press_call([&resources,minipage,volume](Button* button, Press press ,ConfigDraw* config) {
+		if(config->stack_page!=nullptr){
+			config->stack_page->stack(create_layout_page(resources,minipage,volume));
+		}
+	});
+
+	auto button2 = Button::make("Resample AC-PC",resources);
+	button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+	button2->add_press_call([&resources,minipage,volume](Button* button, Press press ,ConfigDraw* config) {
+		
+	});
+
+	auto button3 = Button::make("Define Trajectory",resources);
+	button3->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+	button3->add_press_call([&resources,minipage,volume](Button* button, Press press ,ConfigDraw* config) {
+		
 	});
 
 	auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);

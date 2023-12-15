@@ -17,10 +17,11 @@ namespace ui {
 
 using stroke_added_callback = std::function<curan::ui::Stroke(void)>;
 using sliding_panel_callback = std::function<std::optional<curan::ui::ImageWrapper>(size_t slider_value)>;
+using clicked_highlighted_stroke_callback = std::function<curan::ui::Stroke(void)>;
 
 enum MaskUsed
 {
-	CLEAN,
+	CLEAN = 0,
 	DIRTY
 };
 
@@ -33,11 +34,11 @@ enum Direction
 
 class Mask
 {
-	MaskUsed _mask_flag = MaskUsed::CLEAN;
+	MaskUsed _mask_flag;
 	std::unordered_map<size_t, curan::ui::Stroke> recorded_strokes;
 
 public:
-	Mask(){}
+	Mask() : _mask_flag{MaskUsed::CLEAN} {}
 	Mask(const Mask &m) = delete;
 	Mask &operator=(const Mask &m) = delete;
 
@@ -49,6 +50,10 @@ public:
 	}
 
 	void container_resized(const SkMatrix &inverse_homogenenous_transformation);
+
+	inline operator bool() const {
+		return _mask_flag;
+	}
 
 	void draw(SkCanvas *canvas,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font);
 };
@@ -88,10 +93,13 @@ private:
 	size_t counter = 0;
 
 	SkColor colbuton = {SK_ColorRED};
+
 	SkPaint paint_square;
 	SkPaint paint_stroke;
 	SkPaint background_paint;
 	SkPaint paint_points;
+
+	SkPaint highlighted_panel;
 
 	std::vector<Mask> masks;
 	curan::ui::PointCollection current_stroke;
@@ -118,9 +126,10 @@ private:
 	sk_sp<SkImageFilter> imgfilter;
 
 	SkColor hover_color = SK_ColorLTGRAY;
-	SkColor waiting_color = SK_ColorCYAN;
+	SkColor waiting_color = SK_ColorLTGRAY;
 	SkColor click_color = SK_ColorGRAY;
 	SkColor slider_color = SK_ColorGRAY;
+	SkColor highlight_color = SK_ColorGRAY;
 
 	SliderStates current_state = SliderStates::WAITING;
 	Direction direction = Direction::X;
@@ -219,6 +228,19 @@ public:
 	{
 		std::lock_guard<std::mutex> g{get_mutex()};
 		return slider_color;
+	}
+
+	inline SlidingPanel &set_hightlight_color(SkColor new_hightlight_color)
+	{
+		std::lock_guard<std::mutex> g{get_mutex()};
+		highlight_color = new_hightlight_color;
+		return *(this);
+	}
+
+	inline SkColor get_hightlight_color()
+	{
+		std::lock_guard<std::mutex> g{get_mutex()};
+		return highlight_color;
 	}
 
 	inline SlidingPanel &set_slider_color(SkColor new_slider_color)
