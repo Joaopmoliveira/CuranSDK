@@ -68,7 +68,7 @@ int main() {
 
     	curan::ui::Page page{std::move(container),SK_ColorBLACK};
 
-		ConfigDraw config_draw;
+		ConfigDraw config{&page};
 
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
@@ -81,7 +81,7 @@ int main() {
         	page.draw(canvas);
         	auto signals = viewer->process_pending_signals();
         	if (!signals.empty())
-            	page.propagate_signal(signals.back(),&config_draw);
+            	page.propagate_signal(signals.back(),&config);
         	glfwPollEvents();
     
         	bool val = viewer->swapBuffers();

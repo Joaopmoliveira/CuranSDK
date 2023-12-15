@@ -107,8 +107,8 @@ namespace ui {
 
 	void SlidingPanel::query_if_required()
 	{
+		size_t previous = _current_index;
 		_current_index = std::round(current_value * (masks.size() - 1));
-		static size_t previous = _current_index - 1;
 		if (previous != _current_index)
 		{
 			background = extract_slice_from_volume(_current_index);
@@ -250,6 +250,9 @@ namespace ui {
 		reserved_slider_space = SkRect::MakeLTRB(pos.fLeft, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom);
 		double width = 1;
 		double height = 1;
+
+		size_t address = (size_t) this;
+
 		assert(background.image && "failed to assert that the optional is filled");
 
 		if (background.width_spacing * (*background.image).image->width() > background.height_spacing * (*background.image).image->height())

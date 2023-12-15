@@ -26,6 +26,29 @@ Button::Button(const std::string& in_button_text,IconResources& system_icons) : 
 	typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 }
 
+Button::Button(const std::string& in_button_text,const std::string& in_icon_identifier,IconResources& system_icons) : icon_identifier{in_icon_identifier}, button_text{in_button_text} , system_icons{system_icons}{
+	hover_color = SK_ColorDKGRAY;
+	waiting_color = SK_ColorGRAY;
+	click_color = SK_ColorCYAN;
+	text_color = SK_ColorWHITE;
+
+	paint.setStyle(SkPaint::kFill_Style);
+	paint.setAntiAlias(true);
+	paint.setStrokeWidth(4);
+	paint.setColor(hover_color);
+
+	paint_text.setStyle(SkPaint::kFill_Style);
+	paint_text.setAntiAlias(true);
+	paint_text.setStrokeWidth(4);
+	paint_text.setColor(text_color);
+
+	const char* fontFamily = nullptr;
+	SkFontStyle fontStyle;
+	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+	typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+}
+
+
 Button::~Button(){
 
 }
@@ -35,10 +58,15 @@ std::unique_ptr<Button> Button::make(const std::string& button_text,IconResource
 	return button;
 }	
 
+std::unique_ptr<Button> Button::make(const std::string& button_text,const std::string& icon_identifier,IconResources& system_icons){
+	std::unique_ptr<Button> button = std::unique_ptr<Button>(new Button{button_text,icon_identifier,system_icons});
+	return button;
+}	
+
 drawablefunction Button::draw(){
 if(!compiled)
 	throw std::runtime_error("must compile the button before drawing operations");
-auto lamb = [this](SkCanvas* canvas) {
+	auto lamb = [this](SkCanvas* canvas) {
 		switch (current_state) {
 		case ButtonStates::WAITING:
 			paint.setColor(get_waiting_color());
@@ -154,7 +182,7 @@ void Button::compile(){
 	text_font.measureText(button_text.data(), button_text.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(button_text.c_str(), text_font);
 
-	if (system_icons.is_loaded()) {
+	if (system_icons.is_loaded() && icon_identifier.size()>0) {
 		sk_sp<SkImage> image;
 		system_icons.get_icon(image,icon_identifier);
 		icon_data = image;
