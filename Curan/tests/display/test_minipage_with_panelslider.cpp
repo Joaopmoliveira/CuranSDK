@@ -135,7 +135,7 @@ int main()
             }
         };
 
-		ConfigDraw config_draw;
+		ConfigDraw config_draw{&page};
 
 		while (!glfwWindowShouldClose(viewer->window))
 		{

@@ -64,6 +64,7 @@ public:
 		WAITING,
 		PRESSED,
 		HOVER,
+		SCROLL,
 	};
 
 	struct image_info

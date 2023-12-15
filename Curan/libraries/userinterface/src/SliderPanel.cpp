@@ -326,6 +326,9 @@ namespace ui {
 			case SliderStates::PRESSED:
 				slider_paint.setColor(get_click_color());
 				break;
+			case SliderStates::SCROLL:
+				slider_paint.setColor(get_click_color());
+				break;
 			}
 
 			canvas->drawRoundRect(dragable, reserved_slider_space.height() / 2.0f, reserved_slider_space.height() / 2.0f, slider_paint);
@@ -338,11 +341,22 @@ namespace ui {
 		auto lamb = [this](curan::ui::Signal sig, curan::ui::ConfigDraw *config)
 		{
 			bool interacted = false;
+			
 			std::visit(curan::utilities::overloaded{[](curan::ui::Empty arg) {
 
 													},
 													[&](curan::ui::Move arg)
 													{
+														//quick reject in case of outside the panel area
+														if(!get_position().contains(arg.xpos,arg.ypos)){
+															set_current_state(SliderStates::WAITING);
+															if (!current_stroke.empty()){
+																	insert_in_map(current_stroke);
+																	current_stroke.clear();
+															}
+															return;
+														}
+															
 														static curan::ui::Move previous_arg = arg;
 														auto previous_state = get_current_state();
 														auto current_state_local = get_current_state();
@@ -362,6 +376,7 @@ namespace ui {
 																}
 																interacted = true;
 															}
+															current_state_local = SliderStates::WAITING;
 															
 														}
 														else if (get_position().contains(arg.xpos, arg.ypos) && current_state_local == SliderStates::PRESSED)
@@ -417,7 +432,7 @@ namespace ui {
 															auto current_val = get_current_value();
 															current_val += (std::abs(offsetx) > std::abs(offsety)) ? offsetx : offsety;
 															set_current_value(current_val);
-															current_state_local = SliderStates::PRESSED;
+															current_state_local = SliderStates::SCROLL;
 														}
 														else
 														{
