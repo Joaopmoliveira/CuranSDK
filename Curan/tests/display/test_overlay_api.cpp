@@ -193,7 +193,7 @@ std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources&
 	container2->set_divisions({0.0 , 0.5 , 1.0});
 	container2->set_color(SK_ColorTRANSPARENT);
 
-	return Overlay::make(std::move(container2),SK_ColorTRANSPARENT);
+	return Overlay::make(std::move(container2),SK_ColorTRANSPARENT,true);
 }
 
 

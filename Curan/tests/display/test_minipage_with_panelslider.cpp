@@ -6,7 +6,7 @@
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/SliderPanel.h"
 #include "userinterface/widgets/MiniPage.h"
-
+#include "userinterface/widgets/Overlay.h"
 #include <unordered_map>
 #include <optional>
 #include <functional>
@@ -97,6 +97,66 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
 	return filter->GetOutput();
 }
 
+void create_one_page_horizontal_slider(curan::ui::IconResources& resources, ImageType::Pointer volume,curan::ui::MiniPage* minipage){
+	using namespace curan::ui;
+    std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, volume, curan::ui::Direction::X);
+
+	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+	*container << std::move(image_display);
+
+    minipage->construct(std::move(container),SK_ColorBLACK);
+};
+
+void create_two_page_horizontal_slider(curan::ui::IconResources& resources, ImageType::Pointer volume,curan::ui::MiniPage* minipage){
+	using namespace curan::ui;
+    std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, volume, curan::ui::Direction::X);
+	std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, volume, curan::ui::Direction::Y);
+	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+	*container << std::move(image_display_x) << std::move(image_display_y);
+
+    minipage->construct(std::move(container),SK_ColorBLACK);
+};
+
+void create_three_page_horizontal_slider(curan::ui::IconResources& resources, ImageType::Pointer volume,curan::ui::MiniPage* minipage){
+	using namespace curan::ui;
+    std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, volume, curan::ui::Direction::X);
+	std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, volume, curan::ui::Direction::Y);
+	std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, volume, curan::ui::Direction::Z);
+
+	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+	*container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
+
+    minipage->construct(std::move(container),SK_ColorBLACK);
+};
+
+std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,ImageType::Pointer volume) {
+	using namespace curan::ui;
+
+	auto button = Button::make("Layout","layout1x1.png",resources);
+	button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
+	button->add_press_call([&resources,minipage,volume](Button* button, Press press ,ConfigDraw* config) {
+		create_one_page_horizontal_slider(resources,volume,minipage);
+	});
+
+	auto button2 = Button::make("Layout","layout1x2.png",resources);
+	button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
+	button2->add_press_call([&resources,minipage,volume](Button* button, Press press ,ConfigDraw* config) {
+		create_two_page_horizontal_slider(resources,volume,minipage);
+	});
+
+	auto button3 = Button::make("Layout","layout1x3.png",resources);
+	button3->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
+	button3->add_press_call([&resources,minipage,volume](Button* button, Press press ,ConfigDraw* config) {
+		create_three_page_horizontal_slider(resources,volume,minipage);
+	});
+
+	auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*viwers_container << std::move(button) << std::move(button2) << std::move(button3);
+	viwers_container->set_color(SK_ColorTRANSPARENT);
+	
+	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125),true);
+}
+
 int main()
 {
 	try
@@ -112,30 +172,27 @@ int main()
 		if (!volume)
 			return 1;
 
-		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, *volume, curan::ui::Direction::Y);
+		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, *volume, curan::ui::Direction::Z);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);
 
         std::unique_ptr<curan::ui::MiniPage> minipage = curan::ui::MiniPage::make(std::move(container), SK_ColorBLACK);
-        curan::ui::MiniPage* minipage_pointer = minipage.get();
+		curan::ui::MiniPage* minipage_pointer = minipage.get();
+		minipage->add_key_call([&resources,volume,minipage_pointer](curan::ui::MiniPage* minipage,curan::ui::Key arg,curan::ui::ConfigDraw* draw){
+			if (arg.key == GLFW_KEY_H && arg.action == GLFW_PRESS){
+				if(draw->stack_page!=nullptr){
+					draw->stack_page->stack(create_option_page(resources,minipage_pointer,*volume));
+				}
+			}
+		});
+
         auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*minimage_container << std::move(minipage);
 
 		curan::ui::Page page{std::move(minimage_container), SK_ColorBLACK};
 
-        std::thread t{ [minipage_pointer,&resources,volume](){
-                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-                std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, *volume, curan::ui::Direction::Y);
-
-		        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-		        *container << std::move(image_display);
-
-                minipage_pointer->construct(std::move(container),SK_ColorWHITE);
-            }
-        };
-
-		ConfigDraw config_draw{&page};
+		ConfigDraw config{&page};
 
 		while (!glfwWindowShouldClose(viewer->window))
 		{
@@ -150,7 +207,7 @@ int main()
 			page.draw(canvas);
 			auto signals = viewer->process_pending_signals();
 			if (!signals.empty())
-				page.propagate_signal(signals.back(), &config_draw);
+				page.propagate_signal(signals.back(), &config);
 			glfwPollEvents();
 
 			bool val = viewer->swapBuffers();
@@ -159,7 +216,6 @@ int main()
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
-        t.join();
 		return 0;
 	}
 	catch (const std::exception &e)
