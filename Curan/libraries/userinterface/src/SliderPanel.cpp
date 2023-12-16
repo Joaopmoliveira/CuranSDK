@@ -7,6 +7,34 @@ namespace ui {
 
 	size_t VolumetricMask::counter = 0;
 
+	VolumetricMask::VolumetricMask(ImageType::Pointer volume) : image{volume}{
+		update_volume(volume);
+	}
+
+	void VolumetricMask::container_resized(const SkMatrix &inverse_homogenenous_transformation,const Direction& direction,const float& along_dimension){
+		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
+		switch(direction){
+			case Direction::X:
+			{
+				auto _current_index = std::round(along_dimension * (masks_x.size() - 1));
+				masks_x[_current_index].container_resized(inverse_homogenenous_transformation);
+				break;
+			}
+			case Direction::Y:
+			{
+				auto _current_index = std::round(along_dimension * (masks_y.size() - 1));
+				masks_y[_current_index].container_resized(inverse_homogenenous_transformation);
+				break;
+			}
+			case Direction::Z:
+			{
+				auto _current_index = std::round(along_dimension * (masks_z.size() - 1));
+				masks_z[_current_index].container_resized(inverse_homogenenous_transformation);
+				break;
+			}
+		};
+	}
+
 	void Mask::container_resized(const SkMatrix &inverse_homogenenous_transformation)
 	{
 		for (auto &stro : recorded_strokes)
@@ -20,7 +48,7 @@ namespace ui {
 			},stro.second);
 	}
 
-	void Mask::draw(SkCanvas *canvas,const SkMatrix& inverse_homogenenous_transformation,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font)
+	std::optional<curan::ui::Stroke> Mask::draw(SkCanvas *canvas,const SkMatrix& inverse_homogenenous_transformation,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font,bool is_pressed)
 	{
 		if (is_highlighting)
 		{
@@ -53,7 +81,7 @@ namespace ui {
 						paint_square.setColor(SkColorSetARGB(155, 0, 0, 0));
 						canvas->drawCircle(SkPoint::Make(point.fX + 10, point.fY + 10), 20, paint_square);
 						paint_square.setColor(SK_ColorGREEN);
-						std::string indentifier = "" + std::to_string(begin->first);
+						std::string indentifier = "s" + std::to_string(begin->first);
 						paint_stroke.setStrokeWidth(0.5f);
 						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
 						paint_stroke.setStrokeWidth(8);
@@ -62,7 +90,7 @@ namespace ui {
 						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
 						canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
 						paint_square.setColor(SK_ColorGREEN);
-						std::string indentifier = "" + std::to_string(begin->first);
+						std::string indentifier = "p" + std::to_string(begin->first);
 						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
 					}
 				},begin->second);
@@ -81,6 +109,9 @@ namespace ui {
 				},minimum_index->second);
 				paint_stroke.setStrokeWidth(8);
 				paint_stroke.setColor(SK_ColorGREEN);
+				if(is_pressed){
+					return minimum_index->second;
+				}
 			}
 		}
 		else
@@ -117,6 +148,7 @@ namespace ui {
 					}
 				},begin->second);
         }
+		return std::nullopt;
     }
 
 
@@ -298,6 +330,19 @@ namespace ui {
 	}
 
 
+	std::vector<Stroke> SlidingPanel::process_pending_highlights(){
+		std::vector<Stroke> received_signals;
+		int size = to_process.size();
+		received_signals.reserve(size);
+		for (int index = 0; index < size; ++index) {
+			Stroke signal = SkPoint{SkPoint::Make(0,0)} ;
+			bool val = to_process.try_pop(signal);
+			if(val)
+				received_signals.push_back(signal);
+		}
+		return received_signals;
+	}
+
 	curan::ui::drawablefunction SlidingPanel::draw()
 	{
 		auto lamb = [this](SkCanvas *canvas)
@@ -317,11 +362,13 @@ namespace ui {
 			}
 
 			canvas->drawPoints(SkCanvas::PointMode::kPoints_PointMode, current_stroke.transformed_recorded_points.size(), current_stroke.transformed_recorded_points.data(), paint_stroke);
-
 			{
 				std::lock_guard<std::mutex> g{get_mutex()};
 				assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
-				volumetric_mask->current_mask(direction,current_value).draw(canvas,inverse_homogenenous_transformation,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting,paint_stroke,paint_square,text_font);
+				auto highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction,current_value).draw(canvas,inverse_homogenenous_transformation,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting,paint_stroke,paint_square,text_font,is_pressed);
+				if(highlighted_and_pressed_stroke)
+					to_process.push(*highlighted_and_pressed_stroke);
+				
 			}
 
 			if (zoom_in)

@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <vector>
 #include "utils/Overloading.h"
+#include "utils/SafeQueue.h"
 
 namespace curan {
 namespace ui {
@@ -52,7 +53,7 @@ public:
 		return recorded_strokes.try_emplace(std::forward<T>(u)...);
 	}
 
-	void erase(std::unordered_map<size_t, curan::ui::Stroke>::iterator it){
+	inline void erase(std::unordered_map<size_t, curan::ui::Stroke>::iterator it){
 		recorded_strokes.erase(it);
 	}
 
@@ -62,7 +63,7 @@ public:
 		return _mask_flag;
 	}
 
-	void draw(SkCanvas *canvas,const SkMatrix& inverse_homogenenous_transformation,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font);
+	std::optional<curan::ui::Stroke> draw(SkCanvas *canvas,const SkMatrix& inverse_homogenenous_transformation,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font, bool is_pressed);
 };
 
 constexpr unsigned int Dimension = 3;
@@ -82,9 +83,7 @@ class VolumetricMask{
 
 public:
 
-	VolumetricMask(ImageType::Pointer volume) : image{volume}{
-		update_volume(volume);
-	}
+	VolumetricMask(ImageType::Pointer volume);
 
 	VolumetricMask(const VolumetricMask &m) = delete;
 	VolumetricMask& operator=(const VolumetricMask&) = delete;
@@ -183,29 +182,7 @@ public:
 		return image;
 	}
 
-	inline void container_resized(const SkMatrix &inverse_homogenenous_transformation,const Direction& direction,const float& along_dimension){
-		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
-		switch(direction){
-			case Direction::X:
-			{
-				auto _current_index = std::round(along_dimension * (masks_x.size() - 1));
-				masks_x[_current_index].container_resized(inverse_homogenenous_transformation);
-				break;
-			}
-			case Direction::Y:
-			{
-				auto _current_index = std::round(along_dimension * (masks_y.size() - 1));
-				masks_y[_current_index].container_resized(inverse_homogenenous_transformation);
-				break;
-			}
-			case Direction::Z:
-			{
-				auto _current_index = std::round(along_dimension * (masks_z.size() - 1));
-				masks_z[_current_index].container_resized(inverse_homogenenous_transformation);
-				break;
-			}
-		};
-	}
+	void container_resized(const SkMatrix &inverse_homogenenous_transformation,const Direction& direction,const float& along_dimension);
 
 	inline size_t dimension(const Direction& direction) const {
 		switch(direction){
@@ -222,7 +199,6 @@ public:
 
 	template <typename... T>
 	void for_each(const Direction& direction,T&&... u) const {
-
 		switch(direction){
 			case Direction::X:
 				std::for_each(masks_x.begin(),masks_x.end(),std::forward<T>(u)...);
@@ -304,6 +280,8 @@ private:
 
 	SkPaint highlighted_panel;
 
+	curan::utilities::SafeQueue<Stroke> to_process;
+
 	VolumetricMask* volumetric_mask = nullptr;
 	curan::ui::PointCollection current_stroke;
 
@@ -350,6 +328,8 @@ public:
 	static std::unique_ptr<SlidingPanel> make(curan::ui::IconResources &other,  VolumetricMask* mask, Direction in_direction);
 
 	~SlidingPanel();
+
+	std::vector<Stroke> process_pending_highlights();
 
 	void compile() override;
 

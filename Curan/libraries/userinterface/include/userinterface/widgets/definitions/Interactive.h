@@ -74,8 +74,6 @@ struct PointCollection{
 	}
 };
 
-constexpr char point_identifier = 'c';
-
 struct Point{
 	std::optional<SkPoint> transformed_point;
 	SkPoint normalized_point;
@@ -95,7 +93,6 @@ struct Path{
 	SkPath rendered_path;
 	SkPoint begin_point;
 	std::vector<SkPoint> normalized_recorded_points;
-	char identifier = 'n';
 
 	Path(std::vector<SkPoint> in_recorded_points,const SkMatrix& mat);
 
