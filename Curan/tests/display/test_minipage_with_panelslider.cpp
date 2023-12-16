@@ -203,9 +203,12 @@ int main()
 			return 1;
 
 		VolumetricMask mask{*volume};
+		
 		std::atomic<bool> continue_processing_signals = true;
+
 		curan::utilities::Job job{"process signals",[&](){
 			while(continue_processing_signals){
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				auto sig = mask.process_pending_highlights();
 				for(const auto s : sig)
 					std::cout << "highlight processed\n";
