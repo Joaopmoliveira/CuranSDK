@@ -83,14 +83,24 @@ namespace curan
 		normalized_point = in_point;
 		container_resized(mat);
     }
+
+	Point::Point(SkPoint in_point){
+		normalized_point = in_point;
+    }
 	
-	void Point::container_resized(const SkMatrix& new_transformation){
+	void Point::container_resized(const SkMatrix& new_transformation) {
 		transformed_point = new_transformation.mapPoint(normalized_point);
     }
 
 	double Point::distance(const SkMatrix& new_transformation,SkPoint point) const {
 		auto transformed_point = new_transformation.mapPoint(point);
 		return (normalized_point - transformed_point).distanceToOrigin();
+    }
+
+    SkPoint Point::get_transformed_point(const SkMatrix& new_transformation) {
+        if(!transformed_point)
+            container_resized(new_transformation);
+        return *transformed_point;
     }
 
 	Path::Path(std::vector<SkPoint> in_recorded_points,const SkMatrix& mat){

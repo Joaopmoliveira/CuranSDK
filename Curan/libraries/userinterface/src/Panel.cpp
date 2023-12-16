@@ -109,7 +109,7 @@ namespace ui{
 					},
 					[&](Point& in_point){
 						local = in_point.distance(homogenenous_transformation, zoom_in.get_coordinates());
-						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+						canvas->drawPoint(in_point.get_transformed_point(inverse_homogenenous_transformation), paint_stroke);
 					}
 				},begin->second);
 
@@ -133,10 +133,11 @@ namespace ui{
 					},
 					[&](Point& in_point){
 						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
-						canvas->drawCircle(SkPoint::Make(in_point.transformed_point.fX + 5, in_point.transformed_point.fY + 5), 10, paint_square);
+						auto transformed_point = in_point.get_transformed_point(inverse_homogenenous_transformation);
+						canvas->drawCircle(SkPoint::Make(transformed_point.fX + 5, transformed_point.fY + 5), 10, paint_square);
 						paint_square.setColor(SK_ColorGREEN);
 						std::string indentifier = "" + std::to_string(begin->first);
-						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, in_point.transformed_point.fX + 10, in_point.transformed_point.fY + 10, text_font, paint_square);
+						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, transformed_point.fX + 10, transformed_point.fY + 10, text_font, paint_square);
 					}
 				},begin->second);
 
@@ -149,7 +150,7 @@ namespace ui{
 						canvas->drawPath(path.rendered_path, paint_stroke);
 					},
 					[&](Point& in_point){
-						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+						canvas->drawPoint( in_point.get_transformed_point(inverse_homogenenous_transformation), paint_stroke);
 					}
 				},minimum_index->second);
 				paint_stroke.setStrokeWidth(8);
@@ -164,7 +165,7 @@ namespace ui{
 						canvas->drawPath(path.rendered_path, paint_stroke);
 					},
 					[&](Point& in_point){
-						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+						canvas->drawPoint( in_point.get_transformed_point(inverse_homogenenous_transformation), paint_stroke);
 					}
 				},begin->second);
 
@@ -181,7 +182,7 @@ namespace ui{
 						paint_stroke.setStrokeWidth(8);
 					},
 					[&](Point& in_point){
-						auto point = in_point.transformed_point;
+						auto point =  in_point.get_transformed_point(inverse_homogenenous_transformation);
 						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
 						canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
 						paint_square.setColor(SK_ColorGREEN);

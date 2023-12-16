@@ -13,6 +13,7 @@
 #include "userinterface/widgets/IconResources.h"
 #include <algorithm>
 #include <vector>
+#include "utils/Overloading.h"
 
 namespace curan {
 namespace ui {
@@ -45,11 +46,10 @@ public:
 	Mask& operator=(const Mask&) = delete;
 
 	template <typename... T>
-	bool try_emplace(T&&... u)
+	std::pair<std::unordered_map<size_t, curan::ui::Stroke>::iterator,bool> try_emplace(T&&... u)
 	{
-		auto val = recorded_strokes.try_emplace(std::forward<T>(u)...);
 		_mask_flag = MaskUsed::DIRTY;
-		return val.second;
+		return recorded_strokes.try_emplace(std::forward<T>(u)...);
 	}
 
 	void container_resized(const SkMatrix &inverse_homogenenous_transformation);
@@ -58,14 +58,16 @@ public:
 		return _mask_flag;
 	}
 
-	void draw(SkCanvas *canvas,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font) const ;
+	void draw(SkCanvas *canvas,const SkMatrix& inverse_homogenenous_transformation,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font);
 };
 
 constexpr unsigned int Dimension = 3;
 
 class VolumetricMask{
+
+	static size_t counter;
+
 	using PixelType = unsigned char;
-	
 	using ImageType = itk::Image<PixelType, Dimension>;
 
 	std::vector<Mask> masks_x;
@@ -88,19 +90,70 @@ public:
 		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
 		switch(direction){
 			case Direction::X:
-			{
-				auto _current_index = std::round(along_dimension * (masks_x.size() - 1));
-				return masks_x[_current_index].try_emplace(std::forward<T>(u)...);
+			{	
+				auto _current_index_x = std::round(along_dimension * (masks_x.size() - 1));
+				auto returned_pair = masks_x[_current_index_x].try_emplace(counter,std::forward<T>(u)...);
+				if(returned_pair.second){
+					std::visit(curan::utilities::overloaded{
+						[](const Path& path){
+							
+						},						 //        x                    y                          z
+						[&](const Point& point){ // (along_dimension ) point.normalized_point.fX point.normalized_point.fY
+							if(point.normalized_point.fX>=0 && point.normalized_point.fX<=1 && point.normalized_point.fY >= 0 && point.normalized_point.fY <=1){
+								auto _current_index_y = std::round(point.normalized_point.fX * (masks_y.size() - 1));
+								masks_y[_current_index_y].try_emplace(counter,Point{SkPoint::Make(along_dimension,point.normalized_point.fY)});
+								auto _current_index_z = std::round(point.normalized_point.fY * (masks_z.size() - 1));
+								masks_z[_current_index_z].try_emplace(counter,Point{SkPoint::Make(along_dimension,point.normalized_point.fX)});
+							}
+						}},returned_pair.first->second);
+					++counter;
+				}
+
+				
+				return returned_pair.second;
 			}
 			case Direction::Y:
 			{
-				auto _current_index = std::round(along_dimension * (masks_y.size() - 1));
-				return masks_y[_current_index].try_emplace(std::forward<T>(u)...);
+				auto _current_index_y = std::round(along_dimension * (masks_y.size() - 1));
+				auto returned_pair = masks_y[_current_index_y].try_emplace(counter,std::forward<T>(u)...);
+				if(returned_pair.second){
+					std::visit(curan::utilities::overloaded{
+						[](const Path& path){
+
+						},						 //        x                          y                          z
+						[&](const Point& point){ //  point.normalized_point.fX (along_dimension )   point.normalized_point.fY
+							if(point.normalized_point.fX>=0 && point.normalized_point.fX<=1 && point.normalized_point.fY >= 0 && point.normalized_point.fY <=1){
+								auto _current_index_x = std::round(point.normalized_point.fX * (masks_x.size() - 1));
+								masks_x[_current_index_x].try_emplace(counter,Point{SkPoint::Make(along_dimension,point.normalized_point.fY)});
+								auto _current_index_z = std::round(point.normalized_point.fY * (masks_z.size() - 1));
+								masks_z[_current_index_z].try_emplace(counter,Point{SkPoint::Make(point.normalized_point.fX,along_dimension)});
+							}
+						}},returned_pair.first->second);
+					++counter;
+				}
+				
+				return returned_pair.second;
 			}
 			case Direction::Z:
 			{
-				auto _current_index = std::round(along_dimension * (masks_z.size() - 1));
-				return masks_z[_current_index].try_emplace(std::forward<T>(u)...);
+				auto _current_index_z = std::round(along_dimension * (masks_z.size() - 1));
+				auto returned_pair = masks_z[_current_index_z].try_emplace(counter,std::forward<T>(u)...);
+				if(returned_pair.second){
+					std::visit(curan::utilities::overloaded{
+						[](const Path& path){
+
+						},						 //        x                            y                          z
+						[&](const Point& point){ // point.normalized_point.fX point.normalized_point.fY (along_dimension ) 
+							if(point.normalized_point.fX>=0 && point.normalized_point.fX<=1 && point.normalized_point.fY >= 0 && point.normalized_point.fY <=1){
+								auto _current_index_x = std::round(point.normalized_point.fX * (masks_x.size() - 1));
+								masks_x[_current_index_x].try_emplace(counter,Point{SkPoint::Make(point.normalized_point.fY,along_dimension)});
+								auto _current_index_y = std::round(point.normalized_point.fY * (masks_y.size() - 1));
+								masks_y[_current_index_y].try_emplace(counter,Point{SkPoint::Make(point.normalized_point.fX,along_dimension)});
+							}
+						}},returned_pair.first->second);
+					++counter;
+				}
+				return returned_pair.second;
 			}
 		};
 	}
@@ -170,7 +223,7 @@ public:
 		};
 	}
 
-	inline const Mask& current_mask(const Direction& direction,const float& along_dimension) const
+	inline Mask& current_mask(const Direction& direction,const float& along_dimension)
 	{
 		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
 		switch(direction){
@@ -228,7 +281,6 @@ private:
 	SkRect reserved_slider_space;
 	SkRect reserved_drawing_space;
 	SkRect reserved_total_space;
-	size_t counter = 0;
 
 	SkColor colbuton = {SK_ColorRED};
 

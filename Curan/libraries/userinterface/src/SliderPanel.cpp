@@ -5,6 +5,8 @@
 namespace curan {
 namespace ui {
 
+	size_t VolumetricMask::counter = 0;
+
 	void Mask::container_resized(const SkMatrix &inverse_homogenenous_transformation)
 	{
 		for (auto &stro : recorded_strokes)
@@ -18,7 +20,7 @@ namespace ui {
 			},stro.second);
 	}
 
-	void Mask::draw(SkCanvas *canvas,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font) const
+	void Mask::draw(SkCanvas *canvas,const SkMatrix& inverse_homogenenous_transformation,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font)
 	{
 		if (is_highlighting)
 		{
@@ -32,9 +34,9 @@ namespace ui {
 						local = path.distance(homogenenous_transformation, point);
 						canvas->drawPath(path.rendered_path, paint_stroke);
 					},
-					[&](const Point& in_point){
+					[&](Point& in_point){
 						local = in_point.distance(homogenenous_transformation, point);
-						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+						canvas->drawPoint(in_point.get_transformed_point(inverse_homogenenous_transformation), paint_stroke);
 					}
 				},begin->second);
 
@@ -56,7 +58,7 @@ namespace ui {
 						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
 						paint_stroke.setStrokeWidth(8);
 					},
-					[&](const Point& in_point){
+					[&](Point& in_point){
 						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
 						canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
 						paint_square.setColor(SK_ColorGREEN);
@@ -73,8 +75,8 @@ namespace ui {
 					[&](const Path& path){
 						canvas->drawPath(path.rendered_path, paint_stroke);
 					},
-					[&](const Point& in_point){
-						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+					[&](Point& in_point){
+						canvas->drawPoint(in_point.get_transformed_point(inverse_homogenenous_transformation), paint_stroke);
 					}
 				},minimum_index->second);
 				paint_stroke.setStrokeWidth(8);
@@ -88,8 +90,8 @@ namespace ui {
 					[&](const Path& path){
 						canvas->drawPath(path.rendered_path, paint_stroke);
 					},
-					[&](const Point& in_point){
-						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+					[&](Point& in_point){
+						canvas->drawPoint(in_point.get_transformed_point(inverse_homogenenous_transformation), paint_stroke);
 					}
 				},begin->second);
 
@@ -105,8 +107,8 @@ namespace ui {
 						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
 						paint_stroke.setStrokeWidth(8);
 					},
-					[&](const Point& in_point){
-						auto point = in_point.transformed_point;
+					[&](Point& in_point){
+						auto point = in_point.get_transformed_point(inverse_homogenenous_transformation);
 						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
 						canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
 						paint_square.setColor(SK_ColorGREEN);
@@ -231,14 +233,9 @@ namespace ui {
 		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
 		bool success = false;
 		if(future_stroke.normalized_recorded_points.size()==1)
-			success = volumetric_mask->try_emplace(direction,current_value,counter,curan::ui::Point{future_stroke.normalized_recorded_points[0],inverse_homogenenous_transformation});
+			success = volumetric_mask->try_emplace(direction,current_value,curan::ui::Point{future_stroke.normalized_recorded_points[0],inverse_homogenenous_transformation});
 		else
-			success = volumetric_mask->try_emplace(direction,current_value,counter,curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
-		++counter;
-		if(success)
-			std::cout << "emplaced stroke in map successefully\n";
-		else
-			std::cout << "failed to emplace stroke in map\n";
+			success = volumetric_mask->try_emplace(direction,current_value,curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
 	}
 
 	std::unique_ptr<SlidingPanel> SlidingPanel::make(curan::ui::IconResources &other,VolumetricMask* volume_mask, Direction in_direction)
@@ -324,7 +321,7 @@ namespace ui {
 			{
 				std::lock_guard<std::mutex> g{get_mutex()};
 				assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
-				volumetric_mask->current_mask(direction,current_value).draw(canvas,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting,paint_stroke,paint_square,text_font);
+				volumetric_mask->current_mask(direction,current_value).draw(canvas,inverse_homogenenous_transformation,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting,paint_stroke,paint_square,text_font);
 			}
 
 			if (zoom_in)

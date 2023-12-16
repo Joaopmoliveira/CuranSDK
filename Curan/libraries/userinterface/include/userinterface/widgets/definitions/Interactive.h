@@ -77,14 +77,18 @@ struct PointCollection{
 constexpr char point_identifier = 'c';
 
 struct Point{
-	SkPoint transformed_point;
+	std::optional<SkPoint> transformed_point;
 	SkPoint normalized_point;
 
 	Point(SkPoint in_point,const SkMatrix& mat);
+
+	Point(SkPoint in_point);
 	
 	void container_resized(const SkMatrix& new_transformation);
 
 	double distance(const SkMatrix& new_transformation,SkPoint point) const;
+
+	SkPoint get_transformed_point(const SkMatrix& new_transformation);
 };
 
 struct Path{
