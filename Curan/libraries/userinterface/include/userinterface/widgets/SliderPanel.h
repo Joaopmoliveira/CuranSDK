@@ -68,6 +68,11 @@ public:
 
 constexpr unsigned int Dimension = 3;
 
+struct directed_stroke{
+	Stroke strk;
+	Direction direction;
+};
+
 class VolumetricMask{
 
 	static size_t counter;
@@ -81,6 +86,8 @@ class VolumetricMask{
 
 	ImageType::Pointer image;
 
+	curan::utilities::SafeQueue<directed_stroke> to_process;
+
 public:
 
 	VolumetricMask(ImageType::Pointer volume);
@@ -88,9 +95,15 @@ public:
 	VolumetricMask(const VolumetricMask &m) = delete;
 	VolumetricMask& operator=(const VolumetricMask&) = delete;
 
+	std::vector<directed_stroke> process_pending_highlights();
+
+	void post_stroke(directed_stroke);
+
+	void clear_previous_strokes();
+
 	template <typename... T>
 	bool try_emplace(const Direction& direction,const float& along_dimension,T&&... u){
-		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
+		assert(along_dimension>=0 && along_dimension<=1 && "the received size is not between 0 and 1");
 		switch(direction){
 			case Direction::X:
 			{	
@@ -214,7 +227,7 @@ public:
 
 	inline Mask& current_mask(const Direction& direction,const float& along_dimension)
 	{
-		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
+		assert(along_dimension>=0 && along_dimension<=1 && "the received size is not between 0 and 1");
 		switch(direction){
 			case Direction::X:
 			{
@@ -280,8 +293,6 @@ private:
 
 	SkPaint highlighted_panel;
 
-	curan::utilities::SafeQueue<Stroke> to_process;
-
 	VolumetricMask* volumetric_mask = nullptr;
 	curan::ui::PointCollection current_stroke;
 
@@ -328,8 +339,6 @@ public:
 	static std::unique_ptr<SlidingPanel> make(curan::ui::IconResources &other,  VolumetricMask* mask, Direction in_direction);
 
 	~SlidingPanel();
-
-	std::vector<Stroke> process_pending_highlights();
 
 	void compile() override;
 

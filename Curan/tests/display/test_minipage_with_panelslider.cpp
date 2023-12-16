@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <optional>
 #include <functional>
+#include "utils/Job.h"
+#include "utils/TheadPool.h"
 
 #include "userinterface/widgets/Drawable.h"
 #include "utils/Lockable.h"
@@ -201,6 +203,18 @@ int main()
 			return 1;
 
 		VolumetricMask mask{*volume};
+		std::atomic<bool> continue_processing_signals = true;
+		curan::utilities::Job job{"process signals",[&](){
+			while(continue_processing_signals){
+				auto sig = mask.process_pending_highlights();
+				for(const auto s : sig)
+					std::cout << "highlight processed\n";
+			}
+		}};
+
+		auto pool = curan::utilities::ThreadPool::create(4);
+		pool->submit(job);
+		
 		VolumetricMask* mask_pointer = &mask;
 
 		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources,&mask, curan::ui::Direction::X);
@@ -247,6 +261,7 @@ int main()
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
+		continue_processing_signals = false;
 		return 0;
 	}
 	catch (const std::exception &e)
