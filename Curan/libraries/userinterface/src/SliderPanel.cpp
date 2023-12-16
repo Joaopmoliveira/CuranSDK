@@ -18,7 +18,7 @@ namespace ui {
 			},stro.second);
 	}
 
-	void Mask::draw(SkCanvas *canvas,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font)
+	void Mask::draw(SkCanvas *canvas,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font) const
 	{
 		if (is_highlighting)
 		{
@@ -28,11 +28,11 @@ namespace ui {
 			{
 				double local = 0.0;
 				std::visit(curan::utilities::overloaded{
-					[&](Path& path){
+					[&](const Path& path){
 						local = path.distance(homogenenous_transformation, point);
 						canvas->drawPath(path.rendered_path, paint_stroke);
 					},
-					[&](Point& in_point){
+					[&](const Point& in_point){
 						local = in_point.distance(homogenenous_transformation, point);
 						canvas->drawPoint(in_point.transformed_point, paint_stroke);
 					}
@@ -47,7 +47,7 @@ namespace ui {
 
 			for (auto begin = recorded_strokes.begin(); begin != recorded_strokes.end(); ++begin)
 				std::visit(curan::utilities::overloaded{
-					[&](Path& path){
+					[&](const Path& path){
 						paint_square.setColor(SkColorSetARGB(155, 0, 0, 0));
 						canvas->drawCircle(SkPoint::Make(point.fX + 10, point.fY + 10), 20, paint_square);
 						paint_square.setColor(SK_ColorGREEN);
@@ -56,7 +56,7 @@ namespace ui {
 						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
 						paint_stroke.setStrokeWidth(8);
 					},
-					[&](Point& in_point){
+					[&](const Point& in_point){
 						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
 						canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
 						paint_square.setColor(SK_ColorGREEN);
@@ -70,10 +70,10 @@ namespace ui {
 				paint_stroke.setStrokeWidth(14);
 				paint_stroke.setColor(SkColorSetARGB(125, 0x00, 0xFF, 0x00));
 				std::visit(curan::utilities::overloaded{
-					[&](Path& path){
+					[&](const Path& path){
 						canvas->drawPath(path.rendered_path, paint_stroke);
 					},
-					[&](Point& in_point){
+					[&](const Point& in_point){
 						canvas->drawPoint(in_point.transformed_point, paint_stroke);
 					}
 				},minimum_index->second);
@@ -85,17 +85,17 @@ namespace ui {
 		{
 			for (auto begin = recorded_strokes.begin(); begin != recorded_strokes.end(); ++begin)		
 				std::visit(curan::utilities::overloaded{
-					[&](Path& path){
+					[&](const Path& path){
 						canvas->drawPath(path.rendered_path, paint_stroke);
 					},
-					[&](Point& in_point){
+					[&](const Point& in_point){
 						canvas->drawPoint(in_point.transformed_point, paint_stroke);
 					}
 				},begin->second);
 
 			for (auto begin = recorded_strokes.begin(); begin != recorded_strokes.end(); ++begin)
 				std::visit(curan::utilities::overloaded{
-					[&](Path& path){
+					[&](const Path& path){
 						auto point = path.begin_point;
 						paint_square.setColor(SkColorSetARGB(155, 0, 0, 0));
 						canvas->drawCircle(SkPoint::Make(point.fX + 10, point.fY + 10), 20, paint_square);
@@ -105,7 +105,7 @@ namespace ui {
 						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
 						paint_stroke.setStrokeWidth(8);
 					},
-					[&](Point& in_point){
+					[&](const Point& in_point){
 						auto point = in_point.transformed_point;
 						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
 						canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
@@ -121,7 +121,8 @@ namespace ui {
 	void SlidingPanel::query_if_required()
 	{
 		size_t previous = _current_index;
-		_current_index = std::round(current_value * (masks.size() - 1));
+		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
+		_current_index = std::round(current_value * (volumetric_mask->dimension(direction) - 1));
 		if (previous != _current_index)
 		{
 			background = extract_slice_from_volume(_current_index);
@@ -129,20 +130,16 @@ namespace ui {
 		previous = _current_index;
 	}
 
-	Mask& SlidingPanel::SlidingPanel::current_mask()
-	{
-		_current_index = std::round(current_value * (masks.size() - 1));
-		return masks[_current_index];
-	}
 
 	SlidingPanel::image_info SlidingPanel::extract_slice_from_volume(size_t index)
 	{
+		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
 		extract_filter = ExtractFilterType::New();
 		extract_filter->SetDirectionCollapseToSubmatrix();
-		extract_filter->SetInput(contained_volume);
+		extract_filter->SetInput(volumetric_mask->get_volume());
 
-		ImageType::RegionType inputRegion = contained_volume->GetBufferedRegion();
-		ImageType::SpacingType spacing = contained_volume->GetSpacing();
+		ImageType::RegionType inputRegion = volumetric_mask->get_volume()->GetBufferedRegion();
+		ImageType::SpacingType spacing = volumetric_mask->get_volume()->GetSpacing();
 		ImageType::SizeType size = inputRegion.GetSize();
 
 		auto copy_size = size;
@@ -186,10 +183,10 @@ namespace ui {
 		return info;
 	}
 
-	SlidingPanel::SlidingPanel(curan::ui::IconResources &other, ImageType::Pointer in_contained_volume, Direction in_direction) : system_icons{other}
+	SlidingPanel::SlidingPanel(curan::ui::IconResources &other, VolumetricMask* volume_mask, Direction in_direction) : volumetric_mask{volume_mask},system_icons{other}
 	{
 		set_current_state(SliderStates::WAITING);
-		update_volume(in_contained_volume, in_direction);
+		update_volume(volume_mask, in_direction);
 		query_if_required();
 		paint_square.setStyle(SkPaint::kFill_Style);
 		paint_square.setAntiAlias(true);
@@ -231,17 +228,22 @@ namespace ui {
 	void SlidingPanel::insert_in_map(const curan::ui::PointCollection &future_stroke)
 	{
 		std::lock_guard<std::mutex> g{get_mutex()};
-		auto &mask = current_mask();
-		if((future_stroke.normalized_recorded_points.size()==1))
-			mask.try_emplace(counter,curan::ui::Point{future_stroke.normalized_recorded_points[0],inverse_homogenenous_transformation});
+		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
+		bool success = false;
+		if(future_stroke.normalized_recorded_points.size()==1)
+			success = volumetric_mask->try_emplace(direction,current_value,counter,curan::ui::Point{future_stroke.normalized_recorded_points[0],inverse_homogenenous_transformation});
 		else
-			mask.try_emplace(counter,curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
+			success = volumetric_mask->try_emplace(direction,current_value,counter,curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
 		++counter;
+		if(success)
+			std::cout << "emplaced stroke in map successefully\n";
+		else
+			std::cout << "failed to emplace stroke in map\n";
 	}
 
-	std::unique_ptr<SlidingPanel> SlidingPanel::make(curan::ui::IconResources &other, ImageType::Pointer in_contained_volume, Direction in_direction)
+	std::unique_ptr<SlidingPanel> SlidingPanel::make(curan::ui::IconResources &other,VolumetricMask* volume_mask, Direction in_direction)
 	{
-		std::unique_ptr<SlidingPanel> button = std::unique_ptr<SlidingPanel>(new SlidingPanel{other, in_contained_volume, in_direction});
+		std::unique_ptr<SlidingPanel> button = std::unique_ptr<SlidingPanel>(new SlidingPanel{other, volume_mask, in_direction});
 		return button;
 	}
 
@@ -253,16 +255,15 @@ namespace ui {
 	{
 	}
 
-	void SlidingPanel::update_volume(ImageType::Pointer in_contained_volume, Direction in_direction)
+	void SlidingPanel::update_volume(VolumetricMask* volume_mask, Direction in_direction)
 	{
 		std::lock_guard<std::mutex> g{get_mutex()};
-		contained_volume = in_contained_volume;
+		assert(volume_mask!=nullptr && "volumetric mask must be different from nullptr");
 		direction = in_direction;
-		ImageType::RegionType inputRegion = contained_volume->GetBufferedRegion();
+		ImageType::RegionType inputRegion = volume_mask->get_volume()->GetBufferedRegion();
 		ImageType::SizeType size = inputRegion.GetSize();
 		_current_index = std::floor(current_value * (size[direction] - 1));
-		masks.clear();
-		masks = std::vector<Mask>(size[direction]);
+		volumetric_mask = volume_mask;
 		dragable_percent_size = 1.0 / size[direction];
 	}
 
@@ -293,7 +294,8 @@ namespace ui {
 		homogenenous_transformation.invert(&inverse_homogenenous_transformation);
 
 		std::lock_guard<std::mutex> g{get_mutex()};
-		current_mask().container_resized(inverse_homogenenous_transformation);
+		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
+		volumetric_mask->container_resized(inverse_homogenenous_transformation,direction,current_value);
 		set_size(pos);
 		return;
 	}
@@ -321,7 +323,8 @@ namespace ui {
 
 			{
 				std::lock_guard<std::mutex> g{get_mutex()};
-				current_mask().draw(canvas,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting,paint_stroke,paint_square,text_font);
+				assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
+				volumetric_mask->current_mask(direction,current_value).draw(canvas,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting,paint_stroke,paint_square,text_font);
 			}
 
 			if (zoom_in)
@@ -334,15 +337,16 @@ namespace ui {
 			SkRect contained_squares = SkRect::MakeXYWH(reserved_slider_space.x(), reserved_slider_space.y(), reserved_slider_space.width() * dragable_percent_size, reserved_slider_space.height());
 			canvas->drawRoundRect(reserved_slider_space, reserved_slider_space.height() / 2.0f, reserved_slider_space.height() / 2.0f, slider_paint);
 			size_t increment_mask = 0;
-			for (const auto &mask : masks)
-			{
+			assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
+			volumetric_mask->current_mask(direction,current_value);
+			volumetric_mask->for_each(direction,[&](const Mask& mask){
 				if(mask){
 					slider_paint.setColor((increment_mask == _current_index) ? SK_ColorGREEN : hover_color);
 					canvas->drawRoundRect(contained_squares, contained_squares.height() / 2.0f, contained_squares.height() / 2.0f, slider_paint);
 				}
 				contained_squares.offset(dragable.width(), 0);
 				++increment_mask;
-			}
+			});
 			slider_paint.setStyle(SkPaint::kFill_Style);
 			switch (current_state)
 			{

@@ -84,7 +84,7 @@ struct Point{
 	
 	void container_resized(const SkMatrix& new_transformation);
 
-	double distance(const SkMatrix& new_transformation,SkPoint point);
+	double distance(const SkMatrix& new_transformation,SkPoint point) const;
 };
 
 struct Path{
@@ -97,7 +97,7 @@ struct Path{
 
 	void container_resized(const SkMatrix& new_transformation);
 
-	double distance(const SkMatrix& new_transformation,SkPoint point);
+	double distance(const SkMatrix& new_transformation,SkPoint point) const ;
 };
 
 using Stroke = std::variant<Point,Path>;

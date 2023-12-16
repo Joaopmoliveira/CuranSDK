@@ -11,6 +11,8 @@
 #include "itkExtractImageFilter.h"
 #include "itkImage.h"
 #include "userinterface/widgets/IconResources.h"
+#include <algorithm>
+#include <vector>
 
 namespace curan {
 namespace ui {
@@ -40,13 +42,14 @@ class Mask
 public:
 	Mask() : _mask_flag{MaskUsed::CLEAN} {}
 	Mask(const Mask &m) = delete;
-	Mask &operator=(const Mask &m) = delete;
+	Mask& operator=(const Mask&) = delete;
 
 	template <typename... T>
-	void try_emplace(T&&... u)
+	bool try_emplace(T&&... u)
 	{
-		recorded_strokes.try_emplace(std::forward<T>(u)...);
+		auto val = recorded_strokes.try_emplace(std::forward<T>(u)...);
 		_mask_flag = MaskUsed::DIRTY;
+		return val.second;
 	}
 
 	void container_resized(const SkMatrix &inverse_homogenenous_transformation);
@@ -55,7 +58,7 @@ public:
 		return _mask_flag;
 	}
 
-	void draw(SkCanvas *canvas,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font);
+	void draw(SkCanvas *canvas,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font) const ;
 };
 
 constexpr unsigned int Dimension = 3;
@@ -69,9 +72,40 @@ class VolumetricMask{
 	std::vector<Mask> masks_y;
 	std::vector<Mask> masks_z;
 
+	ImageType::Pointer image;
+
 public:
 
-	VolumetricMask(ImageType::Pointer volume){
+	VolumetricMask(ImageType::Pointer volume) : image{volume}{
+		update_volume(volume);
+	}
+
+	VolumetricMask(const VolumetricMask &m) = delete;
+	VolumetricMask& operator=(const VolumetricMask&) = delete;
+
+	template <typename... T>
+	bool try_emplace(const Direction& direction,const float& along_dimension,T&&... u){
+		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
+		switch(direction){
+			case Direction::X:
+			{
+				auto _current_index = std::round(along_dimension * (masks_x.size() - 1));
+				return masks_x[_current_index].try_emplace(std::forward<T>(u)...);
+			}
+			case Direction::Y:
+			{
+				auto _current_index = std::round(along_dimension * (masks_y.size() - 1));
+				return masks_y[_current_index].try_emplace(std::forward<T>(u)...);
+			}
+			case Direction::Z:
+			{
+				auto _current_index = std::round(along_dimension * (masks_z.size() - 1));
+				return masks_z[_current_index].try_emplace(std::forward<T>(u)...);
+			}
+		};
+	}
+
+	inline void update_volume(ImageType::Pointer volume){
 		ImageType::RegionType inputRegion = volume->GetBufferedRegion();
 		ImageType::SizeType size = inputRegion.GetSize();
 		masks_x = std::vector<Mask>(size[Direction::X]);
@@ -79,17 +113,64 @@ public:
 		masks_z = std::vector<Mask>(size[Direction::Z]);
 	}
 
-	void update_volume(ImageType::Pointer volume){
-		ImageType::RegionType inputRegion = volume->GetBufferedRegion();
-		ImageType::SizeType size = inputRegion.GetSize();
-		masks_x = std::vector<Mask>(size[Direction::X]);
-		masks_y = std::vector<Mask>(size[Direction::Y]);
-		masks_z = std::vector<Mask>(size[Direction::Z]);
+	inline ImageType::Pointer get_volume(){
+		return image;
 	}
 
-	void container_resized(const SkMatrix &inverse_homogenenous_transformation,const Direction& direction);
+	inline void container_resized(const SkMatrix &inverse_homogenenous_transformation,const Direction& direction,const float& along_dimension){
+		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
+		switch(direction){
+			case Direction::X:
+			{
+				auto _current_index = std::round(along_dimension * (masks_x.size() - 1));
+				masks_x[_current_index].container_resized(inverse_homogenenous_transformation);
+				break;
+			}
+			case Direction::Y:
+			{
+				auto _current_index = std::round(along_dimension * (masks_y.size() - 1));
+				masks_y[_current_index].container_resized(inverse_homogenenous_transformation);
+				break;
+			}
+			case Direction::Z:
+			{
+				auto _current_index = std::round(along_dimension * (masks_z.size() - 1));
+				masks_z[_current_index].container_resized(inverse_homogenenous_transformation);
+				break;
+			}
+		};
+	}
 
-	Mask& current_mask(const Direction& direction,const float& along_dimension)
+	inline size_t dimension(const Direction& direction) const {
+		switch(direction){
+			case Direction::X:
+				return masks_x.size();
+			case Direction::Y:
+				return masks_y.size();
+			case Direction::Z:
+				return masks_z.size();
+			default:
+				return 0;
+		};
+	}
+
+	template <typename... T>
+	void for_each(const Direction& direction,T&&... u) const {
+
+		switch(direction){
+			case Direction::X:
+				std::for_each(masks_x.begin(),masks_x.end(),std::forward<T>(u)...);
+				break;
+			case Direction::Y:
+				std::for_each(masks_y.begin(),masks_y.end(),std::forward<T>(u)...);
+				break;
+			case Direction::Z:
+				std::for_each(masks_z.begin(),masks_z.end(),std::forward<T>(u)...);
+				break;
+		};
+	}
+
+	inline const Mask& current_mask(const Direction& direction,const float& along_dimension) const
 	{
 		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
 		switch(direction){
@@ -109,9 +190,9 @@ public:
 				return masks_z[_current_index];
 			}
 		};
-		
-		
 	}
+
+
 };
 
 constexpr size_t size_of_slider_in_height = 30;
@@ -142,7 +223,6 @@ private:
 	using ImageType = itk::Image<PixelType, Dimension>;
 	using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
 
-	ImageType::Pointer contained_volume;
 	ExtractFilterType::Pointer extract_filter;
 
 	SkRect reserved_slider_space;
@@ -159,7 +239,7 @@ private:
 
 	SkPaint highlighted_panel;
 
-	std::vector<Mask> masks;
+	VolumetricMask* volumetric_mask = nullptr;
 	curan::ui::PointCollection current_stroke;
 
 	SkRect background_rect;
@@ -195,22 +275,20 @@ private:
 
 	void query_if_required();
 
-	Mask &current_mask();
-
 	image_info extract_slice_from_volume(size_t index);
 
-	SlidingPanel(curan::ui::IconResources &other, ImageType::Pointer in_contained_volume, Direction in_direction);
+	SlidingPanel(curan::ui::IconResources &other, VolumetricMask* mask , Direction in_direction);
 	
 	void insert_in_map(const curan::ui::PointCollection &future_stroke);
 
 public:
-	static std::unique_ptr<SlidingPanel> make(curan::ui::IconResources &other, ImageType::Pointer in_contained_volume, Direction in_direction);
+	static std::unique_ptr<SlidingPanel> make(curan::ui::IconResources &other,  VolumetricMask* mask, Direction in_direction);
 
 	~SlidingPanel();
 
 	void compile() override;
 
-	void update_volume(ImageType::Pointer in_contained_volume, Direction in_direction);
+	void update_volume( VolumetricMask* mask, Direction in_direction);
 
 	void framebuffer_resize(const SkRect &new_page_size) override;
 

@@ -88,7 +88,7 @@ namespace curan
 		transformed_point = new_transformation.mapPoint(normalized_point);
     }
 
-	double Point::distance(const SkMatrix& new_transformation,SkPoint point){
+	double Point::distance(const SkMatrix& new_transformation,SkPoint point) const {
 		auto transformed_point = new_transformation.mapPoint(point);
 		return (normalized_point - transformed_point).distanceToOrigin();
     }
@@ -112,7 +112,7 @@ namespace curan
 		begin_point = rendered_path.getPoint(0);
     }
 
-	double Path::distance(const SkMatrix& new_transformation,SkPoint point){
+	double Path::distance(const SkMatrix& new_transformation,SkPoint point) const {
 		auto transformed_point = new_transformation.mapPoint(point);
 		double minimum = std::numeric_limits<double>::max();
 		for (const auto &r : normalized_recorded_points)
