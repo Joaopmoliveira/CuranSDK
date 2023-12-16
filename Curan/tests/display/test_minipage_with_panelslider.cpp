@@ -99,7 +99,6 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
 
 void create_one_page_horizontal_slider(curan::ui::IconResources& resources, curan::ui::VolumetricMask* mask,curan::ui::MiniPage* minipage){
 	using namespace curan::ui;
-	std::printf("(102 .cpp) mask adress: %llu\n",(size_t) mask);
     std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::X);
 
 	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -110,7 +109,6 @@ void create_one_page_horizontal_slider(curan::ui::IconResources& resources, cura
 
 void create_two_page_horizontal_slider(curan::ui::IconResources& resources, curan::ui::VolumetricMask* mask,curan::ui::MiniPage* minipage){
 	using namespace curan::ui;
-	std::printf("(113 .cpp) mask adress: %llu\n",(size_t) mask);
     std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::X);
 	std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::Y);
 	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -121,7 +119,6 @@ void create_two_page_horizontal_slider(curan::ui::IconResources& resources, cura
 
 void create_three_page_horizontal_slider(curan::ui::IconResources& resources, curan::ui::VolumetricMask* mask,curan::ui::MiniPage* minipage){
 	using namespace curan::ui;
-	std::printf("(124 .cpp) mask adress: %llu\n",(size_t) mask);
     std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::X);
 	std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::Y);
 	std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::Z);
@@ -134,7 +131,6 @@ void create_three_page_horizontal_slider(curan::ui::IconResources& resources, cu
 
 std::unique_ptr<curan::ui::Overlay> create_layout_page(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,curan::ui::VolumetricMask* mask) {
 	using namespace curan::ui;
-	std::printf("(137 .cpp) mask adress: %llu\n",(size_t) mask);
 	auto button = Button::make(" ","layout1x1.png",resources);
 	button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
 	button->add_press_call([&resources,minipage,mask](Button* button, Press press ,ConfigDraw* config) {
@@ -162,7 +158,6 @@ std::unique_ptr<curan::ui::Overlay> create_layout_page(curan::ui::IconResources&
 
 std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,curan::ui::VolumetricMask* mask) {
 	using namespace curan::ui;
-	std::printf("(165 .cpp) mask adress: %llu\n",(size_t) mask);
 	auto button = Button::make("Layout",resources);
 	button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
 	button->add_press_call([&resources,minipage,mask](Button* button, Press press ,ConfigDraw* config) {
@@ -207,7 +202,6 @@ int main()
 
 		VolumetricMask mask{*volume};
 		VolumetricMask* mask_pointer = &mask;
-		std::printf("(210 .cpp) mask adress: %llu\n",(size_t) mask_pointer);
 
 		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources,&mask, curan::ui::Direction::X);
 

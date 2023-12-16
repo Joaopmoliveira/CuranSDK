@@ -52,6 +52,10 @@ public:
 		return recorded_strokes.try_emplace(std::forward<T>(u)...);
 	}
 
+	void erase(std::unordered_map<size_t, curan::ui::Stroke>::iterator it){
+		recorded_strokes.erase(it);
+	}
+
 	void container_resized(const SkMatrix &inverse_homogenenous_transformation);
 
 	inline operator bool() const {
@@ -93,13 +97,15 @@ public:
 			{	
 				auto _current_index_x = std::round(along_dimension * (masks_x.size() - 1));
 				auto returned_pair = masks_x[_current_index_x].try_emplace(counter,std::forward<T>(u)...);
+				bool erase = true;
 				if(returned_pair.second){
 					std::visit(curan::utilities::overloaded{
-						[](const Path& path){
-							
+						[&](const Path& path){
+							erase = false;
 						},						 //        x                    y                          z
 						[&](const Point& point){ // (along_dimension ) point.normalized_point.fX point.normalized_point.fY
 							if(point.normalized_point.fX>=0 && point.normalized_point.fX<=1 && point.normalized_point.fY >= 0 && point.normalized_point.fY <=1){
+								erase = false;
 								auto _current_index_y = std::round(point.normalized_point.fX * (masks_y.size() - 1));
 								masks_y[_current_index_y].try_emplace(counter,Point{SkPoint::Make(along_dimension,point.normalized_point.fY)});
 								auto _current_index_z = std::round(point.normalized_point.fY * (masks_z.size() - 1));
@@ -108,21 +114,23 @@ public:
 						}},returned_pair.first->second);
 					++counter;
 				}
-
-				
+				if(erase)
+					masks_x[_current_index_x].erase(returned_pair.first);
 				return returned_pair.second;
 			}
 			case Direction::Y:
 			{
 				auto _current_index_y = std::round(along_dimension * (masks_y.size() - 1));
 				auto returned_pair = masks_y[_current_index_y].try_emplace(counter,std::forward<T>(u)...);
+				bool erase = true;
 				if(returned_pair.second){
 					std::visit(curan::utilities::overloaded{
-						[](const Path& path){
-
+						[&](const Path& path){
+							erase = false;
 						},						 //        x                          y                          z
 						[&](const Point& point){ //  point.normalized_point.fX (along_dimension )   point.normalized_point.fY
 							if(point.normalized_point.fX>=0 && point.normalized_point.fX<=1 && point.normalized_point.fY >= 0 && point.normalized_point.fY <=1){
+								erase = false;
 								auto _current_index_x = std::round(point.normalized_point.fX * (masks_x.size() - 1));
 								masks_x[_current_index_x].try_emplace(counter,Point{SkPoint::Make(along_dimension,point.normalized_point.fY)});
 								auto _current_index_z = std::round(point.normalized_point.fY * (masks_z.size() - 1));
@@ -131,20 +139,23 @@ public:
 						}},returned_pair.first->second);
 					++counter;
 				}
-				
+				if(erase)
+					masks_y[_current_index_y].erase(returned_pair.first);
 				return returned_pair.second;
 			}
 			case Direction::Z:
 			{
 				auto _current_index_z = std::round(along_dimension * (masks_z.size() - 1));
 				auto returned_pair = masks_z[_current_index_z].try_emplace(counter,std::forward<T>(u)...);
+				bool erase = true;
 				if(returned_pair.second){
 					std::visit(curan::utilities::overloaded{
-						[](const Path& path){
-
+						[&](const Path& path){
+							erase = false;
 						},						 //        x                            y                          z
 						[&](const Point& point){ // point.normalized_point.fX point.normalized_point.fY (along_dimension ) 
 							if(point.normalized_point.fX>=0 && point.normalized_point.fX<=1 && point.normalized_point.fY >= 0 && point.normalized_point.fY <=1){
+								erase = false;
 								auto _current_index_x = std::round(point.normalized_point.fX * (masks_x.size() - 1));
 								masks_x[_current_index_x].try_emplace(counter,Point{SkPoint::Make(point.normalized_point.fY,along_dimension)});
 								auto _current_index_y = std::round(point.normalized_point.fY * (masks_y.size() - 1));
@@ -153,6 +164,8 @@ public:
 						}},returned_pair.first->second);
 					++counter;
 				}
+				if(erase)
+					masks_z[_current_index_z].erase(returned_pair.first);
 				return returned_pair.second;
 			}
 		};
