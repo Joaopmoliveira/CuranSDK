@@ -2,6 +2,7 @@
 #define CURAN_INTERACTIVE_HEADER_FILE_
 
 #include "UIdefinitions.h"
+#include <variant>
 #include <vector>
 
 namespace curan{
@@ -73,19 +74,33 @@ struct PointCollection{
 	}
 };
 
-struct Stroke
-{
+constexpr char point_identifier = 'c';
+
+struct Point{
+	SkPoint transformed_point;
+	SkPoint normalized_point;
+
+	Point(SkPoint in_point,const SkMatrix& mat);
+	
+	void container_resized(const SkMatrix& new_transformation);
+
+	double distance(const SkMatrix& new_transformation,SkPoint point);
+};
+
+struct Path{
 	SkPath rendered_path;
 	SkPoint begin_point;
 	std::vector<SkPoint> normalized_recorded_points;
 	char identifier = 'n';
 
-	Stroke(std::vector<SkPoint> in_recorded_points,const SkMatrix& mat);
+	Path(std::vector<SkPoint> in_recorded_points,const SkMatrix& mat);
 
 	void container_resized(const SkMatrix& new_transformation);
 
 	double distance(const SkMatrix& new_transformation,SkPoint point);
 };
+
+using Stroke = std::variant<Point,Path>;
 
 }
 }

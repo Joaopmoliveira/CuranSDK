@@ -8,7 +8,14 @@ namespace ui {
 	void Mask::container_resized(const SkMatrix &inverse_homogenenous_transformation)
 	{
 		for (auto &stro : recorded_strokes)
-			stro.second.container_resized(inverse_homogenenous_transformation);
+			std::visit(curan::utilities::overloaded{
+				[&](Path& path){
+					path.container_resized(inverse_homogenenous_transformation);
+				},
+				[&](Point& point){
+					point.container_resized(inverse_homogenenous_transformation);
+				}
+			},stro.second);
 	}
 
 	void Mask::draw(SkCanvas *canvas,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font)
@@ -19,88 +26,94 @@ namespace ui {
 			auto minimum_index = recorded_strokes.end();
 			for (auto begin = recorded_strokes.begin(); begin != recorded_strokes.end(); ++begin)
 			{
-				double local = begin->second.distance(homogenenous_transformation, point);
+				double local = 0.0;
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						local = path.distance(homogenenous_transformation, point);
+						canvas->drawPath(path.rendered_path, paint_stroke);
+					},
+					[&](Point& in_point){
+						local = in_point.distance(homogenenous_transformation, point);
+						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+					}
+				},begin->second);
+
 				if (minimum > local)
 				{
 					minimum = local;
 					minimum_index = begin;
 				}
-
-				if (begin->second.normalized_recorded_points.size() == 1)
-					canvas->drawPoint(begin->second.begin_point, paint_stroke);
-				else
-					canvas->drawPath(begin->second.rendered_path, paint_stroke);
 			}
 
 			for (auto begin = recorded_strokes.begin(); begin != recorded_strokes.end(); ++begin)
-			{
-				if (begin->second.normalized_recorded_points.size() == 1)
-				{
-					auto point = begin->second.begin_point;
-					paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
-					canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
-					paint_square.setColor(SK_ColorGREEN);
-					std::string indentifier = begin->second.identifier + std::to_string(begin->first);
-					canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
-				}
-				else
-				{
-					auto point = begin->second.begin_point;
-					paint_square.setColor(SkColorSetARGB(155, 0, 0, 0));
-					canvas->drawCircle(SkPoint::Make(point.fX + 10, point.fY + 10), 20, paint_square);
-					paint_square.setColor(SK_ColorGREEN);
-					std::string indentifier = begin->second.identifier + std::to_string(begin->first);
-					paint_stroke.setStrokeWidth(0.5f);
-					canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
-					paint_stroke.setStrokeWidth(8);
-				}
-			}
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						paint_square.setColor(SkColorSetARGB(155, 0, 0, 0));
+						canvas->drawCircle(SkPoint::Make(point.fX + 10, point.fY + 10), 20, paint_square);
+						paint_square.setColor(SK_ColorGREEN);
+						std::string indentifier = "" + std::to_string(begin->first);
+						paint_stroke.setStrokeWidth(0.5f);
+						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
+						paint_stroke.setStrokeWidth(8);
+					},
+					[&](Point& in_point){
+						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
+						canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
+						paint_square.setColor(SK_ColorGREEN);
+						std::string indentifier = "" + std::to_string(begin->first);
+						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
+					}
+				},begin->second);
 
 			if (minimum_index != recorded_strokes.end() && minimum < 0.02f)
 			{
 				paint_stroke.setStrokeWidth(14);
 				paint_stroke.setColor(SkColorSetARGB(125, 0x00, 0xFF, 0x00));
-				if (minimum_index->second.normalized_recorded_points.size() == 1)
-					canvas->drawPoint(minimum_index->second.begin_point, paint_stroke);
-				else
-					canvas->drawPath(minimum_index->second.rendered_path, paint_stroke);
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						canvas->drawPath(path.rendered_path, paint_stroke);
+					},
+					[&](Point& in_point){
+						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+					}
+				},minimum_index->second);
 				paint_stroke.setStrokeWidth(8);
 				paint_stroke.setColor(SK_ColorGREEN);
 			}
 		}
 		else
 		{
-			for (auto begin = recorded_strokes.begin(); begin != recorded_strokes.end(); ++begin)
-			{
-				if (begin->second.normalized_recorded_points.size() == 1)
-					canvas->drawPoint(begin->second.begin_point, paint_stroke);
-				else
-					canvas->drawPath(begin->second.rendered_path, paint_stroke);
-			}
+			for (auto begin = recorded_strokes.begin(); begin != recorded_strokes.end(); ++begin)		
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						canvas->drawPath(path.rendered_path, paint_stroke);
+					},
+					[&](Point& in_point){
+						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+					}
+				},begin->second);
 
 			for (auto begin = recorded_strokes.begin(); begin != recorded_strokes.end(); ++begin)
-			{
-				if (begin->second.normalized_recorded_points.size() == 1)
-				{
-					auto point = begin->second.begin_point;
-					paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
-					canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
-					paint_square.setColor(SK_ColorGREEN);
-					std::string indentifier = begin->second.identifier + std::to_string(begin->first);
-					canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
-				}
-				else
-				{
-					auto point = begin->second.begin_point;
-					paint_square.setColor(SkColorSetARGB(155, 0, 0, 0));
-					canvas->drawCircle(SkPoint::Make(point.fX + 10, point.fY + 10), 20, paint_square);
-					paint_square.setColor(SK_ColorGREEN);
-					std::string indentifier = begin->second.identifier + std::to_string(begin->first);
-					paint_stroke.setStrokeWidth(0.5f);
-					canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
-					paint_stroke.setStrokeWidth(8);
-				}
-			}
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						auto point = path.begin_point;
+						paint_square.setColor(SkColorSetARGB(155, 0, 0, 0));
+						canvas->drawCircle(SkPoint::Make(point.fX + 10, point.fY + 10), 20, paint_square);
+						paint_square.setColor(SK_ColorGREEN);
+						std::string indentifier = "s" + std::to_string(begin->first);
+						paint_stroke.setStrokeWidth(0.5f);
+						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
+						paint_stroke.setStrokeWidth(8);
+					},
+					[&](Point& in_point){
+						auto point = in_point.transformed_point;
+						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
+						canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
+						paint_square.setColor(SK_ColorGREEN);
+						std::string indentifier = "p"+ std::to_string(begin->first);
+						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
+					}
+				},begin->second);
         }
     }
 
@@ -219,7 +232,10 @@ namespace ui {
 	{
 		std::lock_guard<std::mutex> g{get_mutex()};
 		auto &mask = current_mask();
-		mask.try_emplace(counter, curan::ui::Stroke{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
+		if((future_stroke.normalized_recorded_points.size()==1))
+			mask.try_emplace(counter,curan::ui::Point{future_stroke.normalized_recorded_points[0],inverse_homogenenous_transformation});
+		else
+			mask.try_emplace(counter,curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
 		++counter;
 	}
 
@@ -253,8 +269,9 @@ namespace ui {
 	void SlidingPanel::framebuffer_resize(const SkRect &new_page_size)
 	{
 		auto pos = get_position();
-		reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft+8, pos.fTop+8, pos.fRight, pos.fBottom - size_of_slider_in_height-8);
-		reserved_slider_space = SkRect::MakeLTRB(pos.fLeft+8, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom-8);
+		reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft+buffer_around_panel, pos.fTop+buffer_around_panel, pos.fRight, pos.fBottom - size_of_slider_in_height-buffer_around_panel);
+		reserved_slider_space = SkRect::MakeLTRB(pos.fLeft+buffer_around_panel, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom-buffer_around_panel);
+		reserved_total_space = SkRect::MakeLTRB(pos.fLeft+buffer_around_panel,pos.fTop+buffer_around_panel, pos.fRight-buffer_around_panel, pos.fBottom-buffer_around_panel);
 		double width = 1;
 		double height = 1;
 
@@ -289,8 +306,8 @@ namespace ui {
 			auto widget_rect = get_position();
 			SkAutoCanvasRestore restore{canvas, true};
 			highlighted_panel.setColor(get_hightlight_color());
-			canvas->drawRect(widget_rect, background_paint);
-			canvas->drawRect(widget_rect, highlighted_panel);
+			canvas->drawRect(reserved_total_space, background_paint);
+			canvas->drawRect(reserved_total_space, highlighted_panel);
 
 			if (background.image)
 			{
@@ -368,10 +385,9 @@ namespace ui {
 															}
 															set_hightlight_color(SK_ColorDKGRAY);
 															is_pressed = false;
-															std::printf("my adress is: %llu\n",(size_t) this);
 															return;
 														}
-														set_hightlight_color(SK_ColorRED);
+														set_hightlight_color(SkColorSetARGB(255,125,0,0));
 														
 														static curan::ui::Move previous_arg = arg;
 														auto previous_state = get_current_state();
@@ -383,6 +399,7 @@ namespace ui {
 															{
 																if (is_pressed)
 																{
+																	interacted = true;
 																	current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)arg.xpos, (float)arg.ypos));
 																}
 																else if (!current_stroke.empty())
@@ -390,7 +407,6 @@ namespace ui {
 																	insert_in_map(current_stroke);
 																	current_stroke.clear();
 																}
-																interacted = true;
 															}
 															current_state_local = SliderStates::WAITING;
 															
@@ -425,7 +441,7 @@ namespace ui {
 															set_hightlight_color(SK_ColorDKGRAY);
 															return;
 														}
-														set_hightlight_color(SK_ColorRED);
+														set_hightlight_color(SkColorSetARGB(255,125,0,0));
 														auto previous_state = get_current_state();
 														auto current_state_local = get_current_state();
 														if (reserved_drawing_space.contains(arg.xpos, arg.ypos))
@@ -464,7 +480,7 @@ namespace ui {
 															set_hightlight_color(SK_ColorDKGRAY);
 															return;
 														}
-														set_hightlight_color(SK_ColorRED);
+														set_hightlight_color(SkColorSetARGB(255,125,0,0));
 														auto previous_state = get_current_state();
 														auto current_state_local = previous_state;
 
@@ -511,7 +527,7 @@ namespace ui {
 													{
 														if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
 														{
-															if(get_hightlight_color()!=SK_ColorRED)
+															if(get_hightlight_color()!=SkColorSetARGB(255,125,0,0))
 																return;
 															if (zoom_in)
 																zoom_in.deactivate();
@@ -522,7 +538,7 @@ namespace ui {
 
 														if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS)
 														{
-															if(get_hightlight_color()!=SK_ColorRED)
+															if(get_hightlight_color()!=SkColorSetARGB(255,125,0,0))
 																return;
 															is_highlighting = !is_highlighting;
 															if (!current_stroke.empty())

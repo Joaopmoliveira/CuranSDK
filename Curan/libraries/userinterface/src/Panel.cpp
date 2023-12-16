@@ -40,7 +40,10 @@ namespace ui{
 	}
 
 	void Panel::insert_in_map(const curan::ui::PointCollection& future_stroke){
-		strokes.try_emplace(counter,curan::ui::Stroke{future_stroke.normalized_recorded_points,inverse_homogenenous_transformation});
+		if((future_stroke.normalized_recorded_points.size()==1))
+			strokes.try_emplace(counter,curan::ui::Point{future_stroke.normalized_recorded_points[0],inverse_homogenenous_transformation});
+		else
+			strokes.try_emplace(counter,curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
 		++counter;
 	}
 
@@ -61,7 +64,14 @@ namespace ui{
 		homogenenous_transformation.invert(&inverse_homogenenous_transformation);
 
     	for(auto & stro : strokes)
-			stro.second.container_resized(inverse_homogenenous_transformation);
+			std::visit(curan::utilities::overloaded{
+				[&](Path& path){
+					path.container_resized(inverse_homogenenous_transformation);
+				},
+				[&](Point& in_point){
+					in_point.container_resized(inverse_homogenenous_transformation);
+				}
+			},stro.second);
 		set_size(pos);
     	return ;
 	}
@@ -85,86 +95,101 @@ namespace ui{
 			} 
 
 			canvas->drawPoints(SkCanvas::PointMode::kPoints_PointMode, current_stroke.transformed_recorded_points.size(), current_stroke.transformed_recorded_points.data(), paint_stroke);
-			
-			if (is_highlighting)
+		if (is_highlighting)
+		{
+			double minimum = std::numeric_limits<double>::max();
+			auto minimum_index = strokes.end();
+			for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)
 			{
-				double minimum = std::numeric_limits<double>::max();
-				auto minimum_index = strokes.end();
-				for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)
-				{
-					double local = begin->second.distance(homogenenous_transformation,zoom_in.get_coordinates());
-					if (minimum > local)
-					{
-						minimum = local;
-						minimum_index = begin;
+				double local = 0.0;
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						local = path.distance(homogenenous_transformation, zoom_in.get_coordinates());
+						canvas->drawPath(path.rendered_path, paint_stroke);
+					},
+					[&](Point& in_point){
+						local = in_point.distance(homogenenous_transformation, zoom_in.get_coordinates());
+						canvas->drawPoint(in_point.transformed_point, paint_stroke);
 					}
-					
-					if(begin->second.normalized_recorded_points.size()==1) canvas->drawPoint(begin->second.begin_point,paint_stroke);
-					else canvas->drawPath(begin->second.rendered_path, paint_stroke);
-				}
+				},begin->second);
 
-				for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)
+				if (minimum > local)
 				{
-					if(begin->second.normalized_recorded_points.size()==1){
-						auto point = begin->second.begin_point;
-						paint_square.setColor(SkColorSetARGB(60,0,0,0));
-						canvas->drawCircle(SkPoint::Make(point.fX+5,point.fY+5),10,paint_square);
-						paint_square.setColor(SK_ColorGREEN);
-						std::string indentifier = begin->second.identifier+std::to_string(begin->first);
-						canvas->drawSimpleText(indentifier.data(),indentifier.size(),SkTextEncoding::kUTF8 ,point.fX+10,point.fY+10,text_font, paint_square);
-					}else {
-						auto point = begin->second.begin_point;
-						paint_square.setColor(SkColorSetARGB(155,0,0,0));
-						canvas->drawCircle(SkPoint::Make(point.fX+10,point.fY+10),20,paint_square);
-						paint_square.setColor(SK_ColorGREEN);
-						std::string indentifier = begin->second.identifier+std::to_string(begin->first);
-						paint_stroke.setStrokeWidth(0.5f);
-						canvas->drawSimpleText(indentifier.data(),indentifier.size(),SkTextEncoding::kUTF8 ,point.fX+10,point.fY+10,text_font, paint_square);
-						paint_stroke.setStrokeWidth(8);
-					}
-
-				}			
-
-				if (minimum_index != strokes.end() && minimum < 0.02f)
-				{
-					paint_stroke.setStrokeWidth(14);
-					paint_stroke.setColor(SkColorSetARGB(125,0x00, 0xFF, 0xFF));
-					if(minimum_index->second.normalized_recorded_points.size()==1) canvas->drawPoint(minimum_index->second.begin_point,paint_stroke);
-					else canvas->drawPath(minimum_index->second.rendered_path, paint_stroke);
-					paint_stroke.setStrokeWidth(8);
-					paint_stroke.setColor(SK_ColorGREEN);
+					minimum = local;
+					minimum_index = begin;
 				}
 			}
-			else
-			{
-				for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)
-				{					
-					if(begin->second.normalized_recorded_points.size()==1) canvas->drawPoint(begin->second.begin_point,paint_stroke);
-					else canvas->drawPath(begin->second.rendered_path, paint_stroke);
-				}
 
-				for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)
-				{
-					if(begin->second.normalized_recorded_points.size()==1){
-						auto point = begin->second.begin_point;
-						paint_square.setColor(SkColorSetARGB(60,0,0,0));
-						canvas->drawCircle(SkPoint::Make(point.fX+5,point.fY+5),10,paint_square);
+			for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						paint_square.setColor(SkColorSetARGB(155, 0, 0, 0));
+						canvas->drawCircle(SkPoint::Make(path.begin_point.fX + 10, path.begin_point.fY + 10), 20, paint_square);
 						paint_square.setColor(SK_ColorGREEN);
-						std::string indentifier = begin->second.identifier+std::to_string(begin->first);
-						canvas->drawSimpleText(indentifier.data(),indentifier.size(),SkTextEncoding::kUTF8 ,point.fX+10,point.fY+10,text_font, paint_square);
-					}else {
-						auto point = begin->second.begin_point;
-						paint_square.setColor(SkColorSetARGB(155,0,0,0));
-						canvas->drawCircle(SkPoint::Make(point.fX+10,point.fY+10),20,paint_square);
-						paint_square.setColor(SK_ColorGREEN);
-						std::string indentifier = begin->second.identifier+std::to_string(begin->first);
+						std::string indentifier = "" + std::to_string(begin->first);
 						paint_stroke.setStrokeWidth(0.5f);
-						canvas->drawSimpleText(indentifier.data(),indentifier.size(),SkTextEncoding::kUTF8 ,point.fX+10,point.fY+10,text_font, paint_square);
+						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, path.begin_point.fX + 10, path.begin_point.fY + 10, text_font, paint_square);
 						paint_stroke.setStrokeWidth(8);
+					},
+					[&](Point& in_point){
+						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
+						canvas->drawCircle(SkPoint::Make(in_point.transformed_point.fX + 5, in_point.transformed_point.fY + 5), 10, paint_square);
+						paint_square.setColor(SK_ColorGREEN);
+						std::string indentifier = "" + std::to_string(begin->first);
+						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, in_point.transformed_point.fX + 10, in_point.transformed_point.fY + 10, text_font, paint_square);
 					}
+				},begin->second);
 
-				}			
+			if (minimum_index != strokes.end() && minimum < 0.02f)
+			{
+				paint_stroke.setStrokeWidth(14);
+				paint_stroke.setColor(SkColorSetARGB(125, 0x00, 0xFF, 0x00));
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						canvas->drawPath(path.rendered_path, paint_stroke);
+					},
+					[&](Point& in_point){
+						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+					}
+				},minimum_index->second);
+				paint_stroke.setStrokeWidth(8);
+				paint_stroke.setColor(SK_ColorGREEN);
 			}
+		}
+		else
+		{
+			for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)		
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						canvas->drawPath(path.rendered_path, paint_stroke);
+					},
+					[&](Point& in_point){
+						canvas->drawPoint(in_point.transformed_point, paint_stroke);
+					}
+				},begin->second);
+
+			for (auto begin = strokes.begin(); begin != strokes.end(); ++begin)
+				std::visit(curan::utilities::overloaded{
+					[&](Path& path){
+						auto point = path.begin_point;
+						paint_square.setColor(SkColorSetARGB(155, 0, 0, 0));
+						canvas->drawCircle(SkPoint::Make(point.fX + 10, point.fY + 10), 20, paint_square);
+						paint_square.setColor(SK_ColorGREEN);
+						std::string indentifier = "s" + std::to_string(begin->first);
+						paint_stroke.setStrokeWidth(0.5f);
+						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
+						paint_stroke.setStrokeWidth(8);
+					},
+					[&](Point& in_point){
+						auto point = in_point.transformed_point;
+						paint_square.setColor(SkColorSetARGB(60, 0, 0, 0));
+						canvas->drawCircle(SkPoint::Make(point.fX + 5, point.fY + 5), 10, paint_square);
+						paint_square.setColor(SK_ColorGREEN);
+						std::string indentifier = "p"+ std::to_string(begin->first);
+						canvas->drawSimpleText(indentifier.data(), indentifier.size(), SkTextEncoding::kUTF8, point.fX + 10, point.fY + 10, text_font, paint_square);
+					}
+				},begin->second);
+        }
 
 			if (zoom_in)
 				zoom_in.draw(canvas);

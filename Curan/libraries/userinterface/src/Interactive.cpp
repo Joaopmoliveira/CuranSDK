@@ -78,16 +78,29 @@ namespace curan
 		normalized_recorded_points.push_back(other_new_point);
 	}
 
-	Stroke::Stroke(std::vector<SkPoint> in_recorded_points,const SkMatrix& mat)
-	{
+
+	Point::Point(SkPoint in_point,const SkMatrix& mat){
+		normalized_point = in_point;
+		container_resized(mat);
+    }
+	
+	void Point::container_resized(const SkMatrix& new_transformation){
+		transformed_point = new_transformation.mapPoint(normalized_point);
+    }
+
+	double Point::distance(const SkMatrix& new_transformation,SkPoint point){
+		auto transformed_point = new_transformation.mapPoint(point);
+		return (normalized_point - transformed_point).distanceToOrigin();
+    }
+
+	Path::Path(std::vector<SkPoint> in_recorded_points,const SkMatrix& mat){
 		if (in_recorded_points.size() == 0)
 			return;
 		normalized_recorded_points = in_recorded_points;
-		identifier = (normalized_recorded_points.size()>1) ? 's' : 'p';
 		container_resized(mat);
-	}
+    }
 
-	void Stroke::container_resized(const SkMatrix& new_transformation){
+	void Path::container_resized(const SkMatrix& new_transformation){
 		if(normalized_recorded_points.empty())
 			return;
 		std::vector<SkPoint> transformed_points = normalized_recorded_points;
@@ -97,10 +110,9 @@ namespace curan
 		for (const auto &point : transformed_points)
 			rendered_path.lineTo(point);
 		begin_point = rendered_path.getPoint(0);
-	}
+    }
 
-	double Stroke::distance(const SkMatrix& new_transformation,SkPoint point)
-	{
+	double Path::distance(const SkMatrix& new_transformation,SkPoint point){
 		auto transformed_point = new_transformation.mapPoint(point);
 		double minimum = std::numeric_limits<double>::max();
 		for (const auto &r : normalized_recorded_points)
@@ -110,7 +122,7 @@ namespace curan
 				minimum = local;
 		}
 		return minimum;
-	}
+    }
 
     }
 }

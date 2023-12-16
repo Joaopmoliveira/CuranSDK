@@ -58,8 +58,65 @@ public:
 	void draw(SkCanvas *canvas,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font);
 };
 
-constexpr size_t size_of_slider_in_height = 30;
 constexpr unsigned int Dimension = 3;
+
+class VolumetricMask{
+	using PixelType = unsigned char;
+	
+	using ImageType = itk::Image<PixelType, Dimension>;
+
+	std::vector<Mask> masks_x;
+	std::vector<Mask> masks_y;
+	std::vector<Mask> masks_z;
+
+public:
+
+	VolumetricMask(ImageType::Pointer volume){
+		ImageType::RegionType inputRegion = volume->GetBufferedRegion();
+		ImageType::SizeType size = inputRegion.GetSize();
+		masks_x = std::vector<Mask>(size[Direction::X]);
+		masks_y = std::vector<Mask>(size[Direction::Y]);
+		masks_z = std::vector<Mask>(size[Direction::Z]);
+	}
+
+	void update_volume(ImageType::Pointer volume){
+		ImageType::RegionType inputRegion = volume->GetBufferedRegion();
+		ImageType::SizeType size = inputRegion.GetSize();
+		masks_x = std::vector<Mask>(size[Direction::X]);
+		masks_y = std::vector<Mask>(size[Direction::Y]);
+		masks_z = std::vector<Mask>(size[Direction::Z]);
+	}
+
+	void container_resized(const SkMatrix &inverse_homogenenous_transformation,const Direction& direction);
+
+	Mask& current_mask(const Direction& direction,const float& along_dimension)
+	{
+		assert(along_dimension>0 && along_dimension<1 && "the received size is not between 0 and 1");
+		switch(direction){
+			case Direction::X:
+			{
+				auto _current_index = std::round(along_dimension * (masks_x.size() - 1));
+				return masks_x[_current_index];
+			}
+			case Direction::Y:
+			{
+				auto _current_index = std::round(along_dimension * (masks_y.size() - 1));
+				return masks_y[_current_index];
+			}
+			case Direction::Z:
+			{
+				auto _current_index = std::round(along_dimension * (masks_z.size() - 1));
+				return masks_z[_current_index];
+			}
+		};
+		
+		
+	}
+};
+
+constexpr size_t size_of_slider_in_height = 30;
+constexpr size_t buffer_around_panel = 8;
+
 
 class SlidingPanel : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<SlidingPanel>
 {
@@ -90,6 +147,7 @@ private:
 
 	SkRect reserved_slider_space;
 	SkRect reserved_drawing_space;
+	SkRect reserved_total_space;
 	size_t counter = 0;
 
 	SkColor colbuton = {SK_ColorRED};
