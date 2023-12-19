@@ -2,8 +2,6 @@ find_package(ITK CONFIG REQUIRED)
 
 include(${ITK_USE_FILE})
 
-add_subdirectory(modules)
-
 # ---------------------------------------
 
 add_executable(modified_test_user_interface test_user_interface.cpp)
@@ -236,5 +234,15 @@ target_compile_definitions(test_writable_text_panel PRIVATE CURAN_COPIED_RESOURC
 target_link_libraries(test_writable_text_panel
 PUBLIC
 userinterface
-skplaintexteditor
+)
+
+# ---------------------------------------
+
+add_executable(test_imutable_text_panel test_imutable_text_panel.cpp)
+
+target_compile_definitions(test_imutable_text_panel PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_imutable_text_panel
+PUBLIC
+userinterface
 )

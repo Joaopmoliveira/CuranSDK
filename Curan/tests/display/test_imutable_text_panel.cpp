@@ -2,7 +2,7 @@
 #include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/Window.h"
 #include "userinterface/widgets/IconResources.h"
-#include "userinterface/widgets/MutatingTextPanel.h"
+#include "userinterface/widgets/ImutableTextPanel.h"
 #include <iostream>
 #include <thread>
 
@@ -16,11 +16,10 @@ int main(){
         DisplayParams param{std::move(context), 1200, 800};
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-        std::unique_ptr<MutatingTextPanel> layer = MutatingTextPanel::make("write for life");
-        layer->set_background_color({1.f,1.0f,1.0f,1.0f}).set_cursor_color({1.0f,.0f,.0f,1.0f}).set_text_color({.0f,.0f,.0f,1.0f});
+        std::unique_ptr<ImutableTextPanel> layer = ImutableTextPanel::make("write for life");
+        layer->set_background_color({1.f,1.0f,1.0f,1.0f}).set_text_color({.0f,.0f,.0f,1.0f});
         auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-        layer->replacetext("Hi, my name is slam shady!");
-        layer->setFont(MutatingTextPanel::typeface::sans_serif);
+        layer->setFont(ImutableTextPanel::typeface::sans_serif);
         *container << std::move(layer);
 
         curan::ui::Page page{std::move(container), SK_ColorBLACK};

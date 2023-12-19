@@ -8,6 +8,7 @@
 #include "userinterface/widgets/SliderPanel.h"
 #include "userinterface/widgets/MiniPage.h"
 #include "userinterface/widgets/Overlay.h"
+#include "userinterface/widgets/MutatingTextPanel.h"
 #include <unordered_map>
 #include <optional>
 #include <functional>
@@ -138,10 +139,15 @@ struct DataSpecificApplication
 				break;
 			}
 			auto text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-			auto button_ac = Button::make("ac point", resources);
-			auto button_cp = Button::make("pc point", resources);
-			auto button_midpoint = Button::make("midpoint", resources);
-			*text_container << std::move(button_ac) << std::move(button_cp) << std::move(button_midpoint);
+			auto button_ac = MutatingTextPanel::make("ac point");
+			button_ac->set_background_color({1.0f, 1.0f, 1.0f, 0.25}).set_text_color(SkColors::kWhite);
+			auto button_cp = MutatingTextPanel::make("pc point");
+			button_cp->set_background_color({1.0f, 1.0f, 1.0f, 0.25}).set_text_color(SkColors::kWhite);
+			auto button_midpoint = MutatingTextPanel::make("midpoint");
+			button_midpoint->set_background_color({1.0f, 1.0f, 1.0f, 0.25}).set_text_color(SkColors::kWhite);
+			auto perform_resampling = Button::make("Resample to AC-PC",resources);
+			perform_resampling->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+			*text_container << std::move(button_ac) << std::move(button_cp) << std::move(button_midpoint) << std::move(perform_resampling);
 			auto total_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 			*total_container << std::move(text_container) << std::move(viwers_container);
 			total_container->set_divisions({ 0.0 , 0.1 , 1.0 });
