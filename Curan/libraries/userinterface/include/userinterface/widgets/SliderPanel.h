@@ -195,8 +195,6 @@ public:
 		return image;
 	}
 
-	void container_resized(const SkMatrix &inverse_homogenenous_transformation,const Direction& direction,const float& along_dimension);
-
 	inline size_t dimension(const Direction& direction) const {
 		switch(direction){
 			case Direction::X:
@@ -212,6 +210,21 @@ public:
 
 	template <typename... T>
 	void for_each(const Direction& direction,T&&... u) const {
+		switch(direction){
+			case Direction::X:
+				std::for_each(masks_x.begin(),masks_x.end(),std::forward<T>(u)...);
+				break;
+			case Direction::Y:
+				std::for_each(masks_y.begin(),masks_y.end(),std::forward<T>(u)...);
+				break;
+			case Direction::Z:
+				std::for_each(masks_z.begin(),masks_z.end(),std::forward<T>(u)...);
+				break;
+		};
+	}
+
+	template <typename... T>
+	void for_each(const Direction& direction,T&&... u){
 		switch(direction){
 			case Direction::X:
 				std::for_each(masks_x.begin(),masks_x.end(),std::forward<T>(u)...);

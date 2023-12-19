@@ -4,6 +4,7 @@
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/definitions/Interactive.h"
 #include "userinterface/widgets/Button.h"
+#include "userinterface/widgets/TextBlob.h"
 #include "userinterface/widgets/SliderPanel.h"
 #include "userinterface/widgets/MiniPage.h"
 #include "userinterface/widgets/Overlay.h"
@@ -35,6 +36,19 @@ using PixelType = unsigned char;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
+
+struct DataSpecificApplication{
+	curan::ui::VolumetricMask mask;
+	itk::Point<double,3> origin;
+	itk::Point<double,3> x_direction;
+	itk::Point<double,3> y_direction;
+
+	std::unique_ptr<curan::ui::Overlay> create_origin_info(){
+		return nullptr;
+	}
+
+	
+};
 
 std::optional<ImageType::Pointer> get_volume(std::string path)
 {
@@ -99,6 +113,20 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
 	return filter->GetOutput();
 }
 
+std::unique_ptr<curan::ui::Overlay> create_panel_ac_pc_instructions(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,curan::ui::VolumetricMask* mask){
+	using namespace curan::ui;
+	auto instructions = TextBlob::make("Select the origin of desired frame");
+	instructions->set_size(SkRect::MakeWH(300,100));
+
+	auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*viwers_container << std::move(instructions);
+	viwers_container->set_color(SK_ColorTRANSPARENT);
+	
+	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125),true);
+}
+
+
+
 void create_one_page_horizontal_slider(curan::ui::IconResources& resources, curan::ui::VolumetricMask* mask,curan::ui::MiniPage* minipage){
 	using namespace curan::ui;
     std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::X);
@@ -134,19 +162,19 @@ void create_three_page_horizontal_slider(curan::ui::IconResources& resources, cu
 std::unique_ptr<curan::ui::Overlay> create_layout_page(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,curan::ui::VolumetricMask* mask) {
 	using namespace curan::ui;
 	auto button = Button::make(" ","layout1x1.png",resources);
-	button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
+	button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
 	button->add_press_call([&resources,minipage,mask](Button* button, Press press ,ConfigDraw* config) {
 		create_one_page_horizontal_slider(resources,mask,minipage);
 	});
 
 	auto button2 = Button::make(" ","layout1x2.png",resources);
-	button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
+	button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
 	button2->add_press_call([&resources,minipage,mask](Button* button, Press press ,ConfigDraw* config) {
 		create_two_page_horizontal_slider(resources,mask,minipage);
 	});
 
 	auto button3 = Button::make(" ","layout1x3.png",resources);
-	button3->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 200));
+	button3->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
 	button3->add_press_call([&resources,minipage,mask](Button* button, Press press ,ConfigDraw* config) {
 		create_three_page_horizontal_slider(resources,mask,minipage);
 	});
@@ -171,7 +199,7 @@ std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources&
 	auto button2 = Button::make("Resample AC-PC",resources);
 	button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
 	button2->add_press_call([&](Button* button, Press press ,ConfigDraw* config) {
-		
+
 	});
 
 	auto button3 = Button::make("Define Trajectory",resources);
@@ -203,12 +231,11 @@ int main()
 			return 1;
 
 		VolumetricMask mask{*volume};
-		
+
 		std::atomic<bool> continue_processing_signals = true;
 
 		curan::utilities::Job job{"process signals",[&](){
 			while(continue_processing_signals){
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				auto sig = mask.process_pending_highlights();
 				for(const auto s : sig)
 					std::cout << "highlight processed\n";
@@ -265,6 +292,7 @@ int main()
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
 		continue_processing_signals = false;
+		std::cout << "flag is false\n";
 		return 0;
 	}
 	catch (const std::exception &e)

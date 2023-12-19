@@ -11,30 +11,6 @@ namespace ui {
 		update_volume(volume);
 	}
 
-	void VolumetricMask::container_resized(const SkMatrix &inverse_homogenenous_transformation,const Direction& direction,const float& along_dimension){
-		assert(along_dimension>=0 && along_dimension<=1 && "the received size is not between 0 and 1");
-		switch(direction){
-			case Direction::X:
-			{
-				auto _current_index = std::round(along_dimension * (masks_x.size() - 1));
-				masks_x[_current_index].container_resized(inverse_homogenenous_transformation);
-				break;
-			}
-			case Direction::Y:
-			{
-				auto _current_index = std::round(along_dimension * (masks_y.size() - 1));
-				masks_y[_current_index].container_resized(inverse_homogenenous_transformation);
-				break;
-			}
-			case Direction::Z:
-			{
-				auto _current_index = std::round(along_dimension * (masks_z.size() - 1));
-				masks_z[_current_index].container_resized(inverse_homogenenous_transformation);
-				break;
-			}
-		};
-	}
-
 	void Mask::container_resized(const SkMatrix &inverse_homogenenous_transformation)
 	{
 		for (auto &stro : recorded_strokes)
@@ -347,7 +323,9 @@ namespace ui {
 
 		std::lock_guard<std::mutex> g{get_mutex()};
 		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
-		volumetric_mask->container_resized(inverse_homogenenous_transformation,direction,current_value);
+		volumetric_mask->for_each(direction,[&](Mask& mask){
+			mask.container_resized(inverse_homogenenous_transformation);
+		});
 		set_size(pos);
 		return;
 	}
