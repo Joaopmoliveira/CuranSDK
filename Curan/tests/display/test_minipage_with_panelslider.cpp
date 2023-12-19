@@ -37,17 +37,195 @@ constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
 
-struct DataSpecificApplication{
-	curan::ui::VolumetricMask mask;
-	itk::Point<double,3> origin;
-	itk::Point<double,3> x_direction;
-	itk::Point<double,3> y_direction;
+enum Panels
+{
+	ONE_PANEL,
+	TWO_PANELS,
+	THREE_PANELS,
+};
 
-	std::unique_ptr<curan::ui::Overlay> create_origin_info(){
-		return nullptr;
+struct DataSpecificApplication
+{
+	bool is_acpc_being_defined = false;
+
+	curan::ui::IconResources &resources;
+	ImageType::Pointer original_image;
+
+	Panels current_panel_arragement = Panels::ONE_PANEL;
+
+	curan::ui::VolumetricMask mask;
+	itk::Point<double, 3> ac_point;
+	itk::Point<double, 3> pc_point;
+	itk::Point<double, 3> midline;
+
+	curan::ui::MiniPage *minipage = nullptr;
+
+	DataSpecificApplication(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, original_image{volume}, mask{volume}, current_panel_arragement{Panels::ONE_PANEL}
+	{
 	}
 
-	
+	void create_panel_ac_pc_instructions()
+	{
+		using namespace curan::ui;
+		if (!is_acpc_being_defined)
+		{
+			auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+
+			switch (current_panel_arragement)
+			{
+			case Panels::ONE_PANEL:
+			{
+				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				*viwers_container << std::move(image_display); 
+			}
+				break;
+			case Panels::TWO_PANELS:
+			{
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
+				*viwers_container << std::move(image_display_x) << std::move(image_display_y); 
+			}
+				break;
+			case Panels::THREE_PANELS:
+			{
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
+				*viwers_container << std::move(image_display_x)  << std::move(image_display_y)  << std::move(image_display_z) ; 
+			}
+				break;
+			default:
+			{
+				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				*viwers_container << std::move(image_display); 
+			}
+				break;
+			}
+			minipage->construct(std::move(viwers_container), SK_ColorBLACK);
+		}
+		else
+		{
+			auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+
+			switch (current_panel_arragement)
+			{
+			case Panels::ONE_PANEL:
+			{
+				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				*viwers_container << std::move(image_display); 
+			}
+				break;
+			case Panels::TWO_PANELS:
+			{
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
+				*viwers_container << std::move(image_display_x) << std::move(image_display_y); 
+			}
+				break;
+			case Panels::THREE_PANELS:
+			{
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
+				*viwers_container << std::move(image_display_x)  << std::move(image_display_y)  << std::move(image_display_z) ; 
+			}
+				break;
+			default:
+			{
+				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				*viwers_container << std::move(image_display); 
+			}
+				break;
+			}
+			auto text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+			auto button_ac = Button::make("ac point", resources);
+			auto button_cp = Button::make("pc point", resources);
+			auto button_midpoint = Button::make("midpoint", resources);
+			*text_container << std::move(button_ac) << std::move(button_cp) << std::move(button_midpoint);
+			auto total_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+			*total_container << std::move(text_container) << std::move(viwers_container);
+			total_container->set_divisions({ 0.0 , 0.1 , 1.0 });
+			minipage->construct(std::move(total_container), SK_ColorBLACK);
+		}		
+	}
+
+	std::unique_ptr<curan::ui::Overlay> create_layout_page()
+	{
+		using namespace curan::ui;
+		auto button = Button::make(" ", "layout1x1.png", resources);
+		button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
+		button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+							   { current_panel_arragement = Panels::ONE_PANEL; create_panel_ac_pc_instructions(); });
+
+		auto button2 = Button::make(" ", "layout1x2.png", resources);
+		button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
+		button2->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+								{ current_panel_arragement = Panels::TWO_PANELS;create_panel_ac_pc_instructions(); });
+
+		auto button3 = Button::make(" ", "layout1x3.png", resources);
+		button3->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
+		button3->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+								{ current_panel_arragement = Panels::THREE_PANELS;create_panel_ac_pc_instructions(); });
+
+		auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+		*viwers_container << std::move(button) << std::move(button2) << std::move(button3);
+		viwers_container->set_color(SK_ColorTRANSPARENT);
+
+		return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
+	}
+
+	std::unique_ptr<curan::ui::Overlay> create_option_page()
+	{
+		using namespace curan::ui;
+		auto button = Button::make("Layout", resources);
+		button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+		button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+							   {
+		if(config->stack_page!=nullptr){
+			config->stack_page->stack(create_layout_page());
+		} });
+
+		auto button2 = Button::make("Resample AC-PC", resources);
+		button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+		button2->add_press_call([&](Button *button, Press press, ConfigDraw *config) {
+			is_acpc_being_defined = !is_acpc_being_defined;
+			create_panel_ac_pc_instructions();
+		});
+
+		auto button3 = Button::make("Define Trajectory", resources);
+		button3->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+		button3->add_press_call([&](Button *button, Press press, ConfigDraw *config) {
+
+		});
+
+		auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+		*viwers_container << std::move(button) << std::move(button2) << std::move(button3);
+		viwers_container->set_color(SK_ColorTRANSPARENT);
+
+		return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
+	}
+
+	std::unique_ptr<curan::ui::Container> generate_main_page_content()
+	{
+		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+
+		auto container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
+		*container << std::move(image_display);
+
+		std::unique_ptr<curan::ui::MiniPage> lminipage = curan::ui::MiniPage::make(std::move(container), SK_ColorBLACK);
+		minipage = lminipage.get();
+		lminipage->add_key_call([this](curan::ui::MiniPage *minipage, curan::ui::Key arg, curan::ui::ConfigDraw *draw)
+								{
+			if (arg.key == GLFW_KEY_H && arg.action == GLFW_PRESS){
+				if(draw->stack_page!=nullptr){
+					draw->stack_page->stack(create_option_page());
+				}
+			} });
+
+		auto minimage_container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
+		*minimage_container << std::move(lminipage);
+		return minimage_container;
+	}
 };
 
 std::optional<ImageType::Pointer> get_volume(std::string path)
@@ -113,108 +291,6 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
 	return filter->GetOutput();
 }
 
-std::unique_ptr<curan::ui::Overlay> create_panel_ac_pc_instructions(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,curan::ui::VolumetricMask* mask){
-	using namespace curan::ui;
-	auto instructions = TextBlob::make("Select the origin of desired frame");
-	instructions->set_size(SkRect::MakeWH(300,100));
-
-	auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-	*viwers_container << std::move(instructions);
-	viwers_container->set_color(SK_ColorTRANSPARENT);
-	
-	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125),true);
-}
-
-
-
-void create_one_page_horizontal_slider(curan::ui::IconResources& resources, curan::ui::VolumetricMask* mask,curan::ui::MiniPage* minipage){
-	using namespace curan::ui;
-    std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::X);
-
-	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-	*container << std::move(image_display);
-
-    minipage->construct(std::move(container),SK_ColorBLACK);
-};
-
-void create_two_page_horizontal_slider(curan::ui::IconResources& resources, curan::ui::VolumetricMask* mask,curan::ui::MiniPage* minipage){
-	using namespace curan::ui;
-    std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::X);
-	std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::Y);
-	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-	*container << std::move(image_display_x) << std::move(image_display_y);
-
-    minipage->construct(std::move(container),SK_ColorBLACK);
-};
-
-void create_three_page_horizontal_slider(curan::ui::IconResources& resources, curan::ui::VolumetricMask* mask,curan::ui::MiniPage* minipage){
-	using namespace curan::ui;
-    std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::X);
-	std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::Y);
-	std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, mask, curan::ui::Direction::Z);
-
-	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-	*container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
-
-    minipage->construct(std::move(container),SK_ColorBLACK);
-};
-
-std::unique_ptr<curan::ui::Overlay> create_layout_page(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,curan::ui::VolumetricMask* mask) {
-	using namespace curan::ui;
-	auto button = Button::make(" ","layout1x1.png",resources);
-	button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
-	button->add_press_call([&resources,minipage,mask](Button* button, Press press ,ConfigDraw* config) {
-		create_one_page_horizontal_slider(resources,mask,minipage);
-	});
-
-	auto button2 = Button::make(" ","layout1x2.png",resources);
-	button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
-	button2->add_press_call([&resources,minipage,mask](Button* button, Press press ,ConfigDraw* config) {
-		create_two_page_horizontal_slider(resources,mask,minipage);
-	});
-
-	auto button3 = Button::make(" ","layout1x3.png",resources);
-	button3->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
-	button3->add_press_call([&resources,minipage,mask](Button* button, Press press ,ConfigDraw* config) {
-		create_three_page_horizontal_slider(resources,mask,minipage);
-	});
-
-	auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-	*viwers_container << std::move(button) << std::move(button2) << std::move(button3);
-	viwers_container->set_color(SK_ColorTRANSPARENT);
-	
-	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125),true);
-}
-
-std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources& resources,curan::ui::MiniPage* minipage,curan::ui::VolumetricMask* mask) {
-	using namespace curan::ui;
-	auto button = Button::make("Layout",resources);
-	button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-	button->add_press_call([&resources,minipage,mask](Button* button, Press press ,ConfigDraw* config) {
-		if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_layout_page(resources,minipage,mask));
-		}
-	});
-
-	auto button2 = Button::make("Resample AC-PC",resources);
-	button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-	button2->add_press_call([&](Button* button, Press press ,ConfigDraw* config) {
-
-	});
-
-	auto button3 = Button::make("Define Trajectory",resources);
-	button3->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-	button3->add_press_call([&](Button* button, Press press ,ConfigDraw* config) {
-		
-	});
-
-	auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-	*viwers_container << std::move(button) << std::move(button2) << std::move(button3);
-	viwers_container->set_color(SK_ColorTRANSPARENT);
-	
-	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125),true);
-}
-
 int main()
 {
 	try
@@ -222,7 +298,7 @@ int main()
 		using namespace curan::ui;
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
 		std::unique_ptr<Context> context = std::make_unique<Context>();
-		
+
 		DisplayParams param{std::move(context), 2200, 1200};
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
@@ -230,42 +306,23 @@ int main()
 		if (!volume)
 			return 1;
 
-		VolumetricMask mask{*volume};
+		DataSpecificApplication data_application{*volume, resources};
 
 		std::atomic<bool> continue_processing_signals = true;
-
-		curan::utilities::Job job{"process signals",[&](){
-			while(continue_processing_signals){
-				auto sig = mask.process_pending_highlights();
-				for(const auto s : sig)
-					std::cout << "highlight processed\n";
-			}
-		}};
+		curan::utilities::Job job{"process signals", [&]()
+								  {
+									  while (continue_processing_signals)
+									  {
+										  auto sig = data_application.mask.process_pending_highlights();
+										  for (const auto s : sig)
+											  std::cout << "highlight processed\n";
+									  }
+								  }};
 
 		auto pool = curan::utilities::ThreadPool::create(4);
 		pool->submit(job);
-		
-		VolumetricMask* mask_pointer = &mask;
 
-		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources,&mask, curan::ui::Direction::X);
-
-		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-		*container << std::move(image_display);
-
-        std::unique_ptr<curan::ui::MiniPage> minipage = curan::ui::MiniPage::make(std::move(container), SK_ColorBLACK);
-		curan::ui::MiniPage* minipage_pointer = minipage.get();
-		minipage->add_key_call([&resources,minipage_pointer,mask_pointer](curan::ui::MiniPage* minipage,curan::ui::Key arg,curan::ui::ConfigDraw* draw){
-			if (arg.key == GLFW_KEY_H && arg.action == GLFW_PRESS){
-				if(draw->stack_page!=nullptr){
-					draw->stack_page->stack(create_option_page(resources,minipage_pointer,mask_pointer));
-				}
-			}
-		});
-
-        auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-		*minimage_container << std::move(minipage);
-
-		curan::ui::Page page{std::move(minimage_container), SK_ColorBLACK};
+		curan::ui::Page page{std::move(data_application.generate_main_page_content()), SK_ColorBLACK};
 
 		ConfigDraw config{&page};
 
