@@ -49,6 +49,7 @@ namespace curan
 
             SkColor4f text_color;
             SkColor4f background_color;
+            SkColor4f highlighted_background_color;
             SkColor4f cursor_color;
             SkColor4f selection_color;
 
@@ -136,6 +137,20 @@ namespace curan
             {
                 std::lock_guard<std::mutex> g{get_mutex()};
                 return selection_color;
+            }
+
+
+            inline MutatingTextPanel &set_highlighted_color(SkColor4f new_waiting_color)
+            {
+                std::lock_guard<std::mutex> g{get_mutex()};
+                highlighted_background_color = new_waiting_color;
+                return *(this);
+            }
+
+            inline SkColor4f get_highlighted_state()
+            {
+                std::lock_guard<std::mutex> g{get_mutex()};
+                return highlighted_background_color;
             }
         };
 

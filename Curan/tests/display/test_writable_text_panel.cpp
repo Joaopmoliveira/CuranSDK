@@ -17,9 +17,9 @@ int main(){
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
         std::unique_ptr<MutatingTextPanel> layer = MutatingTextPanel::make("write for life");
-        layer->set_background_color({1.f,1.0f,1.0f,1.0f}).set_cursor_color({1.0f,.0f,.0f,1.0f}).set_text_color({.0f,.0f,.0f,1.0f});
+        layer->set_background_color({.0f, .0f, .0f, 1.0f}).set_text_color({1.f,1.f,1.f,1.f}).set_highlighted_color({.2f, .2f, .2f, 1.0f}).set_cursor_color({1.0,0.0,0.0,1.0});
         auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-        layer->replacetext("Hi, my name is slam shady!");
+        //layer->replacetext("Hi, my name is slam shady!");
         layer->setFont(MutatingTextPanel::typeface::sans_serif);
         *container << std::move(layer);
 

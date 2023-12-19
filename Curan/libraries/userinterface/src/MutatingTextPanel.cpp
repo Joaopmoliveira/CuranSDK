@@ -21,6 +21,10 @@ namespace curan
         {
             auto font_manager = SkFontMgr::RefDefault();
             fEditor.setFontMgr(font_manager);
+            has_text_from_user = false;
+            if(default_text){
+                fEditor.insert(fTextPos,(*default_text).data(),(*default_text).size());
+            }
         }
 
         std::unique_ptr<MutatingTextPanel> MutatingTextPanel::make(const std::string &in_default_text)
@@ -42,17 +46,24 @@ namespace curan
             auto lamb = [this](SkCanvas *canvas)
             {
                 ++counter;
-                fBlink = counter % 30 < 15;
+                fBlink = (is_highlighted) ? counter % 30 < 15 : false;
                 SkAutoCanvasRestore acr(canvas, true);
+                SkPaint paint;
+                paint.setStyle(SkPaint::kFill_Style);
+	            paint.setAntiAlias(true);
+	            paint.setStrokeWidth(4);
+	            paint.setColor((is_highlighted) ? get_highlighted_state() : get_background_color());
+                SkRect val = get_position();
+                val.offset(-fMargin,-fMargin);
+                canvas->drawRect(val,paint);
                 canvas->clipRect(get_position());
-                canvas->translate(fMargin, (float)(fMargin - fPos));
+                canvas->translate(fMargin, (float)(fMargin - fPos+val.top()));
                 SkPlainTextEditor::Editor::PaintOpts options;
                 options.fCursor = fTextPos;
                 options.fCursorColor = get_cursor_color();
                 options.fCursorColor.fA = fBlink ? 0.0f : 1.0f;
-                options.fBackgroundColor = get_background_color();
-                options.fForegroundColor = get_text_color();
-                options.fForegroundColor.fA = (has_text_from_user) ? options.fBackgroundColor.fA : 0.2;
+                options.fBackgroundColor = SkColors::kTransparent;
+                options.fForegroundColor = (has_text_from_user) ? get_text_color() : SkColors::kCyan;
                 if (fMarkPos != SkPlainTextEditor::Editor::TextPosition())
                 {
                     options.fSelectionBegin = fMarkPos;

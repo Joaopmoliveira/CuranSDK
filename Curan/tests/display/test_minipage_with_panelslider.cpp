@@ -139,12 +139,12 @@ struct DataSpecificApplication
 				break;
 			}
 			auto text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-			auto button_ac = MutatingTextPanel::make("ac point");
-			button_ac->set_background_color({1.0f, 1.0f, 1.0f, 0.25}).set_text_color(SkColors::kWhite);
-			auto button_cp = MutatingTextPanel::make("pc point");
-			button_cp->set_background_color({1.0f, 1.0f, 1.0f, 0.25}).set_text_color(SkColors::kWhite);
-			auto button_midpoint = MutatingTextPanel::make("midpoint");
-			button_midpoint->set_background_color({1.0f, 1.0f, 1.0f, 0.25}).set_text_color(SkColors::kWhite);
+			auto button_ac = MutatingTextPanel::make("define ac point: e.g. p4");
+			button_ac->set_background_color({.0f, .0f, .0f, 1.0f}).set_text_color(SkColors::kWhite).set_highlighted_color({.2f, .2f, .2f, 1.0f}).set_cursor_color({1.0,0.0,0.0,1.0});
+			auto button_cp = MutatingTextPanel::make("define pc point: e.g. p6");
+			button_cp->set_background_color({.0f, .0f, .0f, 1.0f}).set_text_color(SkColors::kWhite).set_highlighted_color({.2f, .2f, .2f, 1.0f}).set_cursor_color({1.0,0.0,0.0,1.0});
+			auto button_midpoint = MutatingTextPanel::make("define midpoint: e.g. p10");
+			button_midpoint->set_background_color({.0f, .0f, .0f, 1.0f}).set_text_color(SkColors::kWhite).set_highlighted_color({.2f, .2f, .2f, 1.0f}).set_cursor_color({1.0,0.0,0.0,1.0});
 			auto perform_resampling = Button::make("Resample to AC-PC",resources);
 			perform_resampling->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
 			*text_container << std::move(button_ac) << std::move(button_cp) << std::move(button_midpoint) << std::move(perform_resampling);
@@ -314,20 +314,6 @@ int main()
 
 		DataSpecificApplication data_application{*volume, resources};
 
-		std::atomic<bool> continue_processing_signals = true;
-		curan::utilities::Job job{"process signals", [&]()
-								  {
-									  while (continue_processing_signals)
-									  {
-										  auto sig = data_application.mask.process_pending_highlights();
-										  for (const auto s : sig)
-											  std::cout << "highlight processed\n";
-									  }
-								  }};
-
-		auto pool = curan::utilities::ThreadPool::create(4);
-		pool->submit(job);
-
 		curan::ui::Page page{std::move(data_application.generate_main_page_content()), SK_ColorBLACK};
 
 		ConfigDraw config{&page};
@@ -354,8 +340,6 @@ int main()
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
-		continue_processing_signals = false;
-		std::cout << "flag is false\n";
 		return 0;
 	}
 	catch (const std::exception &e)
