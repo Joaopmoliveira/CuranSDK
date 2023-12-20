@@ -36,6 +36,8 @@
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageSeriesReader.h"
 
+#include <Eigen/Dense>
+
 using DicomPixelType = unsigned short;
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 3;
@@ -46,27 +48,37 @@ enum Panels
 {
 	ONE_PANEL,
 	TWO_PANELS,
-	THREE_PANELS,
+	THREE_PANELS
+};
+
+enum PanelType{
+    ORIGINAL_VOLUME = 0,
+    RESAMPLED_VOLUME,
+    TRAJECTORY_ORIENTED_VOLUME,
+    NUMBER_OF_VOLUMES  
 };
 
 struct DataSpecificApplication
 {
 	bool is_acpc_being_defined = false;
+    bool is_trajectory_being_visualized = false;
+
+    std::array<curan::ui::VolumetricMask,PanelType::NUMBER_OF_VOLUMES> map;
+    PanelType current_volume = PanelType::ORIGINAL_VOLUME;
 
 	curan::ui::IconResources &resources;
-	ImageType::Pointer original_image;
 
 	Panels current_panel_arragement = Panels::ONE_PANEL;
-
-	curan::ui::VolumetricMask mask;
-	itk::Point<double, 3> ac_point;
-	itk::Point<double, 3> pc_point;
-	itk::Point<double, 3> midline;
+	
+    std::optional<Eigen::Matrix<double,3,1>> ac_point;
+	std::optional<Eigen::Matrix<double,3,1>> pc_point;
+	std::optional<Eigen::Matrix<double,3,1>> midline;
 
 	curan::ui::MiniPage *minipage = nullptr;
 
-	DataSpecificApplication(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, original_image{volume}, mask{volume}, current_panel_arragement{Panels::ONE_PANEL}
+	DataSpecificApplication(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume},{volume},{volume}}}
 	{
+
 	}
 
 	std::unique_ptr<curan::ui::Overlay> create_overlay_with_warning(const std::string& warning){
@@ -80,7 +92,6 @@ struct DataSpecificApplication
 		auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*viwers_container << std::move(warn) << std::move(button);
 		viwers_container->set_color(SK_ColorTRANSPARENT).set_divisions({0.0,.8,1.0});
-
 
 		return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
 	}
@@ -96,28 +107,28 @@ struct DataSpecificApplication
 			{
 			case Panels::ONE_PANEL:
 			{
-				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
 				*viwers_container << std::move(image_display);
 			}
 			break;
 			case Panels::TWO_PANELS:
 			{
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
 				*viwers_container << std::move(image_display_x) << std::move(image_display_y);
 			}
 			break;
 			case Panels::THREE_PANELS:
 			{
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Z);
 				*viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
 			}
 			break;
 			default:
 			{
-				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
 				*viwers_container << std::move(image_display);
 			}
 			break;
@@ -132,28 +143,28 @@ struct DataSpecificApplication
 			{
 			case Panels::ONE_PANEL:
 			{
-				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
 				*viwers_container << std::move(image_display);
 			}
 			break;
 			case Panels::TWO_PANELS:
 			{
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
 				*viwers_container << std::move(image_display_x) << std::move(image_display_y);
 			}
 			break;
 			case Panels::THREE_PANELS:
 			{
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
-				std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Z);
 				*viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
 			}
 			break;
 			default:
 			{
-				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
 				*viwers_container << std::move(image_display);
 			}
 			break;
@@ -166,7 +177,36 @@ struct DataSpecificApplication
 				int result{};
         		auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
        			if (ec == std::errc()){ //provided number is proper
-					std::cout << result << "\n";
+                    size_t index = 0;
+                    bool stroke_found = false;
+                    map[current_volume].for_each(Direction::Z,[&](Mask& mask){
+                        auto stroke = mask.find(result);
+                        if(stroke){
+                            stroke_found = true;
+						    std::visit(curan::utilities::overloaded{
+                                [&](const Path &path){
+							
+							    },						 
+							    [&](const Point &point) { 
+                                    ImageType::IndexType local_index;
+                                    local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
+                                    local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
+                                    local_index[2] = index;
+                                    ImageType::PointType ac_point_in_world_coordinates;
+                                    map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,ac_point_in_world_coordinates);
+                                    Eigen::Matrix<double,3,1> lac_point = Eigen::Matrix<double,3,1>::Zero();
+                                    lac_point(0,0) = ac_point_in_world_coordinates[0];
+                                    lac_point(1,0) = ac_point_in_world_coordinates[1];
+                                    lac_point(2,0) = ac_point_in_world_coordinates[2];
+                                    ac_point = lac_point;
+						        }},*stroke);
+                        }
+                        ++index;
+                    });
+                    if(!stroke_found)
+                        if(config->stack_page!=nullptr){
+						    config->stack_page->stack(create_overlay_with_warning("failed to find point, please insert new point"));
+					    }
 				}
         		else if (ec == std::errc::invalid_argument || ec == std::errc::result_out_of_range){
 					if(config->stack_page!=nullptr){
@@ -175,12 +215,40 @@ struct DataSpecificApplication
 				} });
 			auto button_cp = MutatingTextPanel::make(true, "define pc point: e.g. p6");
 			button_cp->set_background_color({1.0f, 1.0f, 1.0f, 1.0f}).set_text_color(SkColors::kBlack).set_default_text_color({.5f, .5f, .5f, 1.0f}).set_highlighted_color({.8f, .8f, .8f, 1.0f}).set_cursor_color({1.0, 0.0, 0.0, 1.0}).set_size(SkRect::MakeWH(200, 100));
-			button_cp->add_textdefined_callback([&](MutatingTextPanel *button, const std::string &str, ConfigDraw *config)
-												{
+			button_cp->add_textdefined_callback([&](MutatingTextPanel *button, const std::string &str, ConfigDraw *config){
 				int result{};
         		auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
        			if (ec == std::errc()){ //provided number is proper
-					std::cout << result << "\n";
+                    size_t index = 0;
+                    bool stroke_found = false;
+                    map[current_volume].for_each(Direction::Z,[&](Mask& mask){
+                        auto stroke = mask.find(result);
+                        if(stroke){
+                            stroke_found = true;
+						    std::visit(curan::utilities::overloaded{
+                                [&](const Path &path){
+							
+							    },						 
+							    [&](const Point &point) { 
+                                    ImageType::IndexType local_index;
+                                    local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
+                                    local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
+                                    local_index[2] = index;
+                                    ImageType::PointType pc_point_in_world_coordinates;
+                                    map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,pc_point_in_world_coordinates);
+                                    Eigen::Matrix<double,3,1> lpc_point = Eigen::Matrix<double,3,1>::Zero();
+                                    lpc_point(0,0) = pc_point_in_world_coordinates[0];
+                                    lpc_point(1,0) = pc_point_in_world_coordinates[1];
+                                    lpc_point(2,0) = pc_point_in_world_coordinates[2];
+                                    pc_point = lpc_point;
+						        }},*stroke);
+                        }
+                        ++index;
+                    });
+                    if(!stroke_found)
+                        if(config->stack_page!=nullptr){
+						    config->stack_page->stack(create_overlay_with_warning("failed to find point, please insert new point"));
+					    }
 				}
         		else if (ec == std::errc::invalid_argument || ec == std::errc::result_out_of_range){	
 					if(config->stack_page!=nullptr){
@@ -189,21 +257,57 @@ struct DataSpecificApplication
 				} });
 			auto button_midpoint = MutatingTextPanel::make(true, "define midpoint: e.g. p10");
 			button_midpoint->set_background_color({1.0f, 1.0f, 1.0f, 1.0f}).set_text_color(SkColors::kBlack).set_default_text_color({.5f, .5f, .5f, 1.0f}).set_highlighted_color({.8f, .8f, .8f, 1.0f}).set_cursor_color({1.0, 0.0, 0.0, 1.0}).set_size(SkRect::MakeWH(200, 100));
-			button_cp->add_textdefined_callback([&](MutatingTextPanel *button, const std::string &str, ConfigDraw *config)
-												{
+			button_cp->add_textdefined_callback([&](MutatingTextPanel *button, const std::string &str, ConfigDraw *config){
 				int result{};
         		auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
        			if (ec == std::errc()){ //provided number is proper
-					std::cout << result << "\n";
+                    size_t index = 0;
+                    bool stroke_found = false;
+                    map[current_volume].for_each(Direction::Z,[&](Mask& mask){
+                        auto stroke = mask.find(result);
+                        if(stroke){
+                            stroke_found = true;
+						    std::visit(curan::utilities::overloaded{
+                                [&](const Path &path){
+							
+							    },						 
+							    [&](const Point &point) { 
+                                    ImageType::IndexType local_index;
+                                    local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
+                                    local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
+                                    local_index[2] = index;
+                                    ImageType::PointType midpoint_point_in_world_coordinates;
+                                    map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,midpoint_point_in_world_coordinates);
+                                    Eigen::Matrix<double,3,1> lmid_point = Eigen::Matrix<double,3,1>::Zero();
+                                    lmid_point(0,0) = midpoint_point_in_world_coordinates[0];
+                                    lmid_point(1,0) = midpoint_point_in_world_coordinates[1];
+                                    lmid_point(2,0) = midpoint_point_in_world_coordinates[2];
+                                    midline = lmid_point;
+						        }},*stroke);
+                        }
+                        ++index;
+                    });
+                    if(!stroke_found)
+                        if(config->stack_page!=nullptr){
+						    config->stack_page->stack(create_overlay_with_warning("failed to find point, please insert new point"));
+					    }
 				}
         		else if (ec == std::errc::invalid_argument || ec == std::errc::result_out_of_range){
 					if(config->stack_page!=nullptr){
 						config->stack_page->stack(create_overlay_with_warning("failed to parse identifier"));
-				}
+				    }
 				} });
 			auto perform_resampling = Button::make("Resample to AC-PC", resources);
 			perform_resampling->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
-
+            perform_resampling->add_press_call(
+                [this](Button *button, Press press, ConfigDraw *config){
+                    if(!midline || !ac_point || !pc_point){
+					    if(config->stack_page!=nullptr){
+						    config->stack_page->stack(create_overlay_with_warning("you must specify all points to resample the volume"));
+				        }
+                    }
+                }
+            );
 			*text_container << std::move(button_ac) << std::move(button_cp) << std::move(button_midpoint) << std::move(perform_resampling);
 			auto total_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 			*total_container << std::move(text_container) << std::move(viwers_container);
@@ -261,6 +365,12 @@ struct DataSpecificApplication
 
 		});
 
+		auto button4 = Button::make("Change Volume", resources);
+		button3->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+		button3->add_press_call([&](Button *button, Press press, ConfigDraw *config) {
+
+		});
+
 		auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 		*viwers_container << std::move(button) << std::move(button2) << std::move(button3);
 		viwers_container->set_color(SK_ColorTRANSPARENT);
@@ -270,7 +380,7 @@ struct DataSpecificApplication
 
 	std::unique_ptr<curan::ui::Container> generate_main_page_content()
 	{
-		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
+		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
 
 		auto container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);
