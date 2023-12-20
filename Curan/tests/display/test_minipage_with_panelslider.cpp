@@ -72,12 +72,12 @@ struct DataSpecificApplication
 	std::unique_ptr<curan::ui::Overlay> create_overlay_with_warning(const std::string& warning){
 		using namespace curan::ui;
 		auto warn = Button::make(" ","warning.png", resources);
-		warn->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 100));
+		warn->set_click_color(SK_AlphaTRANSPARENT).set_hover_color(SK_AlphaTRANSPARENT).set_waiting_color(SK_AlphaTRANSPARENT).set_size(SkRect::MakeWH(400, 400));
 
 		auto button = Button::make(warning, resources);
-		button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 100));
+		button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 70));
 
-		auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+		auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*viwers_container << std::move(warn) << std::move(button);
 		viwers_container->set_color(SK_ColorTRANSPARENT);
 
