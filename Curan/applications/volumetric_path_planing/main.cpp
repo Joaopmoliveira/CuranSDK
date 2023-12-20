@@ -192,12 +192,14 @@ struct DataSpecificApplication
                                     local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
                                     local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
                                     local_index[2] = index;
+                                    std::cout << "local index is: " << local_index << std::endl;
                                     ImageType::PointType ac_point_in_world_coordinates;
                                     map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,ac_point_in_world_coordinates);
                                     Eigen::Matrix<double,3,1> lac_point = Eigen::Matrix<double,3,1>::Zero();
                                     lac_point(0,0) = ac_point_in_world_coordinates[0];
                                     lac_point(1,0) = ac_point_in_world_coordinates[1];
                                     lac_point(2,0) = ac_point_in_world_coordinates[2];
+                                    std::cout << "local index in world coordinates is: " << lac_point << std::endl;
                                     ac_point = lac_point;
 						        }},*stroke);
                         }
@@ -234,15 +236,18 @@ struct DataSpecificApplication
                                     local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
                                     local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
                                     local_index[2] = index;
+                                    std::cout << "local index is: " << local_index << std::endl;
                                     ImageType::PointType pc_point_in_world_coordinates;
                                     map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,pc_point_in_world_coordinates);
                                     Eigen::Matrix<double,3,1> lpc_point = Eigen::Matrix<double,3,1>::Zero();
                                     lpc_point(0,0) = pc_point_in_world_coordinates[0];
                                     lpc_point(1,0) = pc_point_in_world_coordinates[1];
                                     lpc_point(2,0) = pc_point_in_world_coordinates[2];
+                                    std::cout << "local index in world coordinates is: " << lpc_point << std::endl;
                                     pc_point = lpc_point;
 						        }},*stroke);
                         }
+                        std::printf("the index in search is: %llu\n",index);
                         ++index;
                     });
                     if(!stroke_found)
@@ -255,9 +260,10 @@ struct DataSpecificApplication
 						config->stack_page->stack(create_overlay_with_warning("failed to parse identifier"));
 					}
 				} });
+            
 			auto button_midpoint = MutatingTextPanel::make(true, "define midpoint: e.g. p10");
 			button_midpoint->set_background_color({1.0f, 1.0f, 1.0f, 1.0f}).set_text_color(SkColors::kBlack).set_default_text_color({.5f, .5f, .5f, 1.0f}).set_highlighted_color({.8f, .8f, .8f, 1.0f}).set_cursor_color({1.0, 0.0, 0.0, 1.0}).set_size(SkRect::MakeWH(200, 100));
-			button_cp->add_textdefined_callback([&](MutatingTextPanel *button, const std::string &str, ConfigDraw *config){
+			button_midpoint->add_textdefined_callback([&](MutatingTextPanel *button, const std::string &str, ConfigDraw *config){
 				int result{};
         		auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
        			if (ec == std::errc()){ //provided number is proper
@@ -276,12 +282,14 @@ struct DataSpecificApplication
                                     local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
                                     local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
                                     local_index[2] = index;
+                                    std::cout << "local index is: " << local_index << std::endl;
                                     ImageType::PointType midpoint_point_in_world_coordinates;
                                     map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,midpoint_point_in_world_coordinates);
                                     Eigen::Matrix<double,3,1> lmid_point = Eigen::Matrix<double,3,1>::Zero();
                                     lmid_point(0,0) = midpoint_point_in_world_coordinates[0];
                                     lmid_point(1,0) = midpoint_point_in_world_coordinates[1];
                                     lmid_point(2,0) = midpoint_point_in_world_coordinates[2];
+                                    std::cout << "local index in world coordinates is: " << lmid_point << std::endl;
                                     midline = lmid_point;
 						        }},*stroke);
                         }
@@ -297,6 +305,7 @@ struct DataSpecificApplication
 						config->stack_page->stack(create_overlay_with_warning("failed to parse identifier"));
 				    }
 				} });
+
 			auto perform_resampling = Button::make("Resample to AC-PC", resources);
 			perform_resampling->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
             perform_resampling->add_press_call(
@@ -305,7 +314,69 @@ struct DataSpecificApplication
 					    if(config->stack_page!=nullptr){
 						    config->stack_page->stack(create_overlay_with_warning("you must specify all points to resample the volume"));
 				        }
+                        midline = std::nullopt;
+                        ac_point = std::nullopt;
+                        pc_point = std::nullopt;
+                        return;
                     }
+
+                    Eigen::Matrix<double,3,1> orient_along_ac_pc = *pc_point-*ac_point;
+                    if(orient_along_ac_pc.norm()< 1e-7){
+                        if(config->stack_page!=nullptr){
+						    config->stack_page->stack(create_overlay_with_warning("vector is close to singular, try different pointss"));
+				        }
+                        midline = std::nullopt;
+                        ac_point = std::nullopt;
+                        pc_point = std::nullopt;
+                        return;
+                    }
+                    orient_along_ac_pc.normalize();
+                    Eigen::Matrix<double,3,1> orient_along_ac_midpoint = *midline-*ac_point;
+                    if(orient_along_ac_midpoint.norm()< 1e-7){
+                        if(config->stack_page!=nullptr){
+						    config->stack_page->stack(create_overlay_with_warning("vector is close to singular, try different pointss"));
+				        }
+                        midline = std::nullopt;
+                        ac_point = std::nullopt;
+                        pc_point = std::nullopt;
+                        return;
+                    }
+                    orient_along_ac_midpoint.normalize();
+                    Eigen::Matrix<double,3,1> orient_perpendic_to_ac_pc_ac_midline = orient_along_ac_pc.cross(orient_along_ac_midpoint);
+                    if(orient_perpendic_to_ac_pc_ac_midline.norm()< 1e-7){
+                        if(config->stack_page!=nullptr){
+						    config->stack_page->stack(create_overlay_with_warning("vector is close to singular, try different pointss"));
+				        }
+                        midline = std::nullopt;
+                        ac_point = std::nullopt;
+                        pc_point = std::nullopt;
+                        return;
+                    } 
+                    orient_perpendic_to_ac_pc_ac_midline.normalize();
+                    orient_along_ac_midpoint = orient_perpendic_to_ac_pc_ac_midline.cross(orient_along_ac_pc);
+                    Eigen::Matrix<double,3,3> rotation_matrix;
+                    rotation_matrix(0,0) = orient_along_ac_pc[0];
+                    rotation_matrix(0,0) = orient_along_ac_pc[1];
+                    rotation_matrix(0,0) = orient_along_ac_pc[2];
+
+                    rotation_matrix(0,0) = orient_perpendic_to_ac_pc_ac_midline[0];
+                    rotation_matrix(0,0) = orient_perpendic_to_ac_pc_ac_midline[1];
+                    rotation_matrix(0,0) = orient_perpendic_to_ac_pc_ac_midline[2];
+
+                    rotation_matrix(0,0) = orient_along_ac_midpoint[0];
+                    rotation_matrix(0,0) = orient_along_ac_midpoint[1];
+                    rotation_matrix(0,0) = orient_along_ac_midpoint[2];
+
+                    Eigen::Matrix<double,3,1> origin;
+                    rotation_matrix(0,0) = (*ac_point)[0];
+                    rotation_matrix(0,0) = (*ac_point)[1];
+                    rotation_matrix(0,0) = (*ac_point)[2];
+
+                    std::cout << "rotation matrix : \n" << rotation_matrix << "\ntranslation : \n" << origin << "\n";
+                    midline = std::nullopt;
+                    ac_point = std::nullopt;
+                    pc_point = std::nullopt;
+
                 }
             );
 			*text_container << std::move(button_ac) << std::move(button_cp) << std::move(button_midpoint) << std::move(perform_resampling);
@@ -372,7 +443,7 @@ struct DataSpecificApplication
 		});
 
 		auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-		*viwers_container << std::move(button) << std::move(button2) << std::move(button3);
+		*viwers_container << std::move(button) << std::move(button2) << std::move(button3) << std::move(button4);
 		viwers_container->set_color(SK_ColorTRANSPARENT);
 
 		return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
