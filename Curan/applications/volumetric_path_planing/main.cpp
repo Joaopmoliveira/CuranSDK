@@ -420,8 +420,6 @@ struct DataSpecificApplication
                     _size[2] = size[2];
                     reoriented_size = rotation_matrix*_size;
 
-
-
                     filter->SetInput(input);
                     filter->SetOutputOrigin(origin);
                     filter->SetOutputSpacing(new_spacing);
