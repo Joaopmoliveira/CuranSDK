@@ -256,4 +256,5 @@ target_compile_definitions(test_itk_resampling PRIVATE CURAN_COPIED_RESOURCE_PAT
 target_link_libraries(test_itk_resampling
 PUBLIC
 userinterface
+Eigen3::Eigen
 )

@@ -412,13 +412,13 @@ struct DataSpecificApplication
 
                     Eigen::Matrix<double,3,1> _size = Eigen::Matrix<double,3,1>::Zero();
                     _size[0] = size[0];
-                    auto reoriented_size = rotation_matrix*_size;
+                    auto reoriented_size_x = eigen_rotation_matrix*_size;
                     _size = Eigen::Matrix<double,3,1>::Zero();
                     _size[1] = size[1];
-                    reoriented_size = rotation_matrix*_size;
+                    auto reoriented_size_y = eigen_rotation_matrix*_size;
                     _size = Eigen::Matrix<double,3,1>::Zero();
                     _size[2] = size[2];
-                    reoriented_size = rotation_matrix*_size;
+                    auto reoriented_size_z = eigen_rotation_matrix*_size;
 
                     filter->SetInput(input);
                     filter->SetOutputOrigin(origin);
