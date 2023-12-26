@@ -34,7 +34,7 @@ using OutputPixelType = unsigned char;
 
 using InterPixelType = float;
 
-using InputImageType = itk::Image<InputPixelType, Dimension_in>;
+using InputImageType = itk::Image<InterPixelType, Dimension_in>;
 using OutputImageType = itk::Image<OutputPixelType, Dimension_out>;
 
 
@@ -48,13 +48,13 @@ using TransformType = itk::Euler3DTransform<double>;
 using ReaderType = itk::ImageFileReader<InputImageType>;
 using WriterType = itk::ImageFileWriter<OutputImageType>;
 
-void updateBaseTexture3D(vsg::floatArray3D &image, OutputImageType::Pointer image_to_render)
+void updateBaseTexture3D(vsg::floatArray3D &image, InputImageType::Pointer image_to_render)
 {
-    using FilterType = itk::CastImageFilter<OutputImageType, InterImageType>;
+    using FilterType = itk::CastImageFilter<InputImageType, InputImageType>;
     auto filter = FilterType::New();
     filter->SetInput(image_to_render);
 
-    using RescaleType = itk::RescaleIntensityImageFilter<InterImageType, OutputImageType>;
+    using RescaleType = itk::RescaleIntensityImageFilter<InputImageType, InputImageType>;
     auto rescale = RescaleType::New();
     rescale->SetInput(filter->GetOutput());
     rescale->SetOutputMinimum(0.0);
@@ -70,17 +70,15 @@ void updateBaseTexture3D(vsg::floatArray3D &image, OutputImageType::Pointer imag
         throw std::runtime_error("error");
     }
 
-    OutputImageType::Pointer out = rescale->GetOutput();
+    InputImageType::Pointer out = rescale->GetOutput();
 
-    using IteratorType = itk::ImageRegionIteratorWithIndex<OutputImageType>;
+    using IteratorType = itk::ImageRegionIteratorWithIndex<InputImageType>;
     IteratorType outputIt(out, out->GetRequestedRegion());
     for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt)
     {
-        OutputImageType::IndexType idx = outputIt.GetIndex();
+        InputImageType::IndexType idx = outputIt.GetIndex();
         image.set(idx[0], idx[1], idx[2], outputIt.Get());
     }
-
-
 }
  
 
@@ -210,13 +208,6 @@ main(int argc, char * argv[]) {
   filter->SetOutputDirection(pointer_to_block_of_memory->GetDirection()*new_direction);
 
   
-
-
-  
-
-
-
-
   TransformType::Pointer transform = TransformType::New();
 
   itk::Point<double, 3> rotation_center;
@@ -232,8 +223,6 @@ main(int argc, char * argv[]) {
   translation[1] = 0; // Y translation in millimeters
   translation[2] = 100; // Y translation in millimeters
   transform->SetTranslation(translation);
-
-  
   
 
   itk::Point<double,3>::VectorType new_origin{{0.0,0.0,0.0}};
@@ -250,7 +239,6 @@ main(int argc, char * argv[]) {
   
   filter->SetTransform(transform);
 
-  
 
 
   try
@@ -263,8 +251,6 @@ main(int argc, char * argv[]) {
       std::cout << result;
       //return;
   }
-
-  
 
   auto output = filter->GetOutput();
 
