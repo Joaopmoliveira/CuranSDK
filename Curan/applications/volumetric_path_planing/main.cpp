@@ -402,7 +402,56 @@ struct DataSpecificApplication
                     filter->SetDefaultPixelValue(0);
                     filter->SetTransform(transform);
                     auto input = map[PanelType::ORIGINAL_VOLUME].get_volume();
+
+                    Eigen::Matrix<double,3,3> original_rotation_matrix = Eigen::Matrix<double,3,3>::Zero();
+                    auto itk_original_matrix = input->GetDirection();
+                    for(size_t col = 0; col < 3; ++col)
+                        for(size_t row = 0; row < 3; ++row)
+                            original_rotation_matrix(row,col) = itk_original_matrix(row,col);
+
+                    auto relative_transformation = original_rotation_matrix.transpose()*eigen_rotation_matrix;
+
                     auto size = input->GetLargestPossibleRegion().GetSize();
+
+                    double x = (double)size[0]*input->GetSpacing()[0];
+                    double y = (double)size[1]*input->GetSpacing()[1];
+                    double z = (double)size[2]*input->GetSpacing()[2];
+
+                    enum transform_index{
+                        index_001 = 0,
+                        index_010 = 1,
+                        index_011 = 2,
+                        index_100 = 3,
+                        index_101 = 4,
+                        index_110 = 5,
+                        index_111 = 6,
+                        total_number_of_indicies,
+                    };
+
+                    Eigen::Matrix<double,3,transform_index::total_number_of_indicies> corners = Eigen::Matrix<double,3,transform_index::total_number_of_indicies>::Zero();                    
+                    corners.col(index_001) = Eigen::Matrix<double,3,1>{{x,.0,.0}};
+                    corners.col(index_010) = Eigen::Matrix<double,3,1>{{.0,y,.0}};
+                    corners.col(index_011) = Eigen::Matrix<double,3,1>{{x,y,.0}};
+                    corners.col(index_100) = Eigen::Matrix<double,3,1>{{.0,.0,z}};
+                    corners.col(index_101) = Eigen::Matrix<double,3,1>{{x,.0,z}};
+                    corners.col(index_110) = Eigen::Matrix<double,3,1>{{.0,y,z}};
+                    corners.col(index_111) = Eigen::Matrix<double,3,1>{{x,y,z}};
+
+                    Eigen::Matrix<double,3,transform_index::total_number_of_indicies> transformed_corners;
+
+                    transformed_corners.col(index_001) = relative_transformation*corners.col(index_001);
+                    transformed_corners.col(index_010) = relative_transformation*corners.col(index_010);
+                    transformed_corners.col(index_011) = relative_transformation*corners.col(index_011);
+                    transformed_corners.col(index_100) = relative_transformation*corners.col(index_100);
+                    transformed_corners.col(index_101) = relative_transformation*corners.col(index_101);
+                    transformed_corners.col(index_110) = relative_transformation*corners.col(index_110);
+                    transformed_corners.col(index_111) = relative_transformation*corners.col(index_111);
+
+                    auto minimum = transformed_corners.colwise().minCoeff();
+                    std::cout << "original corners: " << corners << std::endl;
+
+                    std::cout << "minimum values found are : " << minimum << std::endl;
+
                     auto spacing = input->GetSpacing();
                     double minimum_spacing = std::min(std::min(spacing[0],spacing[1]),spacing[2]);
                     auto new_spacing = spacing;

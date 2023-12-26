@@ -24,12 +24,19 @@ using ImageType = itk::Image<PixelType, Dimension>;
 void function(curan::ui::ImageDisplay *image_display, curan::ui::ImageDisplay *resized_image_display)
 {
     using ImageReaderType = itk::ImageFileReader<ImageType>;
-    auto ImageReader = ImageReaderType::New();
 
     std::string dirName{CURAN_COPIED_RESOURCE_PATH "/dicom_sample/mri_brain/233.dcm"};
+    using ImageReaderTypeFloat = itk::ImageFileReader<itk::Image<float, Dimension>>;
+    auto ImageFloatReader = ImageReaderTypeFloat::New();
+    ImageFloatReader->SetFileName(dirName);
+
+    auto ImageReader = ImageReaderType::New();
+
+
     ImageReader->SetFileName(dirName);
     try
     {
+        ImageFloatReader->Update();
         ImageReader->Update();
     }
     catch (const itk::ExceptionObject &ex)
@@ -37,6 +44,11 @@ void function(curan::ui::ImageDisplay *image_display, curan::ui::ImageDisplay *r
         std::cout << ex << std::endl;
         return;
     }
+
+
+    auto pointer_to_float_image =ImageFloatReader->GetOutput();
+
+    //[0.0000 1.00000] --------> [0 255] 
 
     ImageType::Pointer pointer_to_block_of_memory = ImageReader->GetOutput();
     ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
@@ -74,7 +86,7 @@ void function(curan::ui::ImageDisplay *image_display, curan::ui::ImageDisplay *r
 
     filter->SetInput(input);
     filter->SetSize(out_size);
-    itk::Point<double,3>::VectorType new_origin{{0.1,0.1,0.0}};
+    itk::Point<double,3>::VectorType new_origin{{-10.0,0.1,0.0}};
     auto old_origin = pointer_to_block_of_memory->GetOrigin() ;
     old_origin += new_origin;
     filter->SetOutputOrigin(old_origin);
