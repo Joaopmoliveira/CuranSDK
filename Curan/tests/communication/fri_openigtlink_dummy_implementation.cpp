@@ -30,11 +30,9 @@ int server_function(){
 
 		message->serialize();
 
-		auto callable = [message]() {
-			return asio::buffer(message->get_buffer(),message->get_body_size()+message->get_header_size());
-		};
-		auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+		auto to_send = curan::utilities::CaptureBuffer::make_shared(message->get_buffer(),message->get_body_size()+message->get_header_size(),message);
 		server_joints.write(to_send);
+
         counter += 1.000;   
         std::this_thread::sleep_for(std::chrono::milliseconds(30));    
     }
@@ -88,10 +86,7 @@ int main(){
 
 	message->serialize();
 
-	auto callable = [message]() {
-		return asio::buffer(message->get_buffer(),message->get_body_size()+message->get_header_size());
-	};
-	auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+	auto to_send = curan::utilities::CaptureBuffer::make_shared(message->get_buffer(),message->get_body_size()+message->get_header_size(),message);
 
     client_joints.write(to_send);
     

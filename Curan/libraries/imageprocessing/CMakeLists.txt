@@ -23,6 +23,7 @@ target_link_libraries(imageprocessing PUBLIC
 ${ITK_LIBRARIES}
 utils
 renderable
+userinterface
 GeometricTools
 OpenIGTLink
 )

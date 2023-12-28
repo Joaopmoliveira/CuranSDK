@@ -3,7 +3,7 @@
 #include <variant>
 #include "utils/Overloading.h"
 #include "utils/StringManipulation.h"
-
+#include "userinterface/widgets/ComputeImageBounds.h"
 namespace curan {
 namespace ui {
 
@@ -50,6 +50,7 @@ OpenIGTLinkViewer::OpenIGTLinkViewer() : last_pressed_position{ -20000.0,-20000.
 	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
 	text_font = SkFont(typeface, 10, 1.0f, 0.0f);
 	text_font.setEdging(SkFont::Edging::kAntiAlias);
+	set_size(SkRect::MakeWH(0.001,0.001));
 }
 
 std::unique_ptr<OpenIGTLinkViewer> OpenIGTLinkViewer::make() {
@@ -127,24 +128,15 @@ drawablefunction OpenIGTLinkViewer::draw() {
 if(!compiled)
 	throw std::runtime_error("must compile the button before drawing operations");
 	auto callab = [this](SkCanvas* canvas) {
-	std::lock_guard<std::mutex> g{ get_mutex() };
 	paint.setColor(SK_ColorWHITE);
 	paint.setStrokeWidth(1);
 	SkAutoCanvasRestore restore(canvas, true);
-	SkRect current_area = get_position();
-	auto size = get_size();
-	SkRect widget_rect = size;
-
-	if (size.width() < 0.01 || size.height() < 0.01) {
-		widget_rect = current_area;
-	} else {
-		widget_rect.offsetTo(current_area.centerX() - widget_rect.width() / 2.0, current_area.centerY() - widget_rect.height() / 2.0);
-	}
+	SkRect widget_rect = get_position();
 
 	auto container = get_container();
 	canvas->clipRect(widget_rect);
 	canvas->clear(SK_ColorBLACK);
-	center_debug_mode = { widget_rect.fRight - debug_mode_radius,widget_rect.fTop + debug_mode_radius };
+	center_debug_mode = { widget_rect.fRight - debug_mode_radius*2,widget_rect.fTop + debug_mode_radius };
 	if (!in_debug_mode) {
 		canvas->drawCircle(center_debug_mode, debug_mode_radius, paint);
 		canvas->drawTextBlob(debug_glyph, center_debug_mode.fX, center_debug_mode.fY - debug_glyph->bounds().centerY(), paint_text);
@@ -155,16 +147,7 @@ if(!compiled)
 				},
 				[canvas,widget_rect](ImageMessage message) {
 					SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0 / 3, 1.0 / 3 });
-					float image_width = message.skia_image->width();
-					float image_height = message.skia_image->height();
-					float current_selected_width = widget_rect.width();
-					float current_selected_height = widget_rect.height();
-
-					float scale_factor = std::min(current_selected_width * 0.9f / image_width, current_selected_height * 0.95f / image_height);
-
-					float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-					float init_y = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
-					SkRect current_selected_image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, scale_factor * image_height);
+					SkRect current_selected_image_rectangle = compute_bounded_rectangle(widget_rect,message.skia_image->width(),message.skia_image->height());
 					canvas->drawImageRect(message.skia_image, current_selected_image_rectangle, opt);
 				}},mess
 			);
@@ -267,11 +250,11 @@ if(!compiled)
 
 		std::string preview = "Preview: ";
 		canvas->drawSimpleText(preview.data(), preview.size(), SkTextEncoding::kUTF8, x_init, y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5), text_font, paint_text);
-
+		y_init += (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
 		if (clicked != container.received_messages.end()) {
 			std::visit(utilities::overloaded{
-				[&clicked,canvas,this,number_of_cells,y_init,widget_rect](TransformMessage& message) {
-					SkScalar y = y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
+				[&clicked,canvas,this,number_of_cells,y_init,x_init,widget_rect](TransformMessage& message) {
+					SkScalar y = y_init;
 					// Retrive the transform data
 					igtl::Matrix4x4 matrix;
 					message.transform->GetMatrix(matrix);
@@ -287,20 +270,17 @@ if(!compiled)
 					}
 				},
 				[&clicked,canvas,this,number_of_cells,y_init,widget_rect](ImageMessage& message) {
-					SkScalar y = y_init + (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
+
 					float image_width = message.skia_image->width();
 					float image_height = message.skia_image->height();
 					float current_selected_width = widget_rect.width();
-					float current_selected_height = widget_rect.height()- (number_of_cells + 2.0) * (DEFAULT_TEXT_SIZE + 5);
+					float current_selected_height = widget_rect.height()-y_init;
 
-					float scale_factor = std::min(current_selected_width * 0.9f / image_width, current_selected_height * 0.95f / image_height);
-
-					float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-					SkRect current_selected_image_rectangle = SkRect::MakeXYWH(init_x, y, scale_factor * image_width, scale_factor * image_height);
-
+					auto allowed_area = SkRect::MakeXYWH(widget_rect.x(),y_init,current_selected_width,current_selected_height);
+					SkRect current_selected_image_rectangle = compute_bounded_rectangle(allowed_area,image_width,image_height);
 					
 					SkSamplingOptions options;
-					canvas->drawImage(message.skia_image, widget_rect.x() + (widget_rect.width() - message.skia_image->width()) / 2.0, y);
+					canvas->drawImageRect(message.skia_image, current_selected_image_rectangle, options);
 				}
 				},*clicked);
 		}
@@ -317,12 +297,11 @@ if(!compiled)
 		bool interacted = false;
 		std::visit(utilities::overloaded{
 			[this](Empty arg) {
-
 			},
 			[this](Move arg) {
 
 			},
-			[this,&interacted](Press arg) {;
+			[this,&interacted](Press arg) {
 				if (interacts(arg.xpos, arg.ypos)) {
 					last_pressed_position = arg;
 					float x = arg.xpos - center_debug_mode.fX;
@@ -337,22 +316,19 @@ if(!compiled)
 
 			},
 			[this](Key arg) {
-
+	
 			},
 			[this](Unpress arg) {;
 
 			},
 			[this](ItemDropped arg) {;
-
+	
 			} },sig);
 		return interacted;
 	};
 	return lamb;
 }
 
-void OpenIGTLinkViewer::framebuffer_resize() {
-
-}
 
 void OpenIGTLinkViewer::compile(){
 	std::string type = "Type";

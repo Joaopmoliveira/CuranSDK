@@ -85,10 +85,6 @@ callablefunction TextBlob::call() {
 	return lamb;
 }
 
-void TextBlob::framebuffer_resize() {
-
-}
-
 void TextBlob::compile(){
 	auto text_font = SkFont(typeface, (float)font_size, 1.0f, 0.0f);
 	text_font.setEdging(SkFont::Edging::kAntiAlias);

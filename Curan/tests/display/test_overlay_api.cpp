@@ -167,15 +167,9 @@ void generate_image_message(std::atomic<bool>& continue_running,curan::ui::OpenI
 
 		button->process_message(message_to_receive);
 
-		auto lam = [message_to_receive, imgMsg, width = img.width(), height = img.height()](SkPixmap& requested) {
-			auto inf = SkImageInfo::Make(width, height, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-			size_t row_size = width * sizeof(char);
-			SkPixmap map{ inf,imgMsg->GetScalarPointer(),row_size };
-			requested = map;
-			return;
-		};
-
-		pure_display->update_image(lam);
+    	auto buff = curan::utilities::CaptureBuffer::make_shared(imgMsg->GetScalarPointer(),imgMsg->GetImageSize(),imgMsg);
+    	curan::ui::ImageWrapper wrapper{buff,(size_t)img.width(),(size_t)img.height()};
+		pure_display->update_image(wrapper);
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		++counter;
@@ -199,7 +193,7 @@ std::unique_ptr<curan::ui::Overlay> create_option_page(curan::ui::IconResources&
 	container2->set_divisions({0.0 , 0.5 , 1.0});
 	container2->set_color(SK_ColorTRANSPARENT);
 
-	return Overlay::make(std::move(container2),SK_ColorTRANSPARENT);
+	return Overlay::make(std::move(container2),SK_ColorTRANSPARENT,true);
 }
 
 

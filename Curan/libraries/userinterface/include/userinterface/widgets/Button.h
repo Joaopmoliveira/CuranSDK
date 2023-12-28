@@ -40,10 +40,12 @@ namespace curan {
 			bool compiled = false;
 
 			Button(const std::string& button_text,IconResources& system_icons);
+			Button(const std::string& button_text,const std::string& icon_identifier,IconResources& system_icons);
 
 		public:
 
 			static std::unique_ptr<Button> make(const std::string& button_text,IconResources& system_icons);
+			static std::unique_ptr<Button> make(const std::string& button_text,const std::string& icon_identifier,IconResources& system_icons);
 
 			void compile() override;
 

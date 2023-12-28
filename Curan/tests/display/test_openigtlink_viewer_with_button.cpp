@@ -163,15 +163,9 @@ void generate_image_message(std::atomic<bool>& continue_running ,curan::ui::Open
 
 		button->process_message(message_to_receive);
 
-		auto lam = [message_to_receive, imgMsg,width = img.width(), height = img.height()](SkPixmap& requested) {
-			auto inf = SkImageInfo::Make(width, height, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-			size_t row_size = width * sizeof(char);
-			SkPixmap map{inf,imgMsg->GetScalarPointer(),row_size};
-			requested = map;
-			return;
-		};
-
-		pure_display->update_image(lam);
+    	auto buff = curan::utilities::CaptureBuffer::make_shared(imgMsg->GetScalarPointer(),imgMsg->GetImageSize(),imgMsg);
+    	curan::ui::ImageWrapper wrapper{buff,(size_t)img.width(),(size_t)img.height()};
+		pure_display->update_image(wrapper);
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
@@ -188,7 +182,6 @@ int main() {
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 		auto igtlink_viewer = OpenIGTLinkViewer::make();
-		igtlink_viewer->set_size(SkRect::MakeWH(600,500));
 		auto igtlink_viewer_pointer = igtlink_viewer.get();
 
 		auto image_display = ImageDisplay::make();

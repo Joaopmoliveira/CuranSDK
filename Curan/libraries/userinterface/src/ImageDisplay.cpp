@@ -2,6 +2,7 @@
 #include "utils/TheadPool.h"
 #include <iostream>
 #include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/ComputeImageBounds.h"
 
 namespace curan {
 namespace ui {
@@ -15,15 +16,9 @@ std::unique_ptr<ImageDisplay> ImageDisplay::make() {
 	return image_display;
 }
 
-void ImageDisplay::update_image(image_provider provider) {
+void ImageDisplay::update_image(ImageWrapper wrapped_image) {
 	std::lock_guard<std::mutex> g{ get_mutex() };
-	SkPixmap pixelmap;
-	provider(pixelmap);
-	auto image = SkSurfaces::WrapPixels(pixelmap)->makeImageSnapshot();
-	auto lam = [image, provider, pixelmap]() {
-		return image;
-	};
-	images_to_render = lam;
+	images_to_render = wrapped_image;
 }
 
 drawablefunction ImageDisplay::draw() {
@@ -34,46 +29,21 @@ drawablefunction ImageDisplay::draw() {
 		SkRect current_selected_image_rectangle = widget_rect;
 
 		auto image = get_image_wrapper();
-		override_image_wrapper(image);
+		if(image)
+			override_image_wrapper(*image);
 		SkPaint paint_square;
 		paint_square.setStyle(SkPaint::kStroke_Style);
 		paint_square.setAntiAlias(true);
 		paint_square.setStrokeWidth(4);
 		paint_square.setColor(SK_ColorGREEN);
-		canvas->drawRect(widget_rect, paint_square);
-		if (image) {
-			auto val = *image;
-			auto image_display_surface = val();
-			float image_width = image_display_surface->width();
-			float image_height = image_display_surface->height();
-			float current_selected_width = widget_rect.width();
-			float current_selected_height = widget_rect.height();
-			float scale_factor = std::min(current_selected_width * 0.9f / image_width, current_selected_height * 0.95f / image_height);
-			float init_x = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-			float init_y = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
 
-			current_selected_image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, scale_factor * image_height);
-
-			SkRect testing = widget_rect;
-			float init_x_new = 0;
-			float init_y_new = 0;
-			if (current_selected_width * 0.9f / image_width < current_selected_height * 0.95f / image_height) { // the width is the largest dimension which must be scalled 
-				init_x_new = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-				init_y_new = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
-				float local_scalling = current_selected_image_rectangle.height()/image_height;
-				testing = SkRect::MakeXYWH(init_x_new, init_y_new, local_scalling * image_width, scale_factor * image_height);
-			}
-			else { //the height is the largest dimension which must be scalled
-				init_x_new = (current_selected_width - image_width * scale_factor) / 2.0f + widget_rect.x();
-				init_y_new = (current_selected_height - image_height * scale_factor) / 2.0f + widget_rect.y();
-
-
-				testing = SkRect::MakeXYWH(init_x_new, init_y_new, scale_factor * image_width, 0.5f*scale_factor * image_height);
-			}
+		if (old_image) {
+			auto val = *old_image;
+			auto image_display_surface = (*old_image).image;
+			current_selected_image_rectangle = compute_bounded_rectangle(widget_rect,image_display_surface->width(),image_display_surface->height());
 
 			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
 			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt);
-			canvas->drawRect(current_selected_image_rectangle, paint_square);
 		}
 
 		auto custom_drawing = get_custom_drawingcall();
@@ -96,16 +66,14 @@ callablefunction ImageDisplay::call() {
 	return lamb;
 }
 
-void ImageDisplay::framebuffer_resize() {
-
-}
-
-std::optional<skia_image_producer> ImageDisplay::get_image_wrapper() {
+std::optional<ImageWrapper> ImageDisplay::get_image_wrapper() {
 	std::lock_guard<std::mutex> g(get_mutex());
-	return images_to_render;
+	auto copy = images_to_render;
+	images_to_render = std::nullopt;
+	return copy;
 }
 
-ImageDisplay& ImageDisplay::override_image_wrapper(std::optional<skia_image_producer> wrapper) {
+ImageDisplay& ImageDisplay::override_image_wrapper(ImageWrapper wrapper) {
 	std::lock_guard<std::mutex> g(get_mutex());
 	old_image = wrapper;
 	return *(this);
@@ -128,15 +96,9 @@ std::optional<custom_step> ImageDisplay::get_custom_drawingcall() {
 	return custom_drawing_call;
 }
 
-ImageDisplay& ImageDisplay::update_batch(custom_step call, image_provider provider) {
+ImageDisplay& ImageDisplay::update_batch(custom_step call, ImageWrapper provider) {
 	std::lock_guard<std::mutex> g{ get_mutex() };
-	SkPixmap pixelmap;
-	provider(pixelmap);
-	auto image = SkSurfaces::WrapPixels(pixelmap)->makeImageSnapshot();
-	auto lam = [image, provider, pixelmap]() {
-		return image;
-	};
-	images_to_render = lam;
+	images_to_render = provider;
 	custom_drawing_call = call;
 	return *(this);
 }

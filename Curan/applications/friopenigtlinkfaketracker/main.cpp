@@ -129,12 +129,10 @@ void start_tracking(curan::communication::Server &server, curan::utilities::Flag
 				trackingMsg->SetTimeStamp(ts);
 				trackingMsg->Pack();
 
-				auto callable = [trackingMsg]()
-				{
-					return asio::buffer(trackingMsg->GetPackPointer(), trackingMsg->GetPackSize());
-				};
-				auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+
+				auto to_send = curan::utilities::CaptureBuffer::make_shared(trackingMsg->GetPackPointer(), trackingMsg->GetPackSize(),trackingMsg);
 				server.write(to_send);
+
 				const auto end = std::chrono::high_resolution_clock::now();
 				auto val_to_sleep = std::chrono::milliseconds(val) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 				auto sleep_for = (val_to_sleep.count() > 0) ? val_to_sleep : std::chrono::milliseconds(0);
@@ -191,11 +189,7 @@ void start_joint_tracking(curan::communication::Server &server, curan::utilities
 		//std::printf("\n");
 		message->serialize();
 
-		auto callable = [message]()
-		{
-			return asio::buffer(message->get_buffer(), message->get_body_size() + message->get_header_size());
-		};
-		auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+		auto to_send = curan::utilities::CaptureBuffer::make_shared(message->get_buffer(), message->get_body_size() + message->get_header_size(),message);
 		server.write(to_send);
 
 		const auto end = std::chrono::high_resolution_clock::now();

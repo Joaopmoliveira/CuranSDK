@@ -118,6 +118,7 @@ void Window::connect_handler() {
 	glfwSetMouseButtonCallback(this->window, cursor_position_click_callback);
 	glfwSetScrollCallback(this->window, scroll_callback);
 	glfwSetDropCallback(this->window, item_droped_callback);
+	glfwSetKeyCallback(this->window,key_callback);
 }
 
 bool Window::initialize()
