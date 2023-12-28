@@ -73,7 +73,7 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_
     myIIWALimits.qDotMax[3] = 150 * M_PI / 180;
     myIIWALimits.qDotMax[4] = 150 * M_PI / 180;
     myIIWALimits.qDotMax[5] = 150 * M_PI / 180;
-    myIIWALimits.qDotMax[6] = 155 * M_PI / 180;
+    myIIWALimits.qDotMax[6] = 185 * M_PI / 180;
 
     myIIWALimits.qDotMin[0] = -150 * M_PI / 180;
     myIIWALimits.qDotMin[1] = -150 * M_PI / 180;
@@ -81,7 +81,7 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_
     myIIWALimits.qDotMin[3] = -150 * M_PI / 180;
     myIIWALimits.qDotMin[4] = -150 * M_PI / 180;
     myIIWALimits.qDotMin[5] = -150 * M_PI / 180;
-    myIIWALimits.qDotMin[6] = -155 * M_PI / 180;
+    myIIWALimits.qDotMin[6] = -185 * M_PI / 180;
 
     myIIWALimits.qDotDotMax[0] = 300 * M_PI / 180;
     myIIWALimits.qDotDotMax[1] = 300 * M_PI / 180;
@@ -89,7 +89,7 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_
     myIIWALimits.qDotDotMax[3] = 300 * M_PI / 180;
     myIIWALimits.qDotDotMax[4] = 300 * M_PI / 180;
     myIIWALimits.qDotDotMax[5] = 300 * M_PI / 180;
-    myIIWALimits.qDotDotMax[6] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[6] = 340 * M_PI / 180;
 
     myIIWALimits.qDotDotMin[0] = -300 * M_PI / 180;
     myIIWALimits.qDotDotMin[1] = -300 * M_PI / 180;
@@ -97,7 +97,7 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_
     myIIWALimits.qDotDotMin[3] = -300 * M_PI / 180;
     myIIWALimits.qDotDotMin[4] = -300 * M_PI / 180;
     myIIWALimits.qDotDotMin[5] = -300 * M_PI / 180;
-    myIIWALimits.qDotDotMin[6] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[6] = -340 * M_PI / 180;
 
     // Attach tool
     toolMass = 0.0;                                                                     // No tool for now
@@ -108,11 +108,11 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_
     robot->attachToolToRobotModel(myTool);
 
     _qInitial[0] = 0.0 * M_PI / 180;
-    _qInitial[1] = -45.0 * M_PI / 180;
+    _qInitial[1] = -90.0 * M_PI / 180;
     _qInitial[2] = 0.0 * M_PI / 180;
-    _qInitial[3] = 45.0 * M_PI / 180;
+    _qInitial[3] = 0.0 * M_PI / 180;
     _qInitial[4] = 0.0 * M_PI / 180;
-    _qInitial[5] = 90.0 * M_PI / 180;
+    _qInitial[5] = 0.0 * M_PI / 180;
     _qInitial[6] = 0.0 * M_PI / 180;
 
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
@@ -235,7 +235,7 @@ void MyLBRClient::command() {
     //for now we use a damping torque but we would like to use the state-derivative torque
     Eigen::VectorXd torqueCommand = Eigen::VectorXd::Zero(NUMBER_OF_JOINTS,1);
     static bool positive = true;
-    double last_joint_torque = (positive) ? 10 : -10 ;
+    double last_joint_torque = (positive) ? 3 : -3 ;
     torqueCommand[NUMBER_OF_JOINTS-1] = last_joint_torque;
     VectorNd SJSTorque = addConstraints(torqueCommand, 0.005); 
 

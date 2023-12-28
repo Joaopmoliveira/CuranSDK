@@ -246,3 +246,15 @@ target_link_libraries(test_imutable_text_panel
 PUBLIC
 userinterface
 )
+
+# ---------------------------------------
+
+add_executable(test_itk_resampling test_itk_resampling.cpp)
+
+target_compile_definitions(test_itk_resampling PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_itk_resampling
+PUBLIC
+userinterface
+Eigen3::Eigen
+)

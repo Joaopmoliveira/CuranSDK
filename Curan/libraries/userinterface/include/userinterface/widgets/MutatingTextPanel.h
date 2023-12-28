@@ -17,9 +17,12 @@ namespace curan
 {
     namespace ui
     {
+        class MutatingTextPanel;
+        using text_defined_callback = std::function<void(MutatingTextPanel* button, const std::string& ,ConfigDraw* config)>;
 
         class MutatingTextPanel : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<MutatingTextPanel>
         {
+            std::vector<text_defined_callback> panel_callback;
             const std::array<std::string, 3> kTypefaces = {"sans-serif", "serif", "monospace"};
             const size_t kTypefaceCount = kTypefaces.size();
             const std::optional<std::string> default_text;
@@ -46,15 +49,17 @@ namespace curan
             bool fMouseDown = false;
             size_t counter = 0;
             bool is_highlighted = false;
+            bool fTight = false;
 
             SkColor4f text_color;
+            SkColor4f default_text_color;
             SkColor4f background_color;
             SkColor4f highlighted_background_color;
             SkColor4f cursor_color;
             SkColor4f selection_color;
 
-            MutatingTextPanel();
-            MutatingTextPanel(const std::string& default_text);
+            explicit MutatingTextPanel(bool is_tight);
+            explicit MutatingTextPanel(bool is_tight,const std::string& default_text);
         public:
             enum typeface
             {
@@ -63,19 +68,39 @@ namespace curan
                 monospace = 2
             };
 
-            static std::unique_ptr<MutatingTextPanel> make();
-
-            static std::unique_ptr<MutatingTextPanel> make(const std::string& default_text);
+            template<typename ...T>
+            static std::unique_ptr<MutatingTextPanel> make(T&& ...u){
+                std::unique_ptr<MutatingTextPanel> editor = std::unique_ptr<MutatingTextPanel>(new MutatingTextPanel(std::forward<T>(u)...));
+                return editor;
+            }
 
             void compile() override;
 
             ~MutatingTextPanel();
+
+            inline void add_textdefined_callback(text_defined_callback callback){
+                panel_callback.push_back(callback);
+            }
+
+            inline SkRect get_drawable_content(){
+                if(fTight){
+                    auto val = get_position();
+                    SkRect drawable = get_size();
+                    drawable.offsetTo(val.centerX() - drawable.width() / 2.0f, val.centerY() - drawable.height() / 2.0f);
+                    return drawable;
+                } else {
+                    return get_position();
+                }
+
+            }
 
             curan::ui::drawablefunction draw() override;
 
             curan::ui::callablefunction call() override;
 
             void framebuffer_resize(const SkRect &new_page_size) override;
+
+            void panel_triggered();
 
             void setFont(typeface font);
 
@@ -97,6 +122,19 @@ namespace curan
             {
                 std::lock_guard<std::mutex> g{get_mutex()};
                 text_color = color;
+                return *(this);
+            }
+
+            inline SkColor4f get_default_text_color()
+            {
+                std::lock_guard<std::mutex> g{get_mutex()};
+                return default_text_color;
+            }
+
+            inline MutatingTextPanel &set_default_text_color(SkColor4f color)
+            {
+                std::lock_guard<std::mutex> g{get_mutex()};
+                default_text_color = color;
                 return *(this);
             }
 

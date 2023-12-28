@@ -11,6 +11,7 @@
 #include "userinterface/widgets/MutatingTextPanel.h"
 #include <unordered_map>
 #include <optional>
+#include <charconv>
 #include <functional>
 #include "utils/Job.h"
 #include "utils/TheadPool.h"
@@ -27,6 +28,9 @@
 #include "itkExtractImageFilter.h"
 #include "itkImage.h"
 #include "itkImageFileReader.h"
+#include "itkLinearInterpolateImageFunction.h"
+#include "itkResampleImageFilter.h"
+#include "itkScaleTransform.h"
 
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
@@ -65,6 +69,22 @@ struct DataSpecificApplication
 	{
 	}
 
+	std::unique_ptr<curan::ui::Overlay> create_overlay_with_warning(const std::string& warning){
+		using namespace curan::ui;
+		auto warn = Button::make(" ","warning.png", resources);
+		warn->set_click_color(SK_AlphaTRANSPARENT).set_hover_color(SK_AlphaTRANSPARENT).set_waiting_color(SK_AlphaTRANSPARENT).set_size(SkRect::MakeWH(400, 200));
+
+		auto button = Button::make(warning, resources);
+		button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 50));
+
+		auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+		*viwers_container << std::move(warn) << std::move(button);
+		viwers_container->set_color(SK_ColorTRANSPARENT).set_divisions({0.0,.8,1.0});
+
+
+		return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
+	}
+
 	void create_panel_ac_pc_instructions()
 	{
 		using namespace curan::ui;
@@ -77,30 +97,30 @@ struct DataSpecificApplication
 			case Panels::ONE_PANEL:
 			{
 				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
-				*viwers_container << std::move(image_display); 
+				*viwers_container << std::move(image_display);
 			}
-				break;
+			break;
 			case Panels::TWO_PANELS:
 			{
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
-				*viwers_container << std::move(image_display_x) << std::move(image_display_y); 
+				*viwers_container << std::move(image_display_x) << std::move(image_display_y);
 			}
-				break;
+			break;
 			case Panels::THREE_PANELS:
 			{
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
-				*viwers_container << std::move(image_display_x)  << std::move(image_display_y)  << std::move(image_display_z) ; 
+				*viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
 			}
-				break;
+			break;
 			default:
 			{
 				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
-				*viwers_container << std::move(image_display); 
+				*viwers_container << std::move(image_display);
 			}
-				break;
+			break;
 			}
 			minipage->construct(std::move(viwers_container), SK_ColorBLACK);
 		}
@@ -113,46 +133,83 @@ struct DataSpecificApplication
 			case Panels::ONE_PANEL:
 			{
 				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
-				*viwers_container << std::move(image_display); 
+				*viwers_container << std::move(image_display);
 			}
-				break;
+			break;
 			case Panels::TWO_PANELS:
 			{
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
-				*viwers_container << std::move(image_display_x) << std::move(image_display_y); 
+				*viwers_container << std::move(image_display_x) << std::move(image_display_y);
 			}
-				break;
+			break;
 			case Panels::THREE_PANELS:
 			{
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Y);
 				std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
-				*viwers_container << std::move(image_display_x)  << std::move(image_display_y)  << std::move(image_display_z) ; 
+				*viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
 			}
-				break;
+			break;
 			default:
 			{
 				std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::X);
-				*viwers_container << std::move(image_display); 
+				*viwers_container << std::move(image_display);
 			}
-				break;
+			break;
 			}
 			auto text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-			auto button_ac = MutatingTextPanel::make("define ac point: e.g. p4");
-			button_ac->set_background_color({.0f, .0f, .0f, 1.0f}).set_text_color(SkColors::kWhite).set_highlighted_color({.2f, .2f, .2f, 1.0f}).set_cursor_color({1.0,0.0,0.0,1.0});
-			auto button_cp = MutatingTextPanel::make("define pc point: e.g. p6");
-			button_cp->set_background_color({.0f, .0f, .0f, 1.0f}).set_text_color(SkColors::kWhite).set_highlighted_color({.2f, .2f, .2f, 1.0f}).set_cursor_color({1.0,0.0,0.0,1.0});
-			auto button_midpoint = MutatingTextPanel::make("define midpoint: e.g. p10");
-			button_midpoint->set_background_color({.0f, .0f, .0f, 1.0f}).set_text_color(SkColors::kWhite).set_highlighted_color({.2f, .2f, .2f, 1.0f}).set_cursor_color({1.0,0.0,0.0,1.0});
-			auto perform_resampling = Button::make("Resample to AC-PC",resources);
+			auto button_ac = MutatingTextPanel::make(true, "define ac point: e.g. p4");
+			button_ac->set_background_color({1.0f, 1.0f, 1.0f, 1.0f}).set_text_color(SkColors::kBlack).set_default_text_color({.5f, .5f, .5f, 1.0f}).set_highlighted_color({.8f, .8f, .8f, 1.0f}).set_cursor_color({1.0, 0.0, 0.0, 1.0}).set_size(SkRect::MakeWH(200, 100));
+			button_ac->add_textdefined_callback([&](MutatingTextPanel *button, const std::string &str, ConfigDraw *config)
+												{
+				int result{};
+        		auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
+       			if (ec == std::errc()){ //provided number is proper
+					std::cout << result << "\n";
+				}
+        		else if (ec == std::errc::invalid_argument || ec == std::errc::result_out_of_range){
+					if(config->stack_page!=nullptr){
+						config->stack_page->stack(create_overlay_with_warning("failed to parse identifier"));
+					}
+				} });
+			auto button_cp = MutatingTextPanel::make(true, "define pc point: e.g. p6");
+			button_cp->set_background_color({1.0f, 1.0f, 1.0f, 1.0f}).set_text_color(SkColors::kBlack).set_default_text_color({.5f, .5f, .5f, 1.0f}).set_highlighted_color({.8f, .8f, .8f, 1.0f}).set_cursor_color({1.0, 0.0, 0.0, 1.0}).set_size(SkRect::MakeWH(200, 100));
+			button_cp->add_textdefined_callback([&](MutatingTextPanel *button, const std::string &str, ConfigDraw *config)
+												{
+				int result{};
+        		auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
+       			if (ec == std::errc()){ //provided number is proper
+					std::cout << result << "\n";
+				}
+        		else if (ec == std::errc::invalid_argument || ec == std::errc::result_out_of_range){	
+					if(config->stack_page!=nullptr){
+						config->stack_page->stack(create_overlay_with_warning("failed to parse identifier"));
+					}
+				} });
+			auto button_midpoint = MutatingTextPanel::make(true, "define midpoint: e.g. p10");
+			button_midpoint->set_background_color({1.0f, 1.0f, 1.0f, 1.0f}).set_text_color(SkColors::kBlack).set_default_text_color({.5f, .5f, .5f, 1.0f}).set_highlighted_color({.8f, .8f, .8f, 1.0f}).set_cursor_color({1.0, 0.0, 0.0, 1.0}).set_size(SkRect::MakeWH(200, 100));
+			button_cp->add_textdefined_callback([&](MutatingTextPanel *button, const std::string &str, ConfigDraw *config)
+												{
+				int result{};
+        		auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
+       			if (ec == std::errc()){ //provided number is proper
+					std::cout << result << "\n";
+				}
+        		else if (ec == std::errc::invalid_argument || ec == std::errc::result_out_of_range){
+					if(config->stack_page!=nullptr){
+						config->stack_page->stack(create_overlay_with_warning("failed to parse identifier"));
+				}
+				} });
+			auto perform_resampling = Button::make("Resample to AC-PC", resources);
 			perform_resampling->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+
 			*text_container << std::move(button_ac) << std::move(button_cp) << std::move(button_midpoint) << std::move(perform_resampling);
 			auto total_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 			*total_container << std::move(text_container) << std::move(viwers_container);
-			total_container->set_divisions({ 0.0 , 0.1 , 1.0 });
+			total_container->set_divisions({0.0, 0.1, 1.0});
 			minipage->construct(std::move(total_container), SK_ColorBLACK);
-		}		
+		}
 	}
 
 	std::unique_ptr<curan::ui::Overlay> create_layout_page()
@@ -193,10 +250,10 @@ struct DataSpecificApplication
 
 		auto button2 = Button::make("Resample AC-PC", resources);
 		button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-		button2->add_press_call([&](Button *button, Press press, ConfigDraw *config) {
+		button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+								{
 			is_acpc_being_defined = !is_acpc_being_defined;
-			create_panel_ac_pc_instructions();
-		});
+			create_panel_ac_pc_instructions(); });
 
 		auto button3 = Button::make("Define Trajectory", resources);
 		button3->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
