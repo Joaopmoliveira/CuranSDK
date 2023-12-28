@@ -687,7 +687,7 @@ int main()
         DisplayParams param{std::move(context), 2200, 1200};
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-        auto volume = get_volume(CURAN_COPIED_RESOURCE_PATH "/dicom_sample/mri_brain");
+        auto volume = get_volume(CURAN_COPIED_RESOURCE_PATH "/dicom_sample/ST983524");
         if (!volume)
             return 1;
 
