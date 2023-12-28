@@ -47,7 +47,6 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
     }
     auto updateBaseTexture = [message_body](vsg::vec4Array2D& image)
     {
-        try{
             int x, y, z;
 	        message_body->GetDimensions(x, y, z);
             unsigned char* scaller_buffer = (unsigned char*)message_body->GetScalarPointer();
@@ -67,10 +66,6 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
                         ++scaller_buffer;
                     }
                 }
-
-        } catch(std::exception& e){
-            std::cout << "exception : " << e.what() << std::endl;;
-        }
     };
     state->dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
     igtl::Matrix4x4 image_transform;

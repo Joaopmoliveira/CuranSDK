@@ -98,6 +98,22 @@ struct DataSpecificApplication
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
+    std::unique_ptr<curan::ui::Overlay> create_overlay_with_success(const std::string &success)
+    {
+        using namespace curan::ui;
+        auto warn = Button::make(" ", "submit.png", resources);
+        warn->set_click_color(SK_AlphaTRANSPARENT).set_hover_color(SK_AlphaTRANSPARENT).set_waiting_color(SK_AlphaTRANSPARENT).set_size(SkRect::MakeWH(400, 200));
+
+        auto button = Button::make(success, resources);
+        button->set_click_color(SK_AlphaTRANSPARENT).set_hover_color(SK_AlphaTRANSPARENT).set_waiting_color(SK_AlphaTRANSPARENT).set_size(SkRect::MakeWH(200, 50));
+
+        auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+        *viwers_container << std::move(warn) << std::move(button);
+        viwers_container->set_color(SK_ColorTRANSPARENT).set_divisions({0.0, .8, 1.0});
+
+        return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
+    }
+
     void create_panel_ac_pc_instructions()
     {
         using namespace curan::ui;
@@ -187,7 +203,7 @@ struct DataSpecificApplication
                             stroke_found = true;
 						    std::visit(curan::utilities::overloaded{
                                 [&](const Path &path){
-							
+                                    
 							    },						 
 							    [&](const Point &point) { 
                                     ImageType::IndexType local_index;
@@ -201,6 +217,9 @@ struct DataSpecificApplication
                                     lac_point(1,0) = ac_point_in_world_coordinates[1];
                                     lac_point(2,0) = ac_point_in_world_coordinates[2];
                                     ac_point = lac_point;
+                                    if(config->stack_page!=nullptr){
+						                config->stack_page->stack(create_overlay_with_success("added AC point"));
+					                }
 						        }},*stroke);
                         }
                         ++index;
@@ -244,6 +263,9 @@ struct DataSpecificApplication
                                     lpc_point(1,0) = pc_point_in_world_coordinates[1];
                                     lpc_point(2,0) = pc_point_in_world_coordinates[2];
                                     pc_point = lpc_point;
+                                    if(config->stack_page!=nullptr){
+						                config->stack_page->stack(create_overlay_with_success("added CP point"));
+					                }
 						        }},*stroke);
                         }
                         ++index;
@@ -288,6 +310,9 @@ struct DataSpecificApplication
                                     lmid_point(1,0) = midpoint_point_in_world_coordinates[1];
                                     lmid_point(2,0) = midpoint_point_in_world_coordinates[2];
                                     midline = lmid_point;
+                                    if(config->stack_page!=nullptr){
+						                config->stack_page->stack(create_overlay_with_success("added midpoint"));
+					                }
 						        }},*stroke);
                         }
                         ++index;
@@ -447,27 +472,31 @@ struct DataSpecificApplication
                     transformed_corners.col(index_110) = relative_transformation*corners.col(index_110);
                     transformed_corners.col(index_111) = relative_transformation*corners.col(index_111);
 
-                    auto minimum = transformed_corners.colwise().minCoeff();
-                    std::cout << "original corners: " << corners << std::endl;
+                    auto minimum = transformed_corners.rowwise().minCoeff();
 
-                    std::cout << "minimum values found are : " << minimum << std::endl;
+                    transformed_corners.col(index_001) -= minimum;
+                    transformed_corners.col(index_010) -= minimum;
+                    transformed_corners.col(index_011) -= minimum;
+                    transformed_corners.col(index_100) -= minimum;
+                    transformed_corners.col(index_101) -= minimum;
+                    transformed_corners.col(index_110) -= minimum;
+                    transformed_corners.col(index_111) -= minimum;
+
+                    auto required_size = transformed_corners.rowwise().maxCoeff();
+                    Eigen::Matrix<double,3,1> required_size_rounded;
 
                     auto spacing = input->GetSpacing();
-                    double minimum_spacing = std::min(std::min(spacing[0],spacing[1]),spacing[2]);
                     auto new_spacing = spacing;
-                    new_spacing[0] = minimum_spacing;
-                    new_spacing[1] = minimum_spacing;
-                    new_spacing[2] = minimum_spacing;
+                    double minimum_spacing = std::min(std::min(spacing[0],spacing[1]),spacing[2]);
+                    
 
-                    Eigen::Matrix<double,3,1> _size = Eigen::Matrix<double,3,1>::Zero();
-                    _size[0] = size[0];
-                    auto reoriented_size_x = eigen_rotation_matrix*_size;
-                    _size = Eigen::Matrix<double,3,1>::Zero();
-                    _size[1] = size[1];
-                    auto reoriented_size_y = eigen_rotation_matrix*_size;
-                    _size = Eigen::Matrix<double,3,1>::Zero();
-                    _size[2] = size[2];
-                    auto reoriented_size_z = eigen_rotation_matrix*_size;
+                    for(size_t row = 0; row < 3; ++row){
+                        double rounded = std::ceil(required_size[row]/minimum_spacing);
+                        required_size_rounded[row] =  rounded;
+                        double spac = rounded/required_size[row];
+                        new_spacing[row] = spac;
+                        std::printf("iter (%llu) rounded (%f) spacing (%f)\n",row,rounded,spac);
+                    }
 
                     filter->SetInput(input);
                     filter->SetOutputOrigin(origin);
@@ -543,13 +572,19 @@ struct DataSpecificApplication
         });
 
         auto button4 = Button::make("Change Volume", resources);
-        button3->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-        button3->add_press_call([&](Button *button, Press press, ConfigDraw *config) {
+        button4->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button4->add_press_call([&](Button *button, Press press, ConfigDraw *config) {
 
         });
 
+        auto button5 = Button::make("Load Series", resources);
+        button5->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button5->add_press_call([&](Button *button, Press press, ConfigDraw *config) {
+
+        });    
+
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-        *viwers_container << std::move(button) << std::move(button2) << std::move(button3) << std::move(button4);
+        *viwers_container << std::move(button) << std::move(button2) << std::move(button3) << std::move(button4) << std::move(button5);
         viwers_container->set_color(SK_ColorTRANSPARENT);
 
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
