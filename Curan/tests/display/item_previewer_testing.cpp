@@ -14,15 +14,49 @@ int main() {
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
+        std::array<unsigned char,100*100> image_buffer;
+        constexpr float maximum_size = 2*50.0*50.0;
+        for(size_t row = 0; row < 100; ++row)
+            for(size_t col = 0; col < 100; ++col)
+                image_buffer[row+col*100] = static_cast<unsigned char>((((row-50.0)*(row-50.0)+(col-50.0)*(col-50.0))/maximum_size)*255.0);
 
-		auto button = ItemExplorer::make("Touch!",resources);
-		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 200);
-		button->set_position(rect);
-		button->compile();
-		button->add_press_call(callback);
 
-		auto caldraw = button->draw();
-		auto calsignal = button->call();
+        SkImageInfo information = SkImageInfo::Make(100, 100, kGray_8_SkColorType, kOpaque_SkAlphaType);
+	    auto pixmap = SkPixmap(information, pixels, 100 * sizeof(unsigned char));
+	    auto image_to_display = SkSurfaces::WrapPixels(pixmap)->makeImageSnapshot();
+
+		auto item_explorer = ItemExplorer::make("Touch!",resources);
+        {
+            Item item;
+            item.identifier = 1;
+            item.image = image_to_display;
+            item.text = "failure";
+            item_explorer->add(std::move(item));
+        }
+
+        {
+            Item item;
+            item.identifier = 2;
+            item.image = image_to_display;
+            item.text = "sucess";
+            item_explorer->add(std::move(item));
+        }
+
+        {
+            Item item;
+            item.identifier = 3;
+            item.image = image_to_display;
+            item.text = "big";
+            item_explorer->add(std::move(item));
+        }
+
+		SkRect rect = SkRect::MakeXYWH(0, 0, 1000, 700);
+		item_explorer->set_position(rect);
+		item_explorer->compile();
+		item_explorer->add_press_call(callback);
+
+		auto caldraw = item_explorer->draw();
+		auto calsignal = item_explorer->call();
 
 		ConfigDraw config_draw;
 

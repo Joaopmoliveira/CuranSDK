@@ -111,9 +111,9 @@ drawablefunction ItemExplorer::draw(){
 			SkRect image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, ITEM_IMAGE_HEIGHT * 0.98f);
 			canvas->drawRoundRect(preview_rectangle, 5, 5, paint_image_background);
 
-			SkRect bound_individual_name = item_to_draw.text->bounds();
-
-			canvas->drawTextBlob(item_to_draw.text.get(), x + (ITEM_PREVIEW_WIDTH - bound_individual_name.width()) / 2.0f, y + bound_individual_name.height(),text_paint);
+			SkRect bound_individual_name;
+			font.measureText(item_to_draw.text.data(),item_to_draw.text.size(),SkTextEncoding::kUTF8,&bound_individual_name);
+			canvas->drawSimpleText(item_to_draw.text.data(),item_to_draw.text.size(),SkTextEncoding::kUTF8,x + (ITEM_PREVIEW_WIDTH - bound_individual_name.width()) / 2.0f,y + bound_individual_name.height(),font,text_paint);
 
 			SkSamplingOptions options;
 			canvas->drawImageRect(item_to_draw.image, image_rectangle, options, nullptr);

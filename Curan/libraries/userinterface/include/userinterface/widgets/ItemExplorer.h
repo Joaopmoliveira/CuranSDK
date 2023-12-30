@@ -16,7 +16,7 @@ namespace curan {
 			sk_sp<SkImage> image;
 			SkRect current_pos;			
 			bool is_selected = false;
-			sk_sp<SkTextBlob> text;
+			std::string text;
 			size_t identifier = 0;
 		};
 
