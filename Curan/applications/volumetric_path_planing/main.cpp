@@ -7,6 +7,7 @@
 #include "userinterface/widgets/TextBlob.h"
 #include "userinterface/widgets/SliderPanel.h"
 #include "userinterface/widgets/MiniPage.h"
+#include "userinterface/widgets/ItemExplorer.h"
 #include "userinterface/widgets/Overlay.h"
 #include "userinterface/widgets/MutatingTextPanel.h"
 #include <unordered_map>
@@ -417,14 +418,13 @@ struct DataSpecificApplication
                     using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
                     auto filter = FilterType::New();
 
-                    using TransformType = itk::AffineTransform<double, 3>;
+                    using TransformType = itk::IdentityTransform<double, 3>;
                     auto transform = TransformType::New();
-                    transform->SetMatrix(rotation_matrix);
 
                     using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
                     auto interpolator = InterpolatorType::New();
                     filter->SetInterpolator(interpolator);
-                    filter->SetDefaultPixelValue(0);
+                    filter->SetDefaultPixelValue(100);
                     filter->SetTransform(transform);
                     auto input = map[PanelType::ORIGINAL_VOLUME].get_volume();
 
@@ -501,10 +501,19 @@ struct DataSpecificApplication
                     filter->SetInput(input);
                     filter->SetOutputOrigin(origin);
                     filter->SetOutputSpacing(new_spacing);
+                    Eigen::Matrix<double,3,3> final_orientation = original_rotation_matrix*eigen_rotation_matrix;
+                    auto itk_final_matrix = input->GetDirection();
+                    for(size_t col = 0; col < 3; ++col)
+                        for(size_t row = 0; row < 3; ++row)
+                            itk_original_matrix(row,col) = final_orientation(row,col);
+                    filter->SetOutputDirection(itk_final_matrix);
 
                     try{
                         filter->Update();
-                        map[PanelType::RESAMPLED_VOLUME].update_volume(filter->GetOutput());
+                        auto output = filter->GetOutput();
+                        auto outsize = output->GetLargestPossibleRegion().GetSize();
+                        auto outspacing = output->GetSpacing();
+                        map[PanelType::RESAMPLED_VOLUME].update_volume(output);
                     } catch(...){
                         if (config->stack_page != nullptr)
                             config->stack_page->stack(create_overlay_with_warning("failed to resample volume to AC-PC"));
@@ -521,6 +530,54 @@ struct DataSpecificApplication
             minipage->construct(std::move(total_container), SK_ColorBLACK);
         }
     }
+
+    std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(){
+        using namespace curan::ui;
+		using PixelType = unsigned char;
+		auto item_explorer = ItemExplorer::make("file_icon.png",resources);
+		using ImageType = itk::Image<PixelType, 3>;
+		using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
+        size_t identifier = 0;
+        for(auto& vol : map){
+            if(vol.filled()){
+                auto itk_pointer = vol.get_volume();
+		        auto extract_filter = ExtractFilterType::New();
+		        extract_filter->SetDirectionCollapseToSubmatrix();
+		        extract_filter->SetInput(itk_pointer);
+
+		        ImageType::RegionType inputRegion = itk_pointer->GetBufferedRegion();
+		        ImageType::SpacingType spacing = itk_pointer->GetSpacing();
+		        ImageType::SizeType size = inputRegion.GetSize();
+
+		        auto copy_size = size;
+		        size[Direction::Z] = 1;
+
+		        ImageType::IndexType start = inputRegion.GetIndex();
+		        start[Direction::Z] = std::floor(copy_size[Direction::Z]/2.0);
+		        ImageType::RegionType desiredRegion;
+		        desiredRegion.SetSize(size);
+		        desiredRegion.SetIndex(start);
+		        extract_filter->SetExtractionRegion(desiredRegion);
+		        extract_filter->UpdateLargestPossibleRegion();
+
+		        ImageType::Pointer pointer_to_block_of_memory = extract_filter->GetOutput();
+                SkImageInfo information = SkImageInfo::Make(size[Direction::X], size[Direction::Y], kGray_8_SkColorType, kOpaque_SkAlphaType);
+	            auto pixmap = SkPixmap(information, pointer_to_block_of_memory->GetBufferPointer(), size[Direction::Y] * sizeof(PixelType));
+                item_explorer->add(Item{identifier,SkSurfaces::WrapPixels(pixmap)->makeImageSnapshot(),"volume_"+std::to_string(identifier)});
+	            
+            }
+            ++identifier;
+        }
+
+        item_explorer->set_size(SkRect::MakeWH(800,400));
+
+        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+		*container << std::move(item_explorer);
+
+
+        return Overlay::make(std::move(container), SkColorSetARGB(10, 125, 125, 125), true);
+    }
+
 
     std::unique_ptr<curan::ui::Overlay> create_layout_page()
     {
@@ -574,7 +631,9 @@ struct DataSpecificApplication
         auto button4 = Button::make("Change Volume", resources);
         button4->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
         button4->add_press_call([&](Button *button, Press press, ConfigDraw *config) {
-
+            if(config->stack_page!=nullptr){
+			    config->stack_page->stack(create_volume_explorer_page());
+		    }
         });
 
         auto button5 = Button::make("Load Series", resources);

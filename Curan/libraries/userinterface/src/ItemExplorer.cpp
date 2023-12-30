@@ -89,8 +89,10 @@ drawablefunction ItemExplorer::draw(){
 			for(const auto& indent : to_remove)
 				item_list.remove_if([&](const Item& item){ return item.identifier == indent;});
 			to_remove = std::list<size_t>{};
-			item_list.splice(item_list.end(),to_add);
-			to_add = std::list<Item>{};
+			if(to_add.size()>=0){
+				item_list.splice(item_list.end(),to_add);
+				to_add = std::list<Item>{};
+			}
 		}
 
 		SkAutoCanvasRestore restore(canvas, true);

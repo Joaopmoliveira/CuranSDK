@@ -114,6 +114,10 @@ namespace curan
 
 			void clear_previous_strokes();
 
+			inline bool filled(){
+				return image.IsNotNull();
+			}
+
 			template <typename... T>
 			bool try_emplace(const Direction &direction, const float &along_dimension, T &&...u)
 			{

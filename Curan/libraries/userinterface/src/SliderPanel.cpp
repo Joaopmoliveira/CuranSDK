@@ -155,18 +155,20 @@ namespace ui {
 	{
 		size_t previous = _current_index;
 		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
+		if(!volumetric_mask->filled())
+			return;
 		_current_index = std::round(current_value * (volumetric_mask->dimension(direction) - 1));
 		if (previous != _current_index)
-		{
 			background = extract_slice_from_volume(_current_index);
-		}
 		previous = _current_index;
 	}
 
 
 	SlidingPanel::image_info SlidingPanel::extract_slice_from_volume(size_t index)
 	{
+		image_info info;
 		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
+
 		extract_filter = ExtractFilterType::New();
 		extract_filter->SetDirectionCollapseToSubmatrix();
 		extract_filter->SetInput(volumetric_mask->get_volume());
@@ -191,8 +193,6 @@ namespace ui {
 		auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
 
 		auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
-
-		image_info info;
 
 		switch (direction)
 		{
@@ -263,6 +263,8 @@ namespace ui {
 		std::lock_guard<std::mutex> g{get_mutex()};
 		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
 		bool success = false;
+		if(!volumetric_mask->filled())
+			return;
 		if(future_stroke.normalized_recorded_points.size()==1)
 			success = volumetric_mask->try_emplace(direction,current_value,curan::ui::Point{future_stroke.normalized_recorded_points[0],inverse_homogenenous_transformation});
 		else
@@ -287,6 +289,8 @@ namespace ui {
 	{
 		std::lock_guard<std::mutex> g{get_mutex()};
 		assert(volume_mask!=nullptr && "volumetric mask must be different from nullptr");
+		if(!volume_mask->filled())
+			return;
 		direction = in_direction;
 		ImageType::RegionType inputRegion = volume_mask->get_volume()->GetBufferedRegion();
 		ImageType::SizeType size = inputRegion.GetSize();
@@ -301,6 +305,8 @@ namespace ui {
 		reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft+buffer_around_panel, pos.fTop+buffer_around_panel, pos.fRight, pos.fBottom - size_of_slider_in_height-buffer_around_panel);
 		reserved_slider_space = SkRect::MakeLTRB(pos.fLeft+buffer_around_panel, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom-buffer_around_panel);
 		reserved_total_space = SkRect::MakeLTRB(pos.fLeft+buffer_around_panel,pos.fTop+buffer_around_panel, pos.fRight-buffer_around_panel, pos.fBottom-buffer_around_panel);
+		if(!volumetric_mask->filled())
+			return;
 		double width = 1;
 		double height = 1;
 
@@ -334,9 +340,12 @@ namespace ui {
 	{
 		auto lamb = [this](SkCanvas *canvas)
 		{
+			if(!volumetric_mask->filled())
+				return;
 			auto widget_rect = get_position();
 			SkAutoCanvasRestore restore{canvas, true};
 			highlighted_panel.setColor(get_hightlight_color());
+
 			canvas->drawRect(reserved_total_space, background_paint);
 			canvas->drawRect(reserved_total_space, highlighted_panel);
 
