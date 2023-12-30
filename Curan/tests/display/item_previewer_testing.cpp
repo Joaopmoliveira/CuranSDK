@@ -22,10 +22,10 @@ int main() {
 
 
         SkImageInfo information = SkImageInfo::Make(100, 100, kGray_8_SkColorType, kOpaque_SkAlphaType);
-	    auto pixmap = SkPixmap(information, pixels, 100 * sizeof(unsigned char));
+	    auto pixmap = SkPixmap(information, image_buffer.data(), 100 * sizeof(unsigned char));
 	    auto image_to_display = SkSurfaces::WrapPixels(pixmap)->makeImageSnapshot();
 
-		auto item_explorer = ItemExplorer::make("Touch!",resources);
+		auto item_explorer = ItemExplorer::make();
         {
             Item item;
             item.identifier = 1;
@@ -50,29 +50,30 @@ int main() {
             item_explorer->add(std::move(item));
         }
 
-		SkRect rect = SkRect::MakeXYWH(0, 0, 1000, 700);
-		item_explorer->set_position(rect);
-		item_explorer->compile();
-		item_explorer->add_press_call(callback);
+        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+		*container << std::move(item_explorer);
 
-		auto caldraw = item_explorer->draw();
-		auto calsignal = item_explorer->call();
+		curan::ui::Page page{std::move(container), SK_ColorBLACK};
 
-		ConfigDraw config_draw;
+		ConfigDraw config{&page};
 
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
-			canvas->drawColor(SK_ColorWHITE);
-			caldraw(canvas);
-			glfwPollEvents();
+			if (viewer->was_updated())
+			{
+				page.update_page(viewer.get());
+				viewer->update_processed();
+			}
+			page.draw(canvas);
 			auto signals = viewer->process_pending_signals();
 			if (!signals.empty())
-				calsignal(signals.back(),&config_draw);
+				page.propagate_signal(signals.back(), &config);
+			glfwPollEvents();
+
 			bool val = viewer->swapBuffers();
 			if (!val)
-				std::cout << "failed to swap buffers\n";
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
