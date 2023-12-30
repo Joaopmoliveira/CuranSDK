@@ -13,7 +13,7 @@ Item::Item(size_t in_identifier, std::string in_text): identifier{in_identifier}
 
 }
 
-std::unique_ptr<ItemExplorer> ItemExplorer::make(const std::string& default_icon_name,IconResources& system_icons,bool exclusive)){
+std::unique_ptr<ItemExplorer> ItemExplorer::make(const std::string& default_icon_name,IconResources& system_icons,bool exclusive){
 	return std::unique_ptr<ItemExplorer>(new ItemExplorer(default_icon_name,system_icons,exclusive));
 }
 
