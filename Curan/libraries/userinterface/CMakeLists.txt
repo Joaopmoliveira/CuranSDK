@@ -24,6 +24,7 @@ src/MiniPage.cpp
 src/SliderPanel.cpp
 src/MutatingTextPanel.cpp
 src/ImutableTextPanel.cpp
+src/ItemExplorer.cpp
 )
 
 find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)

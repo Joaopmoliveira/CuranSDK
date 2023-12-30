@@ -4,32 +4,24 @@
 #include "Drawable.h"
 #include "utils/Cancelable.h"
 #include "utils/Lockable.h"
+#include "definitions/UIdefinitions.h"
 #include <optional>
 #include "IconResources.h"
 #include "SignalProcessor.h"
 
 namespace curan {
 	namespace ui {
+
+		struct Item {
+			sk_sp<SkImage> image;
+			SkRect current_pos;			
+			bool is_selected = false;
+			sk_sp<SkTextBlob> text;
+		};
+
         class ItemExplorer : public  Drawable , public utilities::Lockable, public SignalProcessor<ItemExplorer> {
 		public:
-			struct Info {
-				SkColor color_background_left;
-				SkColor color_hover;
-				SkColor color_selected;
-				SkColor color_waiting;
-				SkColor color_background_right;
-				SkPaint text_paint;
-				SkFont font;
-			};
-
-			struct Item {
-				sk_sp<SkImage> image;
-				SkRect current_pos;
-				bool is_selected = false;
-				sk_sp<SkTextBlob> text;
-			};
-
-            std::list<int> current_selected_identifiers;
+            std::list<size_t> current_selected_identifiers;
 
 			int selected_image_identifier = 0;
 			SkRect preview_rectangle;
@@ -39,42 +31,95 @@ namespace curan {
 			SkPaint paint_background;
 			SkPaint text_paint;
 			SkFont font;
+			sk_sp<SkTypeface> typeface;
+
+			size_t font_size = DEFAULT_TEXT_SIZE;
 
 			SkColor color_background;
-			
 			SkColor color_waiting;
 			SkColor color_hover;
 			SkColor color_selected;
 
 			SkScalar vertical_scroll = 0.0;
 
-			MouseMoveSignal current_mouse_position = { -1.0 , -1.0 };
+			std::optional<Move> current_mouse_position;
 
 			std::atomic<float> maximum_height{ 0 };
 			std::atomic<float> current_height_offset{ 0 };
+			bool compiled = false;
+			std::map<size_t,Item> item_list;
 
-			std::map<int, Item> item_list;
+			ItemExplorer();
+			void compile() override;
 
-			ItemExplorer(Info& info);
-			void draw(SkCanvas* canvas, SkRect& widget_rect) override;
-			static std::shared_ptr<ItemPreview> make(Info& info);
-			void callback(Signal signal, bool* interacted) override;
-			
-			/*
-			* The method returns the current index which is selected by the user
-			*/
-			int getselectedindex(std::list<int>& list_selected_indexes);
-			
-			/*
-			* The method updates the current listing by adding a new item to the listing
-			*/
-			bool update(Item item_to_add,int identifier);
+			~ItemExplorer();
 
-			/*
-			* The remove method removes a listing from an external providir
-			*/
-			void remove(int identifier);
+			int highlighted(std::vector<size_t>& list_selected_indexes);
 
-        }
+			bool add(Item item_to_add,size_t identifier);
+
+			void remove(size_t identifier);
+
+			drawablefunction draw() override;
+			callablefunction call() override;
+
+			inline ItemExplorer& set_font_size(const size_t & in_size) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				font_size = in_size;
+                return *(this);
+			}
+
+			inline ItemExplorer& set_font_source(sk_sp<SkTypeface> in_typeface) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				typeface = in_typeface;
+                return *(this);
+			}
+
+			inline SkColor get_background_color() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return color_background;
+			}
+
+			inline ItemExplorer& set_background_color(SkColor color) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				color_background = color;
+                return *(this);
+			}
+
+			inline SkColor get_waiting_color() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return color_waiting;
+			}
+
+			inline ItemExplorer& set_waiting_color(SkColor new_waiting_color) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				color_waiting = new_waiting_color;
+                return *(this);
+			}
+
+			inline ItemExplorer& set_hover_color(SkColor new_click_color) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				color_hover = new_click_color;
+                return *(this);
+			}
+
+			inline SkColor get_hover_color() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return color_hover;
+			}
+
+			inline ItemExplorer& set_selected_color(SkColor new_click_color) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				color_selected = new_click_color;
+                return *(this);
+			}
+
+			inline SkColor get_selected_color() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return color_selected;
+			}
+        };
     }
 }
+
+#endif
