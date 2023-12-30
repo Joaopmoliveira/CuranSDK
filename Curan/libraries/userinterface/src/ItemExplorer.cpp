@@ -38,11 +38,11 @@ ItemExplorer::~ItemExplorer(){
 
 }
 
-int ItemExplorer::highlighted(std::vector<size_t>& list_selected_indexes){
-
+std::list<size_t> ItemExplorer::highlighted(){
+	return current_selected_identifiers;
 }
 
-bool ItemExplorer::add(Item item_to_add,size_t identifier){
+void ItemExplorer::add(Item item_to_add,size_t identifier){
 
 }
 
@@ -58,7 +58,7 @@ drawablefunction ItemExplorer::draw(){
         	auto widget_rect = get_position();
 			canvas->clipRect(widget_rect);
 
-			paint_background.setColor(color_background);
+			paint_background.setColor(get_background_color());
 			canvas->drawRect(widget_rect, paint_background);
 
 			auto iterator = item_list.begin();
@@ -77,10 +77,11 @@ drawablefunction ItemExplorer::draw(){
 			SkScalar x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
 			SkScalar y = ITEM_PREVIEW_EXTREMA_SPACING_COLUNM + widget_rect.y() + current_height_offset;
 
+			size_t index = 0;
 			while ((iterator != item_list.end()) && (y < widget_rect.fBottom))
 			{
-				Item item_to_draw = iterator->second;
-				int index_of_item = iterator->first;
+				Item& item_to_draw = *iterator;
+				int index_of_item = index;
 				preview_rectangle.setXYWH(x, y, ITEM_PREVIEW_WIDTH,ITEM_PREVIEW_HEIGHT);
 
 				auto item_found = std::find(current_selected_identifiers.begin(), current_selected_identifiers.end(), index_of_item);
@@ -120,6 +121,7 @@ drawablefunction ItemExplorer::draw(){
 					y += ITEM_PREVIEW_HEIGHT + ITEM_PREVIEW_EXTREMA_SPACING_COLUNM;
 					x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
 				}
+				++index;
 			}
 	};
 	return lamb;

@@ -33,7 +33,7 @@ namespace curan {
 			SkFont font;
 			sk_sp<SkTypeface> typeface;
 
-			size_t font_size = DEFAULT_TEXT_SIZE;
+			double font_size = DEFAULT_TEXT_SIZE;
 
 			SkColor color_background;
 			SkColor color_waiting;
@@ -47,16 +47,16 @@ namespace curan {
 			std::atomic<float> maximum_height{ 0 };
 			std::atomic<float> current_height_offset{ 0 };
 			bool compiled = false;
-			std::map<size_t,Item> item_list;
+			std::list<Item> item_list;
 
 			ItemExplorer();
 			void compile() override;
 
 			~ItemExplorer();
 
-			int highlighted(std::vector<size_t>& list_selected_indexes);
+			std::list<size_t> highlighted();
 
-			bool add(Item item_to_add,size_t identifier);
+			void add(Item item_to_add,size_t identifier);
 
 			void remove(size_t identifier);
 
