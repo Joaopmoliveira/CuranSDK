@@ -13,15 +13,16 @@ Item::Item(size_t in_identifier, std::string in_text): identifier{in_identifier}
 
 }
 
-std::unique_ptr<ItemExplorer> ItemExplorer::make(const std::string& default_icon_name,IconResources& system_icons){
-	return std::unique_ptr<ItemExplorer>(new ItemExplorer(default_icon_name,system_icons));
+std::unique_ptr<ItemExplorer> ItemExplorer::make(const std::string& default_icon_name,IconResources& system_icons,bool exclusive)){
+	return std::unique_ptr<ItemExplorer>(new ItemExplorer(default_icon_name,system_icons,exclusive));
 }
 
-ItemExplorer::ItemExplorer(const std::string& default_icon_name,IconResources& system_icons){
+ItemExplorer::ItemExplorer(const std::string& default_icon_name,IconResources& system_icons,bool exclusive):is_exclusive{exclusive}{
 			color_background = SK_ColorBLACK;
-			color_hover = SK_ColorGRAY;
+			color_hover = SK_ColorLTGRAY;
 			color_selected = SkColorSetARGB(255, 77, 195, 255);
-			color_waiting = SK_ColorDKGRAY;
+			color_waiting = SK_ColorGRAY;
+			color_text = SK_ColorWHITE;
 
 			const char* fontFamily = nullptr;
 			SkFontStyle fontStyle;
@@ -69,6 +70,7 @@ void ItemExplorer::add(Item&& item_to_add){
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	if(item_to_add.image.get()==nullptr)
 		item_to_add.image = default_item;
+	font.measureText(item_to_add.text.data(),item_to_add.text.size(),SkTextEncoding::kUTF8,&item_to_add.cached_text_size);
 	to_add.push_back(std::move(item_to_add));
 }
 
@@ -151,10 +153,8 @@ drawablefunction ItemExplorer::draw(){
 
 			SkRect image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, ITEM_IMAGE_HEIGHT * 0.98f);
 			canvas->drawRoundRect(preview_rectangle, 5, 5, paint_image_background);
-
-			SkRect bound_individual_name;
-			font.measureText(iterator->text.data(),iterator->text.size(),SkTextEncoding::kUTF8,&bound_individual_name);
-			canvas->drawSimpleText(iterator->text.data(),iterator->text.size(),SkTextEncoding::kUTF8,x + (ITEM_PREVIEW_WIDTH - bound_individual_name.width()) / 2.0f,y + (bound_individual_name.height()+ITEM_PREVIEW_HEIGHT - ITEM_IMAGE_HEIGHT)/2.0,font,text_paint);
+			text_paint.setColor(get_text_color());
+			canvas->drawSimpleText(iterator->text.data(),iterator->text.size(),SkTextEncoding::kUTF8,x + (ITEM_PREVIEW_WIDTH - iterator->cached_text_size.width()) / 2.0f,y + (iterator->cached_text_size.height()+ITEM_PREVIEW_HEIGHT - ITEM_IMAGE_HEIGHT)/2.0,font,text_paint);
 
 			SkSamplingOptions options;
 			canvas->drawImageRect(iterator->image, image_rectangle, options, nullptr);
@@ -203,12 +203,18 @@ callablefunction ItemExplorer::call(){
 					return;
 				}
 				std::lock_guard<std::mutex> g{get_mutex()};
+				Item* selected_item = nullptr;
 				for(auto & item : item_list)
 					if(item.current_pos.contains(arg.xpos,arg.ypos)){
 						item.is_selected = !item.is_selected;
+						selected_item = &item;
 						interacted = true;
 					}
-				interacted = true;
+				if(is_exclusive&&selected_item)
+					for(auto & item : item_list)
+						if(&item!=selected_item)
+							item.is_selected = false;
+						
 			},
 			[this,&interacted,config](Scroll arg) {;
 				if (get_position().contains(arg.xpos, arg.ypos)) {

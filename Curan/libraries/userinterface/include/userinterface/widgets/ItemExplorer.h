@@ -44,6 +44,7 @@ namespace curan {
 			SkColor color_background;
 			SkColor color_waiting;
 			SkColor color_hover;
+			SkColor color_text;
 			SkColor color_selected;
 
 			SkScalar vertical_scroll = 0.0;
@@ -55,11 +56,11 @@ namespace curan {
 			std::list<size_t> to_remove;
 			std::list<Item> to_add;
 
-			ItemExplorer(const std::string& default_icon_name,IconResources& system_icons);
+			ItemExplorer(const std::string& default_icon_name,IconResources& system_icons,bool exclusive);
 
 			public:
 
-			static std::unique_ptr<ItemExplorer> make(const std::string& default_icon_name,IconResources& system_icons);
+			static std::unique_ptr<ItemExplorer> make(const std::string& default_icon_name,IconResources& system_icons,bool is_exclusive = true);
 			void compile() override;
 
 			~ItemExplorer();
@@ -93,6 +94,17 @@ namespace curan {
 			inline ItemExplorer& set_background_color(SkColor color) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				color_background = color;
+                return *(this);
+			}
+
+			inline SkColor get_text_color() {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				return color_text;
+			}
+
+			inline ItemExplorer& set_text_color(SkColor color) {
+				std::lock_guard<std::mutex> g{ get_mutex() };
+				color_text = color;
                 return *(this);
 			}
 
