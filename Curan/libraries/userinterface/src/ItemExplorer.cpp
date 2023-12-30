@@ -1,5 +1,6 @@
 #include "userinterface/widgets/ItemExplorer.h"
 #include "utils/Overloading.h"
+#include <iostream>
 
 namespace curan {
 namespace ui {
@@ -72,33 +73,37 @@ drawablefunction ItemExplorer::draw(){
 		auto size = item_list.size();
 
 		SkScalar width = widget_rect.width();
-		uint32_t number_of_previews_per_line = (width - 2 * ITEM_PREVIEW_EXTREMA_SPACING_LINE) / ITEM_PREVIEW_WIDTH - 1;
-		if (number_of_previews_per_line == 0)
+		int number_of_previews_per_line = (width - 2 * ITEM_PREVIEW_EXTREMA_SPACING_LINE) / ITEM_PREVIEW_WIDTH-1;
+
+		if (number_of_previews_per_line <= 0)
 			number_of_previews_per_line = 1;
-		SkScalar spacing_between_icons_line = (width - 2 * ITEM_PREVIEW_EXTREMA_SPACING_LINE - (number_of_previews_per_line + 1) * ITEM_PREVIEW_WIDTH) / number_of_previews_per_line;
+		SkScalar virtual_spacing_between_icons_line = (width - 2 * ITEM_PREVIEW_EXTREMA_SPACING_LINE - number_of_previews_per_line * ITEM_PREVIEW_WIDTH) / number_of_previews_per_line;
+		virtual_spacing_between_icons_line = (virtual_spacing_between_icons_line<=0.0) ? 1 : virtual_spacing_between_icons_line;
+		SkScalar spacing_between_icons_line =  ITEM_MAXIMUM_SPACING;
 		uint32_t number_of_vertical_previews = size / number_of_previews_per_line
 			+ (((size < 0) ^ (number_of_previews_per_line > 0)) && (size % number_of_previews_per_line));
 
 		maximum_height = number_of_vertical_previews * (ITEM_PREVIEW_HEIGHT + ITEM_PREVIEW_EXTREMA_SPACING_COLUNM);
 
 		SkScalar x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
+		SkScalar virtual_x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
 		SkScalar y = ITEM_PREVIEW_EXTREMA_SPACING_COLUNM + widget_rect.y() + current_height_offset;
 
 		while ((iterator != item_list.end()) && (y < widget_rect.fBottom))
 		{
-			Item& item_to_draw = *iterator;
 			preview_rectangle.setXYWH(x, y, ITEM_PREVIEW_WIDTH,ITEM_PREVIEW_HEIGHT);
+			iterator->current_pos = preview_rectangle;
 
-			auto item_found = std::find(current_selected_identifiers.begin(), current_selected_identifiers.end(), &item_to_draw);
-
-			if (item_found != current_selected_identifiers.end()){
-				paint_image_background.setColor(color_hover);
-			}	else {
-				paint_image_background.setColor(color_waiting);
+			if (iterator->is_selected){
+				paint_image_background.setColor(get_selected_color()); 
+			}	else if(iterator->is_highlighted) {
+				paint_image_background.setColor(get_hover_color());
+			} else{
+				paint_image_background.setColor(get_waiting_color());
 			}
 
-			float image_width = item_to_draw.image->width();
-			float image_height = item_to_draw.image->height();
+			float image_width = iterator->image->width();
+			float image_height = iterator->image->height();
 
 			float preview_width = preview_rectangle.width();
 			float preview_height = preview_rectangle.height();
@@ -112,19 +117,20 @@ drawablefunction ItemExplorer::draw(){
 			canvas->drawRoundRect(preview_rectangle, 5, 5, paint_image_background);
 
 			SkRect bound_individual_name;
-			font.measureText(item_to_draw.text.data(),item_to_draw.text.size(),SkTextEncoding::kUTF8,&bound_individual_name);
-			canvas->drawSimpleText(item_to_draw.text.data(),item_to_draw.text.size(),SkTextEncoding::kUTF8,x + (ITEM_PREVIEW_WIDTH - bound_individual_name.width()) / 2.0f,y + bound_individual_name.height(),font,text_paint);
+			font.measureText(iterator->text.data(),iterator->text.size(),SkTextEncoding::kUTF8,&bound_individual_name);
+			canvas->drawSimpleText(iterator->text.data(),iterator->text.size(),SkTextEncoding::kUTF8,x + (ITEM_PREVIEW_WIDTH - bound_individual_name.width()) / 2.0f,y + (bound_individual_name.height()+ITEM_PREVIEW_HEIGHT - ITEM_IMAGE_HEIGHT)/2.0,font,text_paint);
 
 			SkSamplingOptions options;
-			canvas->drawImageRect(item_to_draw.image, image_rectangle, options, nullptr);
+			canvas->drawImageRect(iterator->image, image_rectangle, options, nullptr);
 
 			iterator++;
 
 			x += ITEM_PREVIEW_WIDTH + spacing_between_icons_line;
-
-			if (x + ITEM_PREVIEW_WIDTH >= widget_rect.fRight) {
+			virtual_x += ITEM_PREVIEW_WIDTH + virtual_spacing_between_icons_line;
+			if (virtual_x + ITEM_PREVIEW_WIDTH >= widget_rect.fRight) {
 				y += ITEM_PREVIEW_HEIGHT + ITEM_PREVIEW_EXTREMA_SPACING_COLUNM;
 				x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
+				virtual_x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
 			}
 		}
 	};

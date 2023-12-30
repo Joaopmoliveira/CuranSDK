@@ -16,8 +16,15 @@ namespace curan {
 			sk_sp<SkImage> image;
 			SkRect current_pos;			
 			bool is_selected = false;
+			bool is_highlighted = false;
 			std::string text;
 			size_t identifier = 0;
+
+			explicit Item(size_t identifier, sk_sp<SkImage> image,std::string text);
+			explicit Item(size_t identifier, std::string text);
+
+			Item(const Item&) = delete;
+			void operator= (const Item&) = delete;
 		};
 
         class ItemExplorer : public  Drawable , public utilities::Lockable, public SignalProcessor<ItemExplorer> {
