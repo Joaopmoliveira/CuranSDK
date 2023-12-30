@@ -4,6 +4,10 @@
 namespace curan {
 namespace ui {
 
+std::unique_ptr<ItemExplorer> ItemExplorer::make(){
+	return std::unique_ptr<ItemExplorer>(new ItemExplorer());
+}
+
 ItemExplorer::ItemExplorer(){
 
 			color_background = SK_ColorBLACK;

@@ -258,3 +258,14 @@ PUBLIC
 userinterface
 Eigen3::Eigen
 )
+
+# ---------------------------------------
+
+add_executable(test_item_previewer item_previewer_testing.cpp)
+
+target_compile_definitions(test_item_previewer PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_item_previewer
+PUBLIC
+userinterface
+)

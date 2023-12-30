@@ -21,7 +21,7 @@ namespace curan {
 		};
 
         class ItemExplorer : public  Drawable , public utilities::Lockable, public SignalProcessor<ItemExplorer> {
-		public:
+
             std::list<Item*> current_selected_identifiers;
 
 			int selected_image_identifier = 0;
@@ -51,6 +51,10 @@ namespace curan {
 			std::list<Item> item_list;
 
 			ItemExplorer();
+
+			public:
+
+			static std::unique_ptr<ItemExplorer> make();
 			void compile() override;
 
 			~ItemExplorer();
