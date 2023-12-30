@@ -8,6 +8,7 @@
 #include <optional>
 #include "IconResources.h"
 #include "SignalProcessor.h"
+#include <queue>
 
 namespace curan {
 	namespace ui {
@@ -18,19 +19,14 @@ namespace curan {
 			bool is_selected = false;
 			bool is_highlighted = false;
 			std::string text;
+			SkRect cached_text_size;
 			size_t identifier = 0;
 
 			explicit Item(size_t identifier, sk_sp<SkImage> image,std::string text);
 			explicit Item(size_t identifier, std::string text);
-
-			Item(const Item&) = delete;
-			void operator= (const Item&) = delete;
 		};
 
         class ItemExplorer : public  Drawable , public utilities::Lockable, public SignalProcessor<ItemExplorer> {
-
-            std::list<Item*> current_selected_identifiers;
-
 			int selected_image_identifier = 0;
 			SkRect preview_rectangle;
 			bool is_exclusive = true;
@@ -41,6 +37,8 @@ namespace curan {
 			SkFont font;
 			sk_sp<SkTypeface> typeface;
 
+			sk_sp<SkImage> default_item;
+
 			double font_size = DEFAULT_TEXT_SIZE;
 
 			SkColor color_background;
@@ -50,23 +48,23 @@ namespace curan {
 
 			SkScalar vertical_scroll = 0.0;
 
-			std::optional<Move> current_mouse_position;
-
 			std::atomic<float> maximum_height{ 0 };
 			std::atomic<float> current_height_offset{ 0 };
 			bool compiled = false;
 			std::list<Item> item_list;
+			std::list<size_t> to_remove;
+			std::list<Item> to_add;
 
-			ItemExplorer();
+			ItemExplorer(const std::string& default_icon_name,IconResources& system_icons);
 
 			public:
 
-			static std::unique_ptr<ItemExplorer> make();
+			static std::unique_ptr<ItemExplorer> make(const std::string& default_icon_name,IconResources& system_icons);
 			void compile() override;
 
 			~ItemExplorer();
 
-			std::list<Item*> highlighted();
+			std::list<size_t> highlighted();
 
 			void add(Item&& item_to_add);
 

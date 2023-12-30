@@ -5,16 +5,23 @@
 namespace curan {
 namespace ui {
 
-std::unique_ptr<ItemExplorer> ItemExplorer::make(){
-	return std::unique_ptr<ItemExplorer>(new ItemExplorer());
+Item::Item(size_t in_identifier, sk_sp<SkImage> in_image,std::string in_text) : identifier{in_identifier},image{in_image},text{in_text}{
+
 }
 
-ItemExplorer::ItemExplorer(){
+Item::Item(size_t in_identifier, std::string in_text): identifier{in_identifier},text{in_text}{
 
+}
+
+std::unique_ptr<ItemExplorer> ItemExplorer::make(const std::string& default_icon_name,IconResources& system_icons){
+	return std::unique_ptr<ItemExplorer>(new ItemExplorer(default_icon_name,system_icons));
+}
+
+ItemExplorer::ItemExplorer(const std::string& default_icon_name,IconResources& system_icons){
 			color_background = SK_ColorBLACK;
-			color_hover = SK_ColorDKGRAY;
+			color_hover = SK_ColorGRAY;
 			color_selected = SkColorSetARGB(255, 77, 195, 255);
-			color_waiting = SkColorSetARGB(255, 217, 217, 217);
+			color_waiting = SK_ColorDKGRAY;
 
 			const char* fontFamily = nullptr;
 			SkFontStyle fontStyle;
@@ -30,6 +37,12 @@ ItemExplorer::ItemExplorer(){
 			paint_background.setAntiAlias(true);
 			paint_background.setStrokeWidth(4);
 			paint_background.setColor(color_background);
+
+			if (system_icons.is_loaded() && default_icon_name.size()>0) {
+				sk_sp<SkImage> image;
+				system_icons.get_icon(image,default_icon_name);
+				default_item = image;
+			}
 }
 
 void ItemExplorer::compile(){
@@ -43,25 +56,41 @@ ItemExplorer::~ItemExplorer(){
 
 }
 
-std::list<Item*> ItemExplorer::highlighted(){
+std::list<size_t> ItemExplorer::highlighted(){
 	std::lock_guard<std::mutex> g{ get_mutex() };
+	std::list<size_t> current_selected_identifiers;
+	for(const auto& item : item_list)
+		if(item.is_selected)
+			current_selected_identifiers.push_back(item.identifier);
 	return current_selected_identifiers;
 }
 
 void ItemExplorer::add(Item&& item_to_add){
 	std::lock_guard<std::mutex> g{ get_mutex() };
-	item_list.push_back(std::move(item_to_add));
+	if(item_to_add.image.get()==nullptr)
+		item_to_add.image = default_item;
+	to_add.push_back(std::move(item_to_add));
 }
 
 void ItemExplorer::remove(size_t identifier){
 	std::lock_guard<std::mutex> g{ get_mutex() };
-	item_list.remove_if([&](const Item& item){ return item.identifier == identifier;});
+	to_remove.push_back(identifier);
 }
 
 drawablefunction ItemExplorer::draw(){
     if(!compiled)
 	    throw std::runtime_error("must compile the button before drawing operations");
 	auto lamb = [this](SkCanvas* canvas) {
+
+		{ // do asyncronous tasks submited in previous time instants
+			std::lock_guard<std::mutex> g{ get_mutex() };
+			for(const auto& indent : to_remove)
+				item_list.remove_if([&](const Item& item){ return item.identifier == indent;});
+			to_remove = std::list<size_t>{};
+			item_list.splice(item_list.end(),to_add);
+			to_add = std::list<Item>{};
+		}
+
 		SkAutoCanvasRestore restore(canvas, true);
         auto widget_rect = get_position();
 		canvas->clipRect(widget_rect);
@@ -93,10 +122,17 @@ drawablefunction ItemExplorer::draw(){
 		{
 			preview_rectangle.setXYWH(x, y, ITEM_PREVIEW_WIDTH,ITEM_PREVIEW_HEIGHT);
 			iterator->current_pos = preview_rectangle;
+			bool is_selected = false;
+			bool is_highlighted = false;
+			{
+				std::lock_guard<std::mutex> g{get_mutex()};
+				is_selected = iterator->is_selected;
+				is_highlighted = iterator->is_highlighted;
+			}
 
-			if (iterator->is_selected){
+			if (is_selected){
 				paint_image_background.setColor(get_selected_color()); 
-			}	else if(iterator->is_highlighted) {
+			}	else if(is_highlighted) {
 				paint_image_background.setColor(get_hover_color());
 			} else{
 				paint_image_background.setColor(get_waiting_color());
@@ -147,13 +183,32 @@ callablefunction ItemExplorer::call(){
 
 			},
 			[this,&interacted,config](Move arg) {
-                interacted = true;
-				current_mouse_position = arg;
+				if (!get_position().contains(arg.xpos, arg.ypos)){
+					std::lock_guard<std::mutex> g{get_mutex()};
+					for(auto & item : item_list)
+						item.is_highlighted = false;
+					return;
+				}
+				std::lock_guard<std::mutex> g{get_mutex()};
+				for(auto & item : item_list)
+					if(item.current_pos.contains(arg.xpos,arg.ypos)){
+						item.is_highlighted = true;
+						interacted = true;
+					} else {
+						item.is_highlighted = false;
+					}
 			},
 			[this,&interacted,config](Press arg) {
-				if (get_position().contains(arg.xpos, arg.ypos)){
-					interacted = true;
+				if (!get_position().contains(arg.xpos, arg.ypos)){
+					return;
 				}
+				std::lock_guard<std::mutex> g{get_mutex()};
+				for(auto & item : item_list)
+					if(item.current_pos.contains(arg.xpos,arg.ypos)){
+						item.is_selected = !item.is_selected;
+						interacted = true;
+					}
+				interacted = true;
 			},
 			[this,&interacted,config](Scroll arg) {;
 				if (get_position().contains(arg.xpos, arg.ypos)) {

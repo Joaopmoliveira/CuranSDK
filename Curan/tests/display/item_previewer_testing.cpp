@@ -25,30 +25,11 @@ int main() {
 	    auto pixmap = SkPixmap(information, image_buffer.data(), 100 * sizeof(unsigned char));
 	    auto image_to_display = SkSurfaces::WrapPixels(pixmap)->makeImageSnapshot();
 
-		auto item_explorer = ItemExplorer::make();
-        {
-            Item item;
-            item.identifier = 1;
-            item.image = image_to_display;
-            item.text = "failure";
-            item_explorer->add(std::move(item));
-        }
-
-        {
-            Item item;
-            item.identifier = 2;
-            item.image = image_to_display;
-            item.text = "sucess";
-            item_explorer->add(std::move(item));
-        }
-
-        {
-            Item item;
-            item.identifier = 3;
-            item.image = image_to_display;
-            item.text = "big";
-            item_explorer->add(std::move(item));
-        }
+		auto item_explorer = ItemExplorer::make("file_icon.png",resources);
+        item_explorer->add(Item{1,image_to_display,"failure"});
+		item_explorer->add(Item{2,image_to_display,"success"});
+		item_explorer->add(Item{3,image_to_display,"big"});
+		item_explorer->add(Item{4,"unknown"});
 
         auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(item_explorer);
