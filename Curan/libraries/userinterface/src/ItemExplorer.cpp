@@ -38,16 +38,19 @@ ItemExplorer::~ItemExplorer(){
 
 }
 
-std::list<size_t> ItemExplorer::highlighted(){
+std::list<Item*> ItemExplorer::highlighted(){
+	std::lock_guard<std::mutex> g{ get_mutex() };
 	return current_selected_identifiers;
 }
 
-void ItemExplorer::add(Item item_to_add,size_t identifier){
-
+void ItemExplorer::add(Item&& item_to_add){
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	item_list.push_back(std::move(item_to_add));
 }
 
 void ItemExplorer::remove(size_t identifier){
-
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	item_list.remove_if([&](const Item& item){ return item.identifier == identifier;});
 }
 
 drawablefunction ItemExplorer::draw(){
@@ -55,74 +58,71 @@ drawablefunction ItemExplorer::draw(){
 	    throw std::runtime_error("must compile the button before drawing operations");
 	auto lamb = [this](SkCanvas* canvas) {
 		SkAutoCanvasRestore restore(canvas, true);
-        	auto widget_rect = get_position();
-			canvas->clipRect(widget_rect);
+        auto widget_rect = get_position();
+		canvas->clipRect(widget_rect);
 
-			paint_background.setColor(get_background_color());
-			canvas->drawRect(widget_rect, paint_background);
+		paint_background.setColor(get_background_color());
+		canvas->drawRect(widget_rect, paint_background);
 
-			auto iterator = item_list.begin();
-			auto size = item_list.size();
+		auto iterator = item_list.begin();
+		auto size = item_list.size();
 
-			SkScalar width = widget_rect.width();
-			uint32_t number_of_previews_per_line = (width - 2 * ITEM_PREVIEW_EXTREMA_SPACING_LINE) / ITEM_PREVIEW_WIDTH - 1;
-			if (number_of_previews_per_line == 0)
-				number_of_previews_per_line = 1;
-			SkScalar spacing_between_icons_line = (width - 2 * ITEM_PREVIEW_EXTREMA_SPACING_LINE - (number_of_previews_per_line + 1) * ITEM_PREVIEW_WIDTH) / number_of_previews_per_line;
-			uint32_t number_of_vertical_previews = size / number_of_previews_per_line
-				+ (((size < 0) ^ (number_of_previews_per_line > 0)) && (size % number_of_previews_per_line));
+		SkScalar width = widget_rect.width();
+		uint32_t number_of_previews_per_line = (width - 2 * ITEM_PREVIEW_EXTREMA_SPACING_LINE) / ITEM_PREVIEW_WIDTH - 1;
+		if (number_of_previews_per_line == 0)
+			number_of_previews_per_line = 1;
+		SkScalar spacing_between_icons_line = (width - 2 * ITEM_PREVIEW_EXTREMA_SPACING_LINE - (number_of_previews_per_line + 1) * ITEM_PREVIEW_WIDTH) / number_of_previews_per_line;
+		uint32_t number_of_vertical_previews = size / number_of_previews_per_line
+			+ (((size < 0) ^ (number_of_previews_per_line > 0)) && (size % number_of_previews_per_line));
 
-			maximum_height = number_of_vertical_previews * (ITEM_PREVIEW_HEIGHT + ITEM_PREVIEW_EXTREMA_SPACING_COLUNM);
+		maximum_height = number_of_vertical_previews * (ITEM_PREVIEW_HEIGHT + ITEM_PREVIEW_EXTREMA_SPACING_COLUNM);
 
-			SkScalar x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
-			SkScalar y = ITEM_PREVIEW_EXTREMA_SPACING_COLUNM + widget_rect.y() + current_height_offset;
+		SkScalar x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
+		SkScalar y = ITEM_PREVIEW_EXTREMA_SPACING_COLUNM + widget_rect.y() + current_height_offset;
 
-			size_t index = 0;
-			while ((iterator != item_list.end()) && (y < widget_rect.fBottom))
-			{
-				Item& item_to_draw = *iterator;
-				int index_of_item = index;
-				preview_rectangle.setXYWH(x, y, ITEM_PREVIEW_WIDTH,ITEM_PREVIEW_HEIGHT);
+		while ((iterator != item_list.end()) && (y < widget_rect.fBottom))
+		{
+			Item& item_to_draw = *iterator;
+			preview_rectangle.setXYWH(x, y, ITEM_PREVIEW_WIDTH,ITEM_PREVIEW_HEIGHT);
 
-				auto item_found = std::find(current_selected_identifiers.begin(), current_selected_identifiers.end(), index_of_item);
+			auto item_found = std::find(current_selected_identifiers.begin(), current_selected_identifiers.end(), &item_to_draw);
 
-				if (item_found != current_selected_identifiers.end()){
-					paint_image_background.setColor(color_hover);
-				}	else {
-					paint_image_background.setColor(color_waiting);
-				}
-
-				float image_width = item_to_draw.image->width();
-				float image_height = item_to_draw.image->height();
-
-				float preview_width = preview_rectangle.width();
-				float preview_height = preview_rectangle.height();
-
-				float scale_factor = std::min((preview_width * 0.95f) / image_width, ITEM_IMAGE_HEIGHT / image_height);
-
-				float init_x = (preview_width - image_width * scale_factor) / 2.0f + preview_rectangle.x();
-				float init_y = preview_rectangle.y() + (ITEM_PREVIEW_HEIGHT - ITEM_IMAGE_HEIGHT);
-
-				SkRect image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, ITEM_IMAGE_HEIGHT * 0.98f);
-				canvas->drawRoundRect(preview_rectangle, 5, 5, paint_image_background);
-
-				SkRect bound_individual_name = item_to_draw.text->bounds();
-
-				canvas->drawTextBlob(item_to_draw.text.get(), x + (ITEM_PREVIEW_WIDTH - bound_individual_name.width()) / 2.0f, y + bound_individual_name.height(),text_paint);
-
-				SkSamplingOptions options;
-				canvas->drawImageRect(item_to_draw.image, image_rectangle, options, nullptr);
-
-				iterator++;
-
-				x += ITEM_PREVIEW_WIDTH + spacing_between_icons_line;
-
-				if (x + ITEM_PREVIEW_WIDTH >= widget_rect.fRight) {
-					y += ITEM_PREVIEW_HEIGHT + ITEM_PREVIEW_EXTREMA_SPACING_COLUNM;
-					x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
-				}
-				++index;
+			if (item_found != current_selected_identifiers.end()){
+				paint_image_background.setColor(color_hover);
+			}	else {
+				paint_image_background.setColor(color_waiting);
 			}
+
+			float image_width = item_to_draw.image->width();
+			float image_height = item_to_draw.image->height();
+
+			float preview_width = preview_rectangle.width();
+			float preview_height = preview_rectangle.height();
+
+			float scale_factor = std::min((preview_width * 0.95f) / image_width, ITEM_IMAGE_HEIGHT / image_height);
+
+			float init_x = (preview_width - image_width * scale_factor) / 2.0f + preview_rectangle.x();
+			float init_y = preview_rectangle.y() + (ITEM_PREVIEW_HEIGHT - ITEM_IMAGE_HEIGHT);
+
+			SkRect image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, ITEM_IMAGE_HEIGHT * 0.98f);
+			canvas->drawRoundRect(preview_rectangle, 5, 5, paint_image_background);
+
+			SkRect bound_individual_name = item_to_draw.text->bounds();
+
+			canvas->drawTextBlob(item_to_draw.text.get(), x + (ITEM_PREVIEW_WIDTH - bound_individual_name.width()) / 2.0f, y + bound_individual_name.height(),text_paint);
+
+			SkSamplingOptions options;
+			canvas->drawImageRect(item_to_draw.image, image_rectangle, options, nullptr);
+
+			iterator++;
+
+			x += ITEM_PREVIEW_WIDTH + spacing_between_icons_line;
+
+			if (x + ITEM_PREVIEW_WIDTH >= widget_rect.fRight) {
+				y += ITEM_PREVIEW_HEIGHT + ITEM_PREVIEW_EXTREMA_SPACING_COLUNM;
+				x = ITEM_PREVIEW_EXTREMA_SPACING_LINE + widget_rect.x();
+			}
+		}
 	};
 	return lamb;
 }

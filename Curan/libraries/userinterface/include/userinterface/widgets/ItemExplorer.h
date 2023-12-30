@@ -17,11 +17,12 @@ namespace curan {
 			SkRect current_pos;			
 			bool is_selected = false;
 			sk_sp<SkTextBlob> text;
+			size_t identifier = 0;
 		};
 
         class ItemExplorer : public  Drawable , public utilities::Lockable, public SignalProcessor<ItemExplorer> {
 		public:
-            std::list<size_t> current_selected_identifiers;
+            std::list<Item*> current_selected_identifiers;
 
 			int selected_image_identifier = 0;
 			SkRect preview_rectangle;
@@ -54,16 +55,16 @@ namespace curan {
 
 			~ItemExplorer();
 
-			std::list<size_t> highlighted();
+			std::list<Item*> highlighted();
 
-			void add(Item item_to_add,size_t identifier);
+			void add(Item&& item_to_add);
 
 			void remove(size_t identifier);
 
 			drawablefunction draw() override;
 			callablefunction call() override;
 
-			inline ItemExplorer& set_font_size(const size_t & in_size) {
+			inline ItemExplorer& set_font_size(const double & in_size) {
 				std::lock_guard<std::mutex> g{ get_mutex() };
 				font_size = in_size;
                 return *(this);
