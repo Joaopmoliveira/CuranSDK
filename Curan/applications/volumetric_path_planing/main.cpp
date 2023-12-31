@@ -300,7 +300,7 @@ struct DataSpecificApplication
 							
 							    },						 
 							    [&](const Point &point) { 
-                                    ImageType::IndexType local_index;
+                                    ImageType::IndexType local_index{0,0,0};
                                     local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
                                     local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
                                     local_index[2] = index;
@@ -483,7 +483,7 @@ struct DataSpecificApplication
                     transformed_corners.col(index_111) -= minimum;
 
                     auto required_size = transformed_corners.rowwise().maxCoeff();
-                    Eigen::Matrix<double,3,1> required_size_rounded;
+                    auto required_size_rounded = input->GetLargestPossibleRegion().GetSize();
 
                     auto spacing = input->GetSpacing();
                     auto new_spacing = spacing;
@@ -501,11 +501,12 @@ struct DataSpecificApplication
                     filter->SetInput(input);
                     filter->SetOutputOrigin(origin);
                     filter->SetOutputSpacing(new_spacing);
+                    filter->SetSize(required_size_rounded);
                     Eigen::Matrix<double,3,3> final_orientation = original_rotation_matrix*eigen_rotation_matrix;
                     auto itk_final_matrix = input->GetDirection();
                     for(size_t col = 0; col < 3; ++col)
                         for(size_t row = 0; row < 3; ++row)
-                            itk_original_matrix(row,col) = final_orientation(row,col);
+                            itk_final_matrix(row,col) = final_orientation(row,col);
                     filter->SetOutputDirection(itk_final_matrix);
 
                     try{
@@ -513,6 +514,17 @@ struct DataSpecificApplication
                         auto output = filter->GetOutput();
                         auto outsize = output->GetLargestPossibleRegion().GetSize();
                         auto outspacing = output->GetSpacing();
+                        std::array<ImageType::IndexType,4> output_corner_indices{{ImageType::IndexType{0,0,0},ImageType::IndexType{(long long)outsize[0],0,0},ImageType::IndexType{0,(long long)outsize[1],0},ImageType::IndexType{0,0,(long long)outsize[2]}}};
+                        std::array<ImageType::IndexType,4> input_corner_indices{{ImageType::IndexType{0,0,0},ImageType::IndexType{(long long)size[0],0,0},ImageType::IndexType{0,(long long)size[1],0},ImageType::IndexType{0,0,(long long)size[2]}}};
+                        static_assert(output_corner_indices.size()==input_corner_indices.size());
+                        for(size_t i = 0; i< 4; ++i){
+                            ImageType::PointType output_position;
+                            output->TransformIndexToPhysicalPoint(output_corner_indices[i],output_position);
+                            ImageType::PointType input_position;
+                            input->TransformIndexToPhysicalPoint(input_corner_indices[i],input_position);
+                            std::cout << "point input : " << input_position << "point output : " << output_position << "\n";
+                        }
+                        std::cout << "\n";
                         map[PanelType::RESAMPLED_VOLUME].update_volume(output);
                     } catch(...){
                         if (config->stack_page != nullptr)
