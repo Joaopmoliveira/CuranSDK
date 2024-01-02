@@ -200,20 +200,24 @@ callablefunction ItemExplorer::call(){
 				if (!get_position().contains(arg.xpos, arg.ypos)){
 					return;
 				}
-				std::lock_guard<std::mutex> g{get_mutex()};
-				Item* selected_item = nullptr;
-				for(auto & item : item_list)
-					if(item.current_pos.contains(arg.xpos,arg.ypos)){
-						item.is_selected = !item.is_selected;
-						selected_item = &item;
-						interacted = true;
-						for(auto& press_callback : callbacks_press)
-							press_callback(this,arg,config);
-					}
-				if( is_exclusive && selected_item )
+				{
+					std::lock_guard<std::mutex> g{get_mutex()};
+					Item* selected_item = nullptr;
 					for(auto & item : item_list)
-						if(&item!=selected_item)
-							item.is_selected = false;
+						if(item.current_pos.contains(arg.xpos,arg.ypos)){
+							item.is_selected = !item.is_selected;
+							selected_item = &item;
+							interacted = true;
+						}
+					if( is_exclusive && selected_item )
+						for(auto & item : item_list)
+							if(&item!=selected_item)
+								item.is_selected = false;
+				}
+
+				if(interacted)
+					for(auto& press_callback : callbacks_press)
+						press_callback(this,arg,config);
 						
 			},
 			[this,&interacted,config](Scroll arg) {;

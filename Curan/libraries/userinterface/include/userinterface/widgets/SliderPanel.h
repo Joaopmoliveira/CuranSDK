@@ -378,7 +378,7 @@ namespace curan
 			Direction direction = Direction::X;
 			SkPaint slider_paint;
 
-			void query_if_required();
+			void query_if_required(bool force_update);
 
 			image_info extract_slice_from_volume(size_t index);
 
@@ -416,7 +416,7 @@ namespace curan
 				if (in_current_value > 1.0)
 					in_current_value = 1.0;
 				current_value = in_current_value;
-				query_if_required();
+				query_if_required(false);
 				return *(this);
 			}
 

@@ -151,14 +151,16 @@ namespace ui {
     }
 
 
-	void SlidingPanel::query_if_required()
+	void SlidingPanel::query_if_required(bool force_update)
 	{
 		size_t previous = _current_index;
 		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
 		if(!volumetric_mask->filled())
 			return;
 		_current_index = std::round(current_value * (volumetric_mask->dimension(direction) - 1));
-		if (previous != _current_index)
+		if(force_update){
+			background = extract_slice_from_volume(_current_index);
+		} else if (previous != _current_index)
 			background = extract_slice_from_volume(_current_index);
 		previous = _current_index;
 	}
@@ -220,7 +222,7 @@ namespace ui {
 	{
 		set_current_state(SliderStates::WAITING);
 		update_volume(volume_mask, in_direction);
-		query_if_required();
+		
 		paint_square.setStyle(SkPaint::kFill_Style);
 		paint_square.setAntiAlias(true);
 		paint_square.setStrokeWidth(4);
@@ -297,11 +299,13 @@ namespace ui {
 		_current_index = std::floor(current_value * (size[direction] - 1));
 		volumetric_mask = volume_mask;
 		dragable_percent_size = 1.0 / size[direction];
+		query_if_required(true);
 	}
 
 	void SlidingPanel::framebuffer_resize(const SkRect &new_page_size)
 	{
 		auto pos = get_position();
+		std::lock_guard<std::mutex> g{get_mutex()};
 		reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft+buffer_around_panel, pos.fTop+buffer_around_panel, pos.fRight, pos.fBottom - size_of_slider_in_height-buffer_around_panel);
 		reserved_slider_space = SkRect::MakeLTRB(pos.fLeft+buffer_around_panel, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom-buffer_around_panel);
 		reserved_total_space = SkRect::MakeLTRB(pos.fLeft+buffer_around_panel,pos.fTop+buffer_around_panel, pos.fRight-buffer_around_panel, pos.fBottom-buffer_around_panel);
@@ -327,7 +331,7 @@ namespace ui {
 		homogenenous_transformation = SkMatrix::MakeRectToRect(background_rect, SkRect::MakeWH(1.0, 1.0), SkMatrix::ScaleToFit::kFill_ScaleToFit);
 		homogenenous_transformation.invert(&inverse_homogenenous_transformation);
 
-		std::lock_guard<std::mutex> g{get_mutex()};
+		
 		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
 		volumetric_mask->for_each(direction,[&](Mask& mask){
 			mask.container_resized(inverse_homogenenous_transformation);

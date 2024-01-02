@@ -558,7 +558,7 @@ struct DataSpecificApplication
 
                     orient_along_ac_midpoint.normalize();
 
-                    auto input = map[PanelType::ORIGINAL_VOLUME].get_volume();
+                    auto input = map[current_volume].get_volume();
 
                     itk::Matrix<double, 3, 3> rotation_matrix;
                     rotation_matrix(0, 0) = orient_perpendic_to_ac_pc_ac_midline[0];
@@ -599,7 +599,7 @@ struct DataSpecificApplication
                     Eigen::Matrix<double,3,1> spacing{{input->GetSpacing()[0],input->GetSpacing()[1],input->GetSpacing()[2]}};
 
                     BoundingBox bounding_box_original_image{origin_for_bounding_box,extrema_along_x_for_bounding_box,extrema_along_y_for_bounding_box,extrema_along_z_for_bounding_box,spacing};
-                    auto output_bounding_box = bounding_box_original_image.centered_bounding_box<Strategy::CONSERVATIVE,true>(original_eigen_rotation_matrix.transpose()*eigen_rotation_matrix);
+                    auto output_bounding_box = bounding_box_original_image.centered_bounding_box<Strategy::CONSERVATIVE,false>(original_eigen_rotation_matrix.transpose()*eigen_rotation_matrix);
                     using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
                     auto filter = FilterType::New();
 
@@ -626,16 +626,22 @@ struct DataSpecificApplication
                     try{
                         filter->Update();
                         auto output = filter->GetOutput();
-                        using InputWriterType = itk::ImageFileWriter<ImageType>;
-                        auto output_writer = InputWriterType::New();
-                        output_writer->SetInput(output);
-                        output_writer->SetFileName("output_my_test.mha");
-                        output_writer->Update();
-                        auto input_writer = InputWriterType::New();
-                        input_writer->SetInput(input);
-                        input_writer->SetFileName("input_my_test.mha");
-                        input_writer->Update();
-                        map[PanelType::RESAMPLED_VOLUME].update_volume(output);
+                        switch(current_volume){
+                            case PanelType::ORIGINAL_VOLUME:
+                                map[PanelType::RESAMPLED_VOLUME].update_volume(output);
+                                break;
+                            case PanelType::RESAMPLED_VOLUME:
+                                map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(output);
+                                break;
+                            case PanelType::TRAJECTORY_ORIENTED_VOLUME:
+                                map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(output);
+                                break;
+                            default:
+                                if (config->stack_page != nullptr)
+                                    config->stack_page->stack(create_overlay_with_warning("failure to process volume"));
+                                break;
+                        }
+                        
                     } catch(...){
                         if (config->stack_page != nullptr)
                             config->stack_page->stack(create_overlay_with_warning("failed to resample volume to AC-PC"));
@@ -653,11 +659,6 @@ struct DataSpecificApplication
         }
     }
 
-    //std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(){
-    //    using namespace curan::ui;
-
-    //}
-
     std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(){
         using namespace curan::ui;
 		using PixelType = unsigned char;
@@ -673,7 +674,7 @@ struct DataSpecificApplication
                 current_volume = PanelType::RESAMPLED_VOLUME;
                 break;
                 case PanelType::TRAJECTORY_ORIENTED_VOLUME:
-                current_volume = PanelType::RESAMPLED_VOLUME;
+                current_volume = PanelType::TRAJECTORY_ORIENTED_VOLUME;
                 break;
                 default:
                 throw std::runtime_error("failed to select the proper index");
