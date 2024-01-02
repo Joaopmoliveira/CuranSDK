@@ -5,10 +5,6 @@
 namespace curan {
 namespace ui {
 
-Item::Item(size_t in_identifier, sk_sp<SkImage> in_image,std::string in_text) : identifier{in_identifier},image{in_image},text{in_text}{
-
-}
-
 Item::Item(size_t in_identifier, std::string in_text): identifier{in_identifier},text{in_text}{
 
 }

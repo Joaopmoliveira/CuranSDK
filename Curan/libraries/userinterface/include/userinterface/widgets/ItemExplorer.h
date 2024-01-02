@@ -9,12 +9,14 @@
 #include "IconResources.h"
 #include "SignalProcessor.h"
 #include <queue>
+#include "ImageWrapper.h"
 
 namespace curan {
 	namespace ui {
 
 		struct Item {
 			sk_sp<SkImage> image;
+			std::optional<curan::ui::ImageWrapper> wrapper;
 			SkRect current_pos;			
 			bool is_selected = false;
 			bool is_highlighted = false;
@@ -22,7 +24,10 @@ namespace curan {
 			SkRect cached_text_size;
 			size_t identifier = 0;
 
-			explicit Item(size_t identifier, sk_sp<SkImage> image,std::string text);
+			template<typename ...T>
+			explicit Item(size_t identifier, std::string text,T ...u) : identifier{in_identifier},text{in_text},wrapper{std::forward<T>(u)...}{
+				image = rapper.image;
+			}
 			explicit Item(size_t identifier, std::string text);
 		};
 

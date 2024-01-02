@@ -21,6 +21,7 @@
 #include "itkTransform.h"
 #include "itkThresholdImageFilter.h"
 #include "itkCannyEdgeDetectionImageFilter.h"
+#include <optional>
 
 namespace curan{
     namespace image{
@@ -50,16 +51,20 @@ namespace reconstruction{
 		constexpr double fraction255_256 = 255.0 / 256;
 }
 
-		struct Study {
-			std::vector<InternalImageType::Pointer> study_img;
-			std::string individual_name;
-			std::string image_number;
-		};
-
 		struct Volume {
 			std::string individual_name;
 			InternalImageType::Pointer volume;
 		};
+
+		struct Study {
+			std::vector<InternalImageType::Pointer> study_img;
+			std::string individual_name;
+			std::string image_number;
+
+			std::optional<Volume> try_convert_to_volume();
+		};
+
+
 
 		struct Image {
 			Internal2DImageType::Pointer image;

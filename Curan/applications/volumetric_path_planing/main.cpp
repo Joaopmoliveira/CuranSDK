@@ -33,6 +33,7 @@
 #include "itkResampleImageFilter.h"
 #include "itkScaleTransform.h"
 #include "itkAffineTransform.h"
+#include "itkImageFileWriter.h"
 
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
@@ -140,11 +141,17 @@ struct BoundingBox{
         if(debug) std::cout << "\ndebug info: (transformed_spacing)\n" <<  transformed_spacing;
 
         Eigen::Matrix<double,3,1> transformed_size;
-        transformed_size[0] = std::ceil(unrounded_transformed_size[0]);
-        transformed_size[1] = std::ceil(unrounded_transformed_size[1]);
-        transformed_size[2] = std::ceil(unrounded_transformed_size[2]);
+        transformed_size[0] = std::ceil(unrounded_transformed_size[0]/transformed_spacing[0]);
+        transformed_size[1] = std::ceil(unrounded_transformed_size[1]/transformed_spacing[1]);
+        transformed_size[2] = std::ceil(unrounded_transformed_size[2]/transformed_spacing[2]);
+
+        transformed_spacing[0] = unrounded_transformed_size[0]/transformed_size[0];
+        transformed_spacing[1] = unrounded_transformed_size[1]/transformed_size[1];
+        transformed_spacing[2] = unrounded_transformed_size[2]/transformed_size[2];
 
         if(debug) std::cout << "\ndebug info: (transformed_size)\n" <<  transformed_size;
+
+        if(debug) std::cout << "\ndebug info: (transformed_spacing)\n" <<  transformed_spacing;
 
         Eigen::Matrix<double,3,4> transformed_corners_in_pixel_space;
         transformed_corners_in_pixel_space.col(0)[0] = 0;
@@ -184,6 +191,14 @@ struct BoundingBox{
         transformed_corners_in_world_space.col(3) = transformed_corners_in_world_space.col(0)+transformed_rotation*transformed_corners_in_pixel_space.col(3);
 
         if(debug) std::cout << "\ndebug info: (transformed_corners_in_world_space)\n" <<  transformed_corners_in_world_space;
+
+        Eigen::Matrix<double,3,4> corners_in_world_space;
+        corners_in_world_space.col(0) = origin;
+        corners_in_world_space.col(1) = corners_in_world_space.col(0)+orientation*corners_in_rotated_space.col(1);
+        corners_in_world_space.col(2) = corners_in_world_space.col(0)+orientation*corners_in_rotated_space.col(2);
+        corners_in_world_space.col(3) = corners_in_world_space.col(0)+orientation*corners_in_rotated_space.col(3);
+
+        if(debug) std::cout << "\ndebug info: (corners_in_world_space)\n" <<  corners_in_world_space;
 
         return BoundingBox{transformed_corners_in_world_space.col(0),transformed_corners_in_world_space.col(1),transformed_corners_in_world_space.col(2),transformed_corners_in_world_space.col(3),transformed_spacing};
     }
@@ -228,7 +243,7 @@ struct DataSpecificApplication
 
     curan::ui::MiniPage *minipage = nullptr;
 
-    DataSpecificApplication(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, {volume}, {volume}}}
+    DataSpecificApplication(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, nullptr, nullptr}}
     {
     }
 
@@ -559,27 +574,32 @@ struct DataSpecificApplication
                     rotation_matrix(2, 2) = orient_along_ac_midpoint[2];
 
                     Eigen::Matrix<double,3,3> eigen_rotation_matrix;
+                    Eigen::Matrix<double,3,3> original_eigen_rotation_matrix;
+                    auto direction = input->GetDirection();
                     for(size_t col = 0; col < 3 ; ++col)
-                        for(size_t row = 0; row < 3 ; ++row)
+                        for(size_t row = 0; row < 3 ; ++row){
+                            original_eigen_rotation_matrix(row,col) = direction(row,col);
                             eigen_rotation_matrix(row,col) = rotation_matrix(row,col);
+                        }
+                           
 
                     Eigen::Matrix<double,3,1> origin_for_bounding_box{{input->GetOrigin()[0],input->GetOrigin()[1],input->GetOrigin()[2]}};
                     ImageType::PointType itk_along_dimension_x;
-                    ImageType::IndexType index_along_x{(long long)input->GetLargestPossibleRegion().GetSize()[0],0,0};
+                    ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0],0,0}};
                     input->TransformIndexToPhysicalPoint(index_along_x,itk_along_dimension_x);
                     Eigen::Matrix<double,3,1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0],itk_along_dimension_x[1],itk_along_dimension_x[2]}};
                     ImageType::PointType itk_along_dimension_y;
-                    ImageType::IndexType index_along_y{0,(long long)input->GetLargestPossibleRegion().GetSize()[1],0};
+                    ImageType::IndexType index_along_y{{0,(long long)input->GetLargestPossibleRegion().GetSize()[1],0}};
                     input->TransformIndexToPhysicalPoint(index_along_y,itk_along_dimension_y);
                     Eigen::Matrix<double,3,1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0],itk_along_dimension_y[1],itk_along_dimension_y[2]}};
                     ImageType::PointType itk_along_dimension_z;
-                    ImageType::IndexType index_along_z{0,0,(long long)input->GetLargestPossibleRegion().GetSize()[2]};
+                    ImageType::IndexType index_along_z{{0,0,(long long)input->GetLargestPossibleRegion().GetSize()[2]}};
                     input->TransformIndexToPhysicalPoint(index_along_z,itk_along_dimension_z);
                     Eigen::Matrix<double,3,1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0],itk_along_dimension_z[1],itk_along_dimension_z[2]}};
                     Eigen::Matrix<double,3,1> spacing{{input->GetSpacing()[0],input->GetSpacing()[1],input->GetSpacing()[2]}};
 
                     BoundingBox bounding_box_original_image{origin_for_bounding_box,extrema_along_x_for_bounding_box,extrema_along_y_for_bounding_box,extrema_along_z_for_bounding_box,spacing};
-                    auto output_bounding_box = bounding_box_original_image.centered_bounding_box<Strategy::CONSERVATIVE,false>(eigen_rotation_matrix);
+                    auto output_bounding_box = bounding_box_original_image.centered_bounding_box<Strategy::CONSERVATIVE,true>(original_eigen_rotation_matrix.transpose()*eigen_rotation_matrix);
                     using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
                     auto filter = FilterType::New();
 
@@ -606,6 +626,15 @@ struct DataSpecificApplication
                     try{
                         filter->Update();
                         auto output = filter->GetOutput();
+                        using InputWriterType = itk::ImageFileWriter<ImageType>;
+                        auto output_writer = InputWriterType::New();
+                        output_writer->SetInput(output);
+                        output_writer->SetFileName("output_my_test.mha");
+                        output_writer->Update();
+                        auto input_writer = InputWriterType::New();
+                        input_writer->SetInput(input);
+                        input_writer->SetFileName("input_my_test.mha");
+                        input_writer->Update();
                         map[PanelType::RESAMPLED_VOLUME].update_volume(output);
                     } catch(...){
                         if (config->stack_page != nullptr)
@@ -623,6 +652,11 @@ struct DataSpecificApplication
             minipage->construct(std::move(total_container), SK_ColorBLACK);
         }
     }
+
+    //std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(){
+    //    using namespace curan::ui;
+
+    //}
 
     std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(){
         using namespace curan::ui;
@@ -654,9 +688,11 @@ struct DataSpecificApplication
 		        extract_filter->UpdateLargestPossibleRegion();
 
 		        ImageType::Pointer pointer_to_block_of_memory = extract_filter->GetOutput();
-                SkImageInfo information = SkImageInfo::Make(size[Direction::X], size[Direction::Y], kGray_8_SkColorType, kOpaque_SkAlphaType);
-	            auto pixmap = SkPixmap(information, pointer_to_block_of_memory->GetBufferPointer(), size[Direction::Y] * sizeof(PixelType));
-                item_explorer->add(Item{identifier,SkSurfaces::WrapPixels(pixmap)->makeImageSnapshot(),"volume_"+std::to_string(identifier)});
+
+        		ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+		        auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
+		        auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
+                item_explorer->add(Item{identifier,"volume_"+std::to_string(identifier),buff, extracted_size[1], extracted_size[2]});
 	            
             }
             ++identifier;
@@ -666,7 +702,6 @@ struct DataSpecificApplication
 
         auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(item_explorer);
-
 
         return Overlay::make(std::move(container), SkColorSetARGB(10, 125, 125, 125), true);
     }

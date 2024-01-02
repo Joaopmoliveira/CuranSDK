@@ -215,6 +215,8 @@ namespace curan
 			{
 				to_process.clear();
 				image = in_volume;
+				if(!filled())
+					return;
 				ImageType::RegionType inputRegion = image->GetBufferedRegion();
 				ImageType::SizeType size = inputRegion.GetSize();
 				masks_x = std::vector<Mask>(size[Direction::X]);
