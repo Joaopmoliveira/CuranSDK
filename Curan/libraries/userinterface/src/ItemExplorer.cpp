@@ -207,8 +207,10 @@ callablefunction ItemExplorer::call(){
 						item.is_selected = !item.is_selected;
 						selected_item = &item;
 						interacted = true;
+						for(auto& press_callback : callbacks_press)
+							press_callback(this,arg,config);
 					}
-				if(is_exclusive&&selected_item)
+				if( is_exclusive && selected_item )
 					for(auto & item : item_list)
 						if(&item!=selected_item)
 							item.is_selected = false;

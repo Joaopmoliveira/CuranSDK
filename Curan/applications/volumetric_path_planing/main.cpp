@@ -662,6 +662,25 @@ struct DataSpecificApplication
         using namespace curan::ui;
 		using PixelType = unsigned char;
 		auto item_explorer = ItemExplorer::make("file_icon.png",resources);
+        item_explorer->add_press_call([this](ItemExplorer* widget, Press press, ConfigDraw* draw){
+            auto highlighted = widget->highlighted();
+            assert(highlighted.size()==1 && "the size is larger than one");
+            switch(highlighted.front()){
+                case PanelType::ORIGINAL_VOLUME:
+                current_volume = PanelType::ORIGINAL_VOLUME;
+                break;
+                case PanelType::RESAMPLED_VOLUME:
+                current_volume = PanelType::RESAMPLED_VOLUME;
+                break;
+                case PanelType::TRAJECTORY_ORIENTED_VOLUME:
+                current_volume = PanelType::RESAMPLED_VOLUME;
+                break;
+                default:
+                throw std::runtime_error("failed to select the proper index");
+                break;
+            }
+            create_panel_ac_pc_instructions();
+        });
 		using ImageType = itk::Image<PixelType, 3>;
 		using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
         size_t identifier = 0;
@@ -692,7 +711,6 @@ struct DataSpecificApplication
 		        auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
 		        auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
                 item_explorer->add(Item{identifier,"volume_"+std::to_string(identifier),buff, extracted_size[0], extracted_size[1]});
-	            
             }
             ++identifier;
         }
