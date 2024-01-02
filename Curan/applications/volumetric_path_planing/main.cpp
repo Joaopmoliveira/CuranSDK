@@ -40,6 +40,155 @@
 
 #include <Eigen/Dense>
 
+enum Strategy{
+    CONSERVATIVE,   
+};
+
+struct BoundingBox{
+    Eigen::Matrix<double,3,1> origin;
+    Eigen::Matrix<double,3,3> orientation;
+    Eigen::Matrix<double,3,1> size;
+    Eigen::Matrix<double,3,1> spacing;
+
+    BoundingBox(const Eigen::Matrix<double,3,1>& in_origin,const Eigen::Matrix<double,3,1>& along_x,Eigen::Matrix<double,3,1> along_y,Eigen::Matrix<double,3,1> along_z, Eigen::Matrix<double,3,1> in_spacing){
+        origin = in_origin;
+        Eigen::Matrix<double,3,1> direct_x = along_x-in_origin;
+        Eigen::Matrix<double,3,1> vector_along_direction_x = direct_x;
+        Eigen::Matrix<double,3,1> direct_y = along_y-in_origin;
+        Eigen::Matrix<double,3,1> vector_along_direction_y = direct_y;
+        Eigen::Matrix<double,3,1> direct_z = along_z-in_origin;
+        Eigen::Matrix<double,3,1> vector_along_direction_z = direct_z;
+        direct_x.normalize();
+        direct_y.normalize();
+        direct_z.normalize();
+        orientation.col(0) = direct_x;
+        orientation.col(1) = direct_y;
+        orientation.col(2) = direct_z;
+
+        double determinant = orientation.determinant();
+
+        assert(determinant>0.9999 && determinant<1.0001 && "failure to generate an ortogonal rotation matrix");
+        spacing = in_spacing;
+        size[0] = vector_along_direction_x.norm()/spacing[0];
+        size[1] = vector_along_direction_y.norm()/spacing[1];
+        size[2] = vector_along_direction_z.norm()/spacing[2];
+    }
+
+    friend std::ostream & operator << (std::ostream &, const BoundingBox &);
+
+    template<Strategy prefered_strategy,bool debug>
+    BoundingBox centered_bounding_box(const Eigen::Matrix<double,3,3>& relative_transform){
+
+        if(debug) std::cout << "\ndebug info: (relative_transform)\n" <<  relative_transform;
+
+        Eigen::Matrix<double,3,8> corners_in_rotated_space;
+        corners_in_rotated_space.col(0)[0] = 0;
+        corners_in_rotated_space.col(0)[1] = 0;
+        corners_in_rotated_space.col(0)[2] = 0;
+
+        corners_in_rotated_space.col(1)[0] = spacing[0]*size[0];
+        corners_in_rotated_space.col(1)[1] = 0;
+        corners_in_rotated_space.col(1)[2] = 0;
+
+        corners_in_rotated_space.col(2)[0] = 0;
+        corners_in_rotated_space.col(2)[1] = spacing[1]*size[1];
+        corners_in_rotated_space.col(2)[2] = 0;
+
+        corners_in_rotated_space.col(3)[0] = 0;
+        corners_in_rotated_space.col(3)[1] = 0;
+        corners_in_rotated_space.col(3)[2] = spacing[2]*size[2];
+
+        corners_in_rotated_space.col(4)[0] = spacing[0]*size[0];
+        corners_in_rotated_space.col(4)[1] = spacing[1]*size[1];
+        corners_in_rotated_space.col(4)[2] = 0;
+
+        corners_in_rotated_space.col(5)[0] = 0;
+        corners_in_rotated_space.col(5)[1] = spacing[1]*size[1];
+        corners_in_rotated_space.col(5)[2] = spacing[2]*size[2];
+
+        corners_in_rotated_space.col(6)[0] = spacing[0]*size[0];
+        corners_in_rotated_space.col(6)[1] = 0;
+        corners_in_rotated_space.col(6)[2] = spacing[2]*size[2];
+
+        corners_in_rotated_space.col(7)[0] = spacing[0]*size[0];
+        corners_in_rotated_space.col(7)[1] = spacing[1]*size[1];
+        corners_in_rotated_space.col(7)[2] = spacing[2]*size[2];
+
+        if(debug) std::cout << "\ndebug info: (corners_in_rotated_space)\n" <<  corners_in_rotated_space;
+
+        Eigen::Matrix<double,3,8> transformed_corners_in_rotated_space;
+        for(size_t col = 0; col < static_cast<size_t>(transformed_corners_in_rotated_space.cols()); ++col)
+            transformed_corners_in_rotated_space.col(col) = relative_transform.transpose()*corners_in_rotated_space.col(col);
+
+        if(debug) std::cout << "\ndebug info: (transformed_corners_in_rotated_space)\n" <<  transformed_corners_in_rotated_space;
+
+        Eigen::Matrix<double,3,1> minimum = transformed_corners_in_rotated_space.rowwise().minCoeff();
+
+        if(debug) std::cout << "\ndebug info: (minimum)\n" <<  transformed_corners_in_rotated_space.rowwise().minCoeff();
+
+        transformed_corners_in_rotated_space.colwise() -=minimum;
+
+        if(debug) std::cout << "\ndebug info: (transformed_corners_in_rotated_space)\n" <<  transformed_corners_in_rotated_space;
+
+        Eigen::Matrix<double,3,1> unrounded_transformed_size = transformed_corners_in_rotated_space.rowwise().maxCoeff();
+
+        if(debug) std::cout << "\ndebug info: (unrounded_transformed_size)\n" <<  unrounded_transformed_size;
+
+        Eigen::Matrix<double,3,1> transformed_spacing = spacing;
+        transformed_spacing.fill(spacing.minCoeff());
+
+        if(debug) std::cout << "\ndebug info: (transformed_spacing)\n" <<  transformed_spacing;
+
+        Eigen::Matrix<double,3,1> transformed_size;
+        transformed_size[0] = std::ceil(unrounded_transformed_size[0]);
+        transformed_size[1] = std::ceil(unrounded_transformed_size[1]);
+        transformed_size[2] = std::ceil(unrounded_transformed_size[2]);
+
+        if(debug) std::cout << "\ndebug info: (transformed_size)\n" <<  transformed_size;
+
+        Eigen::Matrix<double,3,4> transformed_corners_in_pixel_space;
+        transformed_corners_in_pixel_space.col(0)[0] = 0;
+        transformed_corners_in_pixel_space.col(0)[1] = 0;
+        transformed_corners_in_pixel_space.col(0)[2] = 0;
+
+        transformed_corners_in_pixel_space.col(1)[0] = transformed_spacing[0]*transformed_size[0];
+        transformed_corners_in_pixel_space.col(1)[1] = 0;
+        transformed_corners_in_pixel_space.col(1)[2] = 0;
+
+        transformed_corners_in_pixel_space.col(2)[0] = 0;
+        transformed_corners_in_pixel_space.col(2)[1] = transformed_spacing[1]*transformed_size[1];
+        transformed_corners_in_pixel_space.col(2)[2] = 0;
+
+        transformed_corners_in_pixel_space.col(3)[0] = 0;
+        transformed_corners_in_pixel_space.col(3)[1] = 0;
+        transformed_corners_in_pixel_space.col(3)[2] = transformed_spacing[2]*transformed_size[2];
+
+        if(debug) std::cout << "\ndebug info: (transformed_corners_in_pixel_space)\n" <<  transformed_corners_in_pixel_space;
+
+        auto quatered_bounding_box = orientation*(1.0/2.0)*corners_in_rotated_space;
+        if(debug) std::cout << "\ndebug info: (quatered_bounding_box)\n" <<  quatered_bounding_box;
+        Eigen::Matrix<double,3,1> center_bounding_box = quatered_bounding_box.col(1)+quatered_bounding_box.col(2)+quatered_bounding_box.col(3);
+        if(debug) std::cout << "\ndebug info: (center_bounding_box)\n" <<  center_bounding_box;
+
+        Eigen::Matrix<double,3,3> transformed_rotation;
+        transformed_rotation = orientation*relative_transform;
+
+        auto transformed_quatered_bounding_box = transformed_rotation*(1.0/2.0)*transformed_corners_in_pixel_space;
+        if(debug) std::cout << "\ndebug info: (transformed_quatered_bounding_box)\n" <<  transformed_quatered_bounding_box;
+        Eigen::Matrix<double,3,1> transformed_center_bounding_box = transformed_quatered_bounding_box.col(1)+transformed_quatered_bounding_box.col(2)+transformed_quatered_bounding_box.col(3);
+        if(debug) std::cout << "\ndebug info: (transformed_center_bounding_box)\n" <<  transformed_center_bounding_box;
+        Eigen::Matrix<double,3,4> transformed_corners_in_world_space;
+        transformed_corners_in_world_space.col(0) = origin+center_bounding_box-transformed_center_bounding_box;
+        transformed_corners_in_world_space.col(1) = transformed_corners_in_world_space.col(0)+transformed_rotation*transformed_corners_in_pixel_space.col(1);
+        transformed_corners_in_world_space.col(2) = transformed_corners_in_world_space.col(0)+transformed_rotation*transformed_corners_in_pixel_space.col(2);
+        transformed_corners_in_world_space.col(3) = transformed_corners_in_world_space.col(0)+transformed_rotation*transformed_corners_in_pixel_space.col(3);
+
+        if(debug) std::cout << "\ndebug info: (transformed_corners_in_world_space)\n" <<  transformed_corners_in_world_space;
+
+        return BoundingBox{transformed_corners_in_world_space.col(0),transformed_corners_in_world_space.col(1),transformed_corners_in_world_space.col(2),transformed_corners_in_world_space.col(3),transformed_spacing};
+    }
+};
+
 using DicomPixelType = unsigned short;
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 3;
@@ -211,12 +360,13 @@ struct DataSpecificApplication
                                     local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
                                     local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
                                     local_index[2] = index;
+                                    std::cout << "index ac is: " << local_index << std::endl;
                                     ImageType::PointType ac_point_in_world_coordinates;
                                     map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,ac_point_in_world_coordinates);
                                     Eigen::Matrix<double,3,1> lac_point = Eigen::Matrix<double,3,1>::Zero();
-                                    lac_point(0,0) = ac_point_in_world_coordinates[0];
-                                    lac_point(1,0) = ac_point_in_world_coordinates[1];
-                                    lac_point(2,0) = ac_point_in_world_coordinates[2];
+                                    lac_point[0] = ac_point_in_world_coordinates[0];
+                                    lac_point[1] = ac_point_in_world_coordinates[1];
+                                    lac_point[2] = ac_point_in_world_coordinates[2];
                                     ac_point = lac_point;
                                     if(config->stack_page!=nullptr){
 						                config->stack_page->stack(create_overlay_with_success("added AC point"));
@@ -257,12 +407,13 @@ struct DataSpecificApplication
                                     local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
                                     local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
                                     local_index[2] = index;
+                                    std::cout << "index cp is: " << local_index << std::endl;
                                     ImageType::PointType pc_point_in_world_coordinates;
                                     map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,pc_point_in_world_coordinates);
                                     Eigen::Matrix<double,3,1> lpc_point = Eigen::Matrix<double,3,1>::Zero();
-                                    lpc_point(0,0) = pc_point_in_world_coordinates[0];
-                                    lpc_point(1,0) = pc_point_in_world_coordinates[1];
-                                    lpc_point(2,0) = pc_point_in_world_coordinates[2];
+                                    lpc_point[0] = pc_point_in_world_coordinates[0];
+                                    lpc_point[1] = pc_point_in_world_coordinates[1];
+                                    lpc_point[2] = pc_point_in_world_coordinates[2];
                                     pc_point = lpc_point;
                                     if(config->stack_page!=nullptr){
 						                config->stack_page->stack(create_overlay_with_success("added CP point"));
@@ -304,12 +455,13 @@ struct DataSpecificApplication
                                     local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(Direction::X)-1);
                                     local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(Direction::Y)-1);
                                     local_index[2] = index;
+                                    std::cout << "index midpoint is: " << local_index << std::endl;
                                     ImageType::PointType midpoint_point_in_world_coordinates;
                                     map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,midpoint_point_in_world_coordinates);
                                     Eigen::Matrix<double,3,1> lmid_point = Eigen::Matrix<double,3,1>::Zero();
-                                    lmid_point(0,0) = midpoint_point_in_world_coordinates[0];
-                                    lmid_point(1,0) = midpoint_point_in_world_coordinates[1];
-                                    lmid_point(2,0) = midpoint_point_in_world_coordinates[2];
+                                    lmid_point[0] = midpoint_point_in_world_coordinates[0];
+                                    lmid_point[1] = midpoint_point_in_world_coordinates[1];
+                                    lmid_point[2] = midpoint_point_in_world_coordinates[2];
                                     midline = lmid_point;
                                     if(config->stack_page!=nullptr){
 						                config->stack_page->stack(create_overlay_with_success("added midpoint"));
@@ -391,14 +543,16 @@ struct DataSpecificApplication
 
                     orient_along_ac_midpoint.normalize();
 
-                    itk::Matrix<double, 3, 3> rotation_matrix;
-                    rotation_matrix(0, 0) = orient_along_ac_pc(0, 0);
-                    rotation_matrix(1, 0) = orient_along_ac_pc(1, 0);
-                    rotation_matrix(2, 0) = orient_along_ac_pc(2, 0);
+                    auto input = map[PanelType::ORIGINAL_VOLUME].get_volume();
 
-                    rotation_matrix(0, 1) = orient_perpendic_to_ac_pc_ac_midline[0];
-                    rotation_matrix(1, 1) = orient_perpendic_to_ac_pc_ac_midline[1];
-                    rotation_matrix(2, 1) = orient_perpendic_to_ac_pc_ac_midline[2];
+                    itk::Matrix<double, 3, 3> rotation_matrix;
+                    rotation_matrix(0, 0) = orient_perpendic_to_ac_pc_ac_midline[0];
+                    rotation_matrix(1, 0) = orient_perpendic_to_ac_pc_ac_midline[1];
+                    rotation_matrix(2, 0) = orient_perpendic_to_ac_pc_ac_midline[2];
+
+                    rotation_matrix(0, 1) = orient_along_ac_pc[0]; 
+                    rotation_matrix(1, 1) = orient_along_ac_pc[1];
+                    rotation_matrix(2, 1) = orient_along_ac_pc[2];
 
                     rotation_matrix(0, 2) = orient_along_ac_midpoint[0];
                     rotation_matrix(1, 2) = orient_along_ac_midpoint[1];
@@ -409,12 +563,23 @@ struct DataSpecificApplication
                         for(size_t row = 0; row < 3 ; ++row)
                             eigen_rotation_matrix(row,col) = rotation_matrix(row,col);
 
-                    
-                    itk::Vector<double, 3> origin;
-                    origin[0] = (*ac_point)[0];
-                    origin[1] = (*ac_point)[1];
-                    origin[2] = (*ac_point)[2];
+                    Eigen::Matrix<double,3,1> origin_for_bounding_box{{input->GetOrigin()[0],input->GetOrigin()[1],input->GetOrigin()[2]}};
+                    ImageType::PointType itk_along_dimension_x;
+                    ImageType::IndexType index_along_x{(long long)input->GetLargestPossibleRegion().GetSize()[0],0,0};
+                    input->TransformIndexToPhysicalPoint(index_along_x,itk_along_dimension_x);
+                    Eigen::Matrix<double,3,1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0],itk_along_dimension_x[1],itk_along_dimension_x[2]}};
+                    ImageType::PointType itk_along_dimension_y;
+                    ImageType::IndexType index_along_y{0,(long long)input->GetLargestPossibleRegion().GetSize()[1],0};
+                    input->TransformIndexToPhysicalPoint(index_along_y,itk_along_dimension_y);
+                    Eigen::Matrix<double,3,1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0],itk_along_dimension_y[1],itk_along_dimension_y[2]}};
+                    ImageType::PointType itk_along_dimension_z;
+                    ImageType::IndexType index_along_z{0,0,(long long)input->GetLargestPossibleRegion().GetSize()[2]};
+                    input->TransformIndexToPhysicalPoint(index_along_z,itk_along_dimension_z);
+                    Eigen::Matrix<double,3,1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0],itk_along_dimension_z[1],itk_along_dimension_z[2]}};
+                    Eigen::Matrix<double,3,1> spacing{{input->GetSpacing()[0],input->GetSpacing()[1],input->GetSpacing()[2]}};
 
+                    BoundingBox bounding_box_original_image{origin_for_bounding_box,extrema_along_x_for_bounding_box,extrema_along_y_for_bounding_box,extrema_along_z_for_bounding_box,spacing};
+                    auto output_bounding_box = bounding_box_original_image.centered_bounding_box<Strategy::CONSERVATIVE,false>(eigen_rotation_matrix);
                     using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
                     auto filter = FilterType::New();
 
@@ -426,105 +591,21 @@ struct DataSpecificApplication
                     filter->SetInterpolator(interpolator);
                     filter->SetDefaultPixelValue(100);
                     filter->SetTransform(transform);
-                    auto input = map[PanelType::ORIGINAL_VOLUME].get_volume();
-
-                    Eigen::Matrix<double,3,3> original_rotation_matrix = Eigen::Matrix<double,3,3>::Zero();
-                    auto itk_original_matrix = input->GetDirection();
-                    for(size_t col = 0; col < 3; ++col)
-                        for(size_t row = 0; row < 3; ++row)
-                            original_rotation_matrix(row,col) = itk_original_matrix(row,col);
-
-                    auto relative_transformation = original_rotation_matrix.transpose()*eigen_rotation_matrix;
-
-                    auto size = input->GetLargestPossibleRegion().GetSize();
-
-                    double x = (double)size[0]*input->GetSpacing()[0];
-                    double y = (double)size[1]*input->GetSpacing()[1];
-                    double z = (double)size[2]*input->GetSpacing()[2];
-
-                    enum transform_index{
-                        index_001 = 0,
-                        index_010 = 1,
-                        index_011 = 2,
-                        index_100 = 3,
-                        index_101 = 4,
-                        index_110 = 5,
-                        index_111 = 6,
-                        total_number_of_indicies,
-                    };
-
-                    Eigen::Matrix<double,3,transform_index::total_number_of_indicies> corners = Eigen::Matrix<double,3,transform_index::total_number_of_indicies>::Zero();                    
-                    corners.col(index_001) = Eigen::Matrix<double,3,1>{{x,.0,.0}};
-                    corners.col(index_010) = Eigen::Matrix<double,3,1>{{.0,y,.0}};
-                    corners.col(index_011) = Eigen::Matrix<double,3,1>{{x,y,.0}};
-                    corners.col(index_100) = Eigen::Matrix<double,3,1>{{.0,.0,z}};
-                    corners.col(index_101) = Eigen::Matrix<double,3,1>{{x,.0,z}};
-                    corners.col(index_110) = Eigen::Matrix<double,3,1>{{.0,y,z}};
-                    corners.col(index_111) = Eigen::Matrix<double,3,1>{{x,y,z}};
-
-                    Eigen::Matrix<double,3,transform_index::total_number_of_indicies> transformed_corners;
-
-                    transformed_corners.col(index_001) = relative_transformation*corners.col(index_001);
-                    transformed_corners.col(index_010) = relative_transformation*corners.col(index_010);
-                    transformed_corners.col(index_011) = relative_transformation*corners.col(index_011);
-                    transformed_corners.col(index_100) = relative_transformation*corners.col(index_100);
-                    transformed_corners.col(index_101) = relative_transformation*corners.col(index_101);
-                    transformed_corners.col(index_110) = relative_transformation*corners.col(index_110);
-                    transformed_corners.col(index_111) = relative_transformation*corners.col(index_111);
-
-                    auto minimum = transformed_corners.rowwise().minCoeff();
-
-                    transformed_corners.col(index_001) -= minimum;
-                    transformed_corners.col(index_010) -= minimum;
-                    transformed_corners.col(index_011) -= minimum;
-                    transformed_corners.col(index_100) -= minimum;
-                    transformed_corners.col(index_101) -= minimum;
-                    transformed_corners.col(index_110) -= minimum;
-                    transformed_corners.col(index_111) -= minimum;
-
-                    auto required_size = transformed_corners.rowwise().maxCoeff();
-                    auto required_size_rounded = input->GetLargestPossibleRegion().GetSize();
-
-                    auto spacing = input->GetSpacing();
-                    auto new_spacing = spacing;
-                    double minimum_spacing = std::min(std::min(spacing[0],spacing[1]),spacing[2]);
-                    
-
-                    for(size_t row = 0; row < 3; ++row){
-                        double rounded = std::ceil(required_size[row]/minimum_spacing);
-                        required_size_rounded[row] =  rounded;
-                        double spac = rounded/required_size[row];
-                        new_spacing[row] = spac;
-                        std::printf("iter (%llu) rounded (%f) spacing (%f)\n",row,rounded,spac);
-                    }
 
                     filter->SetInput(input);
-                    filter->SetOutputOrigin(origin);
-                    filter->SetOutputSpacing(new_spacing);
-                    filter->SetSize(required_size_rounded);
-                    Eigen::Matrix<double,3,3> final_orientation = original_rotation_matrix*eigen_rotation_matrix;
-                    auto itk_final_matrix = input->GetDirection();
-                    for(size_t col = 0; col < 3; ++col)
-                        for(size_t row = 0; row < 3; ++row)
-                            itk_final_matrix(row,col) = final_orientation(row,col);
-                    filter->SetOutputDirection(itk_final_matrix);
+                    filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0],output_bounding_box.origin[1],output_bounding_box.origin[2]}});
+                    filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0],output_bounding_box.spacing[1],output_bounding_box.spacing[2]}});
+                    filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0],(size_t)output_bounding_box.size[1],(size_t)output_bounding_box.size[2]}});
+
+                    for(size_t col = 0; col < 3 ; ++col)
+                        for(size_t row = 0; row < 3 ; ++row)
+                            rotation_matrix(row,col) = output_bounding_box.orientation(row,col);
+
+                    filter->SetOutputDirection(rotation_matrix);
 
                     try{
                         filter->Update();
                         auto output = filter->GetOutput();
-                        auto outsize = output->GetLargestPossibleRegion().GetSize();
-                        auto outspacing = output->GetSpacing();
-                        std::array<ImageType::IndexType,4> output_corner_indices{{ImageType::IndexType{0,0,0},ImageType::IndexType{(long long)outsize[0],0,0},ImageType::IndexType{0,(long long)outsize[1],0},ImageType::IndexType{0,0,(long long)outsize[2]}}};
-                        std::array<ImageType::IndexType,4> input_corner_indices{{ImageType::IndexType{0,0,0},ImageType::IndexType{(long long)size[0],0,0},ImageType::IndexType{0,(long long)size[1],0},ImageType::IndexType{0,0,(long long)size[2]}}};
-                        static_assert(output_corner_indices.size()==input_corner_indices.size());
-                        for(size_t i = 0; i< 4; ++i){
-                            ImageType::PointType output_position;
-                            output->TransformIndexToPhysicalPoint(output_corner_indices[i],output_position);
-                            ImageType::PointType input_position;
-                            input->TransformIndexToPhysicalPoint(input_corner_indices[i],input_position);
-                            std::cout << "point input : " << input_position << "point output : " << output_position << "\n";
-                        }
-                        std::cout << "\n";
                         map[PanelType::RESAMPLED_VOLUME].update_volume(output);
                     } catch(...){
                         if (config->stack_page != nullptr)

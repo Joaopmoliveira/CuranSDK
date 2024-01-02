@@ -102,3 +102,11 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_resampling_second_attempt test_resampling_second_attempt.cpp)
+
+target_compile_definitions(test_resampling_second_attempt PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_resampling_second_attempt
+PUBLIC
+${ITK_LIBRARIES}
+)
