@@ -14,21 +14,17 @@ int main() {
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-        std::array<unsigned char,100*100> image_buffer;
+        std::shared_ptr<std::array<unsigned char,100*100>> image_buffer = std::make_shared<std::array<unsigned char,100*100>>();
         constexpr float maximum_size = 2*50.0*50.0;
         for(size_t row = 0; row < 100; ++row)
             for(size_t col = 0; col < 100; ++col)
-                image_buffer[row+col*100] = static_cast<unsigned char>((((row-50.0)*(row-50.0)+(col-50.0)*(col-50.0))/maximum_size)*255.0);
+                (*image_buffer)[row+col*100] = static_cast<unsigned char>((((row-50.0)*(row-50.0)+(col-50.0)*(col-50.0))/maximum_size)*255.0);
 
-
-        SkImageInfo information = SkImageInfo::Make(100, 100, kGray_8_SkColorType, kOpaque_SkAlphaType);
-	    auto pixmap = SkPixmap(information, image_buffer.data(), 100 * sizeof(unsigned char));
-	    auto image_to_display = SkSurfaces::WrapPixels(pixmap)->makeImageSnapshot();
-
+		auto buff = curan::utilities::CaptureBuffer::make_shared(image_buffer->data(), image_buffer->size() * sizeof(unsigned char), image_buffer);
 		auto item_explorer = ItemExplorer::make("file_icon.png",resources);
-        item_explorer->add(Item{1,image_to_display,"failure"});
-		item_explorer->add(Item{2,image_to_display,"success"});
-		item_explorer->add(Item{3,image_to_display,"big"});
+        item_explorer->add(Item{1,"failure",buff, 100, 100});
+		item_explorer->add(Item{2,"success",buff, 100, 100});
+		item_explorer->add(Item{3,"big",buff, 100, 100});
 		item_explorer->add(Item{4,"unknown"});
 
         auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);

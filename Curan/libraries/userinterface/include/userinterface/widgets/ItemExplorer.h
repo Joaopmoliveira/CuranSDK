@@ -25,8 +25,8 @@ namespace curan {
 			size_t identifier = 0;
 
 			template<typename ...T>
-			explicit Item(size_t identifier, std::string text,T ...u) : identifier{in_identifier},text{in_text},wrapper{std::forward<T>(u)...}{
-				image = rapper.image;
+			explicit Item(size_t in_identifier, std::string in_text,T ...u) : identifier{in_identifier},text{in_text},wrapper{std::in_place,std::forward<T>(u)...}{
+				if(wrapper) image=(*wrapper).image;
 			}
 			explicit Item(size_t identifier, std::string text);
 		};

@@ -688,11 +688,10 @@ struct DataSpecificApplication
 		        extract_filter->UpdateLargestPossibleRegion();
 
 		        ImageType::Pointer pointer_to_block_of_memory = extract_filter->GetOutput();
-
         		ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
 		        auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
 		        auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
-                item_explorer->add(Item{identifier,"volume_"+std::to_string(identifier),buff, extracted_size[1], extracted_size[2]});
+                item_explorer->add(Item{identifier,"volume_"+std::to_string(identifier),buff, extracted_size[0], extracted_size[1]});
 	            
             }
             ++identifier;
