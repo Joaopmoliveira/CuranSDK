@@ -327,7 +327,7 @@ VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
     bool LimitedExceeded = true;
     bool CreateTaskSat = false;
     int NumSatJoints = 0;
-    VectorNd theMostCriticalOld = VectorNd::Zero(NUMBER_OF_JOINTS);
+    Eigen::Vector<Eigen::Index,Eigen::Dynamic> theMostCriticalOld = Eigen::Vector<Eigen::Index,Eigen::Dynamic>::Zero(NUMBER_OF_JOINTS);
     theMostCriticalOld.conservativeResize(1);
     theMostCriticalOld[0] = 100;
     bool isThere = false;
@@ -397,7 +397,7 @@ VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
 
             for (int i = 0; i < theMostCriticalOld.size(); i++)
             {
-                int jM = theMostCriticalOld[i];
+                Eigen::Index jM = theMostCriticalOld[i];
 
                 if (qDotDotGot[jM] > qDotDotMaxFinal[jM])
                     qDotDotS[jM] = qDotDotMaxFinal[jM];

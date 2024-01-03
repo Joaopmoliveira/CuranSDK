@@ -47,8 +47,8 @@ int main (int argc, char** argv)
    matrix_strm << homogenenous_transformation;
    auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm,',');
    std::cout << "with the homogeneous matrix :\n" <<  calibration_matrix << std::endl;
-   for(size_t row = 0 ; row < calibration_matrix.rows(); ++row)
-      for(size_t col = 0; col < calibration_matrix.cols(); ++col)
+   for(Eigen::Index row = 0 ; row < calibration_matrix.rows(); ++row)
+      for(Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
         robot_state->calibration_matrix(col,row) = calibration_matrix(row,col);
 
    } catch(...){
