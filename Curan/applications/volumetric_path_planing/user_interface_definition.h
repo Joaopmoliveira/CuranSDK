@@ -356,7 +356,9 @@ struct DataSpecificApplication
 
                     orient_along_ac_midpoint.normalize();
 
-                    auto input = map[current_volume].get_volume();
+                    // we always use the original volume instead of the current volume, 
+                    // or else the reconstructed volume will always increase in size
+                    auto input = map[PanelType::ORIGINAL_VOLUME].get_volume();
 
                     itk::Matrix<double, 3, 3> rotation_matrix;
                     rotation_matrix(0, 0) = orient_perpendic_to_ac_pc_ac_midline[0];
@@ -380,7 +382,6 @@ struct DataSpecificApplication
                             eigen_rotation_matrix(row,col) = rotation_matrix(row,col);
                         }
                            
-
                     Eigen::Matrix<double,3,1> origin_for_bounding_box{{input->GetOrigin()[0],input->GetOrigin()[1],input->GetOrigin()[2]}};
                     ImageType::PointType itk_along_dimension_x;
                     ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0],0,0}};
