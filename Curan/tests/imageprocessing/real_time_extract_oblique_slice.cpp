@@ -48,6 +48,40 @@ using TransformType = itk::Euler3DTransform<double>;
 using ReaderType = itk::ImageFileReader<InputImageType>;
 using WriterType = itk::ImageFileWriter<OutputImageType>;
 
+
+void updateBaseTexture2D(vsg::vec4Array2D &image, OutputImageType::Pointer image_to_render)
+{
+    try{
+        int x, y, z;
+        auto input = image_to_render;
+        auto size = input->GetLargestPossibleRegion().GetSize();
+        x = size[0];
+        y = size[1];
+        z = size[2];
+
+        unsigned char* scaller_buffer = (unsigned char*)image_to_render->GetBufferPointer();
+        
+        for (size_t r = 0; r < image.height(); ++r)
+        {
+            using value_type = typename vsg::vec4Array2D::value_type;
+            value_type* ptr = &image.at(0, r);
+            for (size_t c = 0; c < image.width(); ++c)
+            {
+                auto val = *scaller_buffer/255.0;
+                ptr->r = val;
+                ptr->g = val;
+                ptr->b = val;
+                ptr->a = 1.0f;
+                ++ptr;
+                ++scaller_buffer;
+            }
+        }
+
+    } catch(std::exception& e){
+        std::cout << "exception : " << e.what() << std::endl;;
+    }
+}
+
 void updateBaseTexture3D(vsg::floatArray3D &image, InputImageType::Pointer image_to_render)
 {
     using FilterType = itk::CastImageFilter<InputImageType, InputImageType>;
@@ -252,10 +286,41 @@ main(int argc, char * argv[]) {
       //return;
   }
 
-  auto output = filter->GetOutput();
+  OutputImageType::Pointer output = filter->GetOutput();
 
-  auto render_transformation = vsg::translate(0.0, 0.0, 0.0);
 
+
+
+  curan::renderable::DynamicTexture::Info infotexture;
+  auto output_image = output;
+  auto output_image_size = output_image->GetLargestPossibleRegion().GetSize();
+  auto output_image_spacing = output_image->GetSpacing();
+  infotexture.height = output_image_size[1];
+  infotexture.width = output_image_size[0];
+  infotexture.spacing = {output_image_spacing[0]/1000,output_image_spacing[1]/1000,output_image_spacing[2]/1000};
+  infotexture.origin = {0.0,0.0,0.0};
+  infotexture.builder = vsg::Builder::create();
+
+  auto dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
+  window << dynamic_texture;
+
+  auto image_direction = output->GetDirection();
+  auto image_origin = output->GetOrigin();
+  auto image_homogenenous_transformation = vsg::translate(0.0, 0.0, 0.0);
+  image_homogenenous_transformation(3, 0) = (image_origin[0] + translation[0]) / 1000.0;
+  image_homogenenous_transformation(3, 1) = (image_origin[1] + translation[1]) / 1000.0;
+  image_homogenenous_transformation(3, 2) = (image_origin[2] + translation[2]) / 1000.0;
+
+  for (size_t row = 0; row < 3; ++row)
+      for (size_t col = 0; col < 3; ++col)
+          image_homogenenous_transformation(col, row) = image_direction(row, col);
+
+  dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(image_homogenenous_transformation);
+
+  auto casted_image = dynamic_texture->cast<curan::renderable::DynamicTexture>();
+  auto updater_image = [output](vsg::vec4Array2D &image)
+    { updateBaseTexture2D(image, output); };
+  casted_image->update_texture(updater_image);
 
 
   std::cout << "(output) origin : " << output->GetOrigin() << std::endl;
