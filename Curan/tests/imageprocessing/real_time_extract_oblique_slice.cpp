@@ -1,6 +1,5 @@
 #include "itkImage.h"
 #include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
 
 #include "itkResampleImageFilter.h"
 
@@ -25,6 +24,8 @@
 #include "rendering/Renderable.h"
 #include "rendering/DynamicTexture.h"
 #include <optional>
+#include <chrono>
+#include <thread>
 
 constexpr unsigned int Dimension_in = 3;
 constexpr unsigned int Dimension_out = 3;
@@ -42,7 +43,6 @@ using InterImageType = itk::Image<InterPixelType, Dimension_out>;
 using TransformType = itk::Euler3DTransform<double>;
 
 using ReaderType = itk::ImageFileReader<InputImageType>;
-using WriterType = itk::ImageFileWriter<OutputImageType>;
 
 void updateBaseTexture2D(vsg::vec4Array2D &image, OutputImageType::Pointer image_to_render)
 {
@@ -113,7 +113,9 @@ void updateBaseTexture3D(vsg::floatArray3D &image, InputImageType::Pointer image
     }
 }
 
-void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Pointer volume, itk::Point<double> image_origin, itk::Matrix<double> image_orientation)
+
+
+void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Pointer volume, itk::Point<double,3> image_origin, itk::Point<double,3> image_orientation_angles)
 {
     using FilterType = itk::ResampleImageFilter<InputImageType, OutputImageType>;
     auto filter = FilterType::New();
@@ -122,7 +124,7 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
     using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<InputImageType, double>;
     auto interpolator = InterpolatorType::New();
     filter->SetInterpolator(interpolator);
-    filter->SetDefaultPixelValue(300);
+    filter->SetDefaultPixelValue(100);
 
     auto input = volume;
     auto size = input->GetLargestPossibleRegion().GetSize();
@@ -141,24 +143,23 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
 
     filter->SetInput(input);
 
-    filter->SetSize(out_size);
+    filter->SetOutputSpacing(new_spacing);
+    filter->SetSize(out_size); 
 
     auto old_origin = volume->GetOrigin();
-
-    filter->SetOutputSpacing(new_spacing);
+    filter->SetOutputOrigin(old_origin);
 
     filter->SetOutputDirection(volume->GetDirection());
-    filter->SetOutputOrigin(old_origin);
 
     TransformType::Pointer transform = TransformType::New();
 
     itk::Point<double, 3> rotation_center;
-    rotation_center[0] = old_origin[0] + spacing[0] * size[0] / 2.0;
-    rotation_center[1] = old_origin[1] + spacing[1] * size[1] / 2.0;
-    rotation_center[2] = old_origin[2] + spacing[2] * size[2] / 2.0;
+    rotation_center[0] = old_origin[0];// + (size[0]*spacing[0])/2.0;
+    rotation_center[1] = old_origin[1];// + (size[1]*spacing[1])/2.0;
+    rotation_center[2] = old_origin[2];// + (size[2]*spacing[2])/2.0;
 
     transform->SetCenter(rotation_center);
-    transform->SetRotation(0.0, 0.0, 0.0);
+    transform->SetRotation(image_orientation_angles[0], image_orientation_angles[1], image_orientation_angles[2]);
 
     TransformType::OutputVectorType translation;
     translation[0] = image_origin[0]; // X translation in millimeters
@@ -168,6 +169,10 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
 
     TransformType::MatrixType matrix = transform->GetMatrix();
     TransformType::OffsetType offset = transform->GetOffset();
+
+    std::cout << "Transformation matrix: \n" << matrix << std::endl;
+
+    std::cout << "Transformation offset: \n" << offset << std::endl;
 
     filter->SetTransform(transform);
 
@@ -184,6 +189,7 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
 
     OutputImageType::Pointer output = filter->GetOutput();
 
+
     auto image_direction = output->GetDirection();
     // auto image_origin = output->GetOrigin();
     auto image_homogenenous_transformation = vsg::translate(0.0, 0.0, 0.0);
@@ -191,9 +197,12 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
     image_homogenenous_transformation(3, 1) = (old_origin[1] + translation[1]) / 1000.0;
     image_homogenenous_transformation(3, 2) = (old_origin[2] + translation[2]) / 1000.0;
 
+    auto final_direction = image_direction * matrix;
+
     for (size_t row = 0; row < 3; ++row)
         for (size_t col = 0; col < 3; ++col)
-            image_homogenenous_transformation(col, row) = image_direction(row, col);
+            image_homogenenous_transformation(col, row) = final_direction(row, col);
+            //image_homogenenous_transformation(col, row) = final_direction(col, row);
 
     texture->update_transform(image_homogenenous_transformation);
 
@@ -204,15 +213,9 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
 
 int main(int argc, char *argv[])
 {
-
     auto reader = ReaderType::New();
-    auto writer = WriterType::New();
-
     std::string dirName_input{CURAN_COPIED_RESOURCE_PATH "/precious_phantom/precious_phantom.mha"};
-    std::string dirName_output{"extracted_slice.mha"};
-
     reader->SetFileName(dirName_input);
-    writer->SetFileName(dirName_output);
 
     try
     {
@@ -303,24 +306,32 @@ int main(int argc, char *argv[])
                                     {
                                         while (continue_running)
                                         {
-                                            itk::Point<double> image_origin;
-                                            itk::Matrix<double> image_orientation;
-                                            for (size_t zzz = 0; zzz < 200; ++zzz)
-                                            {
-                                                image_origin[0] = 0;
-                                                image_origin[1] = 0;
-                                                image_origin[2] = zzz;
-                                                resampler(casted_image, pointer_to_block_of_memory, image_origin, image_orientation);
-                                            }
+                                            itk::Point<double,3> image_origin;
+                                            itk::Point<double,3> image_orientation_angles;
+                                            //for (size_t zzz = 0; zzz < 200; ++zzz) {
+                                            for (size_t aaa = 0; aaa < 200; ++aaa) {
+                                            //for (size_t bbb = 0; bbb < 200; ++bbb) {
+                                            //for (size_t ccc = 0; ccc < 200; ++ccc) {
+                                             
+                                                std::this_thread::sleep_for(std::chrono::milliseconds(30));
+                                                image_origin[0] = 0.0;
+                                                image_origin[1] = 0.0;
+                                                image_origin[2] = 100.0;
+
+                                                image_orientation_angles[1] = aaa/100.0 - 1.0;
+                                                image_orientation_angles[0] = aaa/100.0 - 1.0;
+                                                image_orientation_angles[2] = 0.0;
+
+
+
+                                                resampler(casted_image, pointer_to_block_of_memory, image_origin, image_orientation_angles);
+                                            }//}}}
                                         }
                                     }};
 
     window.run();
     continue_running = false;
     run_slice_extractor.join();
-
-    /* writer->SetInput(output);
-    writer->Update(); */
 
     return EXIT_SUCCESS;
 }
