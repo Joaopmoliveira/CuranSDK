@@ -44,6 +44,80 @@ using TransformType = itk::Euler3DTransform<double>;
 
 using ReaderType = itk::ImageFileReader<InputImageType>;
 
+
+void create_volume(InputImageType::Pointer image) {
+//Sphere
+    itk::Matrix<double> image_orientation;
+    itk::Point<double> image_origin;
+
+ 	image_orientation[0][0] = 1.0;
+ 	image_orientation[1][0] = 0.0;
+ 	image_orientation[2][0] = 0.0;
+
+	image_orientation[0][1] = 0.0;
+ 	image_orientation[1][1] = 1.0;
+ 	image_orientation[2][1] = 0.0;
+
+ 	image_orientation[0][2] = 0.0;
+ 	image_orientation[1][2] = 0.0;
+ 	image_orientation[2][2] = 1.0;
+
+ 	image_origin[0] = 0.0;
+ 	image_origin[1] = 0.0;
+ 	image_origin[2] = 0.0;
+
+    InputImageType::SpacingType spacing;
+    spacing[0] = 1.0;
+ 	spacing[1] = 1.0;
+ 	spacing[2] = 1.0;
+
+
+    InputImageType::SizeType size = { { 100, 100, 100 } };
+    InputImageType::IndexType index = { { 0, 0, 0 } };
+    InputImageType::IndexType max_index = { { 99, 99, 99 } };
+    InputImageType::RegionType region;
+    region.SetSize(size);
+    region.SetIndex(index);
+    image->SetRegions(region);
+    image->SetDirection(image_orientation);
+    image->SetSpacing(spacing);
+    image->SetOrigin(image_origin);
+    image->Allocate(true); // initialize buffer to zero
+
+    using Iterator = itk::ImageRegionIterator<InputImageType>;
+
+    InputImageType::IndexType idx = {{0,0,0}};
+
+    image->TransformIndexToPhysicalPoint(idx,image_origin);
+
+    Iterator it(image, region);
+
+    itk::Point<double,3> sphere_center;
+    sphere_center[0] = 0.0;
+    sphere_center[1] = 0.0;
+    sphere_center[2] = 0.0;
+    
+    itk::Point<double,3> current_pixel;
+
+    itk::Point<double,3> max_pixel_position;
+    image->TransformIndexToPhysicalPoint(max_index, max_pixel_position);
+
+    auto max_radius = max_pixel_position[0]*max_pixel_position[0] + max_pixel_position[1]*max_pixel_position[1] + max_pixel_position[2]*max_pixel_position[2];
+
+    std::cout << "maximum radius: " << max_radius << std::endl;
+
+    for (it.GoToBegin(); !it.IsAtEnd(); ++it)
+    {
+        InputImageType::IndexType current_idx = it.GetIndex();
+        image->TransformIndexToPhysicalPoint(current_idx,current_pixel);
+        double squared_sphere_radious = ((current_pixel[0]-sphere_center[0])*(current_pixel[0]-sphere_center[0])+(current_pixel[1]-sphere_center[1])*(current_pixel[1]-sphere_center[1])+(current_pixel[2]-sphere_center[2])*(current_pixel[2]-sphere_center[2]));
+        it.Set(squared_sphere_radious/max_radius*255.0);
+    }
+
+    };
+
+
+
 void updateBaseTexture2D(vsg::vec4Array2D &image, OutputImageType::Pointer image_to_render)
 {
     try
@@ -124,7 +198,7 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
     using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<InputImageType, double>;
     auto interpolator = InterpolatorType::New();
     filter->SetInterpolator(interpolator);
-    filter->SetDefaultPixelValue(100);
+    filter->SetDefaultPixelValue(0);
 
     auto input = volume;
     auto size = input->GetLargestPossibleRegion().GetSize();
@@ -170,9 +244,9 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
     TransformType::MatrixType matrix = transform->GetMatrix();
     TransformType::OffsetType offset = transform->GetOffset();
 
-    std::cout << "Transformation matrix: \n" << matrix << std::endl;
+    /* std::cout << "Transformation matrix: \n" << matrix << std::endl;
 
-    std::cout << "Transformation offset: \n" << offset << std::endl;
+    std::cout << "Transformation offset: \n" << offset << std::endl; */
 
     filter->SetTransform(transform);
 
@@ -202,7 +276,6 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
     for (size_t row = 0; row < 3; ++row)
         for (size_t col = 0; col < 3; ++col)
             image_homogenenous_transformation(col, row) = final_direction(row, col);
-            //image_homogenenous_transformation(col, row) = final_direction(col, row);
 
     texture->update_transform(image_homogenenous_transformation);
 
@@ -227,12 +300,14 @@ int main(int argc, char *argv[])
         // return;
     }
 
-    InputImageType::Pointer pointer_to_block_of_memory = reader->GetOutput();
-    InputImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+    InputImageType::Pointer pointer_to_block_of_memory = InputImageType::New();
+    create_volume(pointer_to_block_of_memory);
 
-    auto input = pointer_to_block_of_memory;
-    auto size = input->GetLargestPossibleRegion().GetSize();
-    auto spacing = input->GetSpacing();
+    //InputImageType::Pointer pointer_to_block_of_memory = reader->GetOutput();
+
+    auto input_volume = pointer_to_block_of_memory;
+    auto volume_size = input_volume->GetLargestPossibleRegion().GetSize();
+    auto volume_spacing = input_volume->GetSpacing();
 
     curan::renderable::Window::Info info;
     info.api_dump = false;
@@ -246,18 +321,18 @@ int main(int argc, char *argv[])
     curan::renderable::Window window{info};
 
     curan::renderable::Volume::Info volumeinfo;
-    volumeinfo.width = size.GetSize()[0];
-    volumeinfo.height = size.GetSize()[1];
-    volumeinfo.depth = size.GetSize()[2];
-    volumeinfo.spacing_x = spacing[0];
-    volumeinfo.spacing_y = spacing[1];
-    volumeinfo.spacing_z = spacing[2];
+    volumeinfo.width = volume_size.GetSize()[0];
+    volumeinfo.height = volume_size.GetSize()[1];
+    volumeinfo.depth = volume_size.GetSize()[2];
+    volumeinfo.spacing_x = volume_spacing[0];
+    volumeinfo.spacing_y = volume_spacing[1];
+    volumeinfo.spacing_z = volume_spacing[2];
 
     auto volume_to_render = curan::renderable::Volume::make(volumeinfo);
     window << volume_to_render;
 
-    auto direction = pointer_to_block_of_memory->GetDirection();
-    auto origin = pointer_to_block_of_memory->GetOrigin();
+    auto direction = input_volume->GetDirection();
+    auto origin = input_volume->GetOrigin();
     auto fixed_homogenenous_transformation = vsg::translate(0.0, 0.0, 0.0);
     fixed_homogenenous_transformation(3, 0) = origin[0] / 1000.0;
     fixed_homogenenous_transformation(3, 1) = origin[1] / 1000.0;
@@ -269,15 +344,17 @@ int main(int argc, char *argv[])
 
     volume_to_render->cast<curan::renderable::Volume>()->update_transform(fixed_homogenenous_transformation);
 
-    auto casted_volume_fixed = volume_to_render->cast<curan::renderable::Volume>();
+    auto casted_volume = volume_to_render->cast<curan::renderable::Volume>();
     auto updater = [pointer_to_block_of_memory](vsg::floatArray3D &image)
     { updateBaseTexture3D(image, pointer_to_block_of_memory); };
-    casted_volume_fixed->update_volume(updater);
+    casted_volume->update_volume(updater);
 
-    curan::renderable::DynamicTexture::Info infotexture;
 
-    auto size_2 = input->GetLargestPossibleRegion().GetSize();
-    auto spacing_2 = input->GetSpacing();
+
+
+
+    auto size_2 = input_volume->GetLargestPossibleRegion().GetSize();
+    auto spacing_2 = input_volume->GetSpacing();
     double minimum_spacing = std::min(std::min(spacing_2[0], spacing_2[1]), spacing_2[2]);
     double maximum_size = std::max(std::max(size_2[0], size_2[1]), size_2[2]);
     auto new_spacing = spacing_2;
@@ -290,6 +367,7 @@ int main(int argc, char *argv[])
     out_size[1] = maximum_size;
     out_size[2] = 1;
 
+    curan::renderable::DynamicTexture::Info infotexture;
     infotexture.height = out_size[1];
     infotexture.width = out_size[0];
     infotexture.spacing = {new_spacing[0] / 1000, new_spacing[1] / 1000, new_spacing[2] / 1000};
@@ -309,17 +387,17 @@ int main(int argc, char *argv[])
                                             itk::Point<double,3> image_origin;
                                             itk::Point<double,3> image_orientation_angles;
                                             //for (size_t zzz = 0; zzz < 200; ++zzz) {
-                                            for (size_t aaa = 0; aaa < 200; ++aaa) {
+                                            for (size_t aaa = 0; aaa < 100; ++aaa) {
                                             //for (size_t bbb = 0; bbb < 200; ++bbb) {
                                             //for (size_t ccc = 0; ccc < 200; ++ccc) {
                                              
                                                 std::this_thread::sleep_for(std::chrono::milliseconds(30));
                                                 image_origin[0] = 0.0;
                                                 image_origin[1] = 0.0;
-                                                image_origin[2] = 100.0;
+                                                image_origin[2] = aaa;
 
-                                                image_orientation_angles[1] = aaa/100.0 - 1.0;
-                                                image_orientation_angles[0] = aaa/100.0 - 1.0;
+                                                image_orientation_angles[0] = 0.0;
+                                                image_orientation_angles[1] = 0.0;
                                                 image_orientation_angles[2] = 0.0;
 
 
