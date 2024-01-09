@@ -26,16 +26,23 @@
 #include <optional>
 #include <chrono>
 #include <thread>
+#include "Mathematics/IntrPlane3OrientedBox3.h"
+#include "itkGDCMImageIO.h"
+#include "itkGDCMSeriesFileNames.h"
+#include "itkImageSeriesReader.h"
+
 
 constexpr unsigned int Dimension_in = 3;
 constexpr unsigned int Dimension_out = 3;
 using InputPixelType = unsigned char;
 using OutputPixelType = unsigned char;
+using DicomPixelType = unsigned short;
 
 using InterPixelType = float;
 
 using InputImageType = itk::Image<InterPixelType, Dimension_in>;
 using OutputImageType = itk::Image<OutputPixelType, Dimension_out>;
+using DICOMImageType = itk::Image<DicomPixelType, Dimension_in>;
 
 using InterImageType = itk::Image<InterPixelType, Dimension_out>;
 
@@ -43,6 +50,73 @@ using InterImageType = itk::Image<InterPixelType, Dimension_out>;
 using TransformType = itk::Euler3DTransform<double>;
 
 using ReaderType = itk::ImageFileReader<InputImageType>;
+
+
+void load_dicom(InputImageType::Pointer& image) {
+    
+    using ReaderTypeDicom = itk::ImageSeriesReader<DICOMImageType>;
+    auto reader = ReaderTypeDicom::New();
+
+    using ImageIOType = itk::GDCMImageIO;
+    auto dicomIO = ImageIOType::New();
+
+    reader->SetImageIO(dicomIO);
+
+    using NamesGeneratorType = itk::GDCMSeriesFileNames;
+    auto nameGenerator = NamesGeneratorType::New();
+
+    nameGenerator->SetUseSeriesDetails(true);
+    nameGenerator->AddSeriesRestriction("0008|0021");
+
+    std::string dirName_input{CURAN_COPIED_RESOURCE_PATH "/dicom_sample/ST983524"};
+    nameGenerator->SetDirectory(dirName_input);
+
+    using SeriesIdContainer = std::vector<std::string>;
+
+    const SeriesIdContainer &seriesUID = nameGenerator->GetSeriesUIDs();
+
+    auto seriesItr = seriesUID.begin();
+    auto seriesEnd = seriesUID.end();
+    while (seriesItr != seriesEnd)
+    {
+        std::cout << seriesItr->c_str() << std::endl;
+        ++seriesItr;
+    }
+
+    std::string seriesIdentifier;
+    seriesIdentifier = seriesUID.begin()->c_str();
+
+    using FileNamesContainer = std::vector<std::string>;
+    FileNamesContainer fileNames;
+
+    fileNames = nameGenerator->GetFileNames(seriesIdentifier);
+
+    reader->SetFileNames(fileNames);
+
+    using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
+    auto rescale = RescaleType::New();
+    rescale->SetInput(reader->GetOutput());
+    rescale->SetOutputMinimum(0);
+    rescale->SetOutputMaximum(itk::NumericTraits<InputPixelType>::max());
+
+    std::cout << "aqui" << std::endl;
+
+    using FilterType = itk::CastImageFilter<DICOMImageType, InputImageType>;
+    auto filter = FilterType::New();
+    filter->SetInput(rescale->GetOutput());
+
+    try
+    {
+        filter->Update();
+    }
+    catch (const itk::ExceptionObject &ex)
+    {
+        std::cout << ex << std::endl;
+        //return std::nullopt;
+    }
+
+    image = filter->GetOutput();
+};
 
 
 void create_volume(InputImageType::Pointer image) {
@@ -189,7 +263,7 @@ void updateBaseTexture3D(vsg::floatArray3D &image, InputImageType::Pointer image
 
 
 
-void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Pointer volume, itk::Point<double,3> image_origin, itk::Point<double,3> image_orientation_angles)
+void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Pointer output, InputImageType::Pointer volume, itk::Point<double,3> needle_tip, itk::Matrix<double,3> image_orientation)
 {
     using FilterType = itk::ResampleImageFilter<InputImageType, OutputImageType>;
     auto filter = FilterType::New();
@@ -220,33 +294,20 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
     filter->SetOutputSpacing(new_spacing);
     filter->SetSize(out_size); 
 
+
     auto old_origin = volume->GetOrigin();
-    filter->SetOutputOrigin(old_origin);
+    auto new_origin = old_origin;
+    new_origin[0] = old_origin[0] + needle_tip[0];
+    new_origin[1] = old_origin[1] + needle_tip[1];
+    new_origin[2] = old_origin[2] + needle_tip[2];
+    filter->SetOutputOrigin(new_origin);
 
-    filter->SetOutputDirection(volume->GetDirection());
+        
 
-    TransformType::Pointer transform = TransformType::New();
+    using TransformType = itk::IdentityTransform<double, 3>;
+    auto transform = TransformType::New();
 
-    itk::Point<double, 3> rotation_center;
-    rotation_center[0] = old_origin[0];// + (size[0]*spacing[0])/2.0;
-    rotation_center[1] = old_origin[1];// + (size[1]*spacing[1])/2.0;
-    rotation_center[2] = old_origin[2];// + (size[2]*spacing[2])/2.0;
-
-    transform->SetCenter(rotation_center);
-    transform->SetRotation(image_orientation_angles[0], image_orientation_angles[1], image_orientation_angles[2]);
-
-    TransformType::OutputVectorType translation;
-    translation[0] = image_origin[0]; // X translation in millimeters
-    translation[1] = image_origin[1]; // Y translation in millimeters
-    translation[2] = image_origin[2]; // Y translation in millimeters
-    transform->SetTranslation(translation);
-
-    TransformType::MatrixType matrix = transform->GetMatrix();
-    TransformType::OffsetType offset = transform->GetOffset();
-
-    /* std::cout << "Transformation matrix: \n" << matrix << std::endl;
-
-    std::cout << "Transformation offset: \n" << offset << std::endl; */
+    filter->SetOutputDirection(image_orientation);
 
     filter->SetTransform(transform);
 
@@ -261,21 +322,18 @@ void resampler(curan::renderable::DynamicTexture *texture, InputImageType::Point
         // return;
     }
 
-    OutputImageType::Pointer output = filter->GetOutput();
+    output = filter->GetOutput();
 
-
-    auto image_direction = output->GetDirection();
-    // auto image_origin = output->GetOrigin();
+    auto new_origin2 = output->GetOrigin();
     auto image_homogenenous_transformation = vsg::translate(0.0, 0.0, 0.0);
-    image_homogenenous_transformation(3, 0) = (old_origin[0] + translation[0]) / 1000.0;
-    image_homogenenous_transformation(3, 1) = (old_origin[1] + translation[1]) / 1000.0;
-    image_homogenenous_transformation(3, 2) = (old_origin[2] + translation[2]) / 1000.0;
+    image_homogenenous_transformation(3, 0) = (new_origin[0]) / 1000.0;
+    image_homogenenous_transformation(3, 1) = (new_origin[1]) / 1000.0;
+    image_homogenenous_transformation(3, 2) = (new_origin[2]) / 1000.0;
 
-    auto final_direction = image_direction * matrix;
-
+    auto image_final_direction = output->GetDirection();
     for (size_t row = 0; row < 3; ++row)
         for (size_t col = 0; col < 3; ++col)
-            image_homogenenous_transformation(col, row) = final_direction(row, col);
+            image_homogenenous_transformation(col, row) = image_final_direction(row, col);
 
     texture->update_transform(image_homogenenous_transformation);
 
@@ -300,10 +358,15 @@ int main(int argc, char *argv[])
         // return;
     }
 
-    InputImageType::Pointer pointer_to_block_of_memory = InputImageType::New();
-    create_volume(pointer_to_block_of_memory);
 
-    //InputImageType::Pointer pointer_to_block_of_memory = reader->GetOutput();
+    /* InputImageType::Pointer pointer_to_block_of_memory = InputImageType::New();
+    create_volume(pointer_to_block_of_memory); */
+
+    /* InputImageType::Pointer pointer_to_block_of_memory = reader->GetOutput(); */
+
+    InputImageType::Pointer pointer_to_block_of_memory;
+    load_dicom(pointer_to_block_of_memory);
+
 
     auto input_volume = pointer_to_block_of_memory;
     auto volume_size = input_volume->GetLargestPossibleRegion().GetSize();
@@ -378,38 +441,100 @@ int main(int argc, char *argv[])
     window << dynamic_texture;
     auto casted_image = dynamic_texture->cast<curan::renderable::DynamicTexture>();
 
+    OutputImageType::Pointer output_slice;
+
     std::atomic<bool> continue_running = true;
 
     std::thread run_slice_extractor{[&]()
                                     {
                                         while (continue_running)
                                         {
-                                            itk::Point<double,3> image_origin;
+                                            itk::Point<double,3> needle_tip;
                                             itk::Point<double,3> image_orientation_angles;
                                             //for (size_t zzz = 0; zzz < 200; ++zzz) {
-                                            for (size_t aaa = 0; aaa < 100; ++aaa) {
-                                            //for (size_t bbb = 0; bbb < 200; ++bbb) {
-                                            //for (size_t ccc = 0; ccc < 200; ++ccc) {
+                                            /* for (size_t aaa = 0; aaa < 200; ++aaa) {
+                                            for (size_t bbb = 0; bbb < 200; ++bbb) {
+                                            for (size_t ccc = 0; ccc < 200; ++ccc) { */
                                              
-                                                std::this_thread::sleep_for(std::chrono::milliseconds(30));
-                                                image_origin[0] = 0.0;
-                                                image_origin[1] = 0.0;
-                                                image_origin[2] = aaa;
+                                                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                                                needle_tip[0] = 0.0*1.0;
+                                                needle_tip[1] = 0.0;//ccc-100.0;
+                                                needle_tip[2] = 80.0;//aaa * 1.0 + 100.0;
 
-                                                image_orientation_angles[0] = 0.0;
-                                                image_orientation_angles[1] = 0.0;
+                                                image_orientation_angles[0] = 0.0;//aaa/100.0 - 1.0; 
+                                                image_orientation_angles[1] = 0.0001415926535/2.0;//aaa/100.0 - 1.0;//
                                                 image_orientation_angles[2] = 0.0;
 
+                                                TransformType::Pointer transform = TransformType::New();
+                                                //transform->SetCenter(rotation_center);
+                                                transform->SetRotation(image_orientation_angles[0], image_orientation_angles[1], image_orientation_angles[2]);
 
+                                                resampler(casted_image, output_slice, pointer_to_block_of_memory, needle_tip, transform->GetMatrix());
 
-                                                resampler(casted_image, pointer_to_block_of_memory, image_origin, image_orientation_angles);
-                                            }//}}}
+                                                /* if (continue_running == false) {
+                                                    break;
+                                                }
+
+                                            } if (continue_running == false) {
+                                                    break;
+                                                }}
+                                            if (continue_running == false) {
+                                                    break;
+                                                }}        */                                    
                                         }
                                     }};
 
     window.run();
     continue_running = false;
     run_slice_extractor.join();
+
+    return EXIT_SUCCESS;
+
+    std::cout << "Aqui 1 \n" << std::endl;
+//////////////// pixel correspondance verification /////////////////////////////////////////////////////////////////////////////
+
+    using Iterator2 = itk::ImageRegionIterator<OutputImageType>;
+
+
+    std::cout << "Aqui 2 \n" << std::endl;
+
+    Iterator2 itr(output_slice, output_slice->GetRequestedRegion());
+
+    std::cout << "Aqui 3 \n" << std::endl;
+
+
+    InputImageType::IndexType volume_idx;
+    itk::Point<double,3> current_pixel;
+
+    std::cout << "Aqui 4 \n" << std::endl;
+
+    double volume_pixel_value;
+    double slice_pixel_value;
+
+    std::cout << "Aqui 5 \n" << std::endl;
+
+    double max_pixel_value_difference = 0.0;
+
+
+    for (itr.GoToBegin(); !itr.IsAtEnd(); ++itr)
+    {
+        std::cout << "Aqui 6 \n" << std::endl;
+        InputImageType::IndexType current_idx = itr.GetIndex();
+        output_slice->TransformIndexToPhysicalPoint(current_idx, current_pixel);
+
+        slice_pixel_value = output_slice->GetPixel(current_idx);
+
+        pointer_to_block_of_memory->TransformPhysicalPointToIndex(current_pixel, volume_idx);
+
+        volume_pixel_value = pointer_to_block_of_memory->GetPixel(volume_idx);
+        
+        if (std::abs(slice_pixel_value-volume_pixel_value) > max_pixel_value_difference) {
+            max_pixel_value_difference = std::abs(slice_pixel_value-volume_pixel_value);
+        }
+    }
+    
+    
+    std::cout << "Max pixel difference: " << max_pixel_value_difference << std::endl;
 
     return EXIT_SUCCESS;
 }
