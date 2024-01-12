@@ -269,3 +269,16 @@ target_link_libraries(test_item_previewer
 PUBLIC
 userinterface
 )
+
+# ---------------------------------------
+
+add_executable(test_interpolation_realtime test_interpolation_realtime.cpp)
+
+target_compile_definitions(test_interpolation_realtime PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_interpolation_realtime
+PUBLIC
+userinterface
+Eigen3::Eigen
+${ITK_LIBRARIES}
+)
