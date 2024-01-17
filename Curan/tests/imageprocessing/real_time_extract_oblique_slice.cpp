@@ -52,6 +52,139 @@ using TransformType = itk::Euler3DTransform<double>;
 using ReaderType = itk::ImageFileReader<InputImageType>;
 
 
+void obtain_rot_matrix_by_angles(Eigen::Matrix<double,3,3>& R_matrix, Eigen::Matrix<double,3,1>& rotaton_angles){
+
+    typedef double T;
+
+    auto a = rotaton_angles[0];
+    auto b = rotaton_angles[1];
+    auto c = rotaton_angles[2];
+
+    R_matrix << cos(b)*cos(c), sin(a)*sin(b)*cos(c)-cos(a)*sin(c), cos(a)*sin(b)*cos(c)+sin(a)*sin(c),
+            cos(b)*sin(c), sin(a)*sin(b)*sin(c)+cos(a)*cos(c), cos(a)*sin(b)*sin(c)-sin(a)*cos(c),
+            -sin(b), sin(a)*cos(b), cos(a)*cos(b);
+}
+
+void exclude_row_matrix(Eigen::MatrixXd& matrix, size_t row_to_remove){
+    int numRows = static_cast<int>(matrix.rows()) - 1;
+    int numCols = static_cast<int>(matrix.cols());
+
+    if(row_to_remove < numRows){
+        matrix.block(row_to_remove,0,numRows-row_to_remove,numCols) = matrix.bottomRows(numRows-row_to_remove);
+    }
+
+    matrix.conservativeResize(numRows,numCols);
+}
+
+
+void calculate_image_volume_intersections(InputImageType::Pointer volume, Eigen::MatrixXd& intersections, Eigen::Matrix<double,4,1>& plane_equation){
+
+    auto input_volume = volume;
+
+    auto volume_size = input_volume->GetLargestPossibleRegion().GetSize();
+
+    Eigen::Matrix<double,3,1> volume_sizee;
+    volume_sizee[0] = volume_size.GetSize()[0];
+    volume_sizee[1] = volume_size.GetSize()[1];
+    volume_sizee[2] = volume_size.GetSize()[2];
+
+    Eigen::Matrix<double,8,3> vol_vertices_coords;
+
+    vol_vertices_coords(0,0) = 0.0;
+    vol_vertices_coords(0,1) = 0.0;
+    vol_vertices_coords(0,2) = 0.0;
+    vol_vertices_coords(1,0) = volume_sizee[0];
+    vol_vertices_coords(1,1) = 0.0;
+    vol_vertices_coords(1,2) = 0.0;
+    vol_vertices_coords(2,0) = volume_sizee[0];
+    vol_vertices_coords(2,1) = volume_sizee[1];
+    vol_vertices_coords(2,2) = 0.0;
+    vol_vertices_coords(3,0) = 0.0;
+    vol_vertices_coords(3,1) = volume_sizee[1];
+    vol_vertices_coords(3,2) = 0.0;
+    vol_vertices_coords(4,0) = 0.0;
+    vol_vertices_coords(4,1) = 0.0;
+    vol_vertices_coords(4,2) = volume_sizee[2];
+    vol_vertices_coords(5,0) = volume_sizee[0];
+    vol_vertices_coords(5,1) = 0.0;
+    vol_vertices_coords(5,2) = volume_sizee[2];
+    vol_vertices_coords(6,0) = volume_sizee[0];
+    vol_vertices_coords(6,1) = volume_sizee[1];
+    vol_vertices_coords(6,2) = volume_sizee[2];
+    vol_vertices_coords(7,0) = 0.0;
+    vol_vertices_coords(7,1) = volume_sizee[1];
+    vol_vertices_coords(7,2) = volume_sizee[2];
+
+
+    double EPS = 1e-15;
+
+    size_t i = 0;
+    for(size_t j = 0; j < static_cast<int>(vol_vertices_coords.rows()); ++j){
+        if(vol_vertices_coords(j,0) == 0){
+            if(std::sqrt(std::pow(plane_equation[0],2)) > EPS){
+                intersections(i,0) = -(plane_equation[1]*vol_vertices_coords(j,1) + plane_equation[2]*vol_vertices_coords(j,2) + plane_equation[3]) / plane_equation[0];
+            }else{
+                intersections(i,0) = 1/EPS;
+            }
+            intersections(i,1) = vol_vertices_coords(j,1);
+            intersections(i,2) = vol_vertices_coords(j,2);
+            i = i+1;
+
+        }
+        if(vol_vertices_coords(j,1) == 0){
+            if(std::sqrt(std::pow(plane_equation[1],2)) > EPS){
+                intersections(i,1) = -(plane_equation[0]*vol_vertices_coords(j,0) + plane_equation[2]*vol_vertices_coords(j,2) + plane_equation[3]) / plane_equation[1];
+            }else{
+                intersections(i,1) = 1/EPS;
+            }
+            intersections(i,0) = vol_vertices_coords(j,0);
+            intersections(i,2) = vol_vertices_coords(j,2);
+            i = i+1;
+
+        }
+
+        if(vol_vertices_coords(j,2) == 0){
+            if(std::sqrt(std::pow(plane_equation[2],2)) > EPS){
+                intersections(i,2) = -(plane_equation[0]*vol_vertices_coords(j,0) + plane_equation[1]*vol_vertices_coords(j,1) + plane_equation[3]) / plane_equation[2];
+            }else{
+                intersections(i,2) = 1/EPS;
+            }
+            intersections(i,0) = vol_vertices_coords(j,0);
+            intersections(i,1) = vol_vertices_coords(j,1);
+            i = i+1;
+
+        }
+    }
+     
+
+    size_t one = 1;
+    size_t initial_number_of_points = static_cast<int>(intersections.rows());
+    for(size_t i = 0 ; i< initial_number_of_points; ++i){
+
+        if(intersections(initial_number_of_points-one-i,0) > volume_size[0] + EPS){
+            exclude_row_matrix(intersections, initial_number_of_points-one-i);
+
+        } else if(intersections(initial_number_of_points-one-i,0) < 0.0 - EPS){
+            exclude_row_matrix(intersections, initial_number_of_points-one-i);
+
+        } else if(intersections(initial_number_of_points-one-i,1) > volume_size[1] + EPS){
+            exclude_row_matrix(intersections, initial_number_of_points-one-i);
+
+        } else if(intersections(initial_number_of_points-one-i,1) < 0.0 - EPS){
+            exclude_row_matrix(intersections, initial_number_of_points-one-i);
+
+        } else if(intersections(initial_number_of_points-one-i,2) > volume_size[2] + EPS){
+            exclude_row_matrix(intersections, initial_number_of_points-one-i);
+
+        } else if(intersections(initial_number_of_points-one-i,2) < 0.0 - EPS){
+            exclude_row_matrix(intersections, initial_number_of_points-one-i);
+        }
+    }
+
+}
+
+
+
 void load_dicom(InputImageType::Pointer& image) {
     
     using ReaderTypeDicom = itk::ImageSeriesReader<DICOMImageType>;
@@ -263,7 +396,7 @@ void updateBaseTexture3D(vsg::floatArray3D &image, InputImageType::Pointer image
 
 
 
-void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Pointer output, InputImageType::Pointer volume, itk::Point<double,3> needle_tip, itk::Matrix<double,3> image_orientation)
+void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Pointer output, InputImageType::Pointer volume, Eigen::Matrix<double,3,1> needle_tip, Eigen::Matrix<double,3,3> R_matrix, double image_size, double image_spacing)
 {
     using FilterType = itk::ResampleImageFilter<InputImageType, OutputImageType>;
     auto filter = FilterType::New();
@@ -275,41 +408,94 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     filter->SetDefaultPixelValue(0);
 
     auto input = volume;
-    auto size = input->GetLargestPossibleRegion().GetSize();
-    auto spacing = input->GetSpacing();
-    double minimum_spacing = std::min(std::min(spacing[0], spacing[1]), spacing[2]);
-    double maximum_size = std::max(std::max(size[0], size[1]), size[2]);
-    auto new_spacing = spacing;
-    new_spacing[0] = minimum_spacing;
-    new_spacing[1] = minimum_spacing;
-    new_spacing[2] = 0.00001;
-
-    auto out_size = size;
-    out_size[0] = maximum_size;
-    out_size[1] = maximum_size;
-    out_size[2] = 1;
-
     filter->SetInput(input);
 
-    filter->SetOutputSpacing(new_spacing);
-    filter->SetSize(out_size); 
+    itk::Vector<double, 3> spacing;
+    spacing[0] = image_spacing;
+    spacing[1] = image_spacing;
+    spacing[2] = image_spacing;
+    filter->SetOutputSpacing(spacing);
+    
+    itk::Size<3U> size;
+    size[0] = image_size;
+    size[1] = image_size;
+    size[2] = 1;
+    filter->SetSize(size);
+
+    auto volume_origin = input->GetOrigin();
+    Eigen::Matrix<double,3,1> volume_originn;
+    volume_originn[0] = volume_origin[0];
+    volume_originn[1] = volume_origin[1];
+    volume_originn[2] = volume_origin[2];
 
 
-    auto old_origin = volume->GetOrigin();
-    auto new_origin = old_origin;
-    new_origin[0] = old_origin[0] + needle_tip[0];
-    new_origin[1] = old_origin[1] + needle_tip[1];
-    new_origin[2] = old_origin[2] + needle_tip[2];
-    filter->SetOutputOrigin(new_origin);
+    auto volume_direction = input->GetDirection();
+    Eigen::Matrix<double,3,3> vol_direction;
+    for (size_t row = 0; row < 3; ++row)
+        for (size_t col = 0; col < 3; ++col)
+            vol_direction(col, row) = volume_direction(row, col);
 
-        
+    // /////////////////////////// ALTERAR ///////////////////////////////////////////////////////////////////////////////////////
+    //auto needle_tip_transformed_to_volume_space = vol_direction * needle_tip + volume_originn;
 
-    using TransformType = itk::IdentityTransform<double, 3>;
+    //por agora admitir que as coordenadas da needle_tipo já vêm no referencial do volume, para ser mais fácil
+    auto needle_tip_transformed_to_volume_space = needle_tip;
+
+
+    auto R_volumeToImage = R_matrix.transpose() * vol_direction;
+
+    // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    Eigen::Matrix<double,4,1> plane_equation;
+    plane_equation[0] = R_volumeToImage(0,2);
+    plane_equation[1] = R_volumeToImage(1,2);
+    plane_equation[2] = R_volumeToImage(2,2);
+    plane_equation[3] = -(R_volumeToImage.col(2).transpose()*needle_tip_transformed_to_volume_space)(0,0);
+
+    Eigen::MatrixXd intersections;
+    intersections.resize(12,3);
+
+
+    calculate_image_volume_intersections(volume, intersections, plane_equation);
+
+    Eigen::Matrix<double,3,1> centroid;
+
+    centroid[0] = intersections.col(0).sum() / static_cast<int>(intersections.rows());
+    centroid[1] = intersections.col(1).sum() / static_cast<int>(intersections.rows());
+    centroid[2] = intersections.col(2).sum() / static_cast<int>(intersections.rows());
+
+
+    Eigen::Matrix<double,3,1> corner_to_centroid_image_vector;
+    corner_to_centroid_image_vector[0] = image_size * image_spacing * 0.5;
+    corner_to_centroid_image_vector[1] = image_size * image_spacing * 0.5;
+    corner_to_centroid_image_vector[2] = 0.0;
+
+    Eigen::Matrix<double,3,1> image_origin;
+
+    image_origin = centroid - R_volumeToImage * corner_to_centroid_image_vector;
+
+    // transform image origin from the volume frame back to the global frame
+    image_origin = vol_direction.transpose() * image_origin - vol_direction.transpose() * volume_originn;
+
+
+    auto origin = volume->GetOrigin();
+    origin[0] = image_origin[0];
+    origin[1] = image_origin[1];
+    origin[2] = image_origin[2];
+    filter->SetOutputOrigin(origin); 
+
+    auto image_direction = volume->GetDirection();
+
+
+    for (size_t row = 0; row < 3; ++row)
+        for (size_t col = 0; col < 3; ++col)
+            image_direction(row, col) = R_matrix(col, row);
+
+    filter->SetOutputDirection(image_direction);
+
+    /* using TransformType = itk::IdentityTransform<double, 3>;
     auto transform = TransformType::New();
-
-    filter->SetOutputDirection(image_orientation);
-
-    filter->SetTransform(transform);
+    filter->SetTransform(transform); */
 
     try
     {
@@ -324,7 +510,7 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
 
     output = filter->GetOutput();
 
-    auto new_origin2 = output->GetOrigin();
+    auto new_origin = output->GetOrigin();
     auto image_homogenenous_transformation = vsg::translate(0.0, 0.0, 0.0);
     image_homogenenous_transformation(3, 0) = (new_origin[0]) / 1000.0;
     image_homogenenous_transformation(3, 1) = (new_origin[1]) / 1000.0;
@@ -416,24 +602,15 @@ int main(int argc, char *argv[])
 
 
 
-    auto size_2 = input_volume->GetLargestPossibleRegion().GetSize();
-    auto spacing_2 = input_volume->GetSpacing();
-    double minimum_spacing = std::min(std::min(spacing_2[0], spacing_2[1]), spacing_2[2]);
-    double maximum_size = std::max(std::max(size_2[0], size_2[1]), size_2[2]);
-    auto new_spacing = spacing_2;
-    new_spacing[0] = minimum_spacing;
-    new_spacing[1] = minimum_spacing;
-    new_spacing[2] = 0.00001;
 
-    auto out_size = size_2;
-    out_size[0] = maximum_size;
-    out_size[1] = maximum_size;
-    out_size[2] = 1;
+    double image_size = std::sqrt(std::pow(volume_size[0],2)+std::pow(volume_size[1],2)+std::pow(volume_size[2],2));
+
+    double image_spacing = std::min(std::min(volume_spacing[0], volume_spacing[1]), volume_spacing[2]);
 
     curan::renderable::DynamicTexture::Info infotexture;
-    infotexture.height = out_size[1];
-    infotexture.width = out_size[0];
-    infotexture.spacing = {new_spacing[0] / 1000, new_spacing[1] / 1000, new_spacing[2] / 1000};
+    infotexture.height = image_size;
+    infotexture.width = image_size;
+    infotexture.spacing = {image_spacing / 1000, image_spacing / 1000, image_spacing / 1000};
     infotexture.origin = {0.0, 0.0, 0.0};
     infotexture.builder = vsg::Builder::create();
 
@@ -449,27 +626,26 @@ int main(int argc, char *argv[])
                                     {
                                         while (continue_running)
                                         {
-                                            itk::Point<double,3> needle_tip;
-                                            itk::Point<double,3> image_orientation_angles;
+                                            Eigen::Matrix<double,3,1> needle_tip;
+                                            Eigen::Matrix<double,3,1> image_orientation_angles;
                                             //for (size_t zzz = 0; zzz < 200; ++zzz) {
                                             /* for (size_t aaa = 0; aaa < 200; ++aaa) {
                                             for (size_t bbb = 0; bbb < 200; ++bbb) {
                                             for (size_t ccc = 0; ccc < 200; ++ccc) { */
                                              
                                                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                                                needle_tip[0] = 0.0*1.0;
-                                                needle_tip[1] = 0.0;//ccc-100.0;
-                                                needle_tip[2] = 80.0;//aaa * 1.0 + 100.0;
+                                                needle_tip[0] = -0.0;
+                                                needle_tip[1] = -0.0;//ccc-100.0;
+                                                needle_tip[2] = 0.0;//aaa * 1.0 + 100.0;
 
                                                 image_orientation_angles[0] = 0.0;//aaa/100.0 - 1.0; 
-                                                image_orientation_angles[1] = 0.0001415926535/2.0;//aaa/100.0 - 1.0;//
+                                                image_orientation_angles[1] = 0.0;//aaa/100.0 - 1.0;//
                                                 image_orientation_angles[2] = 0.0;
 
-                                                TransformType::Pointer transform = TransformType::New();
-                                                //transform->SetCenter(rotation_center);
-                                                transform->SetRotation(image_orientation_angles[0], image_orientation_angles[1], image_orientation_angles[2]);
+                                                Eigen::Matrix<double,3,3> R_matrix;
+                                                obtain_rot_matrix_by_angles(R_matrix, image_orientation_angles);
 
-                                                resampler(casted_image, output_slice, pointer_to_block_of_memory, needle_tip, transform->GetMatrix());
+                                                resampler(casted_image, output_slice, pointer_to_block_of_memory, needle_tip, R_matrix, image_size, image_spacing);
 
                                                 /* if (continue_running == false) {
                                                     break;
@@ -488,9 +664,8 @@ int main(int argc, char *argv[])
     continue_running = false;
     run_slice_extractor.join();
 
-    return EXIT_SUCCESS;
 
-    std::cout << "Aqui 1 \n" << std::endl;
+   /*  std::cout << "Aqui 1 \n" << std::endl;
 //////////////// pixel correspondance verification /////////////////////////////////////////////////////////////////////////////
 
     using Iterator2 = itk::ImageRegionIterator<OutputImageType>;
@@ -534,7 +709,7 @@ int main(int argc, char *argv[])
     }
     
     
-    std::cout << "Max pixel difference: " << max_pixel_value_difference << std::endl;
+    std::cout << "Max pixel difference: " << max_pixel_value_difference << std::endl; */
 
     return EXIT_SUCCESS;
 }

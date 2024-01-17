@@ -74,9 +74,9 @@ int main(){
     Eigen::Matrix<double,3,3> R_matrix;
     Eigen::Matrix<double,3,1> rotaton_angles;
 
-    rotaton_angles[0] = 0.0;
-    rotaton_angles[1] = 1.0;
-    rotaton_angles[2] = 2.0;
+    rotaton_angles[0] = 1.3;
+    rotaton_angles[1] = -2.6;
+    rotaton_angles[2] = 0.08;
 
 
     obtain_rot_matrix_by_angles(R_matrix,rotaton_angles);
@@ -99,7 +99,6 @@ int main(){
     Eigen::MatrixXd intersections;
     intersections.resize(12,3);
 
-    Eigen::Matrix<double,12,3> exclusion_matrix;
     double EPS = 1e-15;
 
     size_t i = 0;
@@ -144,7 +143,7 @@ int main(){
      
 
     size_t one = 1;
-    size_t initial_number_of_points = static_cast<int>(exclusion_matrix.rows());
+    size_t initial_number_of_points = static_cast<int>(intersections.rows());
     for(size_t i = 0 ; i< initial_number_of_points; ++i){
 
         if(intersections(initial_number_of_points-one-i,0) > volume_size[0] + EPS){
