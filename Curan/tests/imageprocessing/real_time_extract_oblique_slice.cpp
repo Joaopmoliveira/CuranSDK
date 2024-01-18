@@ -396,7 +396,7 @@ void updateBaseTexture3D(vsg::floatArray3D &image, InputImageType::Pointer image
 
 
 
-void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Pointer output, InputImageType::Pointer volume, Eigen::Matrix<double,3,1> needle_tip, Eigen::Matrix<double,3,3> R_matrix, double image_size, double image_spacing)
+void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Pointer output, InputImageType::Pointer volume, Eigen::Matrix<double,3,1>& needle_tip, Eigen::Matrix<double,3,3>& R_matrix, double& image_size, double& image_spacing)
 {
     using FilterType = itk::ResampleImageFilter<InputImageType, OutputImageType>;
     auto filter = FilterType::New();
@@ -436,21 +436,27 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
             vol_direction(col, row) = volume_direction(row, col);
 
     // /////////////////////////// ALTERAR ///////////////////////////////////////////////////////////////////////////////////////
-    //auto needle_tip_transformed_to_volume_space = vol_direction * needle_tip + volume_originn;
+    //auto needle_tip_transformed_to_volume_space = vol_direction.transpose() * needle_tip - vol_direction.transpose() * volume_originn;
 
     //por agora admitir que as coordenadas da needle_tipo já vêm no referencial do volume, para ser mais fácil
     auto needle_tip_transformed_to_volume_space = needle_tip;
 
-
-    auto R_volumeToImage = R_matrix.transpose() * vol_direction;
-
     // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+    
+    // obtain rotation matrix between image and volume
+    auto R_ImageToVolume = vol_direction.transpose() * R_matrix;
+
+    std::cout << "\n The R_ImageToVolume is: \n" << R_ImageToVolume << std::endl;
+
     Eigen::Matrix<double,4,1> plane_equation;
-    plane_equation[0] = R_volumeToImage(0,2);
-    plane_equation[1] = R_volumeToImage(1,2);
-    plane_equation[2] = R_volumeToImage(2,2);
-    plane_equation[3] = -(R_volumeToImage.col(2).transpose()*needle_tip_transformed_to_volume_space)(0,0);
+    plane_equation[0] = R_ImageToVolume(0,2);
+    plane_equation[1] = R_ImageToVolume(1,2);
+    plane_equation[2] = R_ImageToVolume(2,2);
+    plane_equation[3] = -(R_ImageToVolume.col(2).transpose()*needle_tip_transformed_to_volume_space)(0,0);
+
+    std::cout << "\n The plane_equation is: \n" << plane_equation << std::endl;
 
     Eigen::MatrixXd intersections;
     intersections.resize(12,3);
@@ -464,18 +470,28 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     centroid[1] = intersections.col(1).sum() / static_cast<int>(intersections.rows());
     centroid[2] = intersections.col(2).sum() / static_cast<int>(intersections.rows());
 
+    std::cout << "\n The centroid is: \n" << centroid << std::endl;
+
 
     Eigen::Matrix<double,3,1> corner_to_centroid_image_vector;
     corner_to_centroid_image_vector[0] = image_size * image_spacing * 0.5;
     corner_to_centroid_image_vector[1] = image_size * image_spacing * 0.5;
     corner_to_centroid_image_vector[2] = 0.0;
 
+    std::cout << "\n The corner_to_centroid_image_vector is: \n" << corner_to_centroid_image_vector << std::endl;
+
     Eigen::Matrix<double,3,1> image_origin;
 
-    image_origin = centroid - R_volumeToImage * corner_to_centroid_image_vector;
+    image_origin = centroid - R_ImageToVolume * corner_to_centroid_image_vector;
+
+    std::cout << "\n The image_origin is: \n" << image_origin << std::endl;
 
     // transform image origin from the volume frame back to the global frame
-    image_origin = vol_direction.transpose() * image_origin - vol_direction.transpose() * volume_originn;
+    image_origin = vol_direction * image_origin + volume_originn;
+
+    std::cout << "\n The image_origin is: \n" << image_origin << std::endl;
+
+    std::cout << "\n |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| \n" << std::endl;
 
 
     auto origin = volume->GetOrigin();
@@ -484,14 +500,18 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     origin[2] = image_origin[2];
     filter->SetOutputOrigin(origin); 
 
-    auto image_direction = volume->GetDirection();
 
+    std::cout << "\n The origin is: \n" << origin << std::endl;
+
+    auto image_direction = volume->GetDirection();
 
     for (size_t row = 0; row < 3; ++row)
         for (size_t col = 0; col < 3; ++col)
-            image_direction(row, col) = R_matrix(col, row);
+            image_direction(col, row) = R_matrix(col, row);
 
     filter->SetOutputDirection(image_direction);
+
+    std::cout << "\n The image_direction is: \n" << image_direction << std::endl;
 
     /* using TransformType = itk::IdentityTransform<double, 3>;
     auto transform = TransformType::New();
@@ -508,6 +528,8 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
         // return;
     }
 
+    std::cout << "\n 2222 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| \n" << std::endl;
+
     output = filter->GetOutput();
 
     auto new_origin = output->GetOrigin();
@@ -520,6 +542,9 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     for (size_t row = 0; row < 3; ++row)
         for (size_t col = 0; col < 3; ++col)
             image_homogenenous_transformation(col, row) = image_final_direction(row, col);
+
+    
+    std::cout << "\n The image_homogenenous_transformation is: \n" << image_homogenenous_transformation << std::endl;
 
     texture->update_transform(image_homogenenous_transformation);
 
@@ -605,7 +630,11 @@ int main(int argc, char *argv[])
 
     double image_size = std::sqrt(std::pow(volume_size[0],2)+std::pow(volume_size[1],2)+std::pow(volume_size[2],2));
 
+    std::cout << "\n The image_size is: \n" << image_size << std::endl;
+
     double image_spacing = std::min(std::min(volume_spacing[0], volume_spacing[1]), volume_spacing[2]);
+
+    std::cout << "\n The image_spacing is: \n" << image_spacing << std::endl;
 
     curan::renderable::DynamicTexture::Info infotexture;
     infotexture.height = image_size;
@@ -628,18 +657,18 @@ int main(int argc, char *argv[])
                                         {
                                             Eigen::Matrix<double,3,1> needle_tip;
                                             Eigen::Matrix<double,3,1> image_orientation_angles;
-                                            //for (size_t zzz = 0; zzz < 200; ++zzz) {
+                                            for (size_t zzz = 0; zzz < 250; ++zzz) {
                                             /* for (size_t aaa = 0; aaa < 200; ++aaa) {
                                             for (size_t bbb = 0; bbb < 200; ++bbb) {
                                             for (size_t ccc = 0; ccc < 200; ++ccc) { */
                                              
                                                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                                                needle_tip[0] = -0.0;
-                                                needle_tip[1] = -0.0;//ccc-100.0;
-                                                needle_tip[2] = 0.0;//aaa * 1.0 + 100.0;
+                                                needle_tip[0] = 50.0;//-image_size*image_spacing*0.5;
+                                                needle_tip[1] = 50.0;// -image_size*image_spacing*0.5;//ccc-100.0;
+                                                needle_tip[2] = 50.0;//aaa * 1.0 + 100.0;
 
-                                                image_orientation_angles[0] = 0.0;//aaa/100.0 - 1.0; 
-                                                image_orientation_angles[1] = 0.0;//aaa/100.0 - 1.0;//
+                                                image_orientation_angles[0] = zzz/100.0 - 1.25; 
+                                                image_orientation_angles[1] = zzz/100.0 - 1.25;//
                                                 image_orientation_angles[2] = 0.0;
 
                                                 Eigen::Matrix<double,3,3> R_matrix;
@@ -658,7 +687,8 @@ int main(int argc, char *argv[])
                                                     break;
                                                 }}        */                                    
                                         }
-                                    }};
+                                    }}
+                                    };
 
     window.run();
     continue_running = false;
