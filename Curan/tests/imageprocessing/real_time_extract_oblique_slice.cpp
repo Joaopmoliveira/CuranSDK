@@ -337,7 +337,6 @@ void create_volume(InputImageType::Pointer image) {
     };
 
 
-
 void updateBaseTexture2D(vsg::vec4Array2D &image, OutputImageType::Pointer image_to_render)
 {
     try
@@ -409,7 +408,7 @@ void updateBaseTexture3D(vsg::floatArray3D &image, InputImageType::Pointer image
 
 
 
-void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Pointer output, InputImageType::Pointer volume, Eigen::Matrix<double,3,1>& needle_tip, Eigen::Matrix<double,3,3>& R_ImageToWorld, double& image_size, double& image_spacing)
+void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Pointer& output, InputImageType::Pointer volume, Eigen::Matrix<double,3,1>& needle_tip, Eigen::Matrix<double,3,3>& R_ImageToWorld, double& image_size, double& image_spacing)
 {
     using FilterType = itk::ResampleImageFilter<InputImageType, OutputImageType>;
     auto filter = FilterType::New();
@@ -458,8 +457,8 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     Eigen::Matrix<double,3,3> R_ImageToVolume = R_volumeToWorld.transpose() * R_ImageToWorld;
 
 
-    Eigen::Matrix<double,3,1> centroid;
-    calculate_image_centroid(volume, centroid, R_ImageToVolume, needle_tip_transformed_to_volume_space);
+    /* Eigen::Matrix<double,3,1> centroid;
+    calculate_image_centroid(volume, centroid, R_ImageToVolume, needle_tip_transformed_to_volume_space); */
 
 
     Eigen::Matrix<double,3,1> origin_to_centroid_image_vector;
@@ -634,14 +633,14 @@ int main(int argc, char *argv[])
 
     std::thread run_slice_extractor{[&]()
                                     {
-                                        while (continue_running)
-                                        {
+                                        /* while (continue_running)
+                                        { */
                                             Eigen::Matrix<double,3,1> needle_tip;
                                             Eigen::Matrix<double,3,1> image_orientation_angles;
                                             
-                                            for (size_t aaa = 0; aaa < 660/8; ++aaa) {
+                                            /* for (size_t aaa = 0; aaa < 660/8; ++aaa) {
                                             for (size_t bbb = 0; bbb < 50; ++bbb) {
-                                            for (size_t zzz = 0; zzz < 250; ++zzz) {
+                                            for (size_t zzz = 0; zzz < 250; ++zzz) { */
                                             //for (size_t ccc = 0; ccc < 250; ++ccc) {
                                              
                                                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -656,7 +655,7 @@ int main(int argc, char *argv[])
 
                                                 image_orientation_angles[0] = 0.0;//zzz/100.0 - 1.25; 
                                                 image_orientation_angles[1] = 0.0;//zzz/100.0 - 1.25;
-                                                image_orientation_angles[2] = zzz/100.0 - 1.25;
+                                                image_orientation_angles[2] = 0.0;
 
                                                 Eigen::Matrix<double,3,3> R_ImageToWorld;
                                                 obtain_rot_matrix_by_angles(R_ImageToWorld, image_orientation_angles);
@@ -665,7 +664,7 @@ int main(int argc, char *argv[])
 
                                                 resampler(casted_image, output_slice, pointer_to_block_of_memory, needle_tip, R_ImageToWorld, image_size, image_spacing);
 
-                                              if (continue_running == false) {
+                                              /* if (continue_running == false) {
                                                     break;
                                                 }  
 
@@ -675,7 +674,7 @@ int main(int argc, char *argv[])
                                             if (continue_running == false) {
                                                     break;
                                                 }}                                           
-                                        }
+                                        } */
                                     } 
                                     };
 
@@ -684,51 +683,58 @@ int main(int argc, char *argv[])
     run_slice_extractor.join();
 
 
-   /*  std::cout << "Aqui 1 \n" << std::endl;
 //////////////// pixel correspondance verification /////////////////////////////////////////////////////////////////////////////
 
     using Iterator2 = itk::ImageRegionIterator<OutputImageType>;
 
+    auto output = output_slice;
 
-    std::cout << "Aqui 2 \n" << std::endl;
+    auto regionn = output->GetRequestedRegion();
 
-    Iterator2 itr(output_slice, output_slice->GetRequestedRegion());
+    Iterator2 itr(output, regionn);
 
-    std::cout << "Aqui 3 \n" << std::endl;
-
-
-    InputImageType::IndexType volume_idx;
-    itk::Point<double,3> current_pixel;
-
-    std::cout << "Aqui 4 \n" << std::endl;
+    OutputImageType::IndexType volume_idx;
+    itk::Point<double,3> current_point;
 
     double volume_pixel_value;
     double slice_pixel_value;
 
-    std::cout << "Aqui 5 \n" << std::endl;
-
     double max_pixel_value_difference = 0.0;
+    int num_pixels_with_max_diff_value = 0;
+    double mean = 0.0;
+    int num_pixels = 0;
 
 
     for (itr.GoToBegin(); !itr.IsAtEnd(); ++itr)
     {
-        std::cout << "Aqui 6 \n" << std::endl;
-        InputImageType::IndexType current_idx = itr.GetIndex();
-        output_slice->TransformIndexToPhysicalPoint(current_idx, current_pixel);
+        OutputImageType::IndexType current_idx = itr.GetIndex();
+        output->TransformIndexToPhysicalPoint(current_idx, current_point);
 
-        slice_pixel_value = output_slice->GetPixel(current_idx);
+        slice_pixel_value = output->GetPixel(current_idx);
 
-        pointer_to_block_of_memory->TransformPhysicalPointToIndex(current_pixel, volume_idx);
+        pointer_to_block_of_memory->TransformPhysicalPointToIndex(current_point, volume_idx);
 
         volume_pixel_value = pointer_to_block_of_memory->GetPixel(volume_idx);
         
-        if (std::abs(slice_pixel_value-volume_pixel_value) > max_pixel_value_difference) {
+        if (std::abs(slice_pixel_value-volume_pixel_value) >= max_pixel_value_difference) {
             max_pixel_value_difference = std::abs(slice_pixel_value-volume_pixel_value);
+            num_pixels_with_max_diff_value = num_pixels_with_max_diff_value + 1;
         }
+
+        mean = mean + std::abs(slice_pixel_value-volume_pixel_value);
+
+        num_pixels = num_pixels + 1;
+
     }
+
+    mean = mean / num_pixels;
     
     
-    std::cout << "Max pixel difference: " << max_pixel_value_difference << std::endl; */
+    std::cout << "Max pixel value difference: " << max_pixel_value_difference << std::endl;
+
+    std::cout << "num_pixels_with_max_diff_value: " << num_pixels_with_max_diff_value << std::endl;
+
+    std::cout << "mean pixel value difference: " << mean << std::endl;
 
     return EXIT_SUCCESS;
 }
