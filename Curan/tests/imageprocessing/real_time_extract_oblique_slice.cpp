@@ -77,7 +77,7 @@ void exclude_row_matrix(Eigen::MatrixXd& matrix, size_t row_to_remove){
 }
 
 
-void calculate_image_volume_intersections(InputImageType::Pointer volume, Eigen::MatrixXd& intersections, Eigen::Matrix<double,4,1>& plane_equation){
+void calculate_image_centroid(InputImageType::Pointer volume, Eigen::Matrix<double,3,1> centroid, Eigen::Matrix<double,3,3>& R_ImageToVolume, Eigen::Matrix<double,3,1>& needle_tip_transformed_to_volume_space){
 
     auto input_volume = volume;
 
@@ -116,8 +116,17 @@ void calculate_image_volume_intersections(InputImageType::Pointer volume, Eigen:
     vol_vertices_coords(7,1) = volume_size_mm[1];
     vol_vertices_coords(7,2) = volume_size_mm[2];
 
+    Eigen::Matrix<double,4,1> plane_equation;
+    plane_equation[0] = R_ImageToVolume(0,2);
+    plane_equation[1] = R_ImageToVolume(1,2);
+    plane_equation[2] = R_ImageToVolume(2,2);
+    plane_equation[3] = -(R_ImageToVolume.col(2).transpose()*needle_tip_transformed_to_volume_space)(0,0);
+
 
     double EPS = 1e-15;
+
+    Eigen::MatrixXd intersections;
+    intersections.resize(12,3);
 
     size_t i = 0;
     for(size_t j = 0; j < static_cast<int>(vol_vertices_coords.rows()); ++j){
@@ -182,8 +191,11 @@ void calculate_image_volume_intersections(InputImageType::Pointer volume, Eigen:
         }
     }
 
-}
+    centroid[0] = intersections.col(0).sum() / static_cast<int>(intersections.rows());
+    centroid[1] = intersections.col(1).sum() / static_cast<int>(intersections.rows());
+    centroid[2] = intersections.col(2).sum() / static_cast<int>(intersections.rows());
 
+}
 
 
 void load_dicom(InputImageType::Pointer& image) {
@@ -417,7 +429,7 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     spacing[2] = image_spacing;
     filter->SetOutputSpacing(spacing);
     
-    itk::Size<3U> size;
+    itk::Size<3> size;
     size[0] = image_size;
     size[1] = image_size;
     size[2] = 1;
@@ -439,32 +451,15 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
 
 
     // obtain needle tip coordinates in the volume reference frame
-    auto needle_tip_transformed_to_volume_space = R_volumeToWorld.transpose() * needle_tip - R_volumeToWorld.transpose() * volume_originn;
+    Eigen::Matrix<double,3,1> needle_tip_transformed_to_volume_space = R_volumeToWorld.transpose() * needle_tip - R_volumeToWorld.transpose() * volume_originn;
 
     
     // obtain rotation matrix between image and volume
-    auto R_ImageToVolume = R_volumeToWorld.transpose() * R_ImageToWorld;
+    Eigen::Matrix<double,3,3> R_ImageToVolume = R_volumeToWorld.transpose() * R_ImageToWorld;
 
-
-    Eigen::Matrix<double,4,1> plane_equation;
-    plane_equation[0] = R_ImageToVolume(0,2);
-    plane_equation[1] = R_ImageToVolume(1,2);
-    plane_equation[2] = R_ImageToVolume(2,2);
-    plane_equation[3] = -(R_ImageToVolume.col(2).transpose()*needle_tip_transformed_to_volume_space)(0,0);
-
-
-    Eigen::MatrixXd intersections;
-    intersections.resize(12,3);
-
-    calculate_image_volume_intersections(volume, intersections, plane_equation);
 
     Eigen::Matrix<double,3,1> centroid;
-
-    centroid[0] = intersections.col(0).sum() / static_cast<int>(intersections.rows());
-    centroid[1] = intersections.col(1).sum() / static_cast<int>(intersections.rows());
-    centroid[2] = intersections.col(2).sum() / static_cast<int>(intersections.rows());
-
-    //std::cout << "\n The centroid is: \n" << centroid << std::endl;
+    calculate_image_centroid(volume, centroid, R_ImageToVolume, needle_tip_transformed_to_volume_space);
 
 
     Eigen::Matrix<double,3,1> origin_to_centroid_image_vector;
@@ -479,21 +474,19 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     image_origin_vol_ref = needle_tip_transformed_to_volume_space - R_ImageToVolume * origin_to_centroid_image_vector;
 
 
-
     // transform image origin in the volume frame back to the global frame
     Eigen::Matrix<double,3,1> image_origin_world_ref;
     image_origin_world_ref = R_volumeToWorld * image_origin_vol_ref + volume_originn;
 
 
-    auto origin = volume->GetOrigin();
+    itk::Point<double, 3> origin;
     origin[0] = image_origin_world_ref[0];
     origin[1] = image_origin_world_ref[1];
     origin[2] = image_origin_world_ref[2];
     filter->SetOutputOrigin(origin); 
 
 
-    auto image_direction = volume->GetDirection();
-
+    itk::Matrix<double> image_direction;
     for (size_t row = 0; row < 3; ++row)
         for (size_t col = 0; col < 3; ++col)
             image_direction(col, row) = R_ImageToWorld(col, row);
@@ -533,6 +526,9 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     { updateBaseTexture2D(image, output); };
     texture->update_texture(updater_image);
 }
+
+
+
 
 int main(int argc, char *argv[])
 {
@@ -642,9 +638,10 @@ int main(int argc, char *argv[])
                                         {
                                             Eigen::Matrix<double,3,1> needle_tip;
                                             Eigen::Matrix<double,3,1> image_orientation_angles;
-                                            for (size_t zzz = 0; zzz < 250; ++zzz) {
+                                            
                                             for (size_t aaa = 0; aaa < 660/8; ++aaa) {
                                             for (size_t bbb = 0; bbb < 50; ++bbb) {
+                                            for (size_t zzz = 0; zzz < 250; ++zzz) {
                                             //for (size_t ccc = 0; ccc < 250; ++ccc) {
                                              
                                                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -653,13 +650,13 @@ int main(int argc, char *argv[])
                                                 needle_tip[1] = 330.0*volume_spacing[1] + origin[1];// -image_size*image_spacing*0.5;//ccc-100.0;
                                                 needle_tip[2] = 50.0*volume_spacing[2] + origin[2];//aaa * 1.0 + 100.0;
 
-                                                needle_tip[0] = aaa*volume_spacing[0]*8 + origin[0];//-image_size*image_spacing*0.5;
+                                                /* needle_tip[0] = aaa*volume_spacing[0]*8 + origin[0];//-image_size*image_spacing*0.5;
                                                 needle_tip[1] = aaa*volume_spacing[1]*8 + origin[1];// -image_size*image_spacing*0.5;//ccc-100.0;
-                                                needle_tip[2] = bbb*volume_spacing[2]*2 + origin[2];//aaa * 1.0 + 100.0;
+                                                needle_tip[2] = bbb*volume_spacing[2]*2 + origin[2];//aaa * 1.0 + 100.0; */
 
                                                 image_orientation_angles[0] = 0.0;//zzz/100.0 - 1.25; 
                                                 image_orientation_angles[1] = 0.0;//zzz/100.0 - 1.25;
-                                                image_orientation_angles[2] = 0.0;//ccc/100.0 - 1.25;
+                                                image_orientation_angles[2] = zzz/100.0 - 1.25;
 
                                                 Eigen::Matrix<double,3,3> R_ImageToWorld;
                                                 obtain_rot_matrix_by_angles(R_ImageToWorld, image_orientation_angles);
