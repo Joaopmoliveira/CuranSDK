@@ -378,8 +378,6 @@ void updateBaseTexture3D(vsg::floatArray3D &image, InputImageType::Pointer image
     }
 }
 
-
-
 void resampler(curan::renderable::Sphere* sphere,curan::renderable::DynamicTexture *texture, OutputImageType::Pointer& output, InputImageType::Pointer volume, Eigen::Matrix<double,3,1>& needle_tip, Eigen::Matrix<double,3,3>& R_ImageToWorld, double& image_size, double& image_spacing)
 {
     using FilterType = itk::ResampleImageFilter<InputImageType, OutputImageType>;
@@ -447,24 +445,20 @@ void resampler(curan::renderable::Sphere* sphere,curan::renderable::DynamicTextu
 
     Eigen::Matrix<double,3,1> centroid_in_word_space = R_volumeToWorld * centroid + volume_originn;
     auto mat = vsg::translate(centroid_in_word_space[0]*1e-3,centroid_in_word_space[1]*1e-3,centroid_in_word_space[2]*1e-3);
-    //std::printf("(center)--->%.4f %.4f %.4f\n",centroid_in_word_space[0]*1e-3,centroid_in_word_space[1]*1e-3,centroid_in_word_space[2]*1e-3);
+    
     sphere->update_transform(mat);
 
     Eigen::Matrix<double,3,1> image_origin_vol_ref;
     image_origin_vol_ref = centroid - R_ImageToVolume * origin_to_centroid_image_vector;
-    //image_origin_vol_ref = needle_tip_transformed_to_volume_space - R_ImageToVolume * origin_to_centroid_image_vector;
 
-    // transform image origin in the volume frame back to the global frame
     Eigen::Matrix<double,3,1> image_origin_world_ref;
     image_origin_world_ref = R_volumeToWorld * image_origin_vol_ref + volume_originn;
-
 
     itk::Point<double, 3> origin;
     origin[0] = image_origin_world_ref[0];
     origin[1] = image_origin_world_ref[1];
     origin[2] = image_origin_world_ref[2];
     filter->SetOutputOrigin(origin); 
-
 
     itk::Matrix<double> image_direction;
     for (size_t row = 0; row < 3; ++row)
@@ -550,11 +544,9 @@ void resampler(curan::renderable::Sphere* sphere,curan::renderable::DynamicTextu
     }
     if(num_pixels>1)
         mean = accumulator/num_pixels;
-    std::printf("min (%.4f) mean(%.4f) max(%.4f)\n",min_pixel_value_difference,mean,max_pixel_value_difference);
+    std::printf("min (%.4f) mean(%.4f) max(%.4f) npixels(%llu)\n",min_pixel_value_difference,mean,max_pixel_value_difference,num_pixels);
 
 }
-
-
 
 
 int main(int argc, char *argv[])
@@ -664,8 +656,7 @@ int main(int argc, char *argv[])
         Eigen::Matrix<double,3,3> R_ImageToVolume;
         Eigen::Matrix<double,3,3> R_ImageToWorld;
         double mimic_monotonic_timer = 0.0;
-        while (continue_running)
-        {
+        while (continue_running){
             for (size_t ccc = 0; ccc < 200 && continue_running.load(); ++ccc,mimic_monotonic_timer+=0.01) {
                                              
                 std::this_thread::sleep_for(std::chrono::milliseconds(30));
