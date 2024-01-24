@@ -110,3 +110,15 @@ target_link_libraries(test_resampling_second_attempt
 PUBLIC
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_just_centroid_computation single_isolated_testing.cpp)
+
+target_compile_definitions(test_just_centroid_computation PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_just_centroid_computation PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_just_centroid_computation
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)

@@ -30,6 +30,7 @@
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageSeriesReader.h"
+#include "rendering/Sphere.h"
 
 
 constexpr unsigned int Dimension_in = 3;
@@ -77,128 +78,97 @@ void exclude_row_matrix(Eigen::MatrixXd& matrix, size_t row_to_remove){
 }
 
 
-void calculate_image_centroid(InputImageType::Pointer& volume, Eigen::Matrix<double,3,1>& centroid, Eigen::Matrix<double,3,3>& R_ImageToVolume, Eigen::Matrix<double,3,1>& needle_tip_transformed_to_volume_space){
+void calculate_image_centroid(const Eigen::Matrix<double,3,1>& volume_size_mm , Eigen::Matrix<double, 3, 1> &centroid, const Eigen::Matrix<double, 3, 3> &R_ImageToVolume, const Eigen::Matrix<double, 3, 1> &needle_tip_transformed_to_volume_space)
+{
+    Eigen::Matrix<double, 8, 3> vol_vertices_coords;
 
-    auto input_volume = volume;
+    vol_vertices_coords(0, 0) = 0.0;
+    vol_vertices_coords(0, 1) = 0.0;
+    vol_vertices_coords(0, 2) = 0.0;
 
-    auto volume_size = input_volume->GetLargestPossibleRegion().GetSize();
-    auto volume_spacing = input_volume->GetSpacing();
+    vol_vertices_coords(1, 0) = volume_size_mm[0];
+    vol_vertices_coords(1, 1) = 0.0;
+    vol_vertices_coords(1, 2) = 0.0;
 
-    Eigen::Matrix<double,3,1> volume_size_mm;
-    volume_size_mm[0] = volume_size.GetSize()[0] * volume_spacing[0];
-    volume_size_mm[1] = volume_size.GetSize()[1] * volume_spacing[1];
-    volume_size_mm[2] = volume_size.GetSize()[2] * volume_spacing[2];
+    vol_vertices_coords(2, 0) = volume_size_mm[0];
+    vol_vertices_coords(2, 1) = volume_size_mm[1];
+    vol_vertices_coords(2, 2) = 0.0;
 
-    Eigen::Matrix<double,8,3> vol_vertices_coords;
+    vol_vertices_coords(3, 0) = 0.0;
+    vol_vertices_coords(3, 1) = volume_size_mm[1];
+    vol_vertices_coords(3, 2) = 0.0;
 
-    vol_vertices_coords(0,0) = 0.0;
-    vol_vertices_coords(0,1) = 0.0;
-    vol_vertices_coords(0,2) = 0.0;
-    vol_vertices_coords(1,0) = volume_size_mm[0];
-    vol_vertices_coords(1,1) = 0.0;
-    vol_vertices_coords(1,2) = 0.0;
-    vol_vertices_coords(2,0) = volume_size_mm[0];
-    vol_vertices_coords(2,1) = volume_size_mm[1];
-    vol_vertices_coords(2,2) = 0.0;
-    vol_vertices_coords(3,0) = 0.0;
-    vol_vertices_coords(3,1) = volume_size_mm[1];
-    vol_vertices_coords(3,2) = 0.0;
-    vol_vertices_coords(4,0) = 0.0;
-    vol_vertices_coords(4,1) = 0.0;
-    vol_vertices_coords(4,2) = volume_size_mm[2];
-    vol_vertices_coords(5,0) = volume_size_mm[0];
-    vol_vertices_coords(5,1) = 0.0;
-    vol_vertices_coords(5,2) = volume_size_mm[2];
-    vol_vertices_coords(6,0) = volume_size_mm[0];
-    vol_vertices_coords(6,1) = volume_size_mm[1];
-    vol_vertices_coords(6,2) = volume_size_mm[2];
-    vol_vertices_coords(7,0) = 0.0;
-    vol_vertices_coords(7,1) = volume_size_mm[1];
-    vol_vertices_coords(7,2) = volume_size_mm[2];
+    vol_vertices_coords(4, 0) = 0.0;
+    vol_vertices_coords(4, 1) = 0.0;
+    vol_vertices_coords(4, 2) = volume_size_mm[2];
 
-    Eigen::Matrix<double,4,1> plane_equation;
-    plane_equation[0] = R_ImageToVolume(0,2);
-    plane_equation[1] = R_ImageToVolume(1,2);
-    plane_equation[2] = R_ImageToVolume(2,2);
-    plane_equation[3] = -(R_ImageToVolume.col(2).transpose()*needle_tip_transformed_to_volume_space)(0,0);
+    vol_vertices_coords(5, 0) = volume_size_mm[0];
+    vol_vertices_coords(5, 1) = 0.0;
+    vol_vertices_coords(5, 2) = volume_size_mm[2];
 
+    vol_vertices_coords(6, 0) = volume_size_mm[0];
+    vol_vertices_coords(6, 1) = volume_size_mm[1];
+    vol_vertices_coords(6, 2) = volume_size_mm[2];
 
-    double EPS = 1e-15;
+    vol_vertices_coords(7, 0) = 0.0;
+    vol_vertices_coords(7, 1) = volume_size_mm[1];
+    vol_vertices_coords(7, 2) = volume_size_mm[2];
+
+    double plane_equation[4];
+    plane_equation[0] = R_ImageToVolume(0, 2);
+    plane_equation[1] = R_ImageToVolume(1, 2);
+    plane_equation[2] = R_ImageToVolume(2, 2);
+    plane_equation[3] = -(R_ImageToVolume.col(2).transpose() * needle_tip_transformed_to_volume_space)(0, 0);
+
+    constexpr double allowed_error = 1e-10;
 
     Eigen::MatrixXd intersections;
-    intersections.resize(12,3);
+    intersections.resize(12, 3);
 
     size_t i = 0;
-    for(size_t j = 0; j < static_cast<int>(vol_vertices_coords.rows()); ++j){
-        if(vol_vertices_coords(j,0) == 0){
-            if(std::sqrt(std::pow(plane_equation[0],2)) > EPS){
-                intersections(i,0) = -(plane_equation[1]*vol_vertices_coords(j,1) + plane_equation[2]*vol_vertices_coords(j,2) + plane_equation[3]) / plane_equation[0];
-            }else{
-                intersections(i,0) = 1/EPS;
-            }
-            intersections(i,1) = vol_vertices_coords(j,1);
-            intersections(i,2) = vol_vertices_coords(j,2);
-            i = i+1;
-
+    for (size_t j = 0; j < vol_vertices_coords.rows(); ++j)
+    {
+        if (std::abs(vol_vertices_coords(j, 0)) < allowed_error){
+            double majored_value = ((std::abs(plane_equation[0])>= allowed_error) ? plane_equation[0] : allowed_error);
+            intersections(i, 0) = -(plane_equation[1] * vol_vertices_coords(j, 1) + plane_equation[2] * vol_vertices_coords(j, 2) + plane_equation[3]) / majored_value;
+            intersections(i, 1) = vol_vertices_coords(j, 1);
+            intersections(i, 2) = vol_vertices_coords(j, 2);
+            i = i + 1;
         }
-        if(vol_vertices_coords(j,1) == 0){
-            if(std::sqrt(std::pow(plane_equation[1],2)) > EPS){
-                intersections(i,1) = -(plane_equation[0]*vol_vertices_coords(j,0) + plane_equation[2]*vol_vertices_coords(j,2) + plane_equation[3]) / plane_equation[1];
-            }else{
-                intersections(i,1) = 1/EPS;
-            }
-            intersections(i,0) = vol_vertices_coords(j,0);
-            intersections(i,2) = vol_vertices_coords(j,2);
-            i = i+1;
-
+        if (std::abs(vol_vertices_coords(j, 1)) < allowed_error ){
+            double majored_value = ((std::abs(plane_equation[1])>= allowed_error) ? plane_equation[1] : allowed_error);
+            intersections(i, 1) = -(plane_equation[0] * vol_vertices_coords(j, 0) + plane_equation[2] * vol_vertices_coords(j, 2) + plane_equation[3]) / majored_value;
+            intersections(i, 0) = vol_vertices_coords(j, 0);
+            intersections(i, 2) = vol_vertices_coords(j, 2);
+            i = i + 1;
         }
 
-        if(vol_vertices_coords(j,2) == 0){
-            if(std::sqrt(std::pow(plane_equation[2],2)) > EPS){
-                intersections(i,2) = -(plane_equation[0]*vol_vertices_coords(j,0) + plane_equation[1]*vol_vertices_coords(j,1) + plane_equation[3]) / plane_equation[2];
-            }else{
-                intersections(i,2) = 1/EPS;
-            }
-            intersections(i,0) = vol_vertices_coords(j,0);
-            intersections(i,1) = vol_vertices_coords(j,1);
-            i = i+1;
-
-        }
-    }
-     
-
-    size_t one = 1;
-    size_t initial_number_of_points = static_cast<int>(intersections.rows());
-    for(size_t i = 0 ; i< initial_number_of_points; ++i){
-
-        if(intersections(initial_number_of_points-one-i,0) > volume_size[0] + EPS){
-            exclude_row_matrix(intersections, initial_number_of_points-one-i);
-
-        } else if(intersections(initial_number_of_points-one-i,0) < 0.0 - EPS){
-            exclude_row_matrix(intersections, initial_number_of_points-one-i);
-
-        } else if(intersections(initial_number_of_points-one-i,1) > volume_size[1] + EPS){
-            exclude_row_matrix(intersections, initial_number_of_points-one-i);
-
-        } else if(intersections(initial_number_of_points-one-i,1) < 0.0 - EPS){
-            exclude_row_matrix(intersections, initial_number_of_points-one-i);
-
-        } else if(intersections(initial_number_of_points-one-i,2) > volume_size[2] + EPS){
-            exclude_row_matrix(intersections, initial_number_of_points-one-i);
-
-        } else if(intersections(initial_number_of_points-one-i,2) < 0.0 - EPS){
-            exclude_row_matrix(intersections, initial_number_of_points-one-i);
+        if (std::abs(vol_vertices_coords(j, 2)) < allowed_error){
+            double majored_value = ((std::abs(plane_equation[2])>= allowed_error) ? plane_equation[2] : allowed_error);
+            intersections(i, 2) = -(plane_equation[1] * vol_vertices_coords(j, 1) + plane_equation[0] * vol_vertices_coords(j, 0) + plane_equation[3]) / majored_value;
+            intersections(i, 0) = vol_vertices_coords(j, 0);
+            intersections(i, 1) = vol_vertices_coords(j, 1);
+            i = i + 1;
         }
     }
 
-    centroid = {0.0,0.0,0.0};
-    if(intersections.rows()>0)
-        centroid = intersections.colwise().mean();
-    else
-        centroid = needle_tip_transformed_to_volume_space;
-
+    size_t initial_number_of_points = static_cast<int>(intersections.rows())-1;
+    bool no_rows = false;
+    for (int i = initial_number_of_points; i >= 0 ; --i)
+    {
+        if (intersections(i, 0) > volume_size_mm[0] + allowed_error || intersections(i, 0) < 0.0 - allowed_error 
+                 || intersections(i, 1) > volume_size_mm[1] + allowed_error || intersections(i, 1) < 0.0 - allowed_error 
+                 || intersections(i, 2) > volume_size_mm[2] + allowed_error || intersections(i, 2) < 0.0 - allowed_error ){
+            if(intersections.rows()==1){
+                no_rows = true;
+                break;
+            }  
+            exclude_row_matrix(intersections,i);
+        }
+    }
+    
+    centroid = (no_rows) ?  needle_tip_transformed_to_volume_space  : intersections.colwise().mean();
 }
-
 
 void load_dicom(InputImageType::Pointer& image) {
     
@@ -410,16 +380,16 @@ void updateBaseTexture3D(vsg::floatArray3D &image, InputImageType::Pointer image
 
 
 
-void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Pointer& output, InputImageType::Pointer volume, Eigen::Matrix<double,3,1>& needle_tip, Eigen::Matrix<double,3,3>& R_ImageToWorld, double& image_size, double& image_spacing)
+void resampler(curan::renderable::Sphere* sphere,curan::renderable::DynamicTexture *texture, OutputImageType::Pointer& output, InputImageType::Pointer volume, Eigen::Matrix<double,3,1>& needle_tip, Eigen::Matrix<double,3,3>& R_ImageToWorld, double& image_size, double& image_spacing)
 {
     using FilterType = itk::ResampleImageFilter<InputImageType, OutputImageType>;
     auto filter = FilterType::New();
 
     using InterpolatorType = itk::LinearInterpolateImageFunction<InputImageType, double>;
-    // using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<InputImageType, double>;
+    //using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<InputImageType, double>;
     auto interpolator = InterpolatorType::New();
     filter->SetInterpolator(interpolator);
-    filter->SetDefaultPixelValue(100);
+    filter->SetDefaultPixelValue(0);
 
     auto input = volume;
     filter->SetInput(input);
@@ -453,14 +423,21 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
 
     // obtain needle tip coordinates in the volume reference frame
     Eigen::Matrix<double,3,1> needle_tip_transformed_to_volume_space = R_volumeToWorld.transpose() * needle_tip - R_volumeToWorld.transpose() * volume_originn;
+    //Eigen::Matrix<double,3,1> needle_tip_transformed_to_volume_space = needle_tip;
 
     
     // obtain rotation matrix between image and volume
     Eigen::Matrix<double,3,3> R_ImageToVolume = R_volumeToWorld.transpose() * R_ImageToWorld;
-
-
     Eigen::Matrix<double,3,1> centroid;
-    calculate_image_centroid(volume, centroid, R_ImageToVolume, needle_tip_transformed_to_volume_space); 
+
+    auto volume_size = volume->GetLargestPossibleRegion().GetSize();
+    auto volume_spacing = volume->GetSpacing();
+
+    Eigen::Matrix<double,3,1> volume_size_mm;
+    volume_size_mm[0] = volume_size.GetSize()[0] * volume_spacing[0];
+    volume_size_mm[1] = volume_size.GetSize()[1] * volume_spacing[1];
+    volume_size_mm[2] = volume_size.GetSize()[2] * volume_spacing[2];
+    calculate_image_centroid(volume_size_mm, centroid, R_ImageToVolume, needle_tip_transformed_to_volume_space); 
 
 
     Eigen::Matrix<double,3,1> origin_to_centroid_image_vector;
@@ -468,12 +445,14 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     origin_to_centroid_image_vector[1] = image_size * image_spacing * 0.5;
     origin_to_centroid_image_vector[2] = 0.0;
 
-
+    Eigen::Matrix<double,3,1> centroid_in_word_space = R_volumeToWorld * centroid + volume_originn;
+    auto mat = vsg::translate(centroid_in_word_space[0]*1e-3,centroid_in_word_space[1]*1e-3,centroid_in_word_space[2]*1e-3);
+    //std::printf("(center)--->%.4f %.4f %.4f\n",centroid_in_word_space[0]*1e-3,centroid_in_word_space[1]*1e-3,centroid_in_word_space[2]*1e-3);
+    sphere->update_transform(mat);
 
     Eigen::Matrix<double,3,1> image_origin_vol_ref;
     image_origin_vol_ref = centroid - R_ImageToVolume * origin_to_centroid_image_vector;
     //image_origin_vol_ref = needle_tip_transformed_to_volume_space - R_ImageToVolume * origin_to_centroid_image_vector;
-
 
     // transform image origin in the volume frame back to the global frame
     Eigen::Matrix<double,3,1> image_origin_world_ref;
@@ -507,29 +486,72 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
     {
         std::string result = "Failure to update the filter" + std::string{e.what()};
         std::cout << result;
-        // return;
     }
 
 
-    output = filter->GetOutput();
+    OutputImageType::Pointer local_output = filter->GetOutput();
 
-    auto new_origin = output->GetOrigin();
+    auto new_origin = local_output->GetOrigin();
     auto image_homogenenous_transformation = vsg::translate(0.0, 0.0, 0.0);
     image_homogenenous_transformation(3, 0) = (new_origin[0]) / 1000.0;
     image_homogenenous_transformation(3, 1) = (new_origin[1]) / 1000.0;
     image_homogenenous_transformation(3, 2) = (new_origin[2]) / 1000.0;
 
-    auto image_final_direction = output->GetDirection();
+    auto image_final_direction = local_output->GetDirection();
     for (size_t row = 0; row < 3; ++row)
         for (size_t col = 0; col < 3; ++col)
             image_homogenenous_transformation(col, row) = image_final_direction(row, col);
 
 
     texture->update_transform(image_homogenenous_transformation);
-
-    auto updater_image = [output](vsg::vec4Array2D &image)
-    { updateBaseTexture2D(image, output); };
+    auto updater_image = [local_output](vsg::vec4Array2D &image){ 
+            updateBaseTexture2D(image, local_output);
+    };
     texture->update_texture(updater_image);
+    output = local_output;
+
+    using Iterator2 = itk::ImageRegionIterator<OutputImageType>;
+
+    auto regionn = local_output->GetRequestedRegion();
+
+    Iterator2 itr(local_output, regionn);
+
+    OutputImageType::IndexType volume_idx;
+    itk::Point<double,3> current_point;
+
+    double volume_pixel_value{};
+    double slice_pixel_value{};
+    
+
+    double max_pixel_value_difference = 0.0;
+    double min_pixel_value_difference = 10000.0;
+    double accumulator = 0.0;
+    double mean = 0.0;
+    size_t num_pixels = 0;
+
+    auto input_size = volume->GetLargestPossibleRegion().GetSize();
+
+    for (itr.GoToBegin(); !itr.IsAtEnd(); ++itr){
+        OutputImageType::IndexType current_idx = itr.GetIndex();
+        output->TransformIndexToPhysicalPoint(current_idx, current_point);
+        slice_pixel_value = output->GetPixel(current_idx);
+        volume->TransformPhysicalPointToIndex(current_point, volume_idx);
+        if(volume_idx[0] >= 0 && volume_idx[0] < input_size[0] 
+            && volume_idx[1] >= 0 && volume_idx[1] < input_size[1] 
+            && volume_idx[2] >= 0 && volume_idx[2] < input_size[2] ){
+
+                volume_pixel_value = volume->GetPixel(volume_idx);
+                double difference = std::abs(slice_pixel_value-volume_pixel_value);
+                accumulator += difference;
+                max_pixel_value_difference = (difference>max_pixel_value_difference) ? difference : max_pixel_value_difference;
+                min_pixel_value_difference = (difference<min_pixel_value_difference) ? difference : min_pixel_value_difference;
+                ++num_pixels;
+        }
+    }
+    if(num_pixels>1)
+        mean = accumulator/num_pixels;
+    std::printf("min (%.4f) mean(%.4f) max(%.4f)\n",min_pixel_value_difference,mean,max_pixel_value_difference);
+
 }
 
 
@@ -537,26 +559,6 @@ void resampler(curan::renderable::DynamicTexture *texture, OutputImageType::Poin
 
 int main(int argc, char *argv[])
 {
-    auto reader = ReaderType::New();
-    std::string dirName_input{CURAN_COPIED_RESOURCE_PATH "/precious_phantom/precious_phantom.mha"};
-    reader->SetFileName(dirName_input);
-
-    try
-    {
-        reader->Update();
-    }
-    catch (const itk::ExceptionObject &ex)
-    {
-        std::cout << ex << std::endl;
-        // return;
-    }
-
-
-    /* InputImageType::Pointer pointer_to_block_of_memory = InputImageType::New();
-    create_volume(pointer_to_block_of_memory); */
-
-    /* InputImageType::Pointer pointer_to_block_of_memory = reader->GetOutput(); */
-
     InputImageType::Pointer pointer_to_block_of_memory;
     load_dicom(pointer_to_block_of_memory);
 
@@ -594,6 +596,8 @@ int main(int argc, char *argv[])
     volume_homogenenous_transformation(3, 1) = origin[1] / 1000.0;
     volume_homogenenous_transformation(3, 2) = origin[2] / 1000.0;
 
+    Eigen::Matrix<double,3,1> originn = {origin[0], origin[1], origin[2]};
+
     for (size_t row = 0; row < 3; ++row)
         for (size_t col = 0; col < 3; ++col)
             volume_homogenenous_transformation(col, row) = direction(row, col);
@@ -629,114 +633,69 @@ int main(int argc, char *argv[])
     infotexture.origin = {0.0, 0.0, 0.0};
     infotexture.builder = vsg::Builder::create();
 
+    curan::renderable::Sphere::Info infosphere;
+    infosphere.builder = vsg::Builder::create();
+    infosphere.geomInfo.color = vsg::vec4(1.0,0.0,0.0,1.0);
+    infosphere.geomInfo.dx = vsg::vec3(0.005f,0.0,0.0);
+    infosphere.geomInfo.dy = vsg::vec3(0.0,0.005f,0.0);
+    infosphere.geomInfo.dz = vsg::vec3(0.0,0.0,0.005f);
+    infosphere.stateInfo.blending = true;
+
+    auto mat = vsg::translate(0.0,0.0,0.0);
+    
+    auto sphere = curan::renderable::Sphere::make(infosphere);
+    
+    sphere->update_transform(mat);
+    window << sphere;
+
     auto dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
     window << dynamic_texture;
     auto casted_image = dynamic_texture->cast<curan::renderable::DynamicTexture>();
+    auto casted_sphere = sphere->cast<curan::renderable::Sphere>();
 
     OutputImageType::Pointer output_slice;
 
     std::atomic<bool> continue_running = true;
 
-    std::thread run_slice_extractor{[&]()
-                                    {
-                                        while (continue_running)
-                                        {
-                                            Eigen::Matrix<double,3,1> needle_tip;
-                                            Eigen::Matrix<double,3,1> image_orientation_angles;
-                                            
-                                            /* for (size_t aaa = 0; aaa < 660/8; ++aaa) {
-                                            for (size_t bbb = 0; bbb < 50; ++bbb) {
-                                            for (size_t zzz = 0; zzz < 250; ++zzz) { */
-                                            for (size_t ccc = 0; ccc < 200; ++ccc) {
+    std::thread run_slice_extractor{[&](){
+        Eigen::Matrix<double,3,1> needle_tip_in_volume_frame;
+        Eigen::Matrix<double,3,1> image_orientation_angles;
+        Eigen::Matrix<double,3,1> needle_tip;
+        Eigen::Matrix<double,3,3> R_ImageToVolume;
+        Eigen::Matrix<double,3,3> R_ImageToWorld;
+        double mimic_monotonic_timer = 0.0;
+        while (continue_running)
+        {
+            for (size_t ccc = 0; ccc < 200 && continue_running.load(); ++ccc,mimic_monotonic_timer+=0.01) {
                                              
-                                                std::this_thread::sleep_for(std::chrono::milliseconds(30));
+                std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
-                                                needle_tip[0] = origin[0] + volume_size[0]*volume_spacing[0]*0.5;//-image_size*image_spacing*0.5;
-                                                needle_tip[1] = origin[1] + volume_size[1]*volume_spacing[1]*0.5;// -image_size*image_spacing*0.5;//ccc-100.0;
-                                                needle_tip[2] = origin[2] + ccc*1.0;//aaa * 1.0 + 100.0;
+                needle_tip_in_volume_frame[0] = volume_size[0]*volume_spacing[0]*0.5;//-image_size*image_spacing*0.5;
+                needle_tip_in_volume_frame[1] = volume_size[1]*volume_spacing[1]*0.5;// -image_size*image_spacing*0.5;//ccc-100.0;
+                needle_tip_in_volume_frame[2] = ccc*1.0;//aaa * 1.0 + 100.0;
 
-                                                image_orientation_angles[0] = 0.2;//zzz/100.0 - 1.25; 
-                                                image_orientation_angles[1] = 0.1;//zzz/100.0 - 1.25;
-                                                image_orientation_angles[2] = 0.0;
+                needle_tip = volume_directionn * needle_tip_in_volume_frame + originn;
 
-                                                Eigen::Matrix<double,3,3> R_ImageToWorld;
-                                                obtain_rot_matrix_by_angles(R_ImageToWorld, image_orientation_angles);
+                image_orientation_angles[0] = 0.2*std::sin(mimic_monotonic_timer+2.34);//zzz/100.0 - 1.25; 
+                image_orientation_angles[1] = 0.2*std::sin(mimic_monotonic_timer+1.234);//zzz/100.0 - 1.25;
+                image_orientation_angles[2] = 0.2*std::sin(mimic_monotonic_timer+0.1234);
 
-                                                R_ImageToWorld = volume_directionn * R_ImageToWorld;
+                obtain_rot_matrix_by_angles(R_ImageToVolume, image_orientation_angles);
+                                                
+                R_ImageToWorld = volume_directionn * R_ImageToVolume;
 
-                                                resampler(casted_image, output_slice, pointer_to_block_of_memory, needle_tip, R_ImageToWorld, image_size, image_spacing);
+                resampler(casted_sphere,casted_image, output_slice, pointer_to_block_of_memory, needle_tip, R_ImageToWorld, image_size, image_spacing);  
 
-                                              /* if (continue_running == false) {
-                                                    break;
-                                                }  
-
-                                            } if (continue_running == false) {
-                                                    break;
-                                                }}
-                                            if (continue_running == false) {
-                                                    break;
-                                                }}    */                                       
-                                        } }
-                                    } 
-                                    };
+            }
+        }
+    } 
+    };
 
     window.run();
     continue_running = false;
     run_slice_extractor.join();
 
-
-//////////////// pixel correspondance verification /////////////////////////////////////////////////////////////////////////////
-
-    using Iterator2 = itk::ImageRegionIterator<OutputImageType>;
-
-    auto output = output_slice;
-
-    auto regionn = output->GetRequestedRegion();
-
-    Iterator2 itr(output, regionn);
-
-    OutputImageType::IndexType volume_idx;
-    itk::Point<double,3> current_point;
-
-    double volume_pixel_value;
-    double slice_pixel_value;
-
-    double max_pixel_value_difference = 0.0;
-    int num_pixels_with_max_diff_value = 0;
-    double mean = 0.0;
-    int num_pixels = 0;
-
-
-    for (itr.GoToBegin(); !itr.IsAtEnd(); ++itr)
-    {
-        OutputImageType::IndexType current_idx = itr.GetIndex();
-        output->TransformIndexToPhysicalPoint(current_idx, current_point);
-
-        slice_pixel_value = output->GetPixel(current_idx);
-
-        pointer_to_block_of_memory->TransformPhysicalPointToIndex(current_point, volume_idx);
-
-        volume_pixel_value = pointer_to_block_of_memory->GetPixel(volume_idx);
-        
-        if (std::abs(slice_pixel_value-volume_pixel_value) >= max_pixel_value_difference) {
-            max_pixel_value_difference = std::abs(slice_pixel_value-volume_pixel_value);
-            num_pixels_with_max_diff_value = num_pixels_with_max_diff_value + 1;
-        }
-
-        mean = mean + std::abs(slice_pixel_value-volume_pixel_value);
-
-        num_pixels = num_pixels + 1;
-
-    }
-
-    mean = mean / num_pixels;
     
-    
-    std::cout << "Max pixel value difference: " << max_pixel_value_difference << std::endl;
-
-    std::cout << "num_pixels_with_max_diff_value: " << num_pixels_with_max_diff_value << std::endl;
-
-    std::cout << "mean pixel value difference: " << mean << std::endl;
 
     return EXIT_SUCCESS;
 }
