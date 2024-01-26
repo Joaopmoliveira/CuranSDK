@@ -42,6 +42,24 @@ Page& Page::pop(){
 	return *(this);
 }
 
+Page& Page::replace_all(std::unique_ptr<Overlay> overlay){
+	auto local = overlay->take_ownership();
+	local->propagate_size_change(previous_size);
+	if (!page_stack.empty())
+		page_stack.pop_back();
+	page_stack.emplace_back(std::move(local));
+	return *(this);
+}
+
+Page& Page::clear(std::unique_ptr<Overlay> overlay){
+	auto local = overlay->take_ownership();
+	local->propagate_size_change(previous_size);
+	if (!page_stack.empty())
+		page_stack.pop_back();
+	page_stack.emplace_back(std::move(local));
+	return *(this);
+}
+
 Page& Page::stack(std::unique_ptr<Overlay> overlay){
 	auto local = overlay->take_ownership();
 	local->propagate_size_change(previous_size);

@@ -64,12 +64,12 @@ Window::Window(Info& info) : number_of_images{5} {
     
     auto ambientLight = vsg::AmbientLight::create();
     ambientLight->name = "ambient";
-    ambientLight->color.set(.5, .5, .5);
-    ambientLight->intensity = 0.1f;
+    ambientLight->color.set(.9, .9, .9);
+    ambientLight->intensity = 0.4f;
    
     auto directionalLight = vsg::DirectionalLight::create();
     directionalLight->name = "directional";
-    directionalLight->color.set(.5f, .5f, .5f);
+    directionalLight->color.set(.9f, .9f, .9f);
     directionalLight->intensity = 1.0f;
     directionalLight->direction.set(0.0, 0.0, -1.0);
     

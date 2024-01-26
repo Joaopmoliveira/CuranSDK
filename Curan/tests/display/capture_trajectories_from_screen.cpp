@@ -21,7 +21,7 @@ std::optional<curan::ui::ImageWrapper> get_image(){
     using ImageReaderType = itk::ImageFileReader<DICOMImageType>;
     auto ImageReader = ImageReaderType::New();
 
-    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/dicom_sample/mri_brain/233.dcm"};
+    std::string dirName{CURAN_COPIED_RESOURCE_PATH"/images/grid.jpg"};
     ImageReader->SetFileName(dirName);
 
 	using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
