@@ -587,8 +587,7 @@ struct DataSpecificApplication
 
         std::unique_ptr<curan::ui::Button> button2;
 
-        switch (current_volume)
-        {
+        switch (current_volume){
         case PanelType::ORIGINAL_VOLUME:
             button2 = Button::make("Resample AC-PC", resources);
             button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -601,21 +600,22 @@ struct DataSpecificApplication
             }
 		    is_acpc_being_defined = !is_acpc_being_defined;
 		    create_panel_ac_pc_instructions(); });
-            case PanelType::RESAMPLED_VOLUME:
+        case PanelType::RESAMPLED_VOLUME:
             button2 = Button::make("Define Trajectory", resources);
-        button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-        button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                                     {
-        if(current_volume!=PanelType::ORIGINAL_VOLUME){
-            if (config->stack_page != nullptr)
-                config->stack_page->stack(create_overlay_with_warning("cannot resample processed volume"));
-            return;
-        }
-		is_acpc_being_defined = !is_acpc_being_defined;
-		create_panel_ac_pc_instructions(); });
+            if(current_volume!=PanelType::ORIGINAL_VOLUME){
+                if (config->stack_page != nullptr)
+                    config->stack_page->stack(create_overlay_with_warning("cannot resample processed volume"));
+                return;
+            }
+		    is_acpc_being_defined = !is_acpc_being_defined;
+		    create_panel_ac_pc_instructions(); });
         default:
 
-        }
+            break;
+        };
 
         auto button4 = Button::make("Change Volume", resources);
         button4->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));

@@ -122,3 +122,25 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(real_time_extract_oblique_slice_two_dim real_time_extract_oblique_slice_two_dim.cpp)
+
+target_compile_definitions(real_time_extract_oblique_slice_two_dim PRIVATE vsgXchange_FOUND)
+target_compile_definitions(real_time_extract_oblique_slice_two_dim PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(real_time_extract_oblique_slice_two_dim
+PUBLIC
+communication
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+add_executable(real_time_extract_oblique_slice_two_dim_centered_traj real_time_extract_oblique_slice_two_dim_centered_trajectory.cpp)
+
+target_compile_definitions(real_time_extract_oblique_slice_two_dim_centered_traj PRIVATE vsgXchange_FOUND)
+target_compile_definitions(real_time_extract_oblique_slice_two_dim_centered_traj PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(real_time_extract_oblique_slice_two_dim_centered_traj
+PUBLIC
+communication
+imageprocessing
+${ITK_LIBRARIES}
+)

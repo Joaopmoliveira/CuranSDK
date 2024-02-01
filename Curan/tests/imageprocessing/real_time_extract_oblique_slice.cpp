@@ -170,7 +170,7 @@ void calculate_image_centroid(const Eigen::Matrix<double,3,1>& volume_size_mm , 
     centroid = (no_rows) ?  needle_tip_transformed_to_volume_space  : intersections.colwise().mean();
 }
 
-void load_dicom(InputImageType::Pointer& image) {
+InputImageType::Pointer load_dicom() {
     
     using ReaderTypeDicom = itk::ImageSeriesReader<DICOMImageType>;
     auto reader = ReaderTypeDicom::New();
@@ -217,8 +217,6 @@ void load_dicom(InputImageType::Pointer& image) {
     rescale->SetOutputMinimum(0);
     rescale->SetOutputMaximum(itk::NumericTraits<InputPixelType>::max());
 
-    std::cout << "aqui" << std::endl;
-
     using FilterType = itk::CastImageFilter<DICOMImageType, InputImageType>;
     auto filter = FilterType::New();
     filter->SetInput(rescale->GetOutput());
@@ -230,10 +228,10 @@ void load_dicom(InputImageType::Pointer& image) {
     catch (const itk::ExceptionObject &ex)
     {
         std::cout << ex << std::endl;
-        //return std::nullopt;
+        return nullptr;
     }
 
-    image = filter->GetOutput();
+    return filter->GetOutput();
 };
 
 
@@ -295,8 +293,6 @@ void create_volume(InputImageType::Pointer image) {
     image->TransformIndexToPhysicalPoint(max_index, max_pixel_position);
 
     auto max_radius = max_pixel_position[0]*max_pixel_position[0] + max_pixel_position[1]*max_pixel_position[1] + max_pixel_position[2]*max_pixel_position[2];
-
-    std::cout << "maximum radius: " << max_radius << std::endl;
 
     for (it.GoToBegin(); !it.IsAtEnd(); ++it)
     {
@@ -387,7 +383,7 @@ void resampler(curan::renderable::Sphere* sphere,curan::renderable::DynamicTextu
     //using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<InputImageType, double>;
     auto interpolator = InterpolatorType::New();
     filter->SetInterpolator(interpolator);
-    filter->SetDefaultPixelValue(0);
+    filter->SetDefaultPixelValue(100);
 
     auto input = volume;
     filter->SetInput(input);
@@ -551,11 +547,11 @@ void resampler(curan::renderable::Sphere* sphere,curan::renderable::DynamicTextu
 
 int main(int argc, char *argv[])
 {
-    InputImageType::Pointer pointer_to_block_of_memory;
-    load_dicom(pointer_to_block_of_memory);
+    InputImageType::Pointer input_volume = load_dicom();
+    if(input_volume.GetPointer()==nullptr){
+        return 1;
+    }
 
-
-    auto input_volume = pointer_to_block_of_memory;
     auto volume_size = input_volume->GetLargestPossibleRegion().GetSize();
     auto volume_spacing = input_volume->GetSpacing();
 
@@ -602,8 +598,8 @@ int main(int argc, char *argv[])
     volume_to_render->cast<curan::renderable::Volume>()->update_transform(volume_homogenenous_transformation);
 
     auto casted_volume = volume_to_render->cast<curan::renderable::Volume>();
-    auto updater = [pointer_to_block_of_memory](vsg::floatArray3D &image)
-    { updateBaseTexture3D(image, pointer_to_block_of_memory); };
+    auto updater = [input_volume](vsg::floatArray3D &image)
+    { updateBaseTexture3D(image, input_volume); };
     casted_volume->update_volume(updater);
 
 
@@ -657,13 +653,13 @@ int main(int argc, char *argv[])
         Eigen::Matrix<double,3,3> R_ImageToWorld;
         double mimic_monotonic_timer = 0.0;
         while (continue_running){
-            for (size_t ccc = 0; ccc < 200 && continue_running.load(); ++ccc,mimic_monotonic_timer+=0.01) {
+            for (size_t ccc = 0; ccc < 200 && continue_running.load(); ++ccc,mimic_monotonic_timer+=0.005) {
                                              
-                std::this_thread::sleep_for(std::chrono::milliseconds(30));
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
                 needle_tip_in_volume_frame[0] = volume_size[0]*volume_spacing[0]*0.5;//-image_size*image_spacing*0.5;
                 needle_tip_in_volume_frame[1] = volume_size[1]*volume_spacing[1]*0.5;// -image_size*image_spacing*0.5;//ccc-100.0;
-                needle_tip_in_volume_frame[2] = ccc*1.0;//aaa * 1.0 + 100.0;
+                needle_tip_in_volume_frame[2] = ccc*1.0;
 
                 needle_tip = volume_directionn * needle_tip_in_volume_frame + originn;
 
@@ -675,7 +671,7 @@ int main(int argc, char *argv[])
                                                 
                 R_ImageToWorld = volume_directionn * R_ImageToVolume;
 
-                resampler(casted_sphere,casted_image, output_slice, pointer_to_block_of_memory, needle_tip, R_ImageToWorld, image_size, image_spacing);  
+                resampler(casted_sphere,casted_image, output_slice, input_volume, needle_tip, R_ImageToWorld, image_size, image_spacing);  
 
             }
         }
