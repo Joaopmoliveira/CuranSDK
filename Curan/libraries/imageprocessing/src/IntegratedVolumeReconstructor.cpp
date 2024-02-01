@@ -470,8 +470,8 @@ void IntegratedReconstructor::fill_holes()
 			new_castFilter->Update();
 			auto image=new_castFilter->GetOutput();
 
-			std::printf("\n size of destination: (%d %d %d ) pixel size (%d)\n size of origin : (%d %d %d ) pixel size: (%d)\n copied block: %d",textureData->width(),textureData->height(),textureData->depth(),textureData->stride(),output_size[0],output_size[1],output_size[2],sizeof(float),numberOfPixels*sizeof(float));
-			std::printf("\n Image size from itk: %d\n",image->GetLargestPossibleRegion().GetSize()[0]*image->GetLargestPossibleRegion().GetSize()[1]*image->GetLargestPossibleRegion().GetSize()[2]);
+			//std::printf("\n size of destination: (%d %d %d ) pixel size (%d)\n size of origin : (%d %d %d ) pixel size: (%d)\n copied block: %d",textureData->width(),textureData->height(),textureData->depth(),textureData->stride(),output_size[0],output_size[1],output_size[2],sizeof(float),numberOfPixels*sizeof(float));
+			//std::printf("\n Image size from itk: %d\n",image->GetLargestPossibleRegion().GetSize()[0]*image->GetLargestPossibleRegion().GetSize()[1]*image->GetLargestPossibleRegion().GetSize()[2]);
 			std::memcpy(textureData->data(), image->GetBufferPointer(), numberOfPixels*sizeof(float));
 			textureData->dirty();
 		return;
@@ -834,9 +834,7 @@ bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::Th
 		int executed = 0;
 		size_t index = 0;
 		for(const auto& range : block_divisions){
-			curan::utilities::Job job;
-			job.description = "partial volume reconstruction";
-			job.function_to_execute = [index,range,paste_slice_info,&executed,&local_mut,&cv](){
+			auto lamb = [index,range,paste_slice_info,&executed,&local_mut,&cv](){
 				size_t local_index = index;
 				try{
 					int this_thread_extent[6];
@@ -857,6 +855,7 @@ bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::Th
 					std::cout << "exception was thrown in index :" << local_index << " with error message: " << e.what() << std::endl;
 				}
 			};
+			curan::utilities::Job job{"partial volume reconstruction",lamb};
 			++index;
 			pool->submit(std::move(job));
 		}

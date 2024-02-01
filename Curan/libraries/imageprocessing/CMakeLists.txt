@@ -9,6 +9,7 @@ src/StaticReconstructor.cpp
 src/IntegratedVolumeReconstructor.cpp
 src/SplicingTools.cpp
 src/igtl2itkConverter.cpp
+src/ImageProcessingDefinitions.cpp
 )
 
 find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)
@@ -23,6 +24,7 @@ target_link_libraries(imageprocessing PUBLIC
 ${ITK_LIBRARIES}
 utils
 renderable
+userinterface
 GeometricTools
 OpenIGTLink
 )

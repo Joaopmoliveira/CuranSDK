@@ -167,10 +167,7 @@ void foo(unsigned short port,asio::io_context& cxt) {
 			transMsg->SetTimeStamp(ts);
 			transMsg->Pack();
 
-			auto callable = [transMsg]() {
-				return asio::buffer(transMsg->GetPackPointer(), transMsg->GetPackSize());
-			};
-			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+			auto to_send = curan::utilities::CaptureBuffer::make_shared(transMsg->GetPackPointer(), transMsg->GetPackSize(),transMsg);
 			server.write(to_send);
 
 		    img = update_texture(std::move(img), 1.0+controled_time);
@@ -189,13 +186,9 @@ void foo(unsigned short port,asio::io_context& cxt) {
 		    imgMsg->SetMatrix(matrix);
 		    imgMsg->Pack();
 
-            auto callable2 = [imgMsg]() {
-				return asio::buffer(imgMsg->GetPackPointer(), imgMsg->GetPackSize());
-			};
-            auto to_send_image = curan::utilities::CaptureBuffer::make_shared(std::move(callable2));
+            auto to_send_image = curan::utilities::CaptureBuffer::make_shared(imgMsg->GetPackPointer(), imgMsg->GetPackSize(),imgMsg);
 			server.write(to_send_image);
 
-			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
 			controled_time += 0.01;

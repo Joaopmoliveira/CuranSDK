@@ -233,9 +233,9 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
  
             itk::Size<3U>  output_size;
             output_size = integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_output_size();
-            size_t width =   output_size[0] ;
-            size_t height =   output_size[1] ;
-            size_t depth =   output_size[2] ;
+            long long width =   output_size[0] ;
+            long long height =   output_size[1] ;
+            long long depth =   output_size[2] ;
 
             integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_fillstrategy(curan::image::reconstruction::FillingStrategy::NEAREST_NEIGHBOR);
             curan::image::reconstruction::KernelDescriptor descript;
@@ -295,23 +295,12 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
                 for (long long y = 0; y < height; ++y) {
                     for (long long x = 0; x < width; ++x) {
                         float pixel_value = integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->at(x, y, z);
-                        itkVolume->SetPixel({{x, y, z}}, pixel_value);
+                        itkVolume->SetPixel({{x,y, z}}, pixel_value);
                     }
                 }
             }
-
-            /* // Save the ITK Image as an MHA file
-            using WriterType = itk::ImageFileWriter<ImageType>;
-            WriterType::Pointer writer = WriterType::New();
-            writer->SetFileName("C:/Users/SURGROB7/reconstruction_results.mha");
-            writer->SetInput(itkVolume);
-            writer->Update(); */
-
-
             integrated_volume->cast<curan::image::IntegratedReconstructor>()->reset();
             stopping_condition = true; // apagar isto
-
-
         }
 
         return ;

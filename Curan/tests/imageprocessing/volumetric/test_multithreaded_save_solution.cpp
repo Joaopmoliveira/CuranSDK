@@ -122,14 +122,10 @@ void volume_creation(curan::renderable::Window& window,std::atomic<bool>& stoppi
         std::printf("started volumetric reconstruction\n");
         size_t counter = 0;
 	    for(auto img : image_array){
-            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 		    integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(img);
             if(stopping_condition)
                 return;
 		    integrated_volume->cast<curan::image::IntegratedReconstructor>()->multithreaded_update(reconstruction_thread_pool);
-            std::chrono::steady_clock::time_point elapsed_for_reconstruction = std::chrono::steady_clock::now();
-            auto val_elapsed_for_reconstruction = (int)std::chrono::duration_cast<std::chrono::microseconds>(elapsed_for_reconstruction - begin).count();
-            //std::printf("added image (volume reconstruction %d)\n",val_elapsed_for_reconstruction);
             ++counter;
             if(stopping_condition)
                 return;

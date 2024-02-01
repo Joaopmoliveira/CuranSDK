@@ -5,7 +5,7 @@
 namespace curan {
 namespace ui {
 
-Page::Page(std::unique_ptr<Container> container,SkColor background) : main_page{std::move(LightWeightPage::make(move(container),background))}
+Page::Page(std::unique_ptr<Container> container,SkColor background) : main_page{std::move(LightWeightPage::make(std::move(container),background))}
 {
 	imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 	bluring_paint.setImageFilter(imgfilter);
@@ -41,6 +41,24 @@ Page& Page::pop(){
 		page_stack.pop_back();
 	return *(this);
 }
+
+/* Page& Page::replace_all(std::unique_ptr<Overlay> overlay){
+	auto local = overlay->take_ownership();
+	local->propagate_size_change(previous_size);
+	if (!page_stack.empty())
+		page_stack.pop_back();
+	page_stack.emplace_back(std::move(local));
+	return *(this);
+}
+
+Page& Page::clear(std::unique_ptr<Overlay> overlay){
+	auto local = overlay->take_ownership();
+	local->propagate_size_change(previous_size);
+	if (!page_stack.empty())
+		page_stack.pop_back();
+	page_stack.emplace_back(std::move(local));
+	return  *(this);
+}*/
 
 Page& Page::stack(std::unique_ptr<Overlay> overlay){
 	auto local = overlay->take_ownership();

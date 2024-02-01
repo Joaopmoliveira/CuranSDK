@@ -22,7 +22,7 @@ ThreadPool::~ThreadPool()
 
 void ThreadPool::infinite_loop()
 {
-	Job job;
+	Job job{};
 	while (true){
 		if (!job_queue.wait_and_pop(job))
 			return;
@@ -31,7 +31,7 @@ void ThreadPool::infinite_loop()
 			++number_of_tasks_executing;
 			--number_of_pending_tasks;
 		}
-		job.function_to_execute();
+		job();
 		{
 			std::lock_guard<std::mutex> lk(mut);
 			--number_of_tasks_executing;

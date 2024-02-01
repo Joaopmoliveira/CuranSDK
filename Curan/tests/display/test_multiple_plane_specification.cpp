@@ -7,69 +7,131 @@
 #include <iostream>
 #include "itkImage.h"
 #include "itkImageFileReader.h"
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 
-void callback_x_dir(curan::ui::ImageDisplay* image_display,ImageType::Pointer image_data, const MemoryOfDisplay& memory){
-    assert(image_display!=nullptr);
-
-    ImageType::RegionType region = pointer_to_block_of_memory->GetLargestPossibleRegion();
-    ImageType::SizeType size_itk = region.GetSize();
-
-    auto lam = [pointer_to_block_of_memory](SkPixmap& requested) {
-	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-	    size_t row_size = size_itk.GetSize()[0] * sizeof(char);
-        SkPixmap map{inf,pointer_to_block_of_memory->GetBufferPointer(),row_size};
-        requested = map;
-	    return;
-    };
+template <typename E>
+constexpr typename std::underlying_type<E>::type to_underlying(E e) noexcept {
+    return static_cast<typename std::underlying_type<E>::type>(e);
 }
 
-void callback_y_dir(curan::ui::ImageDisplay* image_display,ImageType::Pointer image_data, const MemoryOfDisplay& memory){
-    assert(image_display!=nullptr);
-
-    ImageType::RegionType region = pointer_to_block_of_memory->GetLargestPossibleRegion();
-    ImageType::SizeType size_itk = region.GetSize();
-
-    auto lam = [pointer_to_block_of_memory](SkPixmap& requested) {
-	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-	    size_t row_size = size_itk.GetSize()[0] * sizeof(char);
-        SkPixmap map{inf,pointer_to_block_of_memory->GetBufferPointer(),row_size};
-        requested = map;
-	    return;
-    };
-}
-
-void callback_z_dir(curan::ui::ImageDisplay* image_display,ImageType::Pointer image_data, const MemoryOfDisplay& memory){
-    assert(image_display!=nullptr);
-
-    ImageType::RegionType region = pointer_to_block_of_memory->GetLargestPossibleRegion();
-    ImageType::SizeType size_itk = region.GetSize();
-
-    auto lam = [pointer_to_block_of_memory](SkPixmap& requested) {
-	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-	    size_t row_size = size_itk.GetSize()[0] * sizeof(char);
-        SkPixmap map{inf,pointer_to_block_of_memory->GetBufferPointer(),row_size};
-        requested = map;
-	    return;
-    };
-}
-
-struct MemoryOfDisplay{
-    size_t current_index;
-    size_t max_index = 1;
-    size_t min_index = 0;
-
-    MemoryOfDisplay(size_t max,size_t min) max_index{max},min_index{min},current_index{min}:{}
-
-    void operator++()(){
-        current_index = (current_index+1>max_index) ? min_index : current_index+1;
-    }
+enum class TravelerDirection{
+    X = 0,
+    Y,
+    Z
 };
 
+class BiDimensionalTraveler{
+    ImageType::Pointer displayed_image;
+    std::array<size_t,3> size_index;
+    std::array<size_t,3> current_index;
+    std::array<Eigen::Rotation2Dd,3> rotation_of_each_direction;
+    std::array<Eigen::Matrix<double,2,1>,3> translation_of_each_direction;
+
+    template<TravelerDirection direction>
+    void increment(){
+        current_index[to_underlying(direction)] = current_index[to_underlying(direction)]+1 % size_index[to_underlying(direction)];
+    };
+
+    template<TravelerDirection direction>
+    void decrement(){
+        current_index[to_underlying(direction)] = current_index[to_underlying(direction)]-1 % size_index[to_underlying(direction)];
+    }; 
+
+    template<TravelerDirection direction>
+    void rotate(double angle){
+        rotation_of_each_direction[to_underlying(direction)] *= Eigen::Rotation2Dd{angle};
+    };
+
+    template<TravelerDirection direction>
+    void translate(double x,double y){
+            Eigen::Matrix<double,2,1> local;
+            local[0] = x; local[1] = y;
+            translation_of_each_direction[to_underlying(direction)] += local;
+    };
+
+    template<TravelerDirection direction>
+    Eigen::Matrix<double,3,1> get_position(double x, double y){
+        // first we need to forward pass the current transformation of the image on screen into pixel coordiantes
+
+        // once we gave the pixel coordinates we need to query the homogeneous transform of the 
+    }
+
+};
+
+void callback_x_dir(curan::ui::ImageDisplay* image_display,ImageType::Pointer image_data, BiDimensionalTraveler& memory){
+    assert(image_display!=nullptr);
+
+    ImageType::RegionType region = image_data->GetLargestPossibleRegion();
+    ImageType::SizeType size_itk = region.GetSize();
+
+    auto lam = [image_data,size_itk](SkPixmap& requested) {
+	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+	    size_t row_size = size_itk.GetSize()[0] * sizeof(char);
+        SkPixmap map{inf,image_data->GetBufferPointer(),row_size};
+        requested = map;
+	    return;
+    };
+}
+
+void callback_y_dir(curan::ui::ImageDisplay* image_display,ImageType::Pointer image_data, BiDimensionalTraveler& memory){
+    assert(image_display!=nullptr);
+
+    ImageType::RegionType region = image_data->GetLargestPossibleRegion();
+    ImageType::SizeType size_itk = region.GetSize();
+
+    auto lam = [image_data,size_itk](SkPixmap& requested) {
+	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+	    size_t row_size = size_itk.GetSize()[0] * sizeof(char);
+        SkPixmap map{inf,image_data->GetBufferPointer(),row_size};
+        requested = map;
+	    return;
+    };
+}
+
+void callback_z_dir(curan::ui::ImageDisplay* image_display,ImageType::Pointer image_data, BiDimensionalTraveler& memory){
+    assert(image_display!=nullptr);
+
+    ImageType::RegionType region = image_data->GetLargestPossibleRegion();
+    ImageType::SizeType size_itk = region.GetSize();
+
+    auto lam = [image_data,size_itk](SkPixmap& requested) {
+	    auto inf = SkImageInfo::Make(size_itk.GetSize()[0], size_itk.GetSize()[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+	    size_t row_size = size_itk.GetSize()[0] * sizeof(char);
+        SkPixmap map{inf,image_data->GetBufferPointer(),row_size};
+        requested = map;
+	    return;
+    };
+}
+
+
+curan::ui::Page create_page_with_widgets(){
+    std::unique_ptr<curan::ui::ImageDisplay> image_display_x = curan::ui::ImageDisplay::make();
+
+    std::unique_ptr<curan::ui::ImageDisplay> image_display_y = curan::ui::ImageDisplay::make();
+
+    std::unique_ptr<curan::ui::ImageDisplay> image_display_z = curan::ui::ImageDisplay::make();
+
+    auto containerbuttons = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
+
+    auto container_image_display = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
+    *container_image_display << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z) ;
+
+    auto container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
+    *container << std::move(containerbuttons) << std::move(container_image_display);
+
+    curan::ui::Page page{std::move(container),SK_ColorBLACK};
+    return std::move(page);
+}
+
+
 int main() {
+    BiDimensionalTraveler traveler;
+
     using namespace curan::ui;
     using ImageReaderType = itk::ImageFileReader<ImageType>;
     auto ImageReader = ImageReaderType::New();
@@ -77,26 +139,11 @@ int main() {
     ImageReader->SetFileName(dirName);
     ImageReader->Update();
 
-    std::unique_ptr<Context> context = std::make_unique<Context>();;
-    DisplayParams param{ std::move(context),600,600 };
-    std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+    std::unique_ptr<curan::ui::Context> context = std::make_unique<curan::ui::Context>();;
+    curan::ui::DisplayParams param{ std::move(context), 600,600 };
+    std::unique_ptr<curan::ui::Window> viewer = std::make_unique<curan::ui::Window>(std::move(param));
 
-    MemoryOfDisplay memory_x{};
-    std::unique_ptr<ImageDisplay> image_display_x = ImageDisplay::make();
-    ImageDisplay* pointer_to_x = image_display_x.get();
-
-    MemoryOfDisplay memory_y{};
-    std::unique_ptr<ImageDisplay> image_display_y = ImageDisplay::make();
-    ImageDisplay* pointer_to_y = image_display_y.get();
-
-    MemoryOfDisplay memory_z{};
-    std::unique_ptr<ImageDisplay> image_display_z = ImageDisplay::make();
-    ImageDisplay* pointer_to_z = image_display_z.get();
-
-    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-    *container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z) ;
-    curan::ui::Page page{std::move(container),SK_ColorBLACK};
-
+    auto page = create_page_with_widgets();
     page.update_page(viewer.get());
 
     ConfigDraw config{&page};

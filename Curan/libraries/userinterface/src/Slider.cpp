@@ -41,10 +41,10 @@ drawablefunction Slider::draw() {
         auto size = get_size();
 
         SkRect drawable = size;
-        drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
+        drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
 
         paint.setColor(slider_color);
-		canvas->drawRoundRect(drawable, drawable.height() / 2.0, drawable.height() / 2.0, paint);
+		canvas->drawRoundRect(drawable, drawable.height() / 2.0f, drawable.height() / 2.0f, paint);
 
         switch (current_state) {
         case SliderStates::WAITING:
@@ -58,10 +58,15 @@ drawablefunction Slider::draw() {
             break;
         }
 
-        SkRect dragable = SkRect::MakeXYWH(drawable.x()+ drawable.width() * current_value, drawable.y(), drawable.width() * dragable_percent_size, drawable.height());
-		canvas->drawRoundRect(dragable, drawable.height() / 2.0, drawable.height() / 2.0,paint);
+        SkRect dragable = SkRect::MakeXYWH(drawable.x()+ (drawable.width()*(1-dragable_percent_size)) * current_value, drawable.y(), drawable.width() * dragable_percent_size, drawable.height());
+		canvas->drawRoundRect(dragable, drawable.height() / 2.0f, drawable.height() / 2.0f,paint);
     };
     return lamb;
+}
+
+SkRect Slider::minimum_size(){
+	auto size = get_size();
+	return SkRect::MakeWH(size.width()+20,size.height()+20);
 }
 
 callablefunction Slider::call() {
@@ -82,13 +87,11 @@ callablefunction Slider::call() {
 						auto widget_rect = get_position();
 						auto size = get_size();
 						SkRect drawable = size;
-						drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0, widget_rect.centerY() - drawable.height() / 2.0);
-						auto offset_x = (arg.xpos - drawable.x()) / size.width();
+						drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
+						auto offset_x = ((float)arg.xpos - drawable.x()) / size.width();
 						auto current_val = get_current_value();
 						current_val += offset_x-read_trigger();
 						trigger(offset_x);
-						if (current_val < 0.0) current_val = 0.0;
-						if (current_val > 1.0) current_val = 1.0;
 						set_current_value(current_val);
 					}
 				}
@@ -121,8 +124,31 @@ callablefunction Slider::call() {
 					interacted = true;
 				set_current_state(current_state_local);
 			},
-			[this](Scroll arg) {;
-
+			[this,&interacted,config](Scroll arg) {;
+				auto previous_state = get_current_state();
+				auto current_state_local = get_current_state();
+				if (interacts(arg.xpos, arg.ypos)) {
+					auto widget_rect = get_position();
+					auto size = get_size();
+					SkRect drawable = size;
+					drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
+					auto offsetx = (float)arg.xoffset / size.width();
+					auto offsety = (float)arg.yoffset / size.width();
+					auto current_val = get_current_value();
+					current_val += (std::abs(offsetx)>std::abs(offsety)) ? offsetx : offsety;
+					set_current_value(current_val);
+					current_state_local = SliderStates::PRESSED;
+					if (callback) {
+						auto val = *callback;
+						val(this, config);
+					}
+				}
+				else {
+					current_state_local = SliderStates::WAITING;
+				}
+				if (previous_state != current_state_local)
+					interacted = true;
+				set_current_state(current_state_local);
 			},
 			[this,&interacted,config](Unpress arg) {
 				auto previous_state = get_current_state();

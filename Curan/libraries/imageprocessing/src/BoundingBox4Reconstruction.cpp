@@ -67,15 +67,11 @@ void BoundingBox4Reconstruction::update()
 	
 	previous_and_current_verticies.insert( previous_and_current_verticies.end(), vertices.begin(), vertices.end() );
 	previous_and_current_verticies.insert( previous_and_current_verticies.end(), current_vertices.begin(), current_vertices.end());
-	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
 	gte::ConvexHull3<double> convex_hull;
 	convex_hull(previous_and_current_verticies,0);
 	current_vertices = std::vector<gte::Vector3<double>>{};
 	auto conex_hull_verticies = convex_hull.GetVertices();
-	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-	
-	auto timediff_convex = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 
 	bool did_convex_hull_change = false;
 	for(const auto& ind : conex_hull_verticies){
@@ -86,7 +82,7 @@ void BoundingBox4Reconstruction::update()
 		
 
 	double volume = 0.0;
-	begin = std::chrono::steady_clock::now();
+	//begin = std::chrono::steady_clock::now();
 	
 	if(did_convex_hull_change){
 		gte::MinimumVolumeBox3<double, true> bounding_box{10};
@@ -94,8 +90,8 @@ void BoundingBox4Reconstruction::update()
 	}
 
 	frame_data.clear();
- 	end = std::chrono::steady_clock::now();
-	std::printf("convex: %d bounding : %d\n",timediff_convex,std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+ 	//end = std::chrono::steady_clock::now();
+	//std::printf("convex: %d bounding : %d\n",timediff_convex,std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
 };
 
 void BoundingBox4Reconstruction::add_frames(std::vector<output_type::Pointer>& images_vector)

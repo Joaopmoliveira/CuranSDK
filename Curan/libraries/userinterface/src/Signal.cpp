@@ -57,6 +57,19 @@ void item_droped_callback(GLFWwindow* window, int count, const char** paths) {
 	auto window_pointer = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 	window_pointer->signal_queue.push(received_signal);
 }
+
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods){
+	Key pressed_key;
+	pressed_key.key = key;
+	pressed_key.scancode = scancode;
+	pressed_key.action = action;
+	pressed_key.mods = mods;
+	pressed_key.ascii_version = convert_to_acsii(pressed_key);
+	pressed_key.key_type = convert_to_control_key(pressed_key);
+	Signal received_signal = pressed_key;
+	auto window_pointer = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+	window_pointer->signal_queue.push(received_signal);
+}
 	
 }
 }

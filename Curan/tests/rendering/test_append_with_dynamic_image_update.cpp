@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
 
                         float distance_from_center = vsg::length(delta);
 
-                        float intensity = (sin(1.0 * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
+                        float intensity = (sin(1.0f * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
 
                         ptr->r = intensity;
                         ptr->g = intensity;

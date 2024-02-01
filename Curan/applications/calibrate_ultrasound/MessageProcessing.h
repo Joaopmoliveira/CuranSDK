@@ -57,7 +57,7 @@ struct ProcessingMessage {
 
 	curan::ui::ImageDisplay* processed_viwer = nullptr;
 	curan::ui::OpenIGTLinkViewer* open_viwer = nullptr;
-	std::shared_ptr<curan::utilities::Flag> connection_status;
+	curan::utilities::Flag connection_status;
 	curan::ui::Button* button;
 	curan::ui::Button* button_start_collection;
 	size_t number_of_circles = 3;
@@ -71,8 +71,7 @@ struct ProcessingMessage {
 	short port = 10000;
 
 	ProcessingMessage(curan::ui::ImageDisplay* in_processed_viwer,
-		curan::ui::OpenIGTLinkViewer* in_open_viwer,
-		std::shared_ptr<curan::utilities::Flag> flag, ConfigurationData& in_configuration) : connection_status{ flag }, processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer }, configuration{ in_configuration }
+		curan::ui::OpenIGTLinkViewer* in_open_viwer, ConfigurationData& in_configuration) : processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer }, configuration{ in_configuration }
 	{
 	}
 

@@ -40,8 +40,6 @@ int main() {
 		while (!glfwWindowShouldClose(viewer->window)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
-			auto temp_height = pointer_to_surface->height();
-			auto temp_width = pointer_to_surface->width();
 			SkCanvas* canvas = pointer_to_surface->getCanvas();
 			if (viewer->was_updated()) {
 				page.update_page(viewer.get());

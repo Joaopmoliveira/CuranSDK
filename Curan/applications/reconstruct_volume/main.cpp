@@ -181,12 +181,8 @@ try{
    robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_kernel_descritor(descript);
    robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->fill_holes();
 
-
    itk::Size<3U>  output_size;
    output_size = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_output_size();
-   size_t width =   output_size[0] ;
-   size_t height =   output_size[1] ;
-   size_t depth =   output_size[2] ;
 
    using PixelType = float;
    using ImageType = itk::Image<PixelType, 3>;

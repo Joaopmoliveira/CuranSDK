@@ -477,8 +477,6 @@ void TemplatedUnoptimizedInsertSlice(PasteSliceIntoVolumeInsertSliceParamsTempla
 					continue;
 				}
 
-				std::printf("pos: (%d %d %d) counter : %d\n",idX,idY,idZ,counter_inPtr);
-
 				//scale the input from pixels to mm 
 				inPoint[0] = idX * inSpacing[0];
 				inPoint[1] = idY * inSpacing[1];

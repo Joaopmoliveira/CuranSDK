@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
             auto updateBaseTexture = [value](vsg::vec4Array2D& image)
             {
                 using value_type = typename vsg::vec4Array2D::value_type;
-                for (size_t r = 0; r < image.height(); ++r)
+                for (uint32_t r = 0; r < image.height(); ++r)
                 {
                     float r_ratio = static_cast<float>(r) / static_cast<float>(image.height() - 1);
                     value_type* ptr = &image.at(0, r);
@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 
                         float distance_from_center = vsg::length(delta);
 
-                        float intensity = (sin(1.0 * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
+                        float intensity = (sin(1.0f * angle + 30.0f * distance_from_center + 10.0f * value) + 1.0f) * 0.5f;
 
                         ptr->r = intensity;
                         ptr->g = intensity;

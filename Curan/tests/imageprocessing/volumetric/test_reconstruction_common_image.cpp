@@ -443,7 +443,7 @@ int main(int argc, char **argv)
     std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
 
     std::thread run_registration_algorithm{[&](){
-        for (size_t iteration = 0; iteration < number_of_iterations; std::printf("\nIteration %d\n", iteration), ++iteration)
+        for (size_t iteration = 0; iteration < number_of_iterations; std::printf("\nIteration %llu\n", iteration), ++iteration)
             full_runs.emplace_back(solve_registration(pointer2fixedimage, pointer2movingimage, casted_volume_moving, mat_moving_here));
     }};
 

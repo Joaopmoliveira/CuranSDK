@@ -14,20 +14,20 @@ details!
 */
 
 int test_shared_flag(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) {
-	auto flag = curan::utilities::Flag::make_shared_flag();
-	flag->clear();
+	curan::utilities::Flag flag;
+	flag.set(false);
 
 	constexpr int number_of_min_miliseconds = 600;
 
-	auto function1 = [flag, number_of_min_miliseconds]() {
+	auto function1 = [&flag, number_of_min_miliseconds]() {
 		auto duration = std::chrono::milliseconds(number_of_min_miliseconds);
 		std::this_thread::sleep_for(duration);
-		flag->set();
+		flag.set(true);
 	};
 
-	auto function2 = [flag]() {
+	auto function2 = [&flag]() {
 		std::cout << "started waiting for the flag\n";
-		flag->wait();
+		flag.wait();
 		std::cout << "stopped waiting for the flag\n";
 	};
 
@@ -49,31 +49,26 @@ int test_shared_flag(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) 
 
 int test_job_and_thread_pool(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) {
 	using namespace curan::utilities;
-	auto flag1 = curan::utilities::Flag::make_shared_flag();
-	flag1->clear();
-	auto flag2 = curan::utilities::Flag::make_shared_flag();
-	flag2->clear();
+	curan::utilities::Flag flag1;
+	flag1.set(false);
+	curan::utilities::Flag flag2;
+	flag2.set(false);
 
-	curan::utilities::Job job1;
-	job1.description = "This is a test to make sure that the thread pool works";
-	job1.function_to_execute = [flag1]() {
-		flag1->wait();
-	};
-	curan::utilities::Job job2;
-	job2.description = "This is a test to make sure that the thread pool works";
-	job2.function_to_execute = [flag1]() {
-		flag1->wait();
-	};
-	curan::utilities::Job job3;
-	job3.description = "This is a test to make sure that the thread pool works";
-	job3.function_to_execute = [flag2]() {
-		flag2->wait();
-	};
-	curan::utilities::Job job4;
-	job4.description = "This is a test to make sure that the thread pool works";
-	job4.function_to_execute = [flag2]() {
-		flag2->wait();
-	};
+	curan::utilities::Job job1{"This is a test to make sure that the thread pool works",[&]() {
+		flag1.wait();
+	}};
+
+	curan::utilities::Job job2{"This is a test to make sure that the thread pool works",[&]() {
+		flag1.wait();
+	}};
+
+	curan::utilities::Job job3{"This is a test to make sure that the thread pool works",[&]() {
+		flag2.wait();
+	}};
+
+	curan::utilities::Job job4{"This is a test to make sure that the thread pool works",[&]() {
+		flag2.wait();
+	}};
 
 	//expected behavior once we submit the first job we expect the number of tasks to increment by 1, then 2 ...
 	int number_of_tasks = 0;
@@ -94,11 +89,11 @@ int test_job_and_thread_pool(std::shared_ptr<curan::utilities::ThreadPool> share
 	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 4) \n";
 	std::cout << message;
-	flag1->set();
+	flag1.set(true);
 	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4)\n ";
 	std::cout << message;
-	flag2->set();
+	flag2.set(true);
 	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4) \n";
 	std::cout << message;
@@ -156,23 +151,6 @@ void test_thread_safe_queue(std::shared_ptr<curan::utilities::ThreadPool> shared
 	thread_to_run.join();
 }
 
-class TestingCallingMechanism  : std::enable_shared_from_this<TestingCallingMechanism>{
-	TestingCallingMechanism() {
-	
-	}
-
-public:
-
-	void call_functional(float number) {
-		std::printf("hello, my name is machine %f\n",number);
-	}
-
-	[[no_discard]] static std::shared_ptr<TestingCallingMechanism> make_shared() {
-		return std::shared_ptr<TestingCallingMechanism>(new TestingCallingMechanism());
-	}
-};
-
-
 void test_memory_buffers() {
 	std::shared_ptr<curan::utilities::MemoryBuffer> buff_of_interest;
 	{
@@ -188,11 +166,8 @@ void test_memory_buffers() {
 		std::string value_to_control = "1_2_3_4_5_6_7_8_9_10_12";
 		std::cout << "Expected buffer is: " << value_to_control << "\n";
 		std::shared_ptr<std::string> shared_memory_to_control = std::shared_ptr<std::string>(new std::string(value_to_control));
-		auto lambda = [shared_memory_to_control]() {
-			return asio::buffer(shared_memory_to_control->data(), shared_memory_to_control->size());
-			
-		};
-		buff_of_interest = curan::utilities::CaptureBuffer::make_shared(lambda);
+
+		buff_of_interest = curan::utilities::CaptureBuffer::make_shared(shared_memory_to_control->data(), shared_memory_to_control->size(),shared_memory_to_control);
 		//value to constrol is deleted as well as the local copy of the shared_memory_control, but the shared_pointer is
 		//stored into the lamda which is then copied into the capture memory buffer
 	}

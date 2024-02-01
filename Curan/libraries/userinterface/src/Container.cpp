@@ -35,7 +35,7 @@ callablefunction Container::call(){
 	return lamb;
 }
 
-void Container::framebuffer_resize(){
+void Container::framebuffer_resize(const SkRect& new_page_size){
     std::lock_guard<std::mutex> g{ get_mutex() };
 
 	if(!compiled)
@@ -53,7 +53,7 @@ void Container::framebuffer_resize(){
 									my_position.width() * rect.width(),
 									my_position.height() * rect.height());
 		(*iter_drawables)->set_position(temp);
-		(*iter_drawables)->framebuffer_resize();
+		(*iter_drawables)->framebuffer_resize(new_page_size);
 	}
 }
 
@@ -160,6 +160,9 @@ void Container::compile(){
 				rectangles_of_contained_layouts.push_back(widget_rect);
 			}
 		}
+		break;
+	default :
+		throw std::runtime_error("the Arrangement must be either vertical or horizontal");
 		break;
 	}
 	compiled = true;

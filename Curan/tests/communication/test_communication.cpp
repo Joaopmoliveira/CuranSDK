@@ -61,11 +61,9 @@ void foo(asio::io_context& cxt, unsigned short port) {
 			transMsg->SetTimeStamp(ts);
 			transMsg->Pack();
 
-			auto callable = [transMsg]() {
-				return asio::buffer(transMsg->GetPackPointer(), transMsg->GetPackSize());
-			};
-			auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+			auto to_send = curan::utilities::CaptureBuffer::make_shared(transMsg->GetPackPointer(), transMsg->GetPackSize(),transMsg);
 			server.write(to_send);
+			
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(10) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 			++counter;
@@ -124,7 +122,7 @@ int main() {
 		construction.endpoints = endpoints;
 		Client client{ construction };
 		auto connectionstatus = client.connect(bar);
-		auto val = io_context.run();
+		io_context.run();
 		curan::utilities::cout << "stopped running";
 		laucher.join();
 	}

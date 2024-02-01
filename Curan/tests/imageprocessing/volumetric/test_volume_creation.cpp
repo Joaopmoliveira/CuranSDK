@@ -38,6 +38,8 @@ void updateBaseTexture3D(vsg::floatArray3D& image, imageType::Pointer image_to_r
     IteratorType outputIt(out, out->GetRequestedRegion());
     for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
         imageType::IndexType idx = outputIt.GetIndex();
+        imageType::PointType current_world_coordinates;
+        out->TransformIndexToPhysicalPoint(idx,current_world_coordinates);
         //std::cout << "value: " << outputIt.Get() << std::endl;
         image.set(idx[0], idx[1], idx[2], outputIt.Get());
         //std::printf("%f\n",outputIt.Get());

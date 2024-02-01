@@ -371,9 +371,7 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 		int executed = 0;
 		size_t index = 0;
 		for(const auto& range : block_divisions){
-			curan::utilities::Job job;
-			job.description = "partial volume reconstruction";
-			job.function_to_execute = [index,range,paste_slice_info,&executed,&local_mut,&cv](){
+			auto lamb = [index,range,paste_slice_info,&executed,&local_mut,&cv](){
 				size_t local_index = index;
 				try{
 					int this_thread_extent[6];
@@ -394,6 +392,7 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 					std::cout << "exception was thrown in index :" << local_index << " with error message: " << e.what() << std::endl;
 				}
 			};
+			curan::utilities::Job job{"partial volume reconstruction",lamb};
 			++index;
 			pool->submit(std::move(job));
 		}

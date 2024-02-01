@@ -3,7 +3,7 @@
 namespace curan{
 namespace utilities{
 
-Job::Job(std::string descript, std::function<void(void)> funct) : function_to_execute{ funct }, description{ descript }
+Job::Job(std::string descript, std::function<void(void)> funct) : function_to_execute{ funct }, _description{ descript }
 {}
 
 Job::Job()

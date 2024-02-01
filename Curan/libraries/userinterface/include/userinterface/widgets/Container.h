@@ -58,7 +58,8 @@ namespace curan {
 
 		void compile() override;
 
-		void framebuffer_resize() override;
+		void framebuffer_resize(const SkRect& new_page_size) override;
+
 		Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
 
 		inline std::vector<SkRect> get_positioning() {

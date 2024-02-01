@@ -30,17 +30,16 @@ int server_function(){
 
 		message->serialize();
 
-		auto callable = [message]() {
-			return asio::buffer(message->get_buffer(),message->get_body_size()+message->get_header_size());
-		};
-		auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+		auto to_send = curan::utilities::CaptureBuffer::make_shared(message->get_buffer(),message->get_body_size()+message->get_header_size(),message);
 		server_joints.write(to_send);
+
         counter += 1.000;   
         std::this_thread::sleep_for(std::chrono::milliseconds(30));    
     }
     return 0;
     } catch(...){
         std::cout << "exception thrown\n";
+        return 0;
     }
 }
 
@@ -59,8 +58,8 @@ int client_callback(const size_t& loc, const std::error_code& err, std::shared_p
 void utilities_parser(){
     while(!io_context.stopped()){
         std::string previous_string;
-        curan::utilities::cout.outputqueue.wait_and_pop(previous_string);
-        std::cout << previous_string << "\n";
+        if(curan::utilities::cout.outputqueue.wait_and_pop(previous_string))
+            std::cout << previous_string << "\n";
     }
 
 }
@@ -87,10 +86,7 @@ int main(){
 
 	message->serialize();
 
-	auto callable = [message]() {
-		return asio::buffer(message->get_buffer(),message->get_body_size()+message->get_header_size());
-	};
-	auto to_send = curan::utilities::CaptureBuffer::make_shared(std::move(callable));
+	auto to_send = curan::utilities::CaptureBuffer::make_shared(message->get_buffer(),message->get_body_size()+message->get_header_size(),message);
 
     client_joints.write(to_send);
     

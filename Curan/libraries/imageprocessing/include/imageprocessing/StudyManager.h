@@ -10,6 +10,9 @@
 namespace curan{
     namespace image{
 
+		using callback_removed = std::function<void(void)>;
+		using callback_added = std::function<void(void)>;
+
 		class StudyManager {
 		public:
 
@@ -20,6 +23,12 @@ namespace curan{
 			bool get_study(uint64_t identifier, Study& out_vol);
 
 			void get_studies(std::map<uint64_t, Study>& previews);
+
+			template <typename... T>
+			void for_each(T &&...u)
+			{
+				std::for_each(study_container.begin(),study_container.end(),std::forward<T>(u)...);
+			}
 
 		private:
 			static uint32_t identifier;

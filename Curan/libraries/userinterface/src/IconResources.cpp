@@ -34,7 +34,8 @@ bool Icon::read(const char* s)
 	}
 	SkImageInfo information = SkImageInfo::Make(texWidth, texHeight, kBGRA_8888_SkColorType, kUnpremul_SkAlphaType);
 	pixmap = SkPixmap(information, pixels, texWidth * NUMBER_BYTES_PER_PIXEL);
-	image_to_display = SkImage::MakeFromRaster(pixmap, nullptr, nullptr);
+	
+	image_to_display = SkSurfaces::WrapPixels(pixmap)->makeImageSnapshot();
 	return true;
 }
 

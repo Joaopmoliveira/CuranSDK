@@ -118,6 +118,7 @@ void Window::connect_handler() {
 	glfwSetMouseButtonCallback(this->window, cursor_position_click_callback);
 	glfwSetScrollCallback(this->window, scroll_callback);
 	glfwSetDropCallback(this->window, item_droped_callback);
+	glfwSetKeyCallback(this->window,key_callback);
 }
 
 bool Window::initialize()
@@ -414,8 +415,7 @@ bool Window::initialize()
 		params.fColorSpace = SkColorSpace::MakeSRGBLinear();
 		if (usageFlags & VK_IMAGE_USAGE_SAMPLED_BIT) {
 			GrBackendTexture backendTexture(swapChainExtent.width, swapChainExtent.height, info);
-			auto localsksurface = SkSurface::MakeFromBackendTexture(
-				skia_context.get(), backendTexture, kTopLeft_GrSurfaceOrigin,
+			auto localsksurface = SkSurfaces::WrapBackendTexture(skia_context.get(), backendTexture, kTopLeft_GrSurfaceOrigin,
 				params.fMSAASampleCount,
 				colorType, params.fColorSpace, &params.fSurfaceProps);
 			swapSurface[i] = localsksurface.release();
@@ -424,7 +424,7 @@ bool Window::initialize()
 				throw std::runtime_error("Could not deal with input definitions");
 			}
 			GrBackendRenderTarget backendRT(swapChainExtent.width, swapChainExtent.height, params.fMSAASampleCount, info);
-			swapSurface[i] = SkSurface::MakeFromBackendRenderTarget(
+			swapSurface[i] = SkSurfaces::WrapBackendRenderTarget(
 				skia_context.get(), backendRT, kTopLeft_GrSurfaceOrigin, colorType,
 				params.fColorSpace, &params.fSurfaceProps).release();
 		}
@@ -735,7 +735,7 @@ bool Window::recreateDisplay()
 
 		if (usageFlags & VK_IMAGE_USAGE_SAMPLED_BIT) {
 			GrBackendTexture backendTexture(swapChainExtent.width, swapChainExtent.height, info);
-			swapSurface[i] = SkSurface::MakeFromBackendTexture(
+			swapSurface[i] = SkSurfaces::WrapBackendTexture(
 				skia_context.get(), backendTexture, kTopLeft_GrSurfaceOrigin,
 						params.fMSAASampleCount,
 						colorType, params.fColorSpace, &params.fSurfaceProps).release();
@@ -744,7 +744,7 @@ bool Window::recreateDisplay()
 				throw std::runtime_error("Could not deal with input definitions");
 			}
 			GrBackendRenderTarget backendRT(swapChainExtent.width, swapChainExtent.height, params.fMSAASampleCount, info);
-			swapSurface[i] = SkSurface::MakeFromBackendRenderTarget(
+			swapSurface[i] = SkSurfaces::WrapBackendRenderTarget(
 				skia_context.get(), backendRT, kTopLeft_GrSurfaceOrigin, colorType,
 					params.fColorSpace, &params.fSurfaceProps).release();
 		}

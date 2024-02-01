@@ -62,13 +62,11 @@ try{
     };
     std::thread to_stop{stopper};
 
- 
     char to_send = 10;
-    size_t nread = 0;
     for (int counter = 0;value.load();++counter) {
         asio::write(serial,asio::buffer(&to_send,1));
         asio::streambuf input_buffer;
-        nread = asio::read_until(
+        asio::read_until(
             serial, input_buffer, 'e'
         );
         std::istream is(&input_buffer);

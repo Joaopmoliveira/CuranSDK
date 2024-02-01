@@ -106,7 +106,7 @@ std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_p
 	auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	*slidercontainer << std::move(container) << std::move(container1) << std::move(container2) << std::move(container3) << std::move(container4) << std::move(container5) << std::move(container6);
 
-	return Overlay::make(std::move(slidercontainer),SK_ColorTRANSPARENT);
+	return Overlay::make(std::move(slidercontainer),SK_ColorTRANSPARENT,true);
 }
 
 
@@ -114,14 +114,14 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 	using namespace curan::ui;
 
 	auto button = Button::make("Display Circles",resources);
-	button->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255,30,144,255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
+	button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 	button->add_press_call([&processing](Button* button, Press press ,ConfigDraw* config) {
 			bool temp = processing->show_circles.load();
 			processing->show_circles.store(!temp);
 	});
 
 	auto button2 = Button::make("Options",resources);
-	button2->set_click_color(SK_ColorGRAY).set_hover_color(SkColorSetARGB(255,30,144,255)).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(100, 80));
+	button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 	button2->add_press_call([&processing,&resources](Button* button, Press press ,ConfigDraw* config) {
 			config->stack_page->stack(create_filtercontroler_overlay(processing,resources));
 	});
@@ -131,7 +131,7 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 	viwers_container->set_divisions({0.0 , 0.5 , 1.0});
 	viwers_container->set_color(SK_ColorTRANSPARENT);
 	
-	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125));
+	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125),true);
 }
 
 curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {
@@ -148,18 +148,12 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	*displaycontainer << std::move(igtlink_viewer) << std::move(image_display);
 	displaycontainer->set_divisions({ 0.0 , 0.5 , 1.0 });
 
-	auto flag = curan::utilities::Flag::make_shared_flag();
-
-	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, flag, data);
+	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, data);
 	processing->port = data.port;
 
 	auto start_connection_callback = [&data,processing](Button* button, Press press ,ConfigDraw* config) {
-		if (!processing->connection_status->value()) {
-			curan::utilities::Job val;
-			val.description = "connection thread";
-			val.function_to_execute = [processing]() {
-				processing->communicate();
-			};
+		if (!processing->connection_status.value()) {
+			curan::utilities::Job val{"connection thread",[processing]() { processing->communicate();}};
 			data.shared_pool->submit(val);
 		}
 		else {

@@ -77,3 +77,70 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 add_subdirectory(volumetric)
+
+
+add_executable(extract_oblique_slice extract_oblique_slice.cpp)
+
+target_compile_definitions(extract_oblique_slice PRIVATE vsgXchange_FOUND)
+target_compile_definitions(extract_oblique_slice PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(extract_oblique_slice
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+add_executable(real_time_extract_oblique_slice real_time_extract_oblique_slice.cpp)
+
+target_compile_definitions(real_time_extract_oblique_slice PRIVATE vsgXchange_FOUND)
+target_compile_definitions(real_time_extract_oblique_slice PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(real_time_extract_oblique_slice
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+add_executable(test_resampling_second_attempt test_resampling_second_attempt.cpp)
+
+target_compile_definitions(test_resampling_second_attempt PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_resampling_second_attempt
+PUBLIC
+${ITK_LIBRARIES}
+)
+
+add_executable(test_just_centroid_computation single_isolated_testing.cpp)
+
+target_compile_definitions(test_just_centroid_computation PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_just_centroid_computation PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_just_centroid_computation
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+add_executable(real_time_extract_oblique_slice_two_dim real_time_extract_oblique_slice_two_dim.cpp)
+
+target_compile_definitions(real_time_extract_oblique_slice_two_dim PRIVATE vsgXchange_FOUND)
+target_compile_definitions(real_time_extract_oblique_slice_two_dim PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(real_time_extract_oblique_slice_two_dim
+PUBLIC
+communication
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+add_executable(real_time_extract_oblique_slice_two_dim_centered_traj real_time_extract_oblique_slice_two_dim_centered_trajectory.cpp)
+
+target_compile_definitions(real_time_extract_oblique_slice_two_dim_centered_traj PRIVATE vsgXchange_FOUND)
+target_compile_definitions(real_time_extract_oblique_slice_two_dim_centered_traj PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(real_time_extract_oblique_slice_two_dim_centered_traj
+PUBLIC
+communication
+imageprocessing
+${ITK_LIBRARIES}
+)

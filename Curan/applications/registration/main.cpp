@@ -279,8 +279,7 @@ int main(int argc, char **argv)
     }
     catch (...)
     {
-        std::string error_name = "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n" + std::string(CURAN_COPIED_RESOURCE_PATH);
-        std::printf(error_name.c_str());
+        std::cout << "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n" << std::string(CURAN_COPIED_RESOURCE_PATH);
         return 1;
     }
 

@@ -1,5 +1,4 @@
 add_library(utils STATIC
-src/Flag.cpp
 src/Job.cpp
 src/Logger.cpp
 src/TheadPool.cpp

@@ -13,14 +13,14 @@ using Normal = Eigen::Vector4f;
 using PointCloud = Eigen::Matrix<float, Eigen::Dynamic, 3>;
 using HomogeneousPC = Eigen::Matrix<float, Eigen::Dynamic, 4>;
 
-inline float k(int n, float p, float w) {
+inline double k(int n, float p, float w) {
     return std::log(1 - p) / std::log(1 - std::pow(w, n));
 }
 
-inline float randomFloat() { return float(std::rand()) / float(RAND_MAX); }
+inline double randomFloat() { return std::rand() / float(RAND_MAX); }
 
 Normal getNormal(PointCloud const &pc) {
-    const int N = pc.rows();
+    const size_t N = pc.rows();
     HomogeneousPC hpc(N, 4);
     hpc(Eigen::all, Eigen::seq(0, 2)) << pc;
     hpc(Eigen::all, Eigen::last) << Eigen::MatrixXf::Ones(N, 1);
@@ -40,7 +40,7 @@ Normal getNormal(HomogeneousPC const &hpc) {
 
 void find(Eigen::VectorXi const &booleanVector,
           std::vector<int> &inliersIndexes) {
-    const int N = booleanVector.count();
+    const size_t N = booleanVector.count();
     inliersIndexes.resize(N, 0);
     size_t index = 0, element = 0;
     for (auto const &m : booleanVector) {
@@ -78,12 +78,12 @@ std::tuple<Normal, PointCloud>
 ransacPlane(PointCloud const &pc, float threshold, int safeguard = {}) {
     Normal normal;
     normal.setZero();
-    const int N = pc.rows();
+    const size_t N = pc.rows();
     HomogeneousPC hpc(N, 4);
     hpc(Eigen::all, Eigen::seq(0, 2)) << pc;
     hpc(Eigen::all, Eigen::last) << Eigen::MatrixXf::Ones(N, 1);
 
-    const int maxIter = std::round(2 * k(3, .9, .01));
+    const size_t maxIter = std::round(2 * k(3, .9, .01));
     int sg = !safeguard ? std::round(.1 * maxIter) : safeguard;
 
     int iteration = 0, histIter = 0;

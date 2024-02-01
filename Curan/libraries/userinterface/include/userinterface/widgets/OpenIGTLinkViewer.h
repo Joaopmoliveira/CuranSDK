@@ -69,8 +69,8 @@ namespace curan {
 
 			drawablefunction draw() override;
 			callablefunction call() override;
-			void framebuffer_resize() override;
-			void compile();
+
+			void compile() override;
 
 			inline std::array<sk_sp<SkTextBlob>, 4>& get_table_header() {
 				return table_headers;

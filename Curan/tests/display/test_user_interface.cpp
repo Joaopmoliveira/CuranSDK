@@ -46,7 +46,6 @@
 #include "include/core/SkGraphics.h"
 #include "include/core/SkICC.h"
 #include "include/core/SkImage.h"
-#include "include/core/SkImageEncoder.h"
 #include "include/core/SkImageFilter.h"
 #include "include/core/SkImageGenerator.h"
 #include "include/core/SkImageInfo.h"
@@ -68,7 +67,6 @@
 #include "include/core/SkPictureRecorder.h"
 #include "include/core/SkPixelRef.h"
 #include "include/core/SkPixmap.h"
-#include "include/core/SkPngChunkReader.h"
 #include "include/core/SkPoint.h"
 #include "include/core/SkPoint3.h"
 #include "include/core/SkPromiseImageTexture.h"
@@ -121,10 +119,12 @@
 #include "include/effects/SkRuntimeEffect.h"
 #include "include/effects/SkShaderMaskFilter.h"
 #include "include/effects/SkStrokeAndFillPathEffect.h"
-#include "include/effects/SkTableColorFilter.h"
 #include "include/effects/SkTableMaskFilter.h"
 #include "include/effects/SkTrimPathEffect.h"
 #include "include/encode/SkJpegEncoder.h"
+#include "include/gpu/ganesh/SkSurfaceGanesh.h"
+#include "include/gpu/vk/GrVkBackendContext.h"
+#include "include/gpu/vk/VulkanExtensions.h"
 #include "include/gpu/GpuTypes.h"
 #include "include/gpu/GrBackendDrawableInfo.h"
 #include "include/gpu/GrBackendSemaphore.h"
@@ -164,112 +164,6 @@
 #include "include/utils/SkTextUtils.h"
 #include "include/utils/SkTraceEventPhase.h"
 #include "include/utils/mac/SkCGUtils.h"
-
-//#include "include/core/SkBitmap.h"
-//#include "include/core/SkBlendMode.h"
-//#include "include/core/SkBlurTypes.h"
-//#include "include/core/SkCanvas.h"
-//#include "include/core/SkCanvasVirtualEnforcer.h"
-//#include "include/core/SkColor.h"
-//#include "include/core/SkColorFilter.h"
-//#include "include/core/SkEncodedImageFormat.h"
-//#include "include/core/SkFont.h"
-//#include "include/core/SkFontArguments.h"
-//#include "include/core/SkFontMetrics.h"
-//#include "include/core/SkFontMgr.h"
-//#include "include/core/SkFontParameters.h"
-//#include "include/core/SkFontStyle.h"
-//#include "include/core/SkFontTypes.h"
-//#include "include/core/SkGraphics.h"
-//#include "include/core/SkImage.h"
-//#include "include/core/SkImageEncoder.h"
-//#include "include/core/SkImageFilter.h"
-//#include "include/core/SkImageGenerator.h"
-//#include "include/core/SkImageInfo.h"
-//#include "include/core/SkM44.h"
-//#include "include/core/SkMallocPixelRef.h"
-//#include "include/core/SkMaskFilter.h"
-//#include "include/core/SkMath.h"
-//#include "include/core/SkMatrix.h"
-//#include "include/core/SkMilestone.h"
-//#include "include/core/SkOverdrawCanvas.h"
-//#include "include/core/SkPaint.h"
-//#include "include/core/SkPath.h"
-//#include "include/core/SkPathBuilder.h"
-//#include "include/core/SkPathEffect.h"
-//#include "include/core/SkPathMeasure.h"
-//#include "include/core/SkPicture.h"
-//#include "include/core/SkPictureRecorder.h"
-//#include "include/core/SkPixelRef.h"
-//#include "include/core/SkPixmap.h"
-//#include "include/core/SkPngChunkReader.h"
-//#include "include/core/SkPoint.h"
-//#include "include/core/SkPoint3.h"
-//#include "include/core/SkPromiseImageTexture.h"
-//#include "include/core/SkRRect.h"
-//#include "include/core/SkRSXform.h"
-//#include "include/core/SkRasterHandleAllocator.h"
-//#include "include/core/SkRect.h"
-//#include "include/core/SkRefCnt.h"
-//#include "include/core/SkRegion.h"
-//#include "include/core/SkScalar.h"
-//#include "include/core/SkSerialProcs.h"
-//#include "include/core/SkShader.h"
-//#include "include/core/SkSize.h"
-//#include "include/core/SkStream.h"
-//#include "include/core/SkString.h"
-//#include "include/core/SkStrokeRec.h"
-//#include "include/core/SkSurface.h"
-//#include "include/core/SkSurfaceCharacterization.h"
-//#include "include/core/SkSurfaceProps.h"
-//#include "include/core/SkSwizzle.h"
-//#include "include/core/SkTextBlob.h"
-//#include "include/core/SkTime.h"
-//#include "include/core/SkTraceMemoryDump.h"
-//#include "include/core/SkTypeface.h"
-//#include "include/core/SkTypes.h"
-//#include "include/core/SkUnPreMultiply.h"
-//#include "include/core/SkVertices.h"
-//#include "include/core/SkYUVAInfo.h"
-//#include "include/core/SkYUVAPixmaps.h"
-//#include "include/docs/SkPDFDocument.h"
-//#include "include/docs/SkXPSDocument.h"
-//#include "include/effects/Sk1DPathEffect.h"
-//#include "include/effects/Sk2DPathEffect.h"
-//#include "include/effects/SkBlurMaskFilter.h"
-//#include "include/effects/SkColorMatrix.h"
-//#include "include/effects/SkColorMatrixFilter.h"
-//#include "include/effects/SkCornerPathEffect.h"
-//#include "include/effects/SkDashPathEffect.h"
-//#include "include/effects/SkDiscretePathEffect.h"
-//#include "include/effects/SkGradientShader.h"
-//#include "include/effects/SkHighContrastFilter.h"
-//#include "include/effects/SkImageFilters.h"
-//#include "include/effects/SkOverdrawColorFilter.h"
-//#include "include/effects/SkRuntimeEffect.h"
-//#include "include/effects/SkShaderMaskFilter.h"
-//#include "include/effects/SkTableColorFilter.h"
-//#include "include/effects/SkTableMaskFilter.h"
-//#include "include/encode/SkJpegEncoder.h"
-//#include "include/gpu/GrBackendDrawableInfo.h"
-//#include "include/gpu/GrBackendSemaphore.h"
-//#include "include/gpu/GrBackendSurface.h"
-//#include "include/gpu/GrBackendSurfaceMutableState.h"
-//#include "include/gpu/GrConfig.h"
-//#include "include/gpu/GrContextOptions.h"
-//#include "include/gpu/GrContextThreadSafeProxy.h"
-//#include "include/gpu/GrDirectContext.h"
-//#include "include/gpu/GrDriverBugWorkarounds.h"
-//#include "include/gpu/GrRecordingContext.h"
-//#include "include/gpu/GrTypes.h"
-//#include "include/gpu/GrYUVABackendTextures.h"
-//#include "include/gpu/vk/GrVkBackendContext.h"
-//#include "include/gpu/vk/GrVkExtensions.h"
-//#include "include/gpu/vk/GrVkMemoryAllocator.h"
-//#include "include/gpu/vk/GrVkTypes.h"
-//#include "include/gpu/vk/GrVkVulkan.h"
-//#include "include/pathops/SkPathOps.h"
-//#include "include/ports/SkTypeface_win.h"
 
 #include <string>
 #include <variant>
@@ -337,58 +231,6 @@ void item_droped_callback(GLFWwindow* window, int count, const char** paths);
 
 using init_callback = std::function<void(void)>;
 
-//class Container {
-//
-//};
-//
-//class Page {
-//protected:
-//	SkColor paint_page;
-//	std::atomic<bool> is_dirty;
-//	std::shared_ptr<Container> page_layout;
-//	std::vector<std::shared_ptr<Widget>> widgets_to_callback;
-//	init_callback intialization_callback;
-//public:
-//
-//	struct Info {
-//		SkColor paint_page;
-//		std::shared_ptr<Container> page_layout;
-//		init_callback initialize_page_callback;
-//	};
-//
-//	Page(Info& info);
-//	void draw(SkCanvas* canvas_to_draw, SkRect& window_region);
-//	static std::shared_ptr<Page> make(Info& info);
-//	void callback(Signal signal, bool* interacted);
-//	void monitor(std::shared_ptr<Widget> widg);
-//	void started();
-//};
-//
-//
-//class Widget {
-//	SkRect widget_position = SkRect::MakeWH(1, 1);
-//	Page* parent;
-//public:
-//	Widget();
-//	virtual void draw(SkCanvas* canvas, SkRect& widget_rect) = 0;
-//	virtual void callback(Signal signal, bool* interacted) = 0;
-//	inline bool interacts(SkScalar x, SkScalar y) {
-//	
-//	}
-//	void set_dirty() {
-//	
-//	}
-//	bool dirty() {
-//	
-//	}
-//	void set_position(SkRect& rect) {
-//	
-//	}
-//	void get_position(SkRect& rect) {
-//	
-//	}
-//};
-
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicsFamily;
 	std::optional<uint32_t> presentFamily;
@@ -437,6 +279,9 @@ private:
 		uint32_t instanceVersion = VK_MAKE_VERSION(1, 0, 0);;
 		// Provided by VK_VERSION_1_1
 		VkResult res = vkEnumerateInstanceVersion(&instanceVersion);
+		if (res != VkResult::VK_SUCCESS) {
+			return false;
+		}
 
 		uint32_t apiVersion = VK_MAKE_VERSION(1, 0, 0);
 		if (instanceVersion >= VK_MAKE_VERSION(1, 1, 0)) {
@@ -492,7 +337,7 @@ private:
 
 		res = vkCreateInstance(&instance_create, nullptr, &instance);
 
-		if (res < 0) {
+		if (res != VkResult::VK_SUCCESS) {
 			return false;
 		}
 
@@ -600,6 +445,7 @@ private:
 			instanceExtensionNames.data(),
 			(uint32_t)deviceExtensionNames.size(),
 			deviceExtensionNames.data());
+		return true;
 	}
 	bool init_instance_extensions_and_layers(std::vector<VkExtensionProperties>& instanceExtensions, std::vector<VkLayerProperties>& instanceLayers) {
 		VkResult res;
@@ -1166,7 +1012,7 @@ public:
 
 			if (usageFlags & VK_IMAGE_USAGE_SAMPLED_BIT) {
 				GrBackendTexture backendTexture(swapChainExtent.width, swapChainExtent.height, info);
-				swapSurface[i] = SkSurface::MakeFromBackendTexture(
+				swapSurface[i] = SkSurfaces::WrapBackendTexture(
 					skia_context.get(), backendTexture, kTopLeft_GrSurfaceOrigin,
 					params.fMSAASampleCount,
 					colorType, params.fColorSpace, &params.fSurfaceProps).release();
@@ -1176,7 +1022,7 @@ public:
 					throw std::runtime_error("Could not deal with input definitions");
 				}
 				GrBackendRenderTarget backendRT(swapChainExtent.width, swapChainExtent.height, params.fMSAASampleCount, info);
-				swapSurface[i] = SkSurface::MakeFromBackendRenderTarget(
+				swapSurface[i] = SkSurfaces::WrapBackendRenderTarget(
 					skia_context.get(), backendRT, kTopLeft_GrSurfaceOrigin, colorType,
 					params.fColorSpace, &params.fSurfaceProps).release();
 
@@ -1202,7 +1048,9 @@ public:
 				throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 		fCurrentBackbufferIndex = imageCount;
+		return true;
 	}
+
 	void destroy()
 	{
 		vkDeviceWaitIdle(device);
@@ -1237,9 +1085,11 @@ public:
 		int size = signal_queue.size();
 		for (int index = 0; index < size; ++index) {
 			Signal signal;
-			bool val = signal_queue.try_pop(signal);
+			if(signal_queue.try_pop(signal)){
+				std::cout << "coule not pop because something went wrong\n";
+			}
 		}
-		std::cout << "signals processed" << size << "/n";
+		std::cout << "signals processed" << size << "\n";
 	}
 	bool recreateDisplay()
 	{
@@ -1484,7 +1334,7 @@ public:
 
 			if (usageFlags & VK_IMAGE_USAGE_SAMPLED_BIT) {
 				GrBackendTexture backendTexture(swapChainExtent.width, swapChainExtent.height, info);
-				swapSurface[i] = SkSurface::MakeFromBackendTexture(
+				swapSurface[i] = SkSurfaces::WrapBackendTexture(
 					skia_context.get(), backendTexture, kTopLeft_GrSurfaceOrigin,
 					params.fMSAASampleCount,
 					colorType, params.fColorSpace, &params.fSurfaceProps).release();
@@ -1494,7 +1344,7 @@ public:
 					throw std::runtime_error("Could not deal with input definitions");
 				}
 				GrBackendRenderTarget backendRT(swapChainExtent.width, swapChainExtent.height, params.fMSAASampleCount, info);
-				swapSurface[i] = SkSurface::MakeFromBackendRenderTarget(
+				swapSurface[i] = SkSurfaces::WrapBackendRenderTarget(
 					skia_context.get(), backendRT, kTopLeft_GrSurfaceOrigin, colorType,
 					params.fColorSpace, &params.fSurfaceProps).release();
 
@@ -1520,7 +1370,9 @@ public:
 				throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 		fCurrentBackbufferIndex = imageCount;
+		return true;
 	}
+	
 	BackbufferInfo* getAvailableBackBuffer()
 	{
 		if (fBackbuffers == nullptr)

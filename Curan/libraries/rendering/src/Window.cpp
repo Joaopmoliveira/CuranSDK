@@ -16,7 +16,7 @@ Window::Window(Info& info) : number_of_images{5} {
 
     std::visit(utilities::overloaded{
                 [this](bool arg) { traits->fullscreen = true; },
-                [this](WindowSize size) { traits->width, traits->height; traits->fullscreen = false; }
+                [this](WindowSize size) { traits->width = size.width; traits->height= size.height; traits->fullscreen = false; }
         }, info.window_size);
 
     traits->screenNum = info.screen_number;
@@ -64,12 +64,12 @@ Window::Window(Info& info) : number_of_images{5} {
     
     auto ambientLight = vsg::AmbientLight::create();
     ambientLight->name = "ambient";
-    ambientLight->color.set(.5, .5, .5);
-    ambientLight->intensity = 0.1f;
+    ambientLight->color.set(.9, .9, .9);
+    ambientLight->intensity = 0.4f;
    
     auto directionalLight = vsg::DirectionalLight::create();
     directionalLight->name = "directional";
-    directionalLight->color.set(.5f, .5f, .5f);
+    directionalLight->color.set(.9f, .9f, .9f);
     directionalLight->intensity = 1.0f;
     directionalLight->direction.set(0.0, 0.0, -1.0);
     
@@ -130,7 +130,6 @@ bool Window::run_once() {
 void Window::run() {
     // rendering main loop
     while (viewer->advanceToNextFrame()) {
-        auto start = std::chrono::steady_clock::now();
         std::lock_guard<std::mutex> g{mut};
         auto iter = deleted_resource_manager.begin();
         while(iter!=deleted_resource_manager.end()){
@@ -145,8 +144,6 @@ void Window::run() {
         viewer->update();
         viewer->recordAndSubmit();
         viewer->present();
-        auto end = std::chrono::steady_clock::now();
-        //std::printf("Elapsed time in mili: %d \n",(int)std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
     }
 }
 

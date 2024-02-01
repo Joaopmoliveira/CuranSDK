@@ -8,7 +8,6 @@
 #include <vulkan/vulkan.h>
 
 #include "include/core/SkTypes.h"
-//#define SK_VULKAN
 #include "include/core/SkAlphaType.h"
 #include "include/core/SkAnnotation.h"
 #include "include/core/SkBBHFactory.h"
@@ -47,7 +46,6 @@
 #include "include/core/SkGraphics.h"
 #include "include/core/SkICC.h"
 #include "include/core/SkImage.h"
-#include "include/core/SkImageEncoder.h"
 #include "include/core/SkImageFilter.h"
 #include "include/core/SkImageGenerator.h"
 #include "include/core/SkImageInfo.h"
@@ -121,10 +119,12 @@
 #include "include/effects/SkRuntimeEffect.h"
 #include "include/effects/SkShaderMaskFilter.h"
 #include "include/effects/SkStrokeAndFillPathEffect.h"
-#include "include/effects/SkTableColorFilter.h"
 #include "include/effects/SkTableMaskFilter.h"
 #include "include/effects/SkTrimPathEffect.h"
 #include "include/encode/SkJpegEncoder.h"
+#include "include/gpu/ganesh/SkSurfaceGanesh.h"
+#include "include/gpu/vk/GrVkBackendContext.h"
+#include "include/gpu/vk/VulkanExtensions.h"
 #include "include/gpu/GpuTypes.h"
 #include "include/gpu/GrBackendDrawableInfo.h"
 #include "include/gpu/GrBackendSemaphore.h"
@@ -167,11 +167,12 @@
 
 constexpr auto DEFAULT_TEXT_SIZE = 15.0;
 constexpr auto DEFAULT_FRAME_DELAY = std::chrono::milliseconds(15);
-constexpr SkScalar VOLUME_PREVIEW_HEIGHT = 200.0f;
-constexpr SkScalar VOLUME_PREVIEW_WIDTH = 150.0f;
-constexpr SkScalar VOLUME_IMAGE_HEIGHT = 170.0f;
-constexpr SkScalar VOLUME_PREVIEW_EXTREMA_SPACING_COLUNM = 20.f;
-constexpr SkScalar VOLUME_PREVIEW_EXTREMA_SPACING_LINE = 20.0f;
+constexpr SkScalar ITEM_PREVIEW_HEIGHT = 200.0f;
+constexpr SkScalar ITEM_PREVIEW_WIDTH = 150.0f;
+constexpr SkScalar ITEM_IMAGE_HEIGHT = 170.0f;
+constexpr SkScalar ITEM_MAXIMUM_SPACING = 40.0f;
+constexpr SkScalar ITEM_PREVIEW_EXTREMA_SPACING_COLUNM = 20.f;
+constexpr SkScalar ITEM_PREVIEW_EXTREMA_SPACING_LINE = 20.0f;
 constexpr int NUMBER_BYTES_PER_PIXEL = 4;
 constexpr SkScalar TASK_PREVIEW_HEIGHT = 150.0f;
 constexpr SkScalar MANIPULATOR_BAR_HEIGHT = 50;

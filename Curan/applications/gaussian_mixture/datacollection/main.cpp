@@ -89,14 +89,14 @@ void signal_handler(int signal)
     recordings.invalidate();
 }
 
-void robot_control(curan::utilities::SafeQueue<KUKA::FRI::LBRState>& to_record,std::shared_ptr<curan::utilities::Flag> flag) {
+void robot_control(curan::utilities::SafeQueue<KUKA::FRI::LBRState>& to_record,curan::utilities::Flag& flag) {
 	try{
 	curan::utilities::cout << "Lauching robot control thread\n";
 	MyLBRClient client = MyLBRClient(to_record);
 	KUKA::FRI::UdpConnection connection{};
 	KUKA::FRI::ClientApplication app(connection, client);
 	app.connect(DEFAULT_PORTID, NULL);
-	while (flag->value())
+	while (flag.value())
 		app.step();
 	app.disconnect();
 	return;
@@ -197,10 +197,10 @@ int main(int argc, char* argv[]) {
 	}
 	std::string filename{argv[1]};
 	
-	auto robot_flag = curan::utilities::Flag::make_shared_flag();
-	robot_flag->set();
+	curan::utilities::Flag robot_flag;
+	robot_flag.set(false);
 
-	auto robot_functional_control = [robot_flag]() {
+	auto robot_functional_control = [&]() {
 		robot_control(recordings, robot_flag);
 	};
 
@@ -231,10 +231,9 @@ int main(int argc, char* argv[]) {
 	std::list<std::list<Eigen::Matrix<double,4,4>>> demonstrations;
 	std::list<Eigen::Matrix<double,4,4>> list_of_homogenenous_readings;
 	bool previous_state = record_data.load();
-	bool state_changed = record_data.load()!=previous_state;
 	while(!recordings.is_invalid()){
 		auto snapshot_record_data = record_data.load();
-		state_changed = snapshot_record_data!=previous_state;
+		bool state_changed = snapshot_record_data!=previous_state;
 		if(state_changed){
 			previous_state = snapshot_record_data;
 			if(previous_state){
@@ -256,7 +255,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	robot_flag->clear();
+	robot_flag.set(false);
 	thred_robot_control.join();
 	thred_robot_render.join();
 
