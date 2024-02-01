@@ -182,10 +182,6 @@ Eigen::MatrixXd calculate_image_centroid(const Eigen::Matrix<double, 3, 1> &volu
     return intersections;
 }
 
-template <typename T> int sgn(T val) {
-    return (T(0) < val) - (val < T(0));
-}
-
 InputImageType::Pointer load_dicom()
 {
 
