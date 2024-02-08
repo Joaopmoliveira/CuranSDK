@@ -1,6 +1,7 @@
 add_library(robotutils STATIC
 src/LBRController.cpp
 src/HandGuidance.cpp
+src/PassiveControllerAude.cpp
 )
 
 target_include_directories(robotutils
@@ -17,4 +18,5 @@ Eigen3::Eigen
 KukaRobotLibrary 
 FRILibrary
 robotParameters
+gaussianmixture
 )

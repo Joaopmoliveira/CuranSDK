@@ -37,7 +37,9 @@ struct EigenState{
     }
 };
 
-typedef EigenState (*RobotController)(void* user_pointer,kuka::Robot* robot, RobotParameters* iiwa, EigenState state);
+struct UserData{
+    virtual EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state);
+};
 
 struct State{
     State(const KUKA::FRI::LBRState& state);
@@ -113,10 +115,12 @@ struct RobotLimits
 
 using AtomicState = std::atomic<State>;
 
+
+
 class RobotLBR : public KUKA::FRI::LBRClient
 {
 public:
-    RobotLBR(RobotController desired_controller);
+    RobotLBR(UserData* data);
 
     ~RobotLBR();
 
@@ -139,6 +143,7 @@ private:
     std::unique_ptr<RobotParameters> iiwa;
     State current_state;
     EigenState eigen_state;
+    UserData* user_data = nullptr;
     AtomicState atomic_state;
 
     RobotLimits myIIWALimits;
@@ -149,8 +154,6 @@ private:
     ToolData* myTool;
 
     Vector3d pointPosition = Vector3d(0, 0, 0.045); 
-
-    RobotController controller = nullptr; 
 
     double sampleTime = 0;
     double currentTime = 0;

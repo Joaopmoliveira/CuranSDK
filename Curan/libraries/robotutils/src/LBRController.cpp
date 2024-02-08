@@ -15,6 +15,10 @@ State::State(const  KUKA::FRI::LBRState& state){
 
 }
 
+EigenState&& UserData::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state){
+    return std::move(state);
+}
+
 EigenState State::converteigen(){
     EigenState converted_state;
     converted_state.q = convert(q);
@@ -80,8 +84,8 @@ void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d&
     }
 }
 
-RobotLBR::RobotLBR(RobotController desired_controller) : controller{desired_controller}{
-    if(controller==nullptr)
+RobotLBR::RobotLBR(UserData* in_struct) : user_data{in_struct}{
+    if(user_data==nullptr)
         throw std::runtime_error("failed to supply a controller to be used");
 }
 
@@ -141,7 +145,7 @@ void RobotLBR::command(){
     current_state.differential(State{robotState()});
     current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
     eigen_state = current_state.converteigen();
-    eigen_state = (*controller)(nullptr,robot.get(),iiwa.get(),eigen_state);
+    eigen_state = std::move(user_data->update(robot.get(),iiwa.get(),std::move(eigen_state)));
     eigen_state.cmd_tau = addConstraints(eigen_state.cmd_tau, 0.005);
 
     atomic_state.store(current_state,std::memory_order_relaxed);
