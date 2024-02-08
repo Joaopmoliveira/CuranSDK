@@ -5,7 +5,7 @@ ObstacleAvoidance::ObstacleAvoidance(RobotParameters* robotParam, double radiusO
 	noOfExceededCartesianDirections = 0;
 	noOfExceededPoints = 0;
 	positionVector = 0.0;
-	for (int iii= 0; iii< NUMBER_OF_JOINTS; iii++)
+	for (int iii= 0; iii< LBR_N_JOINTS; iii++)
 	{
 		if (iii <3)
 		{
@@ -25,11 +25,11 @@ ObstacleAvoidance::ObstacleAvoidance(RobotParameters* robotParam, double radiusO
 	
 	cartRepulsionForce_i = VectorNd::Zero(2,1);
 
-	torque_star_excluding_ob = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
+	torque_star_excluding_ob = VectorNd::Zero(LBR_N_JOINTS, 1);
 
-	J_ob = MatrixNd::Zero(6,NUMBER_OF_JOINTS);
-	JRobotPoint = MatrixNd::Zero(6,NUMBER_OF_JOINTS);
-	constraintNullspace = MatrixNd::Identity(NUMBER_OF_JOINTS, NUMBER_OF_JOINTS);
+	J_ob = MatrixNd::Zero(6,LBR_N_JOINTS);
+	JRobotPoint = MatrixNd::Zero(6,LBR_N_JOINTS);
+	constraintNullspace = MatrixNd::Identity(LBR_N_JOINTS, LBR_N_JOINTS);
 
 	iiwa14 = robotParam;
 }
@@ -50,14 +50,14 @@ int ObstacleAvoidance::isObstacleDetected()
 	exceededCartIndex[1] = 1;
 	exceededCartIndex[2] = -1;
 
-	for (int i=0; i< NUMBER_OF_JOINTS; i++)
+	for (int i=0; i< LBR_N_JOINTS; i++)
 	{
 		exceededPointIndex[i] = -1;
 	}
 
 	// Run only for x- and y- directions
 				
-	for (int i=0; i< NUMBER_OF_JOINTS; i++)
+	for (int i=0; i< LBR_N_JOINTS; i++)
 	{
 		positionVectorArray[i] = sqrt(pow(iiwa14->xRobotPoints(i,0)-xCenter(0),2) + pow(iiwa14->xRobotPoints(i,1)-xCenter(1) , 2));
 		if ( positionVectorArray[i] <= (rOb + rAct + rHull) ) 
@@ -75,7 +75,7 @@ int ObstacleAvoidance::isObstacleDetected()
 	}
 
 	noOfExceededPoints = counter;
-	jacobian.resize(noOfExceededPoints*2,NUMBER_OF_JOINTS);
+	jacobian.resize(noOfExceededPoints*2,LBR_N_JOINTS);
 	lambda.resize(noOfExceededPoints*2, noOfExceededPoints*2);
 	force_tilde_i.resize(noOfExceededPoints*2,1);
 	//positionVectorElbow = sqrt(pow(xRobotPoint(0)-xCenter(0),2) + pow(xRobotPoint(1)-xCenter(1) , 2));
@@ -93,8 +93,8 @@ int ObstacleAvoidance::isObstacleDetected()
 	
 	if (obstacleDetected==0)
 	{
-		torque = VectorNd::Zero(NUMBER_OF_JOINTS,1);
-		nullspace = MatrixNd::Identity(NUMBER_OF_JOINTS, NUMBER_OF_JOINTS);
+		torque = VectorNd::Zero(LBR_N_JOINTS,1);
+		nullspace = MatrixNd::Identity(LBR_N_JOINTS, LBR_N_JOINTS);
 	}
 
 	return obstacleDetected;
@@ -104,7 +104,7 @@ void ObstacleAvoidance::calcObstacleAvoidanceTorques()
 {
 	int ctr=0, index=0, index2=0;
 
-	for (int i=0; i< NUMBER_OF_JOINTS; i++)
+	for (int i=0; i< LBR_N_JOINTS; i++)
 	{
 		if ( i == exceededPointIndex[ctr] )
 		{
@@ -237,7 +237,7 @@ void ObstacleAvoidance::calcObstacleAvoidanceParameters()
 {
 	calcObstacleRepulsionForces();
 	
-	J_ob.resize(noOfExceededCartesianDirections,NUMBER_OF_JOINTS);
+	J_ob.resize(noOfExceededCartesianDirections,LBR_N_JOINTS);
 
 	J_ob.row(0) = JRobotPoint.row(0);
 	J_ob.row(1) = JRobotPoint.row(1);

@@ -1,5 +1,7 @@
 #include "link_demo.h"
 
+constexpr size_t n_joints = 7;
+
 bool process_joint_message(info_solve_registration &state, const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
 {
 	Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
@@ -7,9 +9,9 @@ bool process_joint_message(info_solve_registration &state, const size_t &protoco
     Matrix3d R_0_7;
 	if (er)
 		return true;
-	static std::array<double,NUMBER_OF_JOINTS> _qOld = message->angles;
+	static std::array<double,n_joints> _qOld = message->angles;
 	//std::cout << "angles received: ";
-	for (int i = 0; i < NUMBER_OF_JOINTS; i++){
+	for (int i = 0; i < n_joints; i++){
 		state.iiwa->q[i] = message->angles[i];
 		state.iiwa->qDot[i] = (message->angles[i] - _qOld[i]) / 0.005;
 		//std::printf(" %f ",message->angles[i]);
@@ -22,7 +24,7 @@ bool process_joint_message(info_solve_registration &state, const size_t &protoco
 	state.iiwa->Minv = state.iiwa->M.inverse();
 	state.robot->getCoriolisAndGravityVector(state.iiwa->c, state.iiwa->g, state.iiwa->q, state.iiwa->qDot);
 	state.robot->getWorldCoordinates(p_0_cur, state.iiwa->q, pointPosition, 7); // 3x1 position of flange (body = 7), expressed in base coordinates
-	state.robot->getRotationMatrix(R_0_7, state.iiwa->q, NUMBER_OF_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
+	state.robot->getRotationMatrix(R_0_7, state.iiwa->q, n_joints);		// 3x3 rotation matrix of flange, expressed in base coordinates
 	
 	for (size_t joint_index = 0; joint_index < curan::communication::FRIMessage::n_joints; ++joint_index)
 		state.robot_render->cast<curan::renderable::SequencialLinks>()->set(joint_index, message->angles[joint_index]);

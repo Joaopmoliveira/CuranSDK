@@ -6,7 +6,6 @@ add_library (FRILibrary STATIC
 
 #src/base
 src/base/friClientApplication.cpp
-src/base/friClientData.h
 
 #src/client_lbr
 src/client_lbr/friLBRClient.cpp

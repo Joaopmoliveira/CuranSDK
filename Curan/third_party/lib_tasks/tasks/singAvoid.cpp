@@ -21,10 +21,10 @@ SingAvoid::SingAvoid(RobotParameters* robotParam){
 
 
     u = MatrixNd::Zero(3,3);
-    J_t_ns = MatrixNd::Zero(3, NUMBER_OF_JOINTS);
-	J_t_ns_transpose = MatrixNd::Zero(NUMBER_OF_JOINTS, 3);
-	jbarNS = MatrixNd::Zero(NUMBER_OF_JOINTS, 3);
-    J_t_s = MatrixNd::Zero(3, NUMBER_OF_JOINTS);
+    J_t_ns = MatrixNd::Zero(3, LBR_N_JOINTS);
+	J_t_ns_transpose = MatrixNd::Zero(LBR_N_JOINTS, 3);
+	jbarNS = MatrixNd::Zero(LBR_N_JOINTS, 3);
+    J_t_s = MatrixNd::Zero(3, LBR_N_JOINTS);
     lambda_t_ns = MatrixNd::Zero(3, 3);
     lambda_t_s = MatrixNd::Zero(3, 3);
     u_n_s = MatrixNd::Zero(3, 3);
@@ -32,8 +32,8 @@ SingAvoid::SingAvoid(RobotParameters* robotParam){
     sigma = MatrixNd::Zero(3, 3);
     lambdaInv3d = Matrix3d::Zero(3, 3);
 
-    M_inv = MatrixNd::Zero(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
-	nullspaceOfNSDirection = MatrixNd::Identity(NUMBER_OF_JOINTS,NUMBER_OF_JOINTS);
+    M_inv = MatrixNd::Zero(LBR_N_JOINTS,LBR_N_JOINTS);
+	nullspaceOfNSDirection = MatrixNd::Identity(LBR_N_JOINTS,LBR_N_JOINTS);
 
 	iiwa14 = robotParam;
 }

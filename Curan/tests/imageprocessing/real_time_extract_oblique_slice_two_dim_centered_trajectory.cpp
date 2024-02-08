@@ -54,7 +54,6 @@ using DICOMImageType = itk::Image<DicomPixelType, Dimension_in>;
 
 using InterImageType = itk::Image<InterPixelType, Dimension_out>;
 
-// using TransformType = itk::AffineTransform<double, Dimension_in>;
 using TransformType = itk::Euler3DTransform<double>;
 
 using ReaderType = itk::ImageFileReader<InputImageType>;

@@ -59,12 +59,12 @@ public:
 
         RobotLimits()
         {
-            qMin = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-            qMax = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-            qDotMin = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-            qDotMax = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-            qDotDotMax = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-            qDotDotMin = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
+            qMin = VectorNd::Zero(LBR_N_JOINTS, 1);
+            qMax = VectorNd::Zero(LBR_N_JOINTS, 1);
+            qDotMin = VectorNd::Zero(LBR_N_JOINTS, 1);
+            qDotMax = VectorNd::Zero(LBR_N_JOINTS, 1);
+            qDotDotMax = VectorNd::Zero(LBR_N_JOINTS, 1);
+            qDotDotMin = VectorNd::Zero(LBR_N_JOINTS, 1);
 
         }
     };
@@ -124,12 +124,12 @@ private:
     //Vector3d pointPosition = Vector3d(0,0,0.071); // Point on center of flange for MF-Touch
     Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
 
-    double _qInitial[NUMBER_OF_JOINTS];
-    double _qCurr[NUMBER_OF_JOINTS];
-    double _qOld[NUMBER_OF_JOINTS];
-    double _qApplied[NUMBER_OF_JOINTS];
-    double _torques[NUMBER_OF_JOINTS];
-    double _measured_torques[NUMBER_OF_JOINTS];
+    double _qInitial[LBR_N_JOINTS];
+    double _qCurr[LBR_N_JOINTS];
+    double _qOld[LBR_N_JOINTS];
+    double _qApplied[LBR_N_JOINTS];
+    double _torques[LBR_N_JOINTS];
+    double _measured_torques[LBR_N_JOINTS];
 
     VectorNd measured_torque;
     VectorNd tau_command;

@@ -4,7 +4,7 @@
 #include "rendering/Sphere.h"
 #include <iostream>
 
-constexpr size_t NUMBER_OF_JOINTS = 7;
+constexpr size_t n_joints = 7;
 
 // utility structure for realtime plot
 struct ScrollingBuffer {
@@ -32,13 +32,13 @@ struct ScrollingBuffer {
     }
 };
 
-std::atomic<std::array<double,NUMBER_OF_JOINTS>> robot_joint_config;
+std::atomic<std::array<double,n_joints>> robot_joint_config;
 
 void interface(vsg::CommandBuffer& cb){
     ImGui::Begin("Angle Display"); // Create a window called "Hello, world!" and append into it.
     ImGui::BulletText("Move your mouse to change the data!");
     ImGui::BulletText("This example assumes 60 FPS. Higher FPS requires larger buffer size.");
-	static std::array<ScrollingBuffer,NUMBER_OF_JOINTS> buffers;
+	static std::array<ScrollingBuffer,n_joints> buffers;
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 	auto local_copy = robot_joint_config.load();
@@ -53,7 +53,7 @@ void interface(vsg::CommandBuffer& cb){
         ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
         ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
-		for(size_t index = 0; index < NUMBER_OF_JOINTS ; ++index){
+		for(size_t index = 0; index < n_joints ; ++index){
 			std::string loc = "joint "+std::to_string(index);
             buffers[index].AddPoint(t,(float)local_copy[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
@@ -92,10 +92,10 @@ int main(int argc, char **argv) {
 
         auto updater = [robotRenderable,&continue_updating](){
             double time = 0.0;
-            std::array<double,NUMBER_OF_JOINTS> local_joint_config;
+            std::array<double,n_joints> local_joint_config;
             while(continue_updating.load()){
                 auto robot = robotRenderable->cast<curan::renderable::SequencialLinks>();
-                for(size_t index = 0; index < NUMBER_OF_JOINTS ; ++index){
+                for(size_t index = 0; index < n_joints ; ++index){
                     double angle = std::sin(time+index*0.04)*1.5;
                     robot->set(index,angle);
                     local_joint_config[index] = angle;

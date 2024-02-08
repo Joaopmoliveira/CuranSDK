@@ -113,7 +113,7 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_
     _qInitial[5] = 0.0 * M_PI / 180;
     _qInitial[6] = 0.0 * M_PI / 180;
 
-    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+    for (int i = 0; i < LBR_N_JOINTS; i++) {
         _qCurr[i] = _qInitial[i];
         _qOld[i] = _qInitial[i];
         _qApplied[i] = 0.0;
@@ -121,16 +121,16 @@ MyLBRClient::MyLBRClient(std::shared_ptr<SharedState> in_shared_state) : shared_
         _measured_torques[i] = 0.0;
     }
 
-    measured_torque = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    tau_command = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    tau_command_filtered = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    tau_previous = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    tau_prev_prev = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
+    measured_torque = VectorNd::Zero(LBR_N_JOINTS, 1);
+    tau_command = VectorNd::Zero(LBR_N_JOINTS, 1);
+    tau_command_filtered = VectorNd::Zero(LBR_N_JOINTS, 1);
+    tau_previous = VectorNd::Zero(LBR_N_JOINTS, 1);
+    tau_prev_prev = VectorNd::Zero(LBR_N_JOINTS, 1);
 
     // Positions and orientations and Jacobian
     p_0_cur = Vector3d::Zero(3, 1);
     R_0_7 = Matrix3d::Zero(3, 3);
-    J = MatrixNd::Zero(6, NUMBER_OF_JOINTS);
+    J = MatrixNd::Zero(6, LBR_N_JOINTS);
 }
 
 //******************************************************************************
@@ -175,7 +175,7 @@ void MyLBRClient::monitor() {
     robotCommand().setJointPosition(robotState().getCommandedJointPosition());
 
     // Copy measured joint positions (radians) to _qcurr, which is a double
-    memcpy(_qCurr, robotState().getMeasuredJointPosition(), NUMBER_OF_JOINTS * sizeof(double));
+    memcpy(_qCurr, robotState().getMeasuredJointPosition(), LBR_N_JOINTS * sizeof(double));
     shared_state->robot_state.store(robotState());
     shared_state->is_initialized.store(true);
 
@@ -199,31 +199,31 @@ void MyLBRClient::waitForCommand()
 
 VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
 {
-    VectorNd dt2 = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd dtvar = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd qDownBar = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd qTopBar = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
+    VectorNd dt2 = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd dtvar = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd qDownBar = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd qTopBar = VectorNd::Zero(LBR_N_JOINTS, 1);
 
-    VectorNd qDotMaxFromQ = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd qDotMinFromQ = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd qDotMaxFormQDotDot = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd qDotMinFormQDotDot = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
+    VectorNd qDotMaxFromQ = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd qDotMinFromQ = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd qDotMaxFormQDotDot = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd qDotMinFormQDotDot = VectorNd::Zero(LBR_N_JOINTS, 1);
     VectorNd vMaxVector = Vector3d::Zero(3);
     VectorNd vMinVector = Vector3d::Zero(3);
-    VectorNd qDotMaxFinal = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd qDotMinFinal = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd aMaxqDot = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd aMinqDot = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd aMaxQ = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd aMinQ = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
+    VectorNd qDotMaxFinal = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd qDotMinFinal = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd aMaxqDot = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd aMinqDot = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd aMaxQ = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd aMinQ = VectorNd::Zero(LBR_N_JOINTS, 1);
     VectorNd aMaxVector = Vector3d::Zero(3);
     VectorNd aMinVector = Vector3d::Zero(3);
-    VectorNd qDotDotMaxFinal = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd qDotDotMinFinal = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    MatrixNd Iden = MatrixNd::Identity(NUMBER_OF_JOINTS, NUMBER_OF_JOINTS);
-    VectorNd TauBar = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    VectorNd qDotDotGot = VectorNd::Zero(NUMBER_OF_JOINTS, 1);
-    MatrixNd Js = MatrixNd::Zero(3, NUMBER_OF_JOINTS);
+    VectorNd qDotDotMaxFinal = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd qDotDotMinFinal = VectorNd::Zero(LBR_N_JOINTS, 1);
+    MatrixNd Iden = MatrixNd::Identity(LBR_N_JOINTS, LBR_N_JOINTS);
+    VectorNd TauBar = VectorNd::Zero(LBR_N_JOINTS, 1);
+    VectorNd qDotDotGot = VectorNd::Zero(LBR_N_JOINTS, 1);
+    MatrixNd Js = MatrixNd::Zero(3, LBR_N_JOINTS);
 
     double lowestdtFactor = 10;
 
@@ -237,7 +237,7 @@ VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
     dtvar[5] = dt;
     dtvar[6] = dt;
 
-    for (int i = 0; i < NUMBER_OF_JOINTS; i++)
+    for (int i = 0; i < LBR_N_JOINTS; i++)
     {
         //dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor)*sqrt(10*180/M_PI)))*dt;
         dt2[i] = dtvar[i];
@@ -321,13 +321,13 @@ VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
     }
 
 
-    VectorNd qDotDotS = VectorNd::Zero(NUMBER_OF_JOINTS);
-    VectorNd tauS = VectorNd::Zero(NUMBER_OF_JOINTS);
+    VectorNd qDotDotS = VectorNd::Zero(LBR_N_JOINTS);
+    VectorNd tauS = VectorNd::Zero(LBR_N_JOINTS);
     MatrixNd Psat = Iden;
     bool LimitedExceeded = true;
     bool CreateTaskSat = false;
     int NumSatJoints = 0;
-    Eigen::Vector<Eigen::Index,Eigen::Dynamic> theMostCriticalOld = Eigen::Vector<Eigen::Index,Eigen::Dynamic>::Zero(NUMBER_OF_JOINTS);
+    Eigen::Vector<Eigen::Index,Eigen::Dynamic> theMostCriticalOld = Eigen::Vector<Eigen::Index,Eigen::Dynamic>::Zero(LBR_N_JOINTS);
     theMostCriticalOld.conservativeResize(1);
     theMostCriticalOld[0] = 100;
     bool isThere = false;
@@ -338,10 +338,10 @@ VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
         LimitedExceeded = false;
         if (CreateTaskSat == true)
         {
-            Js.conservativeResize(NumSatJoints, NUMBER_OF_JOINTS);
+            Js.conservativeResize(NumSatJoints, LBR_N_JOINTS);
             for (int i = 0; i < NumSatJoints; i++)
             {
-                for (int k = 0; k < NUMBER_OF_JOINTS; k++)
+                for (int k = 0; k < LBR_N_JOINTS; k++)
                 {
                     Js(i, k) = 0;
                 }
@@ -363,7 +363,7 @@ VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
         qDotDotGot = iiwa->Minv * (TauBar); // it should -g -c
 
         isThere = false;
-        for (int i = 0; i < NUMBER_OF_JOINTS; i++)
+        for (int i = 0; i < LBR_N_JOINTS; i++)
         {
             if ((qDotDotMaxFinal[i] + 0.001 < qDotDotGot[i]) || (qDotDotGot[i] < qDotDotMinFinal[i] - 0.001))
             {
@@ -415,17 +415,17 @@ VectorNd MyLBRClient::addConstraints(const VectorNd& tauStack, double dt)
 //******************************************************************************
 void MyLBRClient::command() {
     // Get robot measurements
-    memcpy(_qOld, _qCurr, NUMBER_OF_JOINTS * sizeof(double));
-    memcpy(_qCurr, robotState().getMeasuredJointPosition(), NUMBER_OF_JOINTS * sizeof(double));
-    memcpy(_measured_torques, robotState().getMeasuredTorque(), NUMBER_OF_JOINTS * sizeof(double));
+    memcpy(_qOld, _qCurr, LBR_N_JOINTS * sizeof(double));
+    memcpy(_qCurr, robotState().getMeasuredJointPosition(), LBR_N_JOINTS * sizeof(double));
+    memcpy(_measured_torques, robotState().getMeasuredTorque(), LBR_N_JOINTS * sizeof(double));
 
     shared_state->robot_state.store(robotState());
     shared_state->is_initialized.store(true);
-    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+    for (int i = 0; i < LBR_N_JOINTS; i++) {
         iiwa->q[i] = _qCurr[i];
         measured_torque[i] = _measured_torques[i];
     }
-    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+    for (int i = 0; i < LBR_N_JOINTS; i++) {
         iiwa->qDot[i] = (_qCurr[i] - _qOld[i]) / sampleTime;
     }
     robot->getMassMatrix(iiwa->M, iiwa->q);
@@ -433,7 +433,7 @@ void MyLBRClient::command() {
     iiwa->Minv = iiwa->M.inverse();
     robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
     robot->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7);              // 3x1 position of flange (body = 7), expressed in base coordinates
-    robot->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);                                // 3x3 rotation matrix of flange, expressed in base coordinates
+    robot->getRotationMatrix(R_0_7, iiwa->q, LBR_N_JOINTS);                                // 3x3 rotation matrix of flange, expressed in base coordinates
     //  Geometrical Jacobian matrix (Siciliano: Modelling, Planning and Control)
     //robot->getJacobian(J, iiwa->q, pointPosition, 7);                         // Jacobian matrix, wrt. point on flange (pointPosition), expressed in base coordinates
     // This is a normal damper that removes energy from all joints (makes it easier to mvoe the robot in free space)
@@ -444,14 +444,14 @@ void MyLBRClient::command() {
     constexpr bool executeJointPositionControl = false;
     if constexpr (executeJointPositionControl)
     {
-        for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+        for (int i = 0; i < LBR_N_JOINTS; i++) {
             _qApplied[i] = _qCurr[i];
             _torques[i] = 0.0;
         }
     }
     else
     {
-        for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+        for (int i = 0; i < LBR_N_JOINTS; i++) {
             _qApplied[i] = _qCurr[i] + 0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime);
             _torques[i] = SJSTorque[i];
         }

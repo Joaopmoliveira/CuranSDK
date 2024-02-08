@@ -43,12 +43,12 @@ struct ScrollingBuffer {
     }
 };
 
-std::atomic<std::array<double,NUMBER_OF_JOINTS>> robot_joint_config;
+std::atomic<std::array<double,LBR_N_JOINTS>> robot_joint_config;
 std::atomic<bool> record_data = false;
 
 void interface(vsg::CommandBuffer& cb){
     ImGui::Begin("Joint Angles"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer,NUMBER_OF_JOINTS> buffers;
+	static std::array<ScrollingBuffer,LBR_N_JOINTS> buffers;
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 	auto local_copy = robot_joint_config.load();
@@ -68,7 +68,7 @@ void interface(vsg::CommandBuffer& cb){
         ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
         ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
-		for(size_t index = 0; index < NUMBER_OF_JOINTS ; ++index){
+		for(size_t index = 0; index < LBR_N_JOINTS ; ++index){
 			std::string loc = "joint "+std::to_string(index);
             buffers[index].AddPoint(t,(float)local_copy[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
@@ -106,7 +106,7 @@ void robot_control(curan::utilities::SafeQueue<KUKA::FRI::LBRState>& to_record,c
 	}
 }
 
-void render_robot_scene(std::atomic<std::array<double,NUMBER_OF_JOINTS>>& robot_config){
+void render_robot_scene(std::atomic<std::array<double,LBR_N_JOINTS>>& robot_config){
    curan::renderable::ImGUIInterface::Info info_gui{interface};
    auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
    curan::renderable::Window::Info info;
@@ -135,7 +135,7 @@ void render_robot_scene(std::atomic<std::array<double,NUMBER_OF_JOINTS>>& robot_
 			recordings.invalidate();
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
 		auto local = robot_config.load();
-		for(size_t joint_index = 0 ; joint_index < NUMBER_OF_JOINTS; ++joint_index)
+		for(size_t joint_index = 0 ; joint_index < LBR_N_JOINTS; ++joint_index)
         	robot->cast<curan::renderable::SequencialLinks>()->set(joint_index,local[joint_index]);
    }
 };
@@ -143,13 +143,13 @@ void render_robot_scene(std::atomic<std::array<double,NUMBER_OF_JOINTS>>& robot_
 void GetRobotConfiguration(Eigen::Matrix<double,4,4>& matrix, kuka::Robot* robot, RobotParameters* iiwa,KUKA::FRI::LBRState robot_state)
 {
 	auto sampleTime = robot_state.getSampleTime();
-	static double _qOld[NUMBER_OF_JOINTS];
+	static double _qOld[LBR_N_JOINTS];
 	auto _qCurr = robot_state.getMeasuredJointPosition();
-	memcpy(_qOld, _qCurr, NUMBER_OF_JOINTS * sizeof(double));
-	for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+	memcpy(_qOld, _qCurr, LBR_N_JOINTS * sizeof(double));
+	for (int i = 0; i < LBR_N_JOINTS; i++) {
         iiwa->q[i] = _qCurr[i];
     }
-	for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+	for (int i = 0; i < LBR_N_JOINTS; i++) {
         iiwa->qDot[i] = (_qCurr[i] - _qOld[i]) / sampleTime;
     }
 	
@@ -162,7 +162,7 @@ void GetRobotConfiguration(Eigen::Matrix<double,4,4>& matrix, kuka::Robot* robot
     iiwa->Minv = iiwa->M.inverse();
 	robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
 	robot->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7);              // 3x1 position of flange (body = 7), expressed in base coordinates
-    robot->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);                                // 3x3 rotation matrix of flange, expressed in base coordinates
+    robot->getRotationMatrix(R_0_7, iiwa->q, LBR_N_JOINTS);                                // 3x3 rotation matrix of flange, expressed in base coordinates
 	
 	matrix(0, 0) = R_0_7(0, 0);
 	matrix(1, 0) = R_0_7(1, 0);
@@ -249,7 +249,7 @@ int main(int argc, char* argv[]) {
 			list_of_homogenenous_readings.emplace_back(local_mat);
 			std::array<double,7> joint_config;
 			auto _qCurr = state.getMeasuredJointPosition();
-			memcpy(joint_config.data(), _qCurr, NUMBER_OF_JOINTS * sizeof(double));
+			memcpy(joint_config.data(), _qCurr, LBR_N_JOINTS * sizeof(double));
 			robot_joint_config.store(joint_config);
 			std::this_thread::sleep_for(std::chrono::milliseconds(2));
 		}

@@ -1,0 +1,373 @@
+#include "robotutils/LBRController.h"
+
+namespace curan {
+namespace robotic {
+
+State::State(const  KUKA::FRI::LBRState& state){
+    sampleTime = state.getSampleTime();
+    for(size_t index = 0; index < number_of_joints; ++index){
+        q[index] = state.getMeasuredJointPosition()[index];
+        cmd_q[index] = state.getCommandedJointPosition()[index];
+        cmd_tau[index] = state.getCommandedTorque()[index];
+        tau[index] = state.getMeasuredTorque()[index];
+        tau_ext[index] = state.getExternalTorque()[index];
+    }
+
+}
+
+EigenState State::converteigen(){
+    EigenState converted_state;
+    converted_state.q = convert(q);
+    converted_state.dq = convert(dq);
+    converted_state.ddq = convert(ddq);
+    converted_state.cmd_q = convert(cmd_q);
+    converted_state.cmd_tau = convert(cmd_tau);
+    converted_state.tau = convert(tau);
+    converted_state.tau_ext = convert(tau_ext);
+    converted_state.translation = convert(translation);
+    for(size_t i = 0; i< rotation.size(); ++i)
+        converted_state.rotation.row(i) = convert(rotation[i]).transpose();
+    for(size_t i = 0; i< jacobian.size(); ++i)
+        converted_state.jacobian.row(i) = convert(jacobian[i]).transpose();
+    converted_state.sampleTime = sampleTime;
+    return converted_state;
+}
+
+void State::differential(const State& next){
+    sampleTime = next.sampleTime;
+    if(initialized)
+        for(size_t index = 0; index < number_of_joints; ++index){
+            dq[index] = (next.q[index]-q[index])/sampleTime;
+            ddq[index] = (next.dq[index]-dq[index])/sampleTime;
+            q[index] = next.q[index];
+            cmd_q[index] = next.cmd_q[index];
+            cmd_tau[index] = next.cmd_tau[index];
+            tau[index] = next.tau[index];
+            tau_ext[index] = next.tau_ext[index];
+        } 
+    else 
+        for(size_t index = 0; index < number_of_joints; ++index){
+            q[index] = next.q[index];
+            cmd_q[index] = next.cmd_q[index];
+            cmd_tau[index] = next.cmd_tau[index];
+            tau[index] = next.tau[index];
+            tau_ext[index] = next.tau_ext[index];
+        } 
+    initialized = true;
+}
+
+void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d& pointPosition){
+    for (int index = 0; index < number_of_joints; index++) {
+        iiwa->q[index] = q[index];
+        iiwa->qDot[index] = dq[index];
+    }
+    Vector3d tmp_p_0_7;
+    Matrix3d  tmp_R_0_7; 
+    MatrixNd tmp_jacobian;
+    robot->getMassMatrix(iiwa->M, iiwa->q);
+    iiwa->M(6, 6) = 45 * iiwa->M(6, 6);   
+    iiwa->Minv = iiwa->M.inverse();
+    robot->getWorldCoordinates(tmp_p_0_7, iiwa->q, pointPosition, 7);  
+    robot->getRotationMatrix(tmp_R_0_7, iiwa->q, number_of_joints); 
+    robot->getJacobian(tmp_jacobian, iiwa->q, pointPosition, 7);    
+    for(size_t row = 0; row < number_of_joints; ++row)
+        for(size_t col = 0; col < number_of_joints; ++col)
+            jacobian[row][col] = tmp_jacobian(row,col);
+    for(size_t cart_row = 0; cart_row < 3; ++cart_row){
+        translation[cart_row] = tmp_p_0_7[cart_row];
+        for(size_t cart_col = 0; cart_col < 3; ++cart_col)
+            rotation[cart_row][cart_col] = tmp_R_0_7(cart_row,cart_col);
+    }
+}
+
+RobotLBR::RobotLBR(RobotController desired_controller) : controller{desired_controller}{
+    if(controller==nullptr)
+        throw std::runtime_error("failed to supply a controller to be used");
+}
+
+RobotLBR::~RobotLBR(){
+
+}
+
+void RobotLBR::onStateChange(KUKA::FRI::ESessionState oldState, KUKA::FRI::ESessionState newState){
+    LBRClient::onStateChange(oldState, newState);
+    // react on state change events
+    switch (newState)
+    {
+    case KUKA::FRI::MONITORING_WAIT:
+    {
+        break;
+    }
+    case KUKA::FRI::MONITORING_READY:
+    {
+        sampleTime = robotState().getSampleTime();
+        break;
+    }
+    case KUKA::FRI::COMMANDING_WAIT:
+    {
+        break;
+    }
+    case KUKA::FRI::COMMANDING_ACTIVE:
+    {
+        break;
+    }
+    default:
+    {
+        break;
+    }
+    }
+}
+
+void RobotLBR::monitor(){
+    robotCommand().setJointPosition(robotState().getCommandedJointPosition());
+    current_state.differential(State{robotState()});
+    current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
+}
+
+void RobotLBR::waitForCommand(){
+    // If we want to command torques, we have to command them all the time; even in
+    // waitForCommand(). This has to be done due to consistency checks. In this state it is
+    // only necessary, that some torque vlaues are sent. The LBR does not take the
+    // specific value into account.
+    current_state.differential(State{robotState()});
+    current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
+    if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
+        robotCommand().setTorque(current_state.cmd_tau.data());
+        robotCommand().setJointPosition(robotState().getIpoJointPosition());            // Just overlaying same position
+    }
+}
+
+void RobotLBR::command(){
+    current_state.differential(State{robotState()});
+    current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
+    eigen_state = current_state.converteigen();
+    eigen_state = (*controller)(nullptr,robot.get(),iiwa.get(),eigen_state);
+    eigen_state.cmd_tau = addConstraints(eigen_state.cmd_tau, 0.005);
+
+    atomic_state.store(current_state,std::memory_order_relaxed);
+
+    if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
+        robotCommand().setJointPosition(eigen_state.cmd_q.data());
+        robotCommand().setTorque(eigen_state.cmd_tau.data());
+    }
+
+    currentTime = currentTime + robotState().getSampleTime();
+}
+
+VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
+{
+    VectorNd dt2 = VectorNd::Zero(number_of_joints, 1);
+    VectorNd dtvar = VectorNd::Zero(number_of_joints, 1);
+    VectorNd qDownBar = VectorNd::Zero(number_of_joints, 1);
+    VectorNd qTopBar = VectorNd::Zero(number_of_joints, 1);
+
+    VectorNd qDotMaxFromQ = VectorNd::Zero(number_of_joints, 1);
+    VectorNd qDotMinFromQ = VectorNd::Zero(number_of_joints, 1);
+    VectorNd qDotMaxFormQDotDot = VectorNd::Zero(number_of_joints, 1);
+    VectorNd qDotMinFormQDotDot = VectorNd::Zero(number_of_joints, 1);
+    VectorNd vMaxVector = Vector3d::Zero(3);
+    VectorNd vMinVector = Vector3d::Zero(3);
+    VectorNd qDotMaxFinal = VectorNd::Zero(number_of_joints, 1);
+    VectorNd qDotMinFinal = VectorNd::Zero(number_of_joints, 1);
+    VectorNd aMaxqDot = VectorNd::Zero(number_of_joints, 1);
+    VectorNd aMinqDot = VectorNd::Zero(number_of_joints, 1);
+    VectorNd aMaxQ = VectorNd::Zero(number_of_joints, 1);
+    VectorNd aMinQ = VectorNd::Zero(number_of_joints, 1);
+    VectorNd aMaxVector = Vector3d::Zero(3);
+    VectorNd aMinVector = Vector3d::Zero(3);
+    VectorNd qDotDotMaxFinal = VectorNd::Zero(number_of_joints, 1);
+    VectorNd qDotDotMinFinal = VectorNd::Zero(number_of_joints, 1);
+    MatrixNd Iden = MatrixNd::Identity(number_of_joints, number_of_joints);
+    VectorNd TauBar = VectorNd::Zero(number_of_joints, 1);
+    VectorNd qDotDotGot = VectorNd::Zero(number_of_joints, 1);
+    MatrixNd Js = MatrixNd::Zero(3, number_of_joints);
+
+    double lowestdtFactor = 10;
+
+    qDownBar = iiwa->q - myIIWALimits.qMin;
+    qTopBar = myIIWALimits.qMax - iiwa->q;
+    dtvar[0] = 3 * dt;
+    dtvar[1] = 3 * dt;
+    dtvar[2] = 2 * dt;
+    dtvar[3] = 3 * dt;
+    dtvar[4] = dt;
+    dtvar[5] = dt;
+    dtvar[6] = dt;
+
+    for (int i = 0; i < number_of_joints; i++)
+    {
+        //dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor)*sqrt(10*180/M_PI)))*dt;
+        dt2[i] = dtvar[i];
+        if (qDownBar[i] < 10 * M_PI / 180)
+        {
+
+            if (qDownBar[i] < 0)
+                qDownBar[i] = 0;
+
+            dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor) * sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
+
+            if (dt2[i] < lowestdtFactor * dtvar[i])
+                dt2[i] = lowestdtFactor * dtvar[i];
+        }
+        if (qTopBar[i] < 10 * M_PI / 180)
+        {
+
+            if (qTopBar[i] < 0)
+                qTopBar[i] = 0;
+
+            dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor) * sqrt(qTopBar[i] * 180 / M_PI))) * dtvar[i];
+            if (dt2[i] < lowestdtFactor * dtvar[i])
+                dt2[i] = lowestdtFactor * dtvar[i];
+
+        }
+
+
+        qDotMaxFromQ[i] = (myIIWALimits.qMax[i] - iiwa->q[i]) / dt2[i];
+        qDotMinFromQ[i] = (myIIWALimits.qMin[i] - iiwa->q[i]) / dt2[i];
+        qDotMaxFormQDotDot[i] = sqrt(2 * myIIWALimits.qDotDotMax[i] * (myIIWALimits.qMax[i] - iiwa->q[i]));
+        qDotMinFormQDotDot[i] = -sqrt(2 * myIIWALimits.qDotDotMax[i] * (iiwa->q[i] - myIIWALimits.qMin[i]));
+
+        if (myIIWALimits.qMax[i] - iiwa->q[i] < 0)
+            qDotMaxFormQDotDot[i] = 1000000;
+
+        if (iiwa->q[i] - myIIWALimits.qMin[i] < 0)
+            qDotMinFormQDotDot[i] = -1000000;
+
+        vMaxVector = Vector3d(myIIWALimits.qDotMax[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+        //qDotMaxFinal[i] = getMinValue(vMaxVector);
+        qDotMaxFinal[i] = vMaxVector.minCoeff();
+
+
+        vMinVector = Vector3d(myIIWALimits.qDotMin[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+        //qDotMinFinal[i] = getMaxValue(vMinVector);
+        qDotMinFinal[i] = vMinVector.maxCoeff();
+
+        aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
+        aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
+
+        aMaxQ[i] = 2 * (myIIWALimits.qMax[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
+        aMinQ[i] = 2 * (myIIWALimits.qMin[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
+
+        aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
+        //qDotDotMaxFinal[i] = getMinValue(aMaxVector);
+        qDotDotMaxFinal[i] = aMaxVector.minCoeff();
+        aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
+        //qDotDotMinFinal[i] = getMaxValue(aMinVector);
+        qDotDotMinFinal[i] = aMinVector.maxCoeff();
+
+        if (qDotDotMaxFinal[i] < qDotDotMinFinal[i])
+        {
+            vMaxVector = Vector3d(INFINITY, qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+            //qDotMaxFinal[i] = getMinValue(vMaxVector);
+            qDotMaxFinal[i] = vMaxVector.minCoeff();
+
+            vMinVector = Vector3d(-INFINITY, qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+            //qDotMinFinal[i] = getMaxValue(vMinVector);
+            qDotMinFinal[i] = vMinVector.maxCoeff();
+
+            aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
+            aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
+
+            aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
+            //qDotDotMaxFinal[i] = getMinValue(aMaxVector);
+            qDotDotMaxFinal[i] = aMaxVector.minCoeff();
+            aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
+            //qDotDotMinFinal[i] = getMaxValue(aMinVector);
+            qDotDotMinFinal[i] = aMinVector.maxCoeff();
+        }
+    }
+
+
+    VectorNd qDotDotS = VectorNd::Zero(number_of_joints);
+    VectorNd tauS = VectorNd::Zero(number_of_joints);
+    MatrixNd Psat = Iden;
+    bool LimitedExceeded = true;
+    bool CreateTaskSat = false;
+    int NumSatJoints = 0;
+    Eigen::Vector<Eigen::Index,Eigen::Dynamic> theMostCriticalOld = Eigen::Vector<Eigen::Index,Eigen::Dynamic>::Zero(number_of_joints);
+    theMostCriticalOld.conservativeResize(1);
+    theMostCriticalOld[0] = 100;
+    bool isThere = false;
+    int iO = 0;
+    int cycle = 0;
+    while (LimitedExceeded == true)
+    {
+        LimitedExceeded = false;
+        if (CreateTaskSat == true)
+        {
+            Js.conservativeResize(NumSatJoints, number_of_joints);
+            for (int i = 0; i < NumSatJoints; i++)
+            {
+                for (int k = 0; k < number_of_joints; k++)
+                {
+                    Js(i, k) = 0;
+                }
+                Js(i, (int)theMostCriticalOld[i]) = 1;
+            }
+
+            MatrixNd LambdaSatInv = Js * iiwa->Minv * Js.transpose();
+            MatrixNd LambdaSatInv_aux = LambdaSatInv * LambdaSatInv.transpose();
+            MatrixNd LambdaSat_aux = LambdaSatInv_aux.inverse();
+            MatrixNd LambdaSat = LambdaSatInv.transpose() * LambdaSat_aux;
+
+            MatrixNd JsatBar = iiwa->Minv * Js.transpose() * LambdaSat;
+            Psat = Iden - Js.transpose() * JsatBar.transpose();
+            VectorNd xDotDot_s = Js * qDotDotS;
+            tauS = Js.transpose() * (LambdaSat * xDotDot_s);
+        }
+
+        TauBar = tauS + Psat * tauStack;
+        qDotDotGot = iiwa->Minv * (TauBar); // it should -g -c
+
+        isThere = false;
+        for (int i = 0; i < number_of_joints; i++)
+        {
+            if ((qDotDotMaxFinal[i] + 0.001 < qDotDotGot[i]) || (qDotDotGot[i] < qDotDotMinFinal[i] - 0.001))
+            {
+                LimitedExceeded = true;
+                CreateTaskSat = true;
+
+                for (int k = 0; k < theMostCriticalOld.size(); k++)
+                {
+                    if (i == theMostCriticalOld[k])
+                    {
+                        isThere = true;
+                    }
+                }
+                if (isThere == false)
+                {
+
+                    theMostCriticalOld.conservativeResize(iO + 1);
+                    theMostCriticalOld[iO] = i;
+                    iO += 1;
+                }
+            }
+        }
+
+        if (LimitedExceeded == true)
+        {
+            NumSatJoints = iO;
+            theMostCriticalOld.conservativeResize(iO);
+            cycle += 1;
+            if (cycle > 8)
+                LimitedExceeded = false;
+
+            for (int i = 0; i < theMostCriticalOld.size(); i++)
+            {
+                Eigen::Index jM = theMostCriticalOld[i];
+
+                if (qDotDotGot[jM] > qDotDotMaxFinal[jM])
+                    qDotDotS[jM] = qDotDotMaxFinal[jM];
+
+                if (qDotDotGot[jM] < qDotDotMinFinal[jM])
+                    qDotDotS[jM] = qDotDotMinFinal[jM];
+            }
+        }
+    }
+
+    VectorNd SJSTorque = TauBar;
+    return SJSTorque;
+};
+
+}
+}

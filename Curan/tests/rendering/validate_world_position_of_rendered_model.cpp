@@ -8,6 +8,7 @@
 #include "ToolData.h"
 #include "robotParameters.h"
 
+constexpr size_t n_joints = 7;
 
 int main(){
     curan::renderable::Window::Info info;
@@ -57,22 +58,22 @@ int main(){
     RigidBodyDynamics::Math::VectorNd measured_torque = RigidBodyDynamics::Math::VectorNd::Zero(7,1);
     Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
     Vector3d p_0_cur = Vector3d(0, 0, 0.045);
-    RigidBodyDynamics::Math::MatrixNd Jacobian = RigidBodyDynamics::Math::MatrixNd::Zero(6, NUMBER_OF_JOINTS);
+    RigidBodyDynamics::Math::MatrixNd Jacobian = RigidBodyDynamics::Math::MatrixNd::Zero(6, n_joints);
 
     auto robotRenderableCasted = robotRenderable->cast<curan::renderable::SequencialLinks>();
 
-    double q_current [NUMBER_OF_JOINTS] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+    double q_current [n_joints] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     double sampletime = 0.001;
     double time = 0.0;
 
     while(window.run_once()) {
-	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+	    for (int i = 0; i < n_joints; i++) {
             q_current[i] = std::sin(10*time)*1.57;
 		    iiwa->q[i] = q_current[i];
             robotRenderableCasted->set(i,q_current[i]);
 	    }
         static RigidBodyDynamics::Math::VectorNd q_old = iiwa->q;
-	    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+	    for (int i = 0; i < n_joints; i++) {
 		    iiwa->qDot[i] = (iiwa->q[i] - q_old[i]) / sampletime;
 	    }   
 
@@ -80,12 +81,12 @@ int main(){
 	    iiwa->M(6,6) = 45 * iiwa->M(6,6);                                       // Correct mass of last body to avoid large accelerations
 	    iiwa->Minv = iiwa->M.inverse();
 	    robot->getCoriolisAndGravityVector(iiwa->c,iiwa->g,iiwa->q,iiwa->qDot);
-	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,NUMBER_OF_JOINTS);              // 3x1 position of flange (body = 7), expressed in base coordinates
+	    robot->getWorldCoordinates(p_0_cur,iiwa->q,pointPosition,n_joints);              // 3x1 position of flange (body = 7), expressed in base coordinates
         
         mat = vsg::translate(p_0_cur(0,0),p_0_cur(1,0),p_0_cur(2,0));
         sphere->update_transform(mat);
 
-        robot->getJacobian(Jacobian,iiwa->q,pointPosition,NUMBER_OF_JOINTS);
+        robot->getJacobian(Jacobian,iiwa->q,pointPosition,n_joints);
 
         q_old = iiwa->q;
         time += sampletime;
