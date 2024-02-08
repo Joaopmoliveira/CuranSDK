@@ -3,8 +3,8 @@
 namespace curan {
 namespace robotic {
 
-EigenState passivecontrollerds(void* user_pointer,kuka::Robot* robot, RobotParameters* iiwa, EigenState state){
-    
+EigenState passiveControllerAude(void* user_pointer,kuka::Robot* robot, RobotParameters* iiwa, EigenState state){
+
 }
 
 }
