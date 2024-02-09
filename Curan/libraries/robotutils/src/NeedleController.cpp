@@ -15,7 +15,7 @@ namespace robotic
 
     };
 
-    EigenState &&NeedleController::update(kuka::Robot *robot, RobotParameters *iiwa, EigenState &&state){
+    EigenState &&NeedleController::update(kuka::Robot *robot, RobotParameters *iiwa, EigenState &&state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
         static double currentTime = 0.0;
         Eigen::Vector3d desLinVelocity = Eigen::Vector3d::Zero();
         // Operational Space Control (OSC)
@@ -34,7 +34,7 @@ namespace robotic
         // Compute positional part.
         // ############################################################################################
 
-        auto maxCartSpeed = 3;
+        auto maxCartSpeed = 0.3;
         const double stiffness = 800;
         const double damping = 100;
         Eigen::Vector3d posErr = posDes - state.translation;
@@ -51,7 +51,7 @@ namespace robotic
         // Compute rotation part.
         // ############################################################################################
 
-        const double maxRotSpeed = 6.0;
+        const double maxRotSpeed = 4.0;
         const double angularStiffness = 400;
         const double angularDamping = 40;
         Eigen::Matrix3d R_E_Ed = state.rotation.transpose() * desRotation;
@@ -104,6 +104,7 @@ namespace robotic
         currentTime += state.sampleTime;
         // Set nullspace.
         //nullSpace = nullSpaceTranslation * nullSpaceRotation;
+        return std::move(state);
 }
 
 }

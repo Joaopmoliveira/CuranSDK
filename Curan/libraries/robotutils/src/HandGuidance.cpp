@@ -6,7 +6,7 @@ namespace robotic {
     HandGuidance::HandGuidance(){
     }
 
-    EigenState&& HandGuidance::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state){
+    EigenState&& HandGuidance::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
         static double currentTime = 0.0;
         /*
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive

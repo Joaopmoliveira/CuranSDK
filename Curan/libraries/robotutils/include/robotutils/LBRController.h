@@ -39,7 +39,7 @@ struct EigenState{
 };
 
 struct UserData{
-    virtual EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state);
+    virtual EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians);
     virtual ~UserData(){};
 };
 

@@ -15,7 +15,7 @@ State::State(const  KUKA::FRI::LBRState& state){
 
 }
 
-EigenState&& UserData::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state){
+EigenState&& UserData::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
     return std::move(state);
 }
 
@@ -210,7 +210,8 @@ void RobotLBR::command(){
     current_state.differential(State{robotState()});
     current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
     eigen_state = current_state.converteigen();
-    eigen_state = std::move(user_data->update(robot.get(),iiwa.get(),std::move(eigen_state)));
+    Eigen::MatrixXd task_jacobian = Eigen::MatrixXd::Identity(number_of_joints,number_of_joints);
+    eigen_state = std::move(user_data->update(robot.get(),iiwa.get(),std::move(eigen_state),task_jacobian));
     eigen_state.cmd_tau = addConstraints(eigen_state.cmd_tau, 0.005);
 
     atomic_state.store(current_state,std::memory_order_relaxed);
