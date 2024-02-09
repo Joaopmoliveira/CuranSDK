@@ -13,6 +13,7 @@ struct PassiveControllerData : public UserData{
     EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state) override;
 
     curan::gaussian::GMR<3,3> model;
+    Eigen::Matrix3d desRotation;
 };
 
 }

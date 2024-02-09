@@ -26,6 +26,7 @@ struct EigenState{
     Eigen::Matrix<double,3,1> translation;
     Eigen::Matrix<double,3,3> rotation;
     Eigen::Matrix<double,number_of_joints,number_of_joints> jacobian;
+    Eigen::Matrix<double,number_of_joints,number_of_joints> massmatrix;
     double sampleTime{1e-3}; 
 
     inline void set_torque_ref( Eigen::Matrix<double,number_of_joints,1> in_tau_cmd){
@@ -39,6 +40,7 @@ struct EigenState{
 
 struct UserData{
     virtual EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state);
+    virtual ~UserData(){};
 };
 
 struct State{
@@ -55,6 +57,7 @@ struct State{
     std::array<double,3> translation;
     std::array<std::array<double,3>,3> rotation;
     std::array<std::array<double,number_of_joints>,number_of_joints> jacobian;
+    std::array<std::array<double,number_of_joints>,number_of_joints> massmatrix;
     double sampleTime{1e-3};
     bool initialized{false};
 
@@ -132,8 +135,16 @@ public:
 
     virtual void command();
 
-    const AtomicState& atomic_acess(){
+    inline const AtomicState& atomic_acess(){
         return atomic_state;
+    }
+
+    inline operator bool() const {
+        return canceled_robot_motion.load(std::memory_order_relaxed); 
+    }
+
+    inline void cancel(){
+        canceled_robot_motion.store(false,std::memory_order_relaxed);
     }
 
 private:
@@ -152,6 +163,7 @@ private:
     Vector3d toolCOM;
     Matrix3d toolInertia;
     ToolData* myTool;
+    std::atomic<bool> canceled_robot_motion{false};
 
     Vector3d pointPosition = Vector3d(0, 0, 0.045); 
 

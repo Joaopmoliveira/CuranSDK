@@ -1,4 +1,4 @@
-#include "robotutils/PassiveControllerAude.h"
+#include "robotutils/NeedleController.h"
 #include <fstream>
 namespace curan{
 namespace robotic
@@ -11,16 +11,13 @@ namespace robotic
         return Lambda;
     }
 
-    PassiveControllerData::PassiveControllerData(const std::string &model_file){
-        {
-            std::ifstream modelfile{model_file};
-            modelfile >> model;
-        }
+    NeedleController::NeedleController(){
+
     };
 
-    EigenState &&PassiveControllerData::update(kuka::Robot *robot, RobotParameters *iiwa, EigenState &&state){
+    EigenState &&NeedleController::update(kuka::Robot *robot, RobotParameters *iiwa, EigenState &&state){
         static double currentTime = 0.0;
-        auto desLinVelocity = model.likeliest(state.translation);
+        Eigen::Vector3d desLinVelocity = Eigen::Vector3d::Zero();
         // Operational Space Control (OSC)
 
         // Compute goal position based on desired velocity.
@@ -107,6 +104,7 @@ namespace robotic
         currentTime += state.sampleTime;
         // Set nullspace.
         //nullSpace = nullSpaceTranslation * nullSpaceRotation;
-};
+}
+
 }
 }

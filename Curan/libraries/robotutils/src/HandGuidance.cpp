@@ -3,7 +3,7 @@
 namespace curan {
 namespace robotic {
 
-    HandGuidance::HandGuidance(const std::string& model_file){
+    HandGuidance::HandGuidance(){
     }
 
     EigenState&& HandGuidance::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state){
@@ -11,6 +11,7 @@ namespace robotic {
         /*
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
         */
+       
         state.cmd_tau = -iiwa->M * 10 * iiwa->qDot;
 
 

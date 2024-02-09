@@ -7,7 +7,7 @@ namespace curan {
 namespace robotic {
 
 struct HandGuidance : public UserData{
-    HandGuidance(const std::string& model_file);
+    HandGuidance();
     EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state) override;
 };
 

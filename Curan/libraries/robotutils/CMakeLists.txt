@@ -2,6 +2,7 @@ add_library(robotutils STATIC
 src/LBRController.cpp
 src/HandGuidance.cpp
 src/PassiveControllerAude.cpp
+src/NeedleController.cpp
 )
 
 target_include_directories(robotutils

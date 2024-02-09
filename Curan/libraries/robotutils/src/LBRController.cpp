@@ -31,8 +31,10 @@ EigenState State::converteigen(){
     converted_state.translation = convert(translation);
     for(size_t i = 0; i< rotation.size(); ++i)
         converted_state.rotation.row(i) = convert(rotation[i]).transpose();
-    for(size_t i = 0; i< jacobian.size(); ++i)
+    for(size_t i = 0; i< jacobian.size(); ++i){
         converted_state.jacobian.row(i) = convert(jacobian[i]).transpose();
+        converted_state.massmatrix.row(i) = convert(massmatrix[i]).transpose();
+    }
     converted_state.sampleTime = sampleTime;
     return converted_state;
 }
@@ -67,7 +69,7 @@ void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d&
     }
     Vector3d tmp_p_0_7;
     Matrix3d  tmp_R_0_7; 
-    MatrixNd tmp_jacobian;
+    MatrixNd tmp_jacobian = MatrixNd::Zero(number_of_joints,number_of_joints);
     robot->getMassMatrix(iiwa->M, iiwa->q);
     iiwa->M(6, 6) = 45 * iiwa->M(6, 6);   
     iiwa->Minv = iiwa->M.inverse();
@@ -75,8 +77,10 @@ void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d&
     robot->getRotationMatrix(tmp_R_0_7, iiwa->q, number_of_joints); 
     robot->getJacobian(tmp_jacobian, iiwa->q, pointPosition, 7);    
     for(size_t row = 0; row < number_of_joints; ++row)
-        for(size_t col = 0; col < number_of_joints; ++col)
+        for(size_t col = 0; col < number_of_joints; ++col){
             jacobian[row][col] = tmp_jacobian(row,col);
+            massmatrix[row][col] = iiwa->M(row,col);
+        }
     for(size_t cart_row = 0; cart_row < 3; ++cart_row){
         translation[cart_row] = tmp_p_0_7[cart_row];
         for(size_t cart_col = 0; cart_col < 3; ++cart_col)

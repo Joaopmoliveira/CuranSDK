@@ -1,0 +1,9 @@
+add_executable(test_handguidance_algorithm test_handguidance_algorithm.cpp)
+
+target_compile_definitions(test_handguidance_algorithm PRIVATE SK_VULKAN)
+target_compile_definitions(test_handguidance_algorithm PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_handguidance_algorithm PUBLIC
+utils
+robotutils
+)
