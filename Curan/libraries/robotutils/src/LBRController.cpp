@@ -91,6 +91,67 @@ void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d&
 RobotLBR::RobotLBR(UserData* in_struct) : user_data{in_struct}{
     if(user_data==nullptr)
         throw std::runtime_error("failed to supply a controller to be used");
+       // Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
+    kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);                      // Select the robot here
+
+    robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
+    iiwa = std::make_unique<RobotParameters>(); // myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
+
+    // Initialize Limits
+    myIIWALimits = RobotLimits();
+    myIIWALimits.qMax[0] = 163 * M_PI / 180;
+    myIIWALimits.qMax[1] = 113 * M_PI / 180;
+    myIIWALimits.qMax[2] = 163 * M_PI / 180;
+    myIIWALimits.qMax[3] = 115 * M_PI / 180;
+    myIIWALimits.qMax[4] = 160 * M_PI / 180;
+    myIIWALimits.qMax[5] = 110 * M_PI / 180;
+    myIIWALimits.qMax[6] = 165 * M_PI / 180;
+
+    myIIWALimits.qMin[0] = -163 * M_PI / 180;
+    myIIWALimits.qMin[1] = -113 * M_PI / 180;
+    myIIWALimits.qMin[2] = -163 * M_PI / 180;
+    myIIWALimits.qMin[3] = -115 * M_PI / 180;
+    myIIWALimits.qMin[4] = -160 * M_PI / 180;
+    myIIWALimits.qMin[5] = -110 * M_PI / 180;
+    myIIWALimits.qMin[6] = -165 * M_PI / 180;
+
+    myIIWALimits.qDotMax[0] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[1] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[2] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[3] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[4] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[5] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[6] = 155 * M_PI / 180;
+
+    myIIWALimits.qDotMin[0] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[1] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[2] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[3] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[4] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[5] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[6] = -155 * M_PI / 180;
+
+    myIIWALimits.qDotDotMax[0] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[1] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[2] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[3] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[4] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[5] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[6] = 300 * M_PI / 180;
+
+    myIIWALimits.qDotDotMin[0] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[1] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[2] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[3] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[4] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[5] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[6] = -300 * M_PI / 180;
+
+    toolMass = 0.0;
+    toolCOM = Vector3d::Zero(3, 1);
+    toolInertia = Matrix3d::Zero(3, 3);
+    myTool = new ToolData(toolMass, toolCOM, toolInertia);
+    robot->attachToolToRobotModel(myTool);
 }
 
 RobotLBR::~RobotLBR(){
