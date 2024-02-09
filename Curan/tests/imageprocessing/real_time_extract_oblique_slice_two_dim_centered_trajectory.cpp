@@ -493,7 +493,10 @@ int main()
                 volume_directionn(col, row) = direction(row, col);
 
         desired_direction = volume_directionn;
-        InputImageType::IndexType local_index{{std::ceil(volume_size[0] / 2.0), std::ceil(volume_size[1] / 2.0), std::ceil(volume_size[2] / 2.0)}};
+        long index_x = std::ceil(volume_size[0] / 2.0);
+        long index_y = std::ceil(volume_size[1] / 2.0);
+        long index_z = std::ceil(volume_size[2] / 2.0);
+        InputImageType::IndexType local_index{{index_x,index_y,index_z}};
         InputImageType::PointType center_of_volume;
         input_volume->TransformIndexToPhysicalPoint(local_index, center_of_volume);
 

@@ -38,7 +38,7 @@ struct DataSpecificApplication
 
     curan::ui::MiniPage *minipage = nullptr;
 
-    DataSpecificApplication(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, nullptr, nullptr}}
+    DataSpecificApplication(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, {nullptr}, {nullptr}}}
     {
     }
 

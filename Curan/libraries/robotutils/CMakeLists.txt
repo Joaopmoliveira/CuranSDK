@@ -20,4 +20,5 @@ KukaRobotLibrary
 FRILibrary
 robotParameters
 gaussianmixture
+${OPERATING_SYSTEM_REQUIRMENTS}
 )

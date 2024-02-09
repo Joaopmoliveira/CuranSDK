@@ -257,6 +257,7 @@ target_link_libraries(test_itk_resampling
 PUBLIC
 userinterface
 Eigen3::Eigen
+${ITK_LIBRARIES}
 )
 
 # ---------------------------------------

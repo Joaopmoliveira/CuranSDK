@@ -3,7 +3,7 @@
 
 #include <array>
 #include <ostream>
-
+#include <memory>
 #include "ConvertEigenToArray.h"
 #include "Robot.h"
 #include "ToolData.h"
@@ -71,15 +71,15 @@ struct State{
 template<typename container>
 std::ostream& operator<<(std::ostream& os, const container& cont)
 {
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_q = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zeros(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_dq = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zeros(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_ddq = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zeros(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_q = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zeros(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zeros(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zeros(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau_ext = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zeros(number_of_joints,cont.size());
-    Eigen::Matrix<double,3,Eigen::Dynamic> arr_translation = Eigen::Matrix<double,3,Eigen::Dynamic>::Zeros(3,cont.size());
-    Eigen::Matrix<double,9,Eigen::Dynamic> arr_rotation = Eigen::Matrix<double,9,Eigen::Dynamic>::Zeros(9,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_q = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_dq = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_ddq = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_q = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau_ext = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,3,Eigen::Dynamic> arr_translation = Eigen::Matrix<double,3,Eigen::Dynamic>::Zero(3,cont.size());
+    Eigen::Matrix<double,9,Eigen::Dynamic> arr_rotation = Eigen::Matrix<double,9,Eigen::Dynamic>::Zero(9,cont.size());
 
     for(size_t i=0; i< cont.size(); ++i){
         arr_q.col(i) = convert(cont[i].q);
@@ -140,11 +140,11 @@ public:
     }
 
     inline operator bool() const {
-        return canceled_robot_motion.load(std::memory_order_relaxed); 
+        return continue_robot_motion.load(std::memory_order_relaxed); 
     }
 
     inline void cancel(){
-        canceled_robot_motion.store(false,std::memory_order_relaxed);
+        continue_robot_motion.store(false,std::memory_order_relaxed);
     }
 
 private:
@@ -163,7 +163,7 @@ private:
     Vector3d toolCOM;
     Matrix3d toolInertia;
     ToolData* myTool;
-    std::atomic<bool> canceled_robot_motion{false};
+    std::atomic<bool> continue_robot_motion{true};
 
     Vector3d pointPosition = Vector3d(0, 0, 0.045); 
 
