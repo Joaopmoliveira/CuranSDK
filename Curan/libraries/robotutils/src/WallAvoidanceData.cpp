@@ -26,8 +26,8 @@ namespace robotic
         Dmax= 0;
 
         Eigen::VectorXd vel = state.jacobian*state.dq;
-        Eigen::Vector3d vel_pos = vel.block(0,0,3,3);
-        double dotD = f_direction_along_valid_region.transpose()*vel_pos;
+        Eigen::Vector3d vel_pos = vel.block(0,0,3,1);
+        double dotD = (f_direction_along_valid_region.transpose()*vel_pos)(0,0);
 
         double dtvar = state.sampleTime;
         double dt2 = dtvar;
@@ -58,7 +58,7 @@ namespace robotic
         auto invMass = state.massmatrix.inverse();
         Eigen::Matrix<double,1,7> jacobianPos = f_direction_along_valid_region.transpose()*state.jacobian.block(0,0,3,7);
 
-        double LambdaInvPos = jacobianPos*invMass*jacobianPos.transpose()+(std::pow(0.3,2));
+        double LambdaInvPos = (jacobianPos*invMass*jacobianPos.transpose())(0,0)+(std::pow(0.3,2));
         double lambdaPos = 1/LambdaInvPos;
         Eigen::Matrix<double,7,1> JsatBar = invMass * jacobianPos.transpose() * lambdaPos;
 
@@ -73,7 +73,7 @@ namespace robotic
         if(dotdotDMaxFinal + 0.001 < linear_acceleration)
                 CreateTaskSat = true;
 
-        Eigen::Matrix<double,7,1> tauS = Eigen::Matrix<double,7,7>::Zero();
+        Eigen::Matrix<double,7,1> tauS = Eigen::Matrix<double,7,1>::Zero();
 
         if(CreateTaskSat){
             Psat = Eigen::Matrix<double,7,7>::Identity()-jacobianPos.transpose()*JsatBar.transpose();

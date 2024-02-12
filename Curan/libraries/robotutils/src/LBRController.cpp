@@ -69,14 +69,14 @@ void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d&
     }
     Vector3d tmp_p_0_7;
     Matrix3d  tmp_R_0_7; 
-    MatrixNd tmp_jacobian = MatrixNd::Zero(number_of_joints,number_of_joints);
+    MatrixNd tmp_jacobian = MatrixNd::Zero(6,number_of_joints);
     robot->getMassMatrix(iiwa->M, iiwa->q);
     iiwa->M(6, 6) = 45 * iiwa->M(6, 6);   
     iiwa->Minv = iiwa->M.inverse();
     robot->getWorldCoordinates(tmp_p_0_7, iiwa->q, pointPosition, 7);  
     robot->getRotationMatrix(tmp_R_0_7, iiwa->q, number_of_joints); 
     robot->getJacobian(tmp_jacobian, iiwa->q, pointPosition, 7);    
-    for(size_t row = 0; row < number_of_joints; ++row)
+    for(size_t row = 0; row < 6; ++row)
         for(size_t col = 0; col < number_of_joints; ++col){
             jacobian[row][col] = tmp_jacobian(row,col);
             massmatrix[row][col] = iiwa->M(row,col);

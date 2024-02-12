@@ -25,7 +25,7 @@ struct EigenState{
     Eigen::Matrix<double,number_of_joints,1> tau_ext;
     Eigen::Matrix<double,3,1> translation;
     Eigen::Matrix<double,3,3> rotation;
-    Eigen::Matrix<double,number_of_joints,number_of_joints> jacobian;
+    Eigen::Matrix<double,6,number_of_joints> jacobian;
     Eigen::Matrix<double,number_of_joints,number_of_joints> massmatrix;
     double sampleTime{1e-3}; 
 
@@ -56,7 +56,7 @@ struct State{
     std::array<double,number_of_joints> tau_ext;
     std::array<double,3> translation;
     std::array<std::array<double,3>,3> rotation;
-    std::array<std::array<double,number_of_joints>,number_of_joints> jacobian;
+    std::array<std::array<double,number_of_joints>,6> jacobian;
     std::array<std::array<double,number_of_joints>,number_of_joints> massmatrix;
     double sampleTime{1e-3};
     bool initialized{false};
