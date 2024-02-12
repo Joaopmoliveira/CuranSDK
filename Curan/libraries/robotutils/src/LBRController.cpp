@@ -266,7 +266,6 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
 
     for (int i = 0; i < number_of_joints; i++)
     {
-        //dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor)*sqrt(10*180/M_PI)))*dt;
         dt2[i] = dtvar[i];
         if (qDownBar[i] < 10 * M_PI / 180)
         {
@@ -274,7 +273,7 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
             if (qDownBar[i] < 0)
                 qDownBar[i] = 0;
 
-            dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor) * sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
+            dt2[i] = ((lowestdtFactor) + (sqrt(lowestdtFactor) * sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
 
             if (dt2[i] < lowestdtFactor * dtvar[i])
                 dt2[i] = lowestdtFactor * dtvar[i];
@@ -304,12 +303,10 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
             qDotMinFormQDotDot[i] = -1000000;
 
         vMaxVector = Vector3d(myIIWALimits.qDotMax[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
-        //qDotMaxFinal[i] = getMinValue(vMaxVector);
         qDotMaxFinal[i] = vMaxVector.minCoeff();
 
 
         vMinVector = Vector3d(myIIWALimits.qDotMin[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
-        //qDotMinFinal[i] = getMaxValue(vMinVector);
         qDotMinFinal[i] = vMinVector.maxCoeff();
 
         aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
@@ -319,30 +316,24 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
         aMinQ[i] = 2 * (myIIWALimits.qMin[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
 
         aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
-        //qDotDotMaxFinal[i] = getMinValue(aMaxVector);
         qDotDotMaxFinal[i] = aMaxVector.minCoeff();
         aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
-        //qDotDotMinFinal[i] = getMaxValue(aMinVector);
         qDotDotMinFinal[i] = aMinVector.maxCoeff();
 
         if (qDotDotMaxFinal[i] < qDotDotMinFinal[i])
         {
             vMaxVector = Vector3d(INFINITY, qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
-            //qDotMaxFinal[i] = getMinValue(vMaxVector);
             qDotMaxFinal[i] = vMaxVector.minCoeff();
 
             vMinVector = Vector3d(-INFINITY, qDotMinFromQ[i], qDotMinFormQDotDot[i]);
-            //qDotMinFinal[i] = getMaxValue(vMinVector);
             qDotMinFinal[i] = vMinVector.maxCoeff();
 
             aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
             aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
 
             aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
-            //qDotDotMaxFinal[i] = getMinValue(aMaxVector);
             qDotDotMaxFinal[i] = aMaxVector.minCoeff();
             aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
-            //qDotDotMinFinal[i] = getMaxValue(aMinVector);
             qDotDotMinFinal[i] = aMinVector.maxCoeff();
         }
     }
@@ -360,14 +351,15 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
     bool isThere = false;
     int iO = 0;
     int cycle = 0;
-    while (LimitedExceeded == true)
+    while (LimitedExceeded)
     {
         LimitedExceeded = false;
-        if (CreateTaskSat == true)
+        if (CreateTaskSat)
         {
             Js.conservativeResize(NumSatJoints, number_of_joints);
             for (int i = 0; i < NumSatJoints; i++)
             {
+                
                 for (int k = 0; k < number_of_joints; k++)
                 {
                     Js(i, k) = 0;

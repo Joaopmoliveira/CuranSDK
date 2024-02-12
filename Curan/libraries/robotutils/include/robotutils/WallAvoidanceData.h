@@ -6,10 +6,15 @@
 namespace curan {
 namespace robotic {
 
-struct SingularityAvoidanceData : public UserData{
-    SingularityAvoidanceData();
+struct WallAvoidanceData : public UserData{
+    WallAvoidanceData(Eigen::Vector3d plane_point, Eigen::Vector3d direction_along_valid_region,double max_accel = 0.5, double max_vel = 1.0);
 
     EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
+
+    Eigen::Vector3d f_plane_point;
+    Eigen::Vector3d f_direction_along_valid_region;
+    double max_accel;
+    double max_vel;
 };
 
 }
