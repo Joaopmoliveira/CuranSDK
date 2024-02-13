@@ -18,3 +18,13 @@ utils
 robotutils
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+add_executable(test_wall_avoidance_algorithm test_wall_avoidance_algorithm.cpp)
+
+target_compile_definitions(test_wall_avoidance_algorithm PRIVATE SK_VULKAN)
+target_compile_definitions(test_wall_avoidance_algorithm PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_wall_avoidance_algorithm PUBLIC
+utils
+robotutils
+)

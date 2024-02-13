@@ -27,16 +27,10 @@ int main(){
         const auto& reading_point = client.atomic_acess();
         while(client){
             auto current = reading_point.load(std::memory_order_relaxed);
-/*             std::cout << "translation raw:\n";
-            for(const auto& t : current.translation)
-                std::cout << " " << t; */
             std::cout << "\n";
             auto current_value = current.converteigen();
             std::cout << "=========================================\nrotation:\n" <<  current_value.rotation 
-                      << "\ntranslation:" << current_value.translation.transpose() 
-                      << "\njoints:\n" << current_value.q
-                      << "\njacobian:\n" << current_value.jacobian
-                      << "\nmass:\n" << current_value.massmatrix                                         
+                      << "\ntranslation:" << current_value.translation.transpose()                                   
                       << "\n=========================================\n";
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
