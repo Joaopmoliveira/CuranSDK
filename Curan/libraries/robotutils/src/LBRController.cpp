@@ -15,7 +15,7 @@ State::State(const  KUKA::FRI::LBRState& state){
 
 }
 
-EigenState&& UserData::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state){
+EigenState&& UserData::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
     return std::move(state);
 }
 
@@ -77,7 +77,7 @@ void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d&
     robot->getWorldCoordinates(tmp_p_0_7, iiwa->q, pointPosition, 7);  
     robot->getRotationMatrix(tmp_R_0_7, iiwa->q, number_of_joints); 
     robot->getJacobian(tmp_jacobian, iiwa->q, pointPosition, 7);    
-    for(size_t row = 0; row < number_of_joints; ++row)
+    for(size_t row = 0; row < 6; ++row)
         for(size_t col = 0; col < number_of_joints; ++col){
             jacobian[row][col] = tmp_jacobian(row,col);
             massmatrix[row][col] = iiwa->M(row,col);
@@ -211,7 +211,8 @@ void RobotLBR::command(){
     current_state.differential(State{robotState()});
     current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
     eigen_state = current_state.converteigen();
-    eigen_state = std::move(user_data->update(robot.get(),iiwa.get(),std::move(eigen_state)));
+    Eigen::MatrixXd task_jacobian = Eigen::MatrixXd::Identity(number_of_joints,number_of_joints);
+    eigen_state = std::move(user_data->update(robot.get(),iiwa.get(),std::move(eigen_state),task_jacobian));
     eigen_state.cmd_tau = addConstraints(eigen_state.cmd_tau, 0.005);
 
     atomic_state.store(current_state,std::memory_order_relaxed);
@@ -266,7 +267,6 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
 
     for (int i = 0; i < number_of_joints; i++)
     {
-        //dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor)*sqrt(10*180/M_PI)))*dt;
         dt2[i] = dtvar[i];
         if (qDownBar[i] < 10 * M_PI / 180)
         {
@@ -274,7 +274,7 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
             if (qDownBar[i] < 0)
                 qDownBar[i] = 0;
 
-            dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor) * sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
+            dt2[i] = ((lowestdtFactor) + (sqrt(lowestdtFactor) * sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
 
             if (dt2[i] < lowestdtFactor * dtvar[i])
                 dt2[i] = lowestdtFactor * dtvar[i];
@@ -304,12 +304,10 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
             qDotMinFormQDotDot[i] = -1000000;
 
         vMaxVector = Vector3d(myIIWALimits.qDotMax[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
-        //qDotMaxFinal[i] = getMinValue(vMaxVector);
         qDotMaxFinal[i] = vMaxVector.minCoeff();
 
 
         vMinVector = Vector3d(myIIWALimits.qDotMin[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
-        //qDotMinFinal[i] = getMaxValue(vMinVector);
         qDotMinFinal[i] = vMinVector.maxCoeff();
 
         aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
@@ -319,30 +317,24 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
         aMinQ[i] = 2 * (myIIWALimits.qMin[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
 
         aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
-        //qDotDotMaxFinal[i] = getMinValue(aMaxVector);
         qDotDotMaxFinal[i] = aMaxVector.minCoeff();
         aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
-        //qDotDotMinFinal[i] = getMaxValue(aMinVector);
         qDotDotMinFinal[i] = aMinVector.maxCoeff();
 
         if (qDotDotMaxFinal[i] < qDotDotMinFinal[i])
         {
             vMaxVector = Vector3d(INFINITY, qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
-            //qDotMaxFinal[i] = getMinValue(vMaxVector);
             qDotMaxFinal[i] = vMaxVector.minCoeff();
 
             vMinVector = Vector3d(-INFINITY, qDotMinFromQ[i], qDotMinFormQDotDot[i]);
-            //qDotMinFinal[i] = getMaxValue(vMinVector);
             qDotMinFinal[i] = vMinVector.maxCoeff();
 
             aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
             aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
 
             aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
-            //qDotDotMaxFinal[i] = getMinValue(aMaxVector);
             qDotDotMaxFinal[i] = aMaxVector.minCoeff();
             aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
-            //qDotDotMinFinal[i] = getMaxValue(aMinVector);
             qDotDotMinFinal[i] = aMinVector.maxCoeff();
         }
     }
@@ -360,14 +352,15 @@ VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
     bool isThere = false;
     int iO = 0;
     int cycle = 0;
-    while (LimitedExceeded == true)
+    while (LimitedExceeded)
     {
         LimitedExceeded = false;
-        if (CreateTaskSat == true)
+        if (CreateTaskSat)
         {
             Js.conservativeResize(NumSatJoints, number_of_joints);
             for (int i = 0; i < NumSatJoints; i++)
             {
+                
                 for (int k = 0; k < number_of_joints; k++)
                 {
                     Js(i, k) = 0;
