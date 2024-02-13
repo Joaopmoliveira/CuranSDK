@@ -45,7 +45,7 @@ void interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 {
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
-	ImGui::Begin("Joint Angles"); // Create a window called "Hello, world!" and append into it.
+	ImGui::Begin("Control Torques"); // Create a window called "Hello, world!" and append into it.
 	static std::array<ScrollingBuffer, LBR_N_JOINTS> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
@@ -55,7 +55,7 @@ void interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 
 	static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
 
-	if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, 150)))
+	if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
 	{
 		ImPlot::SetupAxes(NULL, NULL, flags, flags);
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
@@ -71,6 +71,26 @@ void interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 	}
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
+
+    const std::array<std::string,3> names{{"D","dotD","dotdotDMaxFinal"}};
+
+    static std::array<ScrollingBuffer, 3> wall_avoindance_buffers;
+    ImGui::Begin("Wall Avoindance Algorithm"); // Create a window called "Hello, world!" and append into it.
+    if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
+	{
+		ImPlot::SetupAxes(NULL, NULL, flags, flags);
+		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
+		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
+		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
+		for (size_t index = 0; index < 3; ++index)
+		{
+			std::string loc = names[index].data();
+			wall_avoindance_buffers[index].AddPoint(t, (float)state.user_defined[index]);
+			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
+		}
+		ImPlot::EndPlot();
+	}
+    ImGui::End();
 }
 
 curan::robotic::RobotLBR* robot_pointer = nullptr;

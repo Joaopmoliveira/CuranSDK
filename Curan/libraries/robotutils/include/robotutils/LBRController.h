@@ -68,7 +68,7 @@ struct State{
     void differential(const State& next);
     void update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d& pointPosition);
     EigenState converteigen();
-    void convertFromeigen(EigenState);
+    void convertFrom(const EigenState&);
 };
 
 

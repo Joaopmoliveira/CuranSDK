@@ -29,7 +29,9 @@ namespace robotic
         Eigen::Vector3d vel_pos = vel.block(0,0,3,1);
         double dotD = (f_direction_along_valid_region.transpose()*vel_pos)(0,0);
 
-        double scalling_factor = 12.0;
+
+
+        double scalling_factor = 15.0;
         double dtvar = scalling_factor*state.sampleTime;
         if(dtvar<0.001)
             dtvar = scalling_factor*0.001;
@@ -57,6 +59,10 @@ namespace robotic
 
         Eigen::Vector3d aMaxVector{{1000000,aMaxDotD,aMaxD}};
         double dotdotDMaxFinal = aMaxVector.minCoeff();
+    
+        state.user_defined[0] = D;
+        state.user_defined[1] = dotD;
+        state.user_defined[2] = dotdotDMaxFinal;
         
         auto invMass = state.massmatrix.inverse();
         Eigen::Matrix<double,1,7> jacobianPos = f_direction_along_valid_region.transpose()*state.jacobian.block(0,0,3,7);

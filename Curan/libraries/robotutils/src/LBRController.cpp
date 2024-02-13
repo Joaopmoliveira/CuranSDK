@@ -19,8 +19,26 @@ EigenState&& UserData::update(kuka::Robot* robot, RobotParameters* iiwa, EigenSt
     return std::move(state);
 }
 
-void State::convertFromeigen(EigenState){
-    
+void State::convertFrom(const EigenState& state){
+    q = convert<double,number_of_joints>(state.q);
+    dq = convert<double,number_of_joints>(state.dq);
+    ddq = convert<double,number_of_joints>(state.ddq);
+    cmd_q = convert<double,number_of_joints>(state.cmd_q);
+    cmd_tau = convert<double,number_of_joints>(state.cmd_tau);
+    tau = convert<double,number_of_joints>(state.tau);
+    tau_ext = convert<double,number_of_joints>(state.tau_ext);
+    constexpr size_t translation_size = 3;
+    constexpr size_t rotation_size = 3;
+    translation = convert<double,translation_size>(state.translation);
+    for(size_t i = 0; i< rotation.size(); ++i)
+        rotation[i] = convert<double,rotation_size>(state.rotation.row(i).transpose());
+    for(size_t i = 0; i< massmatrix.size(); ++i){
+        if(i< jacobian.size()) jacobian[i] = convert<double,number_of_joints>(state.jacobian.row(i).transpose());
+        massmatrix[i] = convert<double,number_of_joints>(state.massmatrix.row(i).transpose());
+        invmassmatrix[i] = convert<double,number_of_joints>(state.invmassmatrix.row(i).transpose());
+    }
+    user_defined = convert<double,number_of_joints>(state.user_defined);
+    sampleTime = state.sampleTime;
 }
 
 EigenState State::converteigen(){
@@ -222,9 +240,7 @@ void RobotLBR::command(){
     Eigen::MatrixXd task_jacobian = Eigen::MatrixXd::Identity(number_of_joints,number_of_joints);
     eigen_state = std::move(user_data->update(robot.get(),iiwa.get(),std::move(eigen_state),task_jacobian));
     eigen_state.cmd_tau = addConstraints(eigen_state.cmd_tau, 0.005);
-    for(size_t i = 0; i < number_of_joints; ++i)
-        current_state.cmd_tau[i] = eigen_state.cmd_tau[i];
-
+    current_state.convertFrom(eigen_state);
     atomic_state.store(current_state,std::memory_order_relaxed);
 
     if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
