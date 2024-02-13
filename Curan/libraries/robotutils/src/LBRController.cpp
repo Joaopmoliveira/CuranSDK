@@ -63,16 +63,17 @@ void State::differential(const State& next){
 }
 
 void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d& pointPosition){
-    for (int index = 0; index < number_of_joints; index++) {
+    for (int index = 0; index < number_of_joints; ++index) {
         iiwa->q[index] = q[index];
         iiwa->qDot[index] = dq[index];
     }
-    Vector3d tmp_p_0_7;
-    Matrix3d  tmp_R_0_7; 
+    Vector3d tmp_p_0_7 = Vector3d::Zero();
+    Matrix3d  tmp_R_0_7 = Matrix3d::Identity(); 
     MatrixNd tmp_jacobian = MatrixNd::Zero(number_of_joints,number_of_joints);
     robot->getMassMatrix(iiwa->M, iiwa->q);
     iiwa->M(6, 6) = 45 * iiwa->M(6, 6);   
     iiwa->Minv = iiwa->M.inverse();
+    robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
     robot->getWorldCoordinates(tmp_p_0_7, iiwa->q, pointPosition, 7);  
     robot->getRotationMatrix(tmp_R_0_7, iiwa->q, number_of_joints); 
     robot->getJacobian(tmp_jacobian, iiwa->q, pointPosition, 7);    
