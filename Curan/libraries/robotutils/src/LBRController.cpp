@@ -19,6 +19,10 @@ EigenState&& UserData::update(kuka::Robot* robot, RobotParameters* iiwa, EigenSt
     return std::move(state);
 }
 
+void State::convertFromeigen(EigenState){
+    
+}
+
 EigenState State::converteigen(){
     EigenState converted_state;
     converted_state.q = convert(q);
@@ -31,10 +35,12 @@ EigenState State::converteigen(){
     converted_state.translation = convert(translation);
     for(size_t i = 0; i< rotation.size(); ++i)
         converted_state.rotation.row(i) = convert(rotation[i]).transpose();
-    for(size_t i = 0; i< jacobian.size(); ++i){
-        converted_state.jacobian.row(i) = convert(jacobian[i]).transpose();
+    for(size_t i = 0; i< massmatrix.size(); ++i){
+        if(i< jacobian.size()) converted_state.jacobian.row(i) = convert(jacobian[i]).transpose();
         converted_state.massmatrix.row(i) = convert(massmatrix[i]).transpose();
+        converted_state.invmassmatrix.row(i) = convert(invmassmatrix[i]).transpose();
     }
+    converted_state.user_defined = convert(user_defined);
     converted_state.sampleTime = sampleTime;
     return converted_state;
 }
@@ -77,10 +83,11 @@ void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d&
     robot->getWorldCoordinates(tmp_p_0_7, iiwa->q, pointPosition, 7);  
     robot->getRotationMatrix(tmp_R_0_7, iiwa->q, number_of_joints); 
     robot->getJacobian(tmp_jacobian, iiwa->q, pointPosition, 7);    
-    for(size_t row = 0; row < 6; ++row)
+    for(size_t row = 0; row < number_of_joints; ++row)
         for(size_t col = 0; col < number_of_joints; ++col){
-            jacobian[row][col] = tmp_jacobian(row,col);
+            if(row < 6) jacobian[row][col] = tmp_jacobian(row,col);
             massmatrix[row][col] = iiwa->M(row,col);
+            invmassmatrix[row][col] = iiwa->Minv(row,col);
         }
     for(size_t cart_row = 0; cart_row < 3; ++cart_row){
         translation[cart_row] = tmp_p_0_7[cart_row];
@@ -210,10 +217,13 @@ void RobotLBR::waitForCommand(){
 void RobotLBR::command(){
     current_state.differential(State{robotState()});
     current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
+    current_state.cmd_tau = std::array<double,7>();
     eigen_state = current_state.converteigen();
     Eigen::MatrixXd task_jacobian = Eigen::MatrixXd::Identity(number_of_joints,number_of_joints);
     eigen_state = std::move(user_data->update(robot.get(),iiwa.get(),std::move(eigen_state),task_jacobian));
     eigen_state.cmd_tau = addConstraints(eigen_state.cmd_tau, 0.005);
+    for(size_t i = 0; i < number_of_joints; ++i)
+        current_state.cmd_tau[i] = eigen_state.cmd_tau[i];
 
     atomic_state.store(current_state,std::memory_order_relaxed);
 

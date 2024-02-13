@@ -27,4 +27,5 @@ target_compile_definitions(test_wall_avoidance_algorithm PRIVATE CURAN_COPIED_RE
 target_link_libraries(test_wall_avoidance_algorithm PUBLIC
 utils
 robotutils
+renderable
 )

@@ -27,6 +27,8 @@ struct EigenState{
     Eigen::Matrix<double,3,3> rotation;
     Eigen::Matrix<double,6,number_of_joints> jacobian;
     Eigen::Matrix<double,number_of_joints,number_of_joints> massmatrix;
+    Eigen::Matrix<double,number_of_joints,number_of_joints> invmassmatrix;
+    Eigen::Matrix<double,number_of_joints,1> user_defined;
     double sampleTime{1e-3}; 
 
     inline void set_torque_ref( Eigen::Matrix<double,number_of_joints,1> in_tau_cmd){
@@ -58,17 +60,20 @@ struct State{
     std::array<std::array<double,3>,3> rotation;
     std::array<std::array<double,number_of_joints>,6> jacobian;
     std::array<std::array<double,number_of_joints>,number_of_joints> massmatrix;
+    std::array<std::array<double,number_of_joints>,number_of_joints> invmassmatrix;
+    std::array<double,number_of_joints> user_defined;
     double sampleTime{1e-3};
     bool initialized{false};
 
     void differential(const State& next);
     void update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d& pointPosition);
     EigenState converteigen();
+    void convertFromeigen(EigenState);
 };
 
 
 
-template<typename container>
+/* template<typename container>
 std::ostream& operator<<(std::ostream& os, const container& cont)
 {
     Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_q = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
@@ -93,7 +98,7 @@ std::ostream& operator<<(std::ostream& os, const container& cont)
         arr_rotation.col(i) = convert(cont[i].rotation);
     }
     return os;
-}
+} */
 
 struct RobotLimits
 {

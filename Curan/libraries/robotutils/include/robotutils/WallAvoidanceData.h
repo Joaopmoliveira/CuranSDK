@@ -7,7 +7,7 @@ namespace curan {
 namespace robotic {
 
 struct WallAvoidanceData : public UserData{
-    WallAvoidanceData(Eigen::Vector3d plane_point, Eigen::Vector3d direction_along_valid_region,double max_accel = 1.0, double max_vel = 0.5);
+    WallAvoidanceData(Eigen::Vector3d plane_point, Eigen::Vector3d direction_along_valid_region,double max_accel = 0.5, double max_vel = 0.25);
 
     EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
 
