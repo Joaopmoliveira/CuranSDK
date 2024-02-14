@@ -86,7 +86,7 @@ void interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		{
 			std::string loc = names[index].data();
 			wall_avoindance_buffers[index].AddPoint(t, (float)state.user_defined[index]);
-			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
+			ImPlot::PlotLine(loc.data(), &wall_avoindance_buffers[index].Data[0].x, &wall_avoindance_buffers[index].Data[0].y, wall_avoindance_buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 		}
 		ImPlot::EndPlot();
 	}

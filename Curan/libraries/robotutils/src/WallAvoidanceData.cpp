@@ -78,7 +78,7 @@ namespace robotic
         Eigen::Matrix<double,6,1> linear_acceleration_cartesian = state.jacobian*invMass*state.cmd_tau;
         Eigen::Matrix<double,3,1> translation_acceleration = linear_acceleration_cartesian.block(0,0,3,1);
         double linear_acceleration = translation_acceleration.transpose()*f_direction_along_valid_region;
-        if(dotdotDMaxFinal + 0.01 < linear_acceleration)
+        if(dotdotDMaxFinal + 0.001 < linear_acceleration)
             CreateTaskSat = true;
 
         Eigen::Matrix<double,7,1> tauS = Eigen::Matrix<double,7,1>::Zero();
