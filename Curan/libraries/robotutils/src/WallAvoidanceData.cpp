@@ -20,7 +20,7 @@ namespace robotic
 
     EigenState &&WallAvoidanceData::update(kuka::Robot *robot, RobotParameters *iiwa, EigenState &&state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
         static double currentTime = 0.0;
-
+        
         double Dmax = -f_direction_along_valid_region.transpose()*f_plane_point;
         double D = f_direction_along_valid_region.transpose()*state.translation+Dmax;
         Dmax= 0;
@@ -31,7 +31,7 @@ namespace robotic
 
 
 
-        double scalling_factor = 15.0;
+        constexpr double scalling_factor = 15.0;
         double dtvar = scalling_factor*state.sampleTime;
         if(dtvar<0.001)
             dtvar = scalling_factor*0.001;
@@ -40,7 +40,7 @@ namespace robotic
 
         double lowestdtfactor = 10;
 
-        if(wallTopD<0.2){
+        if(wallTopD<0.1){
             if(wallTopD<0.0)
                 wallTopD = 0.0;
             dt2 = (lowestdtfactor+sqrt(lowestdtfactor*wallTopD))*dtvar;
@@ -65,9 +65,10 @@ namespace robotic
         state.user_defined[2] = dotdotDMaxFinal;
         
         auto invMass = state.massmatrix.inverse();
+        
         Eigen::Matrix<double,1,7> jacobianPos = f_direction_along_valid_region.transpose()*state.jacobian.block(0,0,3,7);
 
-        double LambdaInvPos = (jacobianPos*invMass*jacobianPos.transpose())(0,0)+(std::pow(0.1,2));
+        double LambdaInvPos = (jacobianPos*invMass*jacobianPos.transpose())(0,0)+(std::pow(0.3,2));
         double lambdaPos = 1/LambdaInvPos;
         Eigen::Matrix<double,7,1> JsatBar = invMass * jacobianPos.transpose() * lambdaPos;
 

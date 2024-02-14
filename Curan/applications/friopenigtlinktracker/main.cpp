@@ -6,11 +6,13 @@
 #include "utils/Logger.h"
 #include "utils/Flag.h"
 
-#include "MyLBRClient.h"
+#include "robotutils/LBRController.h"
+#include "robotutils/HandGuidance.h"
+#include "utils/Logger.h"
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
-#include <csignal>
 
+curan::robotic::RobotLBR* robot_pointer = nullptr;
 constexpr unsigned short DEFAULT_PORTID = 30200;
 
 asio::io_context context;
@@ -18,19 +20,20 @@ asio::io_context context;
 void signal_handler(int signal)
 {
 	context.stop();
+	if(robot_pointer)
+        robot_pointer->cancel();
 }
 
-void robot_control(std::shared_ptr<SharedState> shared_state, curan::utilities::Flag& flag)
+void robot_control(curan::robotic::RobotLBR& lbr)
 {
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
-		MyLBRClient client = MyLBRClient(shared_state);
 		KUKA::FRI::UdpConnection connection;
-		KUKA::FRI::ClientApplication app(connection, client);
-		app.connect(DEFAULT_PORTID, NULL);
-		bool success = app.step();
-		while (success && flag.value())
+		KUKA::FRI::ClientApplication app(connection, lbr);
+		bool success = app.connect(DEFAULT_PORTID, NULL);
+		success = app.step();
+		while (success && lbr)
 			success = app.step();
 		app.disconnect();
 		return;
@@ -42,146 +45,21 @@ void robot_control(std::shared_ptr<SharedState> shared_state, curan::utilities::
 	}
 }
 
-void GetRobotConfiguration(igtl::Matrix4x4 &matrix, kuka::Robot *robot, RobotParameters *iiwa, std::shared_ptr<SharedState> shared_state)
-{
-	static auto t1 = std::chrono::steady_clock::now();
-	static double _qOld[LBR_N_JOINTS];
-	bool is_initialized = shared_state->is_initialized.load();
-	if (is_initialized)
-	{
-		auto robot_state = shared_state->robot_state.load();
-		auto _qCurr = robot_state.getMeasuredJointPosition();
-		memcpy(_qOld, _qCurr, LBR_N_JOINTS * sizeof(double));
-		// curan::utils::cout << "the joints are: \n";
-		for (int i = 0; i < LBR_N_JOINTS; i++)
-		{
-			iiwa->q[i] = _qCurr[i];
-		}
-		auto t2 = std::chrono::steady_clock::now();
-		auto sampleTimeChrono = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-		double sampleTime = (sampleTimeChrono.count() < 1) ? 0.001 : sampleTimeChrono.count() / 1000.0;
-		t1 = t2;
-		for (int i = 0; i < LBR_N_JOINTS; i++)
-		{
-			iiwa->qDot[i] = (_qCurr[i] - _qOld[i]) / sampleTime;
-		}
-		// curan::utils::cout << "\n";
-
-		static Vector3d p_0_cur = Vector3d::Zero(3, 1);
-		static Matrix3d R_0_7 = Matrix3d::Zero(3, 3);
-		static Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
-
-		robot->getMassMatrix(iiwa->M, iiwa->q);
-		iiwa->M(6, 6) = 45 * iiwa->M(6, 6); // Correct mass of last body to avoid large accelerations
-		iiwa->Minv = iiwa->M.inverse();
-		robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
-		robot->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7); // 3x1 position of flange (body = 7), expressed in base coordinates
-		robot->getRotationMatrix(R_0_7, iiwa->q, LBR_N_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
-
-		p_0_cur *= 1000;
-		matrix[0][0] = R_0_7(0, 0);
-		matrix[1][0] = R_0_7(1, 0);
-		matrix[2][0] = R_0_7(2, 0);
-
-		matrix[0][1] = R_0_7(0, 1);
-		matrix[1][1] = R_0_7(1, 1);
-		matrix[2][1] = R_0_7(2, 1);
-
-		matrix[0][2] = R_0_7(0, 2);
-		matrix[1][2] = R_0_7(1, 2);
-		matrix[2][2] = R_0_7(2, 2);
-
-		matrix[3][0] = 0.0;
-		matrix[3][1] = 0.0;
-		matrix[3][2] = 0.0;
-		matrix[3][3] = 1.0;
-
-		matrix[0][3] = p_0_cur(0, 0);
-		matrix[1][3] = p_0_cur(1, 0);
-		matrix[2][3] = p_0_cur(2, 0);
-	}
-	else
-	{
-		double _qCurr[LBR_N_JOINTS];
-		for (int i = 0; i < LBR_N_JOINTS; i++)
-		{
-			_qCurr[i] = 0.0;
-		}
-		memcpy(_qOld, _qCurr, LBR_N_JOINTS * sizeof(double));
-		// curan::utils::cout << "the joints are: \n";
-		for (int i = 0; i < LBR_N_JOINTS; i++)
-		{
-			iiwa->q[i] = _qCurr[i];
-		}
-		auto t2 = std::chrono::steady_clock::now();
-		auto sampleTimeChrono = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-		double sampleTime = (sampleTimeChrono.count() < 1) ? 0.001 : sampleTimeChrono.count() / 1000.0;
-		t1 = t2;
-		for (int i = 0; i < LBR_N_JOINTS; i++)
-		{
-			iiwa->qDot[i] = (_qCurr[i] - _qOld[i]) / sampleTime;
-		}
-		// curan::utils::cout << "\n";
-
-		static Vector3d p_0_cur = Vector3d::Zero(3, 1);
-		static Matrix3d R_0_7 = Matrix3d::Zero(3, 3);
-		static Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
-
-		robot->getMassMatrix(iiwa->M, iiwa->q);
-		iiwa->M(6, 6) = 45 * iiwa->M(6, 6); // Correct mass of last body to avoid large accelerations
-		iiwa->Minv = iiwa->M.inverse();
-		robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
-		robot->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7); // 3x1 position of flange (body = 7), expressed in base coordinates
-		robot->getRotationMatrix(R_0_7, iiwa->q, LBR_N_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
-
-		p_0_cur *= 1000;
-		matrix[0][0] = R_0_7(0, 0);
-		matrix[1][0] = R_0_7(1, 0);
-		matrix[2][0] = R_0_7(2, 0);
-
-		matrix[0][1] = R_0_7(0, 1);
-		matrix[1][1] = R_0_7(1, 1);
-		matrix[2][1] = R_0_7(2, 1);
-
-		matrix[0][2] = R_0_7(0, 2);
-		matrix[1][2] = R_0_7(1, 2);
-		matrix[2][2] = R_0_7(2, 2);
-
-		matrix[3][0] = 0.0;
-		matrix[3][1] = 0.0;
-		matrix[3][2] = 0.0;
-		matrix[3][3] = 1.0;
-
-		matrix[0][3] = p_0_cur(0, 0);
-		matrix[1][3] = p_0_cur(1, 0);
-		matrix[2][3] = p_0_cur(2, 0);
-	}
-}
-
 struct PlusSpecification
 {
 	int framerate = 30;
 	std::string name;
 } specification;
 
-void start_tracking(curan::communication::Server &server, curan::utilities::Flag& flag, std::shared_ptr<SharedState> shared_state)
+void start_tracking(curan::communication::Server& server,curan::robotic::RobotLBR& lbr)
 {
 	try
 	{
 		asio::io_context &in_context = server.get_context();
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
-		// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
-		kuka::Robot::robotName myName(kuka::Robot::LBRiiwa); // Select the robot here
 
-		auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
-		auto iiwa = std::make_unique<RobotParameters>();	// myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
-
-		double toolMass = 0.0; // No tool for now
-		Vector3d toolCOM = Vector3d::Zero(3, 1);
-		Matrix3d toolInertia = Matrix3d::Zero(3, 3);
-		std::unique_ptr<ToolData> myTool = std::make_unique<ToolData>(toolMass, toolCOM, toolInertia);
-		robot->attachToolToRobotModel(myTool.get());
+		const auto& access =lbr.atomic_acess();
 
 		while (!in_context.stopped())
 		{
@@ -191,8 +69,7 @@ void start_tracking(curan::communication::Server &server, curan::utilities::Flag
 			val = specification.framerate;
 			name = specification.name;
 			std::string device_name = "FlangeTo" + name;
-			flag.wait();
-			while (flag.value())
+			while (lbr)
 			{
 				const auto start = std::chrono::high_resolution_clock::now();
 				ts->GetTime();
@@ -208,7 +85,12 @@ void start_tracking(curan::communication::Server &server, curan::utilities::Flag
 				igtl::Matrix4x4 matrix;
 				igtl::TrackingDataElement::Pointer ptr;
 				trackingMsg->GetTrackingDataElement(0, ptr);
-				GetRobotConfiguration(matrix, robot.get(), iiwa.get(), shared_state);
+				auto state = access.load(std::memory_order_relaxed);
+				for(size_t row = 0; row < 3; ++row){
+					matrix[row][3] = state.translation[0];
+					for(size_t col = 0; col < 3; ++col)
+						matrix[row][col] = state.rotation[row][col];
+				}
 				ptr->SetMatrix(matrix);
 				trackingMsg->SetTimeStamp(ts);
 				trackingMsg->Pack();
@@ -229,41 +111,12 @@ void start_tracking(curan::communication::Server &server, curan::utilities::Flag
 	}
 }
 
-void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage> &message, std::shared_ptr<SharedState> &shared_state)
-{
-	if (shared_state->is_initialized.load())
-	{
-		auto robot_state = shared_state->robot_state.load();
-		auto _qCurr = robot_state.getMeasuredJointPosition();
-		auto _eExtern = robot_state.getExternalTorque();
-		auto _eMeasured = robot_state.getMeasuredTorque();
-		for (int i = 0; i < LBR_N_JOINTS; i++)
-		{
-			message->angles[i] = _qCurr[i];
-			message->measured_torques[i] = _eMeasured[i];
-			message->external_torques[i] = _eExtern[i];
-		}
-	}
-	else
-	{
-		for (int i = 0; i < LBR_N_JOINTS; i++)
-		{
-			message->angles[i] = 0.0;
-			message->measured_torques[i] = 0.0;
-			message->external_torques[i] = 0.0;
-		}
-	}
-}
-
-void start_joint_tracking(curan::communication::Server &server, curan::utilities::Flag& flag, std::shared_ptr<SharedState> shared_state)
+void start_joint_tracking(curan::communication::Server &server,curan::robotic::RobotLBR& lbr)
 {
 	asio::io_context &in_context = server.get_context();
 
-	// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
-	kuka::Robot::robotName myName(kuka::Robot::LBRiiwa); // Select the robot here
+	const auto& access = lbr.atomic_acess();
 
-	auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
-	auto iiwa = std::make_unique<RobotParameters>();	// myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
 	int val = 50;
 	std::string name = "empty";
 
@@ -275,8 +128,10 @@ void start_joint_tracking(curan::communication::Server &server, curan::utilities
 		const auto start = std::chrono::high_resolution_clock::now();
 
 		std::shared_ptr<curan::communication::FRIMessage> message = std::shared_ptr<curan::communication::FRIMessage>(new curan::communication::FRIMessage());
-
-		GetRobotConfiguration(message, shared_state);
+		auto state = access.load(std::memory_order_relaxed);
+		message->angles = state.q;
+		message->external_torques = state.tau_ext;
+		message->measured_torques = state.tau;
 		message->serialize();
 
 		auto to_send = curan::utilities::CaptureBuffer::make_shared(message->get_buffer(),message->get_body_size() + message->get_header_size(),message);
@@ -359,21 +214,19 @@ int main(int argc, char *argv[])
 
 		auto val = server.connect(callme);
 
-		curan::utilities::Flag robot_flag;
-		robot_flag.set(true);
+		std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
+    	curan::robotic::RobotLBR client{handguinding_controller.get()};
 
-		auto shared_state = std::make_shared<SharedState>();
-		shared_state->is_initialized.store(false);
-		auto robot_functional_control = [shared_state, &robot_flag]()
+		auto robot_functional_control = [&]()
 		{
-			robot_control(shared_state, robot_flag);
+			robot_control(client);
 		};
 
 		std::thread thred_robot_control{robot_functional_control};
 
-		auto state_machine = [&state_flag, &server, shared_state]()
+		auto state_machine = [&]()
 		{
-			start_tracking(server, state_flag, shared_state);
+			start_tracking(server, client);
 		};
 
 		std::thread thred{state_machine};
@@ -384,15 +237,15 @@ int main(int argc, char *argv[])
 		curan::communication::Server::Info construction_joints{context, fri_interface, port_fri};
 		curan::communication::Server server_joints{construction_joints};
 
-		auto joint_tracking = [&state_flag, &server_joints, shared_state]()
+		auto joint_tracking = [&]()
 		{
-			start_joint_tracking(server_joints, state_flag, shared_state);
+			start_joint_tracking(server_joints, client);
 		};
 		std::thread thred_joint{joint_tracking};
 
 		curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
 		context.run();
-		robot_flag.set(false);
+		client.cancel();
 		thred_robot_control.join();
 		thred.join();
 		return 0;

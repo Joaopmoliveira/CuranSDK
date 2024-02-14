@@ -63,8 +63,8 @@ void interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
 		for (size_t index = 0; index < LBR_N_JOINTS; ++index)
 		{
-			std::string loc = "torque " + std::to_string(index);
-			buffers[index].AddPoint(t, (float)state.cmd_tau[index]);
+			std::string loc = "tau_ext " + std::to_string(index);
+			buffers[index].AddPoint(t, (float)state.tau_ext[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 		}
 		ImPlot::EndPlot();
@@ -86,7 +86,7 @@ void interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		{
 			std::string loc = names[index].data();
 			wall_avoindance_buffers[index].AddPoint(t, (float)state.user_defined[index]);
-			ImPlot::PlotLine(loc.data(), &wall_avoindance_buffers[index].Data[0].x, &wall_avoindance_buffers[index].Data[0].y, wall_avoindance_buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
+			ImPlot::PlotLine(loc.data(), &wall_avoindance_buffers[index].Data[0].x, &wall_avoindance_buffers[index].Data[0].y, wall_avoindance_buffers[index].Data.size(), 0, wall_avoindance_buffers[index].Offset, 2 * sizeof(float));
 		}
 		ImPlot::EndPlot();
 	}
