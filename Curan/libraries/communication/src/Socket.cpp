@@ -5,7 +5,6 @@
 namespace curan {
 namespace communication {
 
-
 Socket::Socket(asio::io_context& io_context,
 			const asio::ip::tcp::resolver::results_type& endpoints,
 			callable callable, Client* owner) : _cxt(io_context),
@@ -28,7 +27,7 @@ Socket::Socket(asio::io_context& io_context,
 };
 
 Socket::~Socket() {
-	_socket.close();
+	close();
 };
 
 void Socket::post(std::shared_ptr<utilities::MemoryBuffer> buff) {
@@ -54,14 +53,22 @@ void Socket::do_write(){
 					do_write();
 				}
 			else {
-				get_underlying_socket().close();
+				close();
 				utilities::cout << "failed";
 			}
 		});
 };
 
 void Socket::close() {
-	asio::post(_cxt, [this]() { get_underlying_socket().close(); });
+	asio::post(_cxt, [this]() { 
+		if(get_underlying_socket().is_open()) {
+			asio::error_code error;
+			get_underlying_socket().shutdown(asio::socket_base::shutdown_both,error);
+			utilities::cout << ((error) ? "shutdown requested\n" : "shutdown denied\n");
+			get_underlying_socket().close(error);
+			utilities::cout << ((error) ? "close requested\n" : "close denied\n");
+		} 
+	});
 };
 
 }

@@ -30,16 +30,14 @@ std::optional<std::shared_ptr<utilities::Cancelable>> Server::connect(callable c
 }
 
 void Server::write(std::shared_ptr<utilities::MemoryBuffer> buffer) {
-	if (list_of_clients.size()==0){
-		utilities::cout << "No client to write";
+	std::lock_guard<std::mutex> g{mut};
+	if (list_of_clients.size()==0)
 		return;
-	}
 	list_of_clients.remove_if([buffer](std::shared_ptr<Client>& client){
 		if(!client->get_socket().get_underlying_socket().is_open()){
 			utilities::cout << "erasing client";
 			return true;
 		}
-			
 		client->write(buffer);
 		return false;
 	}
@@ -55,11 +53,14 @@ void Server::accept() {
 		auto client_ptr = std::make_shared<Client>(info);
 		for(auto & submitted_callables : callables)
 			client_ptr->connect(submitted_callables.lambda);
+		std::lock_guard<std::mutex> g{mut};
 		list_of_clients.push_back(client_ptr);
+		utilities::cout << "Server started listening for new client";
+	} else {
+		utilities::cout << "Server stopped listening for incoming connections\n";
 	}
 	accept();
 	});
-	utilities::cout << "Server started listening for new client";
 }
 
 }

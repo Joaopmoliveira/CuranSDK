@@ -49,6 +49,8 @@ namespace curan {
 
 			Client(ServerInfo& info);
 
+			~Client();
+
 			[[nodiscard]] std::optional<std::shared_ptr<utilities::Cancelable>> connect(callable c);
 
 			void write(std::shared_ptr<curan::utilities::MemoryBuffer> buffer);

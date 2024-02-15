@@ -2,13 +2,13 @@
 #include "communication/ProtoIGTL.h"
 #include "communication/ProtoFRI.h"
 #include <iostream>
+#include <string>
 #include <thread>
 #include "utils/Logger.h"
 #include "utils/Flag.h"
 
 #include "robotutils/LBRController.h"
 #include "robotutils/HandGuidance.h"
-#include "utils/Logger.h"
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
 
@@ -36,6 +36,7 @@ void robot_control(curan::robotic::RobotLBR& lbr)
 		while (success && lbr)
 			success = app.step();
 		app.disconnect();
+		std::cout << "stopping robot control!\n";
 		return;
 	}
 	catch (...)
@@ -51,7 +52,7 @@ struct PlusSpecification
 	std::string name;
 } specification;
 
-void start_tracking(curan::communication::Server& server,curan::robotic::RobotLBR& lbr)
+void start_tracking(curan::communication::Server& server,curan::robotic::RobotLBR& lbr,std::atomic<bool>& server_has_connections)
 {
 	try
 	{
@@ -59,7 +60,7 @@ void start_tracking(curan::communication::Server& server,curan::robotic::RobotLB
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
 
-		const auto& access =lbr.atomic_acess();
+		const auto& access = lbr.atomic_acess();
 
 		while (!in_context.stopped())
 		{
@@ -69,7 +70,7 @@ void start_tracking(curan::communication::Server& server,curan::robotic::RobotLB
 			val = specification.framerate;
 			name = specification.name;
 			std::string device_name = "FlangeTo" + name;
-			while (lbr)
+			while (server_has_connections.load())
 			{
 				const auto start = std::chrono::high_resolution_clock::now();
 				ts->GetTime();
@@ -87,7 +88,7 @@ void start_tracking(curan::communication::Server& server,curan::robotic::RobotLB
 				trackingMsg->GetTrackingDataElement(0, ptr);
 				auto state = access.load(std::memory_order_relaxed);
 				for(size_t row = 0; row < 3; ++row){
-					matrix[row][3] = state.translation[0];
+					matrix[row][3] = 1000.0*state.translation[row];
 					for(size_t col = 0; col < 3; ++col)
 						matrix[row][col] = state.rotation[row][col];
 				}
@@ -104,10 +105,11 @@ void start_tracking(curan::communication::Server& server,curan::robotic::RobotLB
 				std::this_thread::sleep_for(sleep_for);
 			}
 		}
+		std::cout << "stopping tracking!\n";
 	}
 	catch (...)
 	{
-		curan::utilities::cout << "exception was thrown in the communication loop\n";
+		std::cout << "exception was thrown in the communication loop\n";
 	}
 }
 
@@ -140,6 +142,7 @@ void start_joint_tracking(curan::communication::Server &server,curan::robotic::R
 		const auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds((int)(1000.0 / val)) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
+	std::cout << "stopping joint tracking!\n";
 }
 
 int main(int argc, char *argv[])
@@ -153,9 +156,10 @@ int main(int argc, char *argv[])
 		if (argc != 3)
 		{
 			std::cout << "Must provide at least two arguments to the executable\n";
-			return 1;
+			//return 1;
 		}
-		std::string integer{argv[2]};
+		//std::string integer{argv[2]};
+		std::string integer{"17"};
 		size_t pos = 0;
 		try
 		{
@@ -172,14 +176,14 @@ int main(int argc, char *argv[])
 			return 2;
 		}
 
-		specification.name = std::string(argv[1]);
+		//specification.name = std::string(argv[1]);
+		specification.name = std::string{"Base"};
 
 		unsigned short port = 50000;
 		curan::communication::interface_igtl igtlink_interface;
 		curan::communication::Server::Info construction{context, igtlink_interface, port};
 		curan::communication::Server server{construction};
-		curan::utilities::Flag state_flag;
-		state_flag.set(false);
+		std::atomic<bool> server_has_connections = false;
 		curan::communication::interface_igtl callme = [&](const size_t &custom, const std::error_code &err, igtl::MessageBase::Pointer pointer)
 		{
 			if (err)
@@ -187,6 +191,7 @@ int main(int argc, char *argv[])
 				return;
 			}
 			std::cout << "Receivd message\n";
+			assert(pointer.IsNotNull());
 			auto temp = pointer->GetMessageType();
 			if (!temp.compare("STT_TDATA"))
 			{
@@ -197,17 +202,19 @@ int main(int argc, char *argv[])
 				{
 					std::string s{tracking->GetCoordinateName()};
 					int framerate = tracking->GetResolution();
-					state_flag.set(true);
 					std::cout << "message coordinate name: (" << s << ") , frame rate: " << framerate << "\n";
+					server_has_connections = true;
 				}
-				else
+				else{
 					std::cout << "failed to unpack plus message\n";
+					server_has_connections = false;
+				}
 				return;
 			}
 			if (!temp.compare("STP_TDATA"))
 			{
-				std::cout << "received request to stop processing images\n";
-				state_flag.set(false);
+				server_has_connections = true;
+				std::cout << "received request to stop sending flange\n";
 				return;
 			}
 		};
@@ -216,37 +223,40 @@ int main(int argc, char *argv[])
 
 		std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
     	curan::robotic::RobotLBR client{handguinding_controller.get()};
+		robot_pointer = &client;
 
-		auto robot_functional_control = [&]()
+ 		auto robot_functional_control = [&]()
 		{
 			robot_control(client);
+			std::cout << "robot control stopping" << std::endl;
 		};
 
-		std::thread thred_robot_control{robot_functional_control};
+		std::thread thred_robot_control{robot_functional_control}; //--------------------
 
-		auto state_machine = [&]()
-		{
-			start_tracking(server, client);
-		};
-
-		std::thread thred{state_machine};
+		std::thread thred{[&](){
+			start_tracking(server, client,server_has_connections);
+			std::cout << "robot tracking stopping" << std::endl;
+		}};  //------------------------
 
 		unsigned short port_fri = 50010;
 
 		curan::communication::interface_fri fri_interface;
 		curan::communication::Server::Info construction_joints{context, fri_interface, port_fri};
 		curan::communication::Server server_joints{construction_joints};
-
+ 
 		auto joint_tracking = [&]()
 		{
 			start_joint_tracking(server_joints, client);
+			std::cout << "joint tracking stopping" << std::endl;
 		};
-		std::thread thred_joint{joint_tracking};
+		std::thread thred_joint{joint_tracking}; //--------------------------- 
 
 		curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
 		context.run();
+		server_joints.cancel();
 		client.cancel();
 		thred_robot_control.join();
+		thred_joint.join();
 		thred.join();
 		return 0;
 	}

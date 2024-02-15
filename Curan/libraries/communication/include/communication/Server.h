@@ -17,7 +17,7 @@ namespace curan {
 		class Server {
 			asio::io_context& _cxt;
 			asio::ip::tcp::acceptor acceptor_;
-
+			std::mutex mut;
 			std::list<std::shared_ptr<Client>> list_of_clients;
 
 			struct combined {
@@ -52,6 +52,16 @@ namespace curan {
 			~Server();
 
 			[[nodiscard]] std::optional<std::shared_ptr<utilities::Cancelable>> connect(callable c);
+
+			inline size_t number_of_clients(){
+				std::lock_guard<std::mutex> g{mut};
+				return list_of_clients.size();
+			}
+
+			inline void cancel(){
+				std::lock_guard<std::mutex> g{mut};
+				list_of_clients = std::list<std::shared_ptr<Client>>{};
+			};
 
 			void write(std::shared_ptr<utilities::MemoryBuffer> buffer);
 
