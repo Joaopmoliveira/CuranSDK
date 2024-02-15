@@ -13,6 +13,9 @@ Client::Client(ServerInfo& info) : _cxt{ info.io_context },
 	connection_type{ info.connection_type } {
 };
 
+Client::~Client(){
+}
+
 std::optional<std::shared_ptr<utilities::Cancelable>> Client::connect(callable c) {
 	if (connection_type.index() != c.index())
 		return std::nullopt;

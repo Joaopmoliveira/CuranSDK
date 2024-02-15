@@ -24,7 +24,7 @@ void read_header_first_time(IgtlinkClientConnection val) {
 			read_body(val, ec);
 		} else {
 			val.owner->transverse_callables<interface_igtl>(0, ec, val.message_to_receive);
-			val.owner->get_socket().get_underlying_socket().close();
+			val.owner->get_socket().close();
 		}				
 		}
 	);
@@ -48,7 +48,7 @@ void read_header(IgtlinkClientConnection val, std::error_code ec) {
 			read_body(val, ec);
 		} else {
 			val.owner->transverse_callables<interface_igtl>(0, ec, val.message_to_receive);
-			val.owner->get_socket().get_underlying_socket().close();
+			val.owner->get_socket().close();
 		}}
 	);
 }
@@ -66,14 +66,13 @@ void read_body(IgtlinkClientConnection val, std::error_code ec) {
 			read_header(val, ec);
 		else {
 			val.owner->transverse_callables<interface_igtl>(0, ec, val.message_to_receive);
-			val.owner->get_socket().get_underlying_socket().close();
+			val.owner->get_socket().close();
 		}}
 	);
 }
 }
 
 void start(Client* client_pointer) {
-	utilities::cout << "starting to:";
 	implementation::IgtlinkClientConnection val{ client_pointer };
 	implementation::read_header_first_time(std::move(val));	
 }
