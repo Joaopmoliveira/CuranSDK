@@ -32,11 +32,8 @@ struct DataSpecificApplication
 
     Panels current_panel_arragement = Panels::ONE_PANEL;
 
-    bool is_first_point_being_defined = false;
     std::optional<Eigen::Matrix<double, 3, 1>> ac_point;
-    bool is_first_point_being_defined = false;
     std::optional<Eigen::Matrix<double, 3, 1>> pc_point;
-    bool is_first_point_being_defined = false;
     std::optional<Eigen::Matrix<double, 3, 1>> midline;
 
     curan::ui::MiniPage *minipage = nullptr;
