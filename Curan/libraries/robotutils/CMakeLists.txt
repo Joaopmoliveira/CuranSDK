@@ -4,6 +4,8 @@ src/HandGuidance.cpp
 src/PassiveControllerAude.cpp
 src/NeedleController.cpp
 src/WallAvoidanceData.cpp
+src/FilterRippleFirstHarmonic.cpp
+src/ExtractRipple.cpp
 )
 
 target_include_directories(robotutils

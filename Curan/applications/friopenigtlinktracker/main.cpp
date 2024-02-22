@@ -158,8 +158,8 @@ int main(int argc, char *argv[])
 			std::cout << "Must provide at least two arguments to the executable\n";
 			//return 1;
 		}
-		//std::string integer{argv[2]};
-		std::string integer{"17"};
+		std::string integer{argv[2]};
+
 		size_t pos = 0;
 		try
 		{
@@ -176,8 +176,9 @@ int main(int argc, char *argv[])
 			return 2;
 		}
 
-		//specification.name = std::string(argv[1]);
-		specification.name = std::string{"Base"};
+		specification.name = std::string(argv[1]);
+
+		std::cout << "Outputing information with delay :" << specification.framerate << std::endl;
 
 		unsigned short port = 50000;
 		curan::communication::interface_igtl igtlink_interface;
