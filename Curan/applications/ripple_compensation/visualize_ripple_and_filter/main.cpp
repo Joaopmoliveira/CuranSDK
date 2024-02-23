@@ -126,8 +126,10 @@ void rendering(curan::robotic::RobotLBR& client){
 }
 
 int main(){
+	std::signal(SIGINT, signal_handler);
     std::unique_ptr<curan::robotic::ExtractRipple> handguinding_controller = std::make_unique<curan::robotic::ExtractRipple>();
     curan::robotic::RobotLBR client{handguinding_controller.get()};
+	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
     std::thread robot_renderer{[&](){rendering(client);}};
 	std::list<curan::robotic::State> list_of_recorded_states;
@@ -135,11 +137,11 @@ int main(){
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
 		
-		KUKA::FRI::UdpConnection connection;
+		KUKA::FRI::UdpConnection connection{20};
 		KUKA::FRI::ClientApplication app(connection, client);
 		bool success = app.connect(DEFAULT_PORTID, NULL);
 		success = app.step();
-		while (success && client){
+		while (client){
 			success = app.step();
 			list_of_recorded_states.push_back(access_point.load());
 		}
@@ -147,7 +149,9 @@ int main(){
         robot_renderer.join();
 		auto now = std::chrono::system_clock::now();
 		auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-		std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/measurments"+std::to_string(UTC)+".json");
+		std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments"+std::to_string(UTC)+".json"};
+		std::cout << "creating filename with measurments :" << filename << std::endl;
+		std::ofstream o(filename);
 		o << list_of_recorded_states;
 		return 0;
 	}
