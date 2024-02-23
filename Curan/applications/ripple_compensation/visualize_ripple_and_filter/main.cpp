@@ -9,6 +9,7 @@
 #include "rendering/Renderable.h"
 #include "rendering/SequencialLinks.h"
 
+#include <chrono>
 #include <csignal>
 
 struct ScrollingBuffer
@@ -127,7 +128,9 @@ void rendering(curan::robotic::RobotLBR& client){
 int main(){
     std::unique_ptr<curan::robotic::ExtractRipple> handguinding_controller = std::make_unique<curan::robotic::ExtractRipple>();
     curan::robotic::RobotLBR client{handguinding_controller.get()};
+	const auto& access_point = client.atomic_acess();
     std::thread robot_renderer{[&](){rendering(client);}};
+	std::list<curan::robotic::State> list_of_recorded_states;
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
@@ -136,10 +139,16 @@ int main(){
 		KUKA::FRI::ClientApplication app(connection, client);
 		bool success = app.connect(DEFAULT_PORTID, NULL);
 		success = app.step();
-		while (success && client)
+		while (success && client){
 			success = app.step();
+			list_of_recorded_states.push_back(access_point.load());
+		}
 		app.disconnect();
         robot_renderer.join();
+		auto now = std::chrono::system_clock::now();
+		auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+		std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/measurments"+std::to_string(UTC)+".json");
+		o << list_of_recorded_states;
 		return 0;
 	}
 	catch (...)

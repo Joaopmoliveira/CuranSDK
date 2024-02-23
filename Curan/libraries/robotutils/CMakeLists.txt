@@ -23,5 +23,7 @@ KukaRobotLibrary
 FRILibrary
 robotParameters
 gaussianmixture
+nlohmann_json 
+nlohmann_json::nlohmann_json 
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )

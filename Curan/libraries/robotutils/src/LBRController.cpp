@@ -251,6 +251,82 @@ void RobotLBR::command(){
     currentTime = currentTime + robotState().getSampleTime();
 }
 
+std::ostream& operator<<(std::ostream& os, const std::list<State>& cont)
+{
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_q = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_dq = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_ddq = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_q = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau_ext = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,3,Eigen::Dynamic> arr_translation = Eigen::Matrix<double,3,Eigen::Dynamic>::Zero(3,cont.size());
+    Eigen::Matrix<double,9,Eigen::Dynamic> arr_rotation = Eigen::Matrix<double,9,Eigen::Dynamic>::Zero(9,cont.size());
+
+    Eigen::Matrix<double,number_of_joints*6,Eigen::Dynamic> arr_jacobian = Eigen::Matrix<double,number_of_joints*6,Eigen::Dynamic>::Zero(number_of_joints*6,cont.size());
+    Eigen::Matrix<double,number_of_joints*number_of_joints,Eigen::Dynamic> arr_massmatrix = Eigen::Matrix<double,number_of_joints*number_of_joints,Eigen::Dynamic>::Zero(number_of_joints*number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(3,cont.size());
+
+    auto begin = cont.begin();
+    for(size_t i=0; begin!=cont.end(); ++i,++begin){
+        
+        arr_q.col(i) = convert((*begin).q);
+        arr_dq.col(i) = convert((*begin).dq);
+        arr_ddq.col(i) = convert((*begin).ddq);
+        arr_cmd_q.col(i) = convert((*begin).cmd_q);
+        arr_cmd_tau.col(i) = convert((*begin).cmd_tau);
+        arr_tau.col(i) = convert((*begin).tau);
+        arr_tau_ext.col(i) = convert((*begin).tau_ext);
+        arr_translation.col(i) = convert((*begin).translation);
+        arr_rotation.col(i) = convert((*begin).rotation);
+        arr_jacobian.col(i) = convert((*begin).jacobian);
+        arr_massmatrix.col(i) = convert((*begin).massmatrix);
+        arr_user_defined.col(i) = convert((*begin).user_defined);
+    }
+
+    nlohmann::json measurments;
+    std::stringstream ss;
+    ss << arr_q;
+    measurments["q"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_dq;
+    measurments["dq"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_ddq;
+    measurments["ddq"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_cmd_q;
+    measurments["cmd_q"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_cmd_tau;
+    measurments["cmd_tau"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_tau;
+    measurments["tau"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_tau_ext;
+    measurments["tau_ext"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_translation;
+    measurments["translation"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_rotation;
+    measurments["rotation"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_jacobian; 
+    measurments["jacobians"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_massmatrix;  
+    measurments["massmatrix"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_user_defined;
+    measurments["userdef"] = ss.str();
+    os << measurments.dump();
+    return os;
+} 
+
 VectorNd RobotLBR::addConstraints(const VectorNd& tauStack, double dt)
 {
     VectorNd dt2 = VectorNd::Zero(number_of_joints, 1);
