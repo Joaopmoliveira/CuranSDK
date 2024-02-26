@@ -9,6 +9,7 @@
 #include "ToolData.h"
 #include "robotParameters.h"
 #include "friLBRClient.h"
+#include <nlohmann/json.hpp>
 
 namespace curan {
 namespace robotic {
@@ -52,15 +53,19 @@ struct State{
     std::array<double,number_of_joints> q;
     std::array<double,number_of_joints> dq;
     std::array<double,number_of_joints> ddq;
+
     std::array<double,number_of_joints> cmd_q;
     std::array<double,number_of_joints> cmd_tau;
     std::array<double,number_of_joints> tau;
+
     std::array<double,number_of_joints> tau_ext;
     std::array<double,3> translation;
     std::array<std::array<double,3>,3> rotation;
+
     std::array<std::array<double,number_of_joints>,6> jacobian;
     std::array<std::array<double,number_of_joints>,number_of_joints> massmatrix;
     std::array<std::array<double,number_of_joints>,number_of_joints> invmassmatrix;
+
     std::array<double,number_of_joints> user_defined;
     double sampleTime{1e-3};
     bool initialized{false};
@@ -71,34 +76,7 @@ struct State{
     void convertFrom(const EigenState&);
 };
 
-
-
-/* template<typename container>
-std::ostream& operator<<(std::ostream& os, const container& cont)
-{
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_q = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_dq = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_ddq = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_q = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau_ext = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
-    Eigen::Matrix<double,3,Eigen::Dynamic> arr_translation = Eigen::Matrix<double,3,Eigen::Dynamic>::Zero(3,cont.size());
-    Eigen::Matrix<double,9,Eigen::Dynamic> arr_rotation = Eigen::Matrix<double,9,Eigen::Dynamic>::Zero(9,cont.size());
-
-    for(size_t i=0; i< cont.size(); ++i){
-        arr_q.col(i) = convert(cont[i].q);
-        arr_dq.col(i) = convert(cont[i].dq);
-        arr_ddq.col(i) = convert(cont[i].ddq);
-        arr_cmd_q.col(i) = convert(cont[i].cmd_q);
-        arr_cmd_tau.col(i) = convert(cont[i].cmd_tau);
-        arr_tau.col(i) = convert(cont[i].tau);
-        arr_tau_ext.col(i) = convert(cont[i].tau_ext);
-        arr_translation.col(i) = convert(cont[i].translation);
-        arr_rotation.col(i) = convert(cont[i].rotation);
-    }
-    return os;
-} */
+std::ostream& operator<<(std::ostream& os, const std::list<State>& cont);
 
 struct RobotLimits
 {
