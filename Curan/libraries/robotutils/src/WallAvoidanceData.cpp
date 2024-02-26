@@ -29,8 +29,6 @@ namespace robotic
         Eigen::Vector3d vel_pos = vel.block(0,0,3,1);
         double dotD = (f_direction_along_valid_region.transpose()*vel_pos)(0,0);
 
-
-
         constexpr double scalling_factor = 15.0;
         double dtvar = scalling_factor*state.sampleTime;
         if(dtvar<0.001)
@@ -49,7 +47,7 @@ namespace robotic
         }
 
         double dotDMaxFromD = (Dmax-D)/dt2;
-        double dotDMaxFormdotdotD = ((Dmax-D)<0.0) ? 1000000 : sqrt(2*max_accel*(Dmax-D)); 
+        double dotDMaxFormdotdotD = ((Dmax-D)<0.0) ? 1000000.0 : sqrt(2*max_accel*(Dmax-D)); 
 
         Eigen::Vector3d vMaxVector{{max_vel,dotDMaxFormdotdotD,dotDMaxFromD}};
         double dotDMaxFinal = vMaxVector.minCoeff();
