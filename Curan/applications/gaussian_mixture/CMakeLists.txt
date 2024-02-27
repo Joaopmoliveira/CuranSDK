@@ -1,3 +1,4 @@
 add_subdirectory(statederivativecontroller)
 add_subdirectory(datacollection)
 add_subdirectory(limitcycle)
+add_subdirectory(forcecontroll)
