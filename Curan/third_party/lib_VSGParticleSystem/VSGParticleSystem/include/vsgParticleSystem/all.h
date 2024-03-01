@@ -1,6 +1,0 @@
-#include "axis/_axis.h"
-#include "builder/_builder.h"
-#include "dynamics/_dynamics.h"
-#include "particle/_particle.h"
-#include "transformation/_transformation.h"
-#include "utils/_utils.h"
