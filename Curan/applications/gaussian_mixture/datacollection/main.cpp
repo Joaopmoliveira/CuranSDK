@@ -149,9 +149,9 @@ int main(int argc, char* argv[]) {
 			static bool previous_state = snapshot_record_data;
 			bool state_changed = snapshot_record_data!=previous_state;
 			
-			if( current_index_timestep % 15 == 0 && snapshot_record_data){
+			if( current_index_timestep % 15 == 0 && snapshot_record_data)
 				list_of_recorded_states.push_back(access_point.load());
-			}
+			
 
 			if(state_changed){
 				previous_state = snapshot_record_data;
