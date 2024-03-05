@@ -5,6 +5,9 @@ namespace renderable {
 
 Sphere::Sphere(Info& info) {
     vsg::dvec3 position(0.0, 0.0, 0.0);
+    if (info.position)
+        position = *info.position;
+        
     transform = vsg::MatrixTransform::create(vsg::translate(position));
 
     obj_contained = vsg::Group::create();

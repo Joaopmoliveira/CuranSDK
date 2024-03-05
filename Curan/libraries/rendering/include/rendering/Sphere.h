@@ -14,6 +14,7 @@ namespace curan {
                 std::optional<std::string> identifier;
                 vsg::GeometryInfo geomInfo;
                 vsg::StateInfo stateInfo;
+                std::optional<vsg::dvec3> position;
             };
 
             Sphere(Info& info);
