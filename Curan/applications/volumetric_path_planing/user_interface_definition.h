@@ -2,6 +2,7 @@
 #define USER_INTERFACE_HEADER
 
 #include "bounding_box.h"
+#include "utils/Overloading.h"
 
 std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(4);
 
@@ -32,9 +33,12 @@ struct Application
 
     curan::ui::IconResources &resources;
 
-    std::optional<Eigen::Matrix<double, 3, 1>> ac_point;
-    std::optional<Eigen::Matrix<double, 3, 1>> pc_point;
-    std::optional<Eigen::Matrix<double, 3, 1>> midline;
+    bool is_first_point_being_defined = false;
+    std::optional<Eigen::Matrix<double, 3, 1>> first_point;
+    bool is_second_point_being_defined = false;
+    std::optional<Eigen::Matrix<double, 3, 1>> second_point;
+    bool is_third_point_being_defined = false;
+    std::optional<Eigen::Matrix<double, 3, 1>> third_point;
 
     curan::ui::MiniPage *minipage = nullptr;
 
@@ -177,7 +181,7 @@ struct Application
                                     lac_point[0] = ac_point_in_world_coordinates[0];
                                     lac_point[1] = ac_point_in_world_coordinates[1];
                                     lac_point[2] = ac_point_in_world_coordinates[2];
-                                    ac_point = lac_point;
+                                    first_point = lac_point;
                                     if(config->stack_page!=nullptr){
 						                config->stack_page->stack(success_overlay("added AC point"));
 					                }
@@ -224,7 +228,7 @@ struct Application
                                     lpc_point[0] = pc_point_in_world_coordinates[0];
                                     lpc_point[1] = pc_point_in_world_coordinates[1];
                                     lpc_point[2] = pc_point_in_world_coordinates[2];
-                                    pc_point = lpc_point;
+                                    second_point = lpc_point;
                                     if(config->stack_page!=nullptr){
 						                config->stack_page->stack(success_overlay("added CP point"));
 					                }
@@ -272,7 +276,7 @@ struct Application
                                     lmid_point[0] = midpoint_point_in_world_coordinates[0];
                                     lmid_point[1] = midpoint_point_in_world_coordinates[1];
                                     lmid_point[2] = midpoint_point_in_world_coordinates[2];
-                                    midline = lmid_point;
+                                    third_point = lmid_point;
                                     if(config->stack_page!=nullptr){
 						                config->stack_page->stack(success_overlay("added midpoint"));
 					                }
@@ -300,41 +304,35 @@ struct Application
                         config->stack_page->stack(success_overlay("resampling volume..."));
                     curan::utilities::Job job{"resampling volume", [this, config]()
                                               {
-                                                  if (!midline || !ac_point || !pc_point)
+                                                  if (!first_point || !second_point || !third_point)
                                                   {
                                                       if (config->stack_page != nullptr)
-                                                      {
                                                           config->stack_page->stack(warning_overlay("you must specify all points to resample the volume"));
-                                                      }
-                                                      midline = std::nullopt;
-                                                      ac_point = std::nullopt;
-                                                      pc_point = std::nullopt;
+                                                      first_point = std::nullopt;
+                                                      second_point = std::nullopt;
+                                                      third_point = std::nullopt;
                                                       return;
                                                   }
 
-                                                  Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *pc_point - *ac_point;
+                                                  Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *second_point - *first_point;
                                                   if (orient_along_ac_pc.norm() < 1e-7)
                                                   {
                                                       if (config->stack_page != nullptr)
-                                                      {
                                                           config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
-                                                      }
-                                                      midline = std::nullopt;
-                                                      ac_point = std::nullopt;
-                                                      pc_point = std::nullopt;
+                                                      first_point = std::nullopt;
+                                                      second_point = std::nullopt;
+                                                      third_point = std::nullopt;
                                                       return;
                                                   }
                                                   orient_along_ac_pc.normalize();
-                                                  Eigen::Matrix<double, 3, 1> orient_along_ac_midpoint = *midline - *ac_point;
+                                                  Eigen::Matrix<double, 3, 1> orient_along_ac_midpoint = *third_point - *first_point;
                                                   if (orient_along_ac_midpoint.norm() < 1e-7)
                                                   {
                                                       if (config->stack_page != nullptr)
-                                                      {
                                                           config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
-                                                      }
-                                                      midline = std::nullopt;
-                                                      ac_point = std::nullopt;
-                                                      pc_point = std::nullopt;
+                                                      first_point = std::nullopt;
+                                                      second_point = std::nullopt;
+                                                      third_point = std::nullopt;
                                                       return;
                                                   }
                                                   orient_along_ac_midpoint.normalize();
@@ -345,9 +343,9 @@ struct Application
                                                       {
                                                           config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
                                                       }
-                                                      midline = std::nullopt;
-                                                      ac_point = std::nullopt;
-                                                      pc_point = std::nullopt;
+                                                      first_point = std::nullopt;
+                                                      second_point = std::nullopt;
+                                                      third_point = std::nullopt;
                                                       return;
                                                   }
 
@@ -453,9 +451,9 @@ struct Application
                                                           config->stack_page->stack(warning_overlay("failed to resample volume to AC-PC"));
                                                   }
 
-                                                  midline = std::nullopt;
-                                                  ac_point = std::nullopt;
-                                                  pc_point = std::nullopt;
+                                                  first_point = std::nullopt;
+                                                  second_point = std::nullopt;
+                                                  third_point = std::nullopt;
                                               }};
                     pool->submit(job);
                 });
@@ -466,6 +464,41 @@ struct Application
             minipage->construct(std::move(total_container), SK_ColorBLACK);
         }
     }
+
+    void compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
+        std::optional<Eigen::Matrix<double, 3, 1>> possible_point;
+        size_t index = 0;
+
+        map[current_volume].for_each(curan::ui::Direction::Z,[&](curan::ui::Mask& mask){
+			std::visit(curan::utilities::overloaded{
+                [&](const curan::ui::Path &path){
+                                    
+			    },						 
+			    [&](const curan::ui::Point &point) { 
+                    ImageType::IndexType local_index;
+                    local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(curan::ui::Direction::X)-1);
+                    local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(curan::ui::Direction::Y)-1);
+                    local_index[2] = index;
+                    ImageType::PointType point_in_world_coordinates;
+                    map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,point_in_world_coordinates);
+                    Eigen::Matrix<double,3,1> local_point = Eigen::Matrix<double,3,1>::Zero();
+                    local_point[0] = point_in_world_coordinates[0];
+                    local_point[1] = point_in_world_coordinates[1];
+                    local_point[2] = point_in_world_coordinates[2];
+                    possible_point = local_point;
+		    }
+            },dir_stroke.stroke);
+        ++index;
+        });
+        if(!possible_point && config->stack_page!=nullptr)
+			config->stack_page->stack(warning_overlay("failed to find point, please insert new point"));
+        if(is_first_point_being_defined)
+            first_point = possible_point;
+        else if(is_second_point_being_defined)
+            second_point = possible_point;
+        else if(is_third_point_being_defined)
+            third_point = possible_point;
+};
 
     std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page()
     {
@@ -634,7 +667,11 @@ struct Application
         });
 
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-        *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5);
+        if(button2.get()==nullptr)
+            *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5);
+        else
+            *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
+
         viwers_container->set_color(SK_ColorTRANSPARENT);
 
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);

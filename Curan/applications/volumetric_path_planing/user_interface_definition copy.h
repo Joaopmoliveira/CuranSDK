@@ -68,12 +68,12 @@ struct DataSpecificApplication
             
         });
         if(!possible_point && config->stack_page!=nullptr)
-			config->stack_page->stack(create_overlay_with_warning("failed to find point, please insert new point"));
+			minipage->stack(create_overlay_with_warning("failed to find point, please insert new point"));
         if(is_first_point_being_defined)
             first_point = possible_point;
-        else if(is_first_point_being_defined)
+        else if(is_second_point_being_defined)
             second_point = possible_point;
-        else if(is_first_point_being_defined)
+        else if(is_third_point_being_defined)
             third_point = possible_point;
 };
 
@@ -164,7 +164,7 @@ struct DataSpecificApplication
         case Panels::ONE_PANEL:
         {
             std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
-            image_display->add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw*){
+            image_display->add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw){
                 auto pending_highlights = vol_mas->process_pending_highlights();
                 if(pending_highlights.size()>0){
                     directed_stroke stroke = pending_highlights[pending_highlights.size()-1];

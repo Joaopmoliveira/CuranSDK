@@ -82,7 +82,7 @@ namespace curan
 
 		struct directed_stroke
 		{
-			Stroke strk;
+			Stroke stroke;
 			Direction direction;
 		};
 
