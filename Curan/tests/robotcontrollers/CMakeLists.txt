@@ -11,6 +11,7 @@ robotutils
 add_executable(test_print_robot_state test_print_robot_state.cpp)
 
 target_compile_definitions(test_print_robot_state PRIVATE SK_VULKAN)
+target_compile_definitions(test_print_robot_state PRIVATE NOMINMAX)
 target_compile_definitions(test_print_robot_state PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(test_print_robot_state PUBLIC
@@ -22,6 +23,7 @@ ${OPERATING_SYSTEM_REQUIRMENTS}
 add_executable(test_wall_avoidance_algorithm test_wall_avoidance_algorithm.cpp)
 
 target_compile_definitions(test_wall_avoidance_algorithm PRIVATE SK_VULKAN)
+target_compile_definitions(test_wall_avoidance_algorithm PRIVATE NOMINMAX)
 target_compile_definitions(test_wall_avoidance_algorithm PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(test_wall_avoidance_algorithm PUBLIC

@@ -3,6 +3,7 @@
 #include "communication/ProtoFRI.h"
 #include <iostream>
 #include <string>
+#include <csignal>
 #include <thread>
 #include "utils/Logger.h"
 #include "utils/Flag.h"

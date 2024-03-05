@@ -20,17 +20,17 @@ enum PanelType
     NUMBER_OF_VOLUMES
 };
 
-struct DataSpecificApplication
+struct Application
 {
     bool is_acpc_being_defined = false;
     bool is_trajectory_being_visualized = false;
 
     std::array<curan::ui::VolumetricMask, PanelType::NUMBER_OF_VOLUMES> map;
+
     PanelType current_volume = PanelType::ORIGINAL_VOLUME;
+    Panels current_panel_arragement = Panels::ONE_PANEL;
 
     curan::ui::IconResources &resources;
-
-    Panels current_panel_arragement = Panels::ONE_PANEL;
 
     std::optional<Eigen::Matrix<double, 3, 1>> ac_point;
     std::optional<Eigen::Matrix<double, 3, 1>> pc_point;
@@ -38,11 +38,11 @@ struct DataSpecificApplication
 
     curan::ui::MiniPage *minipage = nullptr;
 
-    DataSpecificApplication(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, {nullptr}, {nullptr}}}
+    Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, {nullptr}, {nullptr}}}
     {
     }
 
-    std::unique_ptr<curan::ui::Overlay> create_overlay_with_warning(const std::string &warning)
+    std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning)
     {
         using namespace curan::ui;
         auto warn = Button::make(" ", "warning.png", resources);
@@ -58,7 +58,7 @@ struct DataSpecificApplication
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
-    std::unique_ptr<curan::ui::Overlay> create_overlay_with_success(const std::string &success)
+    std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success)
     {
         using namespace curan::ui;
         auto warn = Button::make(" ", "submit.png", resources);
@@ -74,7 +74,7 @@ struct DataSpecificApplication
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
-    void create_panel_ac_pc_instructions()
+    void point_selection()
     {
         using namespace curan::ui;
         if (!is_acpc_being_defined)
@@ -179,7 +179,7 @@ struct DataSpecificApplication
                                     lac_point[2] = ac_point_in_world_coordinates[2];
                                     ac_point = lac_point;
                                     if(config->stack_page!=nullptr){
-						                config->stack_page->stack(create_overlay_with_success("added AC point"));
+						                config->stack_page->stack(success_overlay("added AC point"));
 					                }
 						        }},*stroke);
                         }
@@ -187,12 +187,12 @@ struct DataSpecificApplication
                     });
                     if(!stroke_found)
                         if(config->stack_page!=nullptr){
-						    config->stack_page->stack(create_overlay_with_warning("failed to find point, please insert new point"));
+						    config->stack_page->stack(warning_overlay("failed to find point, please insert new point"));
 					    }
 				}
         		else if (ec == std::errc::invalid_argument || ec == std::errc::result_out_of_range){
 					if(config->stack_page!=nullptr){
-						config->stack_page->stack(create_overlay_with_warning("failed to parse identifier"));
+						config->stack_page->stack(warning_overlay("failed to parse identifier"));
 					}
 				} });
             auto button_cp = MutatingTextPanel::make(true, "define pc point: e.g. p6");
@@ -226,7 +226,7 @@ struct DataSpecificApplication
                                     lpc_point[2] = pc_point_in_world_coordinates[2];
                                     pc_point = lpc_point;
                                     if(config->stack_page!=nullptr){
-						                config->stack_page->stack(create_overlay_with_success("added CP point"));
+						                config->stack_page->stack(success_overlay("added CP point"));
 					                }
 						        }},*stroke);
                         }
@@ -234,12 +234,12 @@ struct DataSpecificApplication
                     });
                     if(!stroke_found)
                         if(config->stack_page!=nullptr){
-						    config->stack_page->stack(create_overlay_with_warning("failed to find point, please insert new point"));
+						    config->stack_page->stack(warning_overlay("failed to find point, please insert new point"));
 					    }
 				}
         		else if (ec == std::errc::invalid_argument || ec == std::errc::result_out_of_range){	
 					if(config->stack_page!=nullptr){
-						config->stack_page->stack(create_overlay_with_warning("failed to parse identifier"));
+						config->stack_page->stack(warning_overlay("failed to parse identifier"));
 					}
 				} });
 
@@ -274,7 +274,7 @@ struct DataSpecificApplication
                                     lmid_point[2] = midpoint_point_in_world_coordinates[2];
                                     midline = lmid_point;
                                     if(config->stack_page!=nullptr){
-						                config->stack_page->stack(create_overlay_with_success("added midpoint"));
+						                config->stack_page->stack(success_overlay("added midpoint"));
 					                }
 						        }},*stroke);
                         }
@@ -282,12 +282,12 @@ struct DataSpecificApplication
                     });
                     if(!stroke_found)
                         if(config->stack_page!=nullptr){
-						    config->stack_page->stack(create_overlay_with_warning("failed to find point, please insert new point"));
+						    config->stack_page->stack(warning_overlay("failed to find point, please insert new point"));
 					    }
 				}
         		else if (ec == std::errc::invalid_argument || ec == std::errc::result_out_of_range){
 					if(config->stack_page!=nullptr){
-						config->stack_page->stack(create_overlay_with_warning("failed to parse identifier"));
+						config->stack_page->stack(warning_overlay("failed to parse identifier"));
 				    }
 				} });
 
@@ -297,14 +297,14 @@ struct DataSpecificApplication
                 [this](Button *button, Press press, ConfigDraw *config)
                 {
                     if (config->stack_page != nullptr)
-                        config->stack_page->stack(create_overlay_with_success("resampling volume..."));
+                        config->stack_page->stack(success_overlay("resampling volume..."));
                     curan::utilities::Job job{"resampling volume", [this, config]()
                                               {
                                                   if (!midline || !ac_point || !pc_point)
                                                   {
                                                       if (config->stack_page != nullptr)
                                                       {
-                                                          config->stack_page->stack(create_overlay_with_warning("you must specify all points to resample the volume"));
+                                                          config->stack_page->stack(warning_overlay("you must specify all points to resample the volume"));
                                                       }
                                                       midline = std::nullopt;
                                                       ac_point = std::nullopt;
@@ -317,7 +317,7 @@ struct DataSpecificApplication
                                                   {
                                                       if (config->stack_page != nullptr)
                                                       {
-                                                          config->stack_page->stack(create_overlay_with_warning("vector is close to singular, try different pointss"));
+                                                          config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
                                                       }
                                                       midline = std::nullopt;
                                                       ac_point = std::nullopt;
@@ -330,7 +330,7 @@ struct DataSpecificApplication
                                                   {
                                                       if (config->stack_page != nullptr)
                                                       {
-                                                          config->stack_page->stack(create_overlay_with_warning("vector is close to singular, try different pointss"));
+                                                          config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
                                                       }
                                                       midline = std::nullopt;
                                                       ac_point = std::nullopt;
@@ -343,7 +343,7 @@ struct DataSpecificApplication
                                                   {
                                                       if (config->stack_page != nullptr)
                                                       {
-                                                          config->stack_page->stack(create_overlay_with_warning("vector is close to singular, try different pointss"));
+                                                          config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
                                                       }
                                                       midline = std::nullopt;
                                                       ac_point = std::nullopt;
@@ -441,16 +441,16 @@ struct DataSpecificApplication
                                                           break;
                                                       default:
                                                           if (config->stack_page != nullptr)
-                                                              config->stack_page->stack(create_overlay_with_warning("failure to process volume"));
+                                                              config->stack_page->stack(warning_overlay("failure to process volume"));
                                                           break;
                                                       }
                                                       if (config->stack_page != nullptr)
-                                                          config->stack_page->stack(create_overlay_with_success("resampled volume!"));
+                                                          config->stack_page->stack(success_overlay("resampled volume!"));
                                                   }
                                                   catch (...)
                                                   {
                                                       if (config->stack_page != nullptr)
-                                                          config->stack_page->stack(create_overlay_with_warning("failed to resample volume to AC-PC"));
+                                                          config->stack_page->stack(warning_overlay("failed to resample volume to AC-PC"));
                                                   }
 
                                                   midline = std::nullopt;
@@ -490,7 +490,7 @@ struct DataSpecificApplication
                 throw std::runtime_error("failed to select the proper index");
                 break;
             }
-            create_panel_ac_pc_instructions(); });
+            point_selection(); });
         using ImageType = itk::Image<PixelType, 3>;
         using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
         size_t identifier = 0;
@@ -522,7 +522,7 @@ struct DataSpecificApplication
                 ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
                 auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
                 auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
-                item_explorer->add(Item{identifier, "volume_" + std::to_string(identifier), buff, extracted_size[0], extracted_size[1]});
+                item_explorer->add(Item{identifier, "vol_" + std::to_string(identifier), buff, extracted_size[0], extracted_size[1]});
             }
             ++identifier;
         }
@@ -535,7 +535,7 @@ struct DataSpecificApplication
         return Overlay::make(std::move(container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
-    std::unique_ptr<curan::ui::Overlay> create_layout_page()
+    std::unique_ptr<curan::ui::Overlay> layout_overlay()
     {
         using namespace curan::ui;
         if (current_volume == PanelType::TRAJECTORY_ORIENTED_VOLUME)
@@ -543,7 +543,7 @@ struct DataSpecificApplication
             auto button = Button::make(" ", "layout1x1.png", resources);
             button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
             button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
-                                   { current_panel_arragement = Panels::ONE_PANEL; create_panel_ac_pc_instructions(); });
+                                   { current_panel_arragement = Panels::ONE_PANEL; point_selection(); });
 
             auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
             *viwers_container << std::move(button);
@@ -555,17 +555,17 @@ struct DataSpecificApplication
             auto button = Button::make(" ", "layout1x1.png", resources);
             button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
             button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
-                                   { current_panel_arragement = Panels::ONE_PANEL; create_panel_ac_pc_instructions(); });
+                                   { current_panel_arragement = Panels::ONE_PANEL; point_selection(); });
 
             auto button2 = Button::make(" ", "layout1x2.png", resources);
             button2->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
             button2->add_press_call([this](Button *button, Press press, ConfigDraw *config)
-                                    { current_panel_arragement = Panels::TWO_PANELS;create_panel_ac_pc_instructions(); });
+                                    { current_panel_arragement = Panels::TWO_PANELS;point_selection(); });
 
             auto button3 = Button::make(" ", "layout1x3.png", resources);
             button3->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
             button3->add_press_call([this](Button *button, Press press, ConfigDraw *config)
-                                    { current_panel_arragement = Panels::THREE_PANELS;create_panel_ac_pc_instructions(); });
+                                    { current_panel_arragement = Panels::THREE_PANELS;point_selection(); });
 
             auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
             *viwers_container << std::move(button) << std::move(button2) << std::move(button3);
@@ -574,7 +574,7 @@ struct DataSpecificApplication
         }
     }
 
-    std::unique_ptr<curan::ui::Overlay> create_option_page()
+    std::unique_ptr<curan::ui::Overlay> option_overlay()
     {
         using namespace curan::ui;
         auto button = Button::make("Layout", resources);
@@ -582,7 +582,7 @@ struct DataSpecificApplication
         button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
                                {
 		if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_layout_page());
+			config->stack_page->stack(layout_overlay());
 		} });
 
         std::unique_ptr<curan::ui::Button> button2;
@@ -595,11 +595,11 @@ struct DataSpecificApplication
                                     {
             if(current_volume!=PanelType::ORIGINAL_VOLUME){
                 if (config->stack_page != nullptr)
-                    config->stack_page->stack(create_overlay_with_warning("cannot resample processed volume"));
+                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
 		    is_acpc_being_defined = !is_acpc_being_defined;
-		    create_panel_ac_pc_instructions(); });
+		    point_selection(); });
         case PanelType::RESAMPLED_VOLUME:
             button2 = Button::make("Define Trajectory", resources);
             button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -607,15 +607,17 @@ struct DataSpecificApplication
                                     {
             if(current_volume!=PanelType::ORIGINAL_VOLUME){
                 if (config->stack_page != nullptr)
-                    config->stack_page->stack(create_overlay_with_warning("cannot resample processed volume"));
+                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
 		    is_acpc_being_defined = !is_acpc_being_defined;
-		    create_panel_ac_pc_instructions(); });
+		    point_selection(); });
         default:
 
             break;
         };
+
+        assert(button2.get()!=nullptr);
 
         auto button4 = Button::make("Change Volume", resources);
         button4->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -638,7 +640,7 @@ struct DataSpecificApplication
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
-    std::unique_ptr<curan::ui::Container> generate_main_page_content()
+    std::unique_ptr<curan::ui::Container> main_page()
     {
         std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
 
@@ -651,7 +653,7 @@ struct DataSpecificApplication
                                 {
 			if (arg.key == GLFW_KEY_H && arg.action == GLFW_PRESS){
 				if(draw->stack_page!=nullptr){
-					draw->stack_page->stack(create_option_page());
+					draw->stack_page->stack(option_overlay());
 				}
 			} });
 

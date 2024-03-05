@@ -16,9 +16,9 @@ int main()
         if (!volume)
             return 1;
 
-        DataSpecificApplication data_application{*volume, resources};
+        Application data_application{*volume, resources};
 
-        curan::ui::Page page{std::move(data_application.generate_main_page_content()), SK_ColorBLACK};
+        curan::ui::Page page{std::move(data_application.main_page()), SK_ColorBLACK};
 
         ConfigDraw config{&page};
 
