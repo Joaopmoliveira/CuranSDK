@@ -44,6 +44,28 @@ struct Application
 
     Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, {nullptr}, {nullptr}}}
     {
+        using namespace curan::ui;
+        map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw){
+                auto pending_highlights = vol_mas->process_pending_highlights();
+                if(pending_highlights.size()>0){
+                    directed_stroke stroke = pending_highlights[pending_highlights.size()-1];
+                    compute_point(stroke,config_draw);
+                }
+        });
+        map[PanelType::RESAMPLED_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw){
+                auto pending_highlights = vol_mas->process_pending_highlights();
+                if(pending_highlights.size()>0){
+                    directed_stroke stroke = pending_highlights[pending_highlights.size()-1];
+                    compute_point(stroke,config_draw);
+                }
+        });
+        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw){
+                auto pending_highlights = vol_mas->process_pending_highlights();
+                if(pending_highlights.size()>0){
+                    directed_stroke stroke = pending_highlights[pending_highlights.size()-1];
+                    compute_point(stroke,config_draw);
+                }
+        });
     }
 
     std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning)
@@ -78,46 +100,294 @@ struct Application
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
+    void view_image_simple(){
+        using namespace curan::ui;
+        auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+
+        switch (current_panel_arragement)
+        {
+        case Panels::ONE_PANEL:
+        {
+            std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            *viwers_container << std::move(image_display);
+        }
+        break;
+        case Panels::TWO_PANELS:
+        {
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
+            *viwers_container << std::move(image_display_x) << std::move(image_display_y);
+        }
+        break;
+        case Panels::THREE_PANELS:
+        {
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Z);
+            *viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
+        }
+        break;
+        default:
+        {
+            std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            *viwers_container << std::move(image_display);
+        }
+        break;
+        }
+        minipage->construct(std::move(viwers_container), SK_ColorBLACK);
+    }
+
+    void view_image_with_point_selection(){
+        using namespace curan::ui;
+        
+        auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+
+        switch (current_panel_arragement)
+        {
+        case Panels::ONE_PANEL:
+        {
+            std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            *viwers_container << std::move(image_display);
+        }
+        break;
+        case Panels::TWO_PANELS:
+        {
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
+            *viwers_container << std::move(image_display_x) << std::move(image_display_y);
+        }
+        break;
+        case Panels::THREE_PANELS:
+        {
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
+            std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Z);
+            *viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
+        }
+        break;
+        default:
+        {
+            std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            *viwers_container << std::move(image_display);
+        }
+        break;
+        }
+
+        Button* ptr_button_ac_point = nullptr;
+        Button* ptr_button_pc_point = nullptr;
+        Button* ptr_button_midpoint = nullptr;
+        auto button_ac_point = Button::make("ac point", "click.png", resources);
+        button_ac_point->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
+        auto button_pc_point = Button::make("pc point", "click.png", resources);
+        button_pc_point->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
+        auto button_midpoint = Button::make("mid point", "click.png", resources);
+        button_midpoint->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
+
+        ptr_button_ac_point = button_ac_point.get();
+        ptr_button_pc_point = button_pc_point.get();
+        ptr_button_midpoint = button_midpoint.get();
+
+        
+        button_ac_point->add_press_call([this, &ptr_button_ac_point, &ptr_button_pc_point, &ptr_button_midpoint](Button *button, Press press, ConfigDraw *config)
+        { 
+            is_first_point_being_defined=!is_first_point_being_defined;
+            if(is_first_point_being_defined){
+                    button->set_waiting_color(SK_ColorGRAY).set_click_color(SK_ColorCYAN); 
+                    is_second_point_being_defined =false;
+                    is_third_point_being_defined =false;
+                    if(ptr_button_pc_point) ptr_button_pc_point->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
+                    if(ptr_button_midpoint) ptr_button_midpoint->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
+            } else {
+                button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY);
+            } 
+        });
+        
+        button_pc_point->add_press_call([this, &ptr_button_ac_point, &ptr_button_pc_point, &ptr_button_midpoint](Button *button, Press press, ConfigDraw *config)
+        { 
+            is_second_point_being_defined=!is_second_point_being_defined;
+            if(is_second_point_being_defined){
+                button->set_waiting_color(SK_ColorGRAY).set_click_color(SK_ColorCYAN); 
+                is_first_point_being_defined =false;
+                is_third_point_being_defined =false;
+                if(ptr_button_ac_point) ptr_button_ac_point->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
+                if(ptr_button_midpoint) ptr_button_midpoint->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
+            } else {
+                button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY);
+            }
+        });
+        
+        button_midpoint->add_press_call([this, &ptr_button_ac_point, &ptr_button_pc_point, &ptr_button_midpoint](Button *button, Press press, ConfigDraw *config)
+        { 
+            is_third_point_being_defined=!is_third_point_being_defined;
+            if(is_third_point_being_defined){
+                button->set_waiting_color(SK_ColorGRAY).set_click_color(SK_ColorCYAN); 
+                is_first_point_being_defined =false;
+                is_second_point_being_defined =false;
+                if(ptr_button_ac_point) ptr_button_ac_point->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
+                if(ptr_button_pc_point) ptr_button_pc_point->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
+            } else {
+                button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY);
+            }
+        });
+
+        auto perform_resampling = Button::make("Resample to AC-PC", resources);
+        perform_resampling->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+        perform_resampling->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+        {
+            if (config->stack_page != nullptr) config->stack_page->stack(success_overlay("resampling volume..."));
+            curan::utilities::Job job{"resampling volume", [this, config]()
+            {
+                if (!first_point || !second_point || !third_point)
+                {
+                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("you must specify all points to resample the volume"));
+                    first_point = std::nullopt;
+                    second_point = std::nullopt;
+                    third_point = std::nullopt;
+                    return;
+                }
+
+                Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *second_point - *first_point;
+                if (orient_along_ac_pc.norm() < 1e-7)
+                {
+                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
+                    first_point = std::nullopt;
+                    second_point = std::nullopt;
+                    third_point = std::nullopt;
+                    return;
+                }
+                
+                orient_along_ac_pc.normalize();
+                Eigen::Matrix<double, 3, 1> orient_along_ac_midpoint = *third_point - *first_point;
+                
+                if (orient_along_ac_midpoint.norm() < 1e-7)
+                {
+                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
+                    first_point = std::nullopt;
+                    second_point = std::nullopt;
+                    third_point = std::nullopt;
+                    return;
+                }
+                orient_along_ac_midpoint.normalize();
+                Eigen::Matrix<double, 3, 1> orient_perpendic_to_ac_pc_ac_midline = orient_along_ac_pc.cross(orient_along_ac_midpoint);
+
+                if (orient_perpendic_to_ac_pc_ac_midline.norm() < 1e-7)
+                {
+                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));                         
+                    first_point = std::nullopt;
+                    second_point = std::nullopt;
+                    third_point = std::nullopt;
+                    return;
+                }
+
+                orient_perpendic_to_ac_pc_ac_midline.normalize();
+
+                orient_along_ac_midpoint = orient_perpendic_to_ac_pc_ac_midline.cross(orient_along_ac_pc);
+
+                orient_along_ac_midpoint.normalize();
+
+                // we always use the original volume instead of the current volume,
+                // or else the reconstructed volume will always increase in size
+                auto input = map[PanelType::ORIGINAL_VOLUME].get_volume();
+
+                itk::Matrix<double, 3, 3> rotation_matrix;
+                rotation_matrix(0, 0) = orient_perpendic_to_ac_pc_ac_midline[0];
+                rotation_matrix(1, 0) = orient_perpendic_to_ac_pc_ac_midline[1];
+                rotation_matrix(2, 0) = orient_perpendic_to_ac_pc_ac_midline[2];
+
+                rotation_matrix(0, 1) = orient_along_ac_pc[0];
+                rotation_matrix(1, 1) = orient_along_ac_pc[1];
+                rotation_matrix(2, 1) = orient_along_ac_pc[2];
+
+                rotation_matrix(0, 2) = orient_along_ac_midpoint[0];
+                rotation_matrix(1, 2) = orient_along_ac_midpoint[1];
+                rotation_matrix(2, 2) = orient_along_ac_midpoint[2];
+
+                Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
+                Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
+                auto direction = input->GetDirection();
+                for (size_t col = 0; col < 3; ++col)
+                    for (size_t row = 0; row < 3; ++row)
+                    {
+                        original_eigen_rotation_matrix(row, col) = direction(row, col);
+                        eigen_rotation_matrix(row, col) = rotation_matrix(row, col);
+                    }
+
+                Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
+                ImageType::PointType itk_along_dimension_x;
+                ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
+                input->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
+                Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
+                ImageType::PointType itk_along_dimension_y;
+                ImageType::IndexType index_along_y{{0, (long long)input->GetLargestPossibleRegion().GetSize()[1], 0}};
+                input->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
+                Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
+                ImageType::PointType itk_along_dimension_z;
+                ImageType::IndexType index_along_z{{0, 0, (long long)input->GetLargestPossibleRegion().GetSize()[2]}};
+                input->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
+                Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
+                Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
+
+                BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
+                auto output_bounding_box = bounding_box_original_image.centered_bounding_box<Strategy::CONSERVATIVE, false>(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
+                using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+                auto filter = FilterType::New();
+
+                using TransformType = itk::IdentityTransform<double, 3>;
+                auto transform = TransformType::New();
+
+                using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
+                auto interpolator = InterpolatorType::New();
+                filter->SetInterpolator(interpolator);
+                filter->SetDefaultPixelValue(100);
+                filter->SetTransform(transform);
+
+                filter->SetInput(input);
+                filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
+                filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
+                filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
+
+                for (size_t col = 0; col < 3; ++col)
+                    for (size_t row = 0; row < 3; ++row)
+                        rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
+
+                filter->SetOutputDirection(rotation_matrix);
+
+                try{
+                    filter->Update();
+                    auto output = filter->GetOutput();
+                    switch (current_volume)
+                    {
+                    case PanelType::ORIGINAL_VOLUME:
+                        map[PanelType::RESAMPLED_VOLUME].update_volume(output);
+                    break;
+                    case PanelType::RESAMPLED_VOLUME:
+                        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(output);
+                    break;
+                    case PanelType::TRAJECTORY_ORIENTED_VOLUME:
+                        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(output);
+                    break;
+                    default:
+                        if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failure to process volume"));
+                    break;
+                    }
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(success_overlay("resampled volume!"));
+                }
+                catch (...){
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC"));
+                }
+
+                first_point = std::nullopt;
+                second_point = std::nullopt;
+                third_point = std::nullopt;
+            }};
+            pool->submit(job);
+            });
+
+    }
+
     void point_selection()
     {
         using namespace curan::ui;
-        if (!is_acpc_being_defined)
-        {
-            auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-
-            switch (current_panel_arragement)
-            {
-            case Panels::ONE_PANEL:
-            {
-                std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
-                *viwers_container << std::move(image_display);
-            }
-            break;
-            case Panels::TWO_PANELS:
-            {
-                std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
-                std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
-                *viwers_container << std::move(image_display_x) << std::move(image_display_y);
-            }
-            break;
-            case Panels::THREE_PANELS:
-            {
-                std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
-                std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
-                std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Z);
-                *viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
-            }
-            break;
-            default:
-            {
-                std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
-                *viwers_container << std::move(image_display);
-            }
-            break;
-            }
-            minipage->construct(std::move(viwers_container), SK_ColorBLACK);
-        }
-        else
         {
             auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
