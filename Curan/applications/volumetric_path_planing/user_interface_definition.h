@@ -80,26 +80,17 @@ struct Application
     Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, {nullptr}, {nullptr}}}
     {
         using namespace curan::ui;
-        map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw){
-                auto pending_highlights = vol_mas->process_pending_highlights();
-                if(pending_highlights.size()>0){
-                    directed_stroke stroke = pending_highlights[pending_highlights.size()-1];
-                    compute_point(stroke,config_draw);
-                }
+        map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
+            if(strokes.size()>0)
+                compute_point(strokes.back(),config_draw);
         });
-        map[PanelType::RESAMPLED_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw){
-                auto pending_highlights = vol_mas->process_pending_highlights();
-                if(pending_highlights.size()>0){
-                    directed_stroke stroke = pending_highlights[pending_highlights.size()-1];
-                    compute_point(stroke,config_draw);
-                }
+        map[PanelType::RESAMPLED_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const std::vector<curan::ui::directed_stroke>& strokes){
+            if(strokes.size()>0)
+                compute_point(strokes.back(),config_draw);
         });
-        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw){
-                auto pending_highlights = vol_mas->process_pending_highlights();
-                if(pending_highlights.size()>0){
-                    directed_stroke stroke = pending_highlights[pending_highlights.size()-1];
-                    compute_point(stroke,config_draw);
-                }
+        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
+            if(strokes.size()>0)
+                compute_point(strokes.back(),config_draw);
         });
     }
 
@@ -107,10 +98,16 @@ struct Application
     {
         using namespace curan::ui;
         auto warn = Button::make(" ", "warning.png", resources);
-        warn->set_click_color(SK_AlphaTRANSPARENT).set_hover_color(SK_AlphaTRANSPARENT).set_waiting_color(SK_AlphaTRANSPARENT).set_size(SkRect::MakeWH(400, 200));
+        warn->set_click_color(SK_AlphaTRANSPARENT)
+            .set_hover_color(SK_AlphaTRANSPARENT)
+            .set_waiting_color(SK_AlphaTRANSPARENT)
+            .set_size(SkRect::MakeWH(400, 200));
 
         auto button = Button::make(warning, resources);
-        button->set_click_color(SK_AlphaTRANSPARENT).set_hover_color(SK_AlphaTRANSPARENT).set_waiting_color(SK_AlphaTRANSPARENT).set_size(SkRect::MakeWH(200, 50));
+        button->set_click_color(SK_AlphaTRANSPARENT)
+            .set_hover_color(SK_AlphaTRANSPARENT)
+            .set_waiting_color(SK_AlphaTRANSPARENT)
+            .set_size(SkRect::MakeWH(200, 50));
 
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
         *viwers_container << std::move(warn) << std::move(button);
@@ -123,14 +120,21 @@ struct Application
     {
         using namespace curan::ui;
         auto warn = Button::make(" ", "submit.png", resources);
-        warn->set_click_color(SK_AlphaTRANSPARENT).set_hover_color(SK_AlphaTRANSPARENT).set_waiting_color(SK_AlphaTRANSPARENT).set_size(SkRect::MakeWH(400, 200));
+        warn->set_click_color(SK_AlphaTRANSPARENT)
+            .set_hover_color(SK_AlphaTRANSPARENT)
+            .set_waiting_color(SK_AlphaTRANSPARENT)
+            .set_size(SkRect::MakeWH(400, 200));
 
         auto button = Button::make(success, resources);
-        button->set_click_color(SK_AlphaTRANSPARENT).set_hover_color(SK_AlphaTRANSPARENT).set_waiting_color(SK_AlphaTRANSPARENT).set_size(SkRect::MakeWH(200, 50));
+        button->set_click_color(SK_AlphaTRANSPARENT)
+            .set_hover_color(SK_AlphaTRANSPARENT)
+            .set_waiting_color(SK_AlphaTRANSPARENT)
+            .set_size(SkRect::MakeWH(200, 50));
 
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
         *viwers_container << std::move(warn) << std::move(button);
-        viwers_container->set_color(SK_ColorTRANSPARENT).set_divisions({0.0, .8, 1.0});
+        viwers_container->set_color(SK_ColorTRANSPARENT)
+            .set_divisions({0.0, .8, 1.0});
 
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
@@ -212,11 +216,20 @@ struct Application
         Button* ptr_button_pc_point = nullptr;
         Button* ptr_button_midpoint = nullptr;
         auto button_ac_point = Button::make("ac point", "click.png", resources);
-        button_ac_point->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
+        button_ac_point->set_click_color(SK_ColorGRAY)
+            .set_hover_color(SK_ColorLTGRAY)
+            .set_waiting_color(SK_ColorDKGRAY)
+            .set_size(SkRect::MakeWH(200, 200));
         auto button_pc_point = Button::make("pc point", "click.png", resources);
-        button_pc_point->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
+        button_pc_point->set_click_color(SK_ColorGRAY)
+            .set_hover_color(SK_ColorLTGRAY)
+            .set_waiting_color(SK_ColorDKGRAY)
+            .set_size(SkRect::MakeWH(200, 200));
         auto button_midpoint = Button::make("mid point", "click.png", resources);
-        button_midpoint->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
+        button_midpoint->set_click_color(SK_ColorGRAY)
+            .set_hover_color(SK_ColorLTGRAY)
+            .set_waiting_color(SK_ColorDKGRAY)
+            .set_size(SkRect::MakeWH(200, 200));
 
         ptr_button_ac_point = button_ac_point.get();
         ptr_button_pc_point = button_pc_point.get();
@@ -275,7 +288,7 @@ struct Application
             {
                 if (!first_point || !second_point || !third_point)
                 {
-                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("you must specify all points to resample the volume"));
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("you must specify all points to resample the volume"));
                     first_point = std::nullopt;
                     second_point = std::nullopt;
                     third_point = std::nullopt;
@@ -285,7 +298,7 @@ struct Application
                 Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *second_point - *first_point;
                 if (orient_along_ac_pc.norm() < 1e-7)
                 {
-                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-2) vector, try different points"));
                     first_point = std::nullopt;
                     second_point = std::nullopt;
                     third_point = std::nullopt;
@@ -297,7 +310,7 @@ struct Application
                 
                 if (orient_along_ac_midpoint.norm() < 1e-7)
                 {
-                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-3) vector, try different points"));
                     first_point = std::nullopt;
                     second_point = std::nullopt;
                     third_point = std::nullopt;
@@ -308,7 +321,7 @@ struct Application
 
                 if (orient_perpendic_to_ac_pc_ac_midline.norm() < 1e-7)
                 {
-                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("vector is close to singular, try different pointss"));                         
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("cross singular vector, try different points"));                         
                     first_point = std::nullopt;
                     second_point = std::nullopt;
                     third_point = std::nullopt;

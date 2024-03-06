@@ -87,7 +87,7 @@ namespace curan
 		};
 
 		class VolumetricMask;
-		using pressedhighlighted_event = std::function<void(VolumetricMask*, ConfigDraw*)>;
+		using pressedhighlighted_event = std::function<void(VolumetricMask*, ConfigDraw*, const std::vector<directed_stroke>&)>;
 
 		class VolumetricMask
 		{
@@ -104,9 +104,9 @@ namespace curan
 			ImageType::Pointer image;
 
 			curan::utilities::SafeQueue<directed_stroke> to_process;
+		public:
 			std::list<pressedhighlighted_event> callbacks_pressedhighlighted;
 
-		public:
 			VolumetricMask(ImageType::Pointer volume);
 
 			VolumetricMask(const VolumetricMask &m) = delete;
