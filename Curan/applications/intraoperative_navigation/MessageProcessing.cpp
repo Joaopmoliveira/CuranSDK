@@ -222,6 +222,29 @@ ProcessingMessage::ProcessingMessage(curan::ui::ImageDisplay* in_processed_viwer
     volume_size_transformed_to_minimun_spacing[2] = (volume_size[2] * volume_spacing[2]) / image_spacing;
 
     image_size = std::sqrt(std::pow(volume_size_transformed_to_minimun_spacing[0], 2) + std::pow(volume_size_transformed_to_minimun_spacing[1], 2) + std::pow(volume_size_transformed_to_minimun_spacing[2], 2));
+
+    Eigen::Matrix<double,3,1> desired_direction = target-entry_point;
+    desired_direction.normalize();
+
+    auto temporary = desired_direction;
+
+    if(abs(temporary[0])>1e-4)
+        temporary << -desired_direction[0] ,  desired_direction[1] ,  desired_direction[2];
+    else if(abs(temporary[1])>1e-4)
+        temporary <<  desired_direction[0] , -desired_direction[1] ,  desired_direction[2];
+    else if(abs(temporary[2])>1e-4)
+        temporary <<  desired_direction[0] ,  desired_direction[1] , -desired_direction[2];
+    else
+        throw std::runtime_error("failed to compute desired direction");
+    
+    temporary.normalize();
+    auto perpendicular_to_desired = temporary-(temporary.transpose()*desired_direction)*desired_direction;
+    perpendicular_to_desired.normalize();
+    auto perpecdicular_to_both = perpendicular_to_desired.cross(desired_direction);
+
+    desired_rotation.col(2) = desired_direction;
+    desired_rotation.col(1) = perpendicular_to_desired;
+    desired_rotation.col(0) = perpecdicular_to_both;
 }
 
 bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
@@ -232,11 +255,11 @@ bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::P
 		return false; //failed to unpack message, therefore returning without doing anything
     
     Eigen::Matrix<double,3,1> needle_tip;
-    
-    auto world_frame_difference_error = desired_direction.col(2)-R_ImageToWorld.col(2);
+    Eigen::Matrix<double,3,3> R_ImageToWorld;
+    auto world_frame_difference_error = processor->desired_rotation.col(2)-R_ImageToWorld.col(2);
 
-    double phy = world_frame_difference_error.transpose()*desired_direction.col(0);
-    double theta = world_frame_difference_error.transpose()*desired_direction.col(1);
+    double phy = world_frame_difference_error.transpose()*processor->desired_rotation.col(0);
+    double theta = world_frame_difference_error.transpose()*processor->desired_rotation.col(1);
             
     OutputImageType::Pointer slice = resampler(processor->volume, needle_tip, R_ImageToWorld, processor->image_size,processor->image_spacing);
     OutputImageType::IndexType coordinate_of_needle_in_image_position;
@@ -246,11 +269,11 @@ bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::P
     auto buff = curan::utilities::CaptureBuffer::make_shared(slice->GetBufferPointer(), slice->GetPixelContainer()->Size() * sizeof(OutputPixelType), slice);
     curan::ui::ImageWrapper wrapper{buff, size_itk[0], size_itk[1]};
 
-    auto inner_projection = R_ImageToWorld.col(2).transpose()*desired_direction.col(2);
+    auto inner_projection = R_ImageToWorld.col(2).transpose()*processor->desired_rotation.col(2);
     auto projected_unto_plane = ((needle_tip-processor->target)*R_ImageToWorld.col(2).transpose());
     auto d = (std::abs(inner_projection(0,0))>1e-5) ? projected_unto_plane(0,0)/(inner_projection(0,0)) : 100000.0;
 
-    Eigen::Matrix<double,3,1> real_intersection = processor->target+desired_direction.col(2)*d;
+    Eigen::Matrix<double,3,1> real_intersection = processor->target+processor->desired_rotation.col(2)*d;
     OutputImageType::IndexType index_coordinate_of_perfect_traject_in_needle_plane;
     OutputImageType::PointType coordinate_of_perfect_traject_in_needle_plane{{real_intersection[0], real_intersection[1], real_intersection[2]}};
     slice->TransformPhysicalPointToIndex(coordinate_of_perfect_traject_in_needle_plane,index_coordinate_of_perfect_traject_in_needle_plane);
