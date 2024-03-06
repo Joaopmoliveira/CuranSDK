@@ -1,6 +1,6 @@
 #include "InteroperativePages.h"
 
-curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {
+std::unique_ptr<curan::ui::Container> create_main_page(std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 
 	auto igtlink_viewer = OpenIGTLinkViewer::make();
@@ -59,5 +59,5 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	*widgetcontainer << std::move(buttoncontainer) << std::move(displaycontainer);
 	widgetcontainer->set_divisions({ 0.0 , 0.1 , 1.0 });
 
-	return Page{std::move(widgetcontainer),SK_ColorBLACK};
+	return widgetcontainer;
 }

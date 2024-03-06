@@ -4,6 +4,6 @@
 #include "MessageProcessing.h"
 #include "userinterface/widgets/IconResources.h"
 
-curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources);
+std::unique_ptr<curan::ui::Container> create_main_page(std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources);
 
 #endif
