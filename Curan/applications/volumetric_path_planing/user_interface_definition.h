@@ -469,7 +469,11 @@ struct Application
                         if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failure to process volume"));
                     break;
                     }
-                    if (config->stack_page != nullptr) config->stack_page->replace_last(success_overlay("resampled volume!"));
+                    if (config->stack_page != nullptr) {
+                        config->stack_page->replace_last(success_overlay("resampled volume!"));
+                        is_acpc_being_defined = false;
+                        point_selection();
+                    }
                 }
                 catch (...){
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC"));
@@ -625,7 +629,7 @@ struct Application
             button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
             button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                                     {
-            if(current_volume!=PanelType::ORIGINAL_VOLUME){
+            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
                 if (config->stack_page != nullptr)
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
@@ -637,7 +641,7 @@ struct Application
             button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
             button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                                     {
-            if(current_volume!=PanelType::ORIGINAL_VOLUME){
+            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
                 if (config->stack_page != nullptr)
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
