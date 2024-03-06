@@ -101,15 +101,18 @@ struct Application
     Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, {nullptr}, {nullptr}}}
     {
         using namespace curan::ui;
-        map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
+        map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call(
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
             if(strokes.size()>0)
                 compute_point(strokes.back(),config_draw);
         });
-        map[PanelType::RESAMPLED_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const std::vector<curan::ui::directed_stroke>& strokes){
+        map[PanelType::RESAMPLED_VOLUME].add_pressedhighlighted_call(
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const std::vector<curan::ui::directed_stroke>& strokes){
             if(strokes.size()>0)
                 compute_point(strokes.back(),config_draw);
         });
-        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].add_pressedhighlighted_call([this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
+        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].add_pressedhighlighted_call(
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
             if(strokes.size()>0)
                 compute_point(strokes.back(),config_draw);
         });
