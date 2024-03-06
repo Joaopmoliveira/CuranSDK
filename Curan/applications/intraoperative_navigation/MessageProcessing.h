@@ -31,6 +31,8 @@ struct ProcessingMessage {
     Eigen::Matrix<double,3,1> entry_point;
     Eigen::Matrix<double,3,1> desired_rotation;
 
+    std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
+
     double image_size = 1.0;
     double image_spacing = 0.1;
 

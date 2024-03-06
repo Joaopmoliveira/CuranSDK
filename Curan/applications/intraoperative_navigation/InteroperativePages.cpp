@@ -1,5 +1,5 @@
 #include "InteroperativePages.h"
-
+#include "utils/Job.h"
 
 std::unique_ptr<curan::ui::Container> create_main_page(curan::ui::IconResources& resources, ProcessingMessage& proc) {
 	using namespace curan::ui;
@@ -11,17 +11,17 @@ std::unique_ptr<curan::ui::Container> create_main_page(curan::ui::IconResources&
 	*displaycontainer << std::move(image_display);
 
 	auto start_connection_callback = [&](Button* button, Press press ,ConfigDraw* config) {
-		if (!processing->connection_status.value()) {
-			curan::utilities::Job val{"connection thread",[processing]() { processing->communicate();}};
-			data.shared_pool->submit(val);
+		if (!proc.connection_status.value()) {
+			curan::utilities::Job val{"connection thread",[&]() { proc.communicate();}};
+			proc.shared_pool->submit(val);
 		}
 		else {
-			processing->attempt_stop();
+			proc.attempt_stop();
 		}
 	};
 
 	auto start_connection = Button::make("Connect",resources);
-    
+
 	start_connection->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorDKGRAY)
                     .set_waiting_color(SK_ColorBLACK)
@@ -32,7 +32,7 @@ std::unique_ptr<curan::ui::Container> create_main_page(curan::ui::IconResources&
 
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*buttoncontainer << std::move(start_connection);
-	processing->button = start_connection_pointer;
+	proc.button = start_connection_pointer;
 
 	start_connection_pointer->set_waiting_color(SK_ColorRED);
 
