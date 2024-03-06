@@ -45,6 +45,10 @@ struct Application
     curan::ui::Button* ptr_button_pc_point = nullptr;
     curan::ui::Button* ptr_button_midpoint = nullptr;
 
+    std::optional<Eigen::Matrix<double, 3, 1>> final_first_point;
+    std::optional<Eigen::Matrix<double, 3, 1>> final_second_point;
+    std::optional<Eigen::Matrix<double, 3, 1>> final_third_point;
+
     void compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
         std::optional<Eigen::Matrix<double, 3, 1>> possible_point;
         size_t index = 0;
@@ -473,6 +477,11 @@ struct Application
                         config->stack_page->replace_last(success_overlay("resampled volume!"));
                         is_acpc_being_defined = false;
                         point_selection();
+                        if(current_volume==PanelType::RESAMPLED_VOLUME){
+                            final_first_point = first_point;
+                            final_second_point = second_point;
+                            final_third_point = third_point;
+                        }
                     }
                 }
                 catch (...){
