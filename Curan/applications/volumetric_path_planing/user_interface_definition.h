@@ -521,6 +521,7 @@ struct Application
                 break;
                 case PanelType::TRAJECTORY_ORIENTED_VOLUME:
                 current_volume = PanelType::TRAJECTORY_ORIENTED_VOLUME;
+                current_panel_arragement = Panels::ONE_PANEL;
                 break;
                 default:
                 throw std::runtime_error("failed to select the proper index");
