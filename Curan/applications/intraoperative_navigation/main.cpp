@@ -32,9 +32,8 @@ int main()
             std::cout << "failed to read the dicom image\n";
             return 1;
         }
-        std::unique_ptr<curan::ui::Container> container;
-	    ProcessingMessage processing = create_main_page(resources,container,input_volume);
-        Page page{std::move(container),SK_ColorBLACK};
+	    ProcessingMessage processing{nullptr,input_volume};
+        Page page{create_main_page(resources,processing),SK_ColorBLACK};
 	    page.update_page(viewer.get());
 
 	    ConfigDraw config{&page};

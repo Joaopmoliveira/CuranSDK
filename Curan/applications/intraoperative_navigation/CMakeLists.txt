@@ -4,6 +4,9 @@ include(${ITK_USE_FILE})
 
 add_executable(InteroperativeNavigation main.cpp 
 MessageProcessing.cpp
+LevelImplementation.cpp
+DicomLoading.cpp
+InteroperativePages.cpp
 main.cpp
 )
 

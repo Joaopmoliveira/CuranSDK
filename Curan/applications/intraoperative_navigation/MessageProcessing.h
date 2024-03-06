@@ -1,3 +1,6 @@
+#ifndef CURAN_MESSAGEPROCESSING_HEADER_FILE_
+#define CURAN_MESSAGEPROCESSING_HEADER_FILE_
+
 #include "LevelImplementation.h"
 #include <vector>
 #include <memory>
@@ -41,3 +44,5 @@ struct ProcessingMessage {
 
 	void attempt_stop();
 };
+
+#endif
