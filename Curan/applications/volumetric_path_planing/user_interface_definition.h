@@ -98,7 +98,9 @@ struct Application
         }
     };
 
-    Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, {nullptr}, {nullptr}}}
+    Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : 
+        resources{in_resources}, 
+        map{{{volume}, {nullptr}, {nullptr}}}
     {
         using namespace curan::ui;
         map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call(
