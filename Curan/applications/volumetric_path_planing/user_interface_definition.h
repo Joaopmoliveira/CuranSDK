@@ -24,7 +24,6 @@ enum PanelType
 struct Application
 {
     bool is_acpc_being_defined = false;
-    bool is_trajectory_being_visualized = false;
 
     std::array<curan::ui::VolumetricMask, PanelType::NUMBER_OF_VOLUMES> map;
 
@@ -41,6 +40,10 @@ struct Application
     std::optional<Eigen::Matrix<double, 3, 1>> third_point;
 
     curan::ui::MiniPage *minipage = nullptr;
+
+    curan::ui::Button* ptr_button_ac_point = nullptr;
+    curan::ui::Button* ptr_button_pc_point = nullptr;
+    curan::ui::Button* ptr_button_midpoint = nullptr;
 
     void compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
         std::optional<Eigen::Matrix<double, 3, 1>> possible_point;
@@ -69,12 +72,30 @@ struct Application
         });
         if(!possible_point && config->stack_page!=nullptr)
 			config->stack_page->stack(warning_overlay("failed to find point, please insert new point"));
-        if(is_first_point_being_defined)
+        if(is_first_point_being_defined){
             first_point = possible_point;
-        else if(is_second_point_being_defined)
+            if(ptr_button_ac_point) 
+                ptr_button_ac_point->set_click_color(SK_ColorGRAY)
+                    .set_hover_color(SK_ColorCYAN)
+                    .set_waiting_color(SK_ColorLTGRAY)
+                    .set_size(SkRect::MakeWH(200, 200));
+        }
+        else if(is_second_point_being_defined){
             second_point = possible_point;
-        else if(is_third_point_being_defined)
+            if(ptr_button_pc_point) 
+                ptr_button_pc_point->set_click_color(SK_ColorGRAY)
+                    .set_hover_color(SK_ColorCYAN)
+                    .set_waiting_color(SK_ColorLTGRAY)
+                    .set_size(SkRect::MakeWH(200, 200));
+        }
+        else if(is_third_point_being_defined){
             third_point = possible_point;
+            if(ptr_button_midpoint) 
+                ptr_button_midpoint->set_click_color(SK_ColorGRAY)
+                    .set_hover_color(SK_ColorCYAN)
+                    .set_waiting_color(SK_ColorLTGRAY)
+                    .set_size(SkRect::MakeWH(200, 200));
+        }
     };
 
     Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : resources{in_resources}, map{{{volume}, {nullptr}, {nullptr}}}
@@ -212,20 +233,23 @@ struct Application
         break;
         }
         auto text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-        Button* ptr_button_ac_point = nullptr;
-        Button* ptr_button_pc_point = nullptr;
-        Button* ptr_button_midpoint = nullptr;
-        auto button_ac_point = Button::make("ac point", "click.png", resources);
+        auto button_ac_point = (current_volume == PanelType::ORIGINAL_VOLUME) ? 
+                                    Button::make("ac point", "", resources) :
+                                    Button::make("target", "", resources);
         button_ac_point->set_click_color(SK_ColorGRAY)
             .set_hover_color(SK_ColorLTGRAY)
             .set_waiting_color(SK_ColorDKGRAY)
             .set_size(SkRect::MakeWH(200, 200));
-        auto button_pc_point = Button::make("pc point", "click.png", resources);
+        auto button_pc_point = (current_volume == PanelType::ORIGINAL_VOLUME) ? 
+                                    Button::make("pc point", "", resources) : 
+                                    Button::make("plane xy", "", resources);
         button_pc_point->set_click_color(SK_ColorGRAY)
             .set_hover_color(SK_ColorLTGRAY)
             .set_waiting_color(SK_ColorDKGRAY)
             .set_size(SkRect::MakeWH(200, 200));
-        auto button_midpoint = Button::make("mid point", "click.png", resources);
+        auto button_midpoint = (current_volume == PanelType::ORIGINAL_VOLUME) ? 
+                                    Button::make("mid point", "", resources) :  
+                                    Button::make("entry", "", resources);
         button_midpoint->set_click_color(SK_ColorGRAY)
             .set_hover_color(SK_ColorLTGRAY)
             .set_waiting_color(SK_ColorDKGRAY)
@@ -236,51 +260,71 @@ struct Application
         ptr_button_midpoint = button_midpoint.get();
 
         
-        button_ac_point->add_press_call([this,ptr_button_pc_point, ptr_button_midpoint](Button *button, Press press, ConfigDraw *config)
+        button_ac_point->add_press_call([this](Button *button, Press press, ConfigDraw *config)
         { 
             is_first_point_being_defined=!is_first_point_being_defined;
             if(is_first_point_being_defined){
                     button->set_waiting_color(SK_ColorGRAY).set_click_color(SK_ColorCYAN); 
                     is_second_point_being_defined =false;
                     is_third_point_being_defined =false;
-                    if(ptr_button_pc_point) ptr_button_pc_point->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
-                    if(ptr_button_midpoint) ptr_button_midpoint->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
-                    std::cout << "here 3\n";
+                    if(ptr_button_pc_point && !second_point) 
+                        ptr_button_pc_point->set_waiting_color(SK_ColorDKGRAY)
+                            .set_click_color(SK_ColorGRAY);
+                    if(ptr_button_midpoint && !third_point) 
+                        ptr_button_midpoint->set_waiting_color(SK_ColorDKGRAY)
+                            .set_click_color(SK_ColorGRAY);
             } else {
-                button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY);
+                button->set_click_color(SK_ColorGRAY)
+                    .set_hover_color(SK_ColorLTGRAY)
+                    .set_waiting_color(SK_ColorDKGRAY);
             } 
         });
         
-        button_pc_point->add_press_call([this, ptr_button_ac_point, ptr_button_midpoint](Button *button, Press press, ConfigDraw *config)
+        button_pc_point->add_press_call([this](Button *button, Press press, ConfigDraw *config)
         { 
             is_second_point_being_defined=!is_second_point_being_defined;
             if(is_second_point_being_defined){
                 button->set_waiting_color(SK_ColorGRAY).set_click_color(SK_ColorCYAN); 
                 is_first_point_being_defined =false;
                 is_third_point_being_defined =false;
-                if(ptr_button_ac_point) ptr_button_ac_point->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
-                if(ptr_button_midpoint) ptr_button_midpoint->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
+                if(ptr_button_ac_point && !first_point) 
+                    ptr_button_ac_point->set_waiting_color(SK_ColorDKGRAY)
+                        .set_click_color(SK_ColorGRAY);
+                if(ptr_button_midpoint && !third_point) 
+                    ptr_button_midpoint->set_waiting_color(SK_ColorDKGRAY)
+                        .set_click_color(SK_ColorGRAY);
             } else {
-                button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY);
+                button->set_click_color(SK_ColorGRAY)
+                    .set_hover_color(SK_ColorLTGRAY)
+                    .set_waiting_color(SK_ColorDKGRAY);
             }
         });
         
-        button_midpoint->add_press_call([this, ptr_button_ac_point, ptr_button_pc_point](Button *button, Press press, ConfigDraw *config)
+        button_midpoint->add_press_call([this](Button *button, Press press, ConfigDraw *config)
         { 
             is_third_point_being_defined=!is_third_point_being_defined;
             if(is_third_point_being_defined){
                 button->set_waiting_color(SK_ColorGRAY).set_click_color(SK_ColorCYAN); 
                 is_first_point_being_defined =false;
                 is_second_point_being_defined =false;
-                if(ptr_button_ac_point) ptr_button_ac_point->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
-                if(ptr_button_pc_point) ptr_button_pc_point->set_waiting_color(SK_ColorDKGRAY).set_click_color(SK_ColorGRAY);
+                if(ptr_button_ac_point  && !first_point) 
+                    ptr_button_ac_point->set_waiting_color(SK_ColorDKGRAY)
+                        .set_click_color(SK_ColorGRAY);
+                if(ptr_button_pc_point  && !second_point) 
+                    ptr_button_pc_point->set_waiting_color(SK_ColorDKGRAY)
+                        .set_click_color(SK_ColorGRAY);
             } else {
-                button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY);
+                button->set_click_color(SK_ColorGRAY)
+                    .set_hover_color(SK_ColorLTGRAY)
+                    .set_waiting_color(SK_ColorDKGRAY);
             }
         });
 
         auto perform_resampling = Button::make("Resample to AC-PC", resources);
-        perform_resampling->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+        perform_resampling->set_click_color(SK_ColorGRAY)
+            .set_hover_color(SK_ColorDKGRAY)
+            .set_waiting_color(SK_ColorBLACK)
+            .set_size(SkRect::MakeWH(200, 80));
         perform_resampling->add_press_call([this](Button *button, Press press, ConfigDraw *config)
         {
             if (config->stack_page != nullptr) config->stack_page->stack(success_overlay("resampling volume..."));
@@ -441,6 +485,9 @@ struct Application
     }
 
     void point_selection(){
+        ptr_button_ac_point = nullptr;
+        ptr_button_pc_point = nullptr;
+        ptr_button_midpoint = nullptr;
         if(is_acpc_being_defined)
             view_image_with_point_selection();
         else
