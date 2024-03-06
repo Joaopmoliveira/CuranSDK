@@ -288,7 +288,8 @@ struct Application
             {
                 if (!first_point || !second_point || !third_point)
                 {
-                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("you must specify all points to resample the volume"));
+                    std::string s = !first_point ? "1 " : (!second_point ? "2 " : ((!third_point) ? "3 " : " "));
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("points :"+s+" problematic"));
                     first_point = std::nullopt;
                     second_point = std::nullopt;
                     third_point = std::nullopt;
