@@ -15,10 +15,13 @@
 #include "userinterface/widgets/Overlay.h"
 
 #include "utils/Flag.h"
+#include "utils/TheadPool.h"
 
 #include "communication/Client.h"
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
+
+
 
 struct ProcessingMessage {
 	curan::ui::ImageDisplay* processed_viwer = nullptr;
