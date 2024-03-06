@@ -278,9 +278,9 @@ bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::P
     OutputImageType::PointType coordinate_of_perfect_traject_in_needle_plane{{real_intersection[0], real_intersection[1], real_intersection[2]}};
     slice->TransformPhysicalPointToIndex(coordinate_of_perfect_traject_in_needle_plane,index_coordinate_of_perfect_traject_in_needle_plane);
 
-    auto custimized_drawing = [&](SkCanvas* canvas,SkRect image_area, SkRect content_area){
-        auto surface_height = canvas->getSurface()->height();
-        auto surface_width = canvas->getSurface()->width();
+    auto custimized_drawing = [=](SkCanvas* canvas,SkRect image_area, SkRect content_area){
+        auto surface_height = content_area.height();
+        auto surface_width = content_area.width();
 
         SkPaint greenPaint;
         greenPaint.setAntiAlias(true);
