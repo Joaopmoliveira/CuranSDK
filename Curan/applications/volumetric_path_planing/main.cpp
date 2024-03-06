@@ -76,6 +76,8 @@ int main()
 	        std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
 	        o << trajectory_specification;
 	        std::cout << trajectory_specification << std::endl;
+        } else {
+            std::cout << "the points required to specify the trajectory \nwere not specified, please specify them" << std::endl;
         }
 
         return 0;
