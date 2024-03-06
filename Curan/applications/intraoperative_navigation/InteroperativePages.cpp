@@ -1,6 +1,6 @@
 #include "InteroperativePages.h"
 
-std::unique_ptr<curan::ui::Container> create_main_page(std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {
+ProcessingMessage create_main_page(curan::ui::IconResources& resources,std::unique_ptr<curan::ui::Container>& container, InputImageType::Pointer in_volume) {
 	using namespace curan::ui;
 
 	auto igtlink_viewer = OpenIGTLinkViewer::make();
@@ -14,10 +14,9 @@ std::unique_ptr<curan::ui::Container> create_main_page(std::shared_ptr<Processin
 	*displaycontainer << std::move(igtlink_viewer) << std::move(image_display);
 	displaycontainer->set_divisions({ 0.0 , 0.5 , 1.0 });
 
-	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, data);
-	processing->port = data.port;
+	ProcessingMessage processing{image_display_pointer,in_volume};
 
-	auto start_connection_callback = [&data,processing](Button* button, Press press ,ConfigDraw* config) {
+	auto start_connection_callback = [&](Button* button, Press press ,ConfigDraw* config) {
 		if (!processing->connection_status.value()) {
 			curan::utilities::Job val{"connection thread",[processing]() { processing->communicate();}};
 			data.shared_pool->submit(val);
@@ -59,5 +58,7 @@ std::unique_ptr<curan::ui::Container> create_main_page(std::shared_ptr<Processin
 	*widgetcontainer << std::move(buttoncontainer) << std::move(displaycontainer);
 	widgetcontainer->set_divisions({ 0.0 , 0.1 , 1.0 });
 
-	return widgetcontainer;
+    container = widgetcontainer;
+
+    return std::move(processing);
 }

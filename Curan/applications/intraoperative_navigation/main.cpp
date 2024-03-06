@@ -22,16 +22,19 @@ int main()
 
         using namespace curan::ui;
         std::unique_ptr<Context> context = std::make_unique<Context>();
-        ;
+
         DisplayParams param{std::move(context), 1800, 1000};
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+        IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
         InputImageType::Pointer input_volume = load_dicom();
-        if (input_volume.GetPointer() == nullptr)
+        if (input_volume.GetPointer() == nullptr){
+            std::cout << "failed to read the dicom image\n";
             return 1;
-	    std::shared_ptr<ProcessingMessage> processing;
-	    auto page = create_main_page(data,processing,resources);
-
+        }
+        std::unique_ptr<curan::ui::Container> container;
+	    ProcessingMessage processing = create_main_page(resources,container,input_volume);
+        Page page{std::move(container),SK_ColorBLACK};
 	    page.update_page(viewer.get());
 
 	    ConfigDraw config{&page};
@@ -56,7 +59,7 @@ int main()
     		auto end = std::chrono::high_resolution_clock::now();
 	    	std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
     	}
-	    processing->attempt_stop();
+	    processing.attempt_stop();
 	    std::cout << "trying to stop communication\n" << std::endl;
         return 0;
     }

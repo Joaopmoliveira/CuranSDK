@@ -238,9 +238,9 @@ ProcessingMessage::ProcessingMessage(curan::ui::ImageDisplay* in_processed_viwer
         throw std::runtime_error("failed to compute desired direction");
     
     temporary.normalize();
-    auto perpendicular_to_desired = temporary-(temporary.transpose()*desired_direction)*desired_direction;
+    Eigen::Matrix<double,3,1> perpendicular_to_desired = temporary-(temporary.transpose()*desired_direction)*desired_direction;
     perpendicular_to_desired.normalize();
-    auto perpecdicular_to_both = perpendicular_to_desired.cross(desired_direction);
+    Eigen::Matrix<double,3,1> perpecdicular_to_both = perpendicular_to_desired.cross(desired_direction);
 
     desired_rotation.col(2) = desired_direction;
     desired_rotation.col(1) = perpendicular_to_desired;

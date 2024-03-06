@@ -4,6 +4,6 @@
 #include "MessageProcessing.h"
 #include "userinterface/widgets/IconResources.h"
 
-std::unique_ptr<curan::ui::Container> create_main_page(std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources);
+ProcessingMessage create_main_page(curan::ui::IconResources& resources,std::unique_ptr<curan::ui::Container>& container, InputImageType::Pointer in_volume);
 
 #endif
