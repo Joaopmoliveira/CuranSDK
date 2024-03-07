@@ -1,4 +1,6 @@
 #include "UserInterface.h"
+#include "BoundingBox.h"
+#include "utils/Overloading.h"
 
     void Application::compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
         std::optional<Eigen::Matrix<double, 3, 1>> possible_point;

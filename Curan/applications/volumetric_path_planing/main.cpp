@@ -1,4 +1,6 @@
-#include "user_interface_definition.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "UserInterface.h"
+#include "LoadVolume.h"
 #include <nlohmann/json.hpp>
 
 int main()

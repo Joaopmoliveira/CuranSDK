@@ -1,7 +1,6 @@
 #ifndef COMMON_INCLUDES_HEADER
 #define COMMON_INCLUDES_HEADER
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/Window.h"
 #include "userinterface/widgets/IconResources.h"

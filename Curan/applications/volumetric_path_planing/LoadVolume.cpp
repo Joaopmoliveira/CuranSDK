@@ -33,7 +33,7 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
     }
 
     std::string seriesIdentifier;
-    seriesIdentifier = seriesUID.begin()->c_str();
+    seriesIdentifier = (++seriesUID.begin())->c_str();
 
     using FileNamesContainer = std::vector<std::string>;
     FileNamesContainer fileNames;
@@ -106,6 +106,8 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
                   << "Unknown";
                 std::cout << " = " << tagvalue.c_str() << std::endl;
             }
+        }
+        ++itr;
     }
 
     auto query = [&](const std::string& entryID){
@@ -131,11 +133,11 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
         }
     };
 
-    query("0028,0002");
-    query("0028,0101");
-    query("0028,0107");
-    query("0028,2000");         
-    query("0028,2002"); 
+    query("0028|0002");
+    query("0028|0101");
+    query("0028|0107");
+    query("0028|2000");         
+    query("0028|2002"); 
 
     return filter->GetOutput();
 }

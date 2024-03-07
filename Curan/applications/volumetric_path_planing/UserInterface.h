@@ -1,8 +1,8 @@
 #ifndef USER_INTERFACE_HEADER
 #define USER_INTERFACE_HEADER
 
-#include "BoundingBox.h"
-#include "utils/Overloading.h"
+#include "common_includes.h"
+
 
 enum Panels
 {

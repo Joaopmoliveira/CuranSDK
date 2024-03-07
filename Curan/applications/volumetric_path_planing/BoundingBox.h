@@ -1,7 +1,7 @@
 #ifndef BOUNDING_BOX_HEADER
 #define BOUNDING_BOX_HEADER
 
-#include "LoadVolume.h"
+#include "common_includes.h"
 
 enum Strategy{
     CONSERVATIVE,   
