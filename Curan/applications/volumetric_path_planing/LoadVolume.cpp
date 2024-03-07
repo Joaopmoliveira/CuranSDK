@@ -1,4 +1,5 @@
 #include "LoadVolume.h"
+#include "itkShiftScaleImageFilter.h"
 
 std::optional<ImageType::Pointer> get_volume(std::string path)
 {
@@ -26,14 +27,9 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
 
     auto seriesItr = seriesUID.begin();
     auto seriesEnd = seriesUID.end();
-    while (seriesItr != seriesEnd)
-    {
-        std::cout << seriesItr->c_str() << std::endl;
-        ++seriesItr;
-    }
 
     std::string seriesIdentifier;
-    seriesIdentifier = (++seriesUID.begin())->c_str();
+    seriesIdentifier = (seriesUID.begin())->c_str();
 
     using FileNamesContainer = std::vector<std::string>;
     FileNamesContainer fileNames;
@@ -42,19 +38,9 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
 
     reader->SetFileNames(fileNames);
 
-    using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
-    auto rescale = RescaleType::New();
-    rescale->SetInput(reader->GetOutput());
-    rescale->SetOutputMinimum(0);
-    rescale->SetOutputMaximum(itk::NumericTraits<PixelType>::max());
-
-    using FilterType = itk::CastImageFilter<DICOMImageType, ImageType>;
-    auto filter = FilterType::New();
-    filter->SetInput(rescale->GetOutput());
-
     try
     {
-        filter->Update();
+        reader->Update();
     }
     catch (const itk::ExceptionObject &ex)
     {
@@ -82,62 +68,64 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
     auto itr = dictionary.Begin();
     auto end = dictionary.End();
 
-    while (itr != end)
-    {
-        itk::MetaDataObjectBase::Pointer entry = itr->second;
- 
-        MetaDataStringType::Pointer entryvalue =
-            dynamic_cast<MetaDataStringType *>(entry.GetPointer());
-    
-        if (entryvalue)
-        {
-            std::string tagkey = itr->first;
-            std::string labelId;
-            bool found = itk::GDCMImageIO::GetLabelFromTag(tagkey, labelId);
-      
-            std::string tagvalue = entryvalue->GetMetaDataObjectValue();
-
-            if (found)
-            {
-                std::cout << "(" << tagkey << ") " << labelId;
-                std::cout << " = " << tagvalue.c_str() << std::endl;
-            } else {
-                std::cout << "(" << tagkey << ") "
-                  << "Unknown";
-                std::cout << " = " << tagvalue.c_str() << std::endl;
-            }
-        }
-        ++itr;
-    }
-
     auto query = [&](const std::string& entryID){
         auto tagItr = dictionary.Find(entryID);
-
-        if (tagItr == end)
-        {
-            std::cerr << "Tag " << entryID;
-            std::cerr << " not found in the DICOM header" << std::endl;
-        } else {
-            // Since the entry may or may not be of string type we must again use a
-            // dynamic_cast in order to attempt to convert it to a string dictionary
-            // entry. If the conversion is successful, we can then print out its content.
-            MetaDataStringType::ConstPointer entryvalue = dynamic_cast<const MetaDataStringType *>(tagItr->second.GetPointer());
-
-            if (entryvalue){
-                std::string tagvalue = entryvalue->GetMetaDataObjectValue();
-                std::cout << "Patient's (" << entryID << ") ";
-                std::cout << " is: " << tagvalue << std::endl;
-            }
-            else
-                std::cerr << "Entry was not of string type" << std::endl;
+        std::optional<std::string> tagvalue = std::nullopt;
+        if (tagItr == end){  
+            std::cout << "Tag " << entryID;
+            std::cout << " not found in the DICOM header" << std::endl;
+            return tagvalue;
         }
+        MetaDataStringType::ConstPointer entryvalue = dynamic_cast<const MetaDataStringType *>(tagItr->second.GetPointer());
+
+        if (entryvalue){
+            tagvalue = entryvalue->GetMetaDataObjectValue();
+            std::cout << "Patient's (" << entryID << ") ";
+            std::cout << " is: " << *tagvalue << std::endl;
+        }
+        else
+            std::cout << "Entry was not of string type" << std::endl;
+        return tagvalue;
     };
 
-    query("0028|0002");
-    query("0028|0101");
-    query("0028|0107");
-    query("0028|2000");         
-    query("0028|2002"); 
+    auto bits_stored_atribute = query("0028|0101");  //Bits Stored Attribute
+
+    using ShiftScaleFilterType = itk::ShiftScaleImageFilter<DICOMImageType, DICOMImageType>;
+    auto shiftFilter = ShiftScaleFilterType::New();
+    
+    auto compute_conversion = [](const std::string& number_in_string){
+        std::optional<int> result = std::nullopt;
+        int result_l{};
+        auto [ptr, ec] = std::from_chars(number_in_string.data(), number_in_string.data() + number_in_string.size(), result_l);
+ 
+        if (ec == std::errc())
+            result = result_l;
+        
+        return result;
+    };
+
+
+    int bits_stored = bits_stored_atribute ? (compute_conversion(*bits_stored_atribute) ?  *compute_conversion(*bits_stored_atribute) : 16) : 16;  //Bits Allocated Attribute
+
+    std::printf("scalling factor is: (%f) with bits stored (%d)\n",std::pow(2,sizeof(PixelType)*8.0-bits_stored+1),bits_stored);
+    
+    shiftFilter->SetScale(std::pow(2,sizeof(PixelType)*8.0-bits_stored+1));
+    shiftFilter->SetShift(0);
+    shiftFilter->SetInput(reader->GetOutput());
+
+    using FilterType = itk::CastImageFilter<DICOMImageType, ImageType>;
+    auto filter = FilterType::New();
+    filter->SetInput(shiftFilter->GetOutput());
+
+    try
+    {
+        filter->Update();
+    }
+    catch (const itk::ExceptionObject &ex)
+    {
+        std::cout << ex << std::endl;
+        return std::nullopt;
+    }
 
     return filter->GetOutput();
 }
