@@ -13,6 +13,7 @@
 #include "itkMeanSquaresImageToImageMetricv4.h"
 #include "itkEuler3DTransform.h"
 #include "itkMattesMutualInformationImageToImageMetricv4.h"
+#include "itkNormalizedMutualInformationHistogramImageToImageMetric.h"
 #include "itkVersorRigid3DTransform.h"
 #include "itkCenteredTransformInitializer.h"
 #include "itkRegularStepGradientDescentOptimizerv4.h"
