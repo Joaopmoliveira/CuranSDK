@@ -4,11 +4,9 @@ namespace curan {
 namespace robotic {
 
     ExtractRipple::ExtractRipple(){
-        for(size_t i = 0 ; i < number_of_joints; ++i){
-            for(size_t filter_index = 0 ; filter_index < number_of_joints; ++filter_index){
+        for(size_t i = 0 ; i < number_of_joints; ++i)
+            for(size_t filter_index = 0 ; filter_index < number_of_joints; ++filter_index)
                 each_joint_filter[i][filter_index].second.frequency = (filter_index == 4) ? 200.0 : 320.0;
-            }
-        }
     }
 
     EigenState&& ExtractRipple::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){

@@ -1,5 +1,6 @@
 #include "load_volume.h"
 #include "user_interface_definition.h"
+#include <nlohmann/json.hpp>
 
 int main()
 {
@@ -16,9 +17,9 @@ int main()
         if (!volume)
             return 1;
 
-        DataSpecificApplication data_application{*volume, resources};
+        Application data_application{*volume, resources};
 
-        curan::ui::Page page{std::move(data_application.generate_main_page_content()), SK_ColorBLACK};
+        curan::ui::Page page{std::move(data_application.main_page()), SK_ColorBLACK};
 
         ConfigDraw config{&page};
 
@@ -44,6 +45,41 @@ int main()
             auto end = std::chrono::high_resolution_clock::now();
             std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
         }
+
+	    auto return_current_time_and_date = [](){
+	        auto now = std::chrono::system_clock::now();
+    	    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+    	    std::stringstream ss;
+    	    ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+   		    return ss.str();
+	    };
+
+        Eigen::IOFormat CleanFmt(Eigen::StreamPrecision, 0, ", ", "\n", " ", " ");
+
+
+        if(data_application.final_first_point && data_application.final_second_point && data_application.final_third_point){
+            nlohmann::json trajectory_specification;
+	        trajectory_specification["timestamp"] = return_current_time_and_date();
+            {
+        	    std::stringstream target;
+	            target << (*data_application.final_first_point).format(CleanFmt) << std::endl;
+	            trajectory_specification["target"] = target.str();
+            }
+            {
+        	    std::stringstream entry;
+	            entry << (*data_application.final_third_point).format(CleanFmt) << std::endl;
+	            trajectory_specification["entry"] = entry.str();
+            }
+
+    	    // write prettified JSON to another file
+	        std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
+	        o << trajectory_specification;
+	        std::cout << trajectory_specification << std::endl;
+        } else {
+            std::cout << "the points required to specify the trajectory \nwere not specified, please specify them" << std::endl;
+        }
+
         return 0;
     }
     catch (const std::exception &e)

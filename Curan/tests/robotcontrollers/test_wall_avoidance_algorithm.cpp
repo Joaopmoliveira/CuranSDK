@@ -41,7 +41,7 @@ struct ScrollingBuffer
 	}
 };
 
-void interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
+void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 {
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
@@ -104,7 +104,7 @@ void signal_handler(int signal){
 void rendering(curan::robotic::RobotLBR& client){
 
     auto interface_callable = [&](vsg::CommandBuffer &cb){
-        interface(cb,client);
+        custom_interface(cb,client);
     };
 
     curan::renderable::Window::Info info;

@@ -15,10 +15,12 @@ namespace curan {
 		class Page {
 			std::unique_ptr<LightWeightPage> main_page;
 			std::deque<std::unique_ptr<LightWeightPage>> page_stack;
+			
 			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 			SkPaint bluring_paint;
 			SkSamplingOptions options;
 			SkRect previous_size;
+			std::mutex mut;
         public:
 
 			explicit Page(std::unique_ptr<Container> container,SkColor background);
@@ -32,6 +34,12 @@ namespace curan {
 			Page& pop();
 
 			Page& stack(std::unique_ptr<Overlay> overlay);
+
+			Page& replace_all(std::unique_ptr<Overlay> overlay);
+
+			Page& replace_last(std::unique_ptr<Overlay> overlay);
+
+			Page& clear_overlays();
 
 			void update_page(const Window* window);
 

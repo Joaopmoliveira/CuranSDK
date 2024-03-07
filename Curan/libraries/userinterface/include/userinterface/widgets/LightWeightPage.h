@@ -22,6 +22,7 @@ namespace curan {
 			SkRect cached_minimum_size;
 			SkPaint paint;
 			bool is_tight;
+			std::atomic<bool> request_to_terminate = false;
 
 			LightWeightPage(std::unique_ptr<Container> contained, SkColor backgroundcolor, SkRect computed_minimum_size,bool tight = false);
 
@@ -32,6 +33,14 @@ namespace curan {
 			~LightWeightPage();
 
 			LightWeightPage& draw(SkCanvas* canvas);
+
+			inline bool terminated(){
+				return request_to_terminate.load();
+			}
+
+			inline void terminate(bool signal_to_post){
+				request_to_terminate.store(signal_to_post);
+			}
 
 			bool propagate_signal(Signal sig, ConfigDraw* config);
 

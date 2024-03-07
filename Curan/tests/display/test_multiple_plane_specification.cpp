@@ -109,7 +109,7 @@ void callback_z_dir(curan::ui::ImageDisplay* image_display,ImageType::Pointer im
 }
 
 
-curan::ui::Page create_page_with_widgets(){
+std::unique_ptr<curan::ui::Container> create_page_with_widgets(){
     std::unique_ptr<curan::ui::ImageDisplay> image_display_x = curan::ui::ImageDisplay::make();
 
     std::unique_ptr<curan::ui::ImageDisplay> image_display_y = curan::ui::ImageDisplay::make();
@@ -124,8 +124,7 @@ curan::ui::Page create_page_with_widgets(){
     auto container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
     *container << std::move(containerbuttons) << std::move(container_image_display);
 
-    curan::ui::Page page{std::move(container),SK_ColorBLACK};
-    return std::move(page);
+    return std::move(container);
 }
 
 
@@ -143,7 +142,7 @@ int main() {
     curan::ui::DisplayParams param{ std::move(context), 600,600 };
     std::unique_ptr<curan::ui::Window> viewer = std::make_unique<curan::ui::Window>(std::move(param));
 
-    auto page = create_page_with_widgets();
+    curan::ui::Page page{create_page_with_widgets(),SK_ColorBLACK};
     page.update_page(viewer.get());
 
     ConfigDraw config{&page};
