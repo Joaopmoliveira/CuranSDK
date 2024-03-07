@@ -1,54 +1,6 @@
-#ifndef USER_INTERFACE_HEADER
-#define USER_INTERFACE_HEADER
+#include "UserInterface.h"
 
-#include "BoundingBox.h"
-#include "utils/Overloading.h"
-
-enum Panels
-{
-    ONE_PANEL,
-    TWO_PANELS,
-    THREE_PANELS
-};
-
-enum PanelType
-{
-    ORIGINAL_VOLUME = 0,
-    RESAMPLED_VOLUME,
-    TRAJECTORY_ORIENTED_VOLUME,
-    NUMBER_OF_VOLUMES
-};
-
-struct Application
-{
-    bool is_acpc_being_defined = false;
-
-    std::array<curan::ui::VolumetricMask, PanelType::NUMBER_OF_VOLUMES> map;
-
-    PanelType current_volume = PanelType::ORIGINAL_VOLUME;
-    Panels current_panel_arragement = Panels::ONE_PANEL;
-    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(4);
-
-    curan::ui::IconResources &resources;
-
-    bool is_first_point_being_defined = false;
-    std::optional<Eigen::Matrix<double, 3, 1>> first_point;
-    bool is_second_point_being_defined = false;
-    std::optional<Eigen::Matrix<double, 3, 1>> second_point;
-    bool is_third_point_being_defined = false;
-    std::optional<Eigen::Matrix<double, 3, 1>> third_point;
-
-    curan::ui::MiniPage *minipage = nullptr;
-
-    curan::ui::Button* ptr_button_ac_point = nullptr;
-    curan::ui::Button* ptr_button_pc_point = nullptr;
-    curan::ui::Button* ptr_button_midpoint = nullptr;
-
-    std::optional<Eigen::Matrix<double, 3, 1>> final_first_point;
-    std::optional<Eigen::Matrix<double, 3, 1>> final_second_point;
-    std::optional<Eigen::Matrix<double, 3, 1>> final_third_point;
-
-    void compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
+    void Application::compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
         std::optional<Eigen::Matrix<double, 3, 1>> possible_point;
         size_t index = 0;
 
@@ -101,7 +53,7 @@ struct Application
         }
     };
 
-    Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : 
+    Application::Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : 
         resources{in_resources}, 
         map{{{volume}, {nullptr}, {nullptr}}}
     {
@@ -123,7 +75,7 @@ struct Application
         });
     }
 
-    std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning)
+    std::unique_ptr<curan::ui::Overlay> Application::warning_overlay(const std::string &warning)
     {
         using namespace curan::ui;
         auto warn = Button::make(" ", "warning.png", resources);
@@ -145,7 +97,7 @@ struct Application
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
-    std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success)
+    std::unique_ptr<curan::ui::Overlay> Application::success_overlay(const std::string &success)
     {
         using namespace curan::ui;
         auto warn = Button::make(" ", "submit.png", resources);
@@ -168,7 +120,7 @@ struct Application
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
-    void view_image_simple(){
+    void Application::view_image_simple(){
         using namespace curan::ui;
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
@@ -205,7 +157,7 @@ struct Application
         minipage->construct(std::move(viwers_container), SK_ColorBLACK);
     }
 
-    void view_image_with_point_selection(){
+    void Application::view_image_with_point_selection(){
         using namespace curan::ui;
         
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -502,7 +454,7 @@ struct Application
             minipage->construct(std::move(total_container), SK_ColorBLACK);
     }
 
-    void point_selection(){
+    void Application::point_selection(){
         ptr_button_ac_point = nullptr;
         ptr_button_pc_point = nullptr;
         ptr_button_midpoint = nullptr;
@@ -512,7 +464,7 @@ struct Application
             view_image_simple();
     }
 
-    std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page()
+    std::unique_ptr<curan::ui::Overlay> Application::create_volume_explorer_page()
     {
         using namespace curan::ui;
         using PixelType = unsigned char;
@@ -581,7 +533,7 @@ struct Application
         return Overlay::make(std::move(container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
-    std::unique_ptr<curan::ui::Overlay> layout_overlay()
+    std::unique_ptr<curan::ui::Overlay> Application::layout_overlay()
     {
         using namespace curan::ui;
         if (current_volume == PanelType::TRAJECTORY_ORIENTED_VOLUME)
@@ -620,7 +572,7 @@ struct Application
         }
     }
 
-    std::unique_ptr<curan::ui::Overlay> option_overlay()
+    std::unique_ptr<curan::ui::Overlay> Application::option_overlay()
     {
         using namespace curan::ui;
         auto button = Button::make("Layout", resources);
@@ -688,7 +640,7 @@ struct Application
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
-    std::unique_ptr<curan::ui::Container> main_page()
+    std::unique_ptr<curan::ui::Container> Application::main_page()
     {
         std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
 
@@ -709,6 +661,3 @@ struct Application
         *minimage_container << std::move(lminipage);
         return minimage_container;
     }
-};
-
-#endif
