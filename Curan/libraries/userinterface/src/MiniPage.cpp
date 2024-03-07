@@ -1,4 +1,4 @@
-#include "userinterface/widgets/Minipage.h"
+#include "userinterface/widgets/MiniPage.h"
 #include "utils/Overloading.h"
 
 namespace curan {

@@ -82,9 +82,12 @@ namespace curan
 
 		struct directed_stroke
 		{
-			Stroke strk;
+			Stroke stroke;
 			Direction direction;
 		};
+
+		class VolumetricMask;
+		using pressedhighlighted_event = std::function<void(VolumetricMask*, ConfigDraw*, const std::vector<directed_stroke>&)>;
 
 		class VolumetricMask
 		{
@@ -101,12 +104,18 @@ namespace curan
 			ImageType::Pointer image;
 
 			curan::utilities::SafeQueue<directed_stroke> to_process;
-
 		public:
+			std::list<pressedhighlighted_event> callbacks_pressedhighlighted;
+
 			VolumetricMask(ImageType::Pointer volume);
 
 			VolumetricMask(const VolumetricMask &m) = delete;
 			VolumetricMask &operator=(const VolumetricMask &) = delete;
+
+			inline void add_pressedhighlighted_call(pressedhighlighted_event &&call)
+			{
+				callbacks_pressedhighlighted.emplace_back(std::move(call));
+			}
 
 			std::vector<directed_stroke> process_pending_highlights();
 

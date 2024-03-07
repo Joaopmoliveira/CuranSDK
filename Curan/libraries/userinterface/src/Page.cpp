@@ -2,6 +2,8 @@
 #include "userinterface/widgets/Overlay.h"
 #include "userinterface/Window.h"
 
+#include <iostream>
+
 namespace curan {
 namespace ui {
 
@@ -14,6 +16,22 @@ Page::Page(std::unique_ptr<Container> container,SkColor background) : main_page{
 
 Page& Page::draw(SkCanvas* canvas){
 	main_page->draw(canvas);
+	{ 
+		/*
+		This machinery allows us to request overlays to be 
+		removed from the stack of overlays on the page
+		while being thread safe. We transverse all the nodes
+		in the list and remove the ones where a previous request
+		deletion of the overlay was requested.
+		*/
+		std::lock_guard<std::mutex> g{mut};
+		for(auto begin = page_stack.begin(); begin!=page_stack.end(); ){
+			if((*begin)->terminated())
+				begin = page_stack.erase(begin);
+			else
+				++begin;
+		}
+	}
 	if (!page_stack.empty()) {
 		auto image = canvas->getSurface()->makeImageSnapshot();
 		canvas->drawImage(image, 0, 0, options, &bluring_paint);
@@ -38,31 +56,42 @@ Page& Page::propagate_size_change(const SkRect& new_size){
 
 Page& Page::pop(){
 	if (!page_stack.empty())
-		page_stack.pop_back();
+		page_stack.back()->terminate(true);
 	return *(this);
 }
 
-/* Page& Page::replace_all(std::unique_ptr<Overlay> overlay){
+Page& Page::replace_all(std::unique_ptr<Overlay> overlay){
 	auto local = overlay->take_ownership();
 	local->propagate_size_change(previous_size);
-	if (!page_stack.empty())
-		page_stack.pop_back();
-	page_stack.emplace_back(std::move(local));
+	{
+		std::lock_guard<std::mutex> g{mut};
+		std::for_each(page_stack.begin(),page_stack.end(),[](std::unique_ptr<curan::ui::LightWeightPage>& page){page->terminate(true);});
+		page_stack.emplace_back(std::move(local));
+	}
 	return *(this);
 }
 
-Page& Page::clear(std::unique_ptr<Overlay> overlay){
+Page& Page::replace_last(std::unique_ptr<Overlay> overlay){
 	auto local = overlay->take_ownership();
 	local->propagate_size_change(previous_size);
-	if (!page_stack.empty())
-		page_stack.pop_back();
-	page_stack.emplace_back(std::move(local));
+	{
+		std::lock_guard<std::mutex> g{mut};
+		page_stack.back()->terminate(true);
+		page_stack.emplace_back(std::move(local));
+	}
+	return *(this);
+}
+
+Page& Page::clear_overlays(){
+	std::lock_guard<std::mutex> g{mut};
+	std::for_each(page_stack.begin(),page_stack.end(),[](std::unique_ptr<curan::ui::LightWeightPage>& page){page->terminate(true);});
 	return  *(this);
-}*/
+}
 
 Page& Page::stack(std::unique_ptr<Overlay> overlay){
 	auto local = overlay->take_ownership();
 	local->propagate_size_change(previous_size);
+	std::lock_guard<std::mutex> g{mut};
 	page_stack.emplace_back(std::move(local));
 	return *(this);
 }

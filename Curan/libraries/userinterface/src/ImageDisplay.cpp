@@ -48,10 +48,7 @@ drawablefunction ImageDisplay::draw() {
 
 		auto custom_drawing = get_custom_drawingcall();
 
-		if (custom_drawing) {
-			auto special = *custom_drawing;
-			special(canvas, current_selected_image_rectangle);
-		}
+		if (custom_drawing) (*custom_drawing)(canvas, current_selected_image_rectangle,widget_rect);
 	};
 	return lamb;
 }

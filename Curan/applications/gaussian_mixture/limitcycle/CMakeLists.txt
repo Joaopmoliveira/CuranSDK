@@ -1,6 +1,5 @@
 add_executable(LimitCycleController 
-main.cpp
-MyLBRClient.cpp
+replacement_implementation.cpp
 )
 
 target_compile_definitions(LimitCycleController PRIVATE vsgXchange_FOUND)
@@ -13,15 +12,8 @@ endif(WIN32)
 
 target_link_libraries(LimitCycleController 
 PUBLIC 
-Eigen3::Eigen
-rbdl-static 
-KukaRobotLibrary 
-FRILibrary
-tasksLib
-robotParameters
 utils
-communication
+robotutils
 renderable
-gaussianmixture
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )

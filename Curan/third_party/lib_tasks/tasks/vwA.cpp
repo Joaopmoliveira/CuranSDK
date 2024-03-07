@@ -17,7 +17,7 @@ VirtualWallAvoidance::VirtualWallAvoidance(RobotParameters* robotParam, Vector3d
 	xBuffer(1) = abs(xForbidden(1)) - abs(xActivation(1));
 	xBuffer(2) = abs(xForbidden(2)) - abs(xActivation(2));
 
-	torque_star_excluding_vw = VectorNd::Zero(NUMBER_OF_JOINTS,1);
+	torque_star_excluding_vw = VectorNd::Zero(LBR_N_JOINTS,1);
 
 	iiwa14 = robotParam;
 }
@@ -55,8 +55,8 @@ int VirtualWallAvoidance::hasRobotExceededAWall()
 
 	if (virtualWallExceeded==0)
 	{
-		torque = VectorNd::Zero(NUMBER_OF_JOINTS,1);
-		nullspace = MatrixNd::Identity(NUMBER_OF_JOINTS, NUMBER_OF_JOINTS);
+		torque = VectorNd::Zero(LBR_N_JOINTS,1);
+		nullspace = MatrixNd::Identity(LBR_N_JOINTS, LBR_N_JOINTS);
 	}
 	
 	return virtualWallExceeded;
@@ -75,9 +75,9 @@ void VirtualWallAvoidance::wallRepulsionForce()
 	double lambda;
 	double temp = 0.0;
 
-	for (int i=0; i<NUMBER_OF_JOINTS; i++)
+	for (int i=0; i<LBR_N_JOINTS; i++)
 	{
-		for (int j=0; j<NUMBER_OF_JOINTS; j++)
+		for (int j=0; j<LBR_N_JOINTS; j++)
 		{
 			temp += iiwa14->qDot[j] * iiwa14->M(j,i);
 		}
@@ -157,8 +157,8 @@ void VirtualWallAvoidance::wallRepulsionForce()
 void VirtualWallAvoidance::calcWallRepulsion()
 {
 	wallRepulsionForce();
-	jacobian.resize(noOfExceededWallDirections, NUMBER_OF_JOINTS);
-	jacobianTranspose.resize(NUMBER_OF_JOINTS, noOfExceededWallDirections);
+	jacobian.resize(noOfExceededWallDirections, LBR_N_JOINTS);
+	jacobianTranspose.resize(LBR_N_JOINTS, noOfExceededWallDirections);
 	p.resize(noOfExceededWallDirections);
 	
 	//Jacobian of only the 6th joint. 3 rows per axis, so (5*3 + 0/1/2) gives the Jacobian of the 6th axis

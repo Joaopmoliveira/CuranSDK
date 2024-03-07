@@ -581,6 +581,81 @@ RobotData::RobotData(int whatRobot)
 			break;
 
 		}
+		case 77: // it's a 14kg iiwa
+		{
+
+			initializeVariables(7);
+
+		    // **************** data taken from AxisData.xml/ChainData.xml, adapted to the upright robot
+			axisOrigin[0] = Vector3d(0,   0,    152.5e-3);    // axis 1
+			axisOrigin[1] = Vector3d(0, -11e-3, 187.5e-3);
+			axisOrigin[2] = Vector3d(0, +11e-3, 212.5e-3);
+			axisOrigin[3] = Vector3d(0, +11e-3, 187.5e-3);
+			axisOrigin[4] = Vector3d(0, -11e-3, 212.5e-3);
+			axisOrigin[5] = Vector3d(0, -62e-3, 187.5e-3);
+			axisOrigin[6] = Vector3d(0, +62e-3,  79.6e-3);
+			
+			axisDirection[0] = Vector3d(0.0,  0.0,  1.0);
+			axisDirection[1] = Vector3d(0.0,  1.0,  0.0);
+			axisDirection[2] = Vector3d(0.0,  0.0,  1.0);
+			axisDirection[3] = Vector3d(0.0, -1.0,  0.0);
+			axisDirection[4] = Vector3d(0.0,  0.0,  1.0);
+			axisDirection[5] = Vector3d(0.0,  1.0,  0.0);
+			axisDirection[6] = Vector3d(0.0,  0.0,  1.0);
+
+			
+			mass[0] = 3.94781; //3.94781 4.50275 2.45520 2.61155 3.41000 3.38795 0.35432
+			mass[1] = 4.50275;
+			mass[2] = 2.45520;
+			mass[3] = 2.61155;
+			mass[4] = 3.41000;
+			mass[5] = 3.38795;
+			mass[6] =  0.35432;
+			
+
+			com[0] = Vector3d(  0.0   , -18.7e-3,  101.6e-3);  
+			com[1] = Vector3d( -0.21e-3,  25.0e-3,   82.5e-3);  
+			com[2] = Vector3d( -0.20e-3,  19.5e-3,   98.4e-3);  
+			com[3] = Vector3d( -0.21e-3, -20.1e-3,   86.0e-3);
+			com[4] = Vector3d( -0.04e-3, -13.5e-3,   66.0e-3);  
+			com[5] = Vector3d( -0.35e-3,  51.4e-3,   17.1e-3);  
+			com[6] = Vector3d( -0.01e-3,   0.1e-3,   11.0e-3);  
+			
+
+			inertia[0] = Matrix3d(0.00455, 0.0,   0.00001, 
+				                  0.0 , 0.00454, 0.0,
+								  0.00001,  0.0,   0.00029);
+
+			inertia[1] = Matrix3d(0.0468, 0.0,    0.0, 
+				                  0.0,   0.0282, 0.0,
+								  0.0,   0.0,    0.0101);
+
+			inertia[2] = Matrix3d(0.02,  0.0,    0.0, 
+				                  0.0,   0.02,   0.0,
+								  0.0,   0.0,    0.06);
+
+			inertia[3] = Matrix3d(0.04,  0.0,    0.0, 
+				                  0.0,   0.027,   0.0,
+								  0.0,   0.0,    0.01);
+
+			inertia[4] = Matrix3d(0.019,  0.0,    0.0, 
+				                  0.0,    0.016,  0.0,
+								  0.0,    0.0,    0.012);
+
+			inertia[5] = Matrix3d(0.007,  0.0,     0.0, 
+				                  0.0,    0.006,   0.0,
+								  0.0,    0.0,     0.005);
+
+			inertia[6] = Matrix3d(0.0003, 0.0,     0.0, 
+				                  0.0,    0.0003,  0.0,
+								  0.0,    0.0,     0.0005);
+
+
+			std::cout << "Inertia data for LBR iiwa 7kg generated \n";
+
+			break;
+
+		}
 	}
 
 }

@@ -23,11 +23,11 @@ void signal_handler(int signal)
 void GetRobotConfiguration(igtl::Matrix4x4 &matrix, kuka::Robot *robot, RobotParameters *iiwa, std::shared_ptr<SharedState> shared_state)
 {
 	static auto t1 = std::chrono::steady_clock::now();
-	static double _qOld[NUMBER_OF_JOINTS];
+	static double _qOld[LBR_N_JOINTS];
 	auto robot_state = shared_state->robot_state.load();
 	auto _qCurr = robot_state.joint_config;
 	// curan::utils::cout << "the joints are: \n";
-	for (int i = 0; i < NUMBER_OF_JOINTS; i++)
+	for (int i = 0; i < LBR_N_JOINTS; i++)
 	{
 		iiwa->q[i] = _qCurr[i];
 	}
@@ -35,7 +35,7 @@ void GetRobotConfiguration(igtl::Matrix4x4 &matrix, kuka::Robot *robot, RobotPar
 	auto sampleTimeChrono = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
 	double sampleTime = (sampleTimeChrono.count() < 1) ? 0.001 : sampleTimeChrono.count() / 1000.0;
 	t1 = t2;
-	for (int i = 0; i < NUMBER_OF_JOINTS; i++)
+	for (int i = 0; i < LBR_N_JOINTS; i++)
 	{
 		iiwa->qDot[i] = (_qCurr[i] - _qOld[i]) / sampleTime;
 	}
@@ -49,7 +49,7 @@ void GetRobotConfiguration(igtl::Matrix4x4 &matrix, kuka::Robot *robot, RobotPar
 	iiwa->Minv = iiwa->M.inverse();
 	robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
 	robot->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7); // 3x1 position of flange (body = 7), expressed in base coordinates
-	robot->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
+	robot->getRotationMatrix(R_0_7, iiwa->q, LBR_N_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
 
 	p_0_cur *= 1000;
 	matrix[0][0] = R_0_7(0, 0);
@@ -152,7 +152,7 @@ void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage> &me
 	auto _qCurr = robot_state.joint_config;
 	auto _eExtern = robot_state.external_torques;
 	auto _eMeasured = robot_state.measured_torques;
-	for (int i = 0; i < NUMBER_OF_JOINTS; i++)
+	for (int i = 0; i < LBR_N_JOINTS; i++)
 	{
 		message->angles[i] = _qCurr[i];
 		message->measured_torques[i] = _eMeasured[i];

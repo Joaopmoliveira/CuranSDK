@@ -96,20 +96,33 @@ namespace ui {
 
 			if (minimum_index != recorded_strokes.end() && minimum < 0.02f)
 			{
-				paint_stroke.setStrokeWidth(14);
-				paint_stroke.setColor(SkColorSetARGB(125, 0x00, 0xFF, 0x00));
-				std::visit(curan::utilities::overloaded{
-					[&](const Path& path){
-						canvas->drawPath(path.rendered_path, paint_stroke);
-					},
-					[&](Point& in_point){
-						canvas->drawPoint(in_point.get_transformed_point(inverse_homogenenous_transformation), paint_stroke);
-					}
-				},minimum_index->second);
-				paint_stroke.setStrokeWidth(8);
-				paint_stroke.setColor(SK_ColorGREEN);
 				if(is_pressed){
+					paint_stroke.setStrokeWidth(14);
+					paint_stroke.setColor(SkColorSetARGB(125, 0xFF, 0x00, 0x00));
+					std::visit(curan::utilities::overloaded{
+						[&](const Path& path){
+							canvas->drawPath(path.rendered_path, paint_stroke);
+						},
+						[&](Point& in_point){
+							canvas->drawPoint(in_point.get_transformed_point(inverse_homogenenous_transformation), paint_stroke);
+						}
+					},minimum_index->second);
+					paint_stroke.setStrokeWidth(8);
+					paint_stroke.setColor(SK_ColorGREEN);
 					return minimum_index->second;
+				} else {
+					paint_stroke.setStrokeWidth(14);
+					paint_stroke.setColor(SkColorSetARGB(125, 0x00, 0xFF, 0x00));
+					std::visit(curan::utilities::overloaded{
+						[&](const Path& path){
+							canvas->drawPath(path.rendered_path, paint_stroke);
+						},
+						[&](Point& in_point){
+							canvas->drawPoint(in_point.get_transformed_point(inverse_homogenenous_transformation), paint_stroke);
+						}
+					},minimum_index->second);
+					paint_stroke.setStrokeWidth(8);
+					paint_stroke.setColor(SK_ColorGREEN);
 				}
 			}
 		}
@@ -366,7 +379,7 @@ namespace ui {
 				bool is_panel_selected = get_hightlight_color()==SkColorSetARGB(255,125,0,0);
 				std::lock_guard<std::mutex> g{get_mutex()};
 				assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
-				auto highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction,current_value).draw(canvas,inverse_homogenenous_transformation,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting && is_panel_selected,paint_stroke,paint_square,text_font,is_pressed);			
+				std::optional<curan::ui::Stroke> highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction,current_value).draw(canvas,inverse_homogenenous_transformation,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting && is_panel_selected,paint_stroke,paint_square,text_font,is_pressed);			
 				if(highlighted_and_pressed_stroke){
 					directed_stroke strk{*highlighted_and_pressed_stroke,direction};
 					volumetric_mask->post_stroke(strk);
@@ -503,9 +516,18 @@ namespace ui {
 																current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)arg.xpos, (float)arg.ypos));
 																is_pressed = true;
 																interacted = true;
+																auto pending_highlight_signals = volumetric_mask->process_pending_highlights();
+																if(pending_highlight_signals.size()>0)
+																	for(auto & pending : volumetric_mask->callbacks_pressedhighlighted)
+																		pending(volumetric_mask,config,pending_highlight_signals);
+																	
 															} else {
 																is_pressed = true;
 																interacted = true;
+																auto pending_highlight_signals = volumetric_mask->process_pending_highlights();
+																if(pending_highlight_signals.size()>0)
+																	for(auto & pending : volumetric_mask->callbacks_pressedhighlighted)
+																		pending(volumetric_mask,config,pending_highlight_signals);
 															}
 														}
 														else if (reserved_slider_space.contains(arg.xpos, arg.ypos))

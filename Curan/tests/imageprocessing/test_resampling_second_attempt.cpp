@@ -108,7 +108,10 @@ int main()
     }
 
     auto size = input->GetLargestPossibleRegion().GetSize();
-    ImageType::IndexType index{size[0]/2.0,size[1]/2.0,size[2]/2.0};
+    const long x_index = static_cast<long>(size[0]/2.0);
+    const long y_index = static_cast<long>(size[1]/2.0);
+    const long z_index = static_cast<long>(size[2]/2.0);
+    const ImageType::IndexType index{x_index,y_index,z_index};
     ImageType::PointType center;
     input->TransformIndexToPhysicalPoint(index,center);
 

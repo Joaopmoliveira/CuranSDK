@@ -6,9 +6,7 @@
 
 #include <rbdl/rbdl.h> //JL, uncomment this
 
-#ifndef NUMBER_OF_JOINTS 
-#define NUMBER_OF_JOINTS 7
-#endif
+constexpr size_t LBR_N_JOINTS = 7;
 
 using namespace RigidBodyDynamics::Math;
 
@@ -32,17 +30,17 @@ struct RobotParameters{
 
 	RobotParameters()
 	{
-		q = VectorNd::Zero(NUMBER_OF_JOINTS,1);
-		qDot = VectorNd::Zero(NUMBER_OF_JOINTS,1);
-		c = VectorNd::Zero(NUMBER_OF_JOINTS,1);
-		g = VectorNd::Zero(NUMBER_OF_JOINTS,1);
+		q = VectorNd::Zero(LBR_N_JOINTS,1);
+		qDot = VectorNd::Zero(LBR_N_JOINTS,1);
+		c = VectorNd::Zero(LBR_N_JOINTS,1);
+		g = VectorNd::Zero(LBR_N_JOINTS,1);
 	
-		M = MatrixNd::Zero(NUMBER_OF_JOINTS, NUMBER_OF_JOINTS);
-		Minv = MatrixNd::Zero(NUMBER_OF_JOINTS, NUMBER_OF_JOINTS);
+		M = MatrixNd::Zero(LBR_N_JOINTS, LBR_N_JOINTS);
+		Minv = MatrixNd::Zero(LBR_N_JOINTS, LBR_N_JOINTS);
 
-		xRobotPoints = MatrixNd::Zero(NUMBER_OF_JOINTS, 3);
-		xDotRobotPoints = MatrixNd::Zero(NUMBER_OF_JOINTS, 3);
-		jacobiansOfRobotPoints = MatrixNd::Zero(NUMBER_OF_JOINTS * 3, NUMBER_OF_JOINTS); //Only in the translation components
+		xRobotPoints = MatrixNd::Zero(LBR_N_JOINTS, 3);
+		xDotRobotPoints = MatrixNd::Zero(LBR_N_JOINTS, 3);
+		jacobiansOfRobotPoints = MatrixNd::Zero(LBR_N_JOINTS * 3, LBR_N_JOINTS); //Only in the translation components
 	}
 };
 

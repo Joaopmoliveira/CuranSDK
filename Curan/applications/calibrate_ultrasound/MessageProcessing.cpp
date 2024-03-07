@@ -205,9 +205,9 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			return;
 		};
 		auto local_colors = processor->colors;
-		auto special_custom = [x,y,processor,segmented_wires, local_colors](SkCanvas* canvas, SkRect allowed_region) {
-			float scalling_factor_x = allowed_region.width()/x;
-			float scalling_factor_y = allowed_region.height()/y;
+		auto special_custom = [x,y,processor,segmented_wires, local_colors](SkCanvas* canvas, SkRect image_area,SkRect allowed_area) {
+			float scalling_factor_x = image_area.width()/x;
+			float scalling_factor_y = image_area.height()/y;
 			float radius = 5;
 			SkPaint paint_square;
 			paint_square.setStyle(SkPaint::kFill_Style);
@@ -218,8 +218,8 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			auto coliter = local_colors.begin();
 			if(!processor->should_record){
 				for (const auto& circles : segmented_wires.colwise()) {
-					float xloc = allowed_region.x()+ scalling_factor_x * circles(0, 0);
-					float yloc = allowed_region.y()+ scalling_factor_y * circles(1, 0);
+					float xloc = image_area.x()+ scalling_factor_x * circles(0, 0);
+					float yloc = image_area.y()+ scalling_factor_y * circles(1, 0);
 					SkPoint center{xloc,yloc};
 					paint_square.setColor(*coliter);
 					canvas->drawCircle(center,radius, paint_square);
@@ -227,8 +227,8 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 				}
 			} else{
 				for (const auto& circles : processor->list_of_recorded_points.back().segmented_wires.colwise()) {
-					float xloc = allowed_region.x()+ scalling_factor_x * circles(0, 0);
-					float yloc = allowed_region.y()+ scalling_factor_y * circles(1, 0);
+					float xloc = image_area.x()+ scalling_factor_x * circles(0, 0);
+					float yloc = image_area.y()+ scalling_factor_y * circles(1, 0);
 					SkPoint center{xloc,yloc};
 					paint_square.setColor(*coliter);
 					canvas->drawCircle(center,radius, paint_square);

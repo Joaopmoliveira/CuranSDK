@@ -58,12 +58,12 @@ struct ScrollingBuffer
 	}
 };
 
-std::atomic<std::array<double, NUMBER_OF_JOINTS>> robot_torques;
+std::atomic<std::array<double, LBR_N_JOINTS>> robot_torques;
 
 void interface(vsg::CommandBuffer &cb)
 {
 	ImGui::Begin("Joint Angles"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, NUMBER_OF_JOINTS> buffers;
+	static std::array<ScrollingBuffer, LBR_N_JOINTS> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
 	auto local_copy = robot_torques.load();
@@ -79,7 +79,7 @@ void interface(vsg::CommandBuffer &cb)
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for (size_t index = 0; index < NUMBER_OF_JOINTS; ++index)
+		for (size_t index = 0; index < LBR_N_JOINTS; ++index)
 		{
 			std::string loc = "torque " + std::to_string(index);
 			buffers[index].AddPoint(t, (float)local_copy[index]);
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
 			if (shared_state->is_initialized)
 			{
 				auto local_state = shared_state->robot_state.load();
-				for (size_t joint_index = 0; joint_index < NUMBER_OF_JOINTS; ++joint_index)
+				for (size_t joint_index = 0; joint_index < LBR_N_JOINTS; ++joint_index)
 				{
 					robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, local_state.getMeasuredJointPosition()[joint_index]);
 					robot_torques.store(shared_state->joint_torques.load());
@@ -183,13 +183,13 @@ int main(int argc, char *argv[])
 				static bool first_time = true;
 				if (first_time){
 					first_time = false;
-					for (int i = 0; i < NUMBER_OF_JOINTS; i++)
+					for (int i = 0; i < LBR_N_JOINTS; i++)
 					{
 						iiwa->q[i] = local_state.getMeasuredJointPosition()[i];
 						iiwa->qDot[i] = 0.0;
 					}
 				} else {
-					for (int i = 0; i < NUMBER_OF_JOINTS; i++)
+					for (int i = 0; i < LBR_N_JOINTS; i++)
 					{
 						iiwa->qDot[i] = (local_state.getMeasuredJointPosition()[i] - iiwa->q[i]) / local_state.getSampleTime();
 						iiwa->q[i] = local_state.getMeasuredJointPosition()[i];
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 				iiwa->Minv = iiwa->M.inverse();
 				robot_control->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
 				robot_control->getWorldCoordinates(p_0_cur, iiwa->q, pointPosition, 7); // 3x1 position of flange (body = 7), expressed in base coordinates
-				robot_control->getRotationMatrix(R_0_7, iiwa->q, NUMBER_OF_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
+				robot_control->getRotationMatrix(R_0_7, iiwa->q, LBR_N_JOINTS);		// 3x3 rotation matrix of flange, expressed in base coordinates
 			}
 		}
 		robot_flag.set(false);

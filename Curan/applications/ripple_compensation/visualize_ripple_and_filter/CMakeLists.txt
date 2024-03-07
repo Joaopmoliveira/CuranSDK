@@ -1,0 +1,10 @@
+add_executable(VisualizeFilteredRipple main.cpp)
+
+target_compile_definitions(VisualizeFilteredRipple PRIVATE SK_VULKAN)
+target_compile_definitions(VisualizeFilteredRipple PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(VisualizeFilteredRipple PUBLIC
+utils
+robotutils
+renderable
+)
