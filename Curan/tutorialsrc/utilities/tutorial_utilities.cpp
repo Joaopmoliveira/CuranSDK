@@ -124,10 +124,9 @@ int bar(curan::utilities::SafeQueue<double>& queue){
     return 1;
 };
 
-
 auto post(){
     std::vector<int> blob;
-    auto lamb = [=] (int a) {
+    auto lamb = [=] (int a) mutable {
         for(size_t i = 0; i< 100; ++i)
             blob[i] *= a;
         return blob;
