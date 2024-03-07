@@ -144,3 +144,14 @@ communication
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+
+add_executable(print_dicom_image_data print_dicom_image_data.cpp)
+
+target_compile_definitions(print_dicom_image_data PRIVATE vsgXchange_FOUND)
+target_compile_definitions(print_dicom_image_data PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(print_dicom_image_data
+PUBLIC
+${ITK_LIBRARIES}
+)

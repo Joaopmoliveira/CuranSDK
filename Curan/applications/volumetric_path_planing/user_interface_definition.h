@@ -329,9 +329,10 @@ struct Application
             }
         });
 
-        auto perform_resampling = Button::make("Resample to AC-PC", resources);
-        perform_resampling->set_click_color(SK_ColorGRAY)
-            .set_hover_color(SK_ColorDKGRAY)
+        auto perform_resampling = (current_volume == PanelType::ORIGINAL_VOLUME) ? 
+                                    Button::make("Resample to AC-PC", resources) :  
+                                    Button::make("Trajectory resampling", "", resources);
+        perform_resampling->set_hover_color(SK_ColorDKGRAY)
             .set_waiting_color(SK_ColorBLACK)
             .set_size(SkRect::MakeWH(200, 80));
         perform_resampling->add_press_call([this](Button *button, Press press, ConfigDraw *config)
@@ -431,7 +432,7 @@ struct Application
                 Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
 
                 BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
-                auto output_bounding_box = bounding_box_original_image.centered_bounding_box<Strategy::CONSERVATIVE, false>(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
+                auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
                 using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
                 auto filter = FilterType::New();
 
