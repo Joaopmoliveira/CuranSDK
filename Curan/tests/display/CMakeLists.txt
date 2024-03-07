@@ -126,6 +126,17 @@ userinterface
 
 # ---------------------------------------
 
+add_executable(modified_skia_playground2 skia_playground2.cpp)
+
+target_compile_definitions(modified_skia_playground2 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(modified_skia_playground2 PUBLIC
+userinterface
+${ITK_LIBRARIES}
+)
+
+# ---------------------------------------
+
 add_executable(test_image_visualization test_image_visualization.cpp)
 
 target_compile_definitions(test_image_visualization PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
