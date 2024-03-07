@@ -29,7 +29,8 @@ int main(){
             auto current = reading_point.load(std::memory_order_relaxed);
             std::cout << "\n";
             auto current_value = current.converteigen();
-            std::cout << "=========================================\nrotation:\n" <<  current_value.rotation 
+            std::cout << "=========================================\n" 
+                      << "rotation:\n" <<  current_value.rotation 
                       << "\ntranslation:" << current_value.translation.transpose()                                   
                       << "\n=========================================\n";
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
