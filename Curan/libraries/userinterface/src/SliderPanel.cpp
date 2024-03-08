@@ -30,7 +30,7 @@ namespace ui {
 		received_signals.reserve(size);
 		for (int index = 0; index < size; ++index) {
 			Stroke signal = SkPoint{SkPoint::Make(0,0)} ;
-			directed_stroke signal_directed{signal,Direction::X};
+			directed_stroke signal_directed{std::nullopt,signal,Direction::X};
 			bool val = to_process.try_pop(signal_directed);
 			if(val)
 				received_signals.push_back(signal_directed);
@@ -98,7 +98,7 @@ namespace ui {
 			{
 				if(is_pressed){
 					paint_stroke.setStrokeWidth(14);
-					paint_stroke.setColor(SkColorSetARGB(125, 0xFF, 0x00, 0x00));
+					paint_stroke.setColor(SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));
 					std::visit(curan::utilities::overloaded{
 						[&](const Path& path){
 							canvas->drawPath(path.rendered_path, paint_stroke);
@@ -353,8 +353,7 @@ namespace ui {
 		return;
 	}
 
-	curan::ui::drawablefunction SlidingPanel::draw()
-	{
+	curan::ui::drawablefunction SlidingPanel::draw(){
 		auto lamb = [this](SkCanvas *canvas)
 		{
 			if(!volumetric_mask->filled())
@@ -379,9 +378,65 @@ namespace ui {
 				bool is_panel_selected = get_hightlight_color()==SkColorSetARGB(255,125,0,0);
 				std::lock_guard<std::mutex> g{get_mutex()};
 				assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
-				std::optional<curan::ui::Stroke> highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction,current_value).draw(canvas,inverse_homogenenous_transformation,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting && is_panel_selected,paint_stroke,paint_square,text_font,is_pressed);			
+				std::optional<curan::ui::Stroke> highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction,_current_index).draw(canvas,inverse_homogenenous_transformation,homogenenous_transformation,zoom_in.get_coordinates(),is_highlighting && is_panel_selected,paint_stroke,paint_square,text_font,is_pressed);			
 				if(highlighted_and_pressed_stroke){
-					directed_stroke strk{*highlighted_and_pressed_stroke,direction};
+					std::optional<std::array<double,3>> potential_point_in_world_coordinates;
+					std::visit(curan::utilities::overloaded{
+                		[&](const curan::ui::Path &path){
+                                    
+			    	},						 
+			    	[&](const curan::ui::Point &point) { 
+						switch(direction){
+						case Direction::X:
+						{
+						std::array<double,3> point_in_stl_format;
+						ImageType::IndexType local_index;
+                    	local_index[0] = _current_index;
+                    	local_index[1] = (int) std::round(point.normalized_point.fX*(volumetric_mask->dimension(Direction::Y)-1));
+                    	local_index[2] = (int) std::round(point.normalized_point.fY*(volumetric_mask->dimension(Direction::Z)-1));
+                    	ImageType::PointType point_in_world_coordinates;
+                    	volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(local_index,point_in_world_coordinates);
+						point_in_stl_format[0] = point_in_world_coordinates[0];
+						point_in_stl_format[1] = point_in_world_coordinates[1];
+						point_in_stl_format[2] = point_in_world_coordinates[2];
+						potential_point_in_world_coordinates = point_in_stl_format;
+						}
+						break;
+						case Direction::Y:
+						{
+						std::array<double,3> point_in_stl_format;
+						ImageType::IndexType local_index;
+                    	local_index[0] = (int) std::round(point.normalized_point.fX*(volumetric_mask->dimension(Direction::X)-1));
+                    	local_index[1] = _current_index;
+                    	local_index[2] = (int) std::round(point.normalized_point.fY*(volumetric_mask->dimension(Direction::Z)-1));
+                    	ImageType::PointType point_in_world_coordinates;
+                    	volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(local_index,point_in_world_coordinates);
+						point_in_stl_format[0] = point_in_world_coordinates[0];
+						point_in_stl_format[1] = point_in_world_coordinates[1];
+						point_in_stl_format[2] = point_in_world_coordinates[2];
+						potential_point_in_world_coordinates = point_in_stl_format;
+						}
+						break;
+						case Direction::Z:
+						{
+						std::array<double,3> point_in_stl_format;
+						ImageType::IndexType local_index;
+                    	local_index[0] = (int) std::round(point.normalized_point.fX*(volumetric_mask->dimension(Direction::X)-1));
+                    	local_index[1] = (int) std::round(point.normalized_point.fY*(volumetric_mask->dimension(Direction::Y)-1));
+                    	local_index[2] = _current_index;
+                    	ImageType::PointType point_in_world_coordinates;
+                    	volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(local_index,point_in_world_coordinates);
+						point_in_stl_format[0] = point_in_world_coordinates[0];
+						point_in_stl_format[1] = point_in_world_coordinates[1];
+						point_in_stl_format[2] = point_in_world_coordinates[2];
+						potential_point_in_world_coordinates = point_in_stl_format;
+						}
+						break;
+						}
+		    		}
+            		},*highlighted_and_pressed_stroke);
+
+					directed_stroke strk{potential_point_in_world_coordinates,*highlighted_and_pressed_stroke,direction};
 					volumetric_mask->post_stroke(strk);
 				}
 			}
@@ -397,7 +452,6 @@ namespace ui {
 			canvas->drawRoundRect(reserved_slider_space, reserved_slider_space.height() / 2.0f, reserved_slider_space.height() / 2.0f, slider_paint);
 			size_t increment_mask = 0;
 			assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
-			volumetric_mask->current_mask(direction,current_value);
 			volumetric_mask->for_each(direction,[&](const Mask& mask){
 				if(mask){
 					slider_paint.setColor((increment_mask == _current_index) ? SK_ColorGREEN : hover_color);

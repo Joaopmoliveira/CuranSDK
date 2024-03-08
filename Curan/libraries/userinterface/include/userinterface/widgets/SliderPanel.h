@@ -82,6 +82,7 @@ namespace curan
 
 		struct directed_stroke
 		{
+			std::optional<std::array<double,3>> point; 
 			Stroke stroke;
 			Direction direction;
 		};
@@ -287,26 +288,16 @@ namespace curan
 				};
 			}
 
-			inline Mask &current_mask(const Direction &direction, const float &along_dimension)
+			inline Mask & current_mask(const Direction &direction, const size_t &along_dimension)
 			{
-				assert(along_dimension >= 0 && along_dimension <= 1 && "the received size is not between 0 and 1");
-				switch (direction)
-				{
+				assert(along_dimension >= 0 && along_dimension <= masks_x.size() - 1 && "the received size is not between 0 and 1");
+				switch (direction){
 				case Direction::X:
-				{
-					auto _current_index = std::round(along_dimension * (masks_x.size() - 1));
-					return masks_x[_current_index];
-				}
+				return masks_x[along_dimension];
 				case Direction::Y:
-				{
-					auto _current_index = std::round(along_dimension * (masks_y.size() - 1));
-					return masks_y[_current_index];
-				}
+				return masks_y[along_dimension];
 				case Direction::Z:
-				{
-					auto _current_index = std::round(along_dimension * (masks_z.size() - 1));
-					return masks_z[_current_index];
-				}
+				return masks_z[along_dimension];
 				};
 			}
 		};

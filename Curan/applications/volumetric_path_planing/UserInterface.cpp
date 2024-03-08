@@ -4,33 +4,18 @@
 
     void Application::compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
         std::optional<Eigen::Matrix<double, 3, 1>> possible_point;
-        size_t index = 0;
-
-        map[current_volume].for_each(curan::ui::Direction::Z,[&](curan::ui::Mask& mask){
-			std::visit(curan::utilities::overloaded{
-                [&](const curan::ui::Path &path){
-                                    
-			    },						 
-			    [&](const curan::ui::Point &point) { 
-                    ImageType::IndexType local_index;
-                    local_index[0] = (int) std::round(point.normalized_point.fX*map[current_volume].dimension(curan::ui::Direction::X)-1);
-                    local_index[1] = (int) std::round(point.normalized_point.fY*map[current_volume].dimension(curan::ui::Direction::Y)-1);
-                    local_index[2] = index;
-                    ImageType::PointType point_in_world_coordinates;
-                    map[current_volume].get_volume()->TransformIndexToPhysicalPoint(local_index,point_in_world_coordinates);
-                    Eigen::Matrix<double,3,1> local_point = Eigen::Matrix<double,3,1>::Zero();
-                    local_point[0] = point_in_world_coordinates[0];
-                    local_point[1] = point_in_world_coordinates[1];
-                    local_point[2] = point_in_world_coordinates[2];
-                    possible_point = local_point;
-		    }
-            },dir_stroke.stroke);
-        ++index;
-        });
-        if(!possible_point && config->stack_page!=nullptr)
+        if(dir_stroke.point){
+            Eigen::Matrix<double,3,1> point = Eigen::Matrix<double,3,1>::Zero();
+            point[0] = (*dir_stroke.point)[0];
+            point[1] = (*dir_stroke.point)[1];
+            point[2] = (*dir_stroke.point)[2];
+            possible_point = point;
+        }
+        if(!dir_stroke.point && config->stack_page!=nullptr)
 			config->stack_page->stack(warning_overlay("failed to find point, please insert new point"));
         if(is_first_point_being_defined){
             first_point = possible_point;
+            if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
             if(ptr_button_ac_point) 
                 ptr_button_ac_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -39,6 +24,7 @@
         }
         else if(is_second_point_being_defined){
             second_point = possible_point;
+            if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
             if(ptr_button_pc_point) 
                 ptr_button_pc_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -47,11 +33,14 @@
         }
         else if(is_third_point_being_defined){
             third_point = possible_point;
+            if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
             if(ptr_button_midpoint) 
                 ptr_button_midpoint->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
                     .set_waiting_color(SK_ColorLTGRAY)
                     .set_size(SkRect::MakeWH(200, 200));
+        } else {
+            std::cout << "no point defined\n";
         }
     };
 
@@ -62,18 +51,21 @@
         using namespace curan::ui;
         map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call(
             [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
-            if(strokes.size()>0)
-                compute_point(strokes.back(),config_draw);
+                std::printf("size of strokes (%lu)\n",strokes.size());
+                if(strokes.size()>0)
+                    compute_point(strokes.back(),config_draw);
         });
         map[PanelType::RESAMPLED_VOLUME].add_pressedhighlighted_call(
             [this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const std::vector<curan::ui::directed_stroke>& strokes){
-            if(strokes.size()>0)
-                compute_point(strokes.back(),config_draw);
+                std::printf("size of strokes (%lu)\n",strokes.size());
+                if(strokes.size()>0)
+                    compute_point(strokes.back(),config_draw);
         });
         map[PanelType::TRAJECTORY_ORIENTED_VOLUME].add_pressedhighlighted_call(
             [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
-            if(strokes.size()>0)
-                compute_point(strokes.back(),config_draw);
+                std::printf("size of strokes (%lu)\n",strokes.size());
+                if(strokes.size()>0)
+                    compute_point(strokes.back(),config_draw);
         });
     }
 
