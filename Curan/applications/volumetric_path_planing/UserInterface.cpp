@@ -50,15 +50,15 @@
     {
         using namespace curan::ui;
         map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call(
-            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::optional<curan::ui::directed_stroke>& strokes){
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::optional<directed_stroke>& strokes){
                 if(strokes) compute_point(*strokes,config_draw);
         });
         map[PanelType::RESAMPLED_VOLUME].add_pressedhighlighted_call(
-            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const std::optional<curan::ui::directed_stroke>& strokes){
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const std::optional<directed_stroke>& strokes){
                 if(strokes) compute_point(*strokes,config_draw);
         });
         map[PanelType::TRAJECTORY_ORIENTED_VOLUME].add_pressedhighlighted_call(
-            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::optional<curan::ui::directed_stroke>& strokes){
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::optional<directed_stroke>& strokes){
                 if(strokes) compute_point(*strokes,config_draw);
         });
     }
@@ -116,28 +116,28 @@
         {
         case Panels::ONE_PANEL:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             *viwers_container << std::move(image_display);
         }
         break;
         case Panels::TWO_PANELS:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
+            std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
             *viwers_container << std::move(image_display_x) << std::move(image_display_y);
         }
         break;
         case Panels::THREE_PANELS:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Z);
+            std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
+            std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &map[current_volume], Direction::Z);
             *viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
         }
         break;
         default:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             *viwers_container << std::move(image_display);
         }
         break;
@@ -154,28 +154,28 @@
         {
         case Panels::ONE_PANEL:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             *viwers_container << std::move(image_display);
         }
         break;
         case Panels::TWO_PANELS:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
+            std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
             *viwers_container << std::move(image_display_x) << std::move(image_display_y);
         }
         break;
         case Panels::THREE_PANELS:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_x = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_y = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Y);
-            std::unique_ptr<curan::ui::SlidingPanel> image_display_z = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::Z);
+            std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
+            std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &map[current_volume], Direction::Z);
             *viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
         }
         break;
         default:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+            std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             *viwers_container << std::move(image_display);
         }
         break;
@@ -571,7 +571,7 @@
 			config->stack_page->stack(layout_overlay());
 		} });
 
-        std::unique_ptr<curan::ui::Button> button2;
+        std::unique_ptr<Button> button2;
 
         switch (current_volume){
         case PanelType::ORIGINAL_VOLUME:
@@ -630,14 +630,15 @@
 
     std::unique_ptr<curan::ui::Container> Application::main_page()
     {
-        std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &map[current_volume], curan::ui::Direction::X);
+        using namespace curan::ui;
+        std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
 
-        auto container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
+        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
         *container << std::move(image_display);
 
-        std::unique_ptr<curan::ui::MiniPage> lminipage = curan::ui::MiniPage::make(std::move(container), SK_ColorBLACK);
+        std::unique_ptr<MiniPage> lminipage = MiniPage::make(std::move(container), SK_ColorBLACK);
         minipage = lminipage.get();
-        lminipage->add_key_call([this](curan::ui::MiniPage *minipage, curan::ui::Key arg, curan::ui::ConfigDraw *draw)
+        lminipage->add_key_call([this](MiniPage *minipage, Key arg, ConfigDraw *draw)
                                 {
 			if (arg.key == GLFW_KEY_H && arg.action == GLFW_PRESS){
 				if(draw->stack_page!=nullptr){
@@ -645,7 +646,7 @@
 				}
 			} });
 
-        auto minimage_container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
+        auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
         *minimage_container << std::move(lminipage);
         return minimage_container;
     }

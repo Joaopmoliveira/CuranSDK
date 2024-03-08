@@ -27,6 +27,7 @@ namespace ui {
 	std::optional<directed_stroke> VolumetricMask::process_pending_highlights(){
 		auto tmp = to_process;
 		to_process = std::nullopt;
+		std::printf("rmv\n");
 		return tmp;
 	}
 
@@ -426,6 +427,7 @@ namespace ui {
 
 					directed_stroke strk{potential_point_in_world_coordinates,*highlighted_and_pressed_stroke,direction};
 					volumetric_mask->post_stroke(strk);
+					std::printf("add\n");
 				}
 			}
 
