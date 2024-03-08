@@ -1,6 +1,7 @@
 #include "UserInterface.h"
 #include "BoundingBox.h"
 #include "utils/Overloading.h"
+#include "LoadVolume.h"
 
     void Application::compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
         std::optional<Eigen::Matrix<double, 3, 1>> possible_point;
@@ -15,7 +16,6 @@
 			config->stack_page->stack(warning_overlay("failed to find point, please insert new point"));
         if(is_first_point_being_defined){
             first_point = possible_point;
-            //if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
             if(ptr_button_ac_point) 
                 ptr_button_ac_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -24,7 +24,6 @@
         }
         else if(is_second_point_being_defined){
             second_point = possible_point;
-            //if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
             if(ptr_button_pc_point) 
                 ptr_button_pc_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -33,20 +32,18 @@
         }
         else if(is_third_point_being_defined){
             third_point = possible_point;
-            //if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
             if(ptr_button_midpoint) 
                 ptr_button_midpoint->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
                     .set_waiting_color(SK_ColorLTGRAY)
                     .set_size(SkRect::MakeWH(200, 200));
-        } else {
-            //std::cout << "no point defined\n";
         }
     };
 
-    Application::Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources) : 
+    Application::Application(curan::ui::IconResources &in_resources, std::string path_to_load) : 
         resources{in_resources}, 
-        map{{{volume}, {nullptr}, {nullptr}}}
+        map{{{nullptr}, {nullptr}, {nullptr}}},
+        path{path_to_load}
     {
         using namespace curan::ui;
         map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call(
@@ -529,7 +526,16 @@
         item_explorer->add_press_call([this](ItemExplorer *widget, Press press, ConfigDraw *draw)
                                       {
             auto highlighted = widget->highlighted();
-            assert(highlighted.size()==1 && "the size is larger than one");    
+            
+            assert(highlighted.size()==1 && "the size is larger than one");  
+            curan::utilities::Job load_selected_volume{"load volume",[&](){
+                ImageType::Pointer empty_image;
+                std::optional<ImageType::Pointer> volume = load_volume_from_selected_uid(path,std::get<1>(loaded[highlighted.front()]));
+                if(volume)  map[PanelType::ORIGINAL_VOLUME].update_volume(*volume);
+                map[PanelType::RESAMPLED_VOLUME].update_volume(empty_image);
+                map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(empty_image);
+            }};
+            pool->submit(load_selected_volume); 
         });
         using ImageType = itk::Image<PixelType, 3>;
         using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;

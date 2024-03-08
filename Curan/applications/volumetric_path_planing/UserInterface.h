@@ -22,8 +22,8 @@ enum PanelType
 struct Application
 {
     bool is_acpc_being_defined = false;
-
-    std::vector<std::tuple<ImageType::Pointer>> loaded;
+    std::string path;
+    std::vector<std::tuple<ImageType::Pointer,std::string>> loaded;
     std::array<curan::ui::VolumetricMask, PanelType::NUMBER_OF_VOLUMES> map;
 
     PanelType current_volume = PanelType::ORIGINAL_VOLUME;
@@ -51,7 +51,7 @@ struct Application
 
     void compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config);
 
-    Application(ImageType::Pointer volume, curan::ui::IconResources &in_resources);
+    Application(curan::ui::IconResources &in_resources, std::string path_to_load);
 
     std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning);
 

@@ -3,6 +3,14 @@
 #include "LoadVolume.h"
 #include <nlohmann/json.hpp>
 
+void load_all_files_in_directory(Application& app_data,curan::ui::ConfigDraw* drawing_data){
+    std::vector<std::string> uids_to_load = get_representative_uids(app_data.path);
+    for(const auto& uid : uids_to_load){
+        std::optional<ImageType::Pointer> image = get_representative_series_image(app_data.path,uid);
+        if(image) app_data.loaded.push_back({*image,uid});
+    }
+};
+
 int main()
 {
     try
@@ -14,15 +22,16 @@ int main()
         DisplayParams param{std::move(context), 2200, 1200};
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-        auto volume = get_volume(CURAN_COPIED_RESOURCE_PATH "/dicom_sample/ST983524");
-        if (!volume)
-            return 1;
-
-        Application data_application{*volume, resources};
+        Application data_application{resources,CURAN_COPIED_RESOURCE_PATH "/dicom_sample/ST983524"};
 
         curan::ui::Page page{std::move(data_application.main_page()), SK_ColorBLACK};
 
         ConfigDraw config{&page};
+
+        curan::utilities::Job job{"load files in backend",[&](){
+            load_all_files_in_directory(data_application,&config);
+        }};
+        data_application.pool->submit(job);
 
         while (!glfwWindowShouldClose(viewer->window))
         {
