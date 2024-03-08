@@ -23,6 +23,7 @@ struct Application
 {
     bool is_acpc_being_defined = false;
 
+    std::vector<std::tuple<ImageType::Pointer>> loaded;
     std::array<curan::ui::VolumetricMask, PanelType::NUMBER_OF_VOLUMES> map;
 
     PanelType current_volume = PanelType::ORIGINAL_VOLUME;
@@ -63,6 +64,8 @@ struct Application
     void point_selection();
 
     std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page();
+
+    std::unique_ptr<curan::ui::Overlay> create_volume_loader_page();
 
     std::unique_ptr<curan::ui::Overlay> layout_overlay();
 

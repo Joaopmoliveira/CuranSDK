@@ -521,6 +521,36 @@
         return Overlay::make(std::move(container), SkColorSetARGB(10, 125, 125, 125), true);
     }
 
+    std::unique_ptr<curan::ui::Overlay> Application::create_volume_loader_page()
+    {
+        using namespace curan::ui;
+        using PixelType = unsigned char;
+        auto item_explorer = ItemExplorer::make("file_icon.png", resources);
+        item_explorer->add_press_call([this](ItemExplorer *widget, Press press, ConfigDraw *draw)
+                                      {
+            auto highlighted = widget->highlighted();
+            assert(highlighted.size()==1 && "the size is larger than one");    
+        });
+        using ImageType = itk::Image<PixelType, 3>;
+        using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
+        size_t identifier = 0;
+        for (auto &previews : loaded){
+            ImageType::Pointer pointer_to_block_of_memory = std::get<0>(previews);
+            ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+            auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
+            auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
+            item_explorer->add(Item{identifier, "vol_" + std::to_string(identifier), buff, extracted_size[0], extracted_size[1]});
+            ++identifier;
+        }
+
+        item_explorer->set_size(SkRect::MakeWH(800, 400));
+
+        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+        *container << std::move(item_explorer);
+
+        return Overlay::make(std::move(container), SkColorSetARGB(10, 125, 125, 125), true);
+    }
+
     std::unique_ptr<curan::ui::Overlay> Application::layout_overlay()
     {
         using namespace curan::ui;
@@ -613,9 +643,11 @@
 
         auto button5 = Button::make("Load Series", resources);
         button5->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-        button5->add_press_call([&](Button *button, Press press, ConfigDraw *config) {
-
-        });
+        button5->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                {
+            if(config->stack_page!=nullptr){
+			    config->stack_page->stack(create_volume_loader_page());
+		    } });
 
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
         if(button2.get()!=nullptr)
