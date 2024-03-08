@@ -24,26 +24,14 @@ namespace ui {
 			},stro.second);
 	}
 
-	std::vector<directed_stroke> VolumetricMask::process_pending_highlights(){
-		std::vector<directed_stroke> received_signals;
-		int size = to_process.size();
-		received_signals.reserve(size);
-		for (int index = 0; index < size; ++index) {
-			Stroke signal = SkPoint{SkPoint::Make(0,0)} ;
-			directed_stroke signal_directed{std::nullopt,signal,Direction::X};
-			bool val = to_process.try_pop(signal_directed);
-			if(val)
-				received_signals.push_back(signal_directed);
-		}
-		return received_signals;
+	std::optional<directed_stroke> VolumetricMask::process_pending_highlights(){
+		auto tmp = to_process;
+		to_process = std::nullopt;
+		return tmp;
 	}
 
-	void VolumetricMask::clear_previous_strokes(){
-		to_process.clear();
-	}
-
-	void VolumetricMask::post_stroke(directed_stroke strok){
-		to_process.push(strok);
+	void VolumetricMask::post_stroke(directed_stroke stroke){
+		to_process = stroke;
 	}
 
 	std::optional<curan::ui::Stroke> Mask::draw(SkCanvas *canvas,const SkMatrix& inverse_homogenenous_transformation,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font,bool is_pressed)
@@ -571,7 +559,7 @@ namespace ui {
 																is_pressed = true;
 																interacted = true;
 																auto pending_highlight_signals = volumetric_mask->process_pending_highlights();
-																if(pending_highlight_signals.size()>0)
+																if(pending_highlight_signals)
 																	for(auto & pending : volumetric_mask->callbacks_pressedhighlighted)
 																		pending(volumetric_mask,config,pending_highlight_signals);
 																	
@@ -579,7 +567,7 @@ namespace ui {
 																is_pressed = true;
 																interacted = true;
 																auto pending_highlight_signals = volumetric_mask->process_pending_highlights();
-																if(pending_highlight_signals.size()>0)
+																if(pending_highlight_signals)
 																	for(auto & pending : volumetric_mask->callbacks_pressedhighlighted)
 																		pending(volumetric_mask,config,pending_highlight_signals);
 															}
