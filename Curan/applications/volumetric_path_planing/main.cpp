@@ -3,11 +3,15 @@
 #include "LoadVolume.h"
 #include <nlohmann/json.hpp>
 
-void load_all_files_in_directory(Application& app_data,curan::ui::ConfigDraw* drawing_data){
+void load_all_files_in_directory(Application& app_data,curan::ui::ConfigDraw* drawing_data, std::atomic<bool>& stop_value){
     std::vector<std::string> uids_to_load = get_representative_uids(app_data.path);
     for(const auto& uid : uids_to_load){
         std::optional<ImageType::Pointer> image = get_representative_series_image(app_data.path,uid);
+        if(stop_value.load())
+            return;
         if(image) app_data.loaded.push_back({*image,uid});
+        if(stop_value.load())
+            return;
     }
 };
 
@@ -28,8 +32,10 @@ int main()
 
         ConfigDraw config{&page};
 
+        std::atomic<bool> function_value = false;
+
         curan::utilities::Job job{"load files in backend",[&](){
-            load_all_files_in_directory(data_application,&config);
+            load_all_files_in_directory(data_application,&config,function_value);
         }};
         data_application.pool->submit(job);
 

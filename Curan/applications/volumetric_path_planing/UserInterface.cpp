@@ -515,7 +515,7 @@
         auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
         *container << std::move(item_explorer);
 
-        return Overlay::make(std::move(container), SkColorSetARGB(10, 125, 125, 125), true);
+        return Overlay::make(std::move(container), SkColorSetARGB(100, 125, 125, 125), true);
     }
 
     std::unique_ptr<curan::ui::Overlay> Application::create_volume_loader_page()
@@ -534,6 +534,7 @@
                 if(volume)  map[PanelType::ORIGINAL_VOLUME].update_volume(*volume);
                 map[PanelType::RESAMPLED_VOLUME].update_volume(empty_image);
                 map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(empty_image);
+                point_selection();
             }};
             pool->submit(load_selected_volume); 
         });
@@ -554,7 +555,7 @@
         auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
         *container << std::move(item_explorer);
 
-        return Overlay::make(std::move(container), SkColorSetARGB(10, 125, 125, 125), true);
+        return Overlay::make(std::move(container), SkColorSetARGB(100, 125, 125, 125), true);
     }
 
     std::unique_ptr<curan::ui::Overlay> Application::layout_overlay()

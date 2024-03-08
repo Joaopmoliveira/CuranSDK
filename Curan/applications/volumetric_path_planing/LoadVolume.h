@@ -3,8 +3,6 @@
 
 #include "common_includes.h"
 
-std::optional<ImageType::Pointer> get_volume(std::string path);
-
 std::vector<std::string> get_representative_uids(std::string path);
 
 std::optional<ImageType::Pointer> get_representative_series_image(std::string path,std::string seriesIdentifier);
