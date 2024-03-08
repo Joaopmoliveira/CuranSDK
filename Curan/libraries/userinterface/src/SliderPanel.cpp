@@ -506,6 +506,10 @@ namespace ui {
 															{
 																if (is_pressed)
 																{
+																	auto pending_highlight_signals = volumetric_mask->process_pending_highlights();
+																	if(pending_highlight_signals)
+																		for(auto & pending : volumetric_mask->callbacks_pressedhighlighted)
+																			pending(volumetric_mask,config,pending_highlight_signals);
 																	interacted = true;
 																	current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)arg.xpos, (float)arg.ypos));
 																}
@@ -559,19 +563,10 @@ namespace ui {
 																}
 																current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)arg.xpos, (float)arg.ypos));
 																is_pressed = true;
-																interacted = true;
-																auto pending_highlight_signals = volumetric_mask->process_pending_highlights();
-																if(pending_highlight_signals)
-																	for(auto & pending : volumetric_mask->callbacks_pressedhighlighted)
-																		pending(volumetric_mask,config,pending_highlight_signals);
-																	
+																interacted = true;	
 															} else {
 																is_pressed = true;
 																interacted = true;
-																auto pending_highlight_signals = volumetric_mask->process_pending_highlights();
-																if(pending_highlight_signals)
-																	for(auto & pending : volumetric_mask->callbacks_pressedhighlighted)
-																		pending(volumetric_mask,config,pending_highlight_signals);
 															}
 														}
 														else if (reserved_slider_space.contains(arg.xpos, arg.ypos))
