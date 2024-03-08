@@ -50,22 +50,16 @@
     {
         using namespace curan::ui;
         map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call(
-            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
-                std::printf("size of strokes (%lu)\n",strokes.size());
-                if(strokes.size()>0)
-                    compute_point(strokes.back(),config_draw);
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::optional<curan::ui::directed_stroke>& strokes){
+                if(strokes) compute_point(*strokes,config_draw);
         });
         map[PanelType::RESAMPLED_VOLUME].add_pressedhighlighted_call(
-            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const std::vector<curan::ui::directed_stroke>& strokes){
-                std::printf("size of strokes (%lu)\n",strokes.size());
-                if(strokes.size()>0)
-                    compute_point(strokes.back(),config_draw);
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const std::optional<curan::ui::directed_stroke>& strokes){
+                if(strokes) compute_point(*strokes,config_draw);
         });
         map[PanelType::TRAJECTORY_ORIENTED_VOLUME].add_pressedhighlighted_call(
-            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::vector<curan::ui::directed_stroke>& strokes){
-                std::printf("size of strokes (%lu)\n",strokes.size());
-                if(strokes.size()>0)
-                    compute_point(strokes.back(),config_draw);
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::optional<curan::ui::directed_stroke>& strokes){
+                if(strokes) compute_point(*strokes,config_draw);
         });
     }
 
