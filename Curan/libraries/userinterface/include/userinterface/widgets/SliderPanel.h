@@ -103,8 +103,6 @@ namespace curan
 			std::vector<Mask> masks_z;
 
 			ImageType::Pointer image;
-
-			std::optional<directed_stroke> to_process;
 		public:
 			std::list<pressedhighlighted_event> callbacks_pressedhighlighted;
 
@@ -117,12 +115,6 @@ namespace curan
 			{
 				callbacks_pressedhighlighted.emplace_back(std::move(call));
 			}
-
-			std::optional<directed_stroke> process_pending_highlights();
-
-			void post_stroke(directed_stroke);
-
-			void clear_previous_strokes();
 
 			inline bool filled(){
 				return image.IsNotNull();
@@ -223,7 +215,6 @@ namespace curan
 
 			inline void update_volume(ImageType::Pointer in_volume)
 			{
-				to_process = std::nullopt;
 				image = in_volume;
 				if(!filled())
 					return;

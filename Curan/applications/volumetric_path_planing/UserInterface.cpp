@@ -15,7 +15,7 @@
 			config->stack_page->stack(warning_overlay("failed to find point, please insert new point"));
         if(is_first_point_being_defined){
             first_point = possible_point;
-            if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
+            //if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
             if(ptr_button_ac_point) 
                 ptr_button_ac_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -24,7 +24,7 @@
         }
         else if(is_second_point_being_defined){
             second_point = possible_point;
-            if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
+            //if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
             if(ptr_button_pc_point) 
                 ptr_button_pc_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -33,14 +33,14 @@
         }
         else if(is_third_point_being_defined){
             third_point = possible_point;
-            if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
+            //if(possible_point) std::cout << "point : " << (*possible_point).transpose() << std::endl; else std::cout << "point invalid\n";
             if(ptr_button_midpoint) 
                 ptr_button_midpoint->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
                     .set_waiting_color(SK_ColorLTGRAY)
                     .set_size(SkRect::MakeWH(200, 200));
         } else {
-            std::cout << "no point defined\n";
+            //std::cout << "no point defined\n";
         }
     };
 

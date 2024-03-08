@@ -24,17 +24,6 @@ namespace ui {
 			},stro.second);
 	}
 
-	std::optional<directed_stroke> VolumetricMask::process_pending_highlights(){
-		auto tmp = to_process;
-		to_process = std::nullopt;
-		std::printf("rmv\n");
-		return tmp;
-	}
-
-	void VolumetricMask::post_stroke(directed_stroke stroke){
-		to_process = stroke;
-	}
-
 	std::optional<curan::ui::Stroke> Mask::draw(SkCanvas *canvas,const SkMatrix& inverse_homogenenous_transformation,const SkMatrix& homogenenous_transformation,const SkPoint& point, bool is_highlighting,SkPaint& paint_stroke,SkPaint& paint_square,const SkFont& text_font,bool is_pressed)
 	{
 		if (is_highlighting)
@@ -426,8 +415,8 @@ namespace ui {
             		},*highlighted_and_pressed_stroke);
 
 					directed_stroke strk{potential_point_in_world_coordinates,*highlighted_and_pressed_stroke,direction};
-					volumetric_mask->post_stroke(strk);
-					std::printf("add\n");
+					for(auto & pending : volumetric_mask->callbacks_pressedhighlighted)
+						pending(volumetric_mask,nullptr,strk);
 				}
 			}
 
@@ -506,10 +495,6 @@ namespace ui {
 															{
 																if (is_pressed)
 																{
-																	auto pending_highlight_signals = volumetric_mask->process_pending_highlights();
-																	if(pending_highlight_signals)
-																		for(auto & pending : volumetric_mask->callbacks_pressedhighlighted)
-																			pending(volumetric_mask,config,pending_highlight_signals);
 																	interacted = true;
 																	current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)arg.xpos, (float)arg.ypos));
 																}
