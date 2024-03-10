@@ -3,13 +3,14 @@
 #include "LoadVolume.h"
 #include <nlohmann/json.hpp>
 
-void load_all_files_in_directory(Application& app_data,curan::ui::ConfigDraw* drawing_data, std::atomic<bool>& stop_value){
+void load_all_files_in_directory(Application& app_data,curan::ui::ConfigDraw* drawing_data, std::atomic<bool>& stop_value,std::mutex& mut){
     std::vector<std::string> uids_to_load = get_representative_uids(app_data.path);
     for(const auto& uid : uids_to_load){
         std::optional<ImageType::Pointer> image = get_representative_series_image(app_data.path,uid);
         if(stop_value.load())
             return;
-        if(image) app_data.loaded.push_back({*image,uid});
+        
+        if(image) {std::lock_guard<std::mutex> g{mut};app_data.loaded.push_back({*image,uid});}
         if(stop_value.load())
             return;
     }
@@ -26,7 +27,9 @@ int main()
         DisplayParams param{std::move(context), 2200, 1200};
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-        Application data_application{resources,CURAN_COPIED_RESOURCE_PATH "/dicom_sample/ST983524"};
+        std::mutex mut;
+
+        Application data_application{resources,CURAN_COPIED_RESOURCE_PATH "/dicom_sample/ST983524",mut};
 
         curan::ui::Page page{std::move(data_application.main_page()), SK_ColorBLACK};
 
@@ -35,7 +38,7 @@ int main()
         std::atomic<bool> function_value = false;
 
         curan::utilities::Job job{"load files in backend",[&](){
-            load_all_files_in_directory(data_application,&config,function_value);
+            load_all_files_in_directory(data_application,&config,function_value,mut);
         }};
         data_application.pool->submit(job);
 

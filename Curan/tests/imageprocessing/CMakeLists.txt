@@ -77,6 +77,7 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 add_subdirectory(volumetric)
+add_subdirectory(registration_strategies_exploration)
 
 
 add_executable(extract_oblique_slice extract_oblique_slice.cpp)

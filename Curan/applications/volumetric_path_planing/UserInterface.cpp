@@ -40,10 +40,11 @@
         }
     };
 
-    Application::Application(curan::ui::IconResources &in_resources, std::string path_to_load) : 
+    Application::Application(curan::ui::IconResources &in_resources, std::string path_to_load, std::mutex& inmut) : 
         resources{in_resources}, 
         map{{{nullptr}, {nullptr}, {nullptr}}},
-        path{path_to_load}
+        path{path_to_load},
+        mut{inmut}
     {
         using namespace curan::ui;
         map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call(
@@ -541,6 +542,7 @@
         using ImageType = itk::Image<PixelType, 3>;
         using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
         size_t identifier = 0;
+        std::lock_guard<std::mutex> g{mut};
         for (auto &previews : loaded){
             ImageType::Pointer pointer_to_block_of_memory = std::get<0>(previews);
             ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();

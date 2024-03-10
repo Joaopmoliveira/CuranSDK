@@ -48,10 +48,11 @@ struct Application
     std::optional<Eigen::Matrix<double, 3, 1>> final_first_point;
     std::optional<Eigen::Matrix<double, 3, 1>> final_second_point;
     std::optional<Eigen::Matrix<double, 3, 1>> final_third_point;
+    std::mutex& mut;
 
     void compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config);
 
-    Application(curan::ui::IconResources &in_resources, std::string path_to_load);
+    Application(curan::ui::IconResources &in_resources, std::string path_to_load,std::mutex& mut);
 
     std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning);
 
