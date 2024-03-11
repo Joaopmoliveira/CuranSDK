@@ -17,6 +17,7 @@
 #include "itkCompositeTransform.h"
 #include "itkSubtractImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
+#include "itkRegionOfInterestImageFilter.h"
 
 #include <optional>
 #include <charconv>
@@ -189,7 +190,32 @@ MovingImageType::Pointer manipulate_input_image(FixedImageType::Pointer image)
 
     new_image->SetDirection(direction);
 
-    return new_image;
+    MovingImageType::IndexType start;
+    start[0] = std::round(new_image->GetLargestPossibleRegion().GetSize()[0]*0.1);
+    start[1] = std::round(new_image->GetLargestPossibleRegion().GetSize()[1]*0.1);
+    start[2] = std::round(new_image->GetLargestPossibleRegion().GetSize()[2]*0.1);
+
+    MovingImageType::IndexType end;
+    end[0] = std::round(new_image->GetLargestPossibleRegion().GetSize()[0]*0.3);
+    end[1] = std::round(new_image->GetLargestPossibleRegion().GetSize()[1]*0.3);
+    end[2] = std::round(new_image->GetLargestPossibleRegion().GetSize()[2]*0.3);
+
+    MovingImageType::RegionType region;
+    region.SetIndex(start);
+    region.SetUpperIndex(end);
+
+    using FilterType = itk::RegionOfInterestImageFilter<MovingImageType, MovingImageType>;
+    auto filter = FilterType::New();
+    filter->SetInput(new_image);
+    filter->SetRegionOfInterest(region);
+
+    try {
+       filter->Update();
+    } catch (const itk::ExceptionObject & error) {
+        std::cerr << "Error: " << error << std::endl;
+        throw std::runtime_error("error");
+    }
+    return filter->GetOutput();
 }
 
 int main(int argc, const char *argv[])
@@ -285,8 +311,8 @@ int main(int argc, const char *argv[])
         fixedCaster->Update();
         registration->SetFixedImageRegion(fixedCaster->GetOutput()->GetBufferedRegion());
         using ParametersType = RegistrationType::ParametersType;
-        metric->SetNumberOfHistogramBins(128);
-        metric->SetNumberOfSpatialSamples(50000);
+        metric->SetNumberOfHistogramBins(64);
+        metric->SetNumberOfSpatialSamples(2000);
         if (argc > 8)
             metric->SetNumberOfHistogramBins(numberOfBins);
         if (argc > 9)
