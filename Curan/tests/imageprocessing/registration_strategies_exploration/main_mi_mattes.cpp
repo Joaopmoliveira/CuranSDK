@@ -12,6 +12,7 @@
 #include "itkShiftScaleImageFilter.h"
 #include "itkImageSeriesReader.h"
 #include "itkGDCMImageIO.h"
+#include "itkImageDuplicator.h"
 #include "itkGDCMSeriesFileNames.h"
 
 #include <optional>
@@ -42,10 +43,10 @@ public:
         }
         RegistrationPointer registration = static_cast<RegistrationPointer>(object);
         OptimizerPointer optimizer = static_cast<OptimizerPointer>(registration->GetModifiableOptimizer());
-        std::cout << "-------------------------------------" << std::endl;
-        std::cout << "MultiResolution Level : "
-                  << registration->GetCurrentLevel() << std::endl;
-        std::cout << std::endl;
+        //std::cout << "-------------------------------------" << std::endl;
+        //std::cout << "MultiResolution Level : "
+        //          << registration->GetCurrentLevel() << std::endl;
+        //std::cout << std::endl;
         if (registration->GetCurrentLevel() == 0)
         {
             optimizer->SetMaximumStepLength(16.00);
@@ -90,14 +91,14 @@ public:
         {
             return;
         }
-        std::cout << optimizer->GetCurrentIteration() << "   ";
-        std::cout << optimizer->GetValue() << "   ";
-        std::cout << optimizer->GetCurrentPosition() << std::endl;
+        //std::cout << optimizer->GetCurrentIteration() << "   ";
+        //std::cout << optimizer->GetValue() << "   ";
+        //std::cout << optimizer->GetCurrentPosition() << std::endl;
     }
 };
 
 constexpr unsigned int Dimension = 3;
-using PixelType = unsigned short;
+using PixelType = uint16_t;
 
 using FixedImageType = itk::Image<PixelType, Dimension>;
 using MovingImageType = itk::Image<PixelType, Dimension>;
@@ -140,103 +141,99 @@ std::optional<FixedImageType::Pointer> read_volume_from_directory(const std::str
         std::cout << ex << std::endl;
         return std::nullopt;
     }
-
-    using DictionaryType = itk::MetaDataDictionary;
-
-    const DictionaryType &dictionary = dicomIO->GetMetaDataDictionary();
-
-    using MetaDataStringType = itk::MetaDataObject<std::string>;
-
-    auto itr = dictionary.Begin();
-    auto end = dictionary.End();
-
-    auto query = [&](const std::string &entryID)
-    {
-        auto tagItr = dictionary.Find(entryID);
-        std::optional<std::string> tagvalue = std::nullopt;
-        if (tagItr == end)
-        {
-            std::cout << "Tag " << entryID;
-            std::cout << " not found in the DICOM header" << std::endl;
-            return tagvalue;
-        }
-        MetaDataStringType::ConstPointer entryvalue = dynamic_cast<const MetaDataStringType *>(tagItr->second.GetPointer());
-
-        if (entryvalue)
-        {
-            tagvalue = entryvalue->GetMetaDataObjectValue();
-            std::cout << "Patient's (" << entryID << ") ";
-            std::cout << " is: " << *tagvalue << std::endl;
-        }
-        else
-            std::cout << "Entry was not of string type" << std::endl;
-        return tagvalue;
-    };
-
-    auto bits_stored_atribute = query("0028|0101"); // Bits Stored Attribute
-
-    using ShiftScaleFilterType = itk::ShiftScaleImageFilter<FixedImageType, FixedImageType>;
-    auto shiftFilter = ShiftScaleFilterType::New();
-
-    auto compute_conversion = [](const std::string &number_in_string)
-    {
-        std::optional<int> result = std::nullopt;
-        int result_l{};
-        auto [ptr, ec] = std::from_chars(number_in_string.data(), number_in_string.data() + number_in_string.size(), result_l);
-
-        if (ec == std::errc())
-            result = result_l;
-
-        return result;
-    };
-
-    int bits_stored = bits_stored_atribute ? (compute_conversion(*bits_stored_atribute) ? *compute_conversion(*bits_stored_atribute) : 16) : 16; // Bits Allocated Attribute
-
-    std::printf("scalling factor is: (%f) with bits stored (%d)\n", std::pow(2, sizeof(PixelType) * 8.0 - bits_stored), bits_stored);
-
-    shiftFilter->SetScale(std::pow(2, sizeof(PixelType) * 8.0 - bits_stored));
-    shiftFilter->SetShift(0);
-    shiftFilter->SetInput(reader->GetOutput());
-
-    using FilterType = itk::CastImageFilter<FixedImageType, FixedImageType>;
-    auto filter = FilterType::New();
-    filter->SetInput(shiftFilter->GetOutput());
-
-    try
-    {
-        filter->Update();
-    }
-    catch (const itk::ExceptionObject &ex)
-    {
-        std::cout << ex << std::endl;
-        return std::nullopt;
-    }
-
-    return filter->GetOutput();
+    return reader->GetOutput();
 }
+
+MovingImageType::Pointer manipulate_input_image(FixedImageType::Pointer image){
+    using DuplicatorType = itk::ImageDuplicator<FixedImageType>;
+    auto duplicator = DuplicatorType::New();
+    duplicator->SetInputImage(image);
+    duplicator->Update();
+
+    MovingImageType::Pointer new_image = duplicator->GetOutput();
+    auto origin = image->GetOrigin();
+    
+    auto new_origin = origin;
+    new_origin[0] = 100.0;
+    new_origin[1] = 100.0;
+    new_origin[2] = 100.0;
+
+    new_image->SetOrigin(origin);
+
+    auto direction = image->GetDirection();
+
+    double euler_vector[3] = {1.0,1.0,1.0};
+
+    double t1 = std::cos(euler_vector[2]);
+    double t2 = std::sin(euler_vector[2]);
+    double t3 = std::cos(euler_vector[1]);
+    double t4 = std::sin(euler_vector[1]);
+    double t5 = std::cos(euler_vector[0]);
+    double t6 = std::sin(euler_vector[0]);
+
+    direction(0,0) = t1*t3;
+    direction(0,1) = t1*t4*t6 - t2*t5;
+    direction(0,2) = t2*t6 + t1*t4*t5;
+
+    direction(1,0) =  t2*t3;
+    direction(1,1) =  t1*t5 + t2*t4*t6;
+    direction(1,2) = t2*t4*t5 - t1*t6;
+
+    direction(2,0) = -t4;
+    direction(2,1) =  t3*t6;
+    direction(2,2) = t3*t5;
+
+    std::printf("old translation\n");
+    std::cout << origin << std::endl;
+
+    std::printf("imposed direction\n");
+    std::cout << direction << std::endl;
+
+    std::printf("imposed translation\n");
+    std::cout << new_origin << std::endl;
+
+
+    new_image->SetDirection(direction);
+
+    return new_image;
+}
+
+
 
 int main(int argc, const char *argv[])
 {
-    if (argc < 4)
+    /*
+    if (argc < 3)
     {
         std::cerr << "Missing Parameters " << std::endl;
         std::cerr << "Usage: " << argv[0];
-        std::cerr << " fixedImageFile  movingImageFile ";
+        std::cerr << " fixedImageFile ";
         std::cerr << " outputImagefile [backgroundGrayLevel]";
         std::cerr << " [checkerBoardBefore] [checkerBoardAfter]";
         std::cerr << " [useExplicitPDFderivatives ] " << std::endl;
         std::cerr << " [numberOfBins] [numberOfSamples ] " << std::endl;
         return EXIT_FAILURE;
     }
-    const std::string fixedImageFile = argv[1];
-    const std::string movingImageFile = argv[2];
-    const std::string outImagefile = argv[3];
-    const PixelType backgroundGrayLevel = (argc > 4) ? std::stoi(argv[4]) : 100;
-    const std::string checkerBoardBefore = (argc > 5) ? argv[5] : "";
-    const std::string checkerBoardAfter = (argc > 6) ? argv[6] : "";
-    const bool useExplicitPDFderivatives = (argc > 7) ? static_cast<bool>(std::stoi(argv[7])) : false;
-    const int numberOfBins = (argc > 8) ? std::stoi(argv[8]) : 0;
-    const int numberOfSamples = (argc > 9) ? std::stoi(argv[9]) : 0;
+    */
+    //const std::string fixedImageFile = argv[1];
+try{
+    std::optional<FixedImageType::Pointer> possible_image_to_register = read_volume_from_directory(CURAN_COPIED_RESOURCE_PATH"/dicom_sample/ST983524");
+    
+    if(!possible_image_to_register)
+        return EXIT_FAILURE;
+
+    FixedImageType::Pointer image_to_register = *possible_image_to_register;
+    MovingImageType::Pointer moving_image_to_register = manipulate_input_image(image_to_register);
+
+    std::cout << "both moving and fixed image are defined\n";
+
+    const std::string outImagefile = "manipulated_file.nrrd";
+    const PixelType backgroundGrayLevel = (argc > 3) ? std::stoi(argv[3]) : 100;
+    const std::string checkerBoardBefore = (argc > 4) ? argv[4] : "";
+    const std::string checkerBoardAfter = (argc > 5) ? argv[5] : "";
+    const bool useExplicitPDFderivatives = (argc > 6) ? static_cast<bool>(std::stoi(argv[7])) : true;
+    const int numberOfBins = (argc > 8) ? std::stoi(argv[8]) : 10;
+    const int numberOfSamples = (argc > 9) ? std::stoi(argv[9]) : 10;
     using InternalPixelType = float;
     using InternalImageType = itk::Image<InternalPixelType, Dimension>;
     using TransformType = itk::VersorRigid3DTransform< double >;
@@ -255,7 +252,32 @@ int main(int argc, const char *argv[])
     using MovingImagePyramidType = itk::MultiResolutionPyramidImageFilter<
         InternalImageType, InternalImageType>;
     TransformType::Pointer transform = TransformType::New();
+    
+
+    using TransformInitializerType = itk::CenteredTransformInitializer<
+                                        TransformType,
+                                        FixedImageType, MovingImageType >;
+    TransformInitializerType::Pointer initializer =
+                                          TransformInitializerType::New();
+
+    initializer->SetTransform(   transform );
+    initializer->SetFixedImage(  image_to_register );
+    initializer->SetMovingImage( moving_image_to_register );
+    
+
+    //initializer->MomentsOn();
+    initializer->InitializeTransform();
+
+    assert(transform->GetNumberOfParameters()==6);
     OptimizerType::Pointer optimizer = OptimizerType::New();
+    OptimizerType::ScalesType optimizerScales(6);
+    optimizerScales[0] = 1.0;
+    optimizerScales[1] = 1.0;
+    optimizerScales[2] = 1.0;
+    optimizerScales[3] = 1.0/1000.0;
+    optimizerScales[4] = 1.0/1000.0;
+    optimizerScales[5] = 1.0/1000.0;
+    optimizer->SetScales(optimizerScales);
     InterpolatorType::Pointer interpolator = InterpolatorType::New();
     RegistrationType::Pointer registration = RegistrationType::New();
     MetricType::Pointer metric = MetricType::New();
@@ -263,61 +285,37 @@ int main(int argc, const char *argv[])
         FixedImagePyramidType::New();
     MovingImagePyramidType::Pointer movingImagePyramid =
         MovingImagePyramidType::New();
+
+    registration->SetInitialTransformParameters( transform->GetParameters() );
+
     registration->SetOptimizer(optimizer);
     registration->SetTransform(transform);
     registration->SetInterpolator(interpolator);
     registration->SetMetric(metric);
     registration->SetFixedImagePyramid(fixedImagePyramid);
     registration->SetMovingImagePyramid(movingImagePyramid);
-    using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
-    using MovingImageReaderType = itk::ImageFileReader<MovingImageType>;
-    FixedImageReaderType::Pointer fixedImageReader = FixedImageReaderType::New();
-    MovingImageReaderType::Pointer movingImageReader = MovingImageReaderType::New();
-    fixedImageReader->SetFileName(fixedImageFile);
-    movingImageReader->SetFileName(movingImageFile);
 
-    using FixedCastFilterType = itk::CastImageFilter<
-        FixedImageType, InternalImageType>;
-    using MovingCastFilterType = itk::CastImageFilter<
-        MovingImageType, InternalImageType>;
+    using FixedCastFilterType = itk::CastImageFilter<FixedImageType, InternalImageType>;
+    using MovingCastFilterType = itk::CastImageFilter<MovingImageType, InternalImageType>;
     FixedCastFilterType::Pointer fixedCaster = FixedCastFilterType::New();
     MovingCastFilterType::Pointer movingCaster = MovingCastFilterType::New();
-    fixedCaster->SetInput(fixedImageReader->GetOutput());
-    movingCaster->SetInput(movingImageReader->GetOutput());
+    fixedCaster->SetInput(image_to_register);
+    movingCaster->SetInput(moving_image_to_register);
     registration->SetFixedImage(fixedCaster->GetOutput());
     registration->SetMovingImage(movingCaster->GetOutput());
-    // Software Guide : EndCodeSnippet
     fixedCaster->Update();
-    registration->SetFixedImageRegion(
-        fixedCaster->GetOutput()->GetBufferedRegion());
+    registration->SetFixedImageRegion(fixedCaster->GetOutput()->GetBufferedRegion());
     using ParametersType = RegistrationType::ParametersType;
-    ParametersType initialParameters(transform->GetNumberOfParameters());
-    initialParameters[0] = 0.0; // Initial offset in mm along X
-    initialParameters[1] = 0.0; // Initial offset in mm along Y
-    registration->SetInitialTransformParameters(initialParameters);
     metric->SetNumberOfHistogramBins(128);
     metric->SetNumberOfSpatialSamples(50000);
     if (argc > 8)
-    {
-        // optionally, override the values with numbers taken from the command line arguments.
         metric->SetNumberOfHistogramBins(numberOfBins);
-    }
     if (argc > 9)
-    {
-        // optionally, override the values with numbers taken from the command line arguments.
         metric->SetNumberOfSpatialSamples(numberOfSamples);
-    }
     metric->ReinitializeSeed(76926294);
-    // Software Guide : EndCodeSnippet
-    if (argc > 7)
-    {
-        // Define whether to calculate the metric derivative by explicitly
-        // computing the derivatives of the joint PDF with respect to the Transform
-        // parameters, or doing it by progressively accumulating contributions from
-        // each bin in the joint PDF.
-        metric->SetUseExplicitPDFDerivatives(useExplicitPDFderivatives);
-    }
-    optimizer->SetNumberOfIterations(200);
+    metric->SetUseExplicitPDFDerivatives(useExplicitPDFderivatives);
+
+    optimizer->SetNumberOfIterations(400);
     optimizer->SetRelaxationFactor(0.9);
     CommandIterationUpdate::Pointer observer = CommandIterationUpdate::New();
     optimizer->AddObserver(itk::IterationEvent(), observer);
@@ -344,29 +342,26 @@ int main(int argc, const char *argv[])
     double TranslationAlongY = finalParameters[1];
     unsigned int numberOfIterations = optimizer->GetCurrentIteration();
     double bestValue = optimizer->GetValue();
-    // Print out results
-    //
-    std::cout << "Result = " << std::endl;
-    std::cout << " Translation X = " << TranslationAlongX << std::endl;
-    std::cout << " Translation Y = " << TranslationAlongY << std::endl;
-    std::cout << " Iterations    = " << numberOfIterations << std::endl;
-    std::cout << " Metric value  = " << bestValue << std::endl;
     using ResampleFilterType = itk::ResampleImageFilter<
         MovingImageType,
         FixedImageType>;
     TransformType::Pointer finalTransform = TransformType::New();
     finalTransform->SetParameters(finalParameters);
     finalTransform->SetFixedParameters(transform->GetFixedParameters());
+
+    std::cout << "estimated direction: \n" << finalTransform->GetMatrix() << std::endl;
+    std::cout << "offset:" << finalTransform->GetOffset() << std::endl;
+    std::cout << "center" << finalTransform->GetCenter() << std::endl;
+
     ResampleFilterType::Pointer resample = ResampleFilterType::New();
     resample->SetTransform(finalTransform);
-    resample->SetInput(movingImageReader->GetOutput());
-    FixedImageType::Pointer fixedImage = fixedImageReader->GetOutput();
-    resample->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
-    resample->SetOutputOrigin(fixedImage->GetOrigin());
-    resample->SetOutputSpacing(fixedImage->GetSpacing());
-    resample->SetOutputDirection(fixedImage->GetDirection());
+    resample->SetInput(moving_image_to_register);
+    resample->SetSize(moving_image_to_register->GetLargestPossibleRegion().GetSize());
+    resample->SetOutputOrigin(moving_image_to_register->GetOrigin());
+    resample->SetOutputSpacing(moving_image_to_register->GetSpacing());
+    resample->SetOutputDirection(moving_image_to_register->GetDirection());
     resample->SetDefaultPixelValue(backgroundGrayLevel);
-    using OutputPixelType = unsigned char;
+    using OutputPixelType = unsigned short;
     using OutputImageType = itk::Image<OutputPixelType, Dimension>;
     using CastFilterType = itk::CastImageFilter<
         FixedImageType,
@@ -380,7 +375,7 @@ int main(int argc, const char *argv[])
     writer->Update();
     using CheckerBoardFilterType = itk::CheckerBoardImageFilter<FixedImageType>;
     CheckerBoardFilterType::Pointer checker = CheckerBoardFilterType::New();
-    checker->SetInput1(fixedImage);
+    checker->SetInput1(image_to_register);
     checker->SetInput2(resample->GetOutput());
     caster->SetInput(checker->GetOutput());
     writer->SetInput(caster->GetOutput());
@@ -406,4 +401,11 @@ int main(int argc, const char *argv[])
         writer->Update();
     }
     return EXIT_SUCCESS;
+}   catch (const itk::ExceptionObject & excp)
+  {
+    std::cerr << "Problem solving registration= " << std::endl;
+    std::cerr << argv[0] << std::endl;
+    std::cerr << excp << std::endl;
+    return EXIT_FAILURE;
+  }
 }
