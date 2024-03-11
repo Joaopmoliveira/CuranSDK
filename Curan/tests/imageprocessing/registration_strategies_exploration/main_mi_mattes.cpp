@@ -55,9 +55,9 @@ public:
         else
         {
             optimizer->SetMaximumStepLength(
-                optimizer->GetMaximumStepLength() * 0.25);
+                optimizer->GetMaximumStepLength() * 0.35);
             optimizer->SetMinimumStepLength(
-                optimizer->GetMinimumStepLength() * 0.1);
+                optimizer->GetMinimumStepLength() * 0.3);
         }
     }
     void Execute(const itk::Object *, const itk::EventObject &)
@@ -202,20 +202,6 @@ MovingImageType::Pointer manipulate_input_image(FixedImageType::Pointer image){
 
 int main(int argc, const char *argv[])
 {
-    /*
-    if (argc < 3)
-    {
-        std::cerr << "Missing Parameters " << std::endl;
-        std::cerr << "Usage: " << argv[0];
-        std::cerr << " fixedImageFile ";
-        std::cerr << " outputImagefile [backgroundGrayLevel]";
-        std::cerr << " [checkerBoardBefore] [checkerBoardAfter]";
-        std::cerr << " [useExplicitPDFderivatives ] " << std::endl;
-        std::cerr << " [numberOfBins] [numberOfSamples ] " << std::endl;
-        return EXIT_FAILURE;
-    }
-    */
-    //const std::string fixedImageFile = argv[1];
 try{
     std::optional<FixedImageType::Pointer> possible_image_to_register = read_volume_from_directory(CURAN_COPIED_RESOURCE_PATH"/dicom_sample/ST983524");
     
@@ -257,15 +243,14 @@ try{
     using TransformInitializerType = itk::CenteredTransformInitializer<
                                         TransformType,
                                         FixedImageType, MovingImageType >;
-    TransformInitializerType::Pointer initializer =
-                                          TransformInitializerType::New();
+    TransformInitializerType::Pointer initializer = TransformInitializerType::New();
 
     initializer->SetTransform(   transform );
     initializer->SetFixedImage(  image_to_register );
     initializer->SetMovingImage( moving_image_to_register );
     
 
-    //initializer->MomentsOn();
+    initializer->MomentsOn();
     initializer->InitializeTransform();
 
     assert(transform->GetNumberOfParameters()==6);
@@ -274,9 +259,9 @@ try{
     optimizerScales[0] = 1.0;
     optimizerScales[1] = 1.0;
     optimizerScales[2] = 1.0;
-    optimizerScales[3] = 1.0/1000.0;
-    optimizerScales[4] = 1.0/1000.0;
-    optimizerScales[5] = 1.0/1000.0;
+    optimizerScales[3] = 1.0/100.0;
+    optimizerScales[4] = 1.0/100.0;
+    optimizerScales[5] = 1.0/100.0;
     optimizer->SetScales(optimizerScales);
     InterpolatorType::Pointer interpolator = InterpolatorType::New();
     RegistrationType::Pointer registration = RegistrationType::New();
@@ -322,7 +307,7 @@ try{
     using CommandType = RegistrationInterfaceCommand<RegistrationType>;
     CommandType::Pointer command = CommandType::New();
     registration->AddObserver(itk::IterationEvent(), command);
-    registration->SetNumberOfLevels(3);
+    registration->SetNumberOfLevels(5);
     try
     {
         registration->Update();
@@ -338,10 +323,15 @@ try{
     }
     // Software Guide : EndCodeSnippet
     ParametersType finalParameters = registration->GetLastTransformParameters();
-    double TranslationAlongX = finalParameters[0];
-    double TranslationAlongY = finalParameters[1];
+    double versor1 = finalParameters[0];
+    double versor2 = finalParameters[1];
+    double versor3 = finalParameters[2];
+    double TranslationAlongX = finalParameters[3];
+    double TranslationAlongY = finalParameters[4];
+    double TranslationAlongZ = finalParameters[5];
     unsigned int numberOfIterations = optimizer->GetCurrentIteration();
     double bestValue = optimizer->GetValue();
+    std::printf("\ntranslation (%f %f %f) Rotation (%f %f %f) iterations (%d) best value (%f)\n",TranslationAlongX,TranslationAlongY,TranslationAlongZ,versor1,versor2,versor3,numberOfIterations,bestValue);
     using ResampleFilterType = itk::ResampleImageFilter<
         MovingImageType,
         FixedImageType>;
