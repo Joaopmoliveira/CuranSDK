@@ -1,7 +1,7 @@
 #include "itkMultiResolutionImageRegistrationMethod.h"
 #include "itkVersorRigid3DTransform.h"
 #include "itkCenteredTransformInitializer.h"
-#include "itkMattesMutualInformationImageToImageMetric.h"
+#include "itkNormalizedMutualInformationHistogramImageToImageMetric.h"
 #include "itkVersorRigid3DTransformOptimizer.h"
 #include "itkImage.h"
 #include "itkImageFileWriter.h"
@@ -18,6 +18,8 @@
 #include "itkSubtractImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkRegionOfInterestImageFilter.h"
+#include "itkOnePlusOneEvolutionaryOptimizer.h"
+#include "itkNormalVariateGenerator.h"
 
 #include <optional>
 #include <charconv>
@@ -37,7 +39,7 @@ protected:
 public:
     using RegistrationType = TRegistration;
     using RegistrationPointer = RegistrationType *;
-    using OptimizerType = itk::VersorRigid3DTransformOptimizer;
+    using OptimizerType = itk::OnePlusOneEvolutionaryOptimizer;
     using OptimizerPointer = OptimizerType *;
     void Execute(itk::Object *object, const itk::EventObject &event)
     {
@@ -47,13 +49,13 @@ public:
         }
         RegistrationPointer registration = static_cast<RegistrationPointer>(object);
         OptimizerPointer optimizer = static_cast<OptimizerPointer>(registration->GetModifiableOptimizer());
-        // std::cout << "-------------------------------------" << std::endl;
-        // std::cout << "MultiResolution Level : "
-        //           << registration->GetCurrentLevel() << std::endl;
-        // std::cout << std::endl;
+        std::cout << "-------------------------------------" << std::endl;
+        std::cout << "MultiResolution Level : "
+                  << registration->GetCurrentLevel() << std::endl;
+        std::cout << std::endl;
         if (registration->GetCurrentLevel() == 0)
         {
-            optimizer->SetMaximumStepLength(.1);
+            optimizer->SetMaximumStepLength(16.0);
             optimizer->SetMinimumStepLength(0.01);
         }
         else
@@ -82,7 +84,7 @@ protected:
     CommandIterationUpdate(){};
 
 public:
-    using OptimizerType = itk::VersorRigid3DTransformOptimizer;
+    using OptimizerType = itk::OnePlusOneEvolutionaryOptimizer;
     using OptimizerPointer = const OptimizerType *;
     void Execute(itk::Object *caller, const itk::EventObject &event) override
     {
@@ -95,9 +97,9 @@ public:
         {
             return;
         }
-        // std::cout << optimizer->GetCurrentIteration() << "   ";
-        // std::cout << optimizer->GetValue() << "   ";
-        // std::cout << optimizer->GetCurrentPosition() << std::endl;
+        std::cout << optimizer->GetCurrentIteration() << "   ";
+        std::cout << optimizer->GetValue() << "   ";
+        std::cout << optimizer->GetCurrentPosition() << std::endl;
     }
 };
 
@@ -230,6 +232,11 @@ int main(int argc, const char *argv[])
         FixedImageType::Pointer image_to_register = *possible_image_to_register;
         MovingImageType::Pointer moving_image_to_register = manipulate_input_image(image_to_register);
 
+        std::printf("size(%llu %llu %llu)\n",
+                        moving_image_to_register->GetLargestPossibleRegion().GetSize()[0],
+                        moving_image_to_register->GetLargestPossibleRegion().GetSize()[1],
+                        moving_image_to_register->GetLargestPossibleRegion().GetSize()[2]);
+
         std::cout << "both moving and fixed image are defined\n";
 
         const std::string beforeOutImagefile = "before_manipulated_file.nrrd";
@@ -243,11 +250,11 @@ int main(int argc, const char *argv[])
         using InternalPixelType = float;
         using InternalImageType = itk::Image<InternalPixelType, Dimension>;
         using TransformType = itk::VersorRigid3DTransform<double>;
-        using OptimizerType = itk::VersorRigid3DTransformOptimizer;
+        using OptimizerType = itk::OnePlusOneEvolutionaryOptimizer;
         using InterpolatorType = itk::LinearInterpolateImageFunction<
             InternalImageType,
             double>;
-        using MetricType = itk::MattesMutualInformationImageToImageMetric<
+        using MetricType = itk::NormalizedMutualInformationHistogramImageToImageMetric<
             InternalImageType,
             InternalImageType>;
         using RegistrationType = itk::MultiResolutionImageRegistrationMethod<
@@ -286,6 +293,7 @@ int main(int argc, const char *argv[])
         InterpolatorType::Pointer interpolator = InterpolatorType::New();
         RegistrationType::Pointer registration = RegistrationType::New();
         MetricType::Pointer metric = MetricType::New();
+        
         FixedImagePyramidType::Pointer fixedImagePyramid =
             FixedImagePyramidType::New();
         MovingImagePyramidType::Pointer movingImagePyramid =
@@ -311,23 +319,37 @@ int main(int argc, const char *argv[])
         fixedCaster->Update();
         registration->SetFixedImageRegion(fixedCaster->GetOutput()->GetBufferedRegion());
         using ParametersType = RegistrationType::ParametersType;
-        metric->SetNumberOfHistogramBins(64);
-        metric->SetNumberOfSpatialSamples(2000);
-        if (argc > 8)
-            metric->SetNumberOfHistogramBins(numberOfBins);
-        if (argc > 9)
-            metric->SetNumberOfSpatialSamples(numberOfSamples);
-        metric->ReinitializeSeed(76926294);
-        metric->SetUseExplicitPDFDerivatives(useExplicitPDFderivatives);
+        
+        MetricType::HistogramType::SizeType histogramSize;
+        histogramSize.SetSize(2);
+        histogramSize[0] = 32;
+        histogramSize[1] = 32;
+        metric->SetHistogramSize(histogramSize);
 
-        optimizer->SetNumberOfIterations(400);
-        optimizer->SetRelaxationFactor(0.9);
+        metric->SetNumberOfSpatialSamples(2000);
+
+        metric->ReinitializeSeed(76926294);
+
+        using GeneratorType = itk::Statistics::NormalVariateGenerator;
+        auto generator = GeneratorType::New();
+        generator->Initialize(12345);
+
+        optimizer->MaximizeOn();
+        optimizer->SetNormalVariateGenerator(generator);
+        double initialRadius = 1;
+
+        optimizer->Initialize(initialRadius);
+        double epsilon = 0.001;
+ 
+        optimizer->SetEpsilon(epsilon);
+        optimizer->SetMaximumIteration(2000);
+
         CommandIterationUpdate::Pointer observer = CommandIterationUpdate::New();
         optimizer->AddObserver(itk::IterationEvent(), observer);
         using CommandType = RegistrationInterfaceCommand<RegistrationType>;
         CommandType::Pointer command = CommandType::New();
         registration->AddObserver(itk::IterationEvent(), command);
-        registration->SetNumberOfLevels(5);
+        registration->SetNumberOfLevels(2);
         try
         {
             registration->Update();
