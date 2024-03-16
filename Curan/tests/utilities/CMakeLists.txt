@@ -5,3 +5,9 @@ utils
 )
 
 add_executable(testing_cpp_mechanics testing_cpp_mechanics.cpp)
+
+add_executable(test_circular test_circular.cpp)
+
+target_link_libraries(test_circular PUBLIC
+utils
+)

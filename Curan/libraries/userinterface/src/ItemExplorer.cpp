@@ -36,9 +36,8 @@ ItemExplorer::ItemExplorer(const std::string& default_icon_name,IconResources& s
 			paint_background.setColor(color_background);
 
 			if (system_icons.is_loaded() && default_icon_name.size()>0) {
-				sk_sp<SkImage> image;
-				system_icons.get_icon(image,default_icon_name);
-				default_item = image;
+				auto image = system_icons.get_icon(default_icon_name);
+				if(image) default_item = (*image).image;
 			}
 }
 

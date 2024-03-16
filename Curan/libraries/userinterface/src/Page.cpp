@@ -41,10 +41,19 @@ Page& Page::draw(SkCanvas* canvas){
 }
 
 bool Page::propagate_signal(Signal sig, ConfigDraw* config){
-	if (!page_stack.empty())
-		return page_stack.back()->propagate_signal(sig, config);
-	else 
-		return main_page->propagate_signal(sig, config);
+	bool interacted = (!page_stack.empty()) ? 
+							page_stack.back()->propagate_signal(sig, config) : 
+							main_page->propagate_signal(sig, config);
+
+	// after propagating the proper signals we then push a 
+	// heartbeat signal so that time based widgets can keep count
+
+	Empty data;
+	Signal heartbeat = data;
+	(!page_stack.empty()) ? 
+							page_stack.back()->propagate_signal(heartbeat, config) : 
+							main_page->propagate_signal(heartbeat, config);
+	return interacted;
 }
 
 Page& Page::propagate_size_change(const SkRect& new_size){
