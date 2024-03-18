@@ -11,7 +11,7 @@ int main(int argc, TCHAR *argv[] ){
     ZeroMemory( &si, sizeof(si) );
     si.cb = sizeof(si);
     ZeroMemory( &pi, sizeof(pi) );
-
+    std::cout << "Windows testing...\n";
     if( argc != 2 )
     {
         printf("Usage: %s [cmdline]\n", argv[0]);
@@ -46,5 +46,12 @@ int main(int argc, TCHAR *argv[] ){
 }
 
 #elseif CURAN_LINUX
+
+#include <iostream>
+
+int main(){
+    std::cout << "Linux testing...\n";
+    return 0;
+}
 
 #endif
