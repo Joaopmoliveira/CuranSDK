@@ -15,5 +15,8 @@ utils
 add_executable(test_std_cin_limitations test_std_cin_limitations.cpp)
 
 add_executable(test_cpp_laucher test_cpp_laucher.cpp)
+target_link_libraries(test_cpp_laucher PUBLIC 
+utils
+)
 
 add_executable(test_dummy test_secondary_dummy_project.cpp)

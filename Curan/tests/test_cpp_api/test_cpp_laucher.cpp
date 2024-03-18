@@ -1,3 +1,5 @@
+#ifdef CURAN_WINDOWS
+
 #include <windows.h>
 #include <stdio.h>
 #include <tchar.h>
@@ -42,3 +44,7 @@ int main(int argc, TCHAR *argv[] ){
     printf("Terminating");
     return 0;
 }
+
+#elseif CURAN_LINUX
+
+#endif
