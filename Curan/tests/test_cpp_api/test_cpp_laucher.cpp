@@ -1,8 +1,9 @@
-#ifdef CURAN_WINDOWS
+#if defined CURAN_WINDOWS
 
 #include <windows.h>
 #include <stdio.h>
 #include <tchar.h>
+#include <iostream>
 
 int main(int argc, TCHAR *argv[] ){
     STARTUPINFO si;
@@ -37,6 +38,7 @@ int main(int argc, TCHAR *argv[] ){
     printf("Starting to wait\n");
     // Wait until child process exits.
     WaitForSingleObject( pi.hProcess, 1000 );
+    
     printf("Stopped waiting\n");
     // Close process and thread handles. 
     CloseHandle( pi.hProcess );
@@ -45,7 +47,7 @@ int main(int argc, TCHAR *argv[] ){
     return 0;
 }
 
-#elseif CURAN_LINUX
+#elif defined CURAN_LINUX
 
 #include <iostream>
 
