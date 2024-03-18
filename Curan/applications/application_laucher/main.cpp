@@ -47,37 +47,55 @@ int main() {
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 	    auto button1 = Button::make("Temporal Calibration",resources);
-	    button1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
+	    button1->set_click_color(SK_ColorDKGRAY)
+                .set_hover_color(SK_ColorLTGRAY)
+                .set_waiting_color(SK_ColorGRAY)
+                .set_size(SkRect::MakeWH(300, 300));
 		button1->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(config) config->stack_page->stack(warning_overlay("Started Temporal Calibration",resources));
 		});
 
 	    auto button2 = Button::make("Spatial Calibration",resources);
-	   	button2->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
+	   	button2->set_click_color(SK_ColorDKGRAY)
+                .set_hover_color(SK_ColorLTGRAY)
+                .set_waiting_color(SK_ColorGRAY)
+                .set_size(SkRect::MakeWH(300, 300));
 		button2->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(config) config->stack_page->stack(warning_overlay("Started Spatial Calibration",resources));
 		});
 
 	    auto button3 = Button::make("Volume ROI",resources);
-	   	button3->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
+	   	button3->set_click_color(SK_ColorDKGRAY)
+                .set_hover_color(SK_ColorLTGRAY)
+                .set_waiting_color(SK_ColorGRAY)
+                .set_size(SkRect::MakeWH(300, 300));
 		button3->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(config) config->stack_page->stack(warning_overlay("Started desired Volume Specification",resources));
 		});
 
 		auto button4 = Button::make("Reconstruction",resources);
-	   	button4->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
+	   	button4->set_click_color(SK_ColorDKGRAY)
+                .set_hover_color(SK_ColorLTGRAY)
+                .set_waiting_color(SK_ColorGRAY)
+                .set_size(SkRect::MakeWH(300, 300));
 		button4->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(config) config->stack_page->stack(warning_overlay("Started Volumetric Reconstruction",resources));
 		});
 
 		auto button5 = Button::make("Registration",resources);
-	   	button5->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
+	   	button5->set_click_color(SK_ColorDKGRAY)
+                .set_hover_color(SK_ColorLTGRAY)
+                .set_waiting_color(SK_ColorGRAY)
+                .set_size(SkRect::MakeWH(300, 300));
 		button5->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(config) config->stack_page->stack(warning_overlay("Started Real-Time Registration",resources));
 		});
 
 		auto button6 = Button::make("Neuro Navigation",resources);
-	   	button6->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
+	   	button6->set_click_color(SK_ColorDKGRAY)
+                .set_hover_color(SK_ColorLTGRAY)
+                .set_waiting_color(SK_ColorGRAY)
+                .set_size(SkRect::MakeWH(300, 300));
 		button6->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(config) config->stack_page->stack(warning_overlay("Started Neuro-Navigation",resources));
 		});
@@ -86,7 +104,14 @@ int main() {
 	    auto widgetcontainer = (icon) ? 
 					Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL,*icon) : 
 					Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL);
-	    *widgetcontainer << std::move(button1) << std::move(button2) << std::move(button3) << std::move(button4) << std::move(button5) << std::move(button6);
+                    
+	    *widgetcontainer << std::move(button1) 
+                        << std::move(button2) 
+                        << std::move(button3) 
+                        << std::move(button4) 
+                        << std::move(button5) 
+                        << std::move(button6);
+
 		widgetcontainer->set_variable_layout({SkRect::MakeXYWH(0.0,0.0,0.3333,0.5),SkRect::MakeXYWH(0.3332,0.0,0.3333,0.5),SkRect::MakeXYWH(0.6665,0.0,0.3333,0.5),
 											  SkRect::MakeXYWH(0.0,0.5,0.3333,0.5),SkRect::MakeXYWH(0.3332,0.5,0.3333,0.5),SkRect::MakeXYWH(0.6665,0.5,0.3333,0.5)});
 

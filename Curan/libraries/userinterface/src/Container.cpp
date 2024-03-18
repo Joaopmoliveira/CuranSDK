@@ -106,7 +106,6 @@ void Container::framebuffer_resize(const SkRect& new_page_size){
 
 SkRect Container::minimum_size(){
     std::lock_guard<std::mutex> g{ get_mutex() };
-
 	if(!compiled)
 		throw std::runtime_error("cannot query positions while container not compiled");
 	auto iter_rect = rectangles_of_contained_layouts.begin();
