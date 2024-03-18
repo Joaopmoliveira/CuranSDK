@@ -1,9 +1,27 @@
 #include "userinterface/widgets/Container.h"
+#include "userinterface/widgets/ComputeImageBounds.h"
 
 namespace curan {
 namespace ui {
 
-Container::Container(const ContainerType& intype,const Arrangement& inarragement) : type{intype} , arragement{inarragement}, layout_color{SK_ColorTRANSPARENT} {
+Container::Container(const ContainerType& intype,const Arrangement& inarragement) :
+	 type{intype} , 
+	 arragement{inarragement}, 
+	 layout_color{SK_ColorTRANSPARENT} ,
+	 background_image{std::nullopt}
+{
+	paint_layout.setStyle(SkPaint::kFill_Style);
+	paint_layout.setAntiAlias(true);
+	paint_layout.setStrokeWidth(4);
+	paint_layout.setColor(layout_color);
+}
+
+Container::Container(const ContainerType& intype,const Arrangement& inarragement, ImageWrapper image_wrapper) : 
+		type{intype} , 
+		arragement{inarragement}, 
+		layout_color{SK_ColorTRANSPARENT},
+		background_image{image_wrapper}
+{
 	paint_layout.setStyle(SkPaint::kFill_Style);
 	paint_layout.setAntiAlias(true);
 	paint_layout.setStrokeWidth(4);
@@ -15,17 +33,46 @@ std::unique_ptr<Container> Container::make(const ContainerType& type,const Arran
 	return container;
 }
 
+std::unique_ptr<Container> Container::make(const ContainerType& type, const Arrangement& arragement, ImageWrapper image_wrapper){
+	std::unique_ptr<Container> container = std::unique_ptr<Container>(new Container{type,arragement,image_wrapper});
+	return container;
+}
+
 Container::~Container(){
 	
 }
 
 drawablefunction Container::draw(){
-	auto lamb = [this](SkCanvas* canvas) {
-		std::lock_guard<std::mutex> g{ get_mutex() };
-		SkRect rectangle = get_position();
-		canvas->drawRect(rectangle, paint_layout);
-	};
-	return lamb;
+	if(background_image)
+		return [this](SkCanvas* canvas) {
+			SkRect rectangle = get_position();
+			SkRect current_selected_image_rectangle = rectangle;
+
+			SkPaint paint_square;
+			paint_square.setStyle(SkPaint::kStroke_Style);
+			paint_square.setAntiAlias(true);
+			paint_square.setStrokeWidth(4);
+			paint_square.setColor(SK_ColorGREEN);
+
+			paint_layout.setColor(get_color());
+			canvas->drawRect(rectangle, paint_layout);
+
+			auto image_display_surface = (*background_image).image;
+			current_selected_image_rectangle = compute_bounded_rectangle(rectangle,image_display_surface->width(),image_display_surface->height(),1.0,1.0);
+
+			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
+			paint_square.setStyle(SkPaint::kFill_Style);
+			paint_square.setAntiAlias(true);
+			paint_square.setStrokeWidth(4);
+			paint_square.setColor(SkColorSetARGB(0xFF,0xFF,0xFF,0xFF));
+			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt,&paint_square);
+		};
+	else
+		return [this](SkCanvas* canvas) {
+			SkRect rectangle = get_position();
+			paint_layout.setColor(get_color());
+			canvas->drawRect(rectangle, paint_layout);
+		};
 }
 
 callablefunction Container::call(){

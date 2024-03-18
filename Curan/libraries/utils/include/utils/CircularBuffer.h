@@ -11,12 +11,27 @@ namespace utilities {
 template <class T>
 class CircularBuffer {
 
+    using LinearView = std::vector<T>;
+
+    enum class allocation{
+        LAZY_LINEAR_ALLOCATION,
+        PRE_ALLOCATE_LINEAR_ARRAY
+    };
+
 public:
 
-	explicit CircularBuffer(size_t size) :
+	explicit CircularBuffer(size_t size, allocation alloc = allocation::LAZY_LINEAR_ALLOCATION) :
 		buf_(size),
 		max_size_(size)
-	{  }
+	{ switch(alloc){
+        case allocation::PRE_ALLOCATE_LINEAR_ARRAY:
+            linear_buf_.resize(size);
+        break;
+        case allocation::LAZY_LINEAR_ALLOCATION:
+        default:
+
+        break;
+    } }
 
 	void put(T&& t){
         buf_[head_] = std::move(t);
@@ -61,23 +76,13 @@ public:
     }
 
 private:
+    allocation allocation_strategy;
 	std::vector<T> buf_;
+    std::vector<T> linear_buf_;
 	size_t head_ = 0;
 	size_t tail_ = 0;
 	const size_t max_size_;
 	bool full_ = false;
-};
-
-template<typename T>
-class LinearBuffer{
-
-    explicit LinearBuffer(const CircularBuffer<T>& ref ) : buf_(ref.size()){}
-
-    auto begin() { return buf_.begin(); }
-    auto end() { return buf_.end(); }
-
-    private:
-    std::vector<T> buf_;
 };
 
 }

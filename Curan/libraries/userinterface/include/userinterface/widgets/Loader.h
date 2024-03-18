@@ -27,13 +27,15 @@ namespace curan {
 			IconResources& system_icons;
 			ImageDisplay* image_display = nullptr;
 			bool compiled = false;
-			
-			int index = 0;
+
 			void compile();
 			explicit Loader(std::unique_ptr<Container> contained,const std::string& icon_identifier,IconResources& system_icons,ImageDisplay* image_display);
 		public:
 
+			~Loader();
+
 			static std::unique_ptr<Loader> make(const std::string& icon_identifier,IconResources& system_icons);
+			
 			std::unique_ptr<LightWeightPage> take_ownership();
 		};
 	}

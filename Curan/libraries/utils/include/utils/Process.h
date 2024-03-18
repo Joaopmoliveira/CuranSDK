@@ -6,7 +6,7 @@
 #include <memory>
 
 namespace curan {
-namespace proc {
+namespace utilities {
 
 class Process{
 

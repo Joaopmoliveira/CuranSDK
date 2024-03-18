@@ -3,12 +3,13 @@
 
 #include "Drawable.h"
 #include "utils/Lockable.h"
+#include "ImageWrapper.h"
 #include <vector>
 #include <memory>
+#include <optional>
 
 namespace curan {
 	namespace ui {
-
 		class Container : public Drawable , utilities::Lockable{
 		public:
 
@@ -34,6 +35,11 @@ namespace curan {
 			std::lock_guard<std::mutex> g{ get_mutex() };
 			layout_color = color;
 			return *(this);
+		}
+
+		inline SkColor get_color(){
+			std::lock_guard<std::mutex> g{ get_mutex() };
+			return layout_color;
 		}
 
 		inline Container& set_divisions(const std::vector<SkScalar>& indivision){
@@ -71,11 +77,14 @@ namespace curan {
 		Container& operator<<(std::unique_ptr<Drawable> value);
 
 		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement);
+		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement, ImageWrapper image_wrapper);
 
 		private:
 
 			Container(const ContainerType& type,const Arrangement& arragement);
-
+			Container(const ContainerType& type,const Arrangement& arragement, ImageWrapper image_wrapper);
+			
+			std::optional<ImageWrapper> background_image;
 			SkPaint paint_layout;
 			std::vector<SkScalar> divisions;
 			std::vector<std::unique_ptr<Drawable>> contained_layouts;

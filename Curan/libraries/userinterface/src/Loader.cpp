@@ -4,6 +4,8 @@
 #include "userinterface/widgets/ImageDisplay.h"
 #include "userinterface/widgets/ImageDisplay.h"
 
+#include <iostream>
+
 namespace curan {
 namespace ui {
 
@@ -13,34 +15,48 @@ Loader::Loader(std::unique_ptr<Container> contained,const std::string& in_icon_i
 		system_icons{in_system_icons},
 		image_display{in_image_display}
 {
-    	auto post_sig = [this](Signal sig, bool page_interaction, ConfigDraw* config) {
-		std::visit(utilities::overloaded{
-		[this,&config,&page_interaction](Empty arg) {
-            ++index;
-			if(index>20 && !page_interaction && config->stack_page != nullptr)
-				config->stack_page->pop();
-			},
-		[](Move arg) {
+    	auto post_sig = [inner_image_display = image_display](Signal sig, bool page_interaction, ConfigDraw* config) {
+			static size_t index = 0;
+			std::visit(utilities::overloaded{
+			[&config,inner_image_display](Empty arg) {
+				++index;
+				if(inner_image_display) inner_image_display->update_custom_drawingcall([](SkCanvas* canvas, SkRect image_rec, SkRect widget_rec){
+					SkRegion region{SkIRect::MakeXYWH(widget_rec.x(),widget_rec.y(),widget_rec.width(),widget_rec.height())};
+					SkPaint paint;
+					paint.setStyle(SkPaint::kFill_Style);
+					paint.setAntiAlias(true);
+					paint.setStrokeWidth(4);
+					paint.setColor(SkColorSetARGB(5*index%0xFF,0x00,0x00,0x00));
+					canvas->drawRegion(region,paint);
+				});
+				if(index>200 && config->stack_page != nullptr){
+					config->stack_page->pop();
+				}
+				},
+			[](Move arg) {
 
-			},
-		[config,page_interaction](Press arg) {
+				},
+			[](Press arg) {
 			
-			},
-		[](Scroll arg) {;
+				},
+			[](Scroll arg) {;
 
-			},
-		[](Unpress arg) {
+				},
+			[](Unpress arg) {
 
-			},
-		[](Key arg) {
+				},
+			[](Key arg) {
 
-			},
-		[](ItemDropped arg) {;
+				},
+			[](ItemDropped arg) {;
 
-		} },
-		sig);
+			} },
+			sig);
 	};
     main_page->set_post_signal(post_sig);
+}
+
+Loader::~Loader(){
 }
 
 std::unique_ptr<LightWeightPage> Loader::take_ownership(){
