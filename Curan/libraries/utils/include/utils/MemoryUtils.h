@@ -38,7 +38,65 @@ Which serve very distinct purposes.
 
 The CaptureBuffer has a templated constructor, 
 which receives a generic template argument defining
- an object which controls the lifetime of the underlying memory
+an object which controls the lifetime of the underlying memory bloc.
+
+To understand what we mean consider the following code. 
+
+void foo(){
+
+	std::shared_ptr<std::vector<char>> bloc_of_memory;
+	bloc_of_memory->resize(1000);
+	// bloc_of_memory is destroyed here and so is the underlying std::vector<char> array
+}
+
+when the local variable bloc_of_memory goes out of scope 
+the underlying std::vector<char> will be deleted. If we capture a copy 
+of the shared pointer, as in
+
+std::shared_ptr<std::vector<char>> copy;
+
+void foo(){
+	std::shared_ptr<std::vector<char>> bloc_of_memory;
+	bloc_of_memory->resize(1000);
+	copy = bloc_of_memory;
+	// bloc_of_memory is destroyed here but the underlying std::vector<char> array is not
+}
+
+The underlying memory is not deleted because we have a copy of the shared pointer. 
+
+The CaptureBuffer does exactly this, internally it keeps a copy of templated arguments
+as so long as the capture buffer lives, so will the underlying memory. This is useful 
+if we don't want to waste time allocating and deallocating memory. Here is an example of
+how we can use this class 
+
+int main(){
+	std::shared_ptr<std::vector<char>> bloc_of_memory;
+	bloc_of_memory->resize(1000);
+	std::shared_ptr<MemoryBuffer> memory = CaptureBuffer::make_shared(bloc_of_memory->data(), //pointer to the block of memory
+																	  bloc_of_memory->size(), //size of the underlying memory
+																	  bloc_of_memory);  //object that controls the lifetime of the memory
+}
+
+
+Now we can pass around this std::shared_ptr<MemoryBuffer> 
+whilst being agnostic about how the memory is managed
+
+The other type of MemoryBuffer is the CopyBuffer, 
+which as the name implies takes a pointer to the desired memory and its size
+and does a full copy of the block of memory, thus decoupling the memory at that point, which 
+can then be reused for other purposes. 
+An example of thus object being used is 
+
+int main(){
+	std::shared_ptr<std::vector<char>> bloc_of_memory;
+	bloc_of_memory->resize(1000);
+	std::shared_ptr<MemoryBuffer> memory = CopyBuffer::make_shared(bloc_of_memory->data(), //pointer to the block of memory
+																	  bloc_of_memory->size()) //size of the underlying memory
+}
+
+we could destroy bloc_of_memory, yet memory 
+still contains a valid copy of the underlying memory blob 
+
 */
 
 class MemoryBuffer {
