@@ -22,16 +22,20 @@ ThreadPool::~ThreadPool()
 
 void ThreadPool::infinite_loop()
 {
-	Job job{};
+	std::optional<Job> job;
 	while (true){
-		if (!job_queue.wait_and_pop(job))
-			return;
+		job = job_queue.wait_and_pop();
+		if (!job)
+			if(job_queue.is_invalid())
+				return;
+			else
+				continue;
 		{
 			std::lock_guard<std::mutex> lk(mut);
 			++number_of_tasks_executing;
 			--number_of_pending_tasks;
 		}
-		job();
+		(*job)();
 		{
 			std::lock_guard<std::mutex> lk(mut);
 			--number_of_tasks_executing;

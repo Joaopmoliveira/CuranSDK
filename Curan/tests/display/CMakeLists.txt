@@ -294,3 +294,14 @@ userinterface
 Eigen3::Eigen
 ${ITK_LIBRARIES}
 )
+
+# ----------------------------------------
+
+add_executable(test_overlay_loader test_loader_overlay.cpp)
+
+target_compile_definitions(test_overlay_loader PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_overlay_loader
+PUBLIC
+userinterface
+)

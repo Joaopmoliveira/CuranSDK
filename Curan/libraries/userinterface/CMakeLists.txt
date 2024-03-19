@@ -25,6 +25,8 @@ src/SliderPanel.cpp
 src/MutatingTextPanel.cpp
 src/ImutableTextPanel.cpp
 src/ItemExplorer.cpp
+src/Loader.cpp
+src/RuntimeEffect.cpp
 )
 
 find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)

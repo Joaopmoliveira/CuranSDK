@@ -57,9 +57,8 @@ int client_callback(const size_t& loc, const std::error_code& err, std::shared_p
 
 void utilities_parser(){
     while(!io_context.stopped()){
-        std::string previous_string;
-        if(curan::utilities::cout.outputqueue.wait_and_pop(previous_string))
-            std::cout << previous_string << "\n";
+        if(auto previous_string = curan::utilities::cout.outputqueue.wait_and_pop(); previous_string)
+            std::cout << *previous_string << "\n";
     }
 
 }

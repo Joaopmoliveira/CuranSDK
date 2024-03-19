@@ -26,6 +26,7 @@
 #endif
 
 #include "customprotocols/FRIContent.h"
+#include "customprotocols/ProcessHandler.h"
 
 namespace curan {
 	namespace communication {
@@ -48,6 +49,7 @@ namespace curan {
 		*/
 		using interface_igtl = std::function<void(const size_t&, const std::error_code&, igtl::MessageBase::Pointer)>;
 		using interface_fri = std::function<void(const size_t&, const std::error_code&, std::shared_ptr<FRIMessage>)>;
+		using interface_prochandler = std::function<void(const size_t&, const std::error_code&, std::shared_ptr<ProcessHandler>)>;
 		using interface_empty = std::function<void(void)>;
 
 		/*
@@ -55,7 +57,7 @@ namespace curan {
 		variant which contains the signature of the
 		callable methods.
 		*/
-		using callable = std::variant<interface_empty,interface_igtl,interface_fri>;
+		using callable = std::variant<interface_empty,interface_igtl,interface_fri,interface_prochandler>;
 
 		/*
 		This function selects which protocol we want to communicate with depending

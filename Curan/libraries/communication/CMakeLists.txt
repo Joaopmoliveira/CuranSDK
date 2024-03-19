@@ -2,6 +2,7 @@ add_library(communication STATIC
 src/Client.cpp 
 src/ProtoIGTL.cpp	
 src/ProtoFRI.cpp
+src/ProtoProcHandler.cpp
 src/Server.cpp	
 src/Socket.cpp	
 src/Protocols.cpp

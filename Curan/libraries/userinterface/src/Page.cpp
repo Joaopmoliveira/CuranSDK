@@ -1,5 +1,6 @@
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Overlay.h"
+#include "userinterface/widgets/Loader.h"
 #include "userinterface/Window.h"
 
 #include <iostream>
@@ -41,10 +42,15 @@ Page& Page::draw(SkCanvas* canvas){
 }
 
 bool Page::propagate_signal(Signal sig, ConfigDraw* config){
-	if (!page_stack.empty())
-		return page_stack.back()->propagate_signal(sig, config);
-	else 
-		return main_page->propagate_signal(sig, config);
+	return (!page_stack.empty()) ? 
+							page_stack.back()->propagate_signal(sig, config) : 
+							main_page->propagate_signal(sig, config);
+}
+
+void Page::propagate_heartbeat(ConfigDraw* config){
+	Empty data;
+	Signal heartbeat = data;
+	(!page_stack.empty()) ? page_stack.back()->propagate_signal(heartbeat, config) : main_page->propagate_signal(heartbeat, config);
 }
 
 Page& Page::propagate_size_change(const SkRect& new_size){
@@ -90,6 +96,14 @@ Page& Page::clear_overlays(){
 
 Page& Page::stack(std::unique_ptr<Overlay> overlay){
 	auto local = overlay->take_ownership();
+	local->propagate_size_change(previous_size);
+	std::lock_guard<std::mutex> g{mut};
+	page_stack.emplace_back(std::move(local));
+	return *(this);
+}
+
+Page& Page::stack(std::unique_ptr<Loader> loader){
+	auto local = loader->take_ownership();
 	local->propagate_size_change(previous_size);
 	std::lock_guard<std::mutex> g{mut};
 	page_stack.emplace_back(std::move(local));

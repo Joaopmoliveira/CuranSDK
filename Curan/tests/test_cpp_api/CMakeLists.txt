@@ -13,3 +13,13 @@ utils
 )
 
 add_executable(test_std_cin_limitations test_std_cin_limitations.cpp)
+
+add_executable(test_cpp_laucher test_cpp_laucher.cpp)
+
+IF (WIN32)
+  add_compile_definitions(test_cpp_laucher CURAN_WINDOWS)
+ELSEIF(UNIX)
+  add_compile_definitions(test_cpp_laucher CURAN_LINUX)
+ENDIF()
+
+add_executable(test_dummy test_secondary_dummy_project.cpp)

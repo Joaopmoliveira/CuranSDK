@@ -490,10 +490,9 @@ std::vector<Signal> Window::process_pending_signals()
 	int size = signal_queue.size();
 	received_signals.reserve(size);
 	for (int index = 0; index < size; ++index) {
-		Signal signal;
-		bool val = signal_queue.try_pop(signal);
-		if(val)
-			received_signals.push_back(signal);
+		auto signal = signal_queue.try_pop();
+		if(signal)
+			received_signals.push_back(*signal);
 	}
 	return received_signals;
 }

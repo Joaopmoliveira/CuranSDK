@@ -53,18 +53,6 @@ public:
         std::cout << "MultiResolution Level : "
                   << registration->GetCurrentLevel() << std::endl;
         std::cout << std::endl;
-        if (registration->GetCurrentLevel() == 0)
-        {
-            optimizer->SetMaximumStepLength(16.0);
-            optimizer->SetMinimumStepLength(0.01);
-        }
-        else
-        {
-            optimizer->SetMaximumStepLength(
-                optimizer->GetMaximumStepLength() * 0.35);
-            optimizer->SetMinimumStepLength(
-                optimizer->GetMinimumStepLength() * 0.3);
-        }
     }
     void Execute(const itk::Object *, const itk::EventObject &)
     {

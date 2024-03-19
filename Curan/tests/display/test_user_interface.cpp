@@ -1082,10 +1082,9 @@ public:
 
 	void process_pending_signals()
 	{
-		int size = signal_queue.size();
-		for (int index = 0; index < size; ++index) {
-			Signal signal;
-			if(signal_queue.try_pop(signal)){
+		size_t size = signal_queue.size();
+		for (size_t index = 0; index < size; ++index) {
+			if(auto signal = signal_queue.try_pop(); signal){
 				std::cout << "coule not pop because something went wrong\n";
 			}
 		}
