@@ -26,10 +26,36 @@ Consider the following example. We want a circular buffer with three elements
 int main(){
     CircularBuffer<double> buf{3};
 
-% at the beggining the buffer is just allocated normally. Then 
+% at the beggining the buffer is just allocated normally. 
+Then we put a value inside our buffer.
+
+    buf.put(1.0);
+
+% currently the values are : 1.0 0.0 0.0
+% now we can put more values
+
+    buf.put(2.0);
+    buf.put(3.0);
+
+% notice that the buffer will now be full
+% with the following sequency : 1.0 2.0 3.0
+% if we put another value inside then we have
+
+    buf.put(4.0);
+
+% the buffer will now contain the values : 4.0 2.0 3.0
+
+% Another nice feature of the circular buffer is that 
+% we can use a range for loop with diminishes the clutter of the language
+% as in 
+
+    std::cout << "the buffer values are:\n"
+    for(const auto& val : buf)
+        std::printf("%f ",val);
 
     return 0;
-}
+};
+
 */
 
 template <class T>
