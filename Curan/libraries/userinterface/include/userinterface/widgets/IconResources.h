@@ -9,19 +9,22 @@
 #include "ImageWrapper.h"
 
 namespace curan {
-	namespace ui {
-		class IconResources{
-			bool is_initialized = false;
-			std::map<std::string, ImageWrapper> icon_map;
+namespace ui {
 
-		public:
-			IconResources(std::string path_to_resources);
-			std::optional<ImageWrapper> get_icon(std::string icon_string);
-			inline bool is_loaded() {
-				return is_initialized;
-			}
-		};
+class IconResources{
+public:
+	IconResources(std::string path_to_resources);
+	std::optional<ImageWrapper> get_icon(std::string icon_string);
+	inline bool is_loaded() {
+		return is_initialized;
 	}
+
+private:
+	bool is_initialized = false;
+	std::map<std::string, ImageWrapper> icon_map;
+};
+
+}
 }
 
 #endif
