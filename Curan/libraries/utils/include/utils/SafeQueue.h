@@ -34,6 +34,7 @@ int main(){
 
 	
 	std::this_thread::sleep_for(std::chrono::seconds(1000));
+	queue.push(5.0);
 
 	oth.join();
 	return 0;
@@ -66,6 +67,17 @@ void clear(){
 [[nodiscard]] std::optional<T> wait_and_pop() {
 	std::unique_lock<std::mutex> lk(mut);
 	data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });
+	if (invalid || data_queue.empty())
+		return std::nullopt;
+	auto value = data_queue.front();
+	data_queue.pop();
+	return value;
+}
+
+template< class Rep, class Period>
+[[nodiscard]] std::optional<T> wait_and_pop(const std::chrono::duration<Rep, Period>& rel_time) {
+	std::unique_lock<std::mutex> lk(mut);
+	data_cond.wait_until(lk,rel_time, [this] {return (!data_queue.empty() || invalid); });
 	if (invalid || data_queue.empty())
 		return std::nullopt;
 	auto value = data_queue.front();
