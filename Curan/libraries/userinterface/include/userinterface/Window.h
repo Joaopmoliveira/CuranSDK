@@ -44,7 +44,8 @@ std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 % button for illustrative purpouses. 
 
 auto button = Button::make("Connect",resources);
-auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,
+								 Container::Arrangement::HORIZONTAL);
 *container << std::move(button);
 
 auto page = Page{std::move(container),SK_ColorBLACK};
@@ -56,29 +57,70 @@ auto page = Page{std::move(container),SK_ColorBLACK};
 page.update_page(viewer.get());
 
 % now we create a config draw object, which has a pointer
-% inside it of the page. This is used  
+% inside it of the page. This is used when we wish to call
+% callbacks from users so that they can manipulate the page
 
 ConfigDraw config_draw{ &page};
 
+% we can also limit the minimum size of the window, 
+% for that we can request the page to compute the 
+% minimum size it should have given all the widgets we 
+% have placed inside it
+
 viewer->set_minimum_size(page.minimum_size());
 
+% now that we have everything we can loop until a request to close 
+% we window has been requested
+
 while (!glfwWindowShouldClose(viewer->window)) {
+	% we time the loop cycle of the drawing call so that we can guarantee the drawing cycle time
+
 	auto start = std::chrono::high_resolution_clock::now();
+
+	% when we request a SkSurface the Window class request 
+	% a free image in the swapchain so that we can render into ot
+
 	SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
 	SkCanvas* canvas = pointer_to_surface->getCanvas();
+
+	% if we wanted we could draw everything 
+	% unto the canvas, but we have tried to simplify
+	% things, thus the code with the page
+	% before drawing we check if the window has been resized
+	% if it has we propagate this new size 
+	% throught the widgets contained in the page 
+
 	if (viewer->was_updated()) {
 		page.update_page(viewer.get());
 		viewer->update_processed();
 	}
+
+	% now we draw everythin on screen
+
 	page.draw(canvas);
+
+	% once we have drawn things, we check on the 
+	% internal queue of the window if there are 
+	% pending signals to process
+
 	auto signals = viewer->process_pending_signals();
+
+	% if there are we propagate them through the page
 
 	if (!signals.empty())
 		page.propagate_signal(signals.back(), &config_draw);
+
+	% lastly we propagate an emtpy signal, so that widgets 
+	% that want to keep track of time can count these empty signals
+
 	page.propagate_heartbeat(&config_draw);
 	glfwPollEvents();
 
+	% lastly we can swap the page that we just rendered things into
+	% back to VULKAN so that the actual rendering can begin. 
+	% Eventually this will be shown on the screen
 	bool val = viewer->swapBuffers();
+	
 	if (!val)
 		std::cout << "failed to swap buffers\n";
 	auto end = std::chrono::high_resolution_clock::now();
