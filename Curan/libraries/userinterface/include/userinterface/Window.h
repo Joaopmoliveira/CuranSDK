@@ -38,10 +38,25 @@ std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 % Now comes the trycky part, 
 % we will not go into detail, 
 % but our library can generate drawing logic 
-% which we can then use 
+% which we can then use draw widgets.
 
-auto page = Page{std::move(widgetcontainer),SK_ColorBLACK};
+% For now we will create a simple page with a single 
+% button for illustrative purpouses. 
+
+auto button = Button::make("Connect",resources);
+auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+*container << std::move(button);
+
+auto page = Page{std::move(container),SK_ColorBLACK};
+
+% We need to trigger an update call with information from
+% the viewer so that the page can propagate the true size
+% of the viewer throught all the widgets
+
 page.update_page(viewer.get());
+
+% now we create a config draw object, which has a pointer
+% inside it of the page. This is used  
 
 ConfigDraw config_draw{ &page};
 
