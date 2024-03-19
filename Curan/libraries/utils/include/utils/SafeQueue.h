@@ -15,7 +15,33 @@ to share information between threads with safety guarantees.
 
 ** I have not tested all requirements of the templated type**
 
+A simple use case of this class is having two thread, a producer 
+and a consumer and waiting without wasting idle cpu time, until 
+the producer has generated an object for us to process. 
 
+Consider the following
+
+void foo(SafeQueue<double>& queue){
+	if(auto value = queue.wait_and_pop(); value)
+		std::cout << "value: " << *value;
+	else
+		std::cout << "no signal received"
+}
+
+int main(){
+	SafeQueue<double> queue;
+	std::thread oth{[&](){foo(queue);}};
+
+	
+	std::this_thread::sleep_for(std::chrono::seconds(1000));
+
+	oth.join();
+	return 0;
+}
+
+Inside curan we use this class to receive
+assyncrounous signals from the operating system
+to then use these signals for drawing operations.
 */
 
 template<typename T>
@@ -24,11 +50,7 @@ class SafeQueue {
 public:
 
 SafeQueue() {}
-
-SafeQueue(SafeQueue const& other) {
-	std::scoped_lock lck{other.mut , mut};
-	data_queue = other.data_queue;
-}
+SafeQueue(SafeQueue const& other) = delete;
 
 void push(const T& new_value) {
 	std::lock_guard<std::mutex> lk(mut);
