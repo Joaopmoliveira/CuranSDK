@@ -6,7 +6,7 @@ namespace utilities {
 
 /*
 Visit the page https://en.cppreference.com/w/cpp/utility/variant/visit for further information
-Basically we have variants, which are a safe version of unions from c, but to switch between the type 
+We have variants, which are a safe version of unions from c, but to switch between the type 
 contained in the variant we need the overloaded operator, which is only defined in the cpp standard of 2020
 
 A typical use case of this class is 
@@ -22,13 +22,13 @@ void print(Contained cont){
 }
 
 int main(){
-	Contained union_of_values = 0.0;
+	Contained union_of_values = 0.0; //underlying type is double
 	print(union_of_values);
-	union_of_values = 4.0f;
+	union_of_values = 4.0f; // underlying type is float
 	print(union_of_values);
-	union_of_values = "str";
+	union_of_values = "str"; // underlying type is string
 	print(union_of_values);
-	union_of_values = 4;
+	union_of_values = 4; // underlying type is int
 	print(union_of_values);
 	return 0;
 }

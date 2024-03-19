@@ -6,89 +6,96 @@
 #include <condition_variable>
 		
 namespace curan {
-	namespace utilities {
+namespace utilities {
 
-		template<typename T>
-		class SafeQueue {
-		private:
-			bool invalid = false;
-			std::mutex mut;
-			std::queue<T> data_queue;
-			std::condition_variable data_cond;
-		public:
-			SafeQueue() {
+/*
+The SafeQueue is a pivotal class 
+*/
 
-			}
-			SafeQueue(SafeQueue const& other) {
-				std::lock_guard<std::mutex> lc(other.mut);
-				std::lock_guard<std::mutex> lk(mut);
-				data_queue = other.data_queue;
-			}
+template<typename T>
+class SafeQueue {
 
-			void push(T new_value) {
-				std::lock_guard<std::mutex> lk(mut);
-				data_queue.push(new_value);
-				data_cond.notify_one();
-			}
+public:
 
-			void clear(){
-				std::lock_guard<std::mutex> lk(mut);
-				std::queue<T> local_empty_data_queue;
-				std::swap( data_queue, local_empty_data_queue );
-			}
+SafeQueue() {}
 
-			[[nodiscard]] bool wait_and_pop(T& value) {
-				std::unique_lock<std::mutex> lk(mut);
-				data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });
-				if (invalid || data_queue.empty()) {
-					return false;
-				}
-				value = data_queue.front();
-				data_queue.pop();
-				return true;
-			}
+SafeQueue(SafeQueue const& other) {
+	std::scoped_lock lck{other.mut, mut};
+	data_queue = other.data_queue;
+}
 
-			[[nodiscard]] bool try_pop(T& value) {
-				std::lock_guard<std::mutex> lk(mut);
-				if (data_queue.empty())
-					return false;
-				value = data_queue.front();
-				data_queue.pop();
-				return true;
-			}
+void push(T new_value) {
+	std::lock_guard<std::mutex> lk(mut);
+	data_queue.push(new_value);
+	data_cond.notify_one();
+}
 
-			[[nodiscard]] bool try_front(T& value) {
-				std::lock_guard<std::mutex> lk(mut);
-				if (data_queue.empty())
-					return false;
-				value = data_queue.front();
-				return true;
-			}
+void clear(){
+	std::lock_guard<std::mutex> lk(mut);
+	std::queue<T> local_empty_data_queue;
+	std::swap( data_queue, local_empty_data_queue );
+}
 
-			[[nodiscard]] bool empty(){
-				std::lock_guard<std::mutex> lk(mut);
-				return data_queue.empty();
-			}
+[[nodiscard]] bool wait_and_pop(T& value) {
+	std::unique_lock<std::mutex> lk(mut);
+	data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });
+	if (invalid || data_queue.empty())
+		return false;
+	value = data_queue.front();
+	data_queue.pop();
+	return true;
+}
 
-			[[nodiscard]] int size() {
-				std::lock_guard<std::mutex> lk(mut);
-				return (int)data_queue.size();
-			}
+[[nodiscard]] bool try_pop(T& value) {
+	std::lock_guard<std::mutex> lk(mut);
+	if (data_queue.empty())
+		return false;
+	value = data_queue.front();
+	data_queue.pop();
+	return true;
+}
 
-			void invalidate() {
-				std::lock_guard<std::mutex> lk(mut);
-				if (!invalid) {
-					invalid = true;
-					data_cond.notify_all();
-				}
-			}
+[[nodiscard]] bool try_front(T& value) {
+	std::lock_guard<std::mutex> lk(mut);
+	if (data_queue.empty())
+		return false;
+	value = data_queue.front();
+	return true;
+}
 
-			[[nodiscard]] bool is_invalid() {
-				std::lock_guard<std::mutex> lk(mut);
-				return invalid;
-			}
-		};
+[[nodiscard]] bool empty(){
+	std::lock_guard<std::mutex> lk(mut);
+	return data_queue.empty();
+}
+
+[[nodiscard]] int size() {
+	std::lock_guard<std::mutex> lk(mut);
+	return (int)data_queue.size();
+}
+
+void invalidate() {
+	std::lock_guard<std::mutex> lk(mut);
+	if (!invalid) {
+		invalid = true;
+		data_cond.notify_all();
 	}
+}
+
+[[nodiscard]] bool is_invalid() {
+	std::lock_guard<std::mutex> lk(mut);
+	return invalid;
+}
+
+private:
+
+bool invalid = false;
+std::mutex mut;
+std::queue<T> data_queue;
+std::condition_variable data_cond;
+
+};
+
+}
 }
 
 #endif

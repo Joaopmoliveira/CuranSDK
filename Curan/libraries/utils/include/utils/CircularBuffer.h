@@ -9,7 +9,7 @@ namespace curan {
 namespace utilities {
 
 /*
-The CircularBuffer class is a contiguous block of memory, 
+The circular buffer class is a contiguous block of memory, 
 where when we push an object of the template type 
 it is added to the next memory location. 
 

@@ -8,7 +8,7 @@ namespace utilities {
 
 /*
 The Lockable class is supposed to be the parent 
-of any class that needs to lock its own mutex. A simple example 
+of any class that needs to lock its mutex. A simple example 
 of the use case of this class is
 
 class NeedsToLock : public Lockable{
