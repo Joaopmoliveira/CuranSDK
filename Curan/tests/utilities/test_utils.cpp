@@ -101,29 +101,23 @@ int test_job_and_thread_pool(std::shared_ptr<curan::utilities::ThreadPool> share
 	return 0;
 }
 
-struct PoPable {
+struct test_target {
 	int val;
 
-	PoPable() : val{ 0 } {
-	
-	};
-
-
+	test_target() : val{ 0 } {};
 };
 
 void test_thread_safe_queue(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) {
-	PoPable pop;
-	curan::utilities::SafeQueue<PoPable> safe_queue;
-	auto put_in = [&safe_queue](PoPable pop) {
+	curan::utilities::SafeQueue<test_target> safe_queue;
+	auto put_in = [&safe_queue](test_target pop) {
 		safe_queue.push(pop);
 	};
 	auto function_to_execute = [&safe_queue]() {
 		try {
-			PoPable temp;
 			std::cout << "starting to wait for popable\n";
 			while (!safe_queue.is_invalid()) {
-				if(safe_queue.wait_and_pop(temp))
-					std::cout << "Received a poopable! yeye = " << temp.val << "\n";
+				if(auto test = safe_queue.wait_and_pop(); test)
+					std::cout << "Received a poopable! yeye = " << (*test).val << "\n";
 			}
 			std::cout << "finished to wait for popable\n";
 		}
@@ -138,6 +132,7 @@ void test_thread_safe_queue(std::shared_ptr<curan::utilities::ThreadPool> shared
 	try {	
 		std::vector<int> values_to_test = {1,2,3,4,5,6,7,8,9,10};
 		for (auto val : values_to_test) {
+			test_target pop;
 			pop.val = val;
 			put_in(pop);
 			auto duration = std::chrono::milliseconds(number_of_min_miliseconds);

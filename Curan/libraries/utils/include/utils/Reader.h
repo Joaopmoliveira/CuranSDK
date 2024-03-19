@@ -11,7 +11,7 @@ namespace utilities {
 This is a simple utility function to convert from a stringstream into an Eigen Matrix, which 
 is useful when interacting between different programs or between Python<--->C++ or Matlab<--->C++
 
-the function only converts strings into 2D matrices with any size. Optionally you can provide the
+the function only converts strings into 2D matrices of any size. Optionally you can provide the
 delimiter which signals the mechanics of the function that you are changing lines 
 
 Consider the following 

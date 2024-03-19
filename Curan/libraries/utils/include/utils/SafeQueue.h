@@ -4,12 +4,18 @@
 #include <mutex>
 #include <queue>
 #include <condition_variable>
-		
+#include <optional>
+
 namespace curan {
 namespace utilities {
 
 /*
-The SafeQueue is a pivotal class 
+The SafeQueue is a pivotal class inside Curan. It allows us
+to share information between threads with safety guarantees. 
+
+** I have not tested all requirements of the templated type**
+
+
 */
 
 template<typename T>
@@ -20,11 +26,11 @@ public:
 SafeQueue() {}
 
 SafeQueue(SafeQueue const& other) {
-	std::scoped_lock lck{other.mut, mut};
+	std::scoped_lock lck{other.mut , mut};
 	data_queue = other.data_queue;
 }
 
-void push(T new_value) {
+void push(const T& new_value) {
 	std::lock_guard<std::mutex> lk(mut);
 	data_queue.push(new_value);
 	data_cond.notify_one();
@@ -32,35 +38,34 @@ void push(T new_value) {
 
 void clear(){
 	std::lock_guard<std::mutex> lk(mut);
-	std::queue<T> local_empty_data_queue;
-	std::swap( data_queue, local_empty_data_queue );
+	data_queue = std::queue<T>{};
 }
 
-[[nodiscard]] bool wait_and_pop(T& value) {
+[[nodiscard]] std::optional<T> wait_and_pop() {
 	std::unique_lock<std::mutex> lk(mut);
 	data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });
 	if (invalid || data_queue.empty())
-		return false;
-	value = data_queue.front();
+		return std::nullopt;
+	auto value = data_queue.front();
 	data_queue.pop();
-	return true;
+	return value;
 }
 
-[[nodiscard]] bool try_pop(T& value) {
+[[nodiscard]] std::optional<T> try_pop() {
 	std::lock_guard<std::mutex> lk(mut);
 	if (data_queue.empty())
-		return false;
-	value = data_queue.front();
+		return std::nullopt;
+	auto value = data_queue.front();
 	data_queue.pop();
-	return true;
+	return value;
 }
 
-[[nodiscard]] bool try_front(T& value) {
+[[nodiscard]] std::optional<T> front() {
 	std::lock_guard<std::mutex> lk(mut);
 	if (data_queue.empty())
-		return false;
-	value = data_queue.front();
-	return true;
+		return std::nullopt;
+	auto value = data_queue.front();
+	return value;
 }
 
 [[nodiscard]] bool empty(){
@@ -68,9 +73,9 @@ void clear(){
 	return data_queue.empty();
 }
 
-[[nodiscard]] int size() {
+[[nodiscard]] size_t size() {
 	std::lock_guard<std::mutex> lk(mut);
-	return (int)data_queue.size();
+	return data_queue.size();
 }
 
 void invalidate() {
