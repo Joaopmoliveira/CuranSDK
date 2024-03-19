@@ -1,23 +1,46 @@
-#include "MessageProcessing.h"
-#include "optimization/WireCalibration.h"
 #include <iostream>
+#include "itkImage.h"
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
 #include <vector>
+#include <chrono>
 #include <Eigen/Dense>
 #include <cmath>
 #include <ctime>
 
-bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
-	igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
-	transform_message->Copy(val);
-	int c = transform_message->Unpack(1);
-	if (!(c & igtl::MessageHeader::UNPACK_BODY))
-		return false; //failed to unpack message, therefore returning without doing anything
-	return true;
-}
-
-using PixelType = unsigned char;
+//Definir types
 constexpr unsigned int Dimension = 2;
+using PixelType = unsigned int;
+//using PixelType = float;
 using ImageType = itk::Image<PixelType, Dimension>;
+
+//Funçao que lê um png (irrelevante na implementacao final)
+ImageType::Pointer image_read(){
+    //Diretorias 
+    const char* filePath = "C:/dev/HumanRoboticsSDK/Curan/tests/temporal_calibration/frame100.png";
+
+    //Definir types
+    using ReaderType = itk::ImageFileReader<ImageType>;
+    using WriterType = itk::ImageFileWriter<ImageType>;
+
+    //Ler imagem
+    ReaderType::Pointer reader = ReaderType::New();
+    reader->SetFileName(filePath);
+    try
+    {
+        reader->Update();
+    }
+    catch (itk::ExceptionObject& e)
+    {
+        std::cerr << "Error reading the file: " << e << std::endl;
+       //return EXIT_FAILURE;
+    }
+
+    //Ponteiro para a imagem
+    ImageType::Pointer input_image = reader->GetOutput();
+    return input_image;
+    }
+
 //Funçao que segmenta os pontos 
 std::vector<std::pair<unsigned int, unsigned int>> segment_points(int min_coordx, int max_coordx, int numLines, ImageType::Pointer input_image){
 
@@ -29,10 +52,10 @@ std::vector<std::pair<unsigned int, unsigned int>> segment_points(int min_coordx
     //Cálculo do espaçamento entre linhas
     double spacing = static_cast<double>(max_coordx - min_coordx) / (numLines-1);
 
-    // Vetor para guardar linhas válidas
+    // Initialize a vector to store the x positions of valid lines
     std::vector<unsigned int> validXPositions;
 
-    // Cálculo do numero de linhas válidas (com intensidade total maior que 0)
+    // Calculate the actual number of valid lines
     int numValidLines = 0;
     for (int i = 0; i < numLines; ++i) {
         unsigned int sumIntensity = 0;
@@ -45,7 +68,7 @@ std::vector<std::pair<unsigned int, unsigned int>> segment_points(int min_coordx
         }else{
             continue;
         }
-        //Guardar posição das linhas válidas
+        // Save the x position of the valid line
         unsigned int xPosition = min_coordx + static_cast<int>(i * spacing);
         validXPositions.push_back(xPosition);
     }
@@ -218,177 +241,38 @@ std::vector<double> RANSAC(std::vector<std::pair<unsigned int, unsigned int>> po
     return bestModelParams;
 }
 
-bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
-	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-	std::chrono::steady_clock::time_point end = begin;
-	igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
-	message_body->Copy(val);
-	int c = message_body->Unpack(1);
-	if (!(c & igtl::MessageHeader::UNPACK_BODY))
-		return false; //failed to unpack message, therefore returning without doing anything
+int main(){
+    using namespace std::chrono;    
 
-	int x, y, z;
-	message_body->GetDimensions(x, y, z);
-	using PixelType = unsigned char;
-	constexpr unsigned int Dimension = 2;
-	using ImageType = itk::Image<PixelType, Dimension>;
+    //Ler imagem (irrelevante na implementação final)
+    auto start1 = high_resolution_clock::now();
+    ImageType::Pointer input_image = image_read();
+    auto stop1 = high_resolution_clock::now();
+    auto duration1 = duration_cast<microseconds>(stop1 - start1);
+    std::cout << "Tempo ler imagem:" << duration1.count() << std::endl;
 
-	using FloatImageType = itk::Image<float, Dimension>;
-	using ImportFilterType = itk::ImportImageFilter<PixelType, Dimension>;
-	auto importFilter = ImportFilterType::New();
-
-	ImportFilterType::SizeType size;
-	size[0] = x;
-	size[1] = y;
-	ImportFilterType::IndexType start;
-	start.Fill(0);
-	ImportFilterType::RegionType region;
-	region.SetIndex(start);
-	region.SetSize(size);
-
-	importFilter->SetRegion(region);
-	const itk::SpacePrecisionType origin[Dimension] = { 0.0, 0.0 };
-	importFilter->SetOrigin(origin);
-	const itk::SpacePrecisionType spacing[Dimension] = { 1.0, 1.0 };
-	importFilter->SetSpacing(spacing);
-	
-	const bool importImageFilterWillOwnTheBuffer = false;
-	importFilter->SetImportPointer((PixelType*)message_body->GetScalarPointer(), message_body->GetScalarSize(), importImageFilterWillOwnTheBuffer);
-
-	try {
-		importFilter->Update();
-	}
-	catch (...) {
-		return false;
-	}
-
-	// where you have imported the raw image buffer into a ITK compatible image, thus you can use this for your purpouses
-
-	ObservationEigenFormat observation_n;
-
-	igtl::Matrix4x4 local_mat;
-	message_body->GetMatrix(local_mat);
-	for (size_t cols = 0; cols < 4; ++cols)
-		for (size_t lines = 0; lines < 4; ++lines)
-			observation_n.flange_data(lines, cols) = local_mat[lines][cols];
-		
-    /*
-	std::cout << "Observation:" << std::endl;
-	for (int row = 0; row < 4; ++row) {
-        for (int col = 0; col < 4; ++col) {
-            std::cout << observation_n.flange_data(row, col) << " ";
-    }
-    std::cout << std::endl;
-    }
-    */
-   
-    ImageType::Pointer shr_ptr_imported = importFilter->GetOutput();
-    //Segmentation parameters
+    //Segmentaçao de pontos 
+    //Janela de scan e número de linhas de avaliação
     int min_coordx = 210;
     int max_coordx = 610;
-    int numLines = 20;
-    std::vector<std::pair<unsigned int, unsigned int>> pointsToFit = segment_points(min_coordx, max_coordx, numLines, shr_ptr_imported);
-    
+    int numLines = 40;
+
+    auto start2 = high_resolution_clock::now();
+    std::vector<std::pair<unsigned int, unsigned int>> pointsToFit = segment_points(min_coordx, max_coordx, numLines, input_image);
+    auto stop2 = high_resolution_clock::now();
+    auto duration2 = duration_cast<microseconds>(stop2 - start2);
+    std::cout << "Tempo segmentacao:" << duration2.count() << std::endl;
+
     //RANSAC parameters
     int numIterations = 400;
     double inlierThreshold = 1.0;
+    auto start = high_resolution_clock::now();
     std::vector<double> bestModelParams = RANSAC(pointsToFit, numIterations, inlierThreshold);
-    //std::cout << "Best model parameters: " << bestModelParams[0] << " " << bestModelParams[1] << std::endl;
 
-    ImageType::SizeType size_itk = shr_ptr_imported->GetLargestPossibleRegion().GetSize();
-    auto buff = curan::utilities::CaptureBuffer::make_shared(shr_ptr_imported->GetBufferPointer(),shr_ptr_imported->GetPixelContainer()->Size()*sizeof(char),shr_ptr_imported);
-    curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
-    processor->processed_viwer->update_batch([size_itk, processor,bestModelParams, min_coordx, max_coordx](SkCanvas* canvas, SkRect image_area,SkRect widget_area){
-    if (processor->show_line){
-        //Fator de escala
-        float scalling_factor_x = image_area.width()/size_itk[0];
-        float scalling_factor_y = image_area.height()/size_itk[1];
+    //Resultados
+    std::cout << "Best model parameters: " << bestModelParams[0] << " " << bestModelParams[1] << std::endl;
+    double signal_value = bestModelParams[0] * 410 + bestModelParams[1];
+    std::cout << "Signal value: " << signal_value << std::endl;
 
-        //Cálculo dos pontos no referencial da imagem e no referencial do canvas
-        float y1 = bestModelParams[0] * min_coordx + bestModelParams[1]; // Calculate y-coordinate for minX
-        float y2 = bestModelParams[0] * max_coordx + bestModelParams[1]; // Calculate y-coordinate for maxX
-        float cx = (size_itk[0]/2); 
-        float cy = bestModelParams[0] * cx + bestModelParams[1];
-        float x1canvas = min_coordx * scalling_factor_x + image_area.left();
-        float x2canvas = max_coordx * scalling_factor_x + image_area.left();
-        float y1canvas = y1 * scalling_factor_y + image_area.top();
-        float y2canvas = y2 * scalling_factor_y + image_area.top();
-        float cxcanvas = cx * scalling_factor_x + image_area.left();
-        float cycanvas = cy * scalling_factor_y + image_area.top();
-
-        //Linha 
-        SkPaint linePaint;
-        linePaint.setStyle(SkPaint::kStroke_Style);
-        linePaint.setAntiAlias(true);
-        linePaint.setStrokeWidth(2.0f);  
-        linePaint.setColor(SK_ColorBLUE); 
-        canvas->drawLine(x1canvas, y1canvas, x2canvas, y2canvas, linePaint);
-
-        //Circulo
-        SkPaint paint;
-        paint.setColor(SK_ColorRED); 
-        paint.setStyle(SkPaint::kFill_Style); 
-        SkScalar radius = 3;
-        canvas->drawCircle(cxcanvas, cycanvas, radius, paint);
-    }else{
-        auto nada = 1;
-    }
-	},wrapper);
-
-	end = std::chrono::steady_clock::now();
-	auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-	if(time_elapsed>40)
-		std::printf("warning: reduce brightness of image because processing size is too large (%lld milliseconds)\n",time_elapsed);
-	return true;
-}
-
-std::map<std::string,std::function<bool(ProcessingMessage*,igtl::MessageBase::Pointer)>> openigtlink_callbacks{
-	{"TRANSFORM",process_transform_message},
-	{"IMAGE",process_image_message}
-};
-
-bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
-	assert(val.IsNotNull());
-	if (er){
-        return true;
-    } 
-    if (auto search = openigtlink_callbacks.find(val->GetMessageType()); search != openigtlink_callbacks.end())
-        search->second(this,val);
-    else
-        std::cout << "No functionality for function received\n";
-    return false;
-}
-
-void ProcessingMessage::communicate() {
-	list_of_recorded_points.clear();
-	using namespace curan::communication;
-	button->set_waiting_color(SK_ColorGREEN);
-	io_context.reset();
-	interface_igtl igtlink_interface;
-	Client::Info construction{ io_context,igtlink_interface };
-	asio::ip::tcp::resolver resolver(io_context);
-	auto endpoints = resolver.resolve("localhost", std::to_string(port));
-	construction.endpoints = endpoints;
-	Client client{ construction };
-	connection_status.set(true);
-
-	auto lam = [this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
-		try{
-			if (process_message(protocol_defined_val, er, val))
-			{
-				connection_status.set(false);
-				attempt_stop();
-			}
-		}catch(...){
-			std::cout << "Exception was thrown\n";
-		}
-	};
-	auto connectionstatus = client.connect(lam);
-	io_context.run();
-	button->set_waiting_color(SK_ColorRED);
-	return;
-}
-
-void ProcessingMessage::attempt_stop() {
-	io_context.stop();
+    return 0;
 }

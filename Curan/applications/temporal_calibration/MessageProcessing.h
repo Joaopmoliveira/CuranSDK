@@ -34,7 +34,9 @@ struct ProcessingMessage {
 	curan::ui::Button* button;
 	curan::ui::Button* button_start_collection;
 	asio::io_context io_context;
-	std::atomic<bool> should_record = false;
+	std::atomic<bool> show_line = false;
+	std::atomic<bool> start_calibration = false;
+	
 	std::shared_ptr<curan::utilities::ThreadPool> shared_pool = curan::utilities::ThreadPool::create(4);
 	short port = 18944;
 

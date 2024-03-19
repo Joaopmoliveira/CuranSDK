@@ -43,12 +43,33 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 			processing->attempt_stop();
 		}
 	};
+
 	ObservationEigenFormat observation_n;
 
 	auto start_connection = Button::make("Connect",resources);
 	start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 	start_connection->add_press_call(start_connection_callback);
 	auto start_connection_pointer = start_connection.get();
+
+	auto segmentation = Button::make("Segmentation Visualizer",resources);
+	segmentation->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	segmentation->add_press_call([processing](Button* button, Press press ,ConfigDraw* config) {
+		processing->show_line.load();
+		auto val = !processing->show_line.load();
+		processing->show_line.store(val);
+		SkColor color = (val) ? SK_ColorCYAN : SK_ColorBLACK;
+		button->set_waiting_color(color);
+	});
+	
+	auto calibration = Button::make("Start calibration",resources);
+	calibration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	calibration->add_press_call([processing](Button* button, Press press ,ConfigDraw* config) {
+		processing->start_calibration.load();
+		auto val = !processing->start_calibration.load();
+		processing->start_calibration.store(val);
+		SkColor color = (val) ? SK_ColorCYAN : SK_ColorBLACK;
+		button->set_waiting_color(color);;
+	});
 
 	auto button_options = Button::make("Options",resources);
 	button_options->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
@@ -57,7 +78,7 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 	});
 
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-	*buttoncontainer << std::move(start_connection) << std::move(button_options);
+	*buttoncontainer << std::move(start_connection) << std::move(segmentation) << std::move(calibration) << std::move(button_options);
 	processing->button = start_connection_pointer;
 
 	start_connection_pointer->set_waiting_color(SK_ColorRED);
