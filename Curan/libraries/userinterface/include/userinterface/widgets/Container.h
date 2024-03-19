@@ -9,97 +9,103 @@
 #include <memory>
 #include <optional>
 
+/*
+
+*/
+
 namespace curan {
-	namespace ui {
-		class Container : public Drawable , utilities::Lockable{
-		public:
+namespace ui {
 
-        enum class ContainerType{
-            LINEAR_CONTAINER,
-            VARIABLE_CONTAINER
-        };
+class Container : public Drawable , utilities::Lockable{
+public:
 
-        enum class Arrangement {
-			VERTICAL,
-			HORIZONTAL,
-			UNDEFINED
-		};
+enum class ContainerType{
+    LINEAR_CONTAINER,
+    VARIABLE_CONTAINER
+};
 
-		~Container();
+enum class Arrangement {
+	VERTICAL,
+	HORIZONTAL,
+	UNDEFINED
+};
 
-		drawablefunction draw() override;
-		callablefunction call() override;
+~Container();
 
-		SkRect minimum_size() override;
+drawablefunction draw() override;
+callablefunction call() override;
 
-		inline Container& set_color(SkColor color){
-			std::lock_guard<std::mutex> g{ get_mutex() };
-			layout_color = color;
-			return *(this);
-		}
+SkRect minimum_size() override;
 
-		inline SkColor get_color(){
-			std::lock_guard<std::mutex> g{ get_mutex() };
-			return layout_color;
-		}
+inline Container& set_color(SkColor color){
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	layout_color = color;
+	return *(this);
+}
 
-		inline Container& set_divisions(const std::vector<SkScalar>& indivision){
-			std::lock_guard<std::mutex> g{ get_mutex() };
-			if(type==ContainerType::VARIABLE_CONTAINER)
-				throw std::runtime_error("Trying to set divisions on a variable container");
-			divisions = indivision;
-			return *(this);
-		}
+inline SkColor get_color(){
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	return layout_color;
+}
 
-		inline Container& set_variable_layout(const std::vector<SkRect>& indivision){
-			std::lock_guard<std::mutex> g{ get_mutex() };
-			if(type==ContainerType::LINEAR_CONTAINER)
-				throw std::runtime_error("Trying to set variable layout on linear container");
-			rectangles_of_contained_layouts = indivision;
-			return *(this);
-		}
+inline Container& set_divisions(const std::vector<SkScalar>& indivision){
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	if(type==ContainerType::VARIABLE_CONTAINER)
+		throw std::runtime_error("Trying to set divisions on a variable container");
+	divisions = indivision;
+	return *(this);
+}
 
-		inline bool is_leaf() override {
-			return false;
-		}
+inline Container& set_variable_layout(const std::vector<SkRect>& indivision){
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	if(type==ContainerType::LINEAR_CONTAINER)
+		throw std::runtime_error("Trying to set variable layout on linear container");
+	rectangles_of_contained_layouts = indivision;
+	return *(this);
+}
 
-		void compile() override;
+inline bool is_leaf() override {
+	return false;
+}
 
-		void framebuffer_resize(const SkRect& new_page_size) override;
+void compile() override;
 
-		Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
+void framebuffer_resize(const SkRect& new_page_size) override;
 
-		inline std::vector<SkRect> get_positioning() {
-			if(!compiled)
-				throw std::runtime_error("cannot query positions while container not compiled");
-			return rectangles_of_contained_layouts;
-		};
+Container& linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal);
 
-		Container& operator<<(std::unique_ptr<Drawable> value);
+inline std::vector<SkRect> get_positioning() {
+	if(!compiled)
+		throw std::runtime_error("cannot query positions while container not compiled");
+	return rectangles_of_contained_layouts;
+};
 
-		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement);
-		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement, ImageWrapper image_wrapper);
-		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement, RuntimeEffect image_wrapper);
+Container& operator<<(std::unique_ptr<Drawable> value);
 
-		private:
+static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement);
+static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement, ImageWrapper image_wrapper);
+static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement, RuntimeEffect image_wrapper);
 
-			Container(const ContainerType& type,const Arrangement& arragement);
-			Container(const ContainerType& type,const Arrangement& arragement, ImageWrapper image_wrapper);
-			Container(const ContainerType& type,const Arrangement& arragement, RuntimeEffect image_wrapper);
+private:
+
+Container(const ContainerType& type,const Arrangement& arragement);
+Container(const ContainerType& type,const Arrangement& arragement, ImageWrapper image_wrapper);
+Container(const ContainerType& type,const Arrangement& arragement, RuntimeEffect image_wrapper);
 			
-			std::optional<ImageWrapper> background_image;
-			std::optional<RuntimeEffect> background_effect;
-			SkPaint paint_layout;
-			std::vector<SkScalar> divisions;
-			std::vector<std::unique_ptr<Drawable>> contained_layouts;
-			std::vector<SkRect> rectangles_of_contained_layouts;
-			bool horizontaly_fixed = false;
-			bool vertically_fixed = false;
-			ContainerType type;
-			Arrangement arragement;
-			SkColor layout_color;
-			bool compiled = false;
-		};
-	}
+std::optional<ImageWrapper> background_image;
+std::optional<RuntimeEffect> background_effect;
+SkPaint paint_layout;
+std::vector<SkScalar> divisions;
+std::vector<std::unique_ptr<Drawable>> contained_layouts;
+std::vector<SkRect> rectangles_of_contained_layouts;
+bool horizontaly_fixed = false;
+bool vertically_fixed = false;
+ContainerType type;
+Arrangement arragement;
+SkColor layout_color;
+bool compiled = false;
+};
+
+}
 }
 #endif
