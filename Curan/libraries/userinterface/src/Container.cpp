@@ -28,6 +28,18 @@ Container::Container(const ContainerType& intype,const Arrangement& inarragement
 	paint_layout.setColor(layout_color);
 }
 
+Container::Container(const ContainerType& intype,const Arrangement& inarragement, RuntimeEffect effect_wrapper) : 
+		type{intype} , 
+		arragement{inarragement}, 
+		layout_color{SK_ColorTRANSPARENT},
+		background_effect{effect_wrapper}
+{
+	paint_layout.setStyle(SkPaint::kFill_Style);
+	paint_layout.setAntiAlias(true);
+	paint_layout.setStrokeWidth(4);
+	paint_layout.setColor(layout_color);
+}
+
 std::unique_ptr<Container> Container::make(const ContainerType& type,const Arrangement& arragement){
 	std::unique_ptr<Container> container = std::unique_ptr<Container>(new Container{type,arragement});
 	return container;
@@ -37,6 +49,12 @@ std::unique_ptr<Container> Container::make(const ContainerType& type, const Arra
 	std::unique_ptr<Container> container = std::unique_ptr<Container>(new Container{type,arragement,image_wrapper});
 	return container;
 }
+
+std::unique_ptr<Container> Container::make(const ContainerType& type, const Arrangement& arragement, RuntimeEffect effect_wrapper){
+	std::unique_ptr<Container> container = std::unique_ptr<Container>(new Container{type,arragement,effect_wrapper});
+	return container;
+}
+
 
 Container::~Container(){
 	
@@ -66,6 +84,21 @@ drawablefunction Container::draw(){
 			paint_square.setStrokeWidth(4);
 			paint_square.setColor(SkColorSetARGB(0xFF,0xFF,0xFF,0xFF));
 			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt,&paint_square);
+		};
+	else if(background_effect)
+		return [this](SkCanvas* canvas) {
+			SkRect rectangle = get_position();
+
+			SkPaint paint_square;
+			paint_square.setStyle(SkPaint::kStroke_Style);
+			paint_square.setAntiAlias(true);
+			paint_square.setStrokeWidth(4);
+			paint_square.setColor(SK_ColorGREEN);
+
+			paint_layout.setColor(get_color());
+			canvas->drawRect(rectangle, paint_layout);
+
+			(*background_effect).draw(canvas,SkIRect::MakeXYWH(rectangle.x(),rectangle.y(),rectangle.width(),rectangle.height()));
 		};
 	else
 		return [this](SkCanvas* canvas) {

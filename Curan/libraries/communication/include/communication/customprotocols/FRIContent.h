@@ -51,7 +51,7 @@ namespace communication{
 
         inline void serialize(){
             size_t offset = 0;
-            std::memcpy(buffer.data()+offset,&body_size,n_joints*sizeof(double));
+            std::memcpy(buffer.data()+offset,&body_size,sizeof(size_t));
             offset += sizeof(size_t);
             std::memcpy(buffer.data()+offset,angles.data(),n_joints*sizeof(double));
             offset += n_joints*sizeof(double);

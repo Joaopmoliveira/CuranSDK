@@ -17,6 +17,24 @@
 #include <iostream>
 #include <thread>
 
+static constexpr char SKSL[] =
+"uniform float3 in_resolution;"
+"uniform float  in_time;"
+"float f(vec3 p) {"
+"    p.z -= in_time * 10.;"
+"    float a = p.z * .1;"
+"    p.xy *= mat2(cos(a), sin(a), -sin(a), cos(a));"
+"    return .1 - length(cos(p.xy) + sin(p.yz));"
+"}"
+"half4 main(vec2 fragcoord) { "
+"    vec3 d = .5 - fragcoord.xy1 / in_resolution.y;"
+"    vec3 p=vec3(0);"
+"    for (int i = 0; i < 32; i++) {"
+"      p += f(p) * d;"
+"    }"
+"    return ((sin(p) + vec3(2, 5, 12)) / length(p)).xyz1;"
+"}";
+
 std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning, curan::ui::IconResources& resources){
         using namespace curan::ui;
         auto warn = Button::make(" ", "warning.png", resources);
@@ -100,10 +118,8 @@ int main() {
 			if(config) config->stack_page->stack(warning_overlay("Started Neuro-Navigation",resources));
 		});
 
-		auto icon = resources.get_icon("hr_repeating.png");
-	    auto widgetcontainer = (icon) ? 
-					Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL,*icon) : 
-					Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL);
+		RuntimeEffect effects{SKSL};
+	    auto widgetcontainer = Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL,effects);
                     
 	    *widgetcontainer << std::move(button1) 
                         << std::move(button2) 

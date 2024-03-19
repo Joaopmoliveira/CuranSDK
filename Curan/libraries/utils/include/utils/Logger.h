@@ -13,6 +13,8 @@ namespace curan {
 
 		constexpr int max_number_of_strings = 50;
 
+		
+
 		struct Logger {		
 
 			Logger(const std::string& filename) {

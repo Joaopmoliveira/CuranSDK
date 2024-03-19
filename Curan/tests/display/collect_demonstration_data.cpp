@@ -3,8 +3,27 @@
 #include "userinterface/Window.h"
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/IconResources.h"
+#include "userinterface/widgets/RuntimeEffect.h"
 #include <iostream>
 #include <thread>
+
+static constexpr char SKSL[] =
+"uniform float3 in_resolution;"
+"uniform float  in_time;"
+"float f(vec3 p) {"
+"    p.z -= in_time * 10.;"
+"    float a = p.z * .1;"
+"    p.xy *= mat2(cos(a), sin(a), -sin(a), cos(a));"
+"    return .1 - length(cos(p.xy) + sin(p.yz));"
+"}"
+"half4 main(vec2 fragcoord) { "
+"    vec3 d = .5 - fragcoord.xy1 / in_resolution.y;"
+"    vec3 p=vec3(0);"
+"    for (int i = 0; i < 32; i++) {"
+"      p += f(p) * d;"
+"    }"
+"    return ((sin(p) + vec3(2, 5, 12)) / length(p)).xyz1;"
+"}";
 
 int main()
 {
@@ -13,25 +32,17 @@ int main()
         using namespace curan::ui;
         IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
         std::unique_ptr<Context> context = std::make_unique<Context>();
-        ;
         DisplayParams param{std::move(context), 1200, 800};
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+        RuntimeEffect effects{SKSL};
 
         while (!glfwWindowShouldClose(viewer->window))
         {
             auto start = std::chrono::high_resolution_clock::now();
-            SkSurface *pointer_to_surface = viewer->getBackbufferSurface();
-            SkCanvas *canvas = pointer_to_surface->getCanvas();
-            canvas->drawColor(SK_ColorWHITE);
-            SkPaint paint;
-            paint.setAntiAlias(true);
-            SkPath path;
-            path.moveTo(124, 108);
-            path.lineTo(172, 24);
-            path.addCircle(50, 50, 30);
-            path.moveTo(36, 148);
-            path.quadTo(66, 188, 120, 136);
-            canvas->drawPath(path, paint);
+            SkSurface *surface = viewer->getBackbufferSurface();
+            SkCanvas *canvas = surface->getCanvas();
+            effects.draw(canvas,SkIRect::MakeWH(surface->width(),surface->height()));
+
             glfwPollEvents();
             auto signals = viewer->process_pending_signals();
 
@@ -45,7 +56,7 @@ int main()
     }
     catch (const std::exception &e)
     {
-        std::cout << "Exception thrown:" << e.what() << "\n";
+        std::cout << "\nException thrown:\n" << e.what() << "\n";
     }
     catch (...)
     {

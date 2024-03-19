@@ -1,6 +1,7 @@
 #include "communication/Protocols.h"
 #include "communication/ProtoIGTL.h"
 #include "communication/ProtoFRI.h"
+#include "communication/ProtoProcHandler.h"
 #include "utils/Overloading.h"
 
 namespace curan {
@@ -11,6 +12,7 @@ std::function<void(Client*)> get_interface(callable callable_type) {
 	std::visit(utilities::overloaded{
 		[&val](interface_igtl arg) { val = protocols::igtlink::start; },
 		[&val](interface_fri arg) { val = protocols::frimessage::start; },
+		[&val](interface_prochandler arg) { val = protocols::proc_handler_message::start; },
 		[&val](interface_empty arg) {val = [](Client* val) {}; } }, callable_type);
 	return val;
 	}

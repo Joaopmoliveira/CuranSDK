@@ -40,6 +40,7 @@ int main(int argc, TCHAR *argv[] ){
     WaitForSingleObject( pi.hProcess, 1000 );
     
     printf("Stopped waiting\n");
+    TerminateProcess(pi.hProcess,3);
     // Close process and thread handles. 
     CloseHandle( pi.hProcess );
     CloseHandle( pi.hThread );

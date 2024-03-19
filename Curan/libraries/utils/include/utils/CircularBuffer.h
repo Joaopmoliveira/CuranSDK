@@ -8,6 +8,30 @@
 namespace curan {
 namespace utilities {
 
+/*
+The CircularBuffer class is a contiguous block of memory, 
+where when we push a object of the template type 
+it is added to the next memory location. 
+
+When we arrive at the maximum number of elements of the circular buffer 
+the next object is placed at the starting index, 
+and the same logic applies.
+
+This is usefull for memory locality and 
+to control the maximum number of elements in a queue. 
+
+Consider the following example. We want a circular buffer with three elements
+
+
+int main(){
+    CircularBuffer<double> buf{3};
+
+% at the beggining the buffer is just allocated normally. Then 
+
+    return 0;
+}
+*/
+
 template <class T>
 class CircularBuffer {
 

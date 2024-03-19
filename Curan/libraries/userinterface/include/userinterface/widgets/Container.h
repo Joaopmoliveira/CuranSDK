@@ -4,6 +4,7 @@
 #include "Drawable.h"
 #include "utils/Lockable.h"
 #include "ImageWrapper.h"
+#include "RuntimeEffect.h"
 #include <vector>
 #include <memory>
 #include <optional>
@@ -78,13 +79,16 @@ namespace curan {
 
 		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement);
 		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement, ImageWrapper image_wrapper);
+		static std::unique_ptr<Container> make(const ContainerType& type, const Arrangement& arragement, RuntimeEffect image_wrapper);
 
 		private:
 
 			Container(const ContainerType& type,const Arrangement& arragement);
 			Container(const ContainerType& type,const Arrangement& arragement, ImageWrapper image_wrapper);
+			Container(const ContainerType& type,const Arrangement& arragement, RuntimeEffect image_wrapper);
 			
 			std::optional<ImageWrapper> background_image;
+			std::optional<RuntimeEffect> background_effect;
 			SkPaint paint_layout;
 			std::vector<SkScalar> divisions;
 			std::vector<std::unique_ptr<Drawable>> contained_layouts;
