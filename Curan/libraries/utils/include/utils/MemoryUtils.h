@@ -15,6 +15,30 @@ namespace curan {
 namespace utilities {
 
 /*
+The MemoryBuffer class is a pivotal class inside Curan. 
+It allows us to move memory around 
+and customize the behavior of copying said memory 
+depending on the desired behavior of the overall application.
+Under the hood, the class used ASIO API to define buffers for two
+reasons, given how widespread ASIO is, we acknowledge that its
+API to represent memory regions is flexible and robust. Because
+ASIO is cheap, and a header library, we believe adding this dependency
+to such a fundamental library of Curan as utils is not problematic.
+
+The class MemoryBuffer is abstract, meaning that it cannot be instantiated,
+thus children's classes must implement whatever custom functionality we desire. Internally the class
+can be iterated, given the definition of a begin and end virtual calls. The << operator is also defined 
+so that we can print buffers for debug purposes. 
+
+There are two children of the parent MemoryBuffer:
+1) CaptureBuffer
+2) CopyBuffer
+
+Which serve very distinct purposes. 
+
+The CaptureBuffer has a templated constructor, 
+which receives a generic template argument defining
+ an object which controls the lifetime of the underlying memory
 */
 
 class MemoryBuffer {

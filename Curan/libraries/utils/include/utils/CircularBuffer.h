@@ -10,14 +10,14 @@ namespace utilities {
 
 /*
 The CircularBuffer class is a contiguous block of memory, 
-where when we push a object of the template type 
+where when we push an object of the template type 
 it is added to the next memory location. 
 
 When we arrive at the maximum number of elements of the circular buffer 
 the next object is placed at the starting index, 
 and the same logic applies.
 
-This is usefull for memory locality and 
+This is useful for memory locality and 
 to control the maximum number of elements in a queue. 
 
 Consider the following example. We want a circular buffer with three elements
@@ -26,28 +26,28 @@ Consider the following example. We want a circular buffer with three elements
 int main(){
     CircularBuffer<double> buf{3};
 
-% at the beggining the buffer is just allocated normally. 
-Then we put a value inside our buffer.
+% At the beginning, the buffer is just allocated normally. 
+Then, we put a value inside our buffer.
 
     buf.put(1.0);
 
-% currently the values are : 1.0 0.0 0.0
-% now we can put more values
+% Currently the values are [1.0 0.0 0.0]
+% Now we can put more values
 
     buf.put(2.0);
     buf.put(3.0);
 
 % notice that the buffer will now be full
-% with the following sequency : 1.0 2.0 3.0
-% if we put another value inside then we have
+% with the following sequence [1.0 2.0 3.0]
+% If we put another value inside then we have
 
     buf.put(4.0);
 
-% the buffer will now contain the values : 4.0 2.0 3.0
+% The buffer will now contain the values [4.0 2.0 3.0]
 
 % Another nice feature of the circular buffer is that 
-% we can use a range for loop with diminishes the clutter of the language
-% as in 
+% e can use a range for loop with diminishes the clutter
+% of looping through its elements as in 
 
     std::cout << "the buffer values are:\n"
     for(const auto& val : buf)

@@ -8,17 +8,17 @@ namespace curan {
 namespace utilities {
 
 /*
-A Job is basically a pointer to a function to be executed 
-at a latter point in time. Because we capture a functor
+A Job is a pointer to a function to be executed 
+at a later point in time. Because we capture a functor
 you can capture the necessary variables with a lambda
 and from there you can execute the job by calling the 
 operator()
 
 The job has a description so that we can query a queue for 
-pending jobs, jobs being executed, etc.. This allows us to 
+pending jobs, jobs being executed, etc. This allows us to 
 provide feedback to a user about which jobs are running. 
 
-The job class is mostly a class to be used in conjuction 
+The job class is mostly a class to be used in conjunction 
 with the ThreadPool class. Consider the following example 
 (not representative of how this class was designed
  to be used because we don't use the ThreadPool class)

@@ -9,7 +9,7 @@ namespace curan {
 namespace utilities {
 
 /*
-Thread safe flag which can be used to wait
+The Flag class can be used to wait
 for a given event from multiple threads. When
 created the boolean value is set to false.
 
@@ -17,7 +17,7 @@ created the boolean value is set to false.
 Consider the following scenario. We have a function foo
 that is running in another thread, this function should only
 print to the output stream once the flag is true. The flag class
-allows us to wait for events to be triggerred
+allows us to wait for events to be triggered
 
 % This function is as follows
 
@@ -26,27 +26,27 @@ void foo(Flag& f_flag){
 	std::cout << "An event was detected!\n";
 }
 
-% we first define our flag and then we lauch the other 
+% We first define our flag and then we launch the other 
 % thread. 
 
 int main(){
 	curan::utilities::Flag f_flag;
 	std::thread other_thread{[&](){foo(f_flag);}};
 
-% now that we have lauched the other thread
-% we can do our heavy activities without worriyng about 
+% Now that we have launched the other thread
+% we can do our heavy activities without worrying about 
 % the other tasks
 
 	for(size_t i = 0; i< 100000 ; ++i){
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
-% now that we have finished our activity we can trigger the boolean flag 
+% Now that we have finished our activity we can trigger the boolean flag 
 
 	f_flag.set(true);
 
 % which will wake up the wait() method in the foo function
-% once the foo function prints the thread returns and we can join again
+% Once the foo function prints the thread returns and we can join again
 % with the thread
 
 	other_thread.join();
