@@ -10,27 +10,82 @@
 #include <optional>
 
 /*
-The Container class is the glue that allows us to create pages
-with multiple widgets. Basically all things that can be drawn, derive from 
-the drawable class, which contains two methods, the draw method and the call method. 
-The container is responsible to position widgets on different regions of the page.
+The Container class is the glue that allows us to 
+create pages with multiple widgets. Basically all 
+things that can be drawn, derive from the drawable 
+class, which contains two methods, the draw method 
+and the call method. 
 
-By default the container is linear, implying that the space that the container ocupies 
-will be divided equaly between the widgets contained inside it. The container can 
-be vertical or horizontal. If its vertical the container divides the space allocated to it 
-with a uniform vertical space, and if horizontal it divides the space equaly horizontaly. 
+The container is responsible to position widgets on 
+different regions of the page.
 
-Its also possible to specify a variable container size, in which case, you can specify 
-the relative coordinates of the widgets contained inside the container. 
+By default the container is linear, implying that 
+the space that the container ocupies will be divided 
+equaly between the widgets contained inside it. The 
+container can be vertical or horizontal. If its 
+vertical the container divides the space allocated 
+to it with a uniform vertical space, and if horizontal 
+it divides the space equaly horizontaly. 
 
-You can specify the background color of the container, or if you need more customized behavior
-you can specify a background texture to be used, or even customize the behavior of a shader which fills 
-the background area. 
+Its also possible to specify a variable container size, 
+in which case, you can specify the relative coordinates 
+of the widgets contained inside the container. 
+
+You can specify the background color of the container, 
+or if you need more customized behavior you can specify 
+a background texture to be used, or even customize the 
+behavior of a shader which fills the background area. 
 
 An example of using containers is the following 
 
 int main(){
 	
+	% We allocate two image display widgets, where we want 
+	% the first image display ocupying the left region of 
+	% the container and the second image display ocupying the
+	% right region of the container. They should ocupy the same
+	% relative horizontal area of the container
+
+	auto first_image_display = ImageDisplay::make();
+	auto second_image_display = ImageDisplay::make();
+
+	% Given the previous specification we create a linear 
+	% container with an horizontal layout and when we put 
+	% the widgets inside the container the first one ocupies 
+	% the left region and the second ocupies the right 
+	% region, i.e., its always left to right and top to bottom
+
+	auto displaycontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*displaycontainer << std::move(first_image_display) << std::move(second_image_display); 
+
+	% now we want three buttons to control the display functions
+	% a button centered 
+	
+	auto connect = Button::make("Connect",resources);
+	connect->set_click_color(SK_ColorGRAY)
+					 .set_hover_color(SK_ColorDKGRAY)
+					 .set_waiting_color(SK_ColorBLACK)
+					 .set_size(SkRect::MakeWH(100, 80));
+
+	auto collect = Button::make("Data Collection",resources);
+	collect->set_click_color(SK_ColorGRAY)
+							.set_hover_color(SK_ColorDKGRAY)
+							.set_waiting_color(SK_ColorBLACK)
+							.set_size(SkRect::MakeWH(200, 80));
+
+	auto options = Button::make("Options",resources);
+	options->set_click_color(SK_ColorGRAY)
+				   .set_hover_color(SK_ColorDKGRAY)
+				   .set_waiting_color(SK_ColorBLACK)
+				   .set_size(SkRect::MakeWH(200, 80));
+
+
+	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*buttoncontainer << std::move(connect) << std::move(collect) << std::move(options);
+
+	auto widgetcontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+	*widgetcontainer << std::move(buttoncontainer) << std::move(displaycontainer);
+	widgetcontainer->set_divisions({ 0.0 , 0.1 , 1.0 });
 }
 
 */
