@@ -12,93 +12,94 @@
 #include <fstream>
 #include <memory>
 
-namespace curan
+namespace curan{
+namespace ui{
+
+/*
+
+*/
+
+class ImutableTextPanel : public curan::ui::Drawable, public curan::utilities::Lockable
 {
-    namespace ui
-    {
+public:
 
-        class ImutableTextPanel : public curan::ui::Drawable, public curan::utilities::Lockable
-        {
-            const std::array<std::string, 3> kTypefaces = {"sans-serif", "serif", "monospace"};
-            const size_t kTypefaceCount = kTypefaces.size();
+    enum typeface{
+        sans_serif = 0,
+        serif = 1,
+        monospace = 2
+    };
 
-            static constexpr SkFontStyle::Weight kFontWeight = SkFontStyle::kNormal_Weight;
-            static constexpr SkFontStyle::Width kFontWidth = SkFontStyle::kNormal_Width;
-            static constexpr SkFontStyle::Slant kFontSlant = SkFontStyle::kUpright_Slant;
+    static std::unique_ptr<ImutableTextPanel> make(const std::string& default_text);
 
-            SkString fPath;
-            std::vector<char> fClipboard;
-            SkPlainTextEditor::Editor fEditor;
-            SkPlainTextEditor::Editor::TextPosition fTextPos{0, 0};
-            SkPlainTextEditor::Editor::TextPosition fMarkPos;
-            int fPos = 0;
-            int fWidth = 0;
-            int fHeight = 0;
-            int fMargin = 10;
-            size_t fTypefaceIndex = 0;
-            float fFontSize = 24;
-            bool fShiftDown = false;
+    void compile() override;
 
-            bool fMouseDown = false;
+    ~ImutableTextPanel();
 
-            SkColor4f text_color;
-            SkColor4f background_color;
-            SkColor4f selection_color;
+    curan::ui::drawablefunction draw() override;
 
-            ImutableTextPanel(const std::string& default_text);
-        public:
-            enum typeface
-            {
-                sans_serif = 0,
-                serif = 1,
-                monospace = 2
-            };
-            static std::unique_ptr<ImutableTextPanel> make(const std::string& default_text);
+    curan::ui::callablefunction call() override;
 
-            void compile() override;
+    void framebuffer_resize(const SkRect &new_page_size) override;
 
-            ~ImutableTextPanel();
+    void setFont(typeface font);
 
-            curan::ui::drawablefunction draw() override;
+    bool moveCursor(SkPlainTextEditor::Editor::Movement m, bool shift = false);
 
-            curan::ui::callablefunction call() override;
+    bool move(SkPlainTextEditor::Editor::TextPosition pos, bool shift);
 
-            void framebuffer_resize(const SkRect &new_page_size) override;
-
-            void setFont(typeface font);
-
-            bool moveCursor(SkPlainTextEditor::Editor::Movement m, bool shift = false);
-
-            bool move(SkPlainTextEditor::Editor::TextPosition pos, bool shift);
-
-            inline SkColor4f get_text_color()
-            {
-                std::lock_guard<std::mutex> g{get_mutex()};
-                return text_color;
-            }
-
-            inline ImutableTextPanel &set_text_color(SkColor4f color)
-            {
-                std::lock_guard<std::mutex> g{get_mutex()};
-                text_color = color;
-                return *(this);
-            }
-
-            inline SkColor4f get_background_color()
-            {
-                std::lock_guard<std::mutex> g{get_mutex()};
-                return background_color;
-            }
-
-            inline ImutableTextPanel &set_background_color(SkColor4f color)
-            {
-                std::lock_guard<std::mutex> g{get_mutex()};
-                background_color = color;
-                return *(this);
-            }
-        };
-
+    inline SkColor4f get_text_color(){
+        std::lock_guard<std::mutex> g{get_mutex()};
+        return text_color;
     }
+
+    inline ImutableTextPanel &set_text_color(SkColor4f color){
+        std::lock_guard<std::mutex> g{get_mutex()};
+        text_color = color;
+        return *(this);
+    }
+
+    inline SkColor4f get_background_color(){
+        std::lock_guard<std::mutex> g{get_mutex()};
+        return background_color;
+    }
+
+    inline ImutableTextPanel &set_background_color(SkColor4f color){
+        std::lock_guard<std::mutex> g{get_mutex()};
+        background_color = color;
+        return *(this);
+    }
+
+private:
+
+    ImutableTextPanel(const std::string& default_text);
+
+    const std::array<std::string, 3> kTypefaces = {"sans-serif", "serif", "monospace"};
+    const size_t kTypefaceCount = kTypefaces.size();
+
+    static constexpr SkFontStyle::Weight kFontWeight = SkFontStyle::kNormal_Weight;
+    static constexpr SkFontStyle::Width kFontWidth = SkFontStyle::kNormal_Width;
+    static constexpr SkFontStyle::Slant kFontSlant = SkFontStyle::kUpright_Slant;
+
+    SkString fPath;
+    std::vector<char> fClipboard;
+    SkPlainTextEditor::Editor fEditor;
+    SkPlainTextEditor::Editor::TextPosition fTextPos{0, 0};
+    SkPlainTextEditor::Editor::TextPosition fMarkPos;
+    int fPos = 0;
+    int fWidth = 0;
+    int fHeight = 0;
+    int fMargin = 10;
+    size_t fTypefaceIndex = 0;
+    float fFontSize = 24;
+    bool fShiftDown = false;
+    bool fMouseDown = false;
+    SkColor4f text_color;
+    SkColor4f background_color;
+    SkColor4f selection_color;
+
+};
+
+}
 }
 
 #endif

@@ -11,6 +11,10 @@
 namespace curan {
 namespace ui {
 
+/*
+
+*/
+
 class IconResources{
 public:
 	IconResources(std::string path_to_resources);
