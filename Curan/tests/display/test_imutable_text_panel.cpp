@@ -3,6 +3,9 @@
 #include "userinterface/Window.h"
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/ImutableTextPanel.h"
+#include "userinterface/widgets/Container.h"
+#include "userinterface/widgets/Page.h"
+
 #include <iostream>
 #include <thread>
 

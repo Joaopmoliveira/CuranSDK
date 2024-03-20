@@ -4,6 +4,8 @@
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Panel.h"
 #include "userinterface/widgets/Button.h"
+#include "userinterface/widgets/Container.h"
+#include "userinterface/widgets/Page.h"
 
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkCastImageFilter.h"

@@ -7,6 +7,7 @@
 #include "userinterface/widgets/TextBlob.h"
 #include "userinterface/widgets/SliderPanel.h"
 #include "userinterface/widgets/MiniPage.h"
+#include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Overlay.h"
 #include "userinterface/widgets/MutatingTextPanel.h"
 #include <unordered_map>

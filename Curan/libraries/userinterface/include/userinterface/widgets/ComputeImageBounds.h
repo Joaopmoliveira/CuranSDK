@@ -2,6 +2,7 @@
 #define CURAN_COMPUTE_IMAGE_BOUNDS_HEADER_FILE_
 
 #include "definitions/UIdefinitions.h"
+#include <cassert>
 
 namespace curan {
 namespace ui {

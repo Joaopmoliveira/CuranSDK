@@ -10,7 +10,7 @@
 #include <optional>
 
 /*
-
+The Container class is the glue that allows us to create 
 */
 
 namespace curan {
