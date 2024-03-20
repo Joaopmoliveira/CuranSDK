@@ -10,7 +10,29 @@
 #include <optional>
 
 /*
-The Container class is the glue that allows us to create 
+The Container class is the glue that allows us to create pages
+with multiple widgets. Basically all things that can be drawn, derive from 
+the drawable class, which contains two methods, the draw method and the call method. 
+The container is responsible to position widgets on different regions of the page.
+
+By default the container is linear, implying that the space that the container ocupies 
+will be divided equaly between the widgets contained inside it. The container can 
+be vertical or horizontal. If its vertical the container divides the space allocated to it 
+with a uniform vertical space, and if horizontal it divides the space equaly horizontaly. 
+
+Its also possible to specify a variable container size, in which case, you can specify 
+the relative coordinates of the widgets contained inside the container. 
+
+You can specify the background color of the container, or if you need more customized behavior
+you can specify a background texture to be used, or even customize the behavior of a shader which fills 
+the background area. 
+
+An example of using containers is the following 
+
+int main(){
+	
+}
+
 */
 
 namespace curan {
