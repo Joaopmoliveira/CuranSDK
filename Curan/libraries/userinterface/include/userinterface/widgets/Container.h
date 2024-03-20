@@ -59,8 +59,9 @@ int main(){
 	*displaycontainer << std::move(first_image_display) << std::move(second_image_display); 
 
 	% now we want three buttons to control the display functions
-	% a button centered 
-	
+	% a button to connect a socket, a button to collect data and 
+	% an button to show additional options
+
 	auto connect = Button::make("Connect",resources);
 	connect->set_click_color(SK_ColorGRAY)
 					 .set_hover_color(SK_ColorDKGRAY)
@@ -79,13 +80,24 @@ int main(){
 				   .set_waiting_color(SK_ColorBLACK)
 				   .set_size(SkRect::MakeWH(200, 80));
 
+	% we can compose the buttons in an horizontal display
+	% with an equal spacing between them 
 
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*buttoncontainer << std::move(connect) << std::move(collect) << std::move(options);
 
+	% Now that we have both containers we can join them in a container
+	% but we don't want the buttons to have the same space as the image
+	% displays. Because the images are more important we want them to ocupy 
+	% 90% of the vertical spacing, thus we can write
+
 	auto widgetcontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	*widgetcontainer << std::move(buttoncontainer) << std::move(displaycontainer);
 	widgetcontainer->set_divisions({ 0.0 , 0.1 , 1.0 });
+
+	% where set_divisions specifying the vertical spacing that the widgetcontainer 
+	% will allocate for the button container and the display container
+
 }
 
 */
