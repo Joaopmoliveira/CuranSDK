@@ -21,6 +21,7 @@ namespace curan {
 			asio::io_context& _cxt;
 			std::list<std::shared_ptr<utilities::MemoryBuffer>> to_send;
 			std::function<void(Client*)> start;
+			bool is_connected = false;
 
 		public:
 			Socket(asio::io_context& io_context,

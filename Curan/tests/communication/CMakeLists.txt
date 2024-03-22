@@ -52,3 +52,16 @@ if(SERIAL_RECEIVE_ARGUMENT)
 else(SERIAL_RECEIVE_ARGUMENT)
     target_compile_definitions(communication_with_ultrasound_arduino PRIVATE CURAN_SERIAL_PORT="COM5")
 endif(SERIAL_RECEIVE_ARGUMENT)
+
+add_executable(test_proc_handler_communication proc_handling_communication.cpp)
+
+target_link_libraries(test_proc_handler_communication PUBLIC
+communication
+)
+
+add_executable(mimic_proc_handling_multiprocess mimic_proc_handling_multiprocess.cpp)
+
+target_link_libraries(mimic_proc_handling_multiprocess PUBLIC
+communication
+utils
+)

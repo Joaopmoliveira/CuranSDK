@@ -10,6 +10,8 @@ namespace communication{
 
         enum Signals : uint32_t{
             SHUTDOWN_SAFELY,
+            HEART_BEAT,
+            ACKNOLEGE_HEAR_BEAT,
             SIGNALS_SIZE_
         };
 

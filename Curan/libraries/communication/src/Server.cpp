@@ -23,6 +23,7 @@ std::optional<std::shared_ptr<utilities::Cancelable>> Server::connect(callable c
 
 	auto cancel = utilities::Cancelable::make_cancelable();
 	combined val{ c,cancel };
+	std::lock_guard<std::mutex> g{mut};
 	callables.push_back(val);
 	for(auto & client : list_of_clients)
 		client->connect(c);
@@ -51,9 +52,9 @@ void Server::accept() {
 		utilities::cout << "Server received a client";
 		Client::ServerInfo info{ _cxt,connection_type,std::move(socket) };
 		auto client_ptr = std::make_shared<Client>(info);
+		std::lock_guard<std::mutex> g{mut};
 		for(auto & submitted_callables : callables)
 			client_ptr->connect(submitted_callables.lambda);
-		std::lock_guard<std::mutex> g{mut};
 		list_of_clients.push_back(client_ptr);
 		utilities::cout << "Server started listening for new client";
 	} else {
