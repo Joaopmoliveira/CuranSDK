@@ -22,11 +22,12 @@ void child_callback(const size_t& protocol_defined_val,const std::error_code& er
 			std::cout << "child heart_beat\n";
 		break;
         case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
-            std::cout << "child valid \n";
+            std::cout << "!!!!!!!child shutdown!!!! \n";
 			flag1.set(true);
         break;
         default: 
-            std::cout << "child invalid \n";
+            std::cout << "!!!!!!!child unknown!!!! \n";
+			flag1.set(true);
         break;
     }
 }
@@ -112,14 +113,18 @@ int parent_proc(asio::io_context& context,curan::utilities::Flag& flag){
         val->serialize();
 		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(),val);
 		std::this_thread::sleep_for(std::chrono::milliseconds(time_taken));
-		std::cout << "sending server data\n";
 		server.write(to_send);
 	}
 
 	auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY);
+	val->serialize();
+	auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(),val);
+
+	server.write(to_send);
 
 	laucher.join();
 	std::cout << "====== stopping server ============\n";
+	
 }
 
 int main() {
