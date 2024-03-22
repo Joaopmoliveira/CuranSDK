@@ -11,6 +11,49 @@
 
 constexpr size_t time_taken = 200;
 
+void pure_proc_laucher_functor(){
+
+};
+
+class ProcessLaucher{
+	asio::io_context& context;
+	asio::high_resolution_timer timer;
+	std::chrono::nanoseconds duration;
+	size_t number_of_violations;
+	bool was_violated;
+
+	template <class _Rep, class _Period>
+	ProcessLaucher(asio::io_context& in_context,const std::chrono::duration<_Rep, _Period>& _Rel_time) : 
+			context{in_context}, 
+			timer{in_context},
+			number_of_violations{0}
+	{
+		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(_Rel_time);
+		
+	};
+};
+
+void pure_child_proc_functor(){
+
+};
+
+class ChildProcess{
+	asio::io_context& context;
+	asio::high_resolution_timer timer;
+	std::chrono::nanoseconds duration;
+	size_t number_of_violations;
+	bool was_violated;
+
+	template <class _Rep, class _Period>
+	ChildProcess(asio::io_context& in_context,const std::chrono::duration<_Rep, _Period>& _Rel_time) : 
+			context{in_context}, 
+			timer{in_context},
+			number_of_violations{0}
+	{
+		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(_Rel_time);
+	}
+};
+
 void child_callback(const size_t& protocol_defined_val,const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val,curan::utilities::Flag& flag1) {
 	if(er){
 		std::cout << er.message();
