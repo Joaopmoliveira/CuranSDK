@@ -82,7 +82,7 @@ Internal2DImageType::Pointer ImportFilter::update_and_return_out() {
 	{
 		filter->Update();
 	}
-	catch (const itk::ExceptionObject& err)
+	catch (...)
 	{
 		return nullptr;
 	}
@@ -134,7 +134,7 @@ Internal2DImageType::Pointer CircleFilter::update_and_return_out()
 	{
 		filter->Update();
 	}
-	catch (const itk::ExceptionObject& err)
+	catch (...)
 	{
 		return nullptr;
 	}
@@ -167,7 +167,7 @@ Internal2DImageType::Pointer ThreholdFilter::update_and_return_out() {
 	{
 		filter->Update();
 	}
-	catch (const itk::ExceptionObject& err)
+	catch (...)
 	{
 		return nullptr;
 	}
@@ -206,7 +206,7 @@ Internal2DImageType::Pointer CannyFilter::update_and_return_out() {
 	{
 		cast_to_char->Update();
 	}
-	catch (const itk::ExceptionObject& err)
+	catch (...)
 	{
 		return nullptr;
 	}
@@ -242,7 +242,7 @@ Internal2DImageType::Pointer BinarizeFilter::update_and_return_out() {
 	{
 		filter->Update();
 	}
-	catch (const itk::ExceptionObject& err)
+	catch (...)
 	{
 		return nullptr;
 	}

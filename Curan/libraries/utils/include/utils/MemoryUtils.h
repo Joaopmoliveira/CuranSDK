@@ -99,7 +99,6 @@ we could destroy bloc_of_memory, yet memory
 still contains a valid copy of the underlying memory blob 
 
 */
-
 class MemoryBuffer {
 public:
 typedef asio::const_buffer value_type;

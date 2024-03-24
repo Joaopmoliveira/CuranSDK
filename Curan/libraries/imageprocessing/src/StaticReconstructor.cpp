@@ -25,7 +25,7 @@ StaticReconstructor::Info::Info(std::array<double,3> in_spacing,std::array<doubl
     spacing[2] = in_spacing[2];
 }
 
-StaticReconstructor::StaticReconstructor(const Info& info) : output_spacing{info.spacing},volumetric_bounding_box{info.volumetric_bounding_box}{
+StaticReconstructor::StaticReconstructor(const Info& info) : fillType{curan::image::reconstruction::FillingStrategy::GAUSSIAN}, output_spacing{info.spacing}, volumetric_bounding_box{info.volumetric_bounding_box} {
 	output_type::IndexType output_start;
 	output_start[0] = 0;
     output_start[1] = 0;
@@ -303,8 +303,8 @@ bool StaticReconstructor::multithreaded_update(std::shared_ptr<utilities::Thread
 		double clipRectangleOrigin [2]; // array size 2
 		double clipRectangleSize [2]; // array size 2
 
-		auto local_size = img->GetLargestPossibleRegion().GetSize();
-		auto local_origin = img->GetOrigin();
+		auto& local_size = img->GetLargestPossibleRegion().GetSize();
+		auto& local_origin = img->GetOrigin();
 
 		if(clipping){
 			clipRectangleOrigin[0] = (*clipping).clipRectangleOrigin[0];

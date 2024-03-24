@@ -15,11 +15,11 @@ namespace communication{
             SIGNALS_SIZE_
         };
 
-        ProcessHandler(){
+        ProcessHandler() : signal_to_process{ Signals ::HEART_BEAT}, buffer{} {
 
         }
 
-        explicit ProcessHandler(const Signals& sig) : signal_to_process{sig}{
+        explicit ProcessHandler(const Signals& sig) : signal_to_process{ sig }, buffer{} {
 
         }
 

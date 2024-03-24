@@ -8,7 +8,7 @@ namespace communication{
 
     struct FRIMessage{
 
-        FRIMessage(){
+        FRIMessage() : measured_torques{}, external_torques{}, angles{}, buffer{} {
 
         }
 

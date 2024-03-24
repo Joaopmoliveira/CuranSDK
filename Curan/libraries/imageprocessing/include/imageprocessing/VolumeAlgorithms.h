@@ -68,12 +68,12 @@ namespace curan {
 			{
 				// information on the volume
 				InternalImageType::Pointer outData;            // the output volume
-				void* outPtr;                     // scalar pointer to the output volume over the output extent
-				unsigned short* accPtr;           // scalar pointer to the accumulation buffer over the output extent
+				void* outPtr = nullptr;                     // scalar pointer to the output volume over the output extent
+				unsigned short* accPtr = nullptr;           // scalar pointer to the accumulation buffer over the output extent
 				InternalImageType::Pointer inData;             // input slice
-				void* inPtr;                      // scalar pointer to the input volume over the input slice extent
-				int* inExt;                       // array size 6, input slice extent (could have been split for threading)
-				unsigned int* accOverflowCount;   // the number of voxels that may have error due to accumulation overflow
+				void* inPtr = nullptr;                      // scalar pointer to the input volume over the input slice extent
+				int* inExt = nullptr;                       // array size 6, input slice extent (could have been split for threading)
+				unsigned int* accOverflowCount = nullptr;   // the number of voxels that may have error due to accumulation overflow
 
 				// transform matrix for images -> volume
 				Eigen::Matrix4d matrix;
@@ -83,8 +83,8 @@ namespace curan {
 				Compounding compoundingMode;
 
 				// parameters for clipping
-				double* clipRectangleOrigin; // array size 2
-				double* clipRectangleSize; // array size 2
+				double* clipRectangleOrigin = nullptr; // array size 2
+				double* clipRectangleSize = nullptr; // array size 2
 
 				double pixelRejectionThreshold;
 				int image_number;
