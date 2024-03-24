@@ -301,7 +301,7 @@ void ProcessingMessage::communicate() {
 			std::cout << "Exception was thrown\n";
 		}
 	};
-	auto connectionstatus = client.connect(lam);
+	client.connect(lam);
 	io_context.run();
 	button->set_waiting_color(SK_ColorRED);
 	return;

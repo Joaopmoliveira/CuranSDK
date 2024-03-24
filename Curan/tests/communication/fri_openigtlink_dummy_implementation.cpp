@@ -74,7 +74,7 @@ int main(){
 	auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	construction_joints.endpoints = endpoints;
 	curan::communication::Client client_joints{ construction_joints };
-    auto connectionstatus = client_joints.connect(client_callback);
+    client_joints.connect(client_callback);
 
     std::shared_ptr<curan::communication::FRIMessage> message = std::make_shared<curan::communication::FRIMessage>();
     for(size_t link = 0 ; link < curan::communication::FRIMessage::n_joints ; ++link){

@@ -149,7 +149,7 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
 	    construction.endpoints = endpoints;
 	    curan::communication::Client client{ construction };
 
-	    auto connectionstatus = client.connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val)
+	    client.connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val)
         {
             bar(shared_state,protocol_defined_val,er,val);
         });

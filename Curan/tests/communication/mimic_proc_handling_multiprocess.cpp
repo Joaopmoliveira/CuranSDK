@@ -2,6 +2,7 @@
 #include "communication/Server.h"
 #include "communication/ProtoProcHandler.h"
 #include "utils/Flag.h"
+#include "utils/TheadPool.h"
 #include <thread>
 #include <csignal>
 #include <chrono>
@@ -11,46 +12,123 @@
 
 constexpr size_t time_taken = 200;
 
-void pure_proc_laucher_functor(){
-
-};
-
 class ProcessLaucher{
-	asio::io_context& context;
+	asio::io_context hidden_context;
 	asio::high_resolution_timer timer;
 	std::chrono::nanoseconds duration;
 	size_t number_of_violations;
-	bool was_violated;
+	std::atomic<bool> was_violated;
+	const size_t max_num_violations;
+	std::unique_ptr<curan::communication::Server> server;
 
-	template <class _Rep, class _Period>
-	ProcessLaucher(asio::io_context& in_context,const std::chrono::duration<_Rep, _Period>& _Rel_time) : 
-			context{in_context}, 
-			timer{in_context},
-			number_of_violations{0}
+	template <class _Rep, class _Period , size_t max_viols>
+	ProcessLaucher(asio::io_context client_ctx,std::shared_ptr<curan::utilities::ThreadPool> pool,const std::chrono::duration<_Rep, _Period>& deadline,unsigned short port = 50000) : 
+			hidden_context{}, 
+			timer{hidden_context},
+			number_of_violations{0},
+			was_violated = true,
+			max_num_violations{max_viols}
 	{
-		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(_Rel_time);
-		
-	};
-};
+		using namespace curan::communication;
+		interface_prochandler igtlink_interface;
+		Server::Info construction{ client_ctx,igtlink_interface ,port };
+		server = std::make_unique<Server>(construction);
 
-void pure_child_proc_functor(){
+		auto value = server->connect([this](const size_t& protocol_defined_val,
+											const std::error_code& er, 
+											std::shared_ptr<curan::communication::ProcessHandler> val){
+			message_callback(protocol_defined_val,er,val);
+		});
 
+		timer.expires_from_now(duration);
+		timer.async_wait([this](asio::error_code ec) {
+			number_of_violations = was_violated ? number_of_violations+1 : 0;
+			if(number_of_violations>max_num_violations){
+				hidden_context.stop();
+				std::raise(SIGINT);
+			}
+			auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
+        	val->serialize();
+			auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(),val);
+			server->write(to_send);
+    	}); 
+
+		pool->submit(curan::utilities::Job{"run hidden proc laucher handler",[](){
+			hidden_context.run();
+		}})
+  	}
+
+	void message_callback(const size_t& protocol_defined_val,const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val){
+
+	}
 };
 
 class ChildProcess{
-	asio::io_context& context;
+	asio::io_context hidden_context;
 	asio::high_resolution_timer timer;
 	std::chrono::nanoseconds duration;
 	size_t number_of_violations;
-	bool was_violated;
+	std::atomic<bool> was_violated;
+	const size_t max_num_violations;
+	std::unique_ptr<curan::communication::Client> client;
 
-	template <class _Rep, class _Period>
-	ChildProcess(asio::io_context& in_context,const std::chrono::duration<_Rep, _Period>& _Rel_time) : 
-			context{in_context}, 
-			timer{in_context},
-			number_of_violations{0}
+	template <class _Rep, class _Period, size_t max_viols>
+	ChildProcess(asio::io_context client_ctx,const std::chrono::duration<_Rep, _Period>& deadline,std::shared_ptr<curan::utilities::ThreadPool> pool,unsigned short port = 50000) : 
+			hidden_context{}, 
+			timer{hidden_context},
+			number_of_violations{0},
+			was_violated = true,
+			max_num_violations{max_viols}
 	{
-		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(_Rel_time);
+		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline);
+
+		curan::communication::interface_prochandler igtlink_interface;
+		curan::communication::Client::Info construction{ client_ctx,igtlink_interface };
+		asio::ip::tcp::resolver resolver(client_ctx);
+		auto endpoints = resolver.resolve("localhost", std::to_string(port));
+		construction.endpoints = endpoints;
+		client = std::make_unique<curan::communication::Client>(construction);
+		client->connect([this](const size_t& prot,
+							const std::error_code& er, 
+							std::shared_ptr<curan::communication::ProcessHandler> val){
+			message_callback(prot,er,val);
+		});
+
+		timer.expires_from_now(duration);
+		timer.async_wait([this](asio::error_code ec) {
+			number_of_violations = was_violated ? number_of_violations+1 : 0;
+			if(number_of_violations>max_num_violations){
+				hidden_context.stop();
+				std::raise(SIGINT);
+			}
+			auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
+        	val->serialize();
+			auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(),val);
+			client->write(to_send);
+    	}); 
+
+		pool->submit(curan::utilities::Job{"run hidden proc laucher handler",[](){
+			hidden_context.run();
+		}})
+	}
+
+	void message_callback(const size_t& protocol_defined_val,const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val){
+		if(er){
+			std::cout << er.message();
+			hidden_context.stop();
+			std::raise(SIGINT);
+			return;
+		}
+		switch(val->signal_to_process){
+        case curan::communication::ProcessHandler::Signals::HEART_BEAT: 
+			was_violated = false;
+		break;
+        case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
+        default: 
+			hidden_context.stop();
+			std::raise(SIGINT);
+        break;
+    	}
 	}
 };
 
@@ -65,11 +143,11 @@ void child_callback(const size_t& protocol_defined_val,const std::error_code& er
 			std::cout << "child heart_beat\n";
 		break;
         case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
-            std::cout << "!!!!!!!child shutdown!!!! \n";
+            std::cout << "!!!!!!! child shutdown !!!! \n";
 			flag1.set(true);
         break;
         default: 
-            std::cout << "!!!!!!!child unknown!!!! \n";
+            std::cout << "!!!!!!! child unknown !!!! \n";
 			flag1.set(true);
         break;
     }
@@ -85,14 +163,12 @@ int child_proc(asio::io_context& context, unsigned short port){
 	auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	construction.endpoints = endpoints;
 	Client client{ construction };
-	auto connectionstatus = client.connect(
+	client.connect(
 		[&](const size_t& prot,
 			const std::error_code& er, 
 			std::shared_ptr<curan::communication::ProcessHandler> val){
 		child_callback(prot,er,val,flag1);
 	});
-	if(!connectionstatus)
-		throw std::runtime_error("failure to connect");
 	while(!flag1.value()){
 		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
         val->serialize();
@@ -102,6 +178,7 @@ int child_proc(asio::io_context& context, unsigned short port){
 		std::cout << "sending client data\n";
 	}
 	std::cout << "====== stopping client ==============\n";
+	return 1;
 }
 
 void parent_callback(const size_t& protocol_defined_val,const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val,curan::communication::Server& server) {
@@ -133,14 +210,12 @@ int parent_proc(asio::io_context& context,curan::utilities::Flag& flag){
         
 	Server server{ construction };
 
-	auto value = server.connect(
+	server.connect(
 			[&](const size_t& protocol_defined_val,
 				const std::error_code& er, 
 				std::shared_ptr<curan::communication::ProcessHandler> val){
 		parent_callback(protocol_defined_val,er,val,server);
 	});
-	if(!value)
-		throw std::runtime_error("failure to connect");
 
 	auto lauchfunctor = [&context, port]() {
 		child_proc(context, port);
@@ -167,6 +242,7 @@ int parent_proc(asio::io_context& context,curan::utilities::Flag& flag){
 
 	laucher.join();
 	std::cout << "====== stopping server ============\n";
+	return 1;
 	
 }
 

@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 			}
 		};
 
-		auto val = server.connect(callme);
+		server.connect(callme);
 
 		std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
     	curan::robotic::RobotLBR client{handguinding_controller.get()};

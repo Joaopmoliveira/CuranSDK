@@ -65,3 +65,10 @@ target_link_libraries(mimic_proc_handling_multiprocess PUBLIC
 communication
 utils
 )
+
+add_executable(classes_proc_handling classes_proc_handling.cpp)
+
+target_link_libraries(classes_proc_handling PUBLIC
+communication
+utils
+)

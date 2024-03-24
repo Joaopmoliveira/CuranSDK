@@ -142,10 +142,7 @@ int communication(std::shared_ptr<SharedRobotState> state){
 		std::cout << "Exception was thrown\n";
 	}
 	};
-	auto connectionstatus = client.connect(lam);
-    if(!connectionstatus){
-        throw std::runtime_error("missmatch between communication interfaces");
-    }
+	client.connect(lam);
 
     curan::communication::interface_fri fri_interface;
 	curan::communication::Client::Info fri_construction{ context,fri_interface };
@@ -162,10 +159,7 @@ int communication(std::shared_ptr<SharedRobotState> state){
 		std::cout << "Exception was thrown\n";
 	}
 	};
-	auto fri_connectionstatus = fri_client.connect(lam_fri);
-    if(!fri_connectionstatus){
-        throw std::runtime_error("missmatch between communication interfaces");
-    }
+	fri_client.connect(lam_fri);
 
     auto reconstruction_sequence = [&](){
         auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(8);

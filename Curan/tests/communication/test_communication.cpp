@@ -121,7 +121,7 @@ int main() {
 		auto endpoints = resolver.resolve("localhost", std::to_string(port));
 		construction.endpoints = endpoints;
 		Client client{ construction };
-		auto connectionstatus = client.connect(bar);
+		client.connect(bar);
 		io_context.run();
 		curan::utilities::cout << "stopped running";
 		laucher.join();

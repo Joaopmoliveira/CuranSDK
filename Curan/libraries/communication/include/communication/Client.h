@@ -4,7 +4,6 @@
 #include <memory>
 #include <asio.hpp>
 #include "Socket.h"
-#include "utils/Cancelable.h"
 #include "utils/Overloading.h"
 #include <utility>
 #include <optional>
@@ -19,16 +18,13 @@ namespace curan {
 		protocol, the arguments are prespecified. More on other examples.
 		*/
 		class Client {
-			struct combined {
-				callable lambda;
-				std::shared_ptr<utilities::Cancelable> canceled;
-				combined(callable lambda, std::shared_ptr<utilities::Cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
-			};
 			asio::io_context& _cxt;
 			Socket socket;
 
-			std::vector<combined> callables;
-			callable connection_type;
+			std::vector<callable> callables;
+			callable connection_type;	
+
+			std::mutex mut;
 
 		public:
 
@@ -47,11 +43,17 @@ namespace curan {
 
 			Client(Info& info);
 
+			template <class _Rep, class _Period>
+			Client(Info& info,const std::chrono::duration<_Rep, _Period>& deadline,std::function<void(std::error_code ec)> connection_callback) : 
+					 _cxt{ info.io_context },
+					socket{ _cxt,info.endpoints,info.connection_type,this,deadline,connection_callback},
+					connection_type{ info.connection_type } {};
+
 			Client(ServerInfo& info);
 
 			~Client();
 
-			[[nodiscard]] std::optional<std::shared_ptr<utilities::Cancelable>> connect(callable c);
+			void connect(callable c);
 
 			void write(std::shared_ptr<curan::utilities::MemoryBuffer> buffer);
 
@@ -61,9 +63,10 @@ namespace curan {
 
 			template<class T, class ... Args>
 			void transverse_callables(Args&& ... args) {
+				std::lock_guard<std::mutex> g{mut};
 				for (auto& listener : callables) {
-					if (!listener.canceled->operator()() && std::holds_alternative<T>(listener.lambda)) {
-						auto localinterpretation = std::get<T>(listener.lambda);
+					if (std::holds_alternative<T>(listener)) {
+						auto localinterpretation = std::get<T>(listener);
 						localinterpretation(std::forward<decltype(args)>(args)...);
 					}
 				}

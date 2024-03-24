@@ -81,11 +81,7 @@ int communication(info_solve_registration &state)
 			std::cout << "Exception was thrown\n";
 		}
 	};
-	auto fri_connectionstatus = fri_client.connect(lam_fri);
-	if (!fri_connectionstatus)
-	{
-		throw std::runtime_error("missmatch between communication interfaces");
-	}
+	fri_client.connect(lam_fri);
 
 	context.run();
 	return 0;

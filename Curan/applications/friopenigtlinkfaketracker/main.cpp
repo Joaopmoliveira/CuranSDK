@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 			}
 		};
 
-		auto val = server.connect(callme);
+		server.connect(callme);
 
 		curan::utilities::Flag robot_flag;
 		robot_flag.set(true);

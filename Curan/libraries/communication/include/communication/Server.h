@@ -5,10 +5,10 @@
 #include <list>
 #include <functional>
 #include <memory>
-#include "utils/Cancelable.h"
 #include "utils/MemoryUtils.h"
 #include "Protocols.h"
 #include <optional>
+#include "Client.h"
 
 namespace curan {
 	namespace communication {
@@ -20,14 +20,7 @@ namespace curan {
 			std::mutex mut;
 			std::list<std::shared_ptr<Client>> list_of_clients;
 
-			struct combined {
-				callable lambda;
-				std::shared_ptr<utilities::Cancelable> canceled;
-
-				combined(callable lambda, std::shared_ptr<utilities::Cancelable> canceled) : lambda{ lambda }, canceled{ canceled } {}
-			};
-
-			std::vector<combined> callables;
+			std::vector<callable> callables;
 			callable connection_type;
 
 		public:
@@ -49,9 +42,11 @@ namespace curan {
 
 			Server(Info& info);
 
+			Server(Info& info,std::function<void(std::error_code ec)> connection_callback);
+
 			~Server();
 
-			[[nodiscard]] std::optional<std::shared_ptr<utilities::Cancelable>> connect(callable c);
+			void connect(callable c);
 
 			inline size_t number_of_clients(){
 				std::lock_guard<std::mutex> g{mut};
@@ -60,7 +55,9 @@ namespace curan {
 
 			inline void cancel(){
 				std::lock_guard<std::mutex> g{mut};
-				list_of_clients = std::list<std::shared_ptr<Client>>{};
+				for (auto& clients : list_of_clients) {
+					clients->get_socket().close();
+				}
 			};
 
 			void write(std::shared_ptr<utilities::MemoryBuffer> buffer);
@@ -72,6 +69,8 @@ namespace curan {
 		private:
 
 			void accept();
+
+			void accept(std::function<void(std::error_code ec)> connection_callback);
 		};
 	}
 }

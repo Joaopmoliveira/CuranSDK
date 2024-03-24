@@ -16,16 +16,16 @@ Client::Client(ServerInfo& info) : _cxt{ info.io_context },
 Client::~Client(){
 }
 
-std::optional<std::shared_ptr<utilities::Cancelable>> Client::connect(callable c) {
+void Client::connect(callable c) {
 	if (connection_type.index() != c.index())
-		return std::nullopt;
-	auto cancel = utilities::Cancelable::make_cancelable();
-	combined val{ c,cancel };
-	callables.push_back(std::move(val));
-	return cancel;
+		throw std::runtime_error("the connected interface does not match the client interface");
+	std::lock_guard<std::mutex> g{mut};
+	callables.push_back(std::move(c));
+	return;
 };
 
 void Client::write(std::shared_ptr<utilities::MemoryBuffer> buffer) {
+	std::lock_guard<std::mutex> g{mut};
 	socket.post(std::move(buffer));
 };
 

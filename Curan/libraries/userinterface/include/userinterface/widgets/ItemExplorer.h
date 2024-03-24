@@ -2,7 +2,6 @@
 #define CURAN_ICON_EXPLORER_HEADER_FILE_
 
 #include "Drawable.h"
-#include "utils/Cancelable.h"
 #include "utils/Lockable.h"
 #include "definitions/UIdefinitions.h"
 #include <optional>
