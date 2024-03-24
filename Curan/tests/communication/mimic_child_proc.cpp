@@ -125,7 +125,9 @@ int main() {
 		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
 		ptr_ctx = &io_context;
-		auto child = std::make_unique<ChildProcess>(io_context, std::chrono::milliseconds(1000), 30);
+		std::unique_ptr<ChildProcess> child;
+		
+		child = std::make_unique<ChildProcess>(io_context, std::chrono::milliseconds(1000), 30);
 		curan::utilities::cout << "running context\n";
 		io_context.run();
 		curan::utilities::cout << "not running context\n";

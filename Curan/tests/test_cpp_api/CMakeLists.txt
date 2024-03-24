@@ -25,3 +25,5 @@ ENDIF()
 add_executable(test_dummy test_secondary_dummy_project.cpp)
 
 add_executable(test_chrono_duration_propagation test_chrono_duration_propagation.cpp)
+
+add_executable(test_variadic_string_command test_variadic_string_command.cpp)
