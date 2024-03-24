@@ -162,8 +162,8 @@ int child_proc(asio::io_context& context, unsigned short port){
 	asio::ip::tcp::resolver resolver(context);
 	auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	construction.endpoints = endpoints;
-	Client client{ construction };
-	client.connect(
+	auto client = Client::make(construction);
+	client->connect(
 		[&](const size_t& prot,
 			const std::error_code& er, 
 			std::shared_ptr<curan::communication::ProcessHandler> val){
@@ -174,14 +174,14 @@ int child_proc(asio::io_context& context, unsigned short port){
         val->serialize();
 		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(),val);
 		std::this_thread::sleep_for(std::chrono::milliseconds(time_taken));
-		client.write(to_send);
+		client->write(to_send);
 		std::cout << "sending client data\n";
 	}
 	std::cout << "====== stopping client ==============\n";
 	return 1;
 }
 
-void parent_callback(const size_t& protocol_defined_val,const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val,curan::communication::Server& server) {
+void parent_callback(const size_t& protocol_defined_val,const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val,std::shared_ptr<curan::communication::Server> server) {
 	if(er){
 		std::cout << er.message();
 		return;
@@ -208,10 +208,10 @@ int parent_proc(asio::io_context& context,curan::utilities::Flag& flag){
 	interface_prochandler igtlink_interface;
 	Server::Info construction{ context,igtlink_interface ,port };
         
-	Server server{ construction };
+	auto server = Server::make(construction);
 
-	server.connect(
-			[&](const size_t& protocol_defined_val,
+	server->connect(
+			[=](const size_t& protocol_defined_val,
 				const std::error_code& er, 
 				std::shared_ptr<curan::communication::ProcessHandler> val){
 		parent_callback(protocol_defined_val,er,val,server);
@@ -231,14 +231,14 @@ int parent_proc(asio::io_context& context,curan::utilities::Flag& flag){
         val->serialize();
 		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(),val);
 		std::this_thread::sleep_for(std::chrono::milliseconds(time_taken));
-		server.write(to_send);
+		server->write(to_send);
 	}
 
 	auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY);
 	val->serialize();
 	auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(),val);
 
-	server.write(to_send);
+	server->write(to_send);
 
 	laucher.join();
 	std::cout << "====== stopping server ============\n";

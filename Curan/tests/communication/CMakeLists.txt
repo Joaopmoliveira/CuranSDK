@@ -72,3 +72,17 @@ target_link_libraries(classes_proc_handling PUBLIC
 communication
 utils
 )
+
+add_executable(mimic_child_proc mimic_child_proc.cpp)
+
+target_link_libraries(mimic_child_proc PUBLIC
+communication
+utils
+)
+
+add_executable(mimic_parent_proc mimic_parent_proc.cpp)
+
+target_link_libraries(mimic_parent_proc PUBLIC
+communication
+utils
+)

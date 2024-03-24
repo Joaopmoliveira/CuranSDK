@@ -80,11 +80,11 @@ struct PlusSpecification
 	std::string name;
 } specification;
 
-void start_tracking(curan::communication::Server &server, curan::utilities::Flag& flag, std::shared_ptr<SharedState> shared_state)
+void start_tracking(std::shared_ptr<curan::communication::Server> server, curan::utilities::Flag& flag, std::shared_ptr<SharedState> shared_state)
 {
 	try
 	{
-		asio::io_context &in_context = server.get_context();
+		asio::io_context &in_context = server->get_context();
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
 		// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
@@ -131,7 +131,7 @@ void start_tracking(curan::communication::Server &server, curan::utilities::Flag
 
 
 				auto to_send = curan::utilities::CaptureBuffer::make_shared(trackingMsg->GetPackPointer(), trackingMsg->GetPackSize(),trackingMsg);
-				server.write(to_send);
+				server->write(to_send);
 
 				const auto end = std::chrono::high_resolution_clock::now();
 				auto val_to_sleep = std::chrono::milliseconds(val) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -160,9 +160,9 @@ void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage> &me
 	}
 }
 
-void start_joint_tracking(curan::communication::Server &server, curan::utilities::Flag& flag, std::shared_ptr<SharedState> shared_state)
+void start_joint_tracking(std::shared_ptr<curan::communication::Server> server, curan::utilities::Flag& flag, std::shared_ptr<SharedState> shared_state)
 {
-	asio::io_context &in_context = server.get_context();
+	asio::io_context &in_context = server->get_context();
 
 	// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
 	kuka::Robot::robotName myName(kuka::Robot::LBRiiwa); // Select the robot here
@@ -190,7 +190,7 @@ void start_joint_tracking(curan::communication::Server &server, curan::utilities
 		message->serialize();
 
 		auto to_send = curan::utilities::CaptureBuffer::make_shared(message->get_buffer(), message->get_body_size() + message->get_header_size(),message);
-		server.write(to_send);
+		server->write(to_send);
 
 		const auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds((int)(1000.0 / val)) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 		unsigned short port = 50000;
 		curan::communication::interface_igtl igtlink_interface;
 		curan::communication::Server::Info construction{context, igtlink_interface, port};
-		curan::communication::Server server{construction};
+		auto server = curan::communication::Server::make(construction);
 		curan::utilities::Flag state_flag;
 		state_flag.set(false);
 		curan::communication::interface_igtl callme = [&](const size_t &custom, const std::error_code &err, igtl::MessageBase::Pointer pointer)
@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 			}
 		};
 
-		server.connect(callme);
+		server->connect(callme);
 
 		curan::utilities::Flag robot_flag;
 		robot_flag.set(true);
@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
 
 		curan::communication::interface_fri fri_interface;
 		curan::communication::Server::Info construction_joints{context, fri_interface, port_fri};
-		curan::communication::Server server_joints{construction_joints};
+		auto server_joints = curan::communication::Server::make(construction_joints);
 
 		auto joint_tracking = [&state_flag, &server_joints, shared_state]()
 		{

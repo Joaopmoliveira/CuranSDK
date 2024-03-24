@@ -1,5 +1,4 @@
 #include "communication/Server.h"
-#include "communication/Client.h"
 #include "utils/Logger.h"
 
 #include <vector>
@@ -8,11 +7,11 @@ namespace curan {
 namespace communication {
 
 Server::Server(Info& info) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), info.port) },connection_type{info.connection_type}  {
-	accept();
+
 }
 
 Server::Server(Info& info,std::function<void(std::error_code ec)> connection_callback) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), info.port) },connection_type{info.connection_type}  {
-	accept(connection_callback);
+	
 }
 
 Server::~Server() {
@@ -45,11 +44,11 @@ void Server::write(std::shared_ptr<utilities::MemoryBuffer> buffer) {
 
 void Server::accept() {
 	acceptor_.async_accept(
-	[this](std::error_code ec, asio::ip::tcp::socket socket) {
+	[this,life_time_guaranteer = shared_from_this()](std::error_code ec, asio::ip::tcp::socket socket) {
 	if (!ec) {
 		utilities::cout << "Server received a client";
 		Client::ServerInfo info{ _cxt,connection_type,std::move(socket) };
-		auto client_ptr = std::make_shared<Client>(info);
+		auto client_ptr = Client::make(info);
 		std::lock_guard<std::mutex> g{mut};
 		for(auto & submitted_callables : callables)
 			client_ptr->connect(submitted_callables);
@@ -64,11 +63,11 @@ void Server::accept() {
 
 void Server::accept(std::function<void(std::error_code ec)> connection_callback) {
 	acceptor_.async_accept(
-	[this,connection_callback](std::error_code ec, asio::ip::tcp::socket socket) {
+	[this,connection_callback, life_time_guaranteer = shared_from_this()](std::error_code ec, asio::ip::tcp::socket socket) {
 		if (!ec) {
 			utilities::cout << "Server received a client";
 			Client::ServerInfo info{ _cxt,connection_type,std::move(socket) };
-			auto client_ptr = std::make_shared<Client>(info);
+			auto client_ptr = Client::make(info);
 			std::lock_guard<std::mutex> g{mut};
 			for(auto & submitted_callables : callables)
 				client_ptr->connect(submitted_callables);

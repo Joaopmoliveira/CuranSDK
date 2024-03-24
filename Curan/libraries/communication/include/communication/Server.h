@@ -12,17 +12,8 @@
 
 namespace curan {
 	namespace communication {
-		class Client;
 
-		class Server {
-			asio::io_context& _cxt;
-			asio::ip::tcp::acceptor acceptor_;
-			std::mutex mut;
-			std::list<std::shared_ptr<Client>> list_of_clients;
-
-			std::vector<callable> callables;
-			callable connection_type;
-
+		class Server : public std::enable_shared_from_this<Server> {
 		public:
 			struct Info {
 				asio::io_context& io_context;
@@ -39,10 +30,32 @@ namespace curan {
 				asio::ip::tcp::endpoint endpoint;
 
 			};
+		private:
+			asio::io_context& _cxt;
+			asio::ip::tcp::acceptor acceptor_;
+			std::mutex mut;
+			std::list<std::shared_ptr<Client>> list_of_clients;
+
+			std::vector<callable> callables;
+			callable connection_type;
 
 			Server(Info& info);
 
-			Server(Info& info,std::function<void(std::error_code ec)> connection_callback);
+			Server(Info& info, std::function<void(std::error_code ec)> connection_callback);
+
+		public:
+
+			static inline std::shared_ptr<Server> make(Info& info) {
+				std::shared_ptr<Server> server = std::shared_ptr<Server>(new Server{info});
+				server->accept();
+				return server;
+			}
+
+			static inline std::shared_ptr<Server> make(Info& info, std::function<void(std::error_code ec)> connection_callback) {
+				std::shared_ptr<Server> server = std::shared_ptr<Server>(new Server{ info , connection_callback });
+				server->accept(connection_callback);
+				return server;
+			}
 
 			~Server();
 
@@ -58,6 +71,7 @@ namespace curan {
 				for (auto& clients : list_of_clients) {
 					clients->get_socket().close();
 				}
+				list_of_clients.clear();
 			};
 
 			void write(std::shared_ptr<utilities::MemoryBuffer> buffer);

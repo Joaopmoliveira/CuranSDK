@@ -63,7 +63,7 @@ namespace curan {
 		This function selects which protocol we want to communicate with depending
 		on which type is contained inside the variant. 
 		*/
-		std::function<void(Client*)> get_interface(callable callable_type);
+		std::function<void(std::shared_ptr<Client>)> get_interface(callable callable_type);
 	}
 }
 

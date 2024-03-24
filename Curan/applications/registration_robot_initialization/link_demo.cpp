@@ -67,7 +67,7 @@ int communication(info_solve_registration &state)
 	asio::ip::tcp::resolver fri_resolver(context);
 	auto fri_endpoints = fri_resolver.resolve("172.31.1.148", std::to_string(50010));
 	fri_construction.endpoints = fri_endpoints;
-	curan::communication::Client fri_client{fri_construction};
+	auto fri_client = curan::communication::Client::make(fri_construction);
 
 	auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
 	{
@@ -81,7 +81,7 @@ int communication(info_solve_registration &state)
 			std::cout << "Exception was thrown\n";
 		}
 	};
-	fri_client.connect(lam_fri);
+	fri_client->connect(lam_fri);
 
 	context.run();
 	return 0;

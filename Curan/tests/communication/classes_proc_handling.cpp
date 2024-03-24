@@ -27,7 +27,7 @@ class ProcessLaucher{
 	size_t number_of_violations;
 	bool was_violated;
 	const size_t max_num_violations;
-	std::unique_ptr<curan::communication::Server> server;
+	std::shared_ptr<curan::communication::Server> server;
 	bool first_connection_established = false;
 
 public:
@@ -44,7 +44,7 @@ public:
 		using namespace curan::communication;
 		interface_prochandler igtlink_interface;
 		Server::Info construction{ client_ctx,igtlink_interface ,port };
-		server = std::make_unique<Server>(construction,
+		server = Server::make(construction,
 						[this](std::error_code er){ 
 							if(!er)	{
 								first_connection_established = true;
@@ -121,7 +121,7 @@ class ChildProcess{
 	size_t number_of_violations;
 	bool was_violated;
 	const size_t max_num_violations;
-	std::unique_ptr<curan::communication::Client> client;
+	std::shared_ptr<curan::communication::Client> client;
 	bool first_connection_established = false;
 public:
 	template <class _Rep, class _Period>
@@ -138,7 +138,7 @@ public:
 		asio::ip::tcp::resolver resolver(hidden_context);
 		auto endpoints = resolver.resolve("localhost", std::to_string(port));
 		construction.endpoints = endpoints;
-		client = std::make_unique<curan::communication::Client>(construction,
+		client = curan::communication::Client::make(construction,
 						std::chrono::seconds(10),
 						[this](std::error_code er){ 
 							if(!er)	{

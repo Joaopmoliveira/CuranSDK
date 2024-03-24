@@ -42,7 +42,7 @@ void foo(asio::io_context& cxt, unsigned short port) {
 		interface_igtl igtlink_interface;
 		Server::Info construction{ cxt,igtlink_interface ,port };
 
-		Server server{ construction };
+		auto server = Server::make(construction);
 
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
@@ -62,7 +62,7 @@ void foo(asio::io_context& cxt, unsigned short port) {
 			transMsg->Pack();
 
 			auto to_send = curan::utilities::CaptureBuffer::make_shared(transMsg->GetPackPointer(), transMsg->GetPackSize(),transMsg);
-			server.write(to_send);
+			server->write(to_send);
 			
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(10) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
@@ -120,8 +120,8 @@ int main() {
 		asio::ip::tcp::resolver resolver(io_context);
 		auto endpoints = resolver.resolve("localhost", std::to_string(port));
 		construction.endpoints = endpoints;
-		Client client{ construction };
-		client.connect(bar);
+		auto client = Client::make(construction);
+		client->connect(bar);
 		io_context.run();
 		curan::utilities::cout << "stopped running";
 		laucher.join();

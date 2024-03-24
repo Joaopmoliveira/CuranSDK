@@ -109,7 +109,7 @@ int communication(std::shared_ptr<SharedRobotState> state){
 	asio::ip::tcp::resolver resolver(context);
 	auto endpoints = resolver.resolve("localhost", std::to_string(18944));
 	construction.endpoints = endpoints;
-	curan::communication::Client client{ construction };
+	auto client = curan::communication::Client::make(construction);
 
 	auto lam = [&](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 	try{
@@ -119,14 +119,14 @@ int communication(std::shared_ptr<SharedRobotState> state){
 		std::cout << "Exception was thrown\n";
 	}
 	};
-	client.connect(lam);
+	client->connect(lam);
 
     curan::communication::interface_fri fri_interface;
 	curan::communication::Client::Info fri_construction{ context,fri_interface };
 	asio::ip::tcp::resolver fri_resolver(context);
 	auto fri_endpoints = fri_resolver.resolve("172.31.1.148", std::to_string(50010));
 	fri_construction.endpoints = fri_endpoints;
-	curan::communication::Client fri_client{ fri_construction };
+	auto fri_client = curan::communication::Client::make(fri_construction);
 
 	auto lam_fri = [&](const size_t& protocol_defined_val, const std::error_code& er , std::shared_ptr<curan::communication::FRIMessage> message) {
 	try{
@@ -136,7 +136,7 @@ int communication(std::shared_ptr<SharedRobotState> state){
 		std::cout << "Exception was thrown\n";
 	}
 	};
-	fri_client.connect(lam_fri);
+	fri_client->connect(lam_fri);
 
 	context.run();
     return 0;

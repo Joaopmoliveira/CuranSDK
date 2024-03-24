@@ -287,7 +287,7 @@ void ProcessingMessage::communicate() {
 	asio::ip::tcp::resolver resolver(io_context);
 	auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	construction.endpoints = endpoints;
-	Client client{ construction };
+	auto client = Client::make(construction);
 	connection_status.set(true);
 
 	auto lam = [this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
@@ -301,7 +301,7 @@ void ProcessingMessage::communicate() {
 			std::cout << "Exception was thrown\n";
 		}
 	};
-	client.connect(lam);
+	client->connect(lam);
 	io_context.run();
 	button->set_waiting_color(SK_ColorRED);
 	return;

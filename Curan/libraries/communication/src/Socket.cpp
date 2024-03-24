@@ -8,28 +8,39 @@ namespace communication {
 
 Socket::Socket(asio::io_context& io_context,
 			const asio::ip::tcp::resolver::results_type& endpoints,
-			callable callable, Client* owner) : _cxt(io_context),
+			callable callable) : _cxt(io_context),
 			_socket(io_context) ,
 			is_connected{false},
 			timer{_cxt}
 {
+
+};
+
+void Socket::trigger_start(callable callable, std::weak_ptr<Client> in_owner, const asio::ip::tcp::resolver::results_type& endpoints) {
+	owner = in_owner;
 	start = get_interface(callable);
+	auto client = owner.lock();
 	asio::async_connect(_socket, endpoints,
-		[this, owner](std::error_code ec, asio::ip::tcp::endpoint e){
-			if (!ec){
+		[this,client](std::error_code ec, asio::ip::tcp::endpoint e) {
+			if (!ec) {
 				is_connected = true;
 				post();
-				start(owner);
+				start(client);
 			}
 	});
-	};
+}
 
-Socket::Socket(asio::io_context& io_context,
-	asio::ip::tcp::socket socket,
-	callable callable, Client* owner) : _cxt(io_context), timer{_cxt} , _socket{ std::move(socket) } , is_connected{true}
-{
+void Socket::trigger_start(callable callable, std::weak_ptr<Client> in_owner) {
+	owner = in_owner;
 	start = get_interface(callable);
-	start(owner);
+	assert(!owner.expired());
+	auto shared_version = owner.lock();
+	start(shared_version);
+}
+
+Socket::Socket(asio::io_context& io_context,asio::ip::tcp::socket socket,callable callable) : _cxt(io_context), timer{_cxt},_socket{ std::move(socket) } ,is_connected{true}
+{
+
 };
 
 Socket::~Socket() {

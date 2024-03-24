@@ -2,13 +2,11 @@
 #define CURAN_PROTO_PROC_HANDLER_HEADER_FILE_
 
 #include <asio.hpp>
-
+#include "Client.h"
 #include "customprotocols/ProcessHandler.h"
 
 namespace curan {
 	namespace communication {
-
-		class Client;
 
 		namespace protocols {
 			namespace proc_handler_message {
@@ -23,8 +21,8 @@ namespace curan {
 
 					struct HandlerClientConnection {
 						std::shared_ptr<ProcessHandler> message = nullptr;
-						Client* owner;
-						HandlerClientConnection(Client* supplied_owner);
+						std::shared_ptr<Client> owner;
+						HandlerClientConnection(std::shared_ptr<Client> supplied_owner);
 					};
 
 					void read_header_first_time(HandlerClientConnection val);
@@ -32,7 +30,7 @@ namespace curan {
 					void read_header(HandlerClientConnection val, std::error_code ec);
 				}
 
-				void start(Client* client_pointer);
+				void start(std::shared_ptr<Client> client_pointer);
 			};
 		}
 	}

@@ -4,12 +4,12 @@ namespace curan {
 namespace communication {
 		
 Client::Client(Info& info) : _cxt{ info.io_context },
-	socket{ _cxt,info.endpoints,info.connection_type,this },
+socket{ _cxt,info.endpoints,info.connection_type},
 	connection_type{ info.connection_type } {
 };
 
 Client::Client(ServerInfo& info) : _cxt{ info.io_context },
-	socket{ _cxt,std::move(info.socket),info.connection_type,this },
+	socket{ _cxt,std::move(info.socket),info.connection_type },
 	connection_type{ info.connection_type } {
 };
 

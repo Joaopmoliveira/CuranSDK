@@ -8,7 +8,7 @@ namespace protocols {
 namespace igtlink {
 namespace implementation {
 
-IgtlinkClientConnection::IgtlinkClientConnection(Client* supplied_owner) : owner{ supplied_owner } 
+IgtlinkClientConnection::IgtlinkClientConnection(std::shared_ptr<Client> supplied_owner) : owner{ supplied_owner }
 {
 }
 
@@ -72,7 +72,7 @@ void read_body(IgtlinkClientConnection val, std::error_code ec) {
 }
 }
 
-void start(Client* client_pointer) {
+void start(std::shared_ptr<Client> client_pointer) {
 	implementation::IgtlinkClientConnection val{ client_pointer };
 	implementation::read_header_first_time(std::move(val));	
 }
