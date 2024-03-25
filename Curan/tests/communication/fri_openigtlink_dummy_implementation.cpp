@@ -18,7 +18,7 @@ int server_function(){
     try{
     curan::communication::interface_fri fri_interface;
 	curan::communication::Server::Info construction_joints{ io_context,fri_interface ,port };
-	curan::communication::Server server_joints{ construction_joints };
+	auto server_joints = curan::communication::Server::make(construction_joints);
     double counter = 0.0;
     while(!io_context.stopped()){
         std::shared_ptr<curan::communication::FRIMessage> message = std::make_shared<curan::communication::FRIMessage>();
@@ -31,7 +31,7 @@ int server_function(){
 		message->serialize();
 
 		auto to_send = curan::utilities::CaptureBuffer::make_shared(message->get_buffer(),message->get_body_size()+message->get_header_size(),message);
-		server_joints.write(to_send);
+		server_joints->write(to_send);
 
         counter += 1.000;   
         std::this_thread::sleep_for(std::chrono::milliseconds(30));    
@@ -57,9 +57,8 @@ int client_callback(const size_t& loc, const std::error_code& err, std::shared_p
 
 void utilities_parser(){
     while(!io_context.stopped()){
-        std::string previous_string;
-        if(curan::utilities::cout.outputqueue.wait_and_pop(previous_string))
-            std::cout << previous_string << "\n";
+        if(auto previous_string = curan::utilities::cout.outputqueue.wait_and_pop(); previous_string)
+            std::cout << *previous_string << "\n";
     }
 
 }
@@ -74,8 +73,8 @@ int main(){
     asio::ip::tcp::resolver resolver(io_context);
 	auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	construction_joints.endpoints = endpoints;
-	curan::communication::Client client_joints{ construction_joints };
-    auto connectionstatus = client_joints.connect(client_callback);
+	auto client_joints = curan::communication::Client::make( construction_joints );
+    client_joints->connect(client_callback);
 
     std::shared_ptr<curan::communication::FRIMessage> message = std::make_shared<curan::communication::FRIMessage>();
     for(size_t link = 0 ; link < curan::communication::FRIMessage::n_joints ; ++link){
@@ -88,7 +87,7 @@ int main(){
 
 	auto to_send = curan::utilities::CaptureBuffer::make_shared(message->get_buffer(),message->get_body_size()+message->get_header_size(),message);
 
-    client_joints.write(to_send);
+    client_joints->write(to_send);
     
     io_context.run();
     server_thread.join();

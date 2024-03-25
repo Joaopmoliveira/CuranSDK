@@ -12,7 +12,6 @@
 #include "igtlImageMessage.h"
 #include "Drawable.h"
 #include "utils/Lockable.h"
-#include "utils/Cancelable.h"
 #include "SignalProcessor.h"
 
 namespace curan {

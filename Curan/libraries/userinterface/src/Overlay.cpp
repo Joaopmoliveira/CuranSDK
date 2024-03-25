@@ -1,6 +1,7 @@
 #include "userinterface/widgets/Overlay.h"
 #include "utils/Overloading.h"
 #include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/Page.h"
 
 namespace curan {
 namespace ui {

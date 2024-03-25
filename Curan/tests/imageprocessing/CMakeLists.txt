@@ -77,6 +77,7 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 add_subdirectory(volumetric)
+add_subdirectory(registration_strategies_exploration)
 
 
 add_executable(extract_oblique_slice extract_oblique_slice.cpp)
@@ -142,5 +143,16 @@ target_link_libraries(real_time_extract_oblique_slice_two_dim_centered_traj
 PUBLIC
 communication
 imageprocessing
+${ITK_LIBRARIES}
+)
+
+
+add_executable(print_dicom_image_data print_dicom_image_data.cpp)
+
+target_compile_definitions(print_dicom_image_data PRIVATE vsgXchange_FOUND)
+target_compile_definitions(print_dicom_image_data PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(print_dicom_image_data
+PUBLIC
 ${ITK_LIBRARIES}
 )

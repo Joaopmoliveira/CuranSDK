@@ -17,10 +17,10 @@ DynamicHeight::DynamicHeight(Info& info) : width{ info.width }, height{ info.hei
     info.stateInfo.displacementMap = textureData;
 
     vsg::GeometryInfo geomInfo;
-    geomInfo.dx = vsg::vec3(info.spacing[0]*width,0.0,0.0);
-    geomInfo.dy = vsg::vec3(0.0,info.spacing[1]*height,0.0);
-    geomInfo.dz = vsg::vec3(0.0,0.0,info.spacing[2]*depth);
-    geomInfo.position = vsg::vec3(info.origin[0]+(info.spacing[0]*info.width)/2.0,info.origin[1]+(info.spacing[1]*info.height)/2.0,info.origin[2]);
+    geomInfo.dx = vsg::vec3(static_cast<float>(info.spacing[0]*width),0.0f,0.0f);
+    geomInfo.dy = vsg::vec3(0.0f, static_cast<float>(info.spacing[1]*height),0.0f);
+    geomInfo.dz = vsg::vec3(0.0f,0.0f, static_cast<float>(info.spacing[2]*depth));
+    geomInfo.position = vsg::vec3(static_cast<float>(info.origin[0])+ static_cast<float>(info.spacing[0]*info.width)/2.0f,info.origin[1]+ static_cast<float>(info.spacing[1]*info.height)/2.0f, static_cast<float>(info.origin[2]));
 
     auto node = info.builder->createHeightField(geomInfo, info.stateInfo);
 

@@ -3,7 +3,6 @@ src/Job.cpp
 src/Logger.cpp
 src/TheadPool.cpp
 src/MemoryUtils.cpp
-src/Cancelable.cpp
 src/Reader.cpp
 )
 
@@ -16,7 +15,9 @@ asio
 )
 
 IF (WIN32)
-  add_compile_definitions(utils CURAN_WINDOWS)
+  target_compile_definitions(utils PUBLIC CURAN_WINDOWS)
+ELSEIF(UNIX)
+  target_compile_definitions(utils PUBLIC CURAN_LINUX)
 ENDIF()
 
 add_dependencies(utils 

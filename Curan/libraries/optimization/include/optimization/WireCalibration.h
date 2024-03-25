@@ -12,6 +12,9 @@ namespace curan {
         template<typename T, size_t rows, size_t cols>
         struct custom_mat {
             T values[rows * cols];
+
+            custom_mat() {
+            }
         };
 
         template<typename T>
@@ -40,6 +43,8 @@ namespace curan {
             custom_mat<double, 3, 1> wire_data;
             custom_mat<double, 3, 4> flange_configuration;
             size_t wire_number = 0;
+
+            Observation() : wire_data{}, flange_configuration{}, wire_number{ 0 } {};
         };
 
         template<typename T>

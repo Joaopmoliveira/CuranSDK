@@ -5,12 +5,15 @@
 #include "userinterface/widgets/definitions/Interactive.h"
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/SliderPanel.h"
+#include "userinterface/widgets/Container.h"
+#include "userinterface/widgets/Page.h"
+#include "userinterface/widgets/Drawable.h"
 
 #include <unordered_map>
 #include <optional>
 #include <functional>
 
-#include "userinterface/widgets/Drawable.h"
+
 #include "utils/Lockable.h"
 #include "userinterface/widgets/SignalProcessor.h"
 #include "userinterface/widgets/ImageWrapper.h"

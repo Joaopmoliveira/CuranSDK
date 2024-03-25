@@ -38,6 +38,7 @@ int main(int argc, char* argv[]) {
 		}
 		page.draw(canvas);
 		auto signals = viewer->process_pending_signals();
+		std::printf("%lu\n",signals.size());
 		if (!signals.empty())
 			page.propagate_signal(signals.back(), &config);
 		glfwPollEvents();

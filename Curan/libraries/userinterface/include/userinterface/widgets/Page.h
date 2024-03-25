@@ -10,6 +10,7 @@ namespace curan {
 	namespace ui {
 
 		class Overlay;
+		class Loader;
 		class Window;
 
 		class Page {
@@ -29,11 +30,14 @@ namespace curan {
 
 			bool propagate_signal(Signal sig, ConfigDraw* config);
 
+			void propagate_heartbeat(ConfigDraw* config);
+
 			Page& propagate_size_change(const SkRect& new_size);
 
 			Page& pop();
 
 			Page& stack(std::unique_ptr<Overlay> overlay);
+			Page& stack(std::unique_ptr<Loader> loader);
 
 			Page& replace_all(std::unique_ptr<Overlay> overlay);
 

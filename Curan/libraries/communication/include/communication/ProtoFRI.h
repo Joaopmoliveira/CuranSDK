@@ -22,8 +22,8 @@ namespace curan {
 
 					struct FRIClientConnection {
 						std::shared_ptr<FRIMessage> message = nullptr;
-						Client* owner;
-						FRIClientConnection(Client* supplied_owner);
+						std::shared_ptr<Client> owner;
+						FRIClientConnection(std::shared_ptr<Client> supplied_owner);
 					};
 
 					void read_header_first_time(FRIClientConnection val);
@@ -31,7 +31,7 @@ namespace curan {
 					void read_header(FRIClientConnection val, std::error_code ec);
 				}
 
-				void start(Client* client_pointer);
+				void start(std::shared_ptr<Client> client_pointer);
 			};
 		}
 	}

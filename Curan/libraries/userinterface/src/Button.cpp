@@ -183,9 +183,8 @@ void Button::compile(){
 	text = SkTextBlob::MakeFromString(button_text.c_str(), text_font);
 
 	if (system_icons.is_loaded() && icon_identifier.size()>0) {
-		sk_sp<SkImage> image;
-		system_icons.get_icon(image,icon_identifier);
-		icon_data = image;
+		auto image = system_icons.get_icon(icon_identifier);
+		if(image) icon_data = (*image).image;
 	}
 	compiled = true;
 }

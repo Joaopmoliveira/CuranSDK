@@ -1,7 +1,6 @@
 #ifndef COMMON_INCLUDES_HEADER
 #define COMMON_INCLUDES_HEADER
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/Window.h"
 #include "userinterface/widgets/IconResources.h"
@@ -10,6 +9,7 @@
 #include "userinterface/widgets/TextBlob.h"
 #include "userinterface/widgets/SliderPanel.h"
 #include "userinterface/widgets/MiniPage.h"
+#include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/ItemExplorer.h"
 #include "userinterface/widgets/Overlay.h"
 #include "userinterface/widgets/MutatingTextPanel.h"
