@@ -132,7 +132,7 @@ int main(){
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
     std::thread robot_renderer{[&](){rendering(client);}};
-	std::list<curan::robotic::State> list_of_recorded_states;
+	//std::list<curan::robotic::State> list_of_recorded_states;
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
@@ -143,16 +143,16 @@ int main(){
 		success = app.step();
 		while (client){
 			success = app.step();
-			list_of_recorded_states.push_back(access_point.load());
+			//list_of_recorded_states.push_back(access_point.load());
 		}
 		app.disconnect();
         robot_renderer.join();
-		auto now = std::chrono::system_clock::now();
-		auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-		std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments"+std::to_string(UTC)+".json"};
-		std::cout << "creating filename with measurments :" << filename << std::endl;
-		std::ofstream o(filename);
-		o << list_of_recorded_states;
+		//auto now = std::chrono::system_clock::now();
+		//auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+		//std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments"+std::to_string(UTC)+".json"};
+		//std::cout << "creating filename with measurments :" << filename << std::endl;
+		//std::ofstream o(filename);
+		//o << list_of_recorded_states;
 		return 0;
 	}
 	catch (...)

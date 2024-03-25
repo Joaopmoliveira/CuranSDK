@@ -46,16 +46,13 @@ namespace robotic
 
     auto in_plane_velocity = model.likeliest(limit_cycle_portion);
 
-    constexpr double scalling_limit_cycle = 4.0;
+    constexpr double scalling_limit_cycle = 1.0;
     Eigen::Vector3d desired_velocity_in_plane;
     desired_velocity_in_plane << scalling_limit_cycle*in_plane_velocity(0) , scalling_limit_cycle*in_plane_velocity(1) , -2.0*transformed_position(2);
 
     Eigen::Vector3d desLinVelocity = transformation_to_model_coordinates.rotation*desired_velocity_in_plane;
 
     Eigen::Matrix3d desRotation = Eigen::Matrix3d::Identity();
-    //desRotation << -0.0185 ,  0.0007 , -0.9998 ,
-    //                0.3030 ,  0.9530 , -0.0049 ,
-    //                0.9528 , -0.3030 , -0.0179;
 
     desRotation <<  -1.0 , -0.0 , 0.0 ,
                     -0.0 ,  1.0 , 0.0 ,
