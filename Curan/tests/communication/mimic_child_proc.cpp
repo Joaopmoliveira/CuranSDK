@@ -127,7 +127,7 @@ int main() {
 		ptr_ctx = &io_context;
 		std::unique_ptr<ChildProcess> child;
 		
-		child = std::make_unique<ChildProcess>(io_context, std::chrono::milliseconds(1000), 30);
+		child = std::make_unique<ChildProcess>(io_context, std::chrono::milliseconds(100), 10);
 		curan::utilities::cout << "running context\n";
 		io_context.run();
 		curan::utilities::cout << "not running context\n";

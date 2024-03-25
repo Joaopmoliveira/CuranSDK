@@ -61,7 +61,7 @@ void Server::accept() {
 	});
 }
 
-void Server::accept(std::function<void(std::error_code ec)> connection_callback) {
+void Server::accept(std::function<bool(std::error_code ec)> connection_callback) {
 	acceptor_.async_accept(
 	[this,connection_callback, life_time_guaranteer = shared_from_this()](std::error_code ec, asio::ip::tcp::socket socket) {
 		if (!ec) {
@@ -71,12 +71,17 @@ void Server::accept(std::function<void(std::error_code ec)> connection_callback)
 			std::lock_guard<std::mutex> g{mut};
 			for(auto & submitted_callables : callables)
 				client_ptr->connect(submitted_callables);
-			list_of_clients.push_back(client_ptr);
+			bool all_ok = connection_callback(ec);
+			if (all_ok)
+				list_of_clients.push_back(client_ptr);
+			else
+				client_ptr->get_socket().close();
 			utilities::cout << "Server started listening for new client";
 		} else {
 			utilities::cout << "Server stopped listening for incoming connections\n";
+			connection_callback(ec);
 		}
-		connection_callback(ec);
+		
 		accept(connection_callback);
 	});
 }

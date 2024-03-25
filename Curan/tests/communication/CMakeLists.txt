@@ -86,3 +86,9 @@ target_link_libraries(mimic_parent_proc PUBLIC
 communication
 utils
 )
+
+IF (WIN32)
+  add_compile_definitions(mimic_parent_proc CURAN_WINDOWS)
+ELSEIF(UNIX)
+  add_compile_definitions(mimic_parent_proc CURAN_LINUX)
+ENDIF()

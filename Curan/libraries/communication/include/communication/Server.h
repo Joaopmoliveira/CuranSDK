@@ -51,7 +51,13 @@ namespace curan {
 				return server;
 			}
 
-			static inline std::shared_ptr<Server> make(Info& info, std::function<void(std::error_code ec)> connection_callback) {
+			/*
+			The connection callback can be used to refuse incoming connections.
+			The method should return a boolean value which indicates if the client 
+			should be added to the list of internal clients of the server. If return false
+			the client is canceled.
+			*/
+			static inline std::shared_ptr<Server> make(Info& info, std::function<bool(std::error_code ec)> connection_callback) {
 				std::shared_ptr<Server> server = std::shared_ptr<Server>(new Server{ info , connection_callback });
 				server->accept(connection_callback);
 				return server;
@@ -84,7 +90,7 @@ namespace curan {
 
 			void accept();
 
-			void accept(std::function<void(std::error_code ec)> connection_callback);
+			void accept(std::function<bool(std::error_code ec)> connection_callback);
 		};
 	}
 }
