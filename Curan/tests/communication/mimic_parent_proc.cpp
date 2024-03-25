@@ -14,6 +14,7 @@
 #include <tchar.h>
 #include <windows.h>
 #include <stdio.h>
+#include <filesystem>
 
 asio::io_context* ptr_ctx = nullptr;
 
@@ -29,8 +30,12 @@ class ProcessHandles {
 #elif CURAN_LINUX
 
 #endif
+public:
+	ProcessHandles() {
+		ZeroMemory(&pi, sizeof(pi));
+	}
 
-	bool operator()() {
+	operator bool() const {
 #ifdef CURAN_WINDOWS
 		PROCESS_INFORMATION local;
 		ZeroMemory(&local, sizeof(local));
@@ -45,6 +50,11 @@ class ProcessHandles {
 
 	template<class _Rep, class _Period>
 	bool close(const std::chrono::duration<_Rep, _Period>& deadline) {
+		if (!this->operator()) {
+			std::cout << "processes already closed\n";
+			return;
+		}
+		std::cout << "trying to close other process\n";
 		auto transformed_deadline = std::chrono::duration_cast<std::chrono::milliseconds>(deadline);
 #ifdef CURAN_WINDOWS
 		auto return_value = WaitForSingleObject(pi.hProcess, transformed_deadline.count());
@@ -89,6 +99,7 @@ class ProcessHandles {
 	}
 
 	bool open(std::string s) {
+		std::cout << "trying to launch process named: " << s << std::endl;
 #ifdef CURAN_WINDOWS
 		STARTUPINFO si;
 
@@ -110,12 +121,9 @@ class ProcessHandles {
 			&si,            // Pointer to STARTUPINFO structure
 			&pi)           // Pointer to PROCESS_INFORMATION structure
 			) {
-			std::cout << "launched process\n";
-		}
-		else {
-			std::cout << "failed to launch process\n";
 			return false;
 		}
+		return true;
 
 #elif CURAN_LINUX
 		return false;
@@ -123,6 +131,23 @@ class ProcessHandles {
 	}
 
 };
+
+template<typename... Args>
+std::string create_command(unsigned short port, Args ... arg) {
+	constexpr size_t size = sizeof ...(Args);
+	const char* loc[size] = { arg... };
+	std::string command;
+
+	std::string executable_directory_sanity_check{loc[0]};
+	std::filesystem::path path{ executable_directory_sanity_check };
+	if (!std::filesystem::exists(path))
+		throw std::runtime_error("the specified file does not exist");
+	for (const auto& val : loc)
+		command += std::string(val) + " ";
+
+	command += std::to_string(port);
+	return command;
+}
 
 class ProcessLaucher {
 
@@ -136,18 +161,21 @@ class ProcessLaucher {
 	std::shared_ptr<curan::communication::Server> server;
 	bool connection_established = false;
 	unsigned short port;
-	ProcessHandles handles;
 
 public:
+
+	ProcessHandles handles;
 
 	template <class _Rep, class _Period>
 	ProcessLaucher(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_viols, unsigned short in_port = 50000) :
 		hidden_context{ client_ctx },
 		connection_timer{ client_ctx },
+		closing_process_timer{ client_ctx },
 		number_of_violations{ 0 },
 		was_violated{ true },
 		max_num_violations{ max_viols },
-		port{ in_port }
+		port{ in_port },
+		handles{}
 	{
 		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline);
 		using namespace curan::communication;
@@ -234,16 +262,11 @@ public:
 	*/
 	template<typename... Args>
 	bool lauch_process(Args ... arg) {
-		if (handles)
+		if (handles) {
+			std::cout << "syncronous lauch process stopped\n";
 			return false;
-		constexpr size_t size = sizeof ...(Args);
-		const char* loc[size] = { arg... };
-		std::string command;
-		for (const auto& val : loc)
-			command += std::string(val) + " ";
-
-		command += std::to_string(port);
-
+		}
+		std::string command = create_command(port,arg...);
 		return handles.open(command);
 	}
 
@@ -253,19 +276,13 @@ public:
 	template<typename... Args>
 	void async_lauch_process(std::function<void(bool)> async_handler, Args ... arg) {
 		if (handles) { // we cannot lauch an asycn proces without closing the previous handles
+			std::cout << "assyncronous lauch process stopped\n";
 			async_handler(false);
 			return;
 		}
-		constexpr size_t size = sizeof ...(Args);
-		const char* loc[size] = { arg... };
-
-		std::string command;
-		for (const auto& val : loc)
-			command += std::string(val) + " ";
-
-		command += std::to_string(port);
-
-		hidden_context.post([this, command](asio::error_code ec) {
+		std::string command = create_command(port, arg...);
+		std::cout << "posted assyncronous lauch process\n";
+		hidden_context.post([this, command, async_handler]() {
 				async_handler(handles.open(command));
 			}
 		);
@@ -308,7 +325,6 @@ public:
 		);
 
 	}
-
 };
 
 int main() {
@@ -319,8 +335,7 @@ int main() {
 		asio::io_context io_context;
 		ptr_ctx = &io_context;
 		auto parent = std::make_unique<ProcessLaucher>(io_context, std::chrono::milliseconds(100), 10);
-		parent->async_lauch_process([](bool sucess) {
-			},"notepad");
+		parent->async_lauch_process([](bool sucess) { std::cout <<  ((sucess) ? "lauched process\n" : "failure to launch process\n"); }, CURAN_BINARY_LOCATION"/mimic_child_proc" CURAN_BINARY_SUFFIX);
 		curan::utilities::cout << "running context\n";
 		io_context.run();
 		curan::utilities::cout << "not running context\n";

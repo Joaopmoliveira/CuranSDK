@@ -27,3 +27,8 @@ add_executable(test_dummy test_secondary_dummy_project.cpp)
 add_executable(test_chrono_duration_propagation test_chrono_duration_propagation.cpp)
 
 add_executable(test_variadic_string_command test_variadic_string_command.cpp)
+
+add_executable(test_executable_name_injection test_executable_name_injection.cpp)
+
+add_compile_definitions(test_executable_name_injection CURAN_BINARY_LOCATION="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_compile_definitions(test_executable_name_injection CURAN_BINARY_SUFFIX="${CMAKE_EXECUTABLE_SUFFIX}")

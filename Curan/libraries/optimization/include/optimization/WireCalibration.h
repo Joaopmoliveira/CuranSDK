@@ -14,8 +14,6 @@ namespace curan {
             T values[rows * cols];
 
             custom_mat() {
-                for (size_t i = 0; i < rows * cols; ++i)
-                    values[i] = 0.0;
             }
         };
 

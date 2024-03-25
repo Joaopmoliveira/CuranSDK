@@ -74,8 +74,8 @@ public:
 		
 		was_violated = true;
 		if (number_of_violations > max_num_violations) {
-			client->get_socket().close();
 			timer.cancel(std::make_error_code(std::errc::timed_out));
+			client->get_socket().close();
 			return;
 		}
 		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
@@ -92,20 +92,19 @@ public:
 
 	void message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {
 		if (er) {
-			std::cout << er.message();
-			client->get_socket().close();
 			timer.cancel(std::make_error_code(std::errc::timed_out));
+			client->get_socket().close();
 			return;
 		}
 		switch (val->signal_to_process) {
 		case curan::communication::ProcessHandler::Signals::HEART_BEAT:
-			std::cout << "=";
 			was_violated = false;
 			number_of_violations = 0;
 			break;
 		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
 		default:
-			number_of_violations = max_num_violations;
+			timer.cancel(std::make_error_code(std::errc::timed_out));
+			client->get_socket().close();
 			break;
 		}
 	}
@@ -113,14 +112,12 @@ public:
 	~ChildProcess() {
 		timer.cancel(std::make_error_code(std::errc::timed_out));
 		client->get_socket().close();
-		std::cout << "destroying child proc" << std::endl;
 	}
 };
 
 
 int main() {
 	try {
-		std::cout << "started running\n";
 		using namespace curan::communication;
 		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
@@ -128,16 +125,13 @@ int main() {
 		std::unique_ptr<ChildProcess> child;
 		
 		child = std::make_unique<ChildProcess>(io_context, std::chrono::milliseconds(100), 10);
-		curan::utilities::cout << "running context\n";
 		io_context.run();
-		curan::utilities::cout << "not running context\n";
+		std::cout << "child closing!\n";
 	}
 	catch (std::exception& e) {
-		std::cout << "Client exception was thrown" + std::string(e.what()) << std::endl;
 		return 1;
 	}
 	catch (...) {
-		std::cout << "Unknown exception" << std::endl;
 		return 1;
 	}
 	return 0;

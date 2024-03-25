@@ -92,3 +92,6 @@ IF (WIN32)
 ELSEIF(UNIX)
   add_compile_definitions(mimic_parent_proc CURAN_LINUX)
 ENDIF()
+
+add_compile_definitions(mimic_parent_proc CURAN_BINARY_LOCATION="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+add_compile_definitions(mimic_parent_proc CURAN_BINARY_SUFFIX="${CMAKE_EXECUTABLE_SUFFIX}")
