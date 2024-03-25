@@ -6,6 +6,11 @@
 namespace curan {
 namespace communication {
 
+void Socket::lauch_start_after_connect(std::shared_ptr<Client> client){
+	is_connected = true;
+	start(client);
+}
+
 Socket::Socket(asio::io_context& io_context,
 			const asio::ip::tcp::resolver::results_type& endpoints,
 			callable callable) : _cxt(io_context),
@@ -23,9 +28,8 @@ void Socket::trigger_start(callable callable, std::weak_ptr<Client> in_owner, co
 	asio::async_connect(_socket, endpoints,
 		[this,client](std::error_code ec, asio::ip::tcp::endpoint e) {
 			if (!ec) {
-				is_connected = true;
+				lauch_start_after_connect(client);
 				post();
-				start(client);
 			}
 	});
 }
@@ -35,7 +39,7 @@ void Socket::trigger_start(callable callable, std::weak_ptr<Client> in_owner) {
 	start = get_interface(callable);
 	assert(!owner.expired());
 	auto shared_version = owner.lock();
-	start(shared_version);
+	lauch_start_after_connect(shared_version);
 }
 
 Socket::Socket(asio::io_context& io_context,asio::ip::tcp::socket socket,callable callable) : _cxt(io_context), timer{_cxt},_socket{ std::move(socket) } ,is_connected{true}

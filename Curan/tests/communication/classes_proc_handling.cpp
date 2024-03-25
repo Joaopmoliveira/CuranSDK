@@ -48,9 +48,10 @@ public:
 						[this](std::error_code er){ 
 							if(!er)	{
 								first_connection_established = true;
-								return;
+								return true;
 							}
 							server->cancel();
+							return false;
 						}
 		);
 
@@ -72,7 +73,7 @@ public:
 		if(first_connection_established) number_of_violations = was_violated ? number_of_violations+1 : 0;
 		if(number_of_violations>max_num_violations){
 			server->cancel();
-			timer.cancel(std::make_error_code(std::errc::timed_out));
+			timer.cancel();
 			return;
 		}
 		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
@@ -89,14 +90,14 @@ public:
 
 	~ProcessLaucher(){
 		std::cout << "destroying parent proc" << std::endl;
-		timer.cancel(std::make_error_code(std::errc::timed_out));
+		timer.cancel();
 		server->cancel();
 	}
 
 	void message_callback(const size_t& protocol_defined_val,const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val){
 		if(er){
 			std::cout << er.message();
-			timer.cancel(std::make_error_code(std::errc::timed_out));
+			timer.cancel();
 			server->cancel();
 			return;
 		}
@@ -167,7 +168,7 @@ public:
 		was_violated = true;
 		if(number_of_violations>max_num_violations){
 			client->get_socket().close();
-			timer.cancel(std::make_error_code(std::errc::timed_out));
+			timer.cancel();
 			return;
 		}
 		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
@@ -186,7 +187,7 @@ public:
 		if(er){
 			std::cout << er.message();
 			client->get_socket().close();
-			timer.cancel(std::make_error_code(std::errc::timed_out));
+			timer.cancel();
 			return;
 		}
 		switch(val->signal_to_process){
@@ -203,7 +204,7 @@ public:
 	}
 
 	~ChildProcess(){
-		timer.cancel(std::make_error_code(std::errc::timed_out));
+		timer.cancel();
 		client->get_socket().close();
 		std::cout << "destroying child proc" << std::endl;
 	}

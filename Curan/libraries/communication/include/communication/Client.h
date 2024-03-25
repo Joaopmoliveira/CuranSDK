@@ -35,7 +35,7 @@ namespace curan {
 
 		private:
 			asio::io_context& _cxt;
-			Socket socket;
+			curan::communication::Socket socket;
 
 			std::vector<callable> callables;
 			callable connection_type;	
@@ -53,6 +53,8 @@ namespace curan {
 			Client(ServerInfo& info);
 
 		public:
+
+			~Client();
 
 			static inline std::shared_ptr<Client> make(Info& info) {
 				// this is a bad practice, in effect we have a multistage contructor of the socket client
@@ -80,13 +82,11 @@ namespace curan {
 				return shared_from_this();
 			}
 
-			~Client();
-
 			void connect(callable c);
 
 			void write(std::shared_ptr<curan::utilities::MemoryBuffer> buffer);
 
-			inline Socket& get_socket() {
+			inline curan::communication::Socket& get_socket() {
 				return socket;
 			}	
 

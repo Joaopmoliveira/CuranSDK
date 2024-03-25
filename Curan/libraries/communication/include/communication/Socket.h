@@ -10,7 +10,7 @@
 
 namespace curan {
 	namespace communication {
-		class Client;
+		
 		/*
 		The socket is an abstraction of
 		the underlying socket of asio.
@@ -67,6 +67,8 @@ namespace curan {
 
 	private:
 
+		void lauch_start_after_connect(std::shared_ptr<Client>);
+
 		void trigger_start(callable callable, std::weak_ptr<Client> owner, const asio::ip::tcp::resolver::results_type& endpoints);
 
 		void trigger_start(callable callable, std::weak_ptr<Client> owner);
@@ -87,8 +89,7 @@ namespace curan {
 				[this, client, connection_callback](std::error_code ec, asio::ip::tcp::endpoint e) {
 					connection_callback(ec);
 					if (!ec) {
-						is_connected = true;
-						start(client->copy());
+						lauch_start_after_connect(client);
 						post();
 					}
 				});

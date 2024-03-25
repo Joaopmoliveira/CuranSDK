@@ -214,9 +214,9 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
 	    asio::ip::tcp::resolver resolver(io_context);
 	    auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	    construction.endpoints = endpoints;
-	    curan::communication::Client client{ construction };
+	    auto client = curan::communication::Client::make(construction);
 
-	    client.connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val)
+	    client->connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val)
         {
             bar(shared_state,protocol_defined_val,er,val);
         });

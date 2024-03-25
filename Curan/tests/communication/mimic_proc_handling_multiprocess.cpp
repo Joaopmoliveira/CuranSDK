@@ -26,7 +26,7 @@ class ProcessLaucher{
 			hidden_context{}, 
 			timer{hidden_context},
 			number_of_violations{0},
-			was_violated = true,
+			was_violated{true},
 			max_num_violations{max_viols}
 	{
 		using namespace curan::communication;
@@ -53,9 +53,9 @@ class ProcessLaucher{
 			server->write(to_send);
     	}); 
 
-		pool->submit(curan::utilities::Job{"run hidden proc laucher handler",[](){
+		pool->submit(curan::utilities::Job{"run hidden proc laucher handler",[this](){
 			hidden_context.run();
-		}})
+		}});
   	}
 
 	void message_callback(const size_t& protocol_defined_val,const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val){
@@ -77,7 +77,7 @@ class ChildProcess{
 			hidden_context{}, 
 			timer{hidden_context},
 			number_of_violations{0},
-			was_violated = true,
+			was_violated{true},
 			max_num_violations{max_viols}
 	{
 		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline);
@@ -107,9 +107,9 @@ class ChildProcess{
 			client->write(to_send);
     	}); 
 
-		pool->submit(curan::utilities::Job{"run hidden proc laucher handler",[](){
+		pool->submit(curan::utilities::Job{"run hidden proc laucher handler",[this](){
 			hidden_context.run();
-		}})
+		}});
 	}
 
 	void message_callback(const size_t& protocol_defined_val,const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val){

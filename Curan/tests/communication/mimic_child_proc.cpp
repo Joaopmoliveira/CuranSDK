@@ -74,7 +74,7 @@ public:
 		
 		was_violated = true;
 		if (number_of_violations > max_num_violations) {
-			timer.cancel(std::make_error_code(std::errc::timed_out));
+			timer.cancel();
 			client->get_socket().close();
 			return;
 		}
@@ -92,7 +92,7 @@ public:
 
 	void message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {
 		if (er) {
-			timer.cancel(std::make_error_code(std::errc::timed_out));
+			timer.cancel();
 			client->get_socket().close();
 			return;
 		}
@@ -103,14 +103,14 @@ public:
 			break;
 		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
 		default:
-			timer.cancel(std::make_error_code(std::errc::timed_out));
+			timer.cancel();
 			client->get_socket().close();
 			break;
 		}
 	}
 
 	~ChildProcess() {
-		timer.cancel(std::make_error_code(std::errc::timed_out));
+		timer.cancel();
 		client->get_socket().close();
 	}
 };

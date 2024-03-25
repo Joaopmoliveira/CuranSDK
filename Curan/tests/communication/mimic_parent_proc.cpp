@@ -11,8 +11,15 @@
 #include <cmath>
 #include <csignal>
 #include <system_error>
+
+#ifdef CURAN_WINDOWS
 #include <tchar.h>
 #include <windows.h>
+#elif CURAN_LINUX
+#include <unistd.h>
+#include <sys/types.h>
+#endif
+
 #include <stdio.h>
 #include <filesystem>
 
@@ -28,11 +35,15 @@ class ProcessHandles {
 #ifdef CURAN_WINDOWS
 	PROCESS_INFORMATION pi;
 #elif CURAN_LINUX
-
+	pid_t pi = 0;
 #endif
 public:
 	ProcessHandles() {
-		ZeroMemory(&pi, sizeof(pi));
+#ifdef CURAN_WINDOWS
+	ZeroMemory(&pi, sizeof(pi));
+#elif CURAN_LINUX
+	pi = 0;
+#endif	
 	}
 
 	operator bool() const {
@@ -44,13 +55,13 @@ public:
 		return memcmp(&local, &pi, sizeof(local)); // compare if the handles are nullified
 
 #elif CURAN_LINUX
-
+		return pi;
 #endif 
 	}
 
 	template<class _Rep, class _Period>
-	bool close(const std::chrono::duration<_Rep, _Period>& deadline) {
-		if (!this->operator()) {
+	void close(const std::chrono::duration<_Rep, _Period>& deadline) {
+		if (!(*this)) {
 			std::cout << "processes already closed\n";
 			return;
 		}
@@ -96,6 +107,7 @@ public:
 #elif CURAN_LINUX
 
 #endif // CURAN_WINDOWS
+
 	}
 
 	bool open(std::string s) {
@@ -126,6 +138,20 @@ public:
 		return true;
 
 #elif CURAN_LINUX
+		pi = fork();
+		if(pi < 0 ){
+			return false;
+		} 
+		else if (pi > 0)
+		{
+			return true;
+		}
+		else 
+		{
+    		// we are the child
+    		execve(s.data(),0,0);
+    		_exit(EXIT_FAILURE);   // exec never returns
+		}
 		return false;
 #endif 
 	}
@@ -212,7 +238,7 @@ public:
 			number_of_violations = was_violated ? number_of_violations + 1 : 0;
 			if (number_of_violations > max_num_violations) {
 				server->cancel();
-				connection_timer.cancel(std::make_error_code(std::errc::timed_out));
+				connection_timer.cancel();
 				return;
 			}
 			auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
@@ -229,8 +255,8 @@ public:
 
 	~ProcessLaucher() {
 		std::cout << "destroying parent proc" << std::endl;
-		connection_timer.cancel(std::make_error_code(std::errc::timed_out));
-		closing_process_timer.cancel(std::make_error_code(std::errc::timed_out));
+		connection_timer.cancel();
+		closing_process_timer.cancel();
 		sync_internal_terminate_pending_process_and_connections();
 	}
 

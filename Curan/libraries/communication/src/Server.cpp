@@ -10,7 +10,7 @@ Server::Server(Info& info) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip:
 
 }
 
-Server::Server(Info& info,std::function<void(std::error_code ec)> connection_callback) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), info.port) },connection_type{info.connection_type}  {
+Server::Server(Info& info,std::function<bool(std::error_code ec)> connection_callback) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), info.port) },connection_type{info.connection_type}  {
 	
 }
 

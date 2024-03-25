@@ -41,7 +41,7 @@ namespace curan {
 
 			Server(Info& info);
 
-			Server(Info& info, std::function<void(std::error_code ec)> connection_callback);
+			Server(Info& info, std::function<bool(std::error_code ec)> connection_callback);
 
 		public:
 
