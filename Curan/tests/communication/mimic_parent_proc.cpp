@@ -11,6 +11,9 @@
 #include <cmath>
 #include <csignal>
 #include <system_error>
+#include <tchar.h>
+#include <windows.h>
+#include <stdio.h>
 
 asio::io_context* ptr_ctx = nullptr;
 
@@ -18,6 +21,108 @@ void signal_handler(int signal)
 {
 	if (ptr_ctx) ptr_ctx->stop();
 }
+
+
+class ProcessHandles {
+#ifdef CURAN_WINDOWS
+	PROCESS_INFORMATION pi;
+#elif CURAN_LINUX
+
+#endif
+
+	bool operator()() {
+#ifdef CURAN_WINDOWS
+		PROCESS_INFORMATION local;
+		ZeroMemory(&local, sizeof(local));
+		// memcmp(&local, &pi, sizeof(local)); returns 0 if all bytes are equal, i.e., if the memory of pi is zeroed out. If it is zeroed then it mean that the 
+		// handles are closed, if they are different then returns number different from zero
+		return memcmp(&local, &pi, sizeof(local)); // compare if the handles are nullified
+
+#elif CURAN_LINUX
+
+#endif 
+	}
+
+	template<class _Rep, class _Period>
+	bool close(const std::chrono::duration<_Rep, _Period>& deadline) {
+		auto transformed_deadline = std::chrono::duration_cast<std::chrono::milliseconds>(deadline);
+#ifdef CURAN_WINDOWS
+		auto return_value = WaitForSingleObject(pi.hProcess, transformed_deadline.count());
+		switch (return_value) {
+		case WAIT_ABANDONED: //this should never happen? it happears to be related with mutex handles
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			ZeroMemory(&pi, sizeof(pi));
+			break;
+		case WAIT_OBJECT_0: // this means that the operation was successeful
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			ZeroMemory(&pi, sizeof(pi));
+			break;
+		case WAIT_TIMEOUT: // the wait operation timed out thus unsuccesefull
+			std::cout << "wait operation did not return in time\n";
+			TerminateProcess(pi.hProcess, 3);
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			ZeroMemory(&pi, sizeof(pi));
+			break;
+		case WAIT_FAILED: // the wait failed for obscure reasons
+			std::cout << "wait operation failed\n";
+			TerminateProcess(pi.hProcess, 3);
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			ZeroMemory(&pi, sizeof(pi));
+			break;
+		default:
+			std::cout << "unknown error\n";
+			TerminateProcess(pi.hProcess, 3);
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			ZeroMemory(&pi, sizeof(pi));
+			break;
+		}
+		// if the waiting operation does not terminate in the alloted time we force the process to terminate manually
+
+#elif CURAN_LINUX
+
+#endif // CURAN_WINDOWS
+	}
+
+	bool open(std::string s) {
+#ifdef CURAN_WINDOWS
+		STARTUPINFO si;
+
+		ZeroMemory(&si, sizeof(si));
+		si.cb = sizeof(si);
+		ZeroMemory(&pi, sizeof(pi));
+		TCHAR* val = s.data();
+		//const TCHAR* data = static_cast<const TCHAR*>(command.data());
+		;
+		// Start the child process. 
+		if (!CreateProcess(NULL,   // No module name (use command line)
+			val,        // Command line
+			NULL,           // Process handle not inheritable
+			NULL,           // Thread handle not inheritable
+			FALSE,          // Set handle inheritance to FALSE
+			0,              // No creation flags
+			NULL,           // Use parent's environment block
+			NULL,           // Use parent's starting directory 
+			&si,            // Pointer to STARTUPINFO structure
+			&pi)           // Pointer to PROCESS_INFORMATION structure
+			) {
+			std::cout << "launched process\n";
+		}
+		else {
+			std::cout << "failed to launch process\n";
+			return false;
+		}
+
+#elif CURAN_LINUX
+		return false;
+#endif 
+	}
+
+};
 
 class ProcessLaucher {
 
@@ -30,23 +135,19 @@ class ProcessLaucher {
 	const size_t max_num_violations;
 	std::shared_ptr<curan::communication::Server> server;
 	bool connection_established = false;
-
-#ifdef CURAN_WINDOWS
-	PROCESS_INFORMATION pi;
-#elif CURAN_LINUX
-
-#endif
-
+	unsigned short port;
+	ProcessHandles handles;
 
 public:
 
 	template <class _Rep, class _Period>
-	ProcessLaucher(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_viols, unsigned short port = 50000) :
+	ProcessLaucher(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_viols, unsigned short in_port = 50000) :
 		hidden_context{ client_ctx },
 		connection_timer{ client_ctx },
 		number_of_violations{ 0 },
 		was_violated{ true },
-		max_num_violations{ max_viols }
+		max_num_violations{ max_viols },
+		port{ in_port }
 	{
 		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline);
 		using namespace curan::communication;
@@ -102,13 +203,17 @@ public:
 		std::cout << "destroying parent proc" << std::endl;
 		connection_timer.cancel(std::make_error_code(std::errc::timed_out));
 		closing_process_timer.cancel(std::make_error_code(std::errc::timed_out));
+		sync_internal_terminate_pending_process_and_connections();
+	}
+
+	void sync_internal_terminate_pending_process_and_connections() {
+		connection_established = false;
 		server->cancel();
 	}
 
 	void message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {
 		if (er) {
-			connection_established = false;
-			server->cancel();
+			sync_internal_terminate_pending_process_and_connections();
 			return;
 		}
 		switch (val->signal_to_process) {
@@ -129,47 +234,17 @@ public:
 	*/
 	template<typename... Args>
 	bool lauch_process(Args ... arg) {
-		if (connection_established)
+		if (handles)
 			return false;
 		constexpr size_t size = sizeof ...(Args);
 		const char* loc[size] = { arg... };
-		std::vector<std::string> arguments;
-		for (const auto& val : loc) {
-			arguments.emplace_back(val);
-		}
-
 		std::string command;
+		for (const auto& val : loc)
+			command += std::string(val) + " ";
 
-#ifdef CURAN_WINDOWS
-		STARTUPINFO si;
-	
-		ZeroMemory(&si, sizeof(si));
-		si.cb = sizeof(si);
-		ZeroMemory(&pi, sizeof(pi));
+		command += std::to_string(port);
 
-		// Start the child process. 
-		if (!CreateProcess(NULL,   // No module name (use command line)
-			argv[1],        // Command line
-			NULL,           // Process handle not inheritable
-			NULL,           // Thread handle not inheritable
-			FALSE,          // Set handle inheritance to FALSE
-			0,              // No creation flags
-			NULL,           // Use parent's environment block
-			NULL,           // Use parent's starting directory 
-			&si,            // Pointer to STARTUPINFO structure
-			&pi)           // Pointer to PROCESS_INFORMATION structure
-			) {
-			std::cout << "launched process\n";
-		} else {
-			std::cout << "failed to launch process\n";
-			return false;
-		}
-
-#elif CURAN_LINUX
-
-#endif // CURAN_WINDOWS
-
-		return true;
+		return handles.open(command);
 	}
 
 	/*
@@ -177,48 +252,21 @@ public:
 	*/
 	template<typename... Args>
 	void async_lauch_process(std::function<void(bool)> async_handler, Args ... arg) {
-		if (connection_established)
-			return false;
+		if (handles) { // we cannot lauch an asycn proces without closing the previous handles
+			async_handler(false);
+			return;
+		}
 		constexpr size_t size = sizeof ...(Args);
 		const char* loc[size] = { arg... };
-		std::vector<std::string> arguments;
-		for (const auto& val : loc) {
-			arguments.emplace_back(val);
-		}
 
 		std::string command;
-		hidden_context.post([this](asio::error_code ec) {
+		for (const auto& val : loc)
+			command += std::string(val) + " ";
 
-#ifdef CURAN_WINDOWS
-			STARTUPINFO si;
+		command += std::to_string(port);
 
-			ZeroMemory(&si, sizeof(si));
-			si.cb = sizeof(si);
-			ZeroMemory(&pi, sizeof(pi));
-
-			// Start the child process. 
-			if (!CreateProcess(NULL,   // No module name (use command line)
-				argv[1],        // Command line
-				NULL,           // Process handle not inheritable
-				NULL,           // Thread handle not inheritable
-				FALSE,          // Set handle inheritance to FALSE
-				0,              // No creation flags
-				NULL,           // Use parent's environment block
-				NULL,           // Use parent's starting directory 
-				&si,            // Pointer to STARTUPINFO structure
-				&pi)           // Pointer to PROCESS_INFORMATION structure
-				) {
-				std::cout << "launched process\n";
-				async_handler(true);
-			}
-			else {
-				std::cout << "failed to launch process\n";
-				async_handler(false);
-			}
-
-#elif CURAN_LINUX
-
-#endif // CURAN_WINDOWS
+		hidden_context.post([this, command](asio::error_code ec) {
+				async_handler(handles.open(command));
 			}
 		);
 
@@ -230,86 +278,32 @@ public:
 	*/
 	template <class _Rep, class _Period>
 	void terminate(const std::chrono::duration<_Rep, _Period>& deadline) {
-		if (!connection_established)
+		if (!handles) //if the handles are already closed then we don't need to close anything
 			return;
-		auto transformed_deadline = std::chrono::duration_cast<std::chrono::milliseconds>(deadline);
+		
 		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::SHUTDOWN_SAFELY);
 		val->serialize();
 		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
-
 		server->write(to_send);
-#ifdef CURAN_WINDOWS
-		auto return_value = WaitForSingleObject(pi.hProcess, transformed_deadline.count());
-		switch (return_value) {
-		case WAIT_ABANDONED: //this should never happen? it happears to be related with mutex handles
-			break;
-		case WAIT_OBJECT_0: // this means that the operation was successeful
-			break;
-		case WAIT_TIMEOUT: // the wait operation timed out thus unsuccesefull
-			std::cout << "wait operation did not return in time\n";
-			TerminateProcess(pi.hProcess, 3);
-			CloseHandle(pi.hProcess);
-			CloseHandle(pi.hThread);
-			break;
-		case WAIT_FAILED: // the wait failed for obscure reasons
-			std::cout << "wait operation failed\n";
-			TerminateProcess(pi.hProcess, 3);
-			CloseHandle(pi.hProcess);
-			CloseHandle(pi.hThread);
-			break;
-		default:
-			std::cout << "unknown error\n";
-			TerminateProcess(pi.hProcess, 3);
-			CloseHandle(pi.hProcess);
-			CloseHandle(pi.hThread);
-			break;
-		}
-		// if the waiting operation does not terminate in the alloted time we force the process to terminate manually
 
-#elif CURAN_LINUX
-
-#endif // CURAN_WINDOWS
+		handles.close(deadline);
 	}
 
 	template <class _Rep, class _Period>
 	void async_terminate(const std::chrono::duration<_Rep, _Period>& deadline) {
-		if (!connection_established)
+		if (!handles)
 			return;
+
+		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::SHUTDOWN_SAFELY);
+		val->serialize();
+		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
+		server->write(to_send);
+
 		auto transformed_deadline = std::chrono::duration_cast<std::chrono::milliseconds>(deadline);
 		closing_process_timer.expires_from_now(deadline);
 		closing_process_timer.async_wait(
 			[this](asio::error_code ec) {
-#ifdef CURAN_WINDOWS
-			auto return_value = WaitForSingleObject(pi.hProcess, 0));
-
-			switch (return_value) {
-			case WAIT_ABANDONED: //this should never happen? it happears to be related with mutex handles
-				break;
-			case WAIT_OBJECT_0: // this means that the operation was successeful
-				std::cout << "other process terminated in time\n";
-				break;
-			case WAIT_TIMEOUT: // the wait operation timed out thus unsuccesefull
-				std::cout << "wait operation did not return in time\n";
-				TerminateProcess(pi.hProcess, 3);
-				CloseHandle(pi.hProcess);
-				CloseHandle(pi.hThread);
-				break;
-			case WAIT_FAILED: // the wait failed for obscure reasons
-				std::cout << "wait operation failed\n";
-				TerminateProcess(pi.hProcess, 3);
-				CloseHandle(pi.hProcess);
-				CloseHandle(pi.hThread);
-				break;
-			default:
-				std::cout << "unknown error\n";
-				TerminateProcess(pi.hProcess, 3);
-				CloseHandle(pi.hProcess);
-				CloseHandle(pi.hThread);
-				break;
-			}
-#elif CURAN_LINUX
-
-#endif // CURAN_WINDOWS			
+				handles.close(std::chrono::milliseconds(0)); // the method attempts to check if the other process is close and then is kills the other process automatically
 			}
 		);
 
@@ -325,7 +319,8 @@ int main() {
 		asio::io_context io_context;
 		ptr_ctx = &io_context;
 		auto parent = std::make_unique<ProcessLaucher>(io_context, std::chrono::milliseconds(100), 10);
-		parent->async_lauch_process([](bool sucess) {},"notepad");
+		parent->async_lauch_process([](bool sucess) {
+			},"notepad");
 		curan::utilities::cout << "running context\n";
 		io_context.run();
 		curan::utilities::cout << "not running context\n";
