@@ -1,6 +1,7 @@
 #include "communication/Client.h"
 #include "communication/Server.h"
 #include "communication/ProtoProcHandler.h"
+
 #include "utils/Flag.h"
 #include "utils/TheadPool.h"
 #include <thread>
@@ -88,10 +89,8 @@ public:
 	template<class _Rep, class _Period>
 	void close(const std::chrono::duration<_Rep, _Period>& deadline) {
 		if (!(*this)) {
-			std::cout << "processes already closed\n";
 			return;
 		}
-		std::cout << "trying to close other process\n";
 		
 #ifdef CURAN_WINDOWS
 		std::chrono::milliseconds transformed_deadline = std::chrono::duration_cast<std::chrono::milliseconds>(deadline);
@@ -108,21 +107,21 @@ public:
 			ZeroMemory(&pi, sizeof(pi));
 			break;
 		case WAIT_TIMEOUT: // the wait operation timed out thus unsuccesefull
-			std::cout << "wait operation did not return in time\n";
+			parent_file << "wait operation did not return in time\n";
 			TerminateProcess(pi.hProcess, 3);
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
 			ZeroMemory(&pi, sizeof(pi));
 			break;
 		case WAIT_FAILED: // the wait failed for obscure reasons
-			std::cout << "wait operation failed\n";
+			parent_file << "wait operation failed\n";
 			TerminateProcess(pi.hProcess, 3);
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
 			ZeroMemory(&pi, sizeof(pi));
 			break;
 		default:
-			std::cout << "unknown error\n";
+			parent_file << "unknown error\n";
 			TerminateProcess(pi.hProcess, 3);
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
@@ -132,8 +131,8 @@ public:
 		// if the waiting operation does not terminate in the alloted time we force the process to terminate manually
 
 #elif CURAN_LINUX
-		int status;
-		int vals;
+		int status = -10;
+		int vals = -10;
 		// the behavior is different if we need to wait for a larger amount of time than 0 or if it is zero
 		std::chrono::nanoseconds transformed_deadline = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline);
 		if(transformed_deadline.count() == 0){
@@ -164,24 +163,26 @@ public:
 				vals = waitpid(copy_of_pid, &status, WNOHANG);
         		if (vals == -1) {
             		// failure to wait, (basically the wait itself could not run to check on the child process)
-					// I think I should still try to kill the proccess in this case
+					// I think I should still try to kill the proccess in this case 
        	 		}
 
         		if (vals) { // this is true, it means that the wait was suceesefull and we can anlyse the status flag to see the status of the other process
             		if (WIFEXITED(status)) { // if this is true the other process is closed, so we don't need to do anything
 						copy_of_pid = 0;
+						break;
             		} else { // if this is triggered then the process was terminated for some other reason, still don't know if I should kill it in this situation or not
 						copy_of_pid = 0;
+						break;
 					}
         		} else { // the wait did not finish, meaning that the process is still active,
-
 				}
 				std::this_thread::sleep_for(transformed_deadline/10);
 				current_time = std::chrono::high_resolution_clock::now();
 				
-    		} while (std::chrono::duration_cast<std::chrono::nanoseconds>(current_time-start_wait_time)>transformed_deadline);
+    		} while (std::chrono::duration_cast<std::chrono::nanoseconds>(current_time-start_wait_time)<transformed_deadline);
 			if(copy_of_pid){
 				kill(pi,SIGINT);
+				pi = 0;
 			}
 		}
 
@@ -191,7 +192,6 @@ public:
 	}
 
 	bool open(PlatformAgnosticCmdArgs& s) {
-		std::cout << "trying to launch process named: " << s << std::endl;
 #ifdef CURAN_WINDOWS
 		STARTUPINFO si;
 
@@ -343,16 +343,25 @@ public:
 		if (ec)
 			return;
 		if (connection_established) {
+			
 			number_of_violations = was_violated ? number_of_violations + 1 : 0;
+			was_violated = true;
 			if (number_of_violations > max_num_violations) {
-				server->cancel();
-				connection_timer.cancel();
+				auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::SHUTDOWN_SAFELY);
+				val->serialize();
+				auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
+				server->write(to_send);
+				async_terminate(std::chrono::seconds(3),[this](){ 
+					connection_timer.cancel();
+					closing_process_timer.cancel();
+					sync_internal_terminate_pending_process_and_connections();
+					hidden_context.get_executor().on_work_finished();
+				});
 				return;
 			}
 			auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
 			val->serialize();
 			auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
-
 			server->write(to_send);
 		}
 		connection_timer.expires_from_now(duration);
@@ -362,7 +371,6 @@ public:
 	}
 
 	~ProcessLaucher() {
-		std::cout << "destroying parent proc" << std::endl;
 		connection_timer.cancel();
 		closing_process_timer.cancel();
 		sync_internal_terminate_pending_process_and_connections();
@@ -382,11 +390,9 @@ public:
 		case curan::communication::ProcessHandler::Signals::HEART_BEAT:
 			was_violated = false;
 			number_of_violations = 0;
-			std::cout << "!";
 			break;
 		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
 		default:
-			number_of_violations = max_num_violations;
 			break;
 		}
 	}
@@ -397,7 +403,6 @@ public:
 	template<typename... Args>
 	bool lauch_process(Args ... arg) {
 		if (handles) {
-			std::cout << "syncronous lauch process stopped\n";
 			return false;
 		}
 		auto command = create_command(port,arg...);
@@ -410,12 +415,10 @@ public:
 	template<typename... Args>
 	void async_lauch_process(std::function<void(bool)> async_handler, Args ... arg) {
 		if (handles) { // we cannot lauch an asycn proces without closing the previous handles
-			std::cout << "assyncronous lauch process stopped\n";
 			async_handler(false);
 			return;
 		}
 		auto command = create_command(port, arg...);
-		std::cout << "posted assyncronous lauch process\n";
 		hidden_context.post([this, command, async_handler]() mutable {
 				async_handler(handles.open(command));
 			}
@@ -441,7 +444,7 @@ public:
 	}
 
 	template <class _Rep, class _Period>
-	void async_terminate(const std::chrono::duration<_Rep, _Period>& deadline) {
+	void async_terminate(const std::chrono::duration<_Rep, _Period>& deadline,std::function<void(void)> termination_handler) {
 		if (!handles)
 			return;
 
@@ -450,11 +453,11 @@ public:
 		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
 		server->write(to_send);
 
-		auto transformed_deadline = std::chrono::duration_cast<std::chrono::milliseconds>(deadline);
 		closing_process_timer.expires_from_now(deadline);
 		closing_process_timer.async_wait(
-			[this](asio::error_code ec) {
+			[this,termination_handler](asio::error_code ec) {
 				handles.close(std::chrono::milliseconds(0)); // the method attempts to check if the other process is close and then is kills the other process automatically
+				termination_handler();
 			}
 		);
 
@@ -463,23 +466,18 @@ public:
 
 int main() {
 	try {
-		std::cout << "started running\n";
 		using namespace curan::communication;
 		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
 		ptr_ctx = &io_context;
 		auto parent = std::make_unique<ProcessLaucher>(io_context, std::chrono::milliseconds(100), 10);
-		parent->async_lauch_process([](bool sucess) { std::cout <<  ((sucess) ? "lauched process\n" : "failure to launch process\n"); }, CURAN_BINARY_LOCATION"/mimic_child_proc" CURAN_BINARY_SUFFIX);
-		curan::utilities::cout << "running context\n";
+		parent->async_lauch_process([](bool sucess) {  }, CURAN_BINARY_LOCATION"/mimic_child_proc" CURAN_BINARY_SUFFIX);
 		io_context.run();
-		curan::utilities::cout << "not running context\n";
 	}
 	catch (std::exception& e) {
-		std::cout << "Client exception was thrown" + std::string(e.what()) << std::endl;
 		return 1;
 	}
 	catch (...) {
-		std::cout << "Unknown exception" << std::endl;
 		return 1;
 	}
 	return 0;

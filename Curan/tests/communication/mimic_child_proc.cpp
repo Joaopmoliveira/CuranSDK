@@ -14,8 +14,7 @@
 
 asio::io_context* ptr_ctx = nullptr;
 
-void signal_handler(int signal)
-{
+void signal_handler(int signal){	
 	if (ptr_ctx) ptr_ctx->stop();
 }
 
@@ -28,7 +27,7 @@ class ChildProcess {
 	const size_t max_num_violations;
 	std::shared_ptr<curan::communication::Client> client;
 	bool first_connection_established = false;
-
+	size_t numbers_of_triggered_connections = 0;
 public:
 	template <class _Rep, class _Period>
 	ChildProcess(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_violations, unsigned short port = 50000) :
@@ -52,6 +51,8 @@ public:
 				}
 				else {
 					client->get_socket().close();
+					timer.cancel();
+					
 				}
 			}
 		);
@@ -78,12 +79,17 @@ public:
 			client->get_socket().close();
 			return;
 		}
-		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
-		val->serialize();
-		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
-		if (first_connection_established) {
-			client->write(to_send);
+		if(numbers_of_triggered_connections<10){
+			auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
+			val->serialize();
+			auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
+			if (first_connection_established) {
+				client->write(to_send);
+			}
+		} else {
+
 		}
+
 		timer.expires_from_now(duration);
 		timer.async_wait([this](asio::error_code ec) {
 			timer_callback(ec);
@@ -105,6 +111,7 @@ public:
 		default:
 			timer.cancel();
 			client->get_socket().close();
+			hidden_context.get_executor().on_work_finished();
 			break;
 		}
 	}
@@ -126,7 +133,6 @@ int main() {
 		
 		child = std::make_unique<ChildProcess>(io_context, std::chrono::milliseconds(100), 10);
 		io_context.run();
-		std::cout << "child closing!\n";
 	}
 	catch (std::exception& e) {
 		return 1;
