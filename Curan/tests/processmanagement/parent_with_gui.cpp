@@ -13,6 +13,25 @@
 #include <csignal>
 #include <system_error>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/Window.h"
+#include "userinterface/widgets/Button.h"
+#include "userinterface/widgets/Container.h"
+#include "userinterface/widgets/OpenIGTLinkViewer.h"
+#include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/ImageDisplay.h"
+#include "userinterface/widgets/IconResources.h"
+#include "userinterface/widgets/Page.h"
+#include "userinterface/widgets/Overlay.h"
+#include "userinterface/widgets/Loader.h"
+#include "utils/Logger.h"
+#include "utils/Overloading.h"
+#include <variant>
+
+#include <iostream>
+#include <thread>
+
 #ifdef CURAN_WINDOWS
 #include <tchar.h>
 #include <windows.h>
@@ -460,6 +479,61 @@ public:
 
 	}
 };
+
+int viewer_code() {
+	try {
+		using namespace curan::ui;
+		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
+		std::unique_ptr<Context> context = std::make_unique<Context>();;
+		DisplayParams param{ std::move(context),2200,1800 };
+		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+
+	    auto button1 = Button::make("Temporal Calibration",resources);
+	    button1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
+
+		auto icon = resources.get_icon("hr_repeating.png");
+	    auto widgetcontainer =  Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+	    *widgetcontainer << std::move(button1);
+
+		widgetcontainer->set_color(SK_ColorBLACK);
+		auto page = Page{std::move(widgetcontainer),SK_ColorBLACK};
+		page.update_page(viewer.get());
+
+		ConfigDraw config_draw{ &page};
+		config_draw.stack_page->stack(Loader::make("human_robotics_logo.jpeg",resources));
+
+		viewer->set_minimum_size(page.minimum_size());
+
+		while (!glfwWindowShouldClose(viewer->window)) {
+			auto start = std::chrono::high_resolution_clock::now();
+			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
+
+			SkCanvas* canvas = pointer_to_surface->getCanvas();
+			if (viewer->was_updated()) {
+		    	page.update_page(viewer.get());
+				viewer->update_processed();
+			}
+			page.draw(canvas);
+			auto signals = viewer->process_pending_signals();
+
+			if (!signals.empty())
+				page.propagate_signal(signals.back(), &config_draw);
+			page.propagate_heartbeat(&config_draw);
+			glfwPollEvents();
+
+			bool val = viewer->swapBuffers();
+			if (!val)
+				std::cout << "failed to swap buffers\n";
+			auto end = std::chrono::high_resolution_clock::now();
+			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+		}
+		return 0;
+	}
+	catch (std::exception& e) {
+		std::cout << "Failed: " << e.what() << std::endl;
+		return 1;
+	}
+}
 
 int main() {
 	try {
