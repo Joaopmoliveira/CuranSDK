@@ -16,6 +16,8 @@
 #include <tchar.h>
 #include <windows.h>
 #elif CURAN_LINUX
+#define _OPEN_SYS
+#include <sys/wait.h>
 #include <unistd.h>
 #include <sys/types.h>
 #endif
@@ -30,6 +32,30 @@ void signal_handler(int signal)
 	if (ptr_ctx) ptr_ctx->stop();
 }
 
+struct PlatformAgnosticCmdArgs{
+	
+#ifdef CURAN_WINDOWS
+		std::string cmd;
+
+		PlatformAgnosticCmdArgs(const std::string& in_cmd) : cmd{in_cmd} {}
+
+#elif CURAN_LINUX
+		std::vector<std::string> cmd;
+
+		PlatformAgnosticCmdArgs(const std::vector<std::string>& in_cmd) : cmd{in_cmd} {}
+#endif 
+};
+
+std::ostream& operator<< (std::ostream& o, PlatformAgnosticCmdArgs args){
+#ifdef CURAN_WINDOWS
+	o << args.cmd;
+#elif CURAN_LINUX	
+	std::vector<std::string> cmd;
+	for(const auto& val : args.cmd)
+		o << val << " ";
+#endif 	
+	return o;
+}
 
 class ProcessHandles {
 #ifdef CURAN_WINDOWS
@@ -66,8 +92,9 @@ public:
 			return;
 		}
 		std::cout << "trying to close other process\n";
-		auto transformed_deadline = std::chrono::duration_cast<std::chrono::milliseconds>(deadline);
+		
 #ifdef CURAN_WINDOWS
+		std::chrono::milliseconds transformed_deadline = std::chrono::duration_cast<std::chrono::milliseconds>(deadline);
 		auto return_value = WaitForSingleObject(pi.hProcess, transformed_deadline.count());
 		switch (return_value) {
 		case WAIT_ABANDONED: //this should never happen? it happears to be related with mutex handles
@@ -105,12 +132,65 @@ public:
 		// if the waiting operation does not terminate in the alloted time we force the process to terminate manually
 
 #elif CURAN_LINUX
+		int status;
+		int vals;
+		// the behavior is different if we need to wait for a larger amount of time than 0 or if it is zero
+		std::chrono::nanoseconds transformed_deadline = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline);
+		if(transformed_deadline.count() == 0){
+			vals = waitpid(pi, &status, WNOHANG);
+        	if (vals == -1) {
+            	// failure to wait, (basically the wait itself could not run to check on the child process)
+				// I think I should still try to kill the proccess in this case
+				kill(pi,SIGINT);
+				pi = 0;
+       	 	}
+
+        	if (vals>0) { // this is true, it means that the wait was suceesefull and we can anlyse the status flag to see the status of the other process
+            	if (WIFEXITED(status)) { // if this is true the other process is closed, so we don't need to do anything
+                	pi = 0;
+            	} else { // if this is triggered then the process was terminated for some other reason, still don't know if I should kill it in this situation or not
+					pi = 0;
+				}
+        	} else if(pi){ // the wait did not finish, meaning that the process is still active,
+				kill(pi,SIGINT);
+				pi = 0;
+			}
+
+		} else {
+			auto start_wait_time = std::chrono::high_resolution_clock::now();
+			auto current_time = std::chrono::high_resolution_clock::now();
+			auto copy_of_pid = pi;
+    		do {
+				vals = waitpid(copy_of_pid, &status, WNOHANG);
+        		if (vals == -1) {
+            		// failure to wait, (basically the wait itself could not run to check on the child process)
+					// I think I should still try to kill the proccess in this case
+       	 		}
+
+        		if (vals) { // this is true, it means that the wait was suceesefull and we can anlyse the status flag to see the status of the other process
+            		if (WIFEXITED(status)) { // if this is true the other process is closed, so we don't need to do anything
+						copy_of_pid = 0;
+            		} else { // if this is triggered then the process was terminated for some other reason, still don't know if I should kill it in this situation or not
+						copy_of_pid = 0;
+					}
+        		} else { // the wait did not finish, meaning that the process is still active,
+
+				}
+				std::this_thread::sleep_for(transformed_deadline/10);
+				current_time = std::chrono::high_resolution_clock::now();
+				
+    		} while (std::chrono::duration_cast<std::chrono::nanoseconds>(current_time-start_wait_time)>transformed_deadline);
+			if(copy_of_pid){
+				kill(pi,SIGINT);
+			}
+		}
+
 
 #endif // CURAN_WINDOWS
 
 	}
 
-	bool open(std::string s) {
+	bool open(PlatformAgnosticCmdArgs& s) {
 		std::cout << "trying to launch process named: " << s << std::endl;
 #ifdef CURAN_WINDOWS
 		STARTUPINFO si;
@@ -118,7 +198,7 @@ public:
 		ZeroMemory(&si, sizeof(si));
 		si.cb = sizeof(si);
 		ZeroMemory(&pi, sizeof(pi));
-		TCHAR* val = s.data();
+		TCHAR* val = s.cmd.data();
 		//const TCHAR* data = static_cast<const TCHAR*>(command.data());
 		;
 		// Start the child process. 
@@ -147,9 +227,12 @@ public:
 			return true;
 		}
 		else 
-		{
-    		// we are the child
-    		execve(s.data(),0,0);
+		{		
+			std::vector<char*> buffer_to_pass;
+			for(auto& arg : s.cmd)
+				buffer_to_pass.push_back(arg.data());
+			buffer_to_pass.push_back(NULL);
+    		execve(s.cmd.at(0).data(),buffer_to_pass.data(),NULL);
     		_exit(EXIT_FAILURE);   // exec never returns
 		}
 		return false;
@@ -158,21 +241,45 @@ public:
 
 };
 
+
+
 template<typename... Args>
-std::string create_command(unsigned short port, Args ... arg) {
+PlatformAgnosticCmdArgs create_command(unsigned short port, Args ... arg) {
 	constexpr size_t size = sizeof ...(Args);
 	const char* loc[size] = { arg... };
 	std::string command;
 
+	//first we check if the executable exists in the current computer
 	std::string executable_directory_sanity_check{loc[0]};
 	std::filesystem::path path{ executable_directory_sanity_check };
+
 	if (!std::filesystem::exists(path))
 		throw std::runtime_error("the specified file does not exist");
-	for (const auto& val : loc)
-		command += std::string(val) + " ";
 
-	command += std::to_string(port);
-	return command;
+#ifdef CURAN_WINDOWS
+	std::string cmd;
+
+	// now depending if we are on linux or windows we need distinct behavior	
+	for (const auto& val : loc)
+		cmd += std::string(val) + " ";
+
+	cmd += std::to_string(port);	
+
+	PlatformAgnosticCmdArgs args{cmd};
+
+#elif CURAN_LINUX
+	std::vector<std::string> cmd;
+
+	// now depending if we are on linux or windows we need distinct behavior	
+	for (const auto& val : loc)
+		cmd.push_back(std::string(val));;
+
+	cmd.push_back(std::to_string(port));
+
+	PlatformAgnosticCmdArgs args{cmd};
+
+#endif 
+	return args;
 }
 
 class ProcessLaucher {
@@ -216,6 +323,7 @@ public:
 				if (connection_established)
 					return false;
 				server->cancel();
+				return false;
 			}
 		);
 
@@ -292,7 +400,7 @@ public:
 			std::cout << "syncronous lauch process stopped\n";
 			return false;
 		}
-		std::string command = create_command(port,arg...);
+		auto command = create_command(port,arg...);
 		return handles.open(command);
 	}
 
@@ -306,9 +414,9 @@ public:
 			async_handler(false);
 			return;
 		}
-		std::string command = create_command(port, arg...);
+		auto command = create_command(port, arg...);
 		std::cout << "posted assyncronous lauch process\n";
-		hidden_context.post([this, command, async_handler]() {
+		hidden_context.post([this, command, async_handler]() mutable {
 				async_handler(handles.open(command));
 			}
 		);
