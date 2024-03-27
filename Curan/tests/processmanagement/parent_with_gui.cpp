@@ -409,7 +409,7 @@ public:
 
 	void message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {
 		if (er) {
-			sync_internal_terminate_pending_process_and_connections();
+			connection_established = false;
 			return;
 		}
 		switch (val->signal_to_process) {
@@ -491,7 +491,7 @@ public:
 	}
 };
 
-int viewer_code(asio::io_context& io_context,ProcessLaucher* laucher) {
+int viewer_code(asio::io_context& io_context,ProcessLaucher* parent) {
 	try {
 		using namespace curan::ui;
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
@@ -500,7 +500,16 @@ int viewer_code(asio::io_context& io_context,ProcessLaucher* laucher) {
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 	    auto button1 = Button::make("Parent!",resources);
-	    button1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
+	    button1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorRED).set_size(SkRect::MakeWH(300, 300));
+		button1->add_press_call([parent](Button* button, Press press,ConfigDraw* config) {
+			parent_file << "received signal!\n";
+			if(!parent->handles){
+				parent->async_lauch_process([button](bool sucess) { if(sucess) button->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
+			} else {
+				parent->async_terminate(std::chrono::milliseconds(300),[button,parent](){ button->set_waiting_color(SK_ColorRED);});
+			}
+			
+		});
 
 	    auto widgetcontainer =  Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	    *widgetcontainer << std::move(button1);
@@ -532,24 +541,25 @@ int viewer_code(asio::io_context& io_context,ProcessLaucher* laucher) {
 
 			bool val = viewer->swapBuffers();
 			if (!val)
-				std::cout << "failed to swap buffers\n";
+				parent_file << "failed to swap buffers\n";
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
-		laucher->async_terminate(std::chrono::milliseconds(300),[](){});
+		std::raise(SIGINT);
 		return 0;
 	}
 	
 	catch (std::exception& e) {
-		laucher->async_terminate(std::chrono::milliseconds(300),[](){});
-		std::cout << "Failed: " << e.what() << std::endl;
+		parent_file << "Failed: " << e.what() << std::endl;
+		std::raise(SIGINT);
 		return 1;
 	}
 }
 
 int main() {
+	parent_file.open("parent_file.txt");
 	try {
-		parent_file.open("parent_file.txt");
+		
 		if(!parent_file.is_open()){
 			return 1;
 		}
@@ -564,14 +574,15 @@ int main() {
 		}
 		};
 
-		parent->async_lauch_process([](bool sucess) {  }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
 		io_context.run();
 		th.join();
 	}
 	catch (std::exception& e) {
+		parent_file << "exception thrown : " << e.what() << std::endl;
 		return 1;
 	}
 	catch (...) {
+		parent_file << "exception thrown : " << std::endl;
 		return 1;
 	}
 	return 0;

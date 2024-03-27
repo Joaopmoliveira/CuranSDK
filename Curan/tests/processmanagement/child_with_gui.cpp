@@ -44,7 +44,6 @@ class ChildProcess {
 	const size_t max_num_violations;
 	std::shared_ptr<curan::communication::Client> client;
 	bool first_connection_established = false;
-	//size_t numbers_of_triggered_connections = 0;
 public:
 	template <class _Rep, class _Period>
 	ChildProcess(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_violations, unsigned short port = 50000) :
@@ -127,7 +126,6 @@ public:
 			was_violated = false;
 			number_of_violations = 0;
 			child_file << "heart beat\n";
-			// ++numbers_of_triggered_connections;
 			break;
 		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
 		default:
