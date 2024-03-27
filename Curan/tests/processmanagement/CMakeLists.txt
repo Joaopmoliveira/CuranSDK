@@ -1,3 +1,8 @@
+find_package(ITK CONFIG REQUIRED)
+
+include(${ITK_USE_FILE})
+
+
 add_executable(child_with_gui 
 child_with_gui.cpp 
 )
@@ -8,6 +13,8 @@ target_compile_definitions(child_with_gui PRIVATE CURAN_COPIED_RESOURCE_PATH="${
 target_link_libraries(child_with_gui PUBLIC
 userinterface
 communication
+utils
+${ITK_LIBRARIES}
 )
 
 IF (WIN32)
@@ -29,6 +36,8 @@ target_compile_definitions(parent_with_gui PRIVATE CURAN_COPIED_RESOURCE_PATH="$
 target_link_libraries(parent_with_gui PUBLIC
 userinterface
 communication
+utils
+${ITK_LIBRARIES}
 )
 
 IF (WIN32)

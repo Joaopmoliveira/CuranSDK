@@ -1,12 +1,9 @@
 #include "communication/Client.h"
 #include "communication/Server.h"
 #include "communication/ProtoProcHandler.h"
-#include "utils/Flag.h"
-#include "utils/TheadPool.h"
 #include <thread>
 #include <csignal>
 #include <chrono>
-#include "utils/Logger.h"
 #include <atomic>
 #include <cmath>
 #include <csignal>
@@ -23,13 +20,14 @@
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Overlay.h"
-#include "userinterface/widgets/Loader.h"
-#include "utils/Logger.h"
-#include "utils/Overloading.h"
 #include <variant>
 
 #include <iostream>
 #include <thread>
+
+#include <ostream>
+#include <fstream>
+std::ofstream child_file;
 
 asio::io_context* ptr_ctx = nullptr;
 
@@ -46,7 +44,7 @@ class ChildProcess {
 	const size_t max_num_violations;
 	std::shared_ptr<curan::communication::Client> client;
 	bool first_connection_established = false;
-	size_t numbers_of_triggered_connections = 0;
+	//size_t numbers_of_triggered_connections = 0;
 public:
 	template <class _Rep, class _Period>
 	ChildProcess(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_violations, unsigned short port = 50000) :
@@ -96,17 +94,17 @@ public:
 		if (number_of_violations > max_num_violations) {
 			timer.cancel();
 			client->get_socket().close();
+			hidden_context.get_executor().on_work_finished();
+			child_file << "max violations detect, terminating everything\n";
 			return;
 		}
-		if(numbers_of_triggered_connections<10){
-			auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
-			val->serialize();
-			auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
-			if (first_connection_established) {
-				client->write(to_send);
-			}
-		} else {
 
+
+		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
+		val->serialize();
+		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
+		if (first_connection_established) {
+			client->write(to_send);
 		}
 
 		timer.expires_from_now(duration);
@@ -119,18 +117,24 @@ public:
 		if (er) {
 			timer.cancel();
 			client->get_socket().close();
+			hidden_context.get_executor().on_work_finished();
+			child_file << "error detected\n";
 			return;
 		}
+		
 		switch (val->signal_to_process) {
 		case curan::communication::ProcessHandler::Signals::HEART_BEAT:
 			was_violated = false;
 			number_of_violations = 0;
+			child_file << "heart beat\n";
+			// ++numbers_of_triggered_connections;
 			break;
 		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
 		default:
 			timer.cancel();
 			client->get_socket().close();
 			hidden_context.get_executor().on_work_finished();
+			child_file << "shutdown request and triggered\n";
 			break;
 		}
 	}
@@ -138,11 +142,12 @@ public:
 	~ChildProcess() {
 		timer.cancel();
 		client->get_socket().close();
+		hidden_context.get_executor().on_work_finished();
 	}
 };
 
 
-int viewer_code() {
+int viewer_code(asio::io_context& io_context) {
 	try {
 		using namespace curan::ui;
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
@@ -150,10 +155,9 @@ int viewer_code() {
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-	    auto button1 = Button::make("Temporal Calibration",resources);
+	    auto button1 = Button::make("Child!",resources);
 	    button1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
 
-		auto icon = resources.get_icon("hr_repeating.png");
 	    auto widgetcontainer =  Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	    *widgetcontainer << std::move(button1);
 
@@ -162,11 +166,10 @@ int viewer_code() {
 		page.update_page(viewer.get());
 
 		ConfigDraw config_draw{ &page};
-		config_draw.stack_page->stack(Loader::make("human_robotics_logo.jpeg",resources));
 
 		viewer->set_minimum_size(page.minimum_size());
 
-		while (!glfwWindowShouldClose(viewer->window)) {
+		while (!glfwWindowShouldClose(viewer->window) && !io_context.stopped()) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
 
@@ -192,21 +195,31 @@ int viewer_code() {
 		return 0;
 	}
 	catch (std::exception& e) {
-		std::cout << "Failed: " << e.what() << std::endl;
 		return 1;
 	}
 }
 
 int main() {
 	try {
+		child_file.open("child_file.txt");
+		if(!child_file.is_open()){
+			return 1;
+		}
 		using namespace curan::communication;
 		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
 		ptr_ctx = &io_context;
 		std::unique_ptr<ChildProcess> child;
 		
-		child = std::make_unique<ChildProcess>(io_context, std::chrono::milliseconds(100), 10);
+		child = std::make_unique<ChildProcess>(io_context, std::chrono::milliseconds(1000), 10);
+		std::thread th{[&](){ 
+			viewer_code(io_context);
+		}
+		};
 		io_context.run();
+		std::raise(SIGINT);
+		child_file << "lauching signal!\n";
+		th.join();
 	}
 	catch (std::exception& e) {
 		return 1;

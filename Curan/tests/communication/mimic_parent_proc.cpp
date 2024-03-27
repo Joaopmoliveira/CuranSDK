@@ -472,9 +472,11 @@ int main() {
 		io_context.run();
 	}
 	catch (std::exception& e) {
+		std::cout << "exception thrown :" << e.what();
 		return 1;
 	}
 	catch (...) {
+		std::cout << "exception thrown ";
 		return 1;
 	}
 	return 0;

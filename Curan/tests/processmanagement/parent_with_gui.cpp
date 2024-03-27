@@ -45,6 +45,10 @@
 #include <stdio.h>
 #include <filesystem>
 
+#include <ostream>
+#include <fstream>
+std::ofstream parent_file;
+
 asio::io_context* ptr_ctx = nullptr;
 
 void signal_handler(int signal)
@@ -90,6 +94,10 @@ public:
 #elif CURAN_LINUX
 	pi = 0;
 #endif	
+	}
+
+	~ProcessHandles(){
+		close(std::chrono::milliseconds(0));
 	}
 
 	operator bool() const {
@@ -367,11 +375,13 @@ public:
 				val->serialize();
 				auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
 				server->write(to_send);
+				parent_file << "sent message for shutdown signal" << std::endl;
 				async_terminate(std::chrono::seconds(3),[this](){ 
 					connection_timer.cancel();
 					closing_process_timer.cancel();
 					sync_internal_terminate_pending_process_and_connections();
 					hidden_context.get_executor().on_work_finished();
+					parent_file << "signal terminated" << std::endl;
 				});
 				return;
 			}
@@ -406,6 +416,7 @@ public:
 		case curan::communication::ProcessHandler::Signals::HEART_BEAT:
 			was_violated = false;
 			number_of_violations = 0;
+			parent_file << "received heart beat" << std::endl;
 			break;
 		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
 		default:
@@ -480,7 +491,7 @@ public:
 	}
 };
 
-int viewer_code() {
+int viewer_code(asio::io_context& io_context,ProcessLaucher* laucher) {
 	try {
 		using namespace curan::ui;
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
@@ -488,10 +499,9 @@ int viewer_code() {
 		DisplayParams param{ std::move(context),2200,1800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-	    auto button1 = Button::make("Temporal Calibration",resources);
+	    auto button1 = Button::make("Parent!",resources);
 	    button1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(300, 300));
 
-		auto icon = resources.get_icon("hr_repeating.png");
 	    auto widgetcontainer =  Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	    *widgetcontainer << std::move(button1);
 
@@ -500,11 +510,10 @@ int viewer_code() {
 		page.update_page(viewer.get());
 
 		ConfigDraw config_draw{ &page};
-		config_draw.stack_page->stack(Loader::make("human_robotics_logo.jpeg",resources));
 
 		viewer->set_minimum_size(page.minimum_size());
 
-		while (!glfwWindowShouldClose(viewer->window)) {
+		while (!glfwWindowShouldClose(viewer->window) && !io_context.stopped()) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
 
@@ -527,9 +536,12 @@ int viewer_code() {
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
+		laucher->async_terminate(std::chrono::milliseconds(300),[](){});
 		return 0;
 	}
+	
 	catch (std::exception& e) {
+		laucher->async_terminate(std::chrono::milliseconds(300),[](){});
 		std::cout << "Failed: " << e.what() << std::endl;
 		return 1;
 	}
@@ -537,13 +549,24 @@ int viewer_code() {
 
 int main() {
 	try {
+		parent_file.open("parent_file.txt");
+		if(!parent_file.is_open()){
+			return 1;
+		}
 		using namespace curan::communication;
 		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
 		ptr_ctx = &io_context;
-		auto parent = std::make_unique<ProcessLaucher>(io_context, std::chrono::milliseconds(100), 10);
-		parent->async_lauch_process([](bool sucess) {  }, CURAN_BINARY_LOCATION"/mimic_child_proc" CURAN_BINARY_SUFFIX);
+		auto parent = std::make_unique<ProcessLaucher>(io_context, std::chrono::milliseconds(1000), 10);
+
+		std::thread th{[&](){ 
+			viewer_code(io_context,parent.get());
+		}
+		};
+
+		parent->async_lauch_process([](bool sucess) {  }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
 		io_context.run();
+		th.join();
 	}
 	catch (std::exception& e) {
 		return 1;
