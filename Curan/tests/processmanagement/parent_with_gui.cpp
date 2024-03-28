@@ -13,6 +13,25 @@
 #include <csignal>
 #include <system_error>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/Window.h"
+#include "userinterface/widgets/Button.h"
+#include "userinterface/widgets/Container.h"
+#include "userinterface/widgets/OpenIGTLinkViewer.h"
+#include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/ImageDisplay.h"
+#include "userinterface/widgets/IconResources.h"
+#include "userinterface/widgets/Page.h"
+#include "userinterface/widgets/Overlay.h"
+#include "userinterface/widgets/Loader.h"
+#include "utils/Logger.h"
+#include "utils/Overloading.h"
+#include <variant>
+
+#include <iostream>
+#include <thread>
+
 #ifdef CURAN_WINDOWS
 #include <tchar.h>
 #include <windows.h>
@@ -25,6 +44,10 @@
 
 #include <stdio.h>
 #include <filesystem>
+
+#include <ostream>
+#include <fstream>
+std::ofstream parent_file;
 
 asio::io_context* ptr_ctx = nullptr;
 
@@ -71,6 +94,10 @@ public:
 #elif CURAN_LINUX
 	pi = 0;
 #endif	
+	}
+
+	~ProcessHandles(){
+		close(std::chrono::milliseconds(0));
 	}
 
 	operator bool() const {
@@ -348,11 +375,13 @@ public:
 				val->serialize();
 				auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
 				server->write(to_send);
+				parent_file << "sent message for shutdown signal" << std::endl;
 				async_terminate(std::chrono::seconds(3),[this](){ 
 					connection_timer.cancel();
 					closing_process_timer.cancel();
 					sync_internal_terminate_pending_process_and_connections();
 					hidden_context.get_executor().on_work_finished();
+					parent_file << "signal terminated" << std::endl;
 				});
 				return;
 			}
@@ -380,13 +409,14 @@ public:
 
 	void message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {
 		if (er) {
-			sync_internal_terminate_pending_process_and_connections();
+			connection_established = false;
 			return;
 		}
 		switch (val->signal_to_process) {
 		case curan::communication::ProcessHandler::Signals::HEART_BEAT:
 			was_violated = false;
 			number_of_violations = 0;
+			parent_file << "received heart beat" << std::endl;
 			break;
 		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
 		default:
@@ -461,22 +491,98 @@ public:
 	}
 };
 
-int main() {
+int viewer_code(asio::io_context& io_context,ProcessLaucher* parent) {
 	try {
+		using namespace curan::ui;
+		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
+		std::unique_ptr<Context> context = std::make_unique<Context>();;
+		DisplayParams param{ std::move(context),2200,1800 };
+		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+
+	    auto button1 = Button::make("Parent!",resources);
+	    button1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorRED).set_size(SkRect::MakeWH(300, 300));
+		button1->add_press_call([parent](Button* button, Press press,ConfigDraw* config) {
+			parent_file << "received signal!\n";
+			if(!parent->handles){
+				parent->async_lauch_process([button](bool sucess) { if(sucess) button->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
+			} else {
+				parent->async_terminate(std::chrono::milliseconds(300),[button,parent](){ button->set_waiting_color(SK_ColorRED);});
+			}
+			
+		});
+
+	    auto widgetcontainer =  Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+	    *widgetcontainer << std::move(button1);
+
+		widgetcontainer->set_color(SK_ColorBLACK);
+		auto page = Page{std::move(widgetcontainer),SK_ColorBLACK};
+		page.update_page(viewer.get());
+
+		ConfigDraw config_draw{ &page};
+
+		viewer->set_minimum_size(page.minimum_size());
+
+		while (!glfwWindowShouldClose(viewer->window) && !io_context.stopped()) {
+			auto start = std::chrono::high_resolution_clock::now();
+			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
+
+			SkCanvas* canvas = pointer_to_surface->getCanvas();
+			if (viewer->was_updated()) {
+		    	page.update_page(viewer.get());
+				viewer->update_processed();
+			}
+			page.draw(canvas);
+			auto signals = viewer->process_pending_signals();
+
+			if (!signals.empty())
+				page.propagate_signal(signals.back(), &config_draw);
+			page.propagate_heartbeat(&config_draw);
+			glfwPollEvents();
+
+			bool val = viewer->swapBuffers();
+			if (!val)
+				parent_file << "failed to swap buffers\n";
+			auto end = std::chrono::high_resolution_clock::now();
+			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+		}
+		std::raise(SIGINT);
+		return 0;
+	}
+	
+	catch (std::exception& e) {
+		parent_file << "Failed: " << e.what() << std::endl;
+		std::raise(SIGINT);
+		return 1;
+	}
+}
+
+int main() {
+	parent_file.open("parent_file.txt");
+	try {
+		
+		if(!parent_file.is_open()){
+			return 1;
+		}
 		using namespace curan::communication;
 		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
 		ptr_ctx = &io_context;
-		auto parent = std::make_unique<ProcessLaucher>(io_context, std::chrono::milliseconds(100), 10);
-		parent->async_lauch_process([](bool sucess) {  }, CURAN_BINARY_LOCATION"/mimic_child_proc" CURAN_BINARY_SUFFIX);
+		auto parent = std::make_unique<ProcessLaucher>(io_context, std::chrono::milliseconds(1000), 10);
+
+		std::thread th{[&](){ 
+			viewer_code(io_context,parent.get());
+		}
+		};
+
 		io_context.run();
+		th.join();
 	}
 	catch (std::exception& e) {
-		std::cout << "exception thrown :" << e.what();
+		parent_file << "exception thrown : " << e.what() << std::endl;
 		return 1;
 	}
 	catch (...) {
-		std::cout << "exception thrown ";
+		parent_file << "exception thrown : " << std::endl;
 		return 1;
 	}
 	return 0;

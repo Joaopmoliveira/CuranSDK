@@ -27,7 +27,7 @@ find_package(Threads)
 
 find_library(DL_LIBRARY dl)
 if(NOT DL_LIBRARY)
-    set(DL_LIBRARY "") # change from NOTFOUND to empty when passed to linker
+    set(DL_LIBRARY "")
 endif()
 
 if (VULKAN_SDK)
