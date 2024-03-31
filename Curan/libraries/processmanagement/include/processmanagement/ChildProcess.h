@@ -1,12 +1,9 @@
 #include "communication/Client.h"
 #include "communication/Server.h"
 #include "communication/ProtoProcHandler.h"
-#include "utils/Flag.h"
-#include "utils/TheadPool.h"
 #include <thread>
 #include <csignal>
 #include <chrono>
-#include "utils/Logger.h"
 #include <atomic>
 #include <cmath>
 #include <csignal>
@@ -14,7 +11,6 @@
 
 namespace curan{
 namespace process{
-
 
 class ChildProcess {
 	asio::io_context& hidden_context;
@@ -25,9 +21,8 @@ class ChildProcess {
 	const size_t max_num_violations;
 	std::shared_ptr<curan::communication::Client> client;
 	bool first_connection_established = false;
-	size_t numbers_of_triggered_connections = 0;
 public:
-    template <class _Rep, class _Period>
+	template <class _Rep, class _Period>
 	ChildProcess(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_violations, unsigned short port = 50000) :
 		hidden_context{ client_ctx },
 		timer{ hidden_context },

@@ -1,4 +1,7 @@
+#include "processmanagement/ChildProcess.h"
 
+namespace curan{
+namespace process{
 
 	void ChildProcess::timer_callback(asio::error_code ec) {
 		if (ec)
@@ -9,17 +12,16 @@
 		if (number_of_violations > max_num_violations) {
 			timer.cancel();
 			client->get_socket().close();
+			hidden_context.get_executor().on_work_finished();
 			return;
 		}
-		if(numbers_of_triggered_connections<10){
-			auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
-			val->serialize();
-			auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
-			if (first_connection_established) {
-				client->write(to_send);
-			}
-		} else {
 
+
+		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
+		val->serialize();
+		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
+		if (first_connection_established) {
+			client->write(to_send);
 		}
 
 		timer.expires_from_now(duration);
@@ -32,8 +34,10 @@
 		if (er) {
 			timer.cancel();
 			client->get_socket().close();
+			hidden_context.get_executor().on_work_finished();
 			return;
 		}
+		
 		switch (val->signal_to_process) {
 		case curan::communication::ProcessHandler::Signals::HEART_BEAT:
 			was_violated = false;
@@ -51,4 +55,8 @@
 	ChildProcess::~ChildProcess() {
 		timer.cancel();
 		client->get_socket().close();
+		hidden_context.get_executor().on_work_finished();
 	}
+
+}
+}

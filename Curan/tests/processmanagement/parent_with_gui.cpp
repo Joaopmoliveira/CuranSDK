@@ -10,7 +10,6 @@
 #include "utils/Logger.h"
 #include <atomic>
 #include <cmath>
-#include <csignal>
 #include <system_error>
 
 #define STB_IMAGE_IMPLEMENTATION
