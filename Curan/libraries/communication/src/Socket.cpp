@@ -53,8 +53,9 @@ Socket::~Socket() {
 };
 
 void Socket::post(std::shared_ptr<utilities::MemoryBuffer> buff) {
+	auto lifetimekeaper = owner.lock();
 	asio::post(_cxt,
-		[this, buff](){
+		[this, buff, lifetimekeaper](){
 			bool shoud_write = to_send.empty();
 			auto size_before = to_send.size();
 			to_send.push_back(buff);
@@ -65,8 +66,9 @@ void Socket::post(std::shared_ptr<utilities::MemoryBuffer> buff) {
 };
 
 void Socket::post() {
+	auto lifetimekeaper = owner.lock();
 	asio::post(_cxt,
-		[this](){
+		[this,lifetimekeaper](){
 			bool shoud_write = !to_send.empty();
 			if (shoud_write && sendable())
 				do_write();
@@ -76,9 +78,10 @@ void Socket::post() {
 void Socket::do_write(){
 	assert(!to_send.empty());
 	assert(to_send.front()->begin()->data()!=nullptr);
+	auto lifetimekeaper = owner.lock();
 	asio::async_write(get_underlying_socket(),
 		asio::buffer(to_send.front()->begin()->data(), to_send.front()->begin()->size()), asio::transfer_all(),
-		[this](std::error_code ec, std::size_t /*length*/) {
+		[this,lifetimekeaper](std::error_code ec, std::size_t /*length*/) {
 			if (!ec) {
 				bool is_empty = to_send.empty();		
 				if(!to_send.empty()){
@@ -91,7 +94,6 @@ void Socket::do_write(){
 				}
 			else {
 				close();
-				utilities::cout << "failed";
 			}
 		});
 };
@@ -99,7 +101,8 @@ void Socket::do_write(){
 void Socket::close() {
 	if (is_closed)
 		return;
-	asio::post(_cxt, [this]() { 
+	auto lifetimekeaper = owner.lock();
+	asio::post(_cxt, [this,lifetimekeaper]() { 
 		if(get_underlying_socket().is_open()) {
 			asio::error_code error;
 			get_underlying_socket().shutdown(asio::socket_base::shutdown_both,error);

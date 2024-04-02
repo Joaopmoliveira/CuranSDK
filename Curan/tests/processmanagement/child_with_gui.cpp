@@ -30,12 +30,6 @@
 
 #include "processmanagement/ChildProcess.h"
 
-asio::io_context* ptr_ctx = nullptr;
-
-void signal_handler(int signal){	
-	if (ptr_ctx) ptr_ctx->stop();
-}
-
 int viewer_code(asio::io_context& io_context) {
 	try {
 		using namespace curan::ui;
@@ -92,10 +86,7 @@ int main(int argv, char* argc[]) {
 	try {
 		std::unique_ptr<curan::process::ChildProcess> child;
 		using namespace curan::communication;
-		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
-		ptr_ctx = &io_context;
-
 
 		if(argv<0 || argv>2){
 			std::cout << "the supplied arguments are too many, \nthe program either accepts the one or two arguments\n";
@@ -116,7 +107,6 @@ int main(int argv, char* argc[]) {
 		};
 		io_context.run();
 		std::cout << "stopped running file program path:" <<  argc[0];
-		std::raise(SIGINT);
 		std::cout << "lauching signal!\n";
 		th.join();
 	}

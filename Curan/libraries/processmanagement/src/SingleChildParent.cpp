@@ -89,8 +89,9 @@ std::ostream& operator<< (std::ostream& o, PlatformAgnosticCmdArgs args){
 
 
 	void ProcessLaucher::timer_callback(asio::error_code ec) {
-		if (ec)
+		if (ec){
 			return;
+		}
 		if (connection_established) {
 			
 			number_of_violations = was_violated ? number_of_violations + 1 : 0;
@@ -100,10 +101,9 @@ std::ostream& operator<< (std::ostream& o, PlatformAgnosticCmdArgs args){
 				val->serialize();
 				auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
 				server->write(to_send);
+
 				async_terminate(std::chrono::seconds(3),[this](){ 
-					
 					sync_internal_terminate_pending_process_and_connections(CLIENT_FAILURE_MAX_FAILED_HEARBEATS);
-					
 				});
 				return;
 			}
@@ -119,32 +119,31 @@ std::ostream& operator<< (std::ostream& o, PlatformAgnosticCmdArgs args){
 	}
 
 	ProcessLaucher::~ProcessLaucher() {
-		sync_internal_terminate_pending_process_and_connections(SERVER_TIMEOUT_REACHED);
 	}
 
 	void ProcessLaucher::sync_internal_terminate_pending_process_and_connections(const Failure& failure_reason ) {
 		switch(failure_reason){
 		case Failure::CLIENT_FAILURE_MAX_FAILED_HEARBEATS:
 			connection_established = false;
-			server->cancel();
 			closing_process_timer.cancel();
-			hidden_context.get_executor().on_work_finished();
+			server->cancel();
 			if(connection_callback) connection_callback(false);
 		break;
 		case Failure::SERVER_TIMEOUT_REACHED:
 			connection_established = false;
-			server->close();
 			closing_process_timer.cancel();
 			connection_timer.cancel();
 			server_connection_timer.cancel();
+			server->close();
 			hidden_context.get_executor().on_work_finished();
 			if(connection_callback) connection_callback(false);
 		break;
 		default:
 			connection_established = false;
-			server->close();
 			closing_process_timer.cancel();
+			connection_timer.cancel();
 			server_connection_timer.cancel();
+			server->close();
 			hidden_context.get_executor().on_work_finished();
 			if(connection_callback) connection_callback(false);
 		break;
@@ -154,7 +153,8 @@ std::ostream& operator<< (std::ostream& o, PlatformAgnosticCmdArgs args){
 
 	void ProcessLaucher::message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {
 		if (er) {
-			connection_established = false;
+			was_violated = true;
+			sync_internal_terminate_pending_process_and_connections(CLIENT_FAILURE_MAX_FAILED_HEARBEATS);
 			return;
 		}
 		switch (val->signal_to_process) {

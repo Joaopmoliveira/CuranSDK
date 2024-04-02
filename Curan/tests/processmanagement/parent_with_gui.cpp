@@ -36,18 +36,11 @@
 #include <ostream>
 #include <fstream>
 
-asio::io_context* ptr_ctx = nullptr;
-
-void signal_handler(int signal){
-	if (ptr_ctx) ptr_ctx->stop();
-}
 
 int main() {
 try {
 	using namespace curan::communication;
-	std::signal(SIGINT, signal_handler);
 	asio::io_context io_context;
-	ptr_ctx = &io_context;
 
 	using namespace curan::ui;
 	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
@@ -67,7 +60,7 @@ try {
 		if(!parent_ptr->handles)
 			parent_ptr->async_lauch_process([button](bool sucess) { if(sucess) button->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
 		else 
-			parent_ptr->async_terminate(std::chrono::milliseconds(300),[](){});
+			parent_ptr->async_terminate(std::chrono::milliseconds(300),[button](){button->set_waiting_color(SK_ColorRED);});
 		
 	});
 
@@ -78,12 +71,13 @@ try {
 	auto page = Page{std::move(widgetcontainer),SK_ColorBLACK};
 	page.update_page(viewer.get());
 
-	ConfigDraw config_draw{ &page};
+	ConfigDraw config_draw{&page};
 
 	viewer->set_minimum_size(page.minimum_size());	
 
 	std::thread th{[&](){ 
 		io_context.run();
+		std::cout << "terminating IO context\n";
 	}};
 
 	while (!glfwWindowShouldClose(viewer->window) && !io_context.stopped()) {
@@ -109,8 +103,10 @@ try {
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
-	std::raise(SIGINT);
+	std::cout << "requested signal termination\n";
+	io_context.post([&](){io_context.stop();});
 	th.join();
+	std::cout << "thread joined!\n";
 }
 catch (std::exception& e) {
 	std::cout << "exception thrown : " << e.what() << std::endl;

@@ -338,7 +338,7 @@ public:
 			return false;
 		}
 		auto command = create_command(port,arg...);
-		assert(connection_established);
+		assert(!connection_established);
 		if(after_lauch_duration.count()>0){
 			server_connection_timer.expires_from_now(after_lauch_duration);
 			server_connection_timer.async_wait([this](asio::error_code ec) {
@@ -360,7 +360,7 @@ public:
 			return;
 		}
 		auto command = create_command(port, arg...);
-		assert(connection_established);
+		assert(!connection_established);
 		if(after_lauch_duration.count()>0){
 			server_connection_timer.expires_from_now(after_lauch_duration);
 			server_connection_timer.async_wait([this](asio::error_code ec) {
