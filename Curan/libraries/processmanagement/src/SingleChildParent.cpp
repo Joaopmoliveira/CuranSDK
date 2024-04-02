@@ -55,7 +55,7 @@ std::ostream& operator<< (std::ostream& o, PlatformAgnosticCmdArgs args){
 			NULL,           // Process handle not inheritable
 			NULL,           // Thread handle not inheritable
 			FALSE,          // Set handle inheritance to FALSE
-			0,              // No creation flags
+			CREATE_NEW_CONSOLE ,              // No creation flags
 			NULL,           // Use parent's environment block
 			NULL,           // Use parent's starting directory 
 			&si,            // Pointer to STARTUPINFO structure
@@ -101,10 +101,9 @@ std::ostream& operator<< (std::ostream& o, PlatformAgnosticCmdArgs args){
 				auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
 				server->write(to_send);
 				async_terminate(std::chrono::seconds(3),[this](){ 
-					connection_timer.cancel();
-					closing_process_timer.cancel();
-					sync_internal_terminate_pending_process_and_connections();
-					hidden_context.get_executor().on_work_finished();
+					
+					sync_internal_terminate_pending_process_and_connections(CLIENT_FAILURE_MAX_FAILED_HEARBEATS);
+					
 				});
 				return;
 			}
@@ -120,14 +119,37 @@ std::ostream& operator<< (std::ostream& o, PlatformAgnosticCmdArgs args){
 	}
 
 	ProcessLaucher::~ProcessLaucher() {
-		connection_timer.cancel();
-		closing_process_timer.cancel();
-		sync_internal_terminate_pending_process_and_connections();
+		sync_internal_terminate_pending_process_and_connections(SERVER_TIMEOUT_REACHED);
 	}
 
-	void ProcessLaucher::sync_internal_terminate_pending_process_and_connections() {
-		connection_established = false;
-		server->cancel();
+	void ProcessLaucher::sync_internal_terminate_pending_process_and_connections(const Failure& failure_reason ) {
+		switch(failure_reason){
+		case Failure::CLIENT_FAILURE_MAX_FAILED_HEARBEATS:
+			connection_established = false;
+			server->cancel();
+			closing_process_timer.cancel();
+			hidden_context.get_executor().on_work_finished();
+			if(connection_callback) connection_callback(false);
+		break;
+		case Failure::SERVER_TIMEOUT_REACHED:
+			connection_established = false;
+			server->close();
+			closing_process_timer.cancel();
+			connection_timer.cancel();
+			server_connection_timer.cancel();
+			hidden_context.get_executor().on_work_finished();
+			if(connection_callback) connection_callback(false);
+		break;
+		default:
+			connection_established = false;
+			server->close();
+			closing_process_timer.cancel();
+			server_connection_timer.cancel();
+			hidden_context.get_executor().on_work_finished();
+			if(connection_callback) connection_callback(false);
+		break;
+		}
+
 	}
 
 	void ProcessLaucher::message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {

@@ -21,6 +21,8 @@ class ChildProcess {
 	const size_t max_num_violations;
 	std::shared_ptr<curan::communication::Client> client;
 	bool first_connection_established = false;
+	std::function<void(bool)> connection_callback;
+	
 public:
 	template <class _Rep, class _Period>
 	ChildProcess(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_violations, unsigned short port = 50000) :

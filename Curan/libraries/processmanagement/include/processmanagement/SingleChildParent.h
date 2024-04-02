@@ -204,25 +204,37 @@ PlatformAgnosticCmdArgs create_command(unsigned short port, Args ... arg) {
 
 class ProcessLaucher {
 
+	enum Failure{
+		SERVER_TIMEOUT_REACHED,
+		CLIENT_FAILURE_MAX_FAILED_HEARBEATS
+	};
+
 	asio::io_context& hidden_context;
 	asio::high_resolution_timer connection_timer;
+	asio::high_resolution_timer server_connection_timer;
 	asio::high_resolution_timer closing_process_timer;
 	std::chrono::nanoseconds duration;
+	std::chrono::nanoseconds after_lauch_duration;
 	size_t number_of_violations;
 	bool was_violated;
 	const size_t max_num_violations;
 	std::shared_ptr<curan::communication::Server> server;
 	bool connection_established = false;
 	unsigned short port;
+	std::function<void(bool)> connection_callback;
 
 public:
 
 	ProcessHandles handles;
 
 	template <class _Rep, class _Period>
-	ProcessLaucher(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_viols, unsigned short in_port = 50000) :
+	ProcessLaucher(asio::io_context& client_ctx, 
+					const std::chrono::duration<_Rep, _Period>& deadline, 
+					const std::chrono::duration<_Rep, _Period>& server_connection_deadline, 
+					size_t max_viols, unsigned short in_port = 50000) :
 		hidden_context{ client_ctx },
 		connection_timer{ client_ctx },
+		server_connection_timer{ client_ctx },
 		closing_process_timer{ client_ctx },
 		number_of_violations{ 0 },
 		was_violated{ true },
@@ -231,6 +243,7 @@ public:
 		handles{}
 	{
 		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline);
+		after_lauch_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(server_connection_deadline);
 		using namespace curan::communication;
 		interface_prochandler igtlink_interface;
 		Server::Info construction{ client_ctx,igtlink_interface ,port };
@@ -259,11 +272,60 @@ public:
 			});
 	}
 
+	template <class _Rep, class _Period>
+	ProcessLaucher(asio::io_context& client_ctx, 
+					const std::chrono::duration<_Rep, _Period>& deadline, 
+					const std::chrono::duration<_Rep, _Period>& server_connection_deadline, 
+					size_t max_viols, 
+					std::function<void(bool)> in_connection_callback, 
+					unsigned short in_port = 50000) :
+		hidden_context{ client_ctx },
+		connection_timer{ client_ctx },
+		server_connection_timer{ client_ctx },
+		closing_process_timer{ client_ctx },
+		number_of_violations{ 0 },
+		was_violated{ true },
+		max_num_violations{ max_viols },
+		port{ in_port },
+		handles{},
+		connection_callback{in_connection_callback}
+	{
+		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline);
+		after_lauch_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(server_connection_deadline);
+		using namespace curan::communication;
+		interface_prochandler igtlink_interface;
+		Server::Info construction{ client_ctx,igtlink_interface ,port };
+		server = Server::make(construction,
+			[this](std::error_code er) {
+				if (!er && !connection_established) {
+					connection_established = true;
+					return true;
+				} 
+				if (connection_established){
+					return false;
+				}
+				server->close();
+				return false;
+			}
+		);
+
+		server->connect([this](const size_t& protocol_defined_val,
+			const std::error_code& er,
+			std::shared_ptr<curan::communication::ProcessHandler> val) {
+				message_callback(protocol_defined_val, er, val);
+			});
+
+		connection_timer.expires_from_now(duration);
+		connection_timer.async_wait([this](asio::error_code ec) {
+			timer_callback(ec);
+			});
+	}
+
 	void timer_callback(asio::error_code ec);
 
 	~ProcessLaucher();
 
-	void sync_internal_terminate_pending_process_and_connections();
+	void sync_internal_terminate_pending_process_and_connections(const Failure& failure_reason );
 
 	void message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val);
 
@@ -276,6 +338,15 @@ public:
 			return false;
 		}
 		auto command = create_command(port,arg...);
+		assert(connection_established);
+		if(after_lauch_duration.count()>0){
+			server_connection_timer.expires_from_now(after_lauch_duration);
+			server_connection_timer.async_wait([this](asio::error_code ec) {
+				if (!connection_established){
+					sync_internal_terminate_pending_process_and_connections(SERVER_TIMEOUT_REACHED);
+				}
+			});		
+		}
 		return handles.open(command);
 	}
 
@@ -289,6 +360,15 @@ public:
 			return;
 		}
 		auto command = create_command(port, arg...);
+		assert(connection_established);
+		if(after_lauch_duration.count()>0){
+			server_connection_timer.expires_from_now(after_lauch_duration);
+			server_connection_timer.async_wait([this](asio::error_code ec) {
+				if (!connection_established){
+					sync_internal_terminate_pending_process_and_connections(SERVER_TIMEOUT_REACHED);
+				}
+			});		
+		}
 		hidden_context.post([this, command, async_handler]() mutable {
 				async_handler(handles.open(command));
 			}

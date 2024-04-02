@@ -190,7 +190,7 @@ int main() {
 		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
 		ptr_ctx = &io_context;
-		auto parent = std::make_unique<curan::process::ProcessLaucher>(io_context, std::chrono::milliseconds(1000), 10);
+		auto parent = std::make_unique<curan::process::ProcessLaucher>(io_context, std::chrono::milliseconds(100),std::chrono::milliseconds(0), 10);
 
 		std::thread th{[&](){ 
 			viewer_code(io_context,parent.get());
