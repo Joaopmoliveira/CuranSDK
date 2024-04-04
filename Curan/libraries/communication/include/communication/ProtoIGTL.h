@@ -38,8 +38,8 @@ namespace curan {
 					struct IgtlinkClientConnection {
 						igtl::MessageBase::Pointer message_to_receive;
 						igtl::MessageHeader::Pointer header_to_receive;
-						Client* owner;
-						IgtlinkClientConnection(Client* supplied_owner);
+						std::shared_ptr<Client> owner;
+						IgtlinkClientConnection(std::shared_ptr<Client> supplied_owner);
 					};
 
 					void read_header_first_time(IgtlinkClientConnection val);
@@ -47,7 +47,7 @@ namespace curan {
 					void read_header(IgtlinkClientConnection val, std::error_code ec);
 				}
 
-				void start(Client* client_pointer);
+				void start(std::shared_ptr<Client> client_pointer);
 			};
 		}
 	}

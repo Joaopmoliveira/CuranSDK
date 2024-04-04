@@ -8,7 +8,7 @@ namespace protocols {
 namespace proc_handler_message {
 namespace implementation {
 
-HandlerClientConnection::HandlerClientConnection(Client* supplied_owner) : owner{ supplied_owner } 
+HandlerClientConnection::HandlerClientConnection(std::shared_ptr<Client> supplied_owner) : owner{ supplied_owner }
 {
 }
 
@@ -61,7 +61,7 @@ void read_body(HandlerClientConnection val, std::error_code ec) {
 }
 }
 
-void start(Client* client_pointer) {
+void start(std::shared_ptr<Client> client_pointer) {
 	utilities::cout << "starting to:";
 	implementation::HandlerClientConnection val{ client_pointer };
 	val.message = std::make_shared<ProcessHandler>();

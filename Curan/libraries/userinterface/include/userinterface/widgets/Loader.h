@@ -9,36 +9,37 @@
 #include <memory>
 
 namespace curan {
-	namespace ui {
+namespace ui {
 
-		class ImageDisplay;
+class ImageDisplay;
 
-		enum customizable{
-			FLASH,
-			BLUR_IN,
-			BLUR_OUT
-		};
+enum customizable{
+	FLASH,
+	BLUR_IN,
+	BLUR_OUT
+};
 
-		class Loader {
-			std::unique_ptr<LightWeightPage> main_page;
-			SkPaint bluring_paint;
-			SkSamplingOptions options;
-			std::string icon_identifier;
-			IconResources& system_icons;
-			ImageDisplay* image_display = nullptr;
-			bool compiled = false;
+class Loader {
+	std::unique_ptr<LightWeightPage> main_page;
+	SkPaint bluring_paint;
+	SkSamplingOptions options;
+	std::string icon_identifier;
+	IconResources& system_icons;
+	ImageDisplay* image_display = nullptr;
+	bool compiled = false;
 
-			void compile();
-			explicit Loader(std::unique_ptr<Container> contained,const std::string& icon_identifier,IconResources& system_icons,ImageDisplay* image_display);
-		public:
+	void compile();
+	explicit Loader(std::unique_ptr<Container> contained,const std::string& icon_identifier,IconResources& system_icons,ImageDisplay* image_display);
+public:
 
 			~Loader();
 
 			static std::unique_ptr<Loader> make(const std::string& icon_identifier,IconResources& system_icons);
 			
 			std::unique_ptr<LightWeightPage> take_ownership();
-		};
-	}
+};
+
+}
 }
 
 #endif

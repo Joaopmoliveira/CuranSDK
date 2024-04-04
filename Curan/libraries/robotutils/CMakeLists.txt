@@ -7,6 +7,7 @@ src/WallAvoidanceData.cpp
 src/FilterRippleFirstHarmonic.cpp
 src/ExtractRipple.cpp
 src/LimitCycleController.cpp
+src/JointVelocityController.cpp
 )
 
 target_include_directories(robotutils

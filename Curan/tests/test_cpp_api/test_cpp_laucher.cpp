@@ -5,6 +5,30 @@
 #include <tchar.h>
 #include <iostream>
 
+class ThreadPool{
+
+};
+
+class ProcHandler{
+    ProcHandler(ThreadPool pool ,int argc, TCHAR *argv[] ){
+        
+        if(argc<2){
+            std::cout << "this is a standalone process";
+        }
+        std::cout << "the process exists within a larger pool of processes";
+
+
+
+    }
+
+
+
+};
+
+int foo(int argc, TCHAR *argv[] ){
+    return 1;
+}
+
 int main(int argc, TCHAR *argv[] ){
     STARTUPINFO si;
     PROCESS_INFORMATION pi;

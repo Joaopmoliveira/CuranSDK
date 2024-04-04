@@ -3,7 +3,6 @@ src/Job.cpp
 src/Logger.cpp
 src/TheadPool.cpp
 src/MemoryUtils.cpp
-src/Cancelable.cpp
 src/Reader.cpp
 )
 

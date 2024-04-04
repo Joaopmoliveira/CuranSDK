@@ -31,3 +31,28 @@ utils
 robotutils
 renderable
 )
+
+
+add_executable(test_joint_velocity_control test_joint_velocity_control.cpp)
+
+target_compile_definitions(test_joint_velocity_control PRIVATE SK_VULKAN)
+target_compile_definitions(test_joint_velocity_control PRIVATE NOMINMAX)
+target_compile_definitions(test_joint_velocity_control PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_joint_velocity_control PUBLIC
+utils
+robotutils
+renderable
+)
+
+add_executable(visualize_filtered_velocity visualize_filtered_velocity.cpp)
+
+target_compile_definitions(visualize_filtered_velocity PRIVATE SK_VULKAN)
+target_compile_definitions(visualize_filtered_velocity PRIVATE NOMINMAX)
+target_compile_definitions(visualize_filtered_velocity PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(visualize_filtered_velocity PUBLIC
+utils
+robotutils
+renderable
+)

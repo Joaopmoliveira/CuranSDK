@@ -20,10 +20,10 @@ DynamicTexture::DynamicTexture(Info& info) : width{ info.width }, height{ info.h
     info.stateInfo.lighting = true;
 
     vsg::GeometryInfo geomInfo;
-    geomInfo.dx = vsg::vec3(info.spacing[0]*info.width,0.0,0.0);
-    geomInfo.dy = vsg::vec3(0.0,info.spacing[1]*info.height,0.0);
-    geomInfo.dz = vsg::vec3(0.0,0.0,0.0);
-    geomInfo.position = vsg::vec3(info.origin[0]+(info.spacing[0]*info.width)/2.0,info.origin[1]+(info.spacing[1]*info.height)/2.0,info.origin[2]);
+    geomInfo.dx = vsg::vec3(static_cast<float>(info.spacing[0]*info.width),0.0f,0.0f);
+    geomInfo.dy = vsg::vec3(0.0f, static_cast<float>(info.spacing[1]*info.height),0.0f);
+    geomInfo.dz = vsg::vec3(0.0f,0.0f,0.0f);
+    geomInfo.position = vsg::vec3(static_cast<float>(info.origin[0])+ static_cast<float>(info.spacing[0]*info.width)/2.0f, static_cast<float>(info.origin[1])+ static_cast<float>(info.spacing[1]*info.height)/2.0f, static_cast<float>(info.origin[2]));
 
     auto node = info.builder->createQuad(geomInfo, info.stateInfo);
 

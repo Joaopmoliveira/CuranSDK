@@ -30,9 +30,13 @@ find_package(unofficial-skia CONFIG REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 
-
 #Externally provided targets
 add_subdirectory(third_party)
+
+# In Curan we have the Application laucher which is a executable that 
+# lauches other executables. For us to know where these executables are
+# we define their names here. Thus because we know the build directory 
+# of all executables we can inject their path inside the Application laucher 
 
 cmake_path(SET original_resource_paths "${CMAKE_CURRENT_LIST_DIR}/resources")
 cmake_path(SET post_build_resource_path "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources")

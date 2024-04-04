@@ -120,7 +120,7 @@ void foo(unsigned short port,asio::io_context& cxt) {
 		interface_igtl igtlink_interface;
 		Server::Info construction{ cxt,igtlink_interface ,port };
 
-		Server server{ construction };
+		auto server = Server::make(construction);
 
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
@@ -168,7 +168,7 @@ void foo(unsigned short port,asio::io_context& cxt) {
 			transMsg->Pack();
 
 			auto to_send = curan::utilities::CaptureBuffer::make_shared(transMsg->GetPackPointer(), transMsg->GetPackSize(),transMsg);
-			server.write(to_send);
+			server->write(to_send);
 
 		    img = update_texture(std::move(img), 1.0+controled_time);
 		    ts->GetTime();
@@ -187,7 +187,7 @@ void foo(unsigned short port,asio::io_context& cxt) {
 		    imgMsg->Pack();
 
             auto to_send_image = curan::utilities::CaptureBuffer::make_shared(imgMsg->GetPackPointer(), imgMsg->GetPackSize(),imgMsg);
-			server.write(to_send_image);
+			server->write(to_send_image);
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(30));
 

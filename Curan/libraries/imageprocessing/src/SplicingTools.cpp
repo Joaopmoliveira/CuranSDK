@@ -99,7 +99,7 @@ bool splice_input_extent( std::vector<std::array<int,6>>& splitting, const int f
     		nsplit[splitAxis * 2 + 1] = nsplit[splitAxis * 2] + valuesPerThread - 1;
 		}
   		if ( thread_id == maxThreadIdUsed )
-			nsplit[splitAxis * 2] = nsplit[splitAxis * 2] + thread_id * valuesPerThread;
+			nsplit[static_cast<std::array<int,6>::size_type>(splitAxis) * 2] = nsplit[splitAxis * 2] + thread_id * valuesPerThread;
 		++thread_id;
 	}
   	return true;

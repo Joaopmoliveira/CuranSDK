@@ -41,9 +41,7 @@ namespace curan {
 		we have the namespace protocols which defines the routines on how we
 		read messages from sockets and pass them along to our client/server API.
 		*/
-
 		class Client;
-
 		/*
 		Interface for the openigtlink protocol.
 		*/
@@ -63,7 +61,7 @@ namespace curan {
 		This function selects which protocol we want to communicate with depending
 		on which type is contained inside the variant. 
 		*/
-		std::function<void(Client*)> get_interface(callable callable_type);
+		std::function<void(std::shared_ptr<curan::communication::Client>)> get_interface(callable callable_type);
 	}
 }
 
