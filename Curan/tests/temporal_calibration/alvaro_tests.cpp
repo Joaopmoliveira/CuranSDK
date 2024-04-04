@@ -1,278 +1,213 @@
 #include <iostream>
-#include "itkImage.h"
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
 #include <vector>
-#include <chrono>
-#include <Eigen/Dense>
 #include <cmath>
-#include <ctime>
+#include <algorithm>
+#include <fstream>
 
-//Definir types
-constexpr unsigned int Dimension = 2;
-using PixelType = unsigned int;
-//using PixelType = float;
-using ImageType = itk::Image<PixelType, Dimension>;
+using namespace std;
 
-//Funçao que lê um png (irrelevante na implementacao final)
-ImageType::Pointer image_read(){
-    //Diretorias 
-    const char* filePath = "C:/dev/HumanRoboticsSDK/Curan/tests/temporal_calibration/frame100.png";
 
-    //Definir types
-    using ReaderType = itk::ImageFileReader<ImageType>;
-    using WriterType = itk::ImageFileWriter<ImageType>;
+int main() {
+    vector<double> tracker_position = {1.53035555857953, 0.609625134568103, -0.157499134352451, -0.713816004254566, -1.14245067198967,
+        -1.27037881163682, -0.923822803445376, -0.247593388265020, 0.450436777873064, 1.32096097677023,
+        1.77261736192078, 1.79731488613230, 1.13601362167913, 0.344147237670167, -0.534429736653814,
+        -1.23886792937173, -1.60003154746164, -1.82540997759869, -1.80510972809945, -1.21707762057162,
+        -0.476722666366413, 0.167073304994377, 0.683745507086234, 1.08483536780927, 1.10266731675262,
+        0.390961059494998, -0.165266845574006, -0.621445446962126, -1.31174717876081, -1.70249505280221,
+        -1.67270593040473, -0.998279228135627, -0.365493653537576, 0.150964462822065, 0.660028559180862,
+        1.04960318165643, 1.00485864339323, 0.325044185072555, -0.289806914270483, -0.857285632313778,
+        -1.40971842418879, -1.62575257108244, -1.39261976287341, -0.739061967657900, -0.148207677751125,
+        0.345615482536179, 0.911929835075796, 1.26825076685933, 1.30538258730638, 0.821249837790099,
+        -0.0977387638501839, -0.921121962227710, -1.37481148745562, -1.54468450571418, -1.45430018334840,
+        -0.925391921954489, -0.432266328107164, 0.245243128841485, 0.898981603659301, 1.30728596083786,
+        1.44209566707632, 1.19945796592294, 0.360082181988909, -0.340021372272370, -0.974775216709505,
+        -1.28254962199429, -1.23650726836045, -0.577150077922037, -0.0555500726346519, 0.518171056292561,
+        1.06641570978349, 1.55089283005301, 1.62680400787567, 0.997987088794509, 0.272827815825005,
+        -0.501491808028518, -1.15066129114039, -1.31144243490663, -1.07841257292622, -0.531962832079562,
+        0.0620668967670927, 0.705568576184154, 1.17581947693942, 1.32821399614912, 1.16347799020974,
+        0.505137061450632, -0.128905555271449, -0.684329283451564, -1.06755884144917, -1.22622459909198,
+        -1.01712743952902, -0.375947158949304, 0.239201268951708, 0.818552142730496, 1.20657898637052,
+        1.30379375889105, 1.14043776087707, 0.338396063288676, -0.373924862571673, -0.818713814595450,
+        -1.08625493862954, -1.16813323130916, -0.603377674435462, 0.148411865792305, 0.704053509030086,
+        1.10546455581574, 1.23707193725580, 1.06705586846237, 0.296656739845887, -0.383215206977492,
+        -1.01550419942194, -1.38995576908984, -1.43946898673171, -1.01926814624299, -0.389961517713070,
+        0.167356333503086, 0.771755890748284, 1.13474494032954, 1.20123160549607, 0.524528842259724,
+        -0.327801273643799, -0.883302943048686, -1.11258025745505, -1.18355504391049, -0.704402918156858,
+        0.0442564657056033, 0.626113402045765, 1.05972546946960, 1.21943153851800, 1.08957007954801,
+        0.519179987659087, -0.108954233241000, -0.686875950209387, -1.28056804242050, -1.38465658893637,
+        -1.00391862136332, -0.372685333335497, 0.274243497072634, 0.855184483375419, 1.27160418603115,
+        1.46737531799820, 1.27365416507336, 0.262916265201374, -0.486862274109144, -0.974456068057238,
+        -1.33716075952739, -1.41260882625291, -1.02071743841731, -0.395166678168305, 0.244446531795525,
+        0.809115503832065, 1.11347188554614, 1.13998458335160, 0.632900383135775, -0.116408430324593,
+        -0.822468099709044, -1.42389718682496, -1.48857680238107, -1.05393747772075, -0.618053603507019,
+        -0.111831271467156, 0.479330216495648, 1.10040209619303, 1.36433538834894, 1.11213900275058,
+        0.221127438931760, -0.634306444628052, -1.08366539822119, -1.13400112374518, -0.836718898659826,
+        -0.355062886482017, 0.217064260285911, 0.835325083006249, 1.44610067331618, 1.79575250219763,
+        1.82395101140591, 1.25721239797523, 0.547189016588982, -0.185392837527796, -0.791872308233273,
+        -1.17370825525639, -1.08568639409154, -0.581514435409163, 0.0121808166283302, 0.573535583778486,
+        1.03074849596999, 1.30954458564984, 1.41746139620687, 1.17131589118217, 0.314775789177982,
+        -0.550257392477698, -0.943210057463980, -1.02707454675008, -0.909272822289566, -0.486057664608889,
+        -0.0175747524150538, 0.600684140969347, 1.24695979299574, 1.62421942746872, 1.67169501501462,
+        1.39690308870214}; // Tracker normalized signal
 
-    //Ler imagem
-    ReaderType::Pointer reader = ReaderType::New();
-    reader->SetFileName(filePath);
-    try
-    {
-        reader->Update();
-    }
-    catch (itk::ExceptionObject& e)
-    {
-        std::cerr << "Error reading the file: " << e << std::endl;
-       //return EXIT_FAILURE;
-    }
+    vector<double> image_position = {-0.752252215876467, -0.134034935670752, 0.580184673621887, 1.15750679495737, 1.59440872321063,
+        1.56987394535117, 0.107704677329625, -0.542710325103701, -1.04002046218653, -1.25753602993683,
+        -0.980304826780867, -0.368634459131048, 0.339465629112940, 1.14466527297971, 1.79031556446128,
+        1.87162385964083, 1.40879929046778, 0.674884349835414, -0.0886841512098874, -0.802193946315392,
+        -1.40727477804731, -1.74401261188273, -1.72730682623986, -1.28103528373724, -0.669764865183774,
+        0.0262976136633249, 0.557604559742181, 1.03077589521320, 1.30180006126066, 0.819147224965158,
+        0.0386362336964140, -0.400707186645828, -0.981087086345994, -1.58966892935031, -1.70527127250285,
+        -1.30641001068254, -0.557516656910528, -0.0182132949175315, 0.547739906844165, 1.01711687486001,
+        1.19426572569534, 0.851626186303604, 0.0416134983450706, -0.533720666029196, -1.14768744157778,
+        -1.64559368771307, -1.48942403679818, -1.02753892244132, -0.482105837372431, 0.104298813131184,
+        0.627053693816952, 1.21495945788662, 1.39614513968627, 1.24010841490482, 0.571248996557489,
+        -0.320028953590454, -1.07838255990922, -1.43194754428737, -1.54446661302554, -1.16727119477271,
+        -0.776543741443671, -0.196849699015057, 0.509624990962987, 1.12489307496530, 1.43859044929527,
+        1.47508785990949, 0.912770945168638, 0.220597250995476, -0.575071873729854, -1.17957871497451,
+        -1.39906306012282, -1.09674724057339, -0.532966121086976, 0.118283829448334, 0.609910240110962,
+        1.19948087795975, 1.61809390092994, 1.48396381358926, 0.810604904144754, 0.0452126176924128,
+        -0.720960398608236, -1.25244553756912, -1.29784356668290, -0.995186467016655, -0.457774702383262,
+        0.105458965441720, 0.741098035191244, 1.22034037959772, 1.37008765669691, 1.05384932826796,
+        0.441080912561677, -0.189650004927585, -0.806388553938351, -1.13604344497652, -1.22115312505294,
+        -0.943648112721382, -0.355497242038045, 0.298813008960088, 0.816699611578432, 1.24046693486776,
+        1.30443528036125, 1.05991985978511, 0.539198515389525, -0.240733136271606, -0.764104274456306,
+        -1.08582584510722, -1.12524255873327, -0.606771709868658, 0.131430317990362, 0.693363488027439,
+        1.13656928169545, 1.34049402894261, 1.04510406335388, 0.342044545367318, -0.413537481363875,
+        -1.03659980225921, -1.34104364486074, -1.49651691982388, -1.14449379736651, -0.567004660575187,
+        0.154184487360967, 0.750842791748331, 1.17811882633269, 1.27173955896027, 0.720356275128859,
+        -0.230147305737643, -0.931436199826932, -1.20417228232870, -1.25821406711820, -0.965727013840527,
+        -0.294141079713020, 0.452667138356400, 1.00811492455634, 1.19438193335615, 1.10275957188266,
+        0.700437182166990, -0.0515596339970200, -0.603590714662133, -1.11652831033207, -1.39638900648307,
+        -1.10925380260846, -0.474927873541184, 0.0590525797330429, 0.685906386134053, 1.16764774532027,
+        1.43301711970272, 1.37205084929056, 0.681459711581295, -0.162786947388466, -0.816940339879715,
+        -1.22071737347245, -1.40090408065837, -1.19569342656595, -0.681041031126142, -0.00403734829927625,
+        0.612799394967945, 1.11172463874432, 1.21731879088438, 0.881345793054608, 0.237776090044236,
+        -0.495540117712319, -1.18554726556133, -1.61643491071472, -1.23309853315390, -0.826126551696964,
+        -0.383220536719807, 0.100893646064677, 0.789579126134281, 1.28852375844434, 1.34509658794741,
+        0.708665683779191, -0.196640396530277, -0.945759961675549, -1.20906095444454, -1.10569519964044,
+        -0.725237099616904, 0.462798328893126, 1.13518549162988, 1.70710723460948, 1.94759286908749,
+        1.68122483213161, 1.07685259929851, 0.298247192565171, -0.414021440127006, -0.952122325962206,
+        -1.12032077447928, -0.837092107977841, -0.373133520675652, 0.327647321256182, 0.804306149841923,
+        1.23721816878752, 1.48959076616244, 1.49304228634452, 1.00216956331798, 0.146110788513296,
+        -0.595370092049934, -0.888453683147201, -0.918549989473385, -0.739246877691709, -0.377362318830482,
+        0.131341314277439}; // Video normalized signal
 
-    //Ponteiro para a imagem
-    ImageType::Pointer input_image = reader->GetOutput();
-    return input_image;
-    }
-
-//Funçao que segmenta os pontos 
-std::vector<std::pair<unsigned int, unsigned int>> segment_points(int min_coordx, int max_coordx, int numLines, ImageType::Pointer input_image){
-
-    //Dimensões da imagem
-    ImageType::SizeType image_size = input_image->GetLargestPossibleRegion().GetSize();
-    //std::cout << "Image Dimensions: "
-            //  << image_size[0] << " x " << image_size[1] << std::endl;
-
-    //Cálculo do espaçamento entre linhas
-    double spacing = static_cast<double>(max_coordx - min_coordx) / (numLines-1);
-
-    // Initialize a vector to store the x positions of valid lines
-    std::vector<unsigned int> validXPositions;
-
-    // Calculate the actual number of valid lines
-    int numValidLines = 0;
-    for (int i = 0; i < numLines; ++i) {
-        unsigned int sumIntensity = 0;
-        for (int y = 0; y < image_size[1]; ++y) {
-            PixelType pixelValue = input_image->GetPixel({{min_coordx + static_cast<int>(i * spacing), y}});
-            sumIntensity += pixelValue;
+    
+    //Lambda para calcular SSD 
+    auto calculateSSD = [](std::vector<double>& signal1, std::vector<double> signal2) {
+        double ssd = 0.0;
+        for (size_t i = 0; i < signal1.size(); ++i) {
+            ssd += std::pow(signal1[i] - signal2[i], 2);
         }
-        if (sumIntensity != 0) {
-            ++numValidLines;
-        }else{
-            continue;
-        }
-        // Save the x position of the valid line
-        unsigned int xPosition = min_coordx + static_cast<int>(i * spacing);
-        validXPositions.push_back(xPosition);
+        return ssd;
+    };
+
+   //Lambda para shiftar um sinal em n samples
+    auto shiftSignal = [](std::vector<double>& signal, int shift) {
+    std::vector<double> shifted_signal(signal.size());
+    int size = static_cast<int>(signal.size());
+    for (size_t i = 0; i < signal.size(); ++i) {
+        int shifted_index = (static_cast<int>(i) + shift) % size;
+        if (shifted_index < 0)
+            shifted_index += size; 
+        shifted_signal[i] = signal[shifted_index];
     }
+    return shifted_signal;
+};
+    //Lambda para dar resample
+    auto resampleSignal = [](const std::vector<double>& originalSignal) {
+        std::vector<double> resampledSignal;
+        double timeStepOriginal = 0.1; 
+        double timeStepResampled = 0.01; 
+        
+        int numSamplesOriginal = static_cast<int>(originalSignal.size());
+        int numSamplesResampled = static_cast<int>(numSamplesOriginal * timeStepOriginal / timeStepResampled);
+
+        for (int i = 0; i < numSamplesResampled; ++i) {
+            double t = i * timeStepResampled;
+            int indexLow = static_cast<int>(t / timeStepOriginal);
+            int indexHigh = std::min(indexLow + 1, numSamplesOriginal - 1);
+            double fraction = t / timeStepOriginal - indexLow;
+
+            double interpolatedValue = originalSignal[indexLow] * (1 - fraction) + originalSignal[indexHigh] * fraction;
+            resampledSignal.push_back(interpolatedValue);
+        }
+        return resampledSignal;
+    };
+
+    //Alinhamento inicial (sample a sample)
+    int coarse_resolution = 1; //Sample a sample
+    int coarse_shift_range = 20; //20 samples
+    double min_coarse_ssd = numeric_limits<double>::max(); //iniciar no infinito
+    int best_coarse_shift = 0;
+    int iter = 0;
+    for (int shift = -coarse_shift_range; shift <= coarse_shift_range; shift += coarse_resolution) {
+        iter+=1;
+        vector<double> shifted_tracker_position = shiftSignal(tracker_position, shift);
+        double ssd = calculateSSD(shifted_tracker_position, image_position);
+        std::printf("SSD iteration %lld: ", iter);
+        std::cout << ssd << std::endl;
+        if (ssd < min_coarse_ssd) {
+            min_coarse_ssd = ssd;
+            best_coarse_shift = shift;
+            std::cout << "Best shift iteration: " << best_coarse_shift << std::endl;
+            //Um valor negativo significa que o moving signal tá adiantado em relacao ao fixed 
+        }
+    }
+
+    vector<double> shifted_signal = shiftSignal(tracker_position, best_coarse_shift);    
+    for(auto signal : shifted_signal){
+            std::cout << signal << std::endl;
+    }
+
+    std::cout << "Best SSD: " << min_coarse_ssd << std::endl;
+    std::cout << "Shift: " << best_coarse_shift << std::endl;
+
+
+
+
+    auto resampled_tracker_signal = resampleSignal(shifted_signal);
     /*
-    std::cout << numValidLines << std::endl;
-    std::cout << "Valid X Positions: ";
-    for (unsigned int x : validXPositions) {
-        std::cout << x << " ";
-    }
-    std::cout << std::endl;
-*/
-    //Inicializar vetores e matrizes
-    //Matriz que armazena os a coordenadas y de inicio e fim de cada bloco, para cada linha
-    std::vector<std::vector<std::pair<unsigned int, unsigned int>>> blockPixelPairs(numValidLines);
-    //Matriz que armazena a soma de intensidades de cada bloco, para cada linha (indexado da mesma forma que a matriz anterior)
-    std::vector<std::vector<unsigned int>> intensitySums(numValidLines);
-    //Vetor que armazena as coordenadas y de inicio e fim do bloco com a soma de intensidades mais alta, para cada linha
-    std::vector<std::pair<unsigned int, unsigned int>> highestIntensityPixelPairs(numValidLines);
-    //Vetor que armazena a coordanada y do pixel médio do bloco com a soma de intensidades mais alta, para cada linha
-    std::vector<unsigned int> midPixel_y(numValidLines);
-    //Vetor que armazena os pares de pontos que vão para a regressão
-    std::vector<std::pair<unsigned int, unsigned int>> pointsToFit;
-
-
-    //Iterar para todas as linhas de avaliação
-    for (int i = 0; i < numValidLines; ++i) {
-        //Cálculo da coordanada x para a linha atual
-        unsigned int xPosition = validXPositions[i];
-
-        //Inicializar variáveis
-        unsigned int maxIntensity = 0;
-        bool blockStart = false;
-        int blockNum = 0;
-        int blockSum = 0;
-        unsigned int blockStartPixel;
-        unsigned int blockEndPixel;
-
-        //Cálculo da intensidade máxima do pixel para a linha atual
-        for (int y = 0; y < image_size[1]; ++y) {
-            PixelType pixelValue = input_image->GetPixel({{xPosition, y}});
-            if (pixelValue > maxIntensity) {
-                maxIntensity = pixelValue;  
-            }
-        }
-
-        //std::cout << "Max intesnsity of Line " << i << ": " << maxIntensity << std::endl;
-
-        //Cálculo do threashold para a linha em função da intensidade máxima
-        unsigned int threashold = maxIntensity / 2;
-        //Iterar na linha, descobrir o número de blocos a considerar, as coordenadas de
-        //onde o bloco começa e acaba e calcular a soma de intensidades de cada bloco
-        for (int y = 0; y < image_size[1]; ++y) {
-        PixelType pixelValue = input_image->GetPixel({{xPosition, y}});
-        if (pixelValue > threashold) {
-            if (!blockStart) {
-                blockNum++;
-                blockStart = true;
-                blockStartPixel = y;
-                //std::cout << "Start pixel of Line " << i << ": " << blockStartPixel << std::endl;
-            }
-            blockEndPixel = y;
-            blockSum += pixelValue;
-        } else {
-            if (blockStart) {
-                blockStart = false;
-                blockPixelPairs[i].push_back(std::make_pair(blockStartPixel, blockEndPixel));
-                intensitySums[i].push_back(blockSum);
-                blockSum = 0;
-                //std::cout << "End pixel of Line " << i << ": " << blockEndPixel << std::endl;
-            }
-        }
-    }
-        //std::cout << "Num bolcks of Line " << i << ": " << blockNum << std::endl;
-    }
-
-    //Descomentar se quiser dar output de das coordenadas de inicio e fim de todos os 
-    //os blocos, bem como a intensidade de cada um.
-    /*
-    for (int i = 0; i < numLines; ++i) {
-        std::cout << "Line " << i << " Block Pixel Pairs and Intensity Sums: ";
-        for (size_t j = 0; j < blockPixelPairs[i].size(); ++j) {
-            std::cout << "(" << blockPixelPairs[i][j].first << ", " << blockPixelPairs[i][j].second << ": "
-                      << intensitySums[i][j] << ") ";
-        }
         std::cout << std::endl;
-    }
-    */
-
-    //Para cada linha encontra qual é a soma de intensidades máxima e a que bloco corresponde, e a coordenada média desse bloco
-    for (int i = 0; i < numValidLines; ++i) {
-        //Index do bloco com soma de intensidade maxima
-        int maxIntensityIndex = std::distance(intensitySums[i].begin(), std::max_element(intensitySums[i].begin(), intensitySums[i].end()));
-        //Inicio e fim do bloco com soma de intensidade maxima
-        std::pair<int, int> highestIntensityPixelPairs = blockPixelPairs[i][maxIntensityIndex];
-        // Output
-        /*
-        std::cout << "Line " << i << ": Highest intensity is " << intensitySums[i][maxIntensityIndex]
-                  << " at pixel pair (" << highestIntensityPixelPairs.first << ", " << highestIntensityPixelPairs.second << ")" << std::endl;
-        */
-        //Cálculo da coordenada média do bloco com a soma de intensidades mais alta
-        midPixel_y[i] = (highestIntensityPixelPairs.first + highestIntensityPixelPairs.second) / 2;
-    }
-
-    //Pontos para regressao
-    for (int i = 0; i < numValidLines; ++i) {
-        unsigned int xPosition = min_coordx + static_cast<int>(i * spacing);
-        unsigned int mid_y = midPixel_y[i];
-        pointsToFit.push_back(std::make_pair(xPosition, mid_y));
-    }
-
+        std::cout << "Resampled and coarse aligned tracker signal:" << std::endl;
+        for(auto signal : resampled_tracker_signal){
+            std::cout << signal << " ";
+        }
+*/
+    auto resampled_image_signal = resampleSignal(image_position);
     /*
-    for (int i = 0; i < numValidLines; ++i) {
-        std::cout << "(" << pointsToFit[i].first << ", " << pointsToFit[i].second << ")" << std::endl;
-    }
-    */
-    return pointsToFit;
-}
-
-//RANSAC algorithm 
-std::vector<double> RANSAC(std::vector<std::pair<unsigned int, unsigned int>> points, int numIterations, double inlierThreshold) {
-    //Inicializar variáveis 
-    std::vector<double> bestModelParams;
-    int bestNumInliers = 0;
-
-    //Numero random em funcao do current time
-    std::srand(std::time(0)); 
-
-    for (int iter = 0; iter < numIterations; ++iter) {
-        //Dois indexs random de 0 ao size da amostra
-        int index1 = std::rand() % points.size();
-        int index2 = std::rand() % points.size();
-
-        //Passa a iteração se os indexs por acaso sairem iguais
-        if (index1 == index2) continue;
-
-        //Fit dos dois pontos (cálculo dos parametros do modelo)
-        Eigen::MatrixXd Xaumentado(2, 2);
-        Eigen::VectorXd Y(2);
-        Xaumentado << points[index1].first, 1,
-        points[index2].first, 1;
-        Y << points[index1].second,
-             points[index2].second;
-
-        //Metodo "tradicional" 
-        //Eigen::MatrixXd Xaumentadopseudoinversa = Xaumentado.completeOrthogonalDecomposition().pseudoInverse();
-        //Eigen::VectorXd x = Xaumentadopseudoinversa * Y;
-        //Tempo equivalente ao anterior
-        //Eigen::VectorXd x = Xaumentado.colPivHouseholderQr().solve(Y); 
-        //SVD - não é melhor que o lu em termos de tempo 
-        //Eigen::JacobiSVD<Eigen::MatrixXd> svd(Xaumentado, Eigen::ComputeThinU | Eigen::ComputeThinV);
-        //Eigen::VectorXd x = svd.solve(Y);
-
-        Eigen::VectorXd x = Xaumentado.lu().solve(Y); //3x mais rapido que calcular pseudoinversa +/-
-
-        // Contar inliers
-        int numInliers = 0;
-        for (const auto& point : points) {
-            double predictedY = x[0] * point.first + x[1];
-            double error = std::abs(point.second - predictedY);
-            if (error <= inlierThreshold) {
-                numInliers++;
-            }
+        std::cout << std::endl;
+        std::cout << "Resampled image signal:" << std::endl;
+        for(auto signal : resampled_image_signal){
+                std::cout << signal << " ";
         }
-        //Melhor modelo é o que tem o maior numero de inliers
-        if (numInliers > bestNumInliers) {
-            bestModelParams = {x[0], x[1]};
-            bestNumInliers = numInliers;
-        }
+*/
+
+/*
+ // Open a file for writing
+    std::ofstream outputFile("vertical_vector.txt");
+
+    // Check if the file was opened successfully
+    if (!outputFile.is_open()) {
+        std::cerr << "Failed to open file for writing" << std::endl;
+        return 1;
     }
-    return bestModelParams;
-}
 
-int main(){
-    using namespace std::chrono;    
+    // Write the data to the file
+    for (const auto& value : resampled_tracker_signal) {
+        outputFile << value << "\n";
+    }
 
-    //Ler imagem (irrelevante na implementação final)
-    auto start1 = high_resolution_clock::now();
-    ImageType::Pointer input_image = image_read();
-    auto stop1 = high_resolution_clock::now();
-    auto duration1 = duration_cast<microseconds>(stop1 - start1);
-    std::cout << "Tempo ler imagem:" << duration1.count() << std::endl;
+    // Close the file
+    outputFile.close();
 
-    //Segmentaçao de pontos 
-    //Janela de scan e número de linhas de avaliação
-    int min_coordx = 210;
-    int max_coordx = 610;
-    int numLines = 40;
+    // Output a message indicating the file write is complete
+    std::cout << "Vertical vector has been written to vertical_vector.txt" << std::endl;
 
-    auto start2 = high_resolution_clock::now();
-    std::vector<std::pair<unsigned int, unsigned int>> pointsToFit = segment_points(min_coordx, max_coordx, numLines, input_image);
-    auto stop2 = high_resolution_clock::now();
-    auto duration2 = duration_cast<microseconds>(stop2 - start2);
-    std::cout << "Tempo segmentacao:" << duration2.count() << std::endl;
-
-    //RANSAC parameters
-    int numIterations = 400;
-    double inlierThreshold = 1.0;
-    auto start = high_resolution_clock::now();
-    std::vector<double> bestModelParams = RANSAC(pointsToFit, numIterations, inlierThreshold);
-
-    //Resultados
-    std::cout << "Best model parameters: " << bestModelParams[0] << " " << bestModelParams[1] << std::endl;
-    double signal_value = bestModelParams[0] * 410 + bestModelParams[1];
-    std::cout << "Signal value: " << signal_value << std::endl;
 
     return 0;
+    */
 }
+
+
+

@@ -4,7 +4,7 @@
 #include "MessageProcessing.h"
 #include "userinterface/widgets/IconResources.h"
 
-
+std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources);
 
 
