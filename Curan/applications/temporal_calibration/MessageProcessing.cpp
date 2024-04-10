@@ -6,6 +6,7 @@
 #include <cmath>
 #include <ctime>
 
+
 bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
 	igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
 	transform_message->Copy(val);
@@ -355,7 +356,7 @@ int NormalizeData(ProcessingMessage* processor) {
     //Extrair o sinal de vídeo da lista de observações
     std::vector<double> video_signals;
     for (const auto& observation : processor->list_of_recorded_points) {
-    video_signals.push_back(observation.video_signal);
+        video_signals.push_back(observation.video_signal);
     }
 
     //Output do sinal de vídeo
@@ -370,7 +371,7 @@ int NormalizeData(ProcessingMessage* processor) {
     auto mean2 = mean(video_signals);
     auto sampleStdDev2 = sampleStdDev(video_signals, mean2);
     for (double value : video_signals) {
-    processor->normalized_video_signal.push_back((value - mean2) / sampleStdDev2);
+        processor->normalized_video_signal.push_back((value - mean2) / sampleStdDev2);
     }
 
     //Output dos sinais normalizados
@@ -384,11 +385,115 @@ int NormalizeData(ProcessingMessage* processor) {
     std::cout << std::endl;
     std::cout << "---------------------------------------" << std::endl;
     std::cout << "Normalized video signal:"<<std::endl;
-        for (double value : processor->normalized_video_signal) {
+    for (double value : processor->normalized_video_signal) {
         std::cout << value << " ";
     }
     return 0;
 }
+
+int AlignSignals(ProcessingMessage* processor){
+    //Lambda para calcular SSD 
+    auto calculateSSD = [](std::vector<double>& signal1, std::vector<double> signal2) {
+        double ssd = 0.0;
+        for (size_t i = 0; i < signal1.size(); ++i) {
+            ssd += std::pow(signal1[i] - signal2[i], 2);
+        }
+        return ssd;
+    };
+
+   //Lambda para shiftar um sinal em n samples
+    auto shiftSignal = [](std::vector<double>& signal, int shift) {
+        std::vector<double> shifted_signal(signal.size());
+        int size = static_cast<int>(signal.size());
+        for (size_t i = 0; i < signal.size(); ++i) {
+            int shifted_index = (static_cast<int>(i) + shift) % size;
+            if (shifted_index < 0)
+                shifted_index += size; 
+            shifted_signal[i] = signal[shifted_index];
+        }
+        return shifted_signal;
+    };
+
+    //Lambda para dar resample para resolução de 1ms usando interpolação linear
+    auto resampleSignal = [&processor](const std::vector<double>& originalSignal) {
+        std::vector<double> resampledSignal;
+        double timeStepOriginal = 1/processor->fps;
+        double timeStepResampled = 0.001; 
+        int numSamplesOriginal = static_cast<int>(originalSignal.size());
+        int numSamplesResampled = static_cast<int>(numSamplesOriginal * timeStepOriginal / timeStepResampled);
+
+        for (int i = 0; i < numSamplesResampled; ++i) {
+            double t = i * timeStepResampled;
+            int indexLow = static_cast<int>(t / timeStepOriginal);
+            int indexHigh = std::min(indexLow + 1, numSamplesOriginal - 1);
+            double fraction = t / timeStepOriginal - indexLow;
+            double interpolatedValue = originalSignal[indexLow] * (1 - fraction) + originalSignal[indexHigh] * fraction;
+            resampledSignal.push_back(interpolatedValue);
+        }
+        return resampledSignal;
+    };
+
+    //Alinhamento inicial (sample a sample)
+    int coarse_resolution = 1; //Saltar de sample em sample
+    int coarse_shift_range = processor->normalized_position_signal.size(); 
+    double min_coarse_ssd = std::numeric_limits<double>::max(); //iniciar no infinito
+    int best_coarse_shift = 0;
+    //int iter = 0;
+
+    for (int shift = -coarse_shift_range; shift <= coarse_shift_range; shift += coarse_resolution) {
+        //iter+=1;
+        std::vector<double> shifted_tracker_position = shiftSignal(processor->normalized_position_signal, shift);
+        double ssd = calculateSSD(shifted_tracker_position, processor->normalized_video_signal);
+        //std::printf("SSD iteration %lld: ", iter);
+        //std::cout << ssd << std::endl;
+        if (ssd < min_coarse_ssd) {
+            min_coarse_ssd = ssd;
+            best_coarse_shift = shift;
+            //std::cout << "Best shift iteration: " << best_coarse_shift << std::endl;
+            //Um valor negativo significa que o moving signal tá adiantado em relacao ao fixed 
+        }
+    }
+
+    //Criar o vetor com o sinal de posição corrigido com o alinhamento inicial
+    std::vector<double> shifted_signal = shiftSignal(processor->normalized_position_signal, best_coarse_shift);   
+    //Dar resample para resolução de 1ms   
+    auto resampled_tracker_signal = resampleSignal(shifted_signal); //Já com o alinhamento inicial
+    auto resampled_image_signal = resampleSignal(processor->normalized_video_signal);
+
+    //Alinhamento final (com o sinal resampled)
+    int fine_resolution = 1; //Saltar de sample em sample
+    int fine_shift_range = (1.0/processor->fps)*1000; //shift range igual ao time step porque o alinhamento inicial ja foi feito
+    double min_fine_ssd = std::numeric_limits<double>::max(); //iniciar no infinito
+    int best_fine_shift = 0;
+    //int iter2 = 0;
+
+    for (int shift = -fine_shift_range; shift <= fine_shift_range; shift += fine_resolution) {
+        //iter2+=1;
+        std::vector<double> shifted_tracker_resampled_position = shiftSignal(resampled_tracker_signal, shift);
+        double ssd = calculateSSD(shifted_tracker_resampled_position, resampled_image_signal);
+        //std::printf("SSD iteration %lld: ", iter2);
+        //std::cout << ssd << std::endl;
+        if (ssd < min_fine_ssd) {
+            min_fine_ssd = ssd;
+            best_fine_shift = shift;
+            //std::cout << "Best shift iteration: " << best_fine_shift << std::endl;
+            //Um valor negativo significa que o moving signal tá adiantado em relacao ao fixed 
+        }
+    }
+    
+    float coarse_alignemnt = best_coarse_shift * (1.0/processor->fps)*1000;
+    float fine_alignement = best_fine_shift;
+    float total_shift = coarse_alignemnt + fine_alignement;
+    std::cout << std::endl;
+    std::cout << "---------------------------------------" << std::endl;
+    std::cout << "Coarse Shift: " << coarse_alignemnt << std::endl;
+    std::cout << "Fine Shift: " << fine_alignement << std::endl;
+    std::cout << "Total Shift: " << total_shift << std::endl;
+    processor->calibration_value = total_shift;
+
+    return 0;
+}
+
 
 bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -445,7 +550,6 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
     auto bestModelParams = RANSAC_output.bestModelParams;
     auto inliers = RANSAC_output.inlierPoints;
 
-
     //Pixel x médio 
     ImageType::SizeType size_itk = shr_ptr_imported->GetLargestPossibleRegion().GetSize();
     float cx = (size_itk[0]/2); 
@@ -456,7 +560,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	igtl::Matrix4x4 local_mat;
 	message_body->GetMatrix(local_mat);
 
-    
+    /*
     //Output da matriz da flange em tempo real
 	std::cout << "Observation:" << std::endl;
 	for (int row = 0; row < 4; ++row) {
@@ -465,11 +569,11 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
     }
     std::cout << std::endl;
     }
-    
+    */
     
     ObservationEigenFormat observation_n; //Struct com dois parametros: vetor posição da flange e sinal do vídeo
     
-    /*Guarda os vetores posição da flange e o sinal de vídeo numa lista em que cada elemento é a struct defenida
+    /*Aqui está a lógica de guardar os dados para a calibração e de a executar. Guarda os vetores posição da flange e o sinal de vídeo numa lista em que cada elemento é a struct defenida
     na linha anterior. Isto acontece durante um tempo definido pelo utilizador e tem um delay inicial de 3s.
     Quando acaba de guardar os dados faz os cálculos da calibração.*/
     if (processor->start_calibration && (processor->timer < processor->aquisition_time +3)) {
@@ -499,10 +603,13 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             std::cerr << "An error occurred during NormalizeData" << std::endl;
         }
 
-        //AlignSignals(processor); -> working on it
-        std::cout << std::endl;
+        try {
+            AlignSignals(processor);
+        } catch (...) {
+            std::cerr << "An error occurred during AlignSignals" << std::endl;
+        }
+
         std::cout << "---------------------------------------" << std::endl;
-        std::cout << "Calibration value "<< processor->calibration_value << " ms (i am working in this)" << std::endl;
         processor->calibration_finished.store(true);
     }
 
@@ -574,7 +681,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             SkColor customColor2 = SkColorSetARGB(255, 153, 255, 153);
             paint.setColor(customColor2);
             for (auto& inlier : inliers){
-            canvas->drawCircle(inlier.first * scalling_factor_x + image_area.left(), inlier.second * scalling_factor_y + image_area.top(), radius, paint);
+                canvas->drawCircle(inlier.first * scalling_factor_x + image_area.left(), inlier.second * scalling_factor_y + image_area.top(), radius, paint);
             }
         }
 

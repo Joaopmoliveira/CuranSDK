@@ -118,7 +118,7 @@ int main() {
     auto resampleSignal = [](const std::vector<double>& originalSignal) {
         std::vector<double> resampledSignal;
         double timeStepOriginal = 0.1; 
-        double timeStepResampled = 0.01; 
+        double timeStepResampled = 0.001; 
         
         int numSamplesOriginal = static_cast<int>(originalSignal.size());
         int numSamplesResampled = static_cast<int>(numSamplesOriginal * timeStepOriginal / timeStepResampled);
@@ -142,15 +142,15 @@ int main() {
     int best_coarse_shift = 0;
     int iter = 0;
     for (int shift = -coarse_shift_range; shift <= coarse_shift_range; shift += coarse_resolution) {
-        iter+=1;
+        //iter+=1;
         vector<double> shifted_tracker_position = shiftSignal(tracker_position, shift);
         double ssd = calculateSSD(shifted_tracker_position, image_position);
-        std::printf("SSD iteration %lld: ", iter);
-        std::cout << ssd << std::endl;
+        //std::printf("SSD iteration %lld: ", iter);
+        //std::cout << ssd << std::endl;
         if (ssd < min_coarse_ssd) {
             min_coarse_ssd = ssd;
             best_coarse_shift = shift;
-            std::cout << "Best shift iteration: " << best_coarse_shift << std::endl;
+            //std::cout << "Best shift iteration: " << best_coarse_shift << std::endl;
             //Um valor negativo significa que o moving signal tá adiantado em relacao ao fixed 
         }
     }
@@ -160,13 +160,34 @@ int main() {
             std::cout << signal << std::endl;
     }
 
-    std::cout << "Best SSD: " << min_coarse_ssd << std::endl;
-    std::cout << "Shift: " << best_coarse_shift << std::endl;
+    //std::cout << "Best SSD: " << min_coarse_ssd << std::endl;
+    std::cout << "Coarse Shift: " << best_coarse_shift << std::endl;
 
+    auto resampled_tracker_signal = resampleSignal(shifted_signal); //Já com o alinhamento inicial
+    auto resampled_image_signal = resampleSignal(image_position);
 
+    //Alinhamento final (com o sinal resampled)
+    int fine_resolution = 1; //Sample a sample
+    int fine_shift_range = 200; //200 samples
+    double min_fine_ssd = numeric_limits<double>::max(); //iniciar no infinito
+    int best_fine_shift = 0;
+    int iter2 = 0;
+    for (int shift = -fine_shift_range; shift <= fine_shift_range; shift += fine_resolution) {
+        //iter2+=1;
+        vector<double> shifted_tracker_resampled_position = shiftSignal(resampled_tracker_signal, shift);
+        double ssd = calculateSSD(shifted_tracker_resampled_position, resampled_image_signal);
+        //std::printf("SSD iteration %lld: ", iter2);
+        //std::cout << ssd << std::endl;
+        if (ssd < min_fine_ssd) {
+            min_fine_ssd = ssd;
+            best_fine_shift = shift;
+            //std::cout << "Best shift iteration: " << best_fine_shift << std::endl;
+            //Um valor negativo significa que o moving signal tá adiantado em relacao ao fixed 
+        }
+    }
+    //std::cout << "Best SSD: " << min_fine_ssd << std::endl;
+    std::cout << "Fine Shift: " << best_fine_shift << std::endl;
 
-
-    auto resampled_tracker_signal = resampleSignal(shifted_signal);
     /*
         std::cout << std::endl;
         std::cout << "Resampled and coarse aligned tracker signal:" << std::endl;
@@ -174,7 +195,7 @@ int main() {
             std::cout << signal << " ";
         }
 */
-    auto resampled_image_signal = resampleSignal(image_position);
+
     /*
         std::cout << std::endl;
         std::cout << "Resampled image signal:" << std::endl;
