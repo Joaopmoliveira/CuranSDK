@@ -5,7 +5,7 @@
 #include <Eigen/Dense>
 #include <cmath>
 #include <ctime>
-
+#include <chrono>
 
 bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
 	igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
@@ -371,7 +371,7 @@ int NormalizeData(ProcessingMessage* processor) {
     auto mean2 = mean(video_signals);
     auto sampleStdDev2 = sampleStdDev(video_signals, mean2);
     for (double value : video_signals) {
-        processor->normalized_video_signal.push_back((value - mean2) / sampleStdDev2);
+        processor->normalized_video_signal.push_back(-((value - mean2) / sampleStdDev2));
     }
 
     //Output dos sinais normalizados
@@ -415,9 +415,8 @@ int AlignSignals(ProcessingMessage* processor){
     };
 
     //Lambda para dar resample para resolução de 1ms usando interpolação linear
-    auto resampleSignal = [&processor](const std::vector<double>& originalSignal) {
+    auto resampleSignal = [](const std::vector<double>& originalSignal, double timeStepOriginal) {
         std::vector<double> resampledSignal;
-        double timeStepOriginal = 1/processor->fps;
         double timeStepResampled = 0.001; 
         int numSamplesOriginal = static_cast<int>(originalSignal.size());
         int numSamplesResampled = static_cast<int>(numSamplesOriginal * timeStepOriginal / timeStepResampled);
@@ -433,9 +432,19 @@ int AlignSignals(ProcessingMessage* processor){
         return resampledSignal;
     };
 
+    //Cálculo do time step
+    std::vector<double> time_stamps;
+    for (const auto& observation : processor->list_of_recorded_points) {
+        time_stamps.push_back(observation.time_stamp);
+    }
+    double first_element = time_stamps.front();    
+    double last_element = time_stamps.back();
+    double time_step = (last_element - first_element) / processor->list_of_recorded_points.size();
+    double fps = 1000.0 / time_step;
+
     //Alinhamento inicial (sample a sample)
     int coarse_resolution = 1; //Saltar de sample em sample
-    int coarse_shift_range = processor->normalized_position_signal.size(); 
+    int coarse_shift_range = processor->normalized_position_signal.size() / 2 - 1;
     double min_coarse_ssd = std::numeric_limits<double>::max(); //iniciar no infinito
     int best_coarse_shift = 0;
     //int iter = 0;
@@ -457,12 +466,12 @@ int AlignSignals(ProcessingMessage* processor){
     //Criar o vetor com o sinal de posição corrigido com o alinhamento inicial
     std::vector<double> shifted_signal = shiftSignal(processor->normalized_position_signal, best_coarse_shift);   
     //Dar resample para resolução de 1ms   
-    auto resampled_tracker_signal = resampleSignal(shifted_signal); //Já com o alinhamento inicial
-    auto resampled_image_signal = resampleSignal(processor->normalized_video_signal);
+    auto resampled_tracker_signal = resampleSignal(shifted_signal, time_step/1000); //Já com o alinhamento inicial
+    auto resampled_image_signal = resampleSignal(processor->normalized_video_signal, time_step/1000);
 
     //Alinhamento final (com o sinal resampled)
     int fine_resolution = 1; //Saltar de sample em sample
-    int fine_shift_range = (1.0/processor->fps)*1000; //shift range igual ao time step porque o alinhamento inicial ja foi feito
+    int fine_shift_range = round(time_step); //shift range igual ao time step porque o alinhamento inicial ja foi feito
     double min_fine_ssd = std::numeric_limits<double>::max(); //iniciar no infinito
     int best_fine_shift = 0;
     //int iter2 = 0;
@@ -480,21 +489,24 @@ int AlignSignals(ProcessingMessage* processor){
             //Um valor negativo significa que o moving signal tá adiantado em relacao ao fixed 
         }
     }
-    
-    float coarse_alignemnt = best_coarse_shift * (1.0/processor->fps)*1000;
+
+    float coarse_alignemnt = round(best_coarse_shift * time_step);
     float fine_alignement = best_fine_shift;
     float total_shift = coarse_alignemnt + fine_alignement;
     std::cout << std::endl;
     std::cout << "---------------------------------------" << std::endl;
+    std::cout << "Avarage time step between frames: " << time_step << "ms" << std::endl;   
+    std::cout << "Avarage fps: " << fps << std::endl;   
     std::cout << "Coarse Shift: " << coarse_alignemnt << std::endl;
     std::cout << "Fine Shift: " << fine_alignement << std::endl;
     std::cout << "Total Shift: " << total_shift << std::endl;
+
     processor->calibration_value = total_shift;
 
     return 0;
 }
 
-
+bool codeExecuted = false;
 bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 	std::chrono::steady_clock::time_point end = begin;
@@ -542,6 +554,21 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	//Frame
     ImageType::Pointer shr_ptr_imported = importFilter->GetOutput();
 
+    //Pixel x médio 
+    ImageType::SizeType size_itk = shr_ptr_imported->GetLargestPossibleRegion().GetSize();
+    float cx = (size_itk[0]/2);
+
+    //Usado para definir limites do botão e a janela de análise para o algoritmo de segmentação
+    if (!codeExecuted) {
+        int size_x = size_itk[0] - 1;
+        float float_size_x = size_x;
+        processor->max_coordx_limit[1] = float_size_x;
+        processor->max_coordx_limit[0] = float_size_x - 200;
+        processor->max_coordx = size_x;
+
+        codeExecuted = true;
+    }
+
     //Segmentation
     std::vector<std::pair<unsigned int, unsigned int>> pointsToFit = segment_points(processor->min_coordx, processor->max_coordx, processor->numLines, shr_ptr_imported);
     
@@ -550,9 +577,6 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
     auto bestModelParams = RANSAC_output.bestModelParams;
     auto inliers = RANSAC_output.inlierPoints;
 
-    //Pixel x médio 
-    ImageType::SizeType size_itk = shr_ptr_imported->GetLargestPossibleRegion().GetSize();
-    float cx = (size_itk[0]/2); 
     //Sinal de vídeo atual tendo em conta o fit do RANSAC
     float cy = bestModelParams[0] * cx + bestModelParams[1];
 
@@ -571,25 +595,28 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
     }
     */
     
-    ObservationEigenFormat observation_n; //Struct com dois parametros: vetor posição da flange e sinal do vídeo
-    
+    auto current_time = std::chrono::steady_clock::now(); 
+    auto elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - processor->start_time).count();
+    processor->timer = elapsed_seconds; //Este timer é usado para a GUI
+
+    ObservationEigenFormat observation_n; //Struct com 3 parametros: vetor posição da flange, sinal do vídeo e time stamp
     /*Aqui está a lógica de guardar os dados para a calibração e de a executar. Guarda os vetores posição da flange e o sinal de vídeo numa lista em que cada elemento é a struct defenida
-    na linha anterior. Isto acontece durante um tempo definido pelo utilizador e tem um delay inicial de 3s.
+    na linha anterior. Isto acontece durante um tempo definido pelo utilizador e tem um delay inicial que pode ser ajustado.
     Quando acaba de guardar os dados faz os cálculos da calibração.*/
-    if (processor->start_calibration && (processor->timer < processor->aquisition_time +3)) {
+    if (processor->start_calibration && (elapsed_seconds < processor->aquisition_time*1000 +processor->initial_delay*1000)) {
         processor->calibration_finished.store(false);
-        if (processor->timer >= 3){
-            std::cout << "Timer: " <<processor->timer<< "s" <<std::endl;
+        if (elapsed_seconds >= processor->initial_delay*1000){
                 for (size_t lines = 0; lines < 3; ++lines) {
                     size_t cols = 3;
                     observation_n.flange_data(lines, 0) = local_mat[lines][cols];
                 }
             observation_n.video_signal = cy;
+            observation_n.time_stamp = elapsed_seconds;
             processor->list_of_recorded_points.push_back(observation_n);
             std::cout << "Observation "<< processor->list_of_recorded_points.size() << std::endl;
+            std::cout << "Timer: " << elapsed_seconds << "ms" <<std::endl;
         }
-        double aux = 1;
-        processor->timer += aux/processor->fps;
+
     }else if (processor->start_calibration && !(processor->calibration_finished)) {
         try {
             ProjectFlange(processor);
@@ -685,13 +712,13 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             }
         }
 
-        if (processor->start_calibration && processor->timer < 3){ //Countdown para a calibração
+        if (processor->start_calibration && processor->timer < processor->initial_delay*1000){ //Countdown para a calibração
             SkPaint paint;
             paint.setStyle(SkPaint::kFill_Style);
             SkColor customColor = SkColorSetARGB(255, 178, 102, 255);
             paint.setColor(customColor); 
             const std::string text1 = "Calibration starting in";
-            float countdown = 3 - processor->timer;
+            float countdown = (processor->initial_delay*1000 - processor->timer)*0.001;
             SkString text2;
             text2.printf("%.1f", countdown);
             text2 += "s";
@@ -704,7 +731,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             canvas->drawSimpleText(text1.data(),text1.size(),SkTextEncoding::kUTF8,widget_area.centerX()-200,widget_area.top()+50,font1,paint);
             canvas->drawSimpleText(text2.data(),text2.size(),SkTextEncoding::kUTF8,widget_area.centerX()-40,widget_area.top() + 90,font1,paint);
         
-        }else if (processor->start_calibration && (processor->timer > 3 && processor->timer < processor->aquisition_time + 3)){ //GUI enquanto a calibração tá a acontecer
+        }else if (processor->start_calibration && ((processor->timer > processor->initial_delay*1000) && (processor->timer < (processor->aquisition_time*1000 + processor->initial_delay*1000)))){ //GUI enquanto a calibração tá a acontecer
             SkPaint paint;
             paint.setColor(SK_ColorRED); 
             paint.setStyle(SkPaint::kFill_Style);
@@ -715,9 +742,9 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             SkFont font1(typeface, 64.0f, 1.0f, 0.0f);
             font1.setEdging(SkFont::Edging::kAntiAlias);
             const std::string text = "REC";
-            float percentagem = ((processor->timer -3) / processor->aquisition_time)*100;
+            float percentagem = ((processor->timer -processor->initial_delay*1000) / (processor->aquisition_time*1000))*100;
             SkString text2;
-            text2.printf("%.0f", percentagem);
+            text2.printf("%.0f",percentagem);
             text2 += "%";
             SkColor customColor = SkColorSetARGB(255, 176, 196, 222);
             SkPaint paint2;
@@ -744,7 +771,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             text2.printf("Result: %.1f", calib);
             text2 += "ms";
             canvas->drawSimpleText(text1.data(),text1.size(),SkTextEncoding::kUTF8,widget_area.centerX()-300,widget_area.top()+100,font1,paint);
-            canvas->drawSimpleText(text2.data(),text2.size(),SkTextEncoding::kUTF8,widget_area.centerX()-150,widget_area.top() + 200,font1,paint);
+            canvas->drawSimpleText(text2.data(),text2.size(),SkTextEncoding::kUTF8,widget_area.centerX()-200,widget_area.top() + 200,font1,paint);
         }
     },wrapper);
 

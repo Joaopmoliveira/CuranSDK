@@ -25,6 +25,7 @@
 struct ObservationEigenFormat {
 	Eigen::Vector3d flange_data;
 	float video_signal;
+	long long time_stamp;
 };
 
 struct RANSAC_Output{
@@ -48,15 +49,26 @@ struct ProcessingMessage {
 	std::atomic<bool> show_calibration_lines = false;
 	std::atomic<bool> show_pointstofit = false;
 	double timer = 0.0;
+	std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+
+	//Recording parameters
+	std::array<float, 2> initial_delay_limit = {0, 20};
+	double initial_delay = 3.0;
+	std::array<float, 2> aquisition_time_limit = {1, 60};
 	double aquisition_time = 10.0;
-	//Edit to the actual fps of the frame grabber
-	int fps = 10;
+
     //Segmentation parameters
-    int min_coordx = 210;
-    int max_coordx = 610;
-    int numLines = 40;
+	std::array<float, 2> min_coordx_limit = {0, 200};
+    int min_coordx = 0;
+	std::array<float, 2> max_coordx_limit = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN()};
+    int max_coordx = std::numeric_limits<float>::quiet_NaN();
+	std::array<float, 2> lines_limit = {4, 100};
+    int numLines = 50;
+
     //RANSAC parameters
-    int numIterations = 100;
+	std::array<float, 2> numIterations_limit = {1, 1000};
+    int numIterations = 500;
+	std::array<float, 2> inlierThreshold_limit = {0, 10};
     double inlierThreshold = 1;
 
 	float calibration_value =0;
