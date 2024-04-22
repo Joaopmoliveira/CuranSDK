@@ -50,10 +50,10 @@ struct ProcessingMessage {
 	double timer = 0.0;
 	double aquisition_time = 10.0;
 	//Edit to the actual fps of the frame grabber
-	int fps = 10;
+	int fps = 25;
     //Segmentation parameters
-    int min_coordx = 210;
-    int max_coordx = 610;
+    int min_coordx = 0+1;
+    int max_coordx = 386-1;
     int numLines = 40;
     //RANSAC parameters
     int numIterations = 100;

@@ -100,7 +100,74 @@ void signal_handler(int val)
     sincronizer.stop();
 }
 
+template<typename T>
+class unique_ptr_mine{
+    T* my_pointer = nullptr;
+public:
+    unique_ptr_mine(T* other) : my_pointer{other}{
+
+    }
+
+    unique_ptr_mine(const unique_ptr_mine& other) = delete;
+    void operator= (const unique_ptr_mine& other) = delete;
+
+    unique_ptr_mine(unique_ptr_mine&& other) : my_pointer{other.get()}{
+        other.my_pointer = nullptr;
+    }
+
+    void operator= (unique_ptr_mine&& other){
+        my_pointer = other.get();
+        other.my_pointer = nullptr;
+    }
+
+    ~unique_ptr_mine(){
+        if(my_pointer!=nullptr)
+            delete my_pointer;
+    }
+
+    T* get(){
+        return my_pointer;
+    }
+
+
+};
+
+/*
+    unique_ptr_mine //g g->0012341423
+    unique_ptr_mine //v g->nullptr v->0012341423
+    ~unique_ptr_mine //v
+    unique_ptr_mine //g g->0012341423
+
+*/
+
+unique_ptr_mine<double> gg{nullptr};
+
+void fn(unique_ptr_mine<double>&& v){
+    double* a = v.get();
+    *a = 4.0;
+    gg = std::move(v);
+}
+
+int main2(){
+    unique_ptr_mine<double> g{new double{0}};
+    double* f = g.get();
+    fn(std::move(g));
+    return 0;
+}
+
+
 int main(){
+    volatile double bb = 10.0;
+    
+    std::thread reader{[&](){ bool value = true;  while(true){bb = (value) ? 10.0 : 5.0e4; value = !value;} }};
+    std::thread writer{[&](){ while(true) std::cout << bb << "\n";}};
+    reader.join();
+    writer.join();
+    return 0;
+}
+
+
+int main1(){
     std::signal(SIGINT,signal_handler);
     std::thread camera_thread{[&](){camera_reader(sincronizer);}};
     std::thread gps_thread{[&](){gps_reader(sincronizer);}};

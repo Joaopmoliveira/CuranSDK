@@ -371,7 +371,7 @@ int NormalizeData(ProcessingMessage* processor) {
     auto mean2 = mean(video_signals);
     auto sampleStdDev2 = sampleStdDev(video_signals, mean2);
     for (double value : video_signals) {
-        processor->normalized_video_signal.push_back((value - mean2) / sampleStdDev2);
+        processor->normalized_video_signal.push_back(-((value - mean2) / sampleStdDev2));
     }
 
     //Output dos sinais normalizados
@@ -505,6 +505,12 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		return false; //failed to unpack message, therefore returning without doing anything
 
 	int x, y, z;
+    igtl::TimeStamp::Pointer ts;
+    ts = igtl::TimeStamp::New();
+    message_body->GetTimeStamp(ts);
+    auto time = ts->GetNanosecond();
+    //std::cout << time << std::endl;
+
 	message_body->GetDimensions(x, y, z);
 	using PixelType = unsigned char;
 	constexpr unsigned int Dimension = 2;
@@ -612,6 +618,8 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
         std::cout << "---------------------------------------" << std::endl;
         processor->calibration_finished.store(true);
     }
+
+    //std::cout << size_itk << std::endl;
 
     auto buff = curan::utilities::CaptureBuffer::make_shared(shr_ptr_imported->GetBufferPointer(),shr_ptr_imported->GetPixelContainer()->Size()*sizeof(char),shr_ptr_imported);
     curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
