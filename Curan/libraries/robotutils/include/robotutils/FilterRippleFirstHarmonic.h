@@ -11,6 +11,7 @@ namespace robotic {
 
 struct FilterProperties {
 	double damper = 1;
+	double cross_overlap = 1;
 	double width;
 	double frequency;
 	FilterProperties(double width = 5.0, double frequency = 320.0) : width{ width }, frequency{ frequency } {};
@@ -29,6 +30,15 @@ struct Observation {
 
 	Observation(double current_vel, double current_delta, double current_torque) : current_vel{ current_vel }, current_delta{ current_delta }, current_torque{ current_torque }
 	{}
+};
+
+/*
+Cross talk mitigation is a scheme to avoid the delay between multiple 
+joints overlaping with each other, which add delay between the signal and the 
+*/
+enum CrossTalkMitigation{
+	ACTIVE,
+	INACTIVE
 };
 
 void update_filter_properties(FilterProperties& filter_properties, const Observation& observation);

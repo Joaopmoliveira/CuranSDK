@@ -19,6 +19,6 @@
 #include "communication/ProtoIGTL.h"
 #include "communication/ProtoFRI.h"
 
-int communication(std::shared_ptr<SharedRobotState> state);
+int communication(std::shared_ptr<SharedRobotState> state,asio::io_context& context);
 
 #endif

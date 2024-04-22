@@ -19,25 +19,6 @@
 #include <iostream>
 #include <thread>
 
-static constexpr char SKSL[] =
-"uniform float3 in_resolution;"
-"uniform float  in_time;"
-"float f(vec3 p) {"
-"    p.z -= in_time * 10.;"
-"    float a = p.z * .1;"
-"    p.xy *= mat2(cos(a), sin(a), -sin(a), cos(a));"
-"    return .1 - length(cos(p.xy) + sin(p.yz));"
-"}"
-"half4 main(vec2 fragcoord) { "
-"    vec3 d = .5 - fragcoord.xy1 / in_resolution.y;"
-"    vec3 p=vec3(0);"
-"    for (int i = 0; i < 32; i++) {"
-"      p += f(p) * d;"
-"    }"
-"    return ((sin(p) + vec3(2, 5, 12)) / length(p)).xyz1;"
-"}";
-
-
 asio::io_context* ptr_ctx = nullptr;
 
 void signal_handler(int signal)
@@ -56,11 +37,11 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
 	    auto button1 = Button::make("Temporal Calibration",resources);
 	    button1->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button1->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/TemporalCalibration" CURAN_BINARY_SUFFIX);
 			} else {
 				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
 			}
@@ -69,11 +50,11 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
 	    auto button2 = Button::make("Spatial Calibration",resources);
 	   	button2->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button2->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/Ultrasoundcalibration" CURAN_BINARY_SUFFIX);
 			} else {
 				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
 			}
@@ -82,11 +63,11 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
 	    auto button3 = Button::make("Volume ROI",resources);
 	   	button3->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button3->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/RealTimeRobotBoxSpecifier" CURAN_BINARY_SUFFIX);
 			} else {
 				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
 			}
@@ -95,11 +76,11 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
 		auto button4 = Button::make("Reconstruction",resources);
 	   	button4->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button4->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/RealTimeRobotReconstructor" CURAN_BINARY_SUFFIX);
 			} else {
 				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
 			}
@@ -108,11 +89,11 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
 		auto button5 = Button::make("Registration",resources);
 	   	button5->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button5->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/RoboticRegistration" CURAN_BINARY_SUFFIX);
 			} else {
 				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
 			}
@@ -121,19 +102,24 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
 		auto button6 = Button::make("Neuro Navigation",resources);
 	   	button6->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button6->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/child_with_gui" CURAN_BINARY_SUFFIX);
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/InteroperativeNavigation" CURAN_BINARY_SUFFIX);
 			} else {
 				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
 			}
 		});
 
 		RuntimeEffect effects{SKSL};
-	    auto widgetcontainer = Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL,effects);
-                    
+		auto image = resources.get_icon("human_robotics_logo.jpeg");
+		std::unique_ptr<Container> widgetcontainer;
+		if(image)
+	    	widgetcontainer = Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL,*image);
+        else 
+			widgetcontainer = Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL);
+
 	    *widgetcontainer << std::move(button1) 
                         << std::move(button2) 
                         << std::move(button3) 
@@ -192,9 +178,10 @@ int main() {
 		ptr_ctx = &io_context;
 		auto parent = std::make_unique<curan::process::ProcessLaucher>(io_context, std::chrono::milliseconds(100),std::chrono::milliseconds(0), 10);
 
-		std::thread th{[&](){ 
-			viewer_code(io_context,parent.get());
-		}
+		std::thread th{[&]()
+			{ 
+				viewer_code(io_context,parent.get());
+			}	
 		};
 
 		io_context.run();

@@ -10,9 +10,7 @@ namespace process{
 		
 		was_violated = true;
 		if (number_of_violations > max_num_violations) {
-			timer.cancel();
-			client->get_socket().close();
-			hidden_context.get_executor().on_work_finished();
+			sync_internal_terminate_pending_process_and_connections(CLIENT_TIMEOUT_REACHED);
 			return;
 		}
 
@@ -32,9 +30,7 @@ namespace process{
 
 	void ChildProcess::message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {
 		if (er) {
-			timer.cancel();
-			client->get_socket().close();
-			hidden_context.get_executor().on_work_finished();
+			sync_internal_terminate_pending_process_and_connections(CLIENT_TIMEOUT_REACHED);
 			return;
 		}
 		
@@ -45,17 +41,20 @@ namespace process{
 			break;
 		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
 		default:
-			timer.cancel();
-			client->get_socket().close();
-			hidden_context.get_executor().on_work_finished();
+			sync_internal_terminate_pending_process_and_connections(CLIENT_TIMEOUT_REACHED);
 			break;
 		}
 	}
 
-	ChildProcess::~ChildProcess() {
+	void ChildProcess::sync_internal_terminate_pending_process_and_connections(const Failure&){
 		timer.cancel();
 		client->get_socket().close();
 		hidden_context.get_executor().on_work_finished();
+		if(connection_callback) connection_callback(false);
+	}
+
+	ChildProcess::~ChildProcess() {
+		sync_internal_terminate_pending_process_and_connections(CLIENT_TIMEOUT_REACHED);
 	}
 
 }
