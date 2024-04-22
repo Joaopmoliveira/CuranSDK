@@ -2,33 +2,14 @@
 
   <DataCollection StartupDelaySec="1.0">
     <DeviceSet 
-      Name="fCal: Simulation mode for temporal calibration" 
+      Name="TESTEEEEEE" 
       Description="Replays a recorded sequence of imaging the bottom of a water tank. Image and tracking data is provided by separate devices." />
 
-    <Device
-      Id="TrackerDeviceSavedDataset"
-      Type="SavedDataSource"
-      UseData="TRANSFORM"
-      AcquisitionRate="10"
-      LocalTimeOffsetSec="0.0"
-      SequenceFile="WaterTankBottomTranslationTrackerBuffer-trimmed.mha"
-      UseOriginalTimestamps="TRUE"
-      RepeatEnabled="TRUE"
-      ToolReferenceFrame="Tracker" >
-      <DataSources>
-        <DataSource Type="Tool" Id="Probe" />
-      </DataSources>
-      <OutputChannels>
-        <OutputChannel Id="TrackerStream" >
-          <DataSource Id="Probe"/>          
-        </OutputChannel>
-      </OutputChannels>
-    </Device>
 
     <Device
       Id="VideoDeviceSavedDataset" 
       Type="SavedDataSource"
-      UseData="IMAGE"
+      UseData="IMAGE_AND_TRANSFORM"
       AcquisitionRate="10" 
       LocalTimeOffsetSec="0.0" 
       SequenceFile="WaterTankBottomTranslationVideoBuffer.mha"
@@ -38,21 +19,10 @@
         <DataSource Type="Video" Id="Video" PortUsImageOrientation="MF"  />
       </DataSources>
       <OutputChannels>
-        <OutputChannel Id="VideoStream" VideoDataSourceId="Video" />
+        <OutputChannel Id="TrackedVideoStream" VideoDataSourceId="Video" />
       </OutputChannels>
     </Device>
     
-    <Device 
-      Id="TrackedVideoDevice" 
-      Type="VirtualMixer" >
-      <InputChannels>
-        <InputChannel Id="TrackerStream" />
-        <InputChannel Id="VideoStream" />
-      </InputChannels>
-      <OutputChannels>
-        <OutputChannel Id="TrackedVideoStream"/>
-      </OutputChannels>
-    </Device>
     
   </DataCollection>
 

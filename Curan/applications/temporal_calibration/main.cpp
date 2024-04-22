@@ -44,9 +44,9 @@ int main(int argc, char* argv[]) {
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
+
 	processing->attempt_stop();
 	std::cout << "trying to stop communication\n" << std::endl;
 
-	
 	return 0;
 }
