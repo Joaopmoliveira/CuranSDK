@@ -190,8 +190,7 @@ bool process_joint_message(std::shared_ptr<SharedRobotState> state,const size_t&
     return false;
 }
 
-int communication(std::shared_ptr<SharedRobotState> state){
-    asio::io_context context;
+int communication(std::shared_ptr<SharedRobotState> state,asio::io_context& context){
     curan::communication::interface_igtl igtlink_interface;
 	curan::communication::Client::Info construction{ context,igtlink_interface };
 	asio::ip::tcp::resolver resolver(context);

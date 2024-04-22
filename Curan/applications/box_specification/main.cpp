@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <cmath>
 #include "utils/Reader.h"
+#include "processmanagement/ChildProcess.h"
 
 namespace
 {
@@ -29,9 +30,24 @@ void interface(vsg::CommandBuffer& cb,std::shared_ptr<SharedRobotState>& robot_s
    ImGui::End();
 }
 
-int main (int argc, char** argv)
+int main (int argv, char** argc)
 {
+   asio::io_context context;
    std::signal(SIGINT, signal_handler);
+
+	std::unique_ptr<curan::process::ChildProcess> child;
+	using namespace curan::communication;
+
+	if(argv>2){ 
+      // we were supplied with more arguments than expected, therefore we assume that there is no parent
+		std::cout << "the supplied arguments are too many, \nthe program either accepts the one or two arguments\n";
+	} else if(argv==2) {
+		child = std::make_unique<curan::process::ChildProcess>(context, std::chrono::milliseconds(100), 10);
+	} else {
+		// we were supplied with less arguments than expected, therefore we assume that there is no parent
+	}
+
+
    auto robot_state = SharedRobotState::make_shared();
    try{
    // We need to read the JSON configuration file to get the calibrated configuration of the ultrasound image
@@ -79,8 +95,8 @@ int main (int argc, char** argv)
    robot_state->robot = curan::renderable::SequencialLinks::make(create_info);
    window << robot_state->robot;
 
-   auto communication_callable = [robot_state](){
-      communication(robot_state);
+   auto communication_callable = [robot_state,&context](){
+      communication(robot_state,context);
    };
    //here I should lauch the thread that does the communication and renders the image above the robotic system 
    std::thread communication_thread(communication_callable);
