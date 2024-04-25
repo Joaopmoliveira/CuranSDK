@@ -15,6 +15,7 @@ namespace curan {
 		class MiniPage : public  Drawable , public utilities::Lockable, public SignalProcessor<MiniPage> {
 
 			std::unique_ptr<LightWeightPage> main_page;
+			std::unique_ptr<LightWeightPage> replacement_main_page;
 			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 			SkPaint bluring_paint;
 			SkSamplingOptions options;

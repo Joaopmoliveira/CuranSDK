@@ -22,8 +22,8 @@ void MiniPage::compile(){
 
 void MiniPage::construct(std::unique_ptr<Container> container,SkColor background){
     std::lock_guard<std::mutex> g{get_mutex()};
-    main_page = std::move(LightWeightPage::make(std::move(container),background));
-    main_page->propagate_size_change(get_position());
+    replacement_main_page = std::move(LightWeightPage::make(std::move(container),background));
+    replacement_main_page->propagate_size_change(get_position());
 }
 
 MiniPage::~MiniPage(){
@@ -70,8 +70,13 @@ callablefunction MiniPage::call(){
             		localcall(this,arg,config);		
 			}},
 			sig);
+		interacted = main_page->propagate_signal(sig, config);
         std::lock_guard<std::mutex> g{get_mutex()};
-		return main_page->propagate_signal(sig, config);
+		if(replacement_main_page){
+			main_page = std::move(replacement_main_page);
+			replacement_main_page = nullptr;
+		}
+		return interacted;
 	};
 	return lamb;
 }

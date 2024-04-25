@@ -46,6 +46,7 @@ Button::Button(const std::string& in_button_text,const std::string& in_icon_iden
 	SkFontStyle fontStyle;
 	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
 	typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+
 }
 
 
