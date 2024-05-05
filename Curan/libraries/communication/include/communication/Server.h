@@ -80,6 +80,11 @@ namespace curan {
 				list_of_clients.clear();
 			};
 
+			inline void close(){
+				cancel();
+				acceptor_.cancel();
+			}
+
 			void write(std::shared_ptr<utilities::MemoryBuffer> buffer);
 
 			inline asio::io_context& get_context(){

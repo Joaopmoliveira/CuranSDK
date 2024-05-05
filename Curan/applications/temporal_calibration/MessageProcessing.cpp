@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 #include <cmath>
 #include <ctime>
+#include <chrono>
 
 bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
 	igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
@@ -165,10 +166,12 @@ std::vector<std::pair<unsigned int, unsigned int>> segment_points(int min_coordx
 }
 
 //RANSAC algorithm 
-std::vector<double> RANSAC(std::vector<std::pair<unsigned int, unsigned int>> points, int numIterations, double inlierThreshold) {
+RANSAC_Output RANSAC(std::vector<std::pair<unsigned int, unsigned int>> points, int numIterations, double inlierThreshold) {
     //Inicializar variáveis 
-    std::vector<double> bestModelParams;
+    //std::vector<double> bestModelParams;
     int bestNumInliers = 0;
+    //std::vector<std::pair<unsigned int, unsigned int>> inlierPoints;
+    RANSAC_Output output;
 
     //Numero random em funcao do current time
     std::srand(std::time(0)); 
@@ -207,17 +210,303 @@ std::vector<double> RANSAC(std::vector<std::pair<unsigned int, unsigned int>> po
             double error = std::abs(point.second - predictedY);
             if (error <= inlierThreshold) {
                 numInliers++;
+                //output.inlierPoints.push_back(point);
             }
         }
+        //std::cout << numInliers << std::endl;
         //Melhor modelo é o que tem o maior numero de inliers
         if (numInliers > bestNumInliers) {
-            bestModelParams = {x[0], x[1]};
+            output.bestModelParams = {x[0], x[1]};
             bestNumInliers = numInliers;
+            output.inlierPoints.clear();
+            for (const auto& point : points) {
+                double predictedY = x[0] * point.first + x[1];
+                double error = std::abs(point.second - predictedY);
+                if (error <= inlierThreshold) {
+                    output.inlierPoints.push_back(point);
+                }
+            }
         }
     }
-    return bestModelParams;
+    //std::cout << bestNumInliers << std::endl;
+    //std::cout << "Best model parameters: " << bestModelParams[0] << " " << bestModelParams[1] << std::endl;
+    return output;
 }
 
+
+//Projeta os vetores posição da flange na direção principal do movimento
+int ProjectFlange(ProcessingMessage* processor){
+	using namespace Eigen;
+	using namespace std;
+    //Imprimir flange data e video signal originais (pré data process)
+    cout << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Flange Data (x,y,z):" << endl;
+	for (const auto& observation : processor->list_of_recorded_points) {
+        for (size_t lines = 0; lines < 3; ++lines) {
+            cout << observation.flange_data(lines, 0) << " ";
+        }
+        cout << endl;
+	}
+    
+    //Extrair vetores posição da lista de observações
+    vector<Vector3d> position_vectors;
+    for (const auto& observation : processor->list_of_recorded_points) {
+        position_vectors.push_back(observation.flange_data);
+    }
+
+    //Daqui para a frente de acordo com a wikipedia e comfirmado que o matlab dá igual :-)
+    //Vetor posição médio
+    Vector3d mean = Vector3d::Zero();
+    for (const auto& vec : position_vectors) {
+        mean += vec;
+    }
+    mean /= position_vectors.size();
+
+    //Centrar os dados tendo em conta a posição média
+    MatrixXd centered_data(3, position_vectors.size());
+    for (size_t i = 0; i < position_vectors.size(); ++i) {
+        centered_data.col(i) = position_vectors[i] - mean;
+    }
+
+    //Covariance matrix
+    MatrixXd covariance = (centered_data * centered_data.transpose()) / (position_vectors.size() - 1);
+    //std::cout << "Covariance Matrix:\n" << covariance<< std::endl
+
+    //Eigendecomposition da covariance matrix
+    SelfAdjointEigenSolver<MatrixXd> eigensolver(covariance);
+
+    //Eigenvectors e eigenvalues
+    Vector3d eigenvalues = eigensolver.eigenvalues();
+    Matrix3d eigenvectors = eigensolver.eigenvectors();
+
+    //Pares de valores prórpios com o respetivo vetor próprio
+    vector<pair<double, Vector3d>> eigen_pairs;
+    for (int i = 0; i < 3; ++i) {
+        eigen_pairs.push_back(make_pair(eigenvalues(i), eigenvectors.col(i)));
+    }
+   
+    //Lambda function para comparar os valores prórpios dos pares
+    auto compare = [](const pair<double, Vector3d>& a, const pair<double, Vector3d>& b) {
+        return a.first > b.first;
+    };
+
+    //Organiza os pares por ordem decrescente de valor próprio 
+    sort(eigen_pairs.begin(), eigen_pairs.end(), compare);
+
+    //Printa os pares eigenvalue-eigenvector
+    cout << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Sorted Eigenvalue-Eigenvector Pairs:" << endl;
+    for (const auto& pair : eigen_pairs) {
+        cout << "Eigenvalue: " << pair.first << ", Eigenvector: \n" << pair.second << endl;
+    }
+    cout << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Principal Component: " << eigen_pairs[0].second.transpose() << endl;
+
+    //Componente principal é o eigenvector que tem o maior eigen value 
+    Vector3d principal_component = eigen_pairs[0].second;
+
+    //Projeta os vetores posicao da flange na direção principal
+    for (const auto& vec : position_vectors) {
+        /*Uso abs para garantir que o sinal é sempre positivo, no matlab não precisei disso. Por alguma razão
+        aqui há casos em que os eigen vectors são simétricos (sentido inverso) do que os que dão no maltab.*/
+        double projection = abs(vec.dot(principal_component));
+        processor->projections.push_back(projection);
+    }
+
+    //Output das projeções
+    cout << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Projections onto the principal component:" << endl;
+    for (const auto& projection : processor->projections) {
+        cout << projection << endl;
+    }
+    return 0;
+}
+
+//Normaliza o sinal de vídeo e o sinal de posição (já depois das projeções)
+int NormalizeData(ProcessingMessage* processor) {
+    //Lambda function para calcular a média 
+    auto mean = [](auto data) {
+        double sum = 0.0;
+        for (double value : data) {
+            sum += value;
+        }
+        return sum / data.size();
+    };
+
+    //Lambda function para calcular o desvio padrão
+    auto sampleStdDev = [](auto data,double mean) {
+        double sumSquaredDiff = 0.0;
+        for (double value : data) {
+            sumSquaredDiff += pow(value - mean, 2);
+        }
+        return sqrt(sumSquaredDiff / (data.size() - 1));
+    };
+
+    //Normaliza as projeções da flange
+    auto mean1 = mean(processor->projections);
+    auto sampleStdDev1 = sampleStdDev(processor->projections, mean1);
+    for (double value : processor->projections) {
+        processor->normalized_position_signal.push_back((value - mean1) / sampleStdDev1);
+    }
+
+    //Extrair o sinal de vídeo da lista de observações
+    std::vector<double> video_signals;
+    for (const auto& observation : processor->list_of_recorded_points) {
+        video_signals.push_back(observation.video_signal);
+    }
+
+    //Output do sinal de vídeo
+    std::cout << std::endl;
+    std::cout << "---------------------------------------" << std::endl;
+    std::cout << "Video signal:" << std::endl;
+    for (const auto& signal : video_signals) {
+        std::cout << signal << std::endl;
+    }   
+
+    //Normaliza o sinal de vídeo
+    auto mean2 = mean(video_signals);
+    auto sampleStdDev2 = sampleStdDev(video_signals, mean2);
+    for (double value : video_signals) {
+        processor->normalized_video_signal.push_back(-((value - mean2) / sampleStdDev2));
+    }
+
+    //Output dos sinais normalizados
+    std::cout << std::endl;
+    std::cout << "---------------------------------------" << std::endl;
+    std::cout << "Normalized position signal:"<<std::endl;
+    for (double value : processor->normalized_position_signal) {
+        std::cout << value << " ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << "---------------------------------------" << std::endl;
+    std::cout << "Normalized video signal:"<<std::endl;
+    for (double value : processor->normalized_video_signal) {
+        std::cout << value << " ";
+    }
+    return 0;
+}
+
+int AlignSignals(ProcessingMessage* processor){
+    //Lambda para calcular SSD 
+    auto calculateSSD = [](std::vector<double>& signal1, std::vector<double> signal2) {
+        double ssd = 0.0;
+        for (size_t i = 0; i < signal1.size(); ++i) {
+            ssd += std::pow(signal1[i] - signal2[i], 2);
+        }
+        return ssd;
+    };
+
+   //Lambda para shiftar um sinal em n samples
+    auto shiftSignal = [](std::vector<double>& signal, int shift) {
+        std::vector<double> shifted_signal(signal.size());
+        int size = static_cast<int>(signal.size());
+        for (size_t i = 0; i < signal.size(); ++i) {
+            int shifted_index = (static_cast<int>(i) + shift) % size;
+            if (shifted_index < 0)
+                shifted_index += size; 
+            shifted_signal[i] = signal[shifted_index];
+        }
+        return shifted_signal;
+    };
+
+    //Lambda para dar resample para resolução de 1ms usando interpolação linear
+    auto resampleSignal = [](const std::vector<double>& originalSignal, double timeStepOriginal) {
+        std::vector<double> resampledSignal;
+        double timeStepResampled = 0.001; 
+        int numSamplesOriginal = static_cast<int>(originalSignal.size());
+        int numSamplesResampled = static_cast<int>(numSamplesOriginal * timeStepOriginal / timeStepResampled);
+
+        for (int i = 0; i < numSamplesResampled; ++i) {
+            double t = i * timeStepResampled;
+            int indexLow = static_cast<int>(t / timeStepOriginal);
+            int indexHigh = std::min(indexLow + 1, numSamplesOriginal - 1);
+            double fraction = t / timeStepOriginal - indexLow;
+            double interpolatedValue = originalSignal[indexLow] * (1 - fraction) + originalSignal[indexHigh] * fraction;
+            resampledSignal.push_back(interpolatedValue);
+        }
+        return resampledSignal;
+    };
+
+    //Cálculo do time step
+    std::vector<double> time_stamps;
+    for (const auto& observation : processor->list_of_recorded_points) {
+        time_stamps.push_back(observation.time_stamp);
+    }
+    double first_element = time_stamps.front();    
+    double last_element = time_stamps.back();
+    double time_step = (last_element - first_element) / processor->list_of_recorded_points.size();
+    double fps = 1000.0 / time_step;
+
+    //Alinhamento inicial (sample a sample)
+    int coarse_resolution = 1; //Saltar de sample em sample
+    int coarse_shift_range = processor->normalized_position_signal.size() / 2 - 1;
+    double min_coarse_ssd = std::numeric_limits<double>::max(); //iniciar no infinito
+    int best_coarse_shift = 0;
+    //int iter = 0;
+
+    for (int shift = -coarse_shift_range; shift <= coarse_shift_range; shift += coarse_resolution) {
+        //iter+=1;
+        std::vector<double> shifted_tracker_position = shiftSignal(processor->normalized_position_signal, shift);
+        double ssd = calculateSSD(shifted_tracker_position, processor->normalized_video_signal);
+        //std::printf("SSD iteration %lld: ", iter);
+        //std::cout << ssd << std::endl;
+        if (ssd < min_coarse_ssd) {
+            min_coarse_ssd = ssd;
+            best_coarse_shift = shift;
+            //std::cout << "Best shift iteration: " << best_coarse_shift << std::endl;
+            //Um valor negativo significa que o moving signal tá adiantado em relacao ao fixed 
+        }
+    }
+
+    //Criar o vetor com o sinal de posição corrigido com o alinhamento inicial
+    std::vector<double> shifted_signal = shiftSignal(processor->normalized_position_signal, best_coarse_shift);   
+    //Dar resample para resolução de 1ms   
+    auto resampled_tracker_signal = resampleSignal(shifted_signal, time_step/1000); //Já com o alinhamento inicial
+    auto resampled_image_signal = resampleSignal(processor->normalized_video_signal, time_step/1000);
+
+    //Alinhamento final (com o sinal resampled)
+    int fine_resolution = 1; //Saltar de sample em sample
+    int fine_shift_range = round(time_step); //shift range igual ao time step porque o alinhamento inicial ja foi feito
+    double min_fine_ssd = std::numeric_limits<double>::max(); //iniciar no infinito
+    int best_fine_shift = 0;
+    //int iter2 = 0;
+
+    for (int shift = -fine_shift_range; shift <= fine_shift_range; shift += fine_resolution) {
+        //iter2+=1;
+        std::vector<double> shifted_tracker_resampled_position = shiftSignal(resampled_tracker_signal, shift);
+        double ssd = calculateSSD(shifted_tracker_resampled_position, resampled_image_signal);
+        //std::printf("SSD iteration %lld: ", iter2);
+        //std::cout << ssd << std::endl;
+        if (ssd < min_fine_ssd) {
+            min_fine_ssd = ssd;
+            best_fine_shift = shift;
+            //std::cout << "Best shift iteration: " << best_fine_shift << std::endl;
+            //Um valor negativo significa que o moving signal tá adiantado em relacao ao fixed 
+        }
+    }
+
+    float coarse_alignemnt = round(best_coarse_shift * time_step);
+    float fine_alignement = best_fine_shift;
+    float total_shift = coarse_alignemnt + fine_alignement;
+    std::cout << std::endl;
+    std::cout << "---------------------------------------" << std::endl;
+    std::cout << "Avarage time step between frames: " << time_step << "ms" << std::endl;   
+    std::cout << "Avarage fps: " << fps << std::endl;   
+    std::cout << "Coarse Shift: " << coarse_alignemnt << std::endl;
+    std::cout << "Fine Shift: " << fine_alignement << std::endl;
+    std::cout << "Total Shift: " << total_shift << std::endl;
+
+    processor->calibration_value = total_shift;
+
+    return 0;
+}
+
+bool codeExecuted = false;
 bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 	std::chrono::steady_clock::time_point end = begin;
@@ -228,6 +517,12 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		return false; //failed to unpack message, therefore returning without doing anything
 
 	int x, y, z;
+    igtl::TimeStamp::Pointer ts;
+    ts = igtl::TimeStamp::New();
+    message_body->GetTimeStamp(ts);
+    auto time = ts->GetNanosecond();
+    //std::cout << time << std::endl;
+
 	message_body->GetDimensions(x, y, z);
 	using PixelType = unsigned char;
 	constexpr unsigned int Dimension = 2;
@@ -262,83 +557,236 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		return false;
 	}
 
-	// where you have imported the raw image buffer into a ITK compatible image, thus you can use this for your purpouses
+	//Frame
+    ImageType::Pointer shr_ptr_imported = importFilter->GetOutput();
 
-	ObservationEigenFormat observation_n;
+    //Pixel x médio 
+    ImageType::SizeType size_itk = shr_ptr_imported->GetLargestPossibleRegion().GetSize();
+    float cx = (size_itk[0]/2);
 
+    //Usado para definir limites do botão e a janela de análise para o algoritmo de segmentação
+    if (!codeExecuted) {
+        int size_x = size_itk[0] - 1;
+        float float_size_x = size_x;
+        processor->max_coordx_limit[1] = float_size_x;
+        processor->max_coordx_limit[0] = float_size_x - 200;
+        processor->max_coordx = size_x;
+
+        codeExecuted = true;
+    }
+
+    //Segmentation
+    std::vector<std::pair<unsigned int, unsigned int>> pointsToFit = segment_points(processor->min_coordx, processor->max_coordx, processor->numLines, shr_ptr_imported);
+    
+    //RANSAC
+    auto RANSAC_output = RANSAC(pointsToFit, processor->numIterations, processor->inlierThreshold);
+    auto bestModelParams = RANSAC_output.bestModelParams;
+    auto inliers = RANSAC_output.inlierPoints;
+
+    //Sinal de vídeo atual tendo em conta o fit do RANSAC
+    float cy = bestModelParams[0] * cx + bestModelParams[1];
+
+    //Matriz da flange
 	igtl::Matrix4x4 local_mat;
 	message_body->GetMatrix(local_mat);
-	for (size_t cols = 0; cols < 4; ++cols)
-		for (size_t lines = 0; lines < 4; ++lines)
-			observation_n.flange_data(lines, cols) = local_mat[lines][cols];
-		
+
     /*
+    //Output da matriz da flange em tempo real
 	std::cout << "Observation:" << std::endl;
 	for (int row = 0; row < 4; ++row) {
         for (int col = 0; col < 4; ++col) {
-            std::cout << observation_n.flange_data(row, col) << " ";
+            std::cout << local_mat[row][col] << " ";
     }
     std::cout << std::endl;
     }
     */
-   
-    ImageType::Pointer shr_ptr_imported = importFilter->GetOutput();
-    //Segmentation parameters
-    int min_coordx = 210;
-    int max_coordx = 610;
-    int numLines = 20;
-    std::vector<std::pair<unsigned int, unsigned int>> pointsToFit = segment_points(min_coordx, max_coordx, numLines, shr_ptr_imported);
     
-    //RANSAC parameters
-    int numIterations = 400;
-    double inlierThreshold = 1.0;
-    std::vector<double> bestModelParams = RANSAC(pointsToFit, numIterations, inlierThreshold);
-    //std::cout << "Best model parameters: " << bestModelParams[0] << " " << bestModelParams[1] << std::endl;
+    auto current_time = std::chrono::steady_clock::now(); 
+    auto elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - processor->start_time).count();
+    processor->timer = elapsed_seconds; //Este timer é usado para a GUI
 
-    ImageType::SizeType size_itk = shr_ptr_imported->GetLargestPossibleRegion().GetSize();
+    ObservationEigenFormat observation_n; //Struct com 3 parametros: vetor posição da flange, sinal do vídeo e time stamp
+    /*Aqui está a lógica de guardar os dados para a calibração e de a executar. Guarda os vetores posição da flange e o sinal de vídeo numa lista em que cada elemento é a struct defenida
+    na linha anterior. Isto acontece durante um tempo definido pelo utilizador e tem um delay inicial que pode ser ajustado.
+    Quando acaba de guardar os dados faz os cálculos da calibração.*/
+    if (processor->start_calibration && (elapsed_seconds < processor->aquisition_time*1000 +processor->initial_delay*1000)) {
+        processor->calibration_finished.store(false);
+        if (elapsed_seconds >= processor->initial_delay*1000){
+                for (size_t lines = 0; lines < 3; ++lines) {
+                    size_t cols = 3;
+                    observation_n.flange_data(lines, 0) = local_mat[lines][cols];
+                }
+            observation_n.video_signal = cy;
+            observation_n.time_stamp = elapsed_seconds;
+            processor->list_of_recorded_points.push_back(observation_n);
+            std::cout << "Observation "<< processor->list_of_recorded_points.size() << std::endl;
+            std::cout << "Timer: " << elapsed_seconds << "ms" <<std::endl;
+        }
+
+    }else if (processor->start_calibration && !(processor->calibration_finished)) {
+        try {
+            ProjectFlange(processor);
+        } catch (...) {
+            std::cerr << "An error occurred during ProjectFlange" << std::endl;
+        }
+
+        try {
+            NormalizeData(processor);
+        } catch (...) {
+            std::cerr << "An error occurred during NormalizeData" << std::endl;
+        }
+
+        try {
+            AlignSignals(processor);
+        } catch (...) {
+            std::cerr << "An error occurred during AlignSignals" << std::endl;
+        }
+
+        std::cout << "---------------------------------------" << std::endl;
+        processor->calibration_finished.store(true);
+    }
+
+    //std::cout << size_itk << std::endl;
+
     auto buff = curan::utilities::CaptureBuffer::make_shared(shr_ptr_imported->GetBufferPointer(),shr_ptr_imported->GetPixelContainer()->Size()*sizeof(char),shr_ptr_imported);
     curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
-    processor->processed_viwer->update_batch([size_itk, processor,bestModelParams, min_coordx, max_coordx](SkCanvas* canvas, SkRect image_area,SkRect widget_area){
-    if (processor->show_line){
-        //Fator de escala
-        float scalling_factor_x = image_area.width()/size_itk[0];
-        float scalling_factor_y = image_area.height()/size_itk[1];
+    processor->processed_viwer->update_batch([inliers, pointsToFit, size_itk, processor,bestModelParams,cx , cy](SkCanvas* canvas, SkRect image_area,SkRect widget_area){ 
+        if (processor->show_line){ //Vizualizador da linha
+            //Fator de escala
+            float scalling_factor_x = image_area.width()/size_itk[0];
+            float scalling_factor_y = image_area.height()/size_itk[1];
 
-        //Cálculo dos pontos no referencial da imagem e no referencial do canvas
-        float y1 = bestModelParams[0] * min_coordx + bestModelParams[1]; // Calculate y-coordinate for minX
-        float y2 = bestModelParams[0] * max_coordx + bestModelParams[1]; // Calculate y-coordinate for maxX
-        float cx = (size_itk[0]/2); 
-        float cy = bestModelParams[0] * cx + bestModelParams[1];
-        float x1canvas = min_coordx * scalling_factor_x + image_area.left();
-        float x2canvas = max_coordx * scalling_factor_x + image_area.left();
-        float y1canvas = y1 * scalling_factor_y + image_area.top();
-        float y2canvas = y2 * scalling_factor_y + image_area.top();
-        float cxcanvas = cx * scalling_factor_x + image_area.left();
-        float cycanvas = cy * scalling_factor_y + image_area.top();
+            //Cálculo dos pontos no referencial da imagem e no referencial do canvas
+            float y1 = bestModelParams[0] * processor->min_coordx + bestModelParams[1]; 
+            float y2 = bestModelParams[0] * processor->max_coordx + bestModelParams[1]; 
+            float x1canvas = processor->min_coordx * scalling_factor_x + image_area.left();
+            float x2canvas = processor->max_coordx * scalling_factor_x + image_area.left();
+            float y1canvas = y1 * scalling_factor_y + image_area.top();
+            float y2canvas = y2 * scalling_factor_y + image_area.top();
+            float cxcanvas = cx * scalling_factor_x + image_area.left();
+            float cycanvas = cy * scalling_factor_y + image_area.top();
 
-        //Linha 
-        SkPaint linePaint;
-        linePaint.setStyle(SkPaint::kStroke_Style);
-        linePaint.setAntiAlias(true);
-        linePaint.setStrokeWidth(2.0f);  
-        linePaint.setColor(SK_ColorBLUE); 
-        canvas->drawLine(x1canvas, y1canvas, x2canvas, y2canvas, linePaint);
+            //Linha 
+            SkPaint linePaint;
+            linePaint.setStyle(SkPaint::kStroke_Style);
+            linePaint.setAntiAlias(true);
+            linePaint.setStrokeWidth(2.0f);  
+            linePaint.setColor(SK_ColorBLUE); 
+            canvas->drawLine(x1canvas, y1canvas, x2canvas, y2canvas, linePaint);
 
-        //Circulo
-        SkPaint paint;
-        paint.setColor(SK_ColorRED); 
-        paint.setStyle(SkPaint::kFill_Style); 
-        SkScalar radius = 3;
-        canvas->drawCircle(cxcanvas, cycanvas, radius, paint);
-    }else{
-        auto nada = 1;
-    }
-	},wrapper);
+            //Circulo
+            SkPaint paint;
+            paint.setColor(SK_ColorRED); 
+            paint.setStyle(SkPaint::kFill_Style); 
+            SkScalar radius = 3;
+            canvas->drawCircle(cxcanvas, cycanvas, radius, paint);
+            }
+
+        if (processor->show_calibration_lines){ //GUI que mostra as linhas de scan
+            SkPaint linePaint;
+            linePaint.setStyle(SkPaint::kStroke_Style);
+            linePaint.setStrokeWidth(1.0f);  
+            SkColor customColor = SkColorSetARGB(255, 255, 128, 0);
+            linePaint.setColor(customColor); 
+            double spacing = static_cast<double>(processor->max_coordx - processor->min_coordx) / (processor->numLines-1);
+            std::vector<unsigned int> XPositions;
+            for (int i = 0; i < processor->numLines; ++i) {
+                unsigned int xPosition = processor->min_coordx + static_cast<int>(i * spacing);
+                XPositions.push_back(xPosition);
+            }
+            float scalling_factor_x = image_area.width()/size_itk[0];
+            for (int i = 0; i < processor->numLines ; ++i) {
+                canvas->drawLine(XPositions[i]* scalling_factor_x + image_area.left(), 80, XPositions[i]* scalling_factor_x + image_area.left(), widget_area.bottom(), linePaint);
+            }
+        }
+
+        if(processor->show_pointstofit){ //GUI que mostra os pontos segmentados
+            float scalling_factor_x = image_area.width()/size_itk[0];
+            float scalling_factor_y = image_area.height()/size_itk[1];
+            //Todos os pontos
+            SkPaint paint;
+            SkColor customColor = SkColorSetARGB(255, 255, 153, 153);
+            paint.setColor(customColor); 
+            paint.setStyle(SkPaint::kFill_Style); 
+            SkScalar radius = 3;
+            for (auto& points : pointsToFit){
+                canvas->drawCircle(points.first * scalling_factor_x + image_area.left(), points.second * scalling_factor_y + image_area.top(), radius, paint);
+            }
+            //Inliers pintam por cima de todos os pontos para distinguir os inliers dos outliers
+            SkColor customColor2 = SkColorSetARGB(255, 153, 255, 153);
+            paint.setColor(customColor2);
+            for (auto& inlier : inliers){
+                canvas->drawCircle(inlier.first * scalling_factor_x + image_area.left(), inlier.second * scalling_factor_y + image_area.top(), radius, paint);
+            }
+        }
+
+        if (processor->start_calibration && processor->timer < processor->initial_delay*1000){ //Countdown para a calibração
+            SkPaint paint;
+            paint.setStyle(SkPaint::kFill_Style);
+            SkColor customColor = SkColorSetARGB(255, 178, 102, 255);
+            paint.setColor(customColor); 
+            const std::string text1 = "Calibration starting in";
+            float countdown = (processor->initial_delay*1000 - processor->timer)*0.001;
+            SkString text2;
+            text2.printf("%.1f", countdown);
+            text2 += "s";
+            const char* fontFamily = nullptr;  
+            SkFontStyle fontStyle;  
+            sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+            sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+            SkFont font1(typeface, 40.0f, 1.0f, 0.0f);
+            font1.setEdging(SkFont::Edging::kAntiAlias);
+            canvas->drawSimpleText(text1.data(),text1.size(),SkTextEncoding::kUTF8,widget_area.centerX()-200,widget_area.top()+50,font1,paint);
+            canvas->drawSimpleText(text2.data(),text2.size(),SkTextEncoding::kUTF8,widget_area.centerX()-40,widget_area.top() + 90,font1,paint);
+        
+        }else if (processor->start_calibration && ((processor->timer > processor->initial_delay*1000) && (processor->timer < (processor->aquisition_time*1000 + processor->initial_delay*1000)))){ //GUI enquanto a calibração tá a acontecer
+            SkPaint paint;
+            paint.setColor(SK_ColorRED); 
+            paint.setStyle(SkPaint::kFill_Style);
+            const char* fontFamily = nullptr; 
+            SkFontStyle fontStyle;  
+            sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+            sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+            SkFont font1(typeface, 64.0f, 1.0f, 0.0f);
+            font1.setEdging(SkFont::Edging::kAntiAlias);
+            const std::string text = "REC";
+            float percentagem = ((processor->timer -processor->initial_delay*1000) / (processor->aquisition_time*1000))*100;
+            SkString text2;
+            text2.printf("%.0f",percentagem);
+            text2 += "%";
+            SkColor customColor = SkColorSetARGB(255, 176, 196, 222);
+            SkPaint paint2;
+            paint2.setColor(customColor); 
+            paint2.setStyle(SkPaint::kFill_Style);
+            canvas->drawCircle(widget_area.left()+190, widget_area.top() + 100, 25, paint);
+            canvas->drawSimpleText(text.data(),text.size(),SkTextEncoding::kUTF8,widget_area.left()+30,widget_area.top() + 120,font1,paint);
+            canvas->drawSimpleText(text2.data(),text2.size(),SkTextEncoding::kUTF8,widget_area.left()+30,widget_area.top() + 180,font1,paint2);
+        
+        }else if(processor->calibration_finished){ //GUI quando a calibração acabar
+            SkPaint paint;
+            paint.setStyle(SkPaint::kFill_Style);
+            SkColor customColor = SkColorSetARGB(255, 178, 102, 255);
+            paint.setColor(customColor); 
+            const char* fontFamily = nullptr; 
+            SkFontStyle fontStyle;  
+            sk_sp<SkFontMgr> fontManager = SkFontMgr::RefDefault();
+            sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+            SkFont font1(typeface, 64.0f, 1.0f, 0.0f);
+            font1.setEdging(SkFont::Edging::kAntiAlias);
+            const std::string text1 = "Calibration completed!";
+            SkString text2;
+            float calib = processor->calibration_value;
+            text2.printf("Result: %.1f", calib);
+            text2 += "ms";
+            canvas->drawSimpleText(text1.data(),text1.size(),SkTextEncoding::kUTF8,widget_area.centerX()-300,widget_area.top()+100,font1,paint);
+            canvas->drawSimpleText(text2.data(),text2.size(),SkTextEncoding::kUTF8,widget_area.centerX()-200,widget_area.top() + 200,font1,paint);
+        }
+    },wrapper);
 
 	end = std::chrono::steady_clock::now();
 	auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 	if(time_elapsed>40)
-		std::printf("warning: reduce brightness of image because processing size is too large (%lld milliseconds)\n",time_elapsed);
+		std::printf("Warning: Processing time higher than frame to frame interval (%lld milliseconds)\n",time_elapsed);
 	return true;
 }
 

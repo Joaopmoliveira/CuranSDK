@@ -35,5 +35,10 @@ double run_filter(FilterData& data, FilterProperties& properties, const Observat
 	return val;
 }
 
+template<size_t n_filters>
+double run_filters(std::array<std::pair<FilterData,FilterProperties>,n_filters>& joint_data,const Observation& observation){
+	observation.current_torque;
+}
+
 }
 }

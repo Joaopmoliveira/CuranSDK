@@ -1,4 +1,7 @@
+#include "processmanagement/ChildProcess.h"
 
+namespace curan{
+namespace process{
 
 	void ChildProcess::timer_callback(asio::error_code ec) {
 		if (ec)
@@ -7,19 +10,16 @@
 		
 		was_violated = true;
 		if (number_of_violations > max_num_violations) {
-			timer.cancel();
-			client->get_socket().close();
+			sync_internal_terminate_pending_process_and_connections(CLIENT_TIMEOUT_REACHED);
 			return;
 		}
-		if(numbers_of_triggered_connections<10){
-			auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
-			val->serialize();
-			auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
-			if (first_connection_established) {
-				client->write(to_send);
-			}
-		} else {
 
+
+		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
+		val->serialize();
+		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
+		if (first_connection_established) {
+			client->write(to_send);
 		}
 
 		timer.expires_from_now(duration);
@@ -30,10 +30,10 @@
 
 	void ChildProcess::message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {
 		if (er) {
-			timer.cancel();
-			client->get_socket().close();
+			sync_internal_terminate_pending_process_and_connections(CLIENT_TIMEOUT_REACHED);
 			return;
 		}
+		
 		switch (val->signal_to_process) {
 		case curan::communication::ProcessHandler::Signals::HEART_BEAT:
 			was_violated = false;
@@ -41,14 +41,21 @@
 			break;
 		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
 		default:
-			timer.cancel();
-			client->get_socket().close();
-			hidden_context.get_executor().on_work_finished();
+			sync_internal_terminate_pending_process_and_connections(CLIENT_TIMEOUT_REACHED);
 			break;
 		}
 	}
 
-	ChildProcess::~ChildProcess() {
+	void ChildProcess::sync_internal_terminate_pending_process_and_connections(const Failure&){
 		timer.cancel();
 		client->get_socket().close();
+		hidden_context.get_executor().on_work_finished();
+		if(connection_callback) connection_callback(false);
 	}
+
+	ChildProcess::~ChildProcess() {
+		sync_internal_terminate_pending_process_and_connections(CLIENT_TIMEOUT_REACHED);
+	}
+
+}
+}

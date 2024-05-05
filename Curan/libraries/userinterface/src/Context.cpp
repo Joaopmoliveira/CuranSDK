@@ -327,13 +327,11 @@ bool Context::init_device_extensions_and_layers(std::vector<VkLayerProperties>& 
 void Context::destroy_context() {
 	if (instance != VK_NULL_HANDLE)
 		vkDestroyInstance(instance, nullptr);
-	utilities::cout << "destroying instance";
 	glfwTerminate();
-	utilities::cout << "destroyed gflw instance";
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL Context::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-	utilities::cout << "validation layer: " << pCallbackData->pMessage << "\n";
+	//utilities::cout << "validation layer: " << pCallbackData->pMessage << "\n";
 	return VK_FALSE;
 }
 

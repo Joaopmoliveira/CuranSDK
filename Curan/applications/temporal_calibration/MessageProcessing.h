@@ -23,12 +23,21 @@
 #include <iostream>
 
 struct ObservationEigenFormat {
-	Eigen::Matrix<double, 4, 4> flange_data;
+	Eigen::Vector3d flange_data;
+	float video_signal;
+	long long time_stamp;
+};
+
+struct RANSAC_Output{
+	std::vector<double> bestModelParams;
+    std::vector<std::pair<unsigned int, unsigned int>> inlierPoints;
 };
 
 struct ProcessingMessage {
 	std::list<ObservationEigenFormat> list_of_recorded_points;
-
+	std::vector<double> projections;
+	std::vector<double> normalized_video_signal;
+	std::vector<double> normalized_position_signal;
 	curan::ui::ImageDisplay* processed_viwer = nullptr;
 	curan::utilities::Flag connection_status;
 	curan::ui::Button* button;
@@ -36,6 +45,33 @@ struct ProcessingMessage {
 	asio::io_context io_context;
 	std::atomic<bool> show_line = false;
 	std::atomic<bool> start_calibration = false;
+	std::atomic<bool> calibration_finished = false;
+	std::atomic<bool> show_calibration_lines = false;
+	std::atomic<bool> show_pointstofit = false;
+	double timer = 0.0;
+	std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+
+	//Recording parameters
+	std::array<float, 2> initial_delay_limit = {0, 20};
+	double initial_delay = 3.0;
+	std::array<float, 2> aquisition_time_limit = {1, 60};
+	double aquisition_time = 10.0;
+
+    //Segmentation parameters
+	std::array<float, 2> min_coordx_limit = {0, 200};
+    int min_coordx = 0;
+	std::array<float, 2> max_coordx_limit = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN()};
+    int max_coordx = std::numeric_limits<float>::quiet_NaN();
+	std::array<float, 2> lines_limit = {4, 100};
+    int numLines = 50;
+
+    //RANSAC parameters
+	std::array<float, 2> numIterations_limit = {1, 1000};
+    int numIterations = 500;
+	std::array<float, 2> inlierThreshold_limit = {0, 10};
+    double inlierThreshold = 1;
+
+	float calibration_value =0;
 	
 	std::shared_ptr<curan::utilities::ThreadPool> shared_pool = curan::utilities::ThreadPool::create(4);
 	short port = 18944;

@@ -8,6 +8,7 @@ RuntimeEffect::RuntimeEffect(const std::string& SkSl){
     if(!l_effect)
         throw std::runtime_error(std::string(l_err.c_str()));
     effect = l_effect;
+    time = 0.0f;
 };
 
 void RuntimeEffect::draw(SkCanvas* canvas, SkIRect region_to_paint){
@@ -15,6 +16,7 @@ void RuntimeEffect::draw(SkCanvas* canvas, SkIRect region_to_paint){
     auto width = canvas->getSurface()->width();
     auto height = canvas->getSurface()->height();
     time += 0.016f;
+    std::printf("%f\n",time);
     SkRuntimeShaderBuilder builder{effect};
     builder.uniform("in_time") = time;
     builder.uniform("in_resolution") = float3{ static_cast<float>(width), static_cast<float>(height), 1.0f };

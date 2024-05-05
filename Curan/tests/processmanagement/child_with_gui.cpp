@@ -27,123 +27,8 @@
 
 #include <ostream>
 #include <fstream>
-std::ofstream child_file;
 
-asio::io_context* ptr_ctx = nullptr;
-
-void signal_handler(int signal){	
-	if (ptr_ctx) ptr_ctx->stop();
-}
-
-class ChildProcess {
-	asio::io_context& hidden_context;
-	asio::high_resolution_timer timer;
-	std::chrono::nanoseconds duration;
-	size_t number_of_violations;
-	bool was_violated;
-	const size_t max_num_violations;
-	std::shared_ptr<curan::communication::Client> client;
-	bool first_connection_established = false;
-public:
-	template <class _Rep, class _Period>
-	ChildProcess(asio::io_context& client_ctx, const std::chrono::duration<_Rep, _Period>& deadline, size_t max_violations, unsigned short port = 50000) :
-		hidden_context{ client_ctx },
-		timer{ hidden_context },
-		number_of_violations{ 0 },
-		was_violated{ true },
-		max_num_violations{ max_violations }
-	{
-		duration = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline);
-		curan::communication::interface_prochandler igtlink_interface;
-		curan::communication::Client::Info construction{ hidden_context,igtlink_interface };
-		asio::ip::tcp::resolver resolver(hidden_context);
-		auto endpoints = resolver.resolve("localhost", std::to_string(port));
-		construction.endpoints = endpoints;
-		client = curan::communication::Client::make(construction,
-			std::chrono::seconds(10),
-			[this](std::error_code er) {
-				if (!er) {
-					first_connection_established = true;
-				}
-				else {
-					client->get_socket().close();
-					timer.cancel();
-					
-				}
-			}
-		);
-		client->connect([this](const size_t& prot,
-			const std::error_code& er,
-			std::shared_ptr<curan::communication::ProcessHandler> val) {
-				message_callback(prot, er, val);
-			});
-
-		timer.expires_from_now(duration);
-		timer.async_wait([this](asio::error_code ec) {
-			timer_callback(ec);
-			});
-	}
-
-	void timer_callback(asio::error_code ec) {
-		if (ec)
-			return;
-		if (first_connection_established) number_of_violations = was_violated ? number_of_violations + 1 : 0;
-		
-		was_violated = true;
-		if (number_of_violations > max_num_violations) {
-			timer.cancel();
-			client->get_socket().close();
-			hidden_context.get_executor().on_work_finished();
-			child_file << "max violations detect, terminating everything\n";
-			return;
-		}
-
-
-		auto val = std::make_shared<curan::communication::ProcessHandler>(curan::communication::ProcessHandler::HEART_BEAT);
-		val->serialize();
-		auto to_send = curan::utilities::CaptureBuffer::make_shared(val->buffer.data(), val->buffer.size(), val);
-		if (first_connection_established) {
-			client->write(to_send);
-		}
-
-		timer.expires_from_now(duration);
-		timer.async_wait([this](asio::error_code ec) {
-			timer_callback(ec);
-			});
-	}
-
-	void message_callback(const size_t& protocol_defined_val, const std::error_code& er, std::shared_ptr<curan::communication::ProcessHandler> val) {
-		if (er) {
-			timer.cancel();
-			client->get_socket().close();
-			hidden_context.get_executor().on_work_finished();
-			child_file << "error detected\n";
-			return;
-		}
-		
-		switch (val->signal_to_process) {
-		case curan::communication::ProcessHandler::Signals::HEART_BEAT:
-			was_violated = false;
-			number_of_violations = 0;
-			child_file << "heart beat\n";
-			break;
-		case curan::communication::ProcessHandler::Signals::SHUTDOWN_SAFELY:
-		default:
-			timer.cancel();
-			client->get_socket().close();
-			hidden_context.get_executor().on_work_finished();
-			child_file << "shutdown request and triggered\n";
-			break;
-		}
-	}
-
-	~ChildProcess() {
-		timer.cancel();
-		client->get_socket().close();
-		hidden_context.get_executor().on_work_finished();
-	}
-};
-
+#include "processmanagement/ChildProcess.h"
 
 int viewer_code(asio::io_context& io_context) {
 	try {
@@ -197,26 +82,32 @@ int viewer_code(asio::io_context& io_context) {
 	}
 }
 
-int main() {
+int main(int argv, char* argc[]) {
 	try {
-		child_file.open("child_file.txt");
-		if(!child_file.is_open()){
-			return 1;
-		}
+		std::unique_ptr<curan::process::ChildProcess> child;
 		using namespace curan::communication;
-		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
-		ptr_ctx = &io_context;
-		std::unique_ptr<ChildProcess> child;
-		
-		child = std::make_unique<ChildProcess>(io_context, std::chrono::milliseconds(1000), 10);
+
+		if(argv<0 || argv>2){
+			std::cout << "the supplied arguments are too many, \nthe program either accepts the one or two arguments\n";
+		} else if(argv==2) {
+			std::cout << "the arguments are: \n";
+			std::cout << "program path: " <<  argc[0];
+			std::cout << "\nport filename" << argc[1];
+			child = std::make_unique<curan::process::ChildProcess>(io_context, std::chrono::milliseconds(100), 10);
+		} else {
+			assert(argv==1);
+			std::cout << "the arguments are: \n";
+			std::cout << "program path:" <<  argc[0];
+		}
+
 		std::thread th{[&](){ 
 			viewer_code(io_context);
 		}
 		};
 		io_context.run();
-		std::raise(SIGINT);
-		child_file << "lauching signal!\n";
+		std::cout << "stopped running file program path:" <<  argc[0];
+		std::cout << "lauching signal!\n";
 		th.join();
 	}
 	catch (std::exception& e) {

@@ -69,6 +69,14 @@ public:
         return *(this);
     }
 
+    inline ImutableTextPanel &text(const std::string& other){
+        std::lock_guard<std::mutex> g{get_mutex()};
+        SkPlainTextEditor::Editor::TextPosition final_position{fEditor.lineCount() - 1, fEditor.line(fEditor.lineCount() - 1).size};
+        fEditor.remove(SkPlainTextEditor::Editor::TextPosition{0, 0}, final_position);
+        fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, other.data(), other.size());
+        return *(this);
+    }
+
 private:
 
     ImutableTextPanel(const std::string& default_text);

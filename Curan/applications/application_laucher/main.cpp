@@ -10,53 +10,23 @@
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Overlay.h"
 #include "userinterface/widgets/Loader.h"
+#include "processmanagement/SingleChildParent.h"
 #include "utils/Logger.h"
 #include "utils/Overloading.h"
 #include <variant>
+#include <csignal>
 
 #include <iostream>
 #include <thread>
 
-static constexpr char SKSL[] =
-"uniform float3 in_resolution;"
-"uniform float  in_time;"
-"float f(vec3 p) {"
-"    p.z -= in_time * 10.;"
-"    float a = p.z * .1;"
-"    p.xy *= mat2(cos(a), sin(a), -sin(a), cos(a));"
-"    return .1 - length(cos(p.xy) + sin(p.yz));"
-"}"
-"half4 main(vec2 fragcoord) { "
-"    vec3 d = .5 - fragcoord.xy1 / in_resolution.y;"
-"    vec3 p=vec3(0);"
-"    for (int i = 0; i < 32; i++) {"
-"      p += f(p) * d;"
-"    }"
-"    return ((sin(p) + vec3(2, 5, 12)) / length(p)).xyz1;"
-"}";
+asio::io_context* ptr_ctx = nullptr;
 
-std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning, curan::ui::IconResources& resources){
-        using namespace curan::ui;
-        auto warn = Button::make(" ", "warning.png", resources);
-        warn->set_click_color(SK_AlphaTRANSPARENT)
-            .set_hover_color(SK_AlphaTRANSPARENT)
-            .set_waiting_color(SK_AlphaTRANSPARENT)
-            .set_size(SkRect::MakeWH(400, 200));
-
-        auto button = Button::make(warning, resources);
-        button->set_click_color(SK_AlphaTRANSPARENT)
-            .set_hover_color(SK_AlphaTRANSPARENT)
-            .set_waiting_color(SK_AlphaTRANSPARENT)
-            .set_size(SkRect::MakeWH(200, 50));
-
-        auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-        *viwers_container << std::move(warn) << std::move(button);
-        viwers_container->set_color(SK_ColorTRANSPARENT).set_divisions({0.0, .8, 1.0});
-
-        return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
+void signal_handler(int signal)
+{
+	if (ptr_ctx) ptr_ctx->stop();
 }
 
-int main() {
+int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* parent) {
 	try {
 		using namespace curan::ui;
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
@@ -67,60 +37,88 @@ int main() {
 	    auto button1 = Button::make("Temporal Calibration",resources);
 	    button1->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button1->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(config) config->stack_page->stack(warning_overlay("Started Temporal Calibration",resources));
+			if(!parent->handles){
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/TemporalCalibration" CURAN_BINARY_SUFFIX);
+			} else {
+				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+			}
 		});
 
 	    auto button2 = Button::make("Spatial Calibration",resources);
 	   	button2->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button2->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(config) config->stack_page->stack(warning_overlay("Started Spatial Calibration",resources));
+			if(!parent->handles){
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/Ultrasoundcalibration" CURAN_BINARY_SUFFIX);
+			} else {
+				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+			}
 		});
 
 	    auto button3 = Button::make("Volume ROI",resources);
 	   	button3->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button3->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(config) config->stack_page->stack(warning_overlay("Started desired Volume Specification",resources));
+			if(!parent->handles){
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/RealTimeRobotBoxSpecifier" CURAN_BINARY_SUFFIX);
+			} else {
+				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+			}
 		});
 
 		auto button4 = Button::make("Reconstruction",resources);
 	   	button4->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button4->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(config) config->stack_page->stack(warning_overlay("Started Volumetric Reconstruction",resources));
+			if(!parent->handles){
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/RealTimeRobotReconstructor" CURAN_BINARY_SUFFIX);
+			} else {
+				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+			}
 		});
 
 		auto button5 = Button::make("Registration",resources);
 	   	button5->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button5->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(config) config->stack_page->stack(warning_overlay("Started Real-Time Registration",resources));
+			if(!parent->handles){
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/RoboticRegistration" CURAN_BINARY_SUFFIX);
+			} else {
+				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+			}
 		});
 
 		auto button6 = Button::make("Neuro Navigation",resources);
 	   	button6->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorGRAY)
+                .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button6->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(config) config->stack_page->stack(warning_overlay("Started Neuro-Navigation",resources));
+			if(!parent->handles){
+				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/InteroperativeNavigation" CURAN_BINARY_SUFFIX);
+			} else {
+				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+			}
 		});
 
-		RuntimeEffect effects{SKSL};
-	    auto widgetcontainer = Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL,effects);
-                    
+		auto image = resources.get_icon("human_robotics_logo.jpeg");
+		std::unique_ptr<Container> widgetcontainer;
+		if(image)
+	    	widgetcontainer = Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL,*image);
+        else 
+			widgetcontainer = Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL);
+
 	    *widgetcontainer << std::move(button1) 
                         << std::move(button2) 
                         << std::move(button3) 
@@ -140,7 +138,7 @@ int main() {
 
 		viewer->set_minimum_size(page.minimum_size());
 
-		while (!glfwWindowShouldClose(viewer->window)) {
+		while (!glfwWindowShouldClose(viewer->window) && !ptr_ctx->stopped()) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
 
@@ -169,4 +167,32 @@ int main() {
 		std::cout << "Failed: " << e.what() << std::endl;
 		return 1;
 	}
+}
+
+int main() {
+	try {
+		using namespace curan::communication;
+		std::signal(SIGINT, signal_handler);
+		asio::io_context io_context;
+		ptr_ctx = &io_context;
+		auto parent = std::make_unique<curan::process::ProcessLaucher>(io_context, std::chrono::milliseconds(100),std::chrono::milliseconds(0), 10);
+
+		std::thread th{[&]()
+			{ 
+				viewer_code(io_context,parent.get());
+			}	
+		};
+
+		io_context.run();
+		th.join();
+	}
+	catch (std::exception& e) {
+		std::cout << "exception thrown : " << e.what() << std::endl;
+		return 1;
+	}
+	catch (...) {
+		std::cout << "exception thrown : " << std::endl;
+		return 1;
+	}
+	return 0;
 }

@@ -23,9 +23,20 @@ int main(){
         layer->set_background_color({1.f,1.0f,1.0f,1.0f}).set_text_color({.0f,.0f,.0f,1.0f});
         auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
         layer->setFont(ImutableTextPanel::typeface::sans_serif);
+        ImutableTextPanel* layer_ptr = layer.get();
         *container << std::move(layer);
 
         curan::ui::Page page{std::move(container), SK_ColorBLACK};
+
+        
+        std::thread tj{[&](){
+            for(size_t i = 0; i < 100; ++i){
+                layer_ptr->text("new text: "+std::to_string(i));
+                std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+            }
+        }};
+        
 
         ConfigDraw config{&page};
 
@@ -52,6 +63,7 @@ int main(){
             auto end = std::chrono::high_resolution_clock::now();
             std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
         }
+        tj.join();
         return 0;
     }
     catch (...)
