@@ -1,5 +1,5 @@
 #include "robotutils/LBRController.h"
-#include "robotutils/ExtractRipple.h"
+#include "robotutils/CompensateRipple.h"
 #include "robotutils/FilterRippleFirstHarmonic.h"
 #include "utils/Logger.h"
 #include "friUdpConnection.h"
@@ -51,12 +51,46 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 	ImGui::Begin("Torques"); // Create a window called "Hello, world!" and append into it.
 	static std::array<ScrollingBuffer, 2> buffers;
     static std::array<ScrollingBuffer, 2> filtered_buffers;
+	 static std::array<ScrollingBuffer, 2> actuation_buffers;
 	static float t = 0;
 
 	t += ImGui::GetIO().DeltaTime;
 
 	static float history = 10.0f;
 	ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
+
+	ImGui::Text("Select Compensation type.");                 // Display some text (you can use a format strings too)
+        
+    const char* items[] = {"None","Adaptive","Classic"};
+    static const char* current_item = items[1];
+
+	/*
+    if (ImGui::BeginCombo("##combo", current_item)) // The second parameter is the label previewed before opening the combo.
+    {
+    	for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+        {   
+            bool is_selected = (current_item == items[n]); // You can store your selection however you want, outside or inside your objects
+            if (ImGui::Selectable(items[n], is_selected))
+                current_item = items[n];
+            if (is_selected){
+                ImGui::SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
+				if(client.view_userdata()){
+					curan::robotic::CompensateRipple* ripple_compensation = dynamic_cast<curan::robotic::CompensateRipple*>(client.view_userdata());
+					switch(n){
+						case 0:
+						ripple_compensation->activate.store(curan::robotic::NO_FILTERING_SCHEME,std::memory_order_acq_rel);
+						break;
+						case 1:
+						ripple_compensation->activate.store(curan::robotic::ADAPTIVE_FILTERING_SCHEME,std::memory_order_acq_rel);
+						break;
+						case 2:
+						ripple_compensation->activate.store(curan::robotic::CLASSIC_APPROACH,std::memory_order_acq_rel);
+					}
+				}
+			}
+		}
+        ImGui::EndCombo();
+    }*/
 
 	static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
 
@@ -73,6 +107,9 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		loc = "filtered " + std::to_string(index);
 		filtered_buffers[index].AddPoint(t, (float)state.user_defined[4]);
 		ImPlot::PlotLine(loc.data(), &filtered_buffers[index].Data[0].x, &filtered_buffers[index].Data[0].y, filtered_buffers[index].Data.size(), 0, filtered_buffers[index].Offset, 2 * sizeof(float));
+		loc = "acuation " + std::to_string(index);
+		actuation_buffers[index].AddPoint(t, (float)state.user_defined2[4]);
+		ImPlot::PlotLine(loc.data(), &actuation_buffers[index].Data[0].x, &actuation_buffers[index].Data[0].y, actuation_buffers[index].Data.size(), 0, actuation_buffers[index].Offset, 2 * sizeof(float));
 		
 		index = 1;
 		loc = "tau " + std::to_string(index);
@@ -81,7 +118,10 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		loc = "filtered " + std::to_string(index);
 		filtered_buffers[index].AddPoint(t, (float)state.user_defined[6]);
 		ImPlot::PlotLine(loc.data(), &filtered_buffers[index].Data[0].x, &filtered_buffers[index].Data[0].y, filtered_buffers[index].Data.size(), 0, filtered_buffers[index].Offset, 2 * sizeof(float));
-		
+		loc = "acuation " + std::to_string(index);
+		actuation_buffers[index].AddPoint(t, (float)state.user_defined2[6]);
+		ImPlot::PlotLine(loc.data(), &actuation_buffers[index].Data[0].x, &actuation_buffers[index].Data[0].y, actuation_buffers[index].Data.size(), 0, actuation_buffers[index].Offset, 2 * sizeof(float));
+	
 		ImPlot::EndPlot();
 	}
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -133,13 +173,13 @@ void rendering(curan::robotic::RobotLBR& client){
         for (size_t joint_index = 0; joint_index < LBR_N_JOINTS; ++joint_index)
 			robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, state.q[joint_index]);
     }
-
 }
 
 int main(){
 	std::signal(SIGINT, signal_handler);
-    std::unique_ptr<curan::robotic::ExtractRipple> handguinding_controller = std::make_unique<curan::robotic::ExtractRipple>();
-    curan::robotic::RobotLBR client{handguinding_controller.get()};
+    std::unique_ptr<curan::robotic::CompensateRipple> handguinding_controller = std::make_unique<curan::robotic::CompensateRipple>();
+	handguinding_controller->activate.store(curan::robotic::NO_FILTERING_SCHEME,std::memory_order_acq_rel);
+	curan::robotic::RobotLBR client{handguinding_controller.get()};
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
     std::thread robot_renderer{[&](){rendering(client);}};
@@ -158,12 +198,14 @@ int main(){
 		}
 		app.disconnect();
         robot_renderer.join();
+		
 		auto now = std::chrono::system_clock::now();
 		auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-		std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments"+std::to_string(UTC)+".json"};
+		std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments_filter_classic_45_"+std::to_string(UTC)+".json"};
 		std::cout << "creating filename with measurments :" << filename << std::endl;
 		std::ofstream o(filename);
 		o << list_of_recorded_states;
+		
 		return 0;
 	}
 	catch (...)

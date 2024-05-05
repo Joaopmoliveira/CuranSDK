@@ -1,5 +1,5 @@
-#ifndef CURAN_EXTRACT_RIPPLE_
-#define CURAN_EXTRACT_RIPPLE_
+#ifndef CURAN_COMPENSATE_RIPPLE_
+#define CURAN_COMPENSATE_RIPPLE_
 
 #include "LBRController.h"
 #include "FilterRippleFirstHarmonic.h"
@@ -9,8 +9,16 @@ namespace robotic {
 
 using joint_filters = std::array<std::pair<FilterData,FilterProperties>,number_of_joints>;
 
-struct ExtractRipple : public UserData{
-    ExtractRipple();
+enum type_of_compensation{
+    ADAPTIVE_FILTERING_SCHEME,
+    CLASSIC_APPROACH,
+    NO_FILTERING_SCHEME
+};
+
+struct CompensateRipple : public UserData{
+    CompensateRipple();
+
+    std::atomic<type_of_compensation> activate = NO_FILTERING_SCHEME;
 
     std::array<joint_filters,number_of_joints> first_harmonic;
     std::array<joint_filters,number_of_joints> second_harmonic;

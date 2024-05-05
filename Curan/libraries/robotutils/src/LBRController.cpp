@@ -3,16 +3,37 @@
 namespace curan {
 namespace robotic {
 
-State::State(const  KUKA::FRI::LBRState& state){
+State::State(const  KUKA::FRI::LBRState& state, const command_mode& mode){
     sampleTime = state.getSampleTime();
-    for(size_t index = 0; index < number_of_joints; ++index){
-        q[index] = state.getMeasuredJointPosition()[index];
-        cmd_q[index] = state.getCommandedJointPosition()[index];
-        cmd_tau[index] = state.getCommandedTorque()[index];
-        tau[index] = state.getMeasuredTorque()[index];
-        tau_ext[index] = state.getExternalTorque()[index];
+    switch(mode){
+        case command_mode::COMMAND:
+        for(size_t index = 0; index < number_of_joints; ++index){
+            q[index] = state.getMeasuredJointPosition()[index];
+            cmd_q[index] = state.getCommandedJointPosition()[index];
+            cmd_tau[index] = state.getCommandedTorque()[index];
+            tau[index] = state.getMeasuredTorque()[index];
+            tau_ext[index] = state.getExternalTorque()[index];
+        }
+        break;
+        case command_mode::MONITOR:
+        for(size_t index = 0; index < number_of_joints; ++index){
+            q[index] = state.getMeasuredJointPosition()[index];
+            cmd_q[index] = state.getCommandedJointPosition()[index];
+            cmd_tau[index] = state.getCommandedTorque()[index];
+            tau[index] = state.getMeasuredTorque()[index];
+            tau_ext[index] = state.getExternalTorque()[index];
+        }
+        break;
+        case command_mode::WAIT_COMMAND:
+        default:
+        for(size_t index = 0; index < number_of_joints; ++index){
+            q[index] = state.getMeasuredJointPosition()[index];
+            cmd_q[index] = state.getIpoJointPosition()[index];
+            cmd_tau[index] = state.getCommandedTorque()[index];
+            tau[index] = state.getMeasuredTorque()[index];
+            tau_ext[index] = state.getExternalTorque()[index];
+        }
     }
-
 }
 
 EigenState&& UserData::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
@@ -26,6 +47,8 @@ void State::convertFrom(const EigenState& state){
     cmd_q = convert<double,number_of_joints>(state.cmd_q);
     cmd_tau = convert<double,number_of_joints>(state.cmd_tau);
     tau = convert<double,number_of_joints>(state.tau);
+    gravity = convert<double,number_of_joints>(state.gravity);
+    coriolis = convert<double,number_of_joints>(state.coriolis);
     tau_ext = convert<double,number_of_joints>(state.tau_ext);
     constexpr size_t translation_size = 3;
     constexpr size_t rotation_size = 3;
@@ -38,6 +61,7 @@ void State::convertFrom(const EigenState& state){
         invmassmatrix[i] = convert<double,number_of_joints>(state.invmassmatrix.row(i).transpose());
     }
     user_defined = convert<double,number_of_joints>(state.user_defined);
+    user_defined2 = convert<double,number_of_joints>(state.user_defined2);
     sampleTime = state.sampleTime;
 }
 
@@ -49,6 +73,8 @@ EigenState State::converteigen(){
     converted_state.cmd_q = convert(cmd_q);
     converted_state.cmd_tau = convert(cmd_tau);
     converted_state.tau = convert(tau);
+    converted_state.gravity = convert(gravity);
+    converted_state.coriolis = convert(coriolis);
     converted_state.tau_ext = convert(tau_ext);
     converted_state.translation = convert(translation);
     for(size_t i = 0; i< rotation.size(); ++i)
@@ -59,6 +85,7 @@ EigenState State::converteigen(){
         converted_state.invmassmatrix.row(i) = convert(invmassmatrix[i]).transpose();
     }
     converted_state.user_defined = convert(user_defined);
+    converted_state.user_defined2 = convert(user_defined2);
     converted_state.sampleTime = sampleTime;
     return converted_state;
 }
@@ -101,12 +128,15 @@ void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d&
     robot->getWorldCoordinates(tmp_p_0_7, iiwa->q, pointPosition, 7);  
     robot->getRotationMatrix(tmp_R_0_7, iiwa->q, number_of_joints); 
     robot->getJacobian(tmp_jacobian, iiwa->q, pointPosition, 7);    
-    for(size_t row = 0; row < number_of_joints; ++row)
+    for(size_t row = 0; row < number_of_joints; ++row){
+        gravity[row] = iiwa->g[row];
+        coriolis[row] = iiwa->c[row];
         for(size_t col = 0; col < number_of_joints; ++col){
             if(row < 6) jacobian[row][col] = tmp_jacobian(row,col);
             massmatrix[row][col] = iiwa->M(row,col);
             invmassmatrix[row][col] = iiwa->Minv(row,col);
         }
+    }
     for(size_t cart_row = 0; cart_row < 3; ++cart_row){
         translation[cart_row] = tmp_p_0_7[cart_row];
         for(size_t cart_col = 0; cart_col < 3; ++cart_col)
@@ -215,7 +245,7 @@ void RobotLBR::onStateChange(KUKA::FRI::ESessionState oldState, KUKA::FRI::ESess
 
 void RobotLBR::monitor(){
     robotCommand().setJointPosition(robotState().getCommandedJointPosition());
-    current_state.differential(State{robotState()});
+    current_state.differential(State{robotState(),State::MONITOR});
     current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
 }
 
@@ -224,7 +254,7 @@ void RobotLBR::waitForCommand(){
     // waitForCommand(). This has to be done due to consistency checks. In this state it is
     // only necessary, that some torque vlaues are sent. The LBR does not take the
     // specific value into account.
-    current_state.differential(State{robotState()});
+    current_state.differential(State{robotState(),State::WAIT_COMMAND});
     current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
     if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
         robotCommand().setTorque(current_state.cmd_tau.data());
@@ -233,7 +263,7 @@ void RobotLBR::waitForCommand(){
 }
 
 void RobotLBR::command(){
-    current_state.differential(State{robotState()});
+    current_state.differential(State{robotState(),State::COMMAND});
     current_state.update_iiwa(iiwa.get(),robot.get(),pointPosition);
     current_state.cmd_tau = std::array<double,7>();
     eigen_state = current_state.converteigen();
@@ -261,14 +291,18 @@ std::ostream& operator<<(std::ostream& os, const std::list<State>& cont)
     Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
     Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
     
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_gravity = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_coriolis = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+
     Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau_ext = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
     Eigen::Matrix<double,3,Eigen::Dynamic> arr_translation = Eigen::Matrix<double,3,Eigen::Dynamic>::Zero(3,cont.size());
     Eigen::Matrix<double,9,Eigen::Dynamic> arr_rotation = Eigen::Matrix<double,9,Eigen::Dynamic>::Zero(9,cont.size());
 
     Eigen::Matrix<double,number_of_joints*6,Eigen::Dynamic> arr_jacobian = Eigen::Matrix<double,number_of_joints*6,Eigen::Dynamic>::Zero(number_of_joints*6,cont.size());
     Eigen::Matrix<double,number_of_joints*number_of_joints,Eigen::Dynamic> arr_massmatrix = Eigen::Matrix<double,number_of_joints*number_of_joints,Eigen::Dynamic>::Zero(number_of_joints*number_of_joints,cont.size());
-    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(3,cont.size());
-
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined_2 = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    
     auto begin = cont.begin();
     for(size_t i=0; begin!=cont.end(); ++i,++begin){
         
@@ -278,12 +312,15 @@ std::ostream& operator<<(std::ostream& os, const std::list<State>& cont)
         arr_cmd_q.col(i) = convert((*begin).cmd_q);
         arr_cmd_tau.col(i) = convert((*begin).cmd_tau);
         arr_tau.col(i) = convert((*begin).tau);
+        arr_gravity.col(i) = convert((*begin).gravity);
+        arr_coriolis.col(i) = convert((*begin).coriolis);
         arr_tau_ext.col(i) = convert((*begin).tau_ext);
         arr_translation.col(i) = convert((*begin).translation);
         arr_rotation.col(i) = convert((*begin).rotation);
         arr_jacobian.col(i) = convert((*begin).jacobian);
         arr_massmatrix.col(i) = convert((*begin).massmatrix);
         arr_user_defined.col(i) = convert((*begin).user_defined);
+        arr_user_defined_2.col(i) = convert((*begin).user_defined2);
     }
 
     nlohmann::json measurments;
@@ -306,6 +343,12 @@ std::ostream& operator<<(std::ostream& os, const std::list<State>& cont)
     ss << arr_tau;
     measurments["tau"] = ss.str();
     ss = std::stringstream{};
+    ss << arr_gravity;
+    measurments["gravity"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_coriolis;
+    measurments["coriolis"] = ss.str();
+    ss = std::stringstream{};
     ss << arr_tau_ext;
     measurments["tau_ext"] = ss.str();
     ss = std::stringstream{};
@@ -323,6 +366,9 @@ std::ostream& operator<<(std::ostream& os, const std::list<State>& cont)
     ss = std::stringstream{};
     ss << arr_user_defined;
     measurments["userdef"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_user_defined_2;
+    measurments["userdef2"] = ss.str();
     os << measurments.dump();
     return os;
 } 
