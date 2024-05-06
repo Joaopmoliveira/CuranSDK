@@ -53,14 +53,22 @@ struct TrajecGeneration{
     template<FixedPlane plane>
     Eigen::Matrix<double,3,1> compute(Eigen::Matrix<double,3,1> in_position){
         Eigen::Matrix<double,3,1> translated_position = in_position-nominal_pos;
-        Eigen::Matrix<double,3,1> position = translated_position;
 
+        Eigen::Matrix<double,3,3> rotation_mat;
         if constexpr (plane == FixedPlane::PLANE_X)
-            position = Eigen::Matrix<double,3,1>{{translated_position[1],translated_position[2],translated_position[0]}};
+            rotation_mat << 0.0, 0.0 ,-1.0 ,
+                            0.0, 1.0 , 0.0 ,
+                            1.0, 0.0 , 0.0;
         else if constexpr (plane == FixedPlane::PLANE_Y)
-            position = Eigen::Matrix<double,3,1>{{translated_position[0],translated_position[2],translated_position[1]}};
+            rotation_mat << 1.0, 0.0 , 0.0 ,
+                            0.0, 0.0 ,-1.0 ,
+                            0.0, 1.0 , 1.0;
         else 
-            position = Eigen::Matrix<double,3,1>{{translated_position[0],translated_position[1],translated_position[2]}};
+            rotation_mat << 1.0, 0.0 , 0.0 ,
+                            0.0, 1.0 , 0.0 ,
+                            0.0, 0.0 , 1.0;
+
+        Eigen::Matrix<double,3,1> position = rotation_mat*translated_position;
 
         double radius = std::sqrt(position[0]*position[0]+position[1]*position[1]);
         double angle = (radius > delta_min) ? std::atan2(position[1],position[0]) : 0.0 ;
@@ -75,18 +83,8 @@ struct TrajecGeneration{
         jacobian_representation << std::cos(angle) , -radius*std::sin(angle) , 0.0 , 
                                    std::sin(angle) ,  radius*std::cos(angle) , 0.0 ,
                                         0.0 ,                 0.0 ,            1.0;
-        Eigen::Matrix<double,3,1> cartesian_velocity = jacobian_representation*velocity_cylindrical;
-        //Eigen::Matrix<double,3,1> cartesian_velocity = -translated_position;
-        
+        Eigen::Matrix<double,3,1> cartesian_velocity = rotation_mat.transpose()*jacobian_representation*velocity_cylindrical;
         return cartesian_velocity;
-
-        if constexpr (plane == FixedPlane::PLANE_X)
-            return Eigen::Matrix<double,3,1>{{cartesian_velocity[2],cartesian_velocity[0],cartesian_velocity[1]}};
-            
-        if constexpr (plane == FixedPlane::PLANE_Y)
-            return Eigen::Matrix<double,3,1>{{cartesian_velocity[0],cartesian_velocity[2],cartesian_velocity[1]}};
-
-        return Eigen::Matrix<double,3,1>{{cartesian_velocity[0],cartesian_velocity[1],cartesian_velocity[2]}};
     };
 };
 
@@ -96,7 +94,7 @@ struct RhytmicMotion : public curan::robotic::UserData{
 
     TrajecGeneration generator; 
 
-    RhytmicMotion() : generator{0.5 , 1.0 , 1.0 , 0.1 ,Eigen::Matrix<double,3,1>{{-0.63,0.0,0.294}}} , gain{20,20,20,20,20,20}{
+    RhytmicMotion() : generator{1.0 , 1.0 , 1.0 , 0.1 ,Eigen::Matrix<double,3,1>{{-0.63,0.0,0.294}}} , gain{20,20,20,20,20,20}{
 
     }
 
@@ -107,9 +105,11 @@ struct RhytmicMotion : public curan::robotic::UserData{
         */
        
         //state.cmd_tau = -iiwa->M * 10 * iiwa->qDot;
+
+        static Eigen::Matrix<double,7,1> equilibrium_joint_pos = state.q;
         
         
-        Eigen::Matrix<double,3,1> velocity_translation = generator.compute<FixedPlane::PLANE_Z>(state.translation);
+        Eigen::Matrix<double,3,1> velocity_translation = generator.compute<FixedPlane::PLANE_Y>(state.translation);
         Eigen::Matrix<double,3,3> desired_rotation_mat;
         desired_rotation_mat << 0.0, 1.0 , 0.0 ,
                                 1.0, 0.0 , 0.0 ,
@@ -129,7 +129,7 @@ struct RhytmicMotion : public curan::robotic::UserData{
 	    Eigen::Matrix<double,7,7> nullSpaceTranslation = Eigen::Matrix<double,7,7>::Identity() - state.jacobian.transpose() * jbar.transpose();
 
         state.user_defined.block(0,0,6,1) = desired_velocity;
-        state.user_defined2 = state.jacobian.transpose()*lambda*gain*(desired_velocity-current_velocity); //-nullSpaceTranslation*(state.massmatrix * 10 * state.dq);
+        state.user_defined2 = state.jacobian.transpose()*lambda*gain*(desired_velocity-current_velocity)-nullSpaceTranslation*(state.massmatrix * 10 * equilibrium_joint_pos);
         state.cmd_tau = state.user_defined2;
 
         /*
