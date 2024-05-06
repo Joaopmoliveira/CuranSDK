@@ -50,6 +50,8 @@ namespace curan {
 				background_color = in_background_color;
 				return *(this);
 			}
+
+			void TextBlob::update(const std::string& user_text);
 			
 			void compile() override;
 		};

@@ -1,6 +1,7 @@
 #include "CalibratePages.h"
 #include <cmath>
 #include <chrono>
+#include "userinterface/widgets/ImutableTextPanel.h"
 
 std::unique_ptr<curan::ui::Overlay> create_aquisition_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
@@ -11,9 +12,12 @@ std::unique_ptr<curan::ui::Overlay> create_aquisition_overlay(std::shared_ptr<Pr
 	textblob->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
 	double current_val = (processing->aquisition_time - processing->aquisition_time_limit[0]) / (processing->aquisition_time_limit[1] - processing->aquisition_time_limit[0]);
 	auto dial1 = TextBlob::make(std::to_string(processing->aquisition_time));
+	dial1->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+	TextBlob* dial1_ptr = dial1.get();
 	slider->set_current_value(current_val);
-	slider->set_callback([&processing](Slider* slider, ConfigDraw* config) {
+	slider->set_callback([&processing,dial1_ptr](Slider* slider, ConfigDraw* config) {
 		processing->aquisition_time = round(processing->aquisition_time_limit[0] + slider->get_current_value() * (processing->aquisition_time_limit[1] - processing->aquisition_time_limit[0]));
+		dial1_ptr->update(std::to_string(processing->aquisition_time));
 	});
 	
 	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);

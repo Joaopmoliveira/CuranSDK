@@ -125,6 +125,10 @@ public:
 	    return (head_ >= tail_) ? head_ - tail_ :  max_size_ + head_ - tail_ ;
     }
 
+    const T* data() {
+        return buf_.data();
+    }
+
 private:
     allocation allocation_strategy;
 	std::vector<T> buf_;

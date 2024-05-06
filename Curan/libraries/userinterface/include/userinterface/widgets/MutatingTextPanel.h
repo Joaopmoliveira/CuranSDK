@@ -91,7 +91,6 @@ namespace curan
                 } else {
                     return get_position();
                 }
-
             }
 
             curan::ui::drawablefunction draw() override;

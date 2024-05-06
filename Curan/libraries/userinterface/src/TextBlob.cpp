@@ -2,6 +2,7 @@
 #include "userinterface/widgets/TextBlob.h"
 #include "utils/Overloading.h"
 #include <variant>
+#include <iostream>
 
 namespace curan {
 namespace ui {
@@ -34,7 +35,6 @@ drawablefunction TextBlob::draw() {
 	if(!compiled)
 		throw std::runtime_error("must compile the button before drawing operations");
 	auto lamb = [this](SkCanvas* canvas) {
-		std::lock_guard<std::mutex> g{ get_mutex() };
 		auto widget_rect = get_position();
 		auto size = get_size();
 
@@ -47,6 +47,7 @@ drawablefunction TextBlob::draw() {
 		paint.setColor(background_color);
 		paint_text.setColor(text_color);
 		canvas->drawRect(drawable, paint);
+		std::lock_guard<std::mutex> g{ get_mutex() };
 		canvas->drawTextBlob(text, text_offset_x, text_offset_y, paint_text);
 	};
 	return lamb;
@@ -91,6 +92,14 @@ void TextBlob::compile(){
 	text_font.measureText(text_to_compile.data(), text_to_compile.size(), SkTextEncoding::kUTF8, &widget_rect_text);
 	text = SkTextBlob::MakeFromString(text_to_compile.c_str(), text_font);
 	compiled = true;
+}
+
+void TextBlob::update(const std::string& user_text){
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	auto text_font = SkFont(typeface, (float)font_size, 1.0f, 0.0f);
+	text_font.setEdging(SkFont::Edging::kAntiAlias);
+	text_font.measureText(user_text.data(), user_text.size(), SkTextEncoding::kUTF8, &widget_rect_text);
+	text = SkTextBlob::MakeFromString(user_text.c_str(), text_font);
 }
 
 }

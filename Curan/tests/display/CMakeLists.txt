@@ -305,3 +305,15 @@ target_link_libraries(test_overlay_loader
 PUBLIC
 userinterface
 )
+
+
+# ----------------------------------------
+
+add_executable(test_plot_graph_realtime test_plot_graph_realtime.cpp)
+
+target_compile_definitions(test_plot_graph_realtime PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_plot_graph_realtime
+PUBLIC
+userinterface
+)
