@@ -75,8 +75,11 @@ struct TrajecGeneration{
         jacobian_representation << std::cos(angle) , -radius*std::sin(angle) , 0.0 , 
                                    std::sin(angle) ,  radius*std::cos(angle) , 0.0 ,
                                         0.0 ,                 0.0 ,            1.0;
-        Eigen::Matrix<double,3,1> cartesian_velocity = jacobian_representation*velocity_cylindrical;
+        //Eigen::Matrix<double,3,1> cartesian_velocity = jacobian_representation*velocity_cylindrical;
+        Eigen::Matrix<double,3,1> cartesian_velocity = -translated_position;
         
+        return cartesian_velocity;
+
         if constexpr (plane == FixedPlane::PLANE_X)
             return Eigen::Matrix<double,3,1>{{cartesian_velocity[2],cartesian_velocity[0],cartesian_velocity[1]}};
             
@@ -117,10 +120,17 @@ struct RhytmicMotion : public curan::robotic::UserData{
         desired_velocity.block(0,0,3,1) = velocity_translation;
         desired_velocity.block(3,0,3,1) = velocity_rotation;
 
+        Eigen::Matrix<double,6,1> current_velocity = state.jacobian*state.dq;
+
+        Eigen::Matrix<double,6,6> lambda = (state.jacobian*state.invmassmatrix*state.jacobian.transpose()+Eigen::Matrix<double,6,6>::Identity()*0.1*0.3).inverse();
+	    Eigen::Matrix<double,7,6> jbar = state.invmassmatrix * state.jacobian.transpose() * lambda;
+	    Eigen::Matrix<double,7,7> nullSpaceTranslation = Eigen::Matrix<double,7,7>::Identity() - state.jacobian.transpose() * jbar.transpose();
+
+
         state.user_defined.block(0,0,6,1) = desired_velocity;
-        state.user_defined2 = state.jacobian.transpose()*(state.jacobian*state.invmassmatrix*state.jacobian.transpose()+Eigen::Matrix<double,6,6>::Identity()*0.1*0.3).inverse()*desired_velocity;
+        state.user_defined2 = state.jacobian.transpose()*lambda*10.0*(desired_velocity-current_velocity); //-nullSpaceTranslation*(state.massmatrix * 10 * state.dq);
         state.cmd_tau = state.user_defined2;
-        //std::cout << desired_velocity.transpose() << "\n";
+        std::cout << state.cmd_tau.transpose() << "\n";
 
         /*
         The Java controller has two values which it reads, namely: 
@@ -162,7 +172,7 @@ int main(){
 		app.disconnect();
         auto now = std::chrono::system_clock::now();
 		auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-		std::string filename{CURAN_COPIED_RESOURCE_PATH"/ds_following"+std::to_string(UTC)+".json"};
+		std::string filename{CURAN_COPIED_RESOURCE_PATH"/ds_actuation"+std::to_string(UTC)+".json"};
 		std::cout << "creating filename with measurments :" << filename << std::endl;
 		std::ofstream o(filename);
 		o << list_of_recorded_states;
