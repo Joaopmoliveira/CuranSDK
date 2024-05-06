@@ -371,3 +371,20 @@ renderable
 vsgImGui::vsgImGui
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+
+add_executable(test_combo_ui
+test_combo_ui.cpp
+)
+
+target_compile_definitions(test_combo_ui PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_combo_ui PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_combo_ui
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
+)

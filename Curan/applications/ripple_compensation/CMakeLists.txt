@@ -1,2 +1,3 @@
 add_subdirectory(visualize_ripple)
 add_subdirectory(visualize_ripple_and_filter)
+add_subdirectory(visualize_compensate_ripple)
