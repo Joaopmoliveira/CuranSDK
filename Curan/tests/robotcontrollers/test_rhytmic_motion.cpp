@@ -94,7 +94,7 @@ struct RhytmicMotion : public curan::robotic::UserData{
 
     TrajecGeneration generator; 
 
-    RhytmicMotion() : generator{1.0 , 1.0 , 1.0 , 0.1 ,Eigen::Matrix<double,3,1>{{-0.63,0.0,0.294}}} , gain{20,20,20,20,20,20}{
+    RhytmicMotion() : generator{1.0 , 1.0 , 3.0 , 0.1 ,Eigen::Matrix<double,3,1>{{-0.63,0.0,0.294}}} , gain{20,20,20,20,20,20}{
 
     }
 
