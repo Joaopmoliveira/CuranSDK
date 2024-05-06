@@ -112,7 +112,6 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
 			}
 		});
 
-		RuntimeEffect effects{SKSL};
 		auto image = resources.get_icon("human_robotics_logo.jpeg");
 		std::unique_ptr<Container> widgetcontainer;
 		if(image)

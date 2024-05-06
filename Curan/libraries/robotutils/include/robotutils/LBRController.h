@@ -23,6 +23,10 @@ struct EigenState{
     Eigen::Matrix<double,number_of_joints,1> cmd_q;
     Eigen::Matrix<double,number_of_joints,1> cmd_tau;
     Eigen::Matrix<double,number_of_joints,1> tau;
+
+    Eigen::Matrix<double,number_of_joints,1> gravity;
+    Eigen::Matrix<double,number_of_joints,1> coriolis;
+
     Eigen::Matrix<double,number_of_joints,1> tau_ext;
     Eigen::Matrix<double,3,1> translation;
     Eigen::Matrix<double,3,3> rotation;
@@ -30,6 +34,8 @@ struct EigenState{
     Eigen::Matrix<double,number_of_joints,number_of_joints> massmatrix;
     Eigen::Matrix<double,number_of_joints,number_of_joints> invmassmatrix;
     Eigen::Matrix<double,number_of_joints,1> user_defined;
+    Eigen::Matrix<double,number_of_joints,1> user_defined2;
+
     double sampleTime{1e-3}; 
 
     inline void set_torque_ref( Eigen::Matrix<double,number_of_joints,1> in_tau_cmd){
@@ -47,7 +53,14 @@ struct UserData{
 };
 
 struct State{
-    State(const KUKA::FRI::LBRState& state);
+
+    enum command_mode{
+        MONITOR,
+        COMMAND,
+        WAIT_COMMAND
+    };
+
+    State(const KUKA::FRI::LBRState& state, const command_mode& mode);
     State(){};
 
     std::array<double,number_of_joints> q;
@@ -58,6 +71,9 @@ struct State{
     std::array<double,number_of_joints> cmd_tau;
     std::array<double,number_of_joints> tau;
 
+    std::array<double,number_of_joints> gravity;
+    std::array<double,number_of_joints> coriolis;
+
     std::array<double,number_of_joints> tau_ext;
     std::array<double,3> translation;
     std::array<std::array<double,3>,3> rotation;
@@ -67,6 +83,7 @@ struct State{
     std::array<std::array<double,number_of_joints>,number_of_joints> invmassmatrix;
 
     std::array<double,number_of_joints> user_defined;
+    std::array<double,number_of_joints> user_defined2;
     double sampleTime{1e-3};
     bool initialized{false};
 
@@ -117,6 +134,10 @@ public:
     virtual void waitForCommand();
 
     virtual void command();
+
+    inline UserData* view_userdata(){
+        return user_data;
+    }
 
     inline const AtomicState& atomic_acess(){
         return atomic_state;

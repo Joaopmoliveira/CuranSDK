@@ -181,4 +181,5 @@ int main1(){
     }
     camera_thread.join();
     gps_thread.join();
+    return 0;
 }

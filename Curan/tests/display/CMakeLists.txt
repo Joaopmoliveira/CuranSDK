@@ -317,3 +317,14 @@ target_link_libraries(test_plot_graph_realtime
 PUBLIC
 userinterface
 )
+
+# ----------------------------------------
+
+add_executable(test_sequencial_activation test_sequencial_activation.cpp)
+
+target_compile_definitions(test_sequencial_activation PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_sequencial_activation
+PUBLIC
+userinterface
+)

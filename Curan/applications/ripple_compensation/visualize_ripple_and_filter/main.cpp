@@ -45,12 +45,14 @@ struct ScrollingBuffer
 
 void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 {
+	static size_t counter = 0;
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
 	ImGui::Begin("Torques"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, LBR_N_JOINTS> buffers;
-    static std::array<ScrollingBuffer, LBR_N_JOINTS> filtered_buffers;
+	static std::array<ScrollingBuffer, 2> buffers;
+    static std::array<ScrollingBuffer, 2> filtered_buffers;
 	static float t = 0;
+
 	t += ImGui::GetIO().DeltaTime;
 
 	static float history = 10.0f;
@@ -64,19 +66,28 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for (size_t index = 0; index < LBR_N_JOINTS; ++index)
-		{
-			std::string loc = "tau " + std::to_string(index);
-			buffers[index].AddPoint(t, (float)state.tau[index]);
-			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
-		    loc = "filtered " + std::to_string(index);
-			filtered_buffers[index].AddPoint(t, (float)state.user_defined[index]);
-			ImPlot::PlotLine(loc.data(), &filtered_buffers[index].Data[0].x, &filtered_buffers[index].Data[0].y, filtered_buffers[index].Data.size(), 0, filtered_buffers[index].Offset, 2 * sizeof(float));
-        }
+		size_t index = 0;
+		std::string loc = "tau " + std::to_string(index);
+		buffers[index].AddPoint(t, (float)state.tau[4]);
+		ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
+		loc = "filtered " + std::to_string(index);
+		filtered_buffers[index].AddPoint(t, (float)state.user_defined[4]);
+		ImPlot::PlotLine(loc.data(), &filtered_buffers[index].Data[0].x, &filtered_buffers[index].Data[0].y, filtered_buffers[index].Data.size(), 0, filtered_buffers[index].Offset, 2 * sizeof(float));
+		
+		index = 1;
+		loc = "tau " + std::to_string(index);
+		buffers[index].AddPoint(t, (float)state.tau[6]);
+		ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
+		loc = "filtered " + std::to_string(index);
+		filtered_buffers[index].AddPoint(t, (float)state.user_defined[6]);
+		ImPlot::PlotLine(loc.data(), &filtered_buffers[index].Data[0].x, &filtered_buffers[index].Data[0].y, filtered_buffers[index].Data.size(), 0, filtered_buffers[index].Offset, 2 * sizeof(float));
+		
 		ImPlot::EndPlot();
 	}
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
+
+	++counter;
 }
 
 curan::robotic::RobotLBR* robot_pointer = nullptr;
@@ -132,7 +143,7 @@ int main(){
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
     std::thread robot_renderer{[&](){rendering(client);}};
-	//std::list<curan::robotic::State> list_of_recorded_states;
+	std::list<curan::robotic::State> list_of_recorded_states;
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
@@ -143,16 +154,16 @@ int main(){
 		success = app.step();
 		while (client){
 			success = app.step();
-			//list_of_recorded_states.push_back(access_point.load());
+			list_of_recorded_states.push_back(access_point.load());
 		}
 		app.disconnect();
         robot_renderer.join();
-		//auto now = std::chrono::system_clock::now();
-		//auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-		//std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments"+std::to_string(UTC)+".json"};
-		//std::cout << "creating filename with measurments :" << filename << std::endl;
-		//std::ofstream o(filename);
-		//o << list_of_recorded_states;
+		auto now = std::chrono::system_clock::now();
+		auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+		std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments"+std::to_string(UTC)+".json"};
+		std::cout << "creating filename with measurments :" << filename << std::endl;
+		std::ofstream o(filename);
+		o << list_of_recorded_states;
 		return 0;
 	}
 	catch (...)

@@ -108,21 +108,87 @@
 
     void Application::view_image_simple(){
         using namespace curan::ui;
+        auto button = Button::make("Layout", resources);
+        button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+                               {
+		if(config->stack_page!=nullptr){
+			config->stack_page->stack(layout_overlay());
+		} });
+
+        std::unique_ptr<Button> button2;
+
+        switch (current_volume){
+        case PanelType::ORIGINAL_VOLUME:
+            button2 = Button::make("Resample AC-PC", resources);
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                    {
+            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
+                if (config->stack_page != nullptr)
+                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
+                return;
+            }
+		    is_acpc_being_defined = !is_acpc_being_defined;
+		    point_selection(); });
+            break;
+        case PanelType::RESAMPLED_VOLUME:
+            button2 = Button::make("Define Trajectory", resources);
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                    {
+            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
+                if (config->stack_page != nullptr)
+                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
+                return;
+            }
+		    is_acpc_being_defined = !is_acpc_being_defined;
+		    point_selection(); });
+            break;
+        default:
+            std::cout << "default\n";
+            break;
+        };
+
+        auto button4 = Button::make("Change Volume", resources);
+        button4->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button4->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                {
+            if(config->stack_page!=nullptr){
+			    config->stack_page->stack(create_volume_explorer_page());
+		    } });
+
+        auto button5 = Button::make("Load Series", resources);
+        button5->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button5->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                {
+            if(config->stack_page!=nullptr){
+			    config->stack_page->stack(create_volume_loader_page());
+		    } });
+
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+        if(button2.get()!=nullptr)
+            *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5);
+        else
+            *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
+
+        viwers_container->set_color(SK_ColorTRANSPARENT);
+
+        auto image_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
         switch (current_panel_arragement)
         {
         case Panels::ONE_PANEL:
         {
             std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
-            *viwers_container << std::move(image_display);
+            *image_container << std::move(image_display);
         }
         break;
         case Panels::TWO_PANELS:
         {
             std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
-            *viwers_container << std::move(image_display_x) << std::move(image_display_y);
+            *image_container << std::move(image_display_x) << std::move(image_display_y);
         }
         break;
         case Panels::THREE_PANELS:
@@ -130,37 +196,108 @@
             std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
             std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &map[current_volume], Direction::Z);
-            *viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
+            *image_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
         }
         break;
         default:
         {
             std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
-            *viwers_container << std::move(image_display);
+            *image_container << std::move(image_display);
         }
         break;
         }
-        minipage->construct(std::move(viwers_container), SK_ColorBLACK);
+
+        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+        *container << std::move(viwers_container) << std::move(image_container);
+        container->set_divisions({ 0.0 , 0.1 , 1.0 });
+
+        minipage->construct(std::move(container), SK_ColorBLACK);
     }
 
     void Application::view_image_with_point_selection(){
+
         using namespace curan::ui;
-        
+        auto button = Button::make("Layout", resources);
+        button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+                               {
+		if(config->stack_page!=nullptr){
+			config->stack_page->stack(layout_overlay());
+		} });
+
+        std::unique_ptr<Button> button2;
+
+        switch (current_volume){
+        case PanelType::ORIGINAL_VOLUME:
+            button2 = Button::make("Resample AC-PC", resources);
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                    {
+            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
+                if (config->stack_page != nullptr)
+                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
+                return;
+            }
+		    is_acpc_being_defined = !is_acpc_being_defined;
+		    point_selection(); });
+            break;
+        case PanelType::RESAMPLED_VOLUME:
+            button2 = Button::make("Define Trajectory", resources);
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                    {
+            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
+                if (config->stack_page != nullptr)
+                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
+                return;
+            }
+		    is_acpc_being_defined = !is_acpc_being_defined;
+		    point_selection(); });
+            break;
+        default:
+            std::cout << "default\n";
+            break;
+        };
+
+        auto button4 = Button::make("Change Volume", resources);
+        button4->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button4->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                {
+            if(config->stack_page!=nullptr){
+			    config->stack_page->stack(create_volume_explorer_page());
+		    } });
+
+        auto button5 = Button::make("Load Series", resources);
+        button5->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button5->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                {
+            if(config->stack_page!=nullptr){
+			    config->stack_page->stack(create_volume_loader_page());
+		    } });
+
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+        if(button2.get()!=nullptr)
+            *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5);
+        else
+            *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
+
+        viwers_container->set_color(SK_ColorTRANSPARENT);
+        
+        auto image_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
         switch (current_panel_arragement)
         {
         case Panels::ONE_PANEL:
         {
             std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
-            *viwers_container << std::move(image_display);
+            *image_container << std::move(image_display);
         }
         break;
         case Panels::TWO_PANELS:
         {
             std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
-            *viwers_container << std::move(image_display_x) << std::move(image_display_y);
+            *image_container << std::move(image_display_x) << std::move(image_display_y);
         }
         break;
         case Panels::THREE_PANELS:
@@ -168,13 +305,13 @@
             std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
             std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &map[current_volume], Direction::Z);
-            *viwers_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
+            *image_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
         }
         break;
         default:
         {
             std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
-            *viwers_container << std::move(image_display);
+            *image_container << std::move(image_display);
         }
         break;
         }
@@ -431,13 +568,18 @@
                 third_point = std::nullopt;
             }};
             pool->submit(job);
-            });
+        });
 
-            *text_container << std::move(button_ac_point) << std::move(button_pc_point) << std::move(button_midpoint) << std::move(perform_resampling);
-            auto total_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-            *total_container << std::move(text_container) << std::move(viwers_container);
-            total_container->set_divisions({0.0, 0.1, 1.0});
-            minipage->construct(std::move(total_container), SK_ColorBLACK);
+        *text_container << std::move(button_ac_point) << std::move(button_pc_point) << std::move(button_midpoint) << std::move(perform_resampling);
+
+        auto image_and_text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+        *image_and_text_container << std::move(text_container) << std::move(image_container);
+        image_and_text_container->set_divisions({0.0, 0.1, 1.0});
+
+        auto total_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+        *total_container << std::move(viwers_container) << std::move(image_and_text_container);
+        total_container->set_divisions({0.0, 0.1, 1.0});
+        minipage->construct(std::move(total_container), SK_ColorBLACK);
     }
 
     void Application::point_selection(){
@@ -529,7 +671,7 @@
             auto highlighted = widget->highlighted();
             
             assert(highlighted.size()==1 && "the size is larger than one");  
-            curan::utilities::Job load_selected_volume{"load volume",[&](){
+            curan::utilities::Job load_selected_volume{"load volume",[this,highlighted](){
                 ImageType::Pointer empty_image;
                 std::optional<ImageType::Pointer> volume = load_volume_from_selected_uid(path,std::get<1>(loaded[highlighted.front()]));
                 if(volume)  map[PanelType::ORIGINAL_VOLUME].update_volume(*volume);
@@ -599,6 +741,7 @@
         }
     }
 
+    /*
     std::unique_ptr<curan::ui::Overlay> Application::option_overlay()
     {
         using namespace curan::ui;
@@ -668,17 +811,87 @@
 
         return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
     }
+    */
 
     std::unique_ptr<curan::ui::Container> Application::main_page()
     {
         using namespace curan::ui;
         std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
 
+        using namespace curan::ui;
+        auto button = Button::make("Layout", resources);
+        button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+                               {
+		if(config->stack_page!=nullptr){
+			config->stack_page->stack(layout_overlay());
+		} });
+
+        std::unique_ptr<Button> button2;
+
+        switch (current_volume){
+        case PanelType::ORIGINAL_VOLUME:
+            button2 = Button::make("Resample AC-PC", resources);
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                    {
+            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
+                if (config->stack_page != nullptr)
+                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
+                return;
+            }
+		    is_acpc_being_defined = !is_acpc_being_defined;
+		    point_selection(); });
+            break;
+        case PanelType::RESAMPLED_VOLUME:
+            button2 = Button::make("Define Trajectory", resources);
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                    {
+            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
+                if (config->stack_page != nullptr)
+                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
+                return;
+            }
+		    is_acpc_being_defined = !is_acpc_being_defined;
+		    point_selection(); });
+            break;
+        default:
+            std::cout << "default\n";
+            break;
+        };
+
+        auto button4 = Button::make("Change Volume", resources);
+        button4->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button4->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                {
+            if(config->stack_page!=nullptr){
+			    config->stack_page->stack(create_volume_explorer_page());
+		    } });
+
+        auto button5 = Button::make("Load Series", resources);
+        button5->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button5->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                                {
+            if(config->stack_page!=nullptr){
+			    config->stack_page->stack(create_volume_loader_page());
+		    } });
+
+        auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+        if(button2.get()!=nullptr)
+            *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5);
+        else
+            *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
+
+        viwers_container->set_color(SK_ColorTRANSPARENT);
+
         auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-        *container << std::move(image_display);
+        *container << std::move(viwers_container) << std::move(image_display);
+        container->set_divisions({ 0.0 , 0.1 , 1.0 });
 
         std::unique_ptr<MiniPage> lminipage = MiniPage::make(std::move(container), SK_ColorBLACK);
         minipage = lminipage.get();
+        /*
         lminipage->add_key_call([this](MiniPage *minipage, Key arg, ConfigDraw *draw)
                                 {
 			if (arg.key == GLFW_KEY_H && arg.action == GLFW_PRESS){
@@ -686,7 +899,7 @@
 					draw->stack_page->stack(option_overlay());
 				}
 			} });
-
+        */
         auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
         *minimage_container << std::move(lminipage);
         return minimage_container;
