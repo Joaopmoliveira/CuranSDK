@@ -77,6 +77,7 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 add_subdirectory(volumetric)
+add_subdirectory(clip_volume)
 add_subdirectory(registration_strategies_exploration)
 
 

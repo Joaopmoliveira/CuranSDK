@@ -4,6 +4,8 @@
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/Container.h"
+#include "userinterface/widgets/Overlay.h"
+#include "userinterface/widgets/TextBlob.h"
 
 #include "userinterface/widgets/Drawable.h"
 #include "userinterface/widgets/definitions/UIdefinitions.h"
@@ -18,6 +20,7 @@
 
 #include <vector>
 #include <string>
+#include <functional>
 
 constexpr double minimum_spacing = 20;
 
@@ -43,10 +46,13 @@ public:
         Status state = Status::UNEXECUTED;
         sk_sp<SkTextBlob> compiled_description;
         SkRect bounds;
+        SkRect current_pose;
+        std::function<std::unique_ptr<curan::ui::Overlay>(void)> create_overlay;
     };
 
 private:
 
+    std::optional<curan::ui::Press> clicked;
     sk_sp<SkTypeface> typeface;
 	size_t font_size = 15;
     SkFont font;
@@ -56,20 +62,27 @@ private:
 	SkPaint paint_text;
     SkColor executed_color = SK_ColorGREEN;
     SkColor unexecuted_color = SK_ColorRED; 
+    SkColor background_color = SK_ColorBLUE;
     const Envelopment envel;
     const Connection connect;
 
 public:
 
+void overlaycreator(const std::string& s, std::function<std::unique_ptr<curan::ui::Overlay>(void)> create_overlay){
+    std::lock_guard<std::mutex> g{get_mutex()};
+    auto search = values.find(s);
+    if ( search != values.end())
+        search->second->create_overlay = create_overlay;
+}
 
-void active(const std::string& s){
+void on(const std::string& s){
     std::lock_guard<std::mutex> g{get_mutex()};
     auto search = values.find(s);
     if ( search != values.end())
         search->second->state = Status::EXECUTED;
 }
 
-void inactive(const std::string& s){
+void off(const std::string& s){
     std::lock_guard<std::mutex> g{get_mutex()};
     auto search = values.find(s);
     if ( search != values.end())
@@ -123,11 +136,15 @@ curan::ui::drawablefunction draw() override{
     if(envel == Envelopment::CIRCULAR && connect == Connection::LINEAR_HORIZONTAl){
         auto lamb = [this](SkCanvas* canvas) {
 		    auto widget_rect = get_position();
-            paint.setColor(SK_ColorBLUE);
+            paint.setColor(get_background_color());
             auto size = get_size();
 
             SkRect drawable = SkRect::MakeXYWH(widget_rect.centerX()-widget_rect.width()/2.0,widget_rect.centerY()-size.height()/2.0,widget_rect.width(),size.height());
             canvas->drawRect(drawable,paint);
+
+            SkRect connective_line = SkRect::MakeXYWH(widget_rect.centerX()-widget_rect.width()/2.0f+20.0f,widget_rect.centerY()-10.0f/2.0f,widget_rect.width()-40.0f,10.0f);
+            paint.setColor(get_unexecuted_color());
+            canvas->drawRect(connective_line,paint);
 
             double extra_increments = 0.0;
             if(sequential_values.size()>1)
@@ -142,7 +159,11 @@ curan::ui::drawablefunction draw() override{
                 else
                     paint.setColor(get_executed_color());
                 SkRect work_position = SkRect::MakeXYWH(x_offset-5,y_offset-(size.height()-20)/2.0,v.bounds.width()+10,size.height()-20);
-                canvas->drawRect(work_position,paint);
+                {
+                    std::lock_guard<std::mutex> g{get_mutex()};
+                    v.current_pose = work_position;
+                }
+                canvas->drawOval(work_position,paint);
                 paint.setColor(SK_ColorBLACK);
                 canvas->drawTextBlob(v.compiled_description,x_offset,y_offset+v.bounds.height()/2.0,paint);
                 x_offset += v.bounds.width() + minimum_spacing+extra_increments;
@@ -154,6 +175,7 @@ curan::ui::drawablefunction draw() override{
     if(envel == Envelopment::CIRCULAR && connect == Connection::LINEAR_VERTICAl){
         auto lamb = [this](SkCanvas* canvas) {
 		    auto widget_rect = get_position();
+            paint.setColor(get_background_color());
             auto size = get_size();
 
             SkRect drawable = SkRect::MakeXYWH(widget_rect.centerX()-size.width()/2.0,widget_rect.centerY()-size.height()/2.0,size.width(),size.height());
@@ -176,12 +198,16 @@ curan::ui::drawablefunction draw() override{
     if(envel == Envelopment::RECTANGLE && connect == Connection::LINEAR_HORIZONTAl){
         auto lamb = [this](SkCanvas* canvas) {
 		    auto widget_rect = get_position();
-            paint.setColor(SK_ColorBLUE);
+            paint.setColor(get_background_color());
             auto size = get_size();
 
             SkRect drawable = SkRect::MakeXYWH(widget_rect.centerX()-widget_rect.width()/2.0,widget_rect.centerY()-size.height()/2.0,widget_rect.width(),size.height());
+            paint.setColor(get_background_color());
             canvas->drawRect(drawable,paint);
 
+            SkRect connective_line = SkRect::MakeXYWH(widget_rect.centerX()-widget_rect.width()/2.0f+10.0f,widget_rect.centerY()-10.0/2.0,widget_rect.width()-40.0f,10.f);
+            paint.setColor(get_unexecuted_color());
+            canvas->drawRect(connective_line,paint);
             double extra_increments = 0.0;
             if(sequential_values.size()>1)
                 extra_increments = (drawable.width()-size.width())/(sequential_values.size()-1);
@@ -195,6 +221,10 @@ curan::ui::drawablefunction draw() override{
                 else
                     paint.setColor(get_executed_color());
                 SkRect work_position = SkRect::MakeXYWH(x_offset-5,y_offset-(size.height()-20)/2.0,v.bounds.width()+10,size.height()-20);
+                {
+                    std::lock_guard<std::mutex> g{get_mutex()};
+                    v.current_pose = work_position;
+                }
                 canvas->drawRect(work_position,paint);
                 paint.setColor(SK_ColorBLACK);
                 canvas->drawTextBlob(v.compiled_description,x_offset,y_offset+v.bounds.height()/2.0,paint);
@@ -207,6 +237,7 @@ curan::ui::drawablefunction draw() override{
     if(envel == Envelopment::RECTANGLE && connect == Connection::LINEAR_VERTICAl){
         auto lamb = [this](SkCanvas* canvas) {
 		    auto widget_rect = get_position();
+            paint.setColor(get_background_color());
             auto size = get_size();
             
             SkRect drawable = SkRect::MakeXYWH(widget_rect.centerX()-size.width()/2.0,widget_rect.centerY()-size.height()/2.0,size.width(),size.height());
@@ -250,7 +281,11 @@ curan::ui::callablefunction call() override{
 				
 			},
 			[this,&interacted,config](curan::ui::Press arg) {
-				
+                for(auto& v : sequential_values){
+                    std::lock_guard<std::mutex> g{get_mutex()};
+                    if(v.create_overlay && v.current_pose.contains((float)arg.xpos,(float)arg.ypos))
+                        config->stack_page->stack(v.create_overlay());
+                }
 			},
 			[this,config](curan::ui::Scroll arg) {;
 
@@ -292,6 +327,17 @@ SkColor get_unexecuted_color() {
     return unexecuted_color;
 }
 
+SkColor get_background_color(){
+    std::lock_guard<std::mutex> g{get_mutex()};
+    return background_color;
+}
+
+SequencialSteps& set_background_color(SkColor color){
+    std::lock_guard<std::mutex> g{get_mutex()};
+    background_color = color;
+    return *this;
+};
+
 private:
 
     template<typename... Args>
@@ -318,15 +364,43 @@ private:
 };
 
 int main(){
-	try {
+    try {
 		using namespace curan::ui;
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
-		std::unique_ptr<Context> context = std::make_unique<Context>();;
+		std::unique_ptr<Context> context = std::make_unique<Context>();
 		DisplayParams param{ std::move(context),1200,800 };
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		auto sequential = SequencialSteps::make(SequencialSteps::Envelopment::CIRCULAR,SequencialSteps::Connection::LINEAR_HORIZONTAl,"One","Two","Three","Four","Five","Six","Seven");
-
+		auto sequential = SequencialSteps::make(SequencialSteps::Envelopment::CIRCULAR,
+                                                SequencialSteps::Connection::LINEAR_HORIZONTAl,
+                                                "One","Two","Three");
+        sequential->set_unexecuted_color(SkColorSetARGB(0xFF, 0xE5, 0xD9, 0x5C))
+                   .set_unexecuted_color(SkColorSetARGB(0xFF, 0x5C, 0xC1, 0xE1))
+                   .set_background_color(SkColorSetARGB(0xFF, 0x99, 0xDE, 0xBA));
+        sequential->overlaycreator("One",[](){
+            auto text = curan::ui::TextBlob::make("Clicked One");
+            text->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+	        *container <<  std::move(text);
+	        container->set_color(SK_ColorTRANSPARENT);
+	        return Overlay::make(std::move(container),SK_ColorTRANSPARENT,true);
+        });
+        sequential->overlaycreator("Two",[](){
+            auto text = curan::ui::TextBlob::make("Clicked Two");
+            text->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+	        *container <<  std::move(text);
+	        container->set_color(SK_ColorTRANSPARENT);
+	        return Overlay::make(std::move(container),SK_ColorTRANSPARENT,true);
+        });
+        sequential->overlaycreator("Three",[](){
+            auto text = curan::ui::TextBlob::make("Clicked Three");
+            text->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+	        *container <<  std::move(text);
+	        container->set_color(SK_ColorTRANSPARENT);
+	        return Overlay::make(std::move(container),SK_ColorTRANSPARENT,true);
+        });
         SequencialSteps* sequential_ptr = sequential.get();
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
@@ -339,8 +413,8 @@ int main(){
             while(continue_shifting){
                 std::this_thread::sleep_for(std::chrono::milliseconds(30));
                 if(counter % 10 == 0){
-                    if(value) sequential_ptr->inactive("Two");
-                    else  sequential_ptr->active("Two");
+                    if(value) sequential_ptr->off("Two");
+                    else  sequential_ptr->on("Two");
                     value = ! value;
                 }
                 ++counter;
