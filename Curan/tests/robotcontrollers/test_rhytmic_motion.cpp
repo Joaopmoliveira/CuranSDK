@@ -75,8 +75,8 @@ struct TrajecGeneration{
         jacobian_representation << std::cos(angle) , -radius*std::sin(angle) , 0.0 , 
                                    std::sin(angle) ,  radius*std::cos(angle) , 0.0 ,
                                         0.0 ,                 0.0 ,            1.0;
-        //Eigen::Matrix<double,3,1> cartesian_velocity = jacobian_representation*velocity_cylindrical;
-        Eigen::Matrix<double,3,1> cartesian_velocity = -translated_position;
+        Eigen::Matrix<double,3,1> cartesian_velocity = jacobian_representation*velocity_cylindrical;
+        //Eigen::Matrix<double,3,1> cartesian_velocity = -translated_position;
         
         return cartesian_velocity;
 
@@ -96,7 +96,7 @@ struct RhytmicMotion : public curan::robotic::UserData{
 
     TrajecGeneration generator; 
 
-    RhytmicMotion() : generator{1.0 , 1.0 , 1.0 , 0.2 ,Eigen::Matrix<double,3,1>{{-0.63,0.0,0.294}}} , gain{10,10,10,20,20,20}{
+    RhytmicMotion() : generator{0.5 , 1.0 , 1.0 , 0.1 ,Eigen::Matrix<double,3,1>{{-0.63,0.0,0.294}}} , gain{20,20,20,20,20,20}{
 
     }
 
