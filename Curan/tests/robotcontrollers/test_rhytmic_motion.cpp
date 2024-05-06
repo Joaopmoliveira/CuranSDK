@@ -92,9 +92,11 @@ struct TrajecGeneration{
 
 struct RhytmicMotion : public curan::robotic::UserData{
 
+    Eigen::DiagonalMatrix<double, 6> gain;
+
     TrajecGeneration generator; 
 
-    RhytmicMotion() : generator{1.0 , 1.0 , 1.0 , 0.2 ,Eigen::Matrix<double,3,1>{{-0.63,0.0,0.294}}}{
+    RhytmicMotion() : generator{1.0 , 1.0 , 1.0 , 0.2 ,Eigen::Matrix<double,3,1>{{-0.63,0.0,0.294}}} , gain{10,10,10,10,10,10}{
 
     }
 
@@ -114,7 +116,7 @@ struct RhytmicMotion : public curan::robotic::UserData{
                                 0.0, 0.0 ,-1.0;
         Eigen::Matrix<double,3,3> error_matrix = desired_rotation_mat.transpose()*state.rotation;
         Eigen::AngleAxisd E_AxisAngle(error_matrix);
-        Eigen::Matrix<double,3,1> velocity_rotation = E_AxisAngle.angle()*state.rotation*E_AxisAngle.axis();
+        Eigen::Matrix<double,3,1> velocity_rotation = -E_AxisAngle.angle()*state.rotation*E_AxisAngle.axis();
 
         Eigen::Matrix<double,6,1> desired_velocity = Eigen::Matrix<double,6,1>::Zero();
         desired_velocity.block(0,0,3,1) = velocity_translation;
@@ -126,11 +128,9 @@ struct RhytmicMotion : public curan::robotic::UserData{
 	    Eigen::Matrix<double,7,6> jbar = state.invmassmatrix * state.jacobian.transpose() * lambda;
 	    Eigen::Matrix<double,7,7> nullSpaceTranslation = Eigen::Matrix<double,7,7>::Identity() - state.jacobian.transpose() * jbar.transpose();
 
-
         state.user_defined.block(0,0,6,1) = desired_velocity;
-        state.user_defined2 = state.jacobian.transpose()*lambda*10.0*(desired_velocity-current_velocity); //-nullSpaceTranslation*(state.massmatrix * 10 * state.dq);
+        state.user_defined2 = state.jacobian.transpose()*lambda*gain*(desired_velocity-current_velocity); //-nullSpaceTranslation*(state.massmatrix * 10 * state.dq);
         state.cmd_tau = state.user_defined2;
-        std::cout << state.cmd_tau.transpose() << "\n";
 
         /*
         The Java controller has two values which it reads, namely: 
