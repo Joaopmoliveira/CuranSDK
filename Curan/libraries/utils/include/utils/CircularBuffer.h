@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <vector>
+#include <algorithm>
 
 namespace curan {
 namespace utilities {
@@ -70,7 +71,7 @@ class CircularBuffer {
 
 public:
 
-	explicit CircularBuffer(size_t size, allocation alloc = allocation::LAZY_LINEAR_ALLOCATION) :
+	explicit CircularBuffer(size_t size, allocation alloc = allocation::PRE_ALLOCATE_LINEAR_ARRAY) :
 		buf_(size),
 		max_size_(size)
 	{ switch(alloc){
@@ -102,6 +103,37 @@ public:
     auto begin() { return buf_.begin(); }
     auto end() { return buf_.end(); }
 
+    template<class UnaryOp>
+    void operate(UnaryOp opt){
+        std::for_each(buf_.begin(),buf_.end(),opt);
+    }
+
+    template<class UnaryOp>
+    auto linear_view(UnaryOp opt){
+        if(full_){   
+            linear_buf_.resize(buf_.size()); 
+            std::copy(buf_.begin()+tail_,buf_.begin()+buf_.size(),linear_buf_.begin());
+            std::copy(buf_.begin(),buf_.begin()+tail_,linear_buf_.begin()+buf_.size()-tail_);
+            std::for_each(linear_buf_.begin(),linear_buf_.end(),opt);
+            return linear_buf_;
+        }
+        linear_buf_.resize(head_); 
+        std::copy(buf_.begin(),buf_.begin()+head_,linear_buf_.begin());
+        std::for_each(linear_buf_.begin(),linear_buf_.end(),opt);
+        return linear_buf_;
+    }
+
+    auto linear_view(){
+        if(full_){
+            std::copy(buf_.begin()+tail_,buf_.begin()+buf_.size(),linear_buf_.begin());
+            std::copy(buf_.begin(),buf_.begin()+tail_,linear_buf_.begin()+buf_.size()-tail_);
+            return linear_buf_;
+        }
+        linear_buf_.resize(head_);
+        std::copy(buf_.begin(),buf_.begin()+head_,linear_buf_.begin());
+        return linear_buf_;
+    }
+
 	void reset(){
         head_ = tail_;
 	    full_ = false;
@@ -123,6 +155,10 @@ public:
         if(full_)
             return max_size_;
 	    return (head_ >= tail_) ? head_ - tail_ :  max_size_ + head_ - tail_ ;
+    }
+
+    const T* data() {
+        return buf_.data();
     }
 
 private:
