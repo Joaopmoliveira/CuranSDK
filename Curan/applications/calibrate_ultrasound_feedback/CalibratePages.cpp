@@ -147,7 +147,7 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	processing = std::make_shared<ProcessingMessage>(image_display_pointer,igtlink_viewer_pointer, data);
 	processing->port = data.port;
 
-	auto error_plotter = Plotter::make(400,1);
+	auto error_plotter = Plotter::make(2000,1);
 	processing->plot = error_plotter.get();
 
 	auto plotter_and_viewer_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);

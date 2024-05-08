@@ -35,22 +35,25 @@ int main(int argc, char* argv[]) {
 		ceres::Solver::Summary summary;
 	};
 
+   	double lower_bound = -10.0;
+   	double upper_bound = +10.0;
+   	std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
+   	std::default_random_engine re;
+
 	initial_guess_and_cost initial_modifiable_cost;
 	initial_modifiable_cost.final_cost = std::numeric_limits<double>::max();
 	initial_modifiable_cost.initial_guess.resize(number_of_variables);
-
-	initial_guess_and_cost best_run = initial_modifiable_cost; 
 
 	curan::utilities::Job job{"solve wire optimization",[&](){
 
 		std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
 		curan::optim::WireData optimizationdata;
-		optimizationdata.wire_data.reserve(number_of_strings * processing->ringged_recorder.size());
+		
 
 		while(!processing->io_context.stopped()){
-			std::vector<ObservationEigenFormat> list_of_recorded_points;
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			std::vector<ObservationEigenFormat> list_of_recorded_points;
 			{
 				std::lock_guard<std::mutex> g{processing->mut};
 				list_of_recorded_points = processing->ringged_recorder.linear_view();
@@ -61,9 +64,8 @@ int main(int argc, char* argv[]) {
 				continue;
 			}
 
-			optimizationdata.wire_data.resize(number_of_strings * list_of_recorded_points.size());
+			optimizationdata.wire_data = std::vector<curan::optim::Observation>{};
 
-			size_t counter = 0;
 			for (const auto& f : list_of_recorded_points) {
 				curan::optim::Observation localobservation;
 				localobservation.flange_configuration.values[0] = f.flange_data(0, 0);
@@ -91,24 +93,15 @@ int main(int argc, char* argv[]) {
 					optimizationdata.wire_data.push_back(localobservation);
 					++wire_number;
 				}
-			++counter;
 		}
 
 		ceres::Solver::Options options;
 		options.max_num_iterations = 2500;
 		options.linear_solver_type = ceres::DENSE_QR;
-		options.minimizer_progress_to_stdout = true;
-
-   		double lower_bound = -10.0;
-   		double upper_bound = +10.0;
-   		std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
-   		std::default_random_engine re;
-
+		options.minimizer_progress_to_stdout = false;
 
 		ceres::Problem problem;
 		for (const auto& data : optimizationdata.wire_data) {
-			for (auto& val : initial_modifiable_cost.initial_guess)
-				val = unif(re);
 			ceres::CostFunction* cost_function =
 				new ceres::AutoDiffCostFunction<curan::optim::WiredResidual, 2, number_of_variables>(
 					new curan::optim::WiredResidual(data));
@@ -116,17 +109,13 @@ int main(int argc, char* argv[]) {
 		}
 
 		ceres::Solve(options, &problem, &initial_modifiable_cost.summary);
-		if(best_run.final_cost < initial_modifiable_cost.summary.final_cost){
-			initial_modifiable_cost.final_cost = initial_modifiable_cost.summary.final_cost;
-			best_run = initial_modifiable_cost;
-		}
-
+		initial_modifiable_cost.final_cost = initial_modifiable_cost.summary.final_cost;
 		std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-		if(processing->plot) processing->plot->append(SkPoint::Make(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count(),initial_modifiable_cost.summary.final_cost),0);
-		optimizationdata.wire_data.resize(0);
-
+		if(processing->plot) processing->plot->append(SkPoint::Make(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count(),(initial_modifiable_cost.final_cost)),0);
 		}
 	}};
+
+	shared_pool->submit(job);
 
 	page.update_page(viewer.get());
 
@@ -159,14 +148,14 @@ int main(int argc, char* argv[]) {
 		data.minimum_radius.load(), data.maximum_radius.load(), data.sweep_angle.load(),data.sigma_gradient.load(), 
 		data.variance.load(), data.disk_ratio.load(),data.threshold.load());
 
-	std::cout << best_run.summary.BriefReport() << "\n";
+	std::cout << initial_modifiable_cost.summary.BriefReport() << "\n";
 
-	double t1 = cos(best_run.initial_guess[2]);
-    double t2 = sin(best_run.initial_guess[2]);
-    double t3 = cos(best_run.initial_guess[1]);
-	double t4 = sin(best_run.initial_guess[1]);
-    double t5 = cos(best_run.initial_guess[0]);
-    double t6 = sin(best_run.initial_guess[0]);
+	double t1 = cos(initial_modifiable_cost.initial_guess[2]);
+    double t2 = sin(initial_modifiable_cost.initial_guess[2]);
+    double t3 = cos(initial_modifiable_cost.initial_guess[1]);
+	double t4 = sin(initial_modifiable_cost.initial_guess[1]);
+    double t5 = cos(initial_modifiable_cost.initial_guess[0]);
+    double t6 = sin(initial_modifiable_cost.initial_guess[0]);
 
 	Eigen::Matrix<double,4,4> transformation_matrix = Eigen::Matrix<double,4,4>::Identity();
 	transformation_matrix(0,0) = t1 * t3;
@@ -181,9 +170,9 @@ int main(int argc, char* argv[]) {
 	transformation_matrix(1,2) = t2 * t4 * t5 - t1 * t6;
 	transformation_matrix(2,2) = t3 * t5;
 
-	transformation_matrix(0,3) = best_run.initial_guess[3];
-	transformation_matrix(1,3) = best_run.initial_guess[4];
-	transformation_matrix(2,3) = best_run.initial_guess[5];
+	transformation_matrix(0,3) = initial_modifiable_cost.initial_guess[3];
+	transformation_matrix(1,3) = initial_modifiable_cost.initial_guess[4];
+	transformation_matrix(2,3) = initial_modifiable_cost.initial_guess[5];
 
 	std::cout << "Initial: \n" << Eigen::Matrix<double,4,4>::Identity() << std::endl;
 	std::cout << "Final: \n" << transformation_matrix << std::endl;
@@ -209,7 +198,7 @@ int main(int argc, char* argv[]) {
 	nlohmann::json calibration_data;
 	calibration_data["timestamp"] = return_current_time_and_date();
 	calibration_data["homogeneous_transformation"] = optimized_values.str();
-	calibration_data["optimization_error"] = best_run.summary.final_cost;
+	calibration_data["optimization_error"] = initial_modifiable_cost.summary.final_cost;
 
 	// write prettified JSON to another file
 	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/optimization_result.json");

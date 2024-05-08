@@ -41,7 +41,7 @@ drawablefunction ImageDisplay::draw() {
 			auto val = *old_image;
 			auto image_display_surface = (*old_image).image;
 			current_selected_image_rectangle = compute_bounded_rectangle(widget_rect,image_display_surface->width(),image_display_surface->height());
-
+			canvas->drawRect(current_selected_image_rectangle,paint_square);
 			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
 			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt);
 		}

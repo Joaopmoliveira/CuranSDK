@@ -5,6 +5,8 @@
 int main(){
     curan::utilities::CircularBuffer<double> buffer{4};
 
+    buffer.operate([](double& po){ po = -1.0;});
+
     std::cout << "linear view size: " << buffer.linear_view().size() << "\n";
 
     auto printlayout = [&](){
@@ -30,7 +32,9 @@ int main(){
 
     for(auto v : r){
         std::cout << "\n=========\n";
+        std::cout << "header before : " << buffer.head();
         buffer.put(std::move(v));
+        std::cout << " header after : " << buffer.head();
         printlayout();
         printlinearlayout();
     }

@@ -101,7 +101,7 @@ public:
     }   
 
     T head(){
-        return buf_[head_];
+        return buf_[ (head_-1) % max_size_];
     }
 
     T tail(){

@@ -117,7 +117,6 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		AccumulatorPixelType,
 		RadiusPixelType>;
 	auto houghFilter = HoughTransformFilterType::New();
-	std::cout << "checked size\n";
 	{
 		std::lock_guard<std::mutex> g{processor->mut};
 		if (processor->ringged_recorder.linear_view().size() == 0){
@@ -155,7 +154,6 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	ObservationEigenFormat observation_n;
 	CirclesListType::const_iterator itCircles = circles.begin();
 	Eigen::Matrix<double, 3, Eigen::Dynamic> segmented_wires;
-	std::cout << "checked size 2\n";
 	{
 		std::lock_guard<std::mutex> g{processor->mut};
 		if (processor->ringged_recorder.linear_view().size() == 0){
@@ -182,32 +180,26 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	for (size_t cols = 0; cols < 4; ++cols)
 		for (size_t lines = 0; lines < 4; ++lines)
 			observation_n.flange_data(lines, cols) = local_mat[lines][cols];
-	std::cout << "checked size 3\n";
 	{
 		std::lock_guard<std::mutex> g{processor->mut};
 		if (processor->ringged_recorder.linear_view().size() == 0 && processor->should_record) {
 			//if first time we assume that the matrix has the correct number of observations, i.e it has number_of_wires observations
 			observation_n.segmented_wires = segmented_wires;
-			std::cout << "put first\n";
 			processor->ringged_recorder.put(ObservationEigenFormat{observation_n});
-		}	
-		else {
+		} else {
 			if(processor->should_record){
-				std::cout << "check head\n";
 				auto head = processor->ringged_recorder.head();
 				std::cout << head.segmented_wires << std::endl;
-				auto possible_arrangement = rearrange_wire_geometry(segmented_wires, processor->ringged_recorder.head().segmented_wires,processor->threshold);
+				auto possible_arrangement = rearrange_wire_geometry(segmented_wires, head.segmented_wires,processor->threshold);
 				if (possible_arrangement) {
 					observation_n.segmented_wires = *possible_arrangement;
 					segmented_wires = observation_n.segmented_wires;
-					std::cout << "put second\n";
 					processor->ringged_recorder.put(ObservationEigenFormat{observation_n});
-			} else{
-				std::printf("possible arrangement failure \n");
+				} else{
+					std::printf("possible arrangement failure \n");
+				}
 			}
 		}
-
-	}
 	}
 
 	if (processor->show_circles.load()) {
