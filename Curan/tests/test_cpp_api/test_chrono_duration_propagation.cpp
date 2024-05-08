@@ -1,5 +1,6 @@
 #include <iostream>
 #include <chrono>
+#include <thread>
 
 struct A{
     std::chrono::nanoseconds duration;
@@ -9,6 +10,11 @@ struct A{
         duration = std::chrono::duration_cast<std::chrono::nanoseconds>(_Rel_time);
     }
 };
+
+
+void boo(){
+    std::cout << "hello\n";
+}
 
 int main(){
     A a{std::chrono::microseconds(1)};

@@ -120,6 +120,12 @@ public:
         other.my_pointer = nullptr;
     }
 
+    void operator= (T* in_my_pointer){
+        if(my_pointer!=nullptr)
+            delete my_pointer;
+        my_pointer = in_my_pointer;
+    }
+
     ~unique_ptr_mine(){
         if(my_pointer!=nullptr)
             delete my_pointer;

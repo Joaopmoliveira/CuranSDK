@@ -5,6 +5,8 @@
 int main(){
     curan::utilities::CircularBuffer<double> buffer{4};
 
+    std::cout << "linear view size: " << buffer.linear_view().size() << "\n";
+
     auto printlayout = [&](){
         std::cout << "->raw: ";
         for(const auto & val : buffer)
@@ -20,7 +22,7 @@ int main(){
     };
 
     std::array<double,10> r;
-    size_t i = 0;
+    double i = 0;
     for(auto& v : r){
         v = i;
         ++i;

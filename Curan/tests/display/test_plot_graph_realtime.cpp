@@ -30,15 +30,32 @@
 
 constexpr double minimum_spacing = 20;
 
+constexpr std::array<SkColor,6> colors = {SK_ColorRED,SK_ColorGREEN,SK_ColorBLUE,SK_ColorYELLOW,SK_ColorCYAN,SK_ColorMAGENTA};
+
 class Plotter : public  curan::ui::Drawable , public curan::utilities::Lockable, public curan::ui::SignalProcessor<Plotter> {
 
-    curan::utilities::CircularBuffer<SkPoint> buffer;
+    std::vector<curan::utilities::CircularBuffer<SkPoint>> buffers;
     std::vector<uint8_t> verbs;
     SkPath path;
+    SkColor background = SK_ColorWHITE;
+    
+
 public:
 
-static std::unique_ptr<Plotter> make(const size_t& plotter_size){
-	std::unique_ptr<Plotter> button = std::unique_ptr<Plotter>(new Plotter{plotter_size});
+inline SkColor get_background_color() {
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	return background;
+}
+
+inline Plotter& set_background_color(SkColor color) {
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	background = color;
+    return *(this);
+}
+
+
+static std::unique_ptr<Plotter> make(const size_t& plotter_size, const size_t& number_of_buffers){
+	std::unique_ptr<Plotter> button = std::unique_ptr<Plotter>(new Plotter{plotter_size,number_of_buffers});
 	return button;
 }
 
@@ -50,8 +67,9 @@ void compile() override {
 
 }
 
-void add(const SkPoint& in){
-    buffer.put(SkPoint{in});
+void append(const SkPoint& in,const size_t& index){
+    assert(index < buffers.size());
+    buffers[index].put(SkPoint{in});
 }
 
 curan::ui::drawablefunction draw() override{
@@ -62,43 +80,51 @@ curan::ui::drawablefunction draw() override{
         SkAutoCanvasRestore restore{canvas,true};
         auto widget_rect = get_position();
 
-        canvas->translate(widget_rect.fLeft,widget_rect.fTop);
-        
         SkPaint paint;
         paint.setAntiAlias(true);
+        paint.setStyle(SkPaint::kFill_Style);
+        paint.setColor(get_background_color());
+        canvas->drawRect(widget_rect,paint);
+
         paint.setStyle(SkPaint::kStroke_Style);
         paint.setColor(SK_ColorBLACK);
         paint.setStrokeWidth(1.0);
 
         const std::string x_label{"t"} ;
-        canvas->drawLine(SkPoint::Make(widget_rect.fLeft,widget_rect.height()),SkPoint::Make(widget_rect.fLeft+widget_rect.width(),widget_rect.fTop+widget_rect.height()),paint); // x 
+        canvas->drawLine(SkPoint::Make(widget_rect.fLeft,widget_rect.fTop+widget_rect.height()),SkPoint::Make(widget_rect.fLeft+widget_rect.width(),widget_rect.fTop+widget_rect.height()),paint); // x 
         canvas->drawSimpleText(x_label.data(),x_label.size(),SkTextEncoding::kUTF8,widget_rect.fLeft+widget_rect.width()-10.0f,widget_rect.fTop+widget_rect.height()-10.0f,SkFont{nullptr},paint); // draw variable name in middle of line
 
         const std::string y_label{"y"} ;
-        canvas->drawLine(SkPoint::Make(widget_rect.fLeft,widget_rect.height()),SkPoint::Make(widget_rect.fLeft,widget_rect.fLeft),paint); // y 
-        canvas->drawSimpleText(y_label.data(),y_label.size(),SkTextEncoding::kUTF8,10.0f,10.0f,SkFont{nullptr},paint); // draw variable name in midle of line
-
-        canvas->translate(10,10);
+        canvas->drawLine(SkPoint::Make(widget_rect.fLeft,widget_rect.fTop+widget_rect.height()),SkPoint::Make(widget_rect.fLeft,widget_rect.fTop),paint); // y 
+        canvas->drawSimpleText(y_label.data(),y_label.size(),SkTextEncoding::kUTF8,widget_rect.fLeft+10.0f,widget_rect.fTop+10.0f,SkFont{nullptr},paint); // draw variable name in midle of line
 
         double max_y = -100000.0;
         double max_x = -100000.0;
         double min_y =  100000.0;
         double min_x =  100000.0;
-        buffer.operate([&](SkPoint &in){
-            if(in.fX> max_x)
-                max_x = in.fX;
-            if(in.fX < min_x)
-                min_x = in.fX;
-            if(in.fY> max_y)
-                max_y = in.fY;
-            if(in.fY < min_y)
-                min_y = in.fY;
-        });
-        auto view = buffer.linear_view([&](SkPoint& in){ in.fX = widget_rect.width()*(in.fX-min_x)/(max_x-min_x); in.fY = widget_rect.height()*((max_y-in.fY)/(max_y-min_y));});
-        assert(verbs.size()>=view.size());
-        if(view.size()>0){
-            path = SkPath::Make(view.data(),view.size(),verbs.data(),view.size(),nullptr,0,SkPathFillType::kEvenOdd,true);
-            canvas->drawPath(path,paint);
+
+        for(auto & buff : buffers)
+            buff.operate([&](SkPoint &in){
+                if(in.fX> max_x)
+                    max_x = in.fX;
+                if(in.fX < min_x)
+                    min_x = in.fX;
+                if(in.fY> max_y)
+                    max_y = in.fY;
+                if(in.fY < min_y)
+                    min_y = in.fY;
+                });
+
+        size_t color_index = 0;
+        for(auto & buff : buffers){
+            paint.setColor(colors[color_index]);
+            auto view = buff.linear_view([&](SkPoint& in){ in.fX = widget_rect.fLeft+widget_rect.width()*(in.fX-min_x)/(max_x-min_x); in.fY = widget_rect.fTop+widget_rect.height()*((max_y-in.fY)/(max_y-min_y));});
+            assert(verbs.size()>=view.size());
+            if(view.size()>0){
+                path = SkPath::Make(view.data(),view.size(),verbs.data(),view.size(),nullptr,0,SkPathFillType::kEvenOdd,true);
+                canvas->drawPath(path,paint);
+            }
+            ++color_index;
         }
 	};
     return lamb;
@@ -139,16 +165,19 @@ curan::ui::callablefunction call() override{
 
 private:
 
-	Plotter(const size_t& buffer_size) : buffer{buffer_size}{
+	Plotter(const size_t& buffer_size, const size_t& number_of_buffers) : buffers{number_of_buffers,curan::utilities::CircularBuffer<SkPoint>{buffer_size}}{
         assert(buffer_size>0);
+        assert(number_of_buffers>0);
+        assert(colors.size()>=number_of_buffers);
         verbs.resize(buffer_size);
         for(auto& verb : verbs)
             verb = SkPath::kLine_Verb;
         verbs[0] = SkPath::kMove_Verb;
-        buffer.operate([&](SkPoint &in){
-            in.fX = 0.0;
-            in.fY = 0.0;
-        });
+        for(auto & buff : buffers)
+            buff.operate([&](SkPoint &in){
+                in.fX = 0.0;
+                in.fY = 0.0;
+            });
     }
 
 	Plotter(const Plotter& other) = delete;
@@ -166,9 +195,10 @@ int main()
         DisplayParams param{std::move(context), 1200, 800};
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-        auto plotter = Plotter::make(500);
+        auto plotter = Plotter::make(500,2);
 		SkRect rect = SkRect::MakeXYWH(450, 450, 300, 200);
 		plotter->set_position(rect);
+        plotter->set_background_color(SK_ColorCYAN);
 		plotter->compile();
 
 		auto caldraw = plotter->draw();
@@ -188,7 +218,8 @@ int main()
 			caldraw(canvas);
 
             time += 0.016f;
-            plotter->add(SkPoint::Make(time,std::cos(10.0f*time)));
+            plotter->append(SkPoint::Make(time,std::cos(10.0f*time)),0);
+            plotter->append(SkPoint::Make(time,std::sin(10.0f*time)),1);
             glfwPollEvents();
             auto signals = viewer->process_pending_signals();
 
