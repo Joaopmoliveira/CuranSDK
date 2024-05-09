@@ -9,6 +9,7 @@ src/ExtractRipple.cpp
 src/CompensateRipple.cpp
 src/LimitCycleController.cpp
 src/JointVelocityController.cpp
+src/ExtractRippleCrossMitigation.cpp
 )
 
 target_include_directories(robotutils

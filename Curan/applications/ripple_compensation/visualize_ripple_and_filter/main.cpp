@@ -1,5 +1,6 @@
 #include "robotutils/LBRController.h"
 #include "robotutils/ExtractRipple.h"
+#include "robotutils/ExtractRippleCrossMitigation.h"
 #include "robotutils/FilterRippleFirstHarmonic.h"
 #include "utils/Logger.h"
 #include "friUdpConnection.h"
@@ -138,7 +139,7 @@ void rendering(curan::robotic::RobotLBR& client){
 
 int main(){
 	std::signal(SIGINT, signal_handler);
-    std::unique_ptr<curan::robotic::ExtractRipple> handguinding_controller = std::make_unique<curan::robotic::ExtractRipple>();
+    std::unique_ptr<curan::robotic::ExtractRippleCrossMitigation> handguinding_controller = std::make_unique<curan::robotic::ExtractRippleCrossMitigation>();
     curan::robotic::RobotLBR client{handguinding_controller.get()};
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
