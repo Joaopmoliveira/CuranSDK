@@ -100,6 +100,14 @@ public:
         return buf_[old_tail];
     }   
 
+    T head(){
+        return buf_[ (head_-1) % max_size_];
+    }
+
+    T tail(){
+        return buf_[tail_];
+    }
+
     auto begin() { return buf_.begin(); }
     auto end() { return buf_.end(); }
 
@@ -125,6 +133,7 @@ public:
 
     auto linear_view(){
         if(full_){
+            linear_buf_.resize(buf_.size()); 
             std::copy(buf_.begin()+tail_,buf_.begin()+buf_.size(),linear_buf_.begin());
             std::copy(buf_.begin(),buf_.begin()+tail_,linear_buf_.begin()+buf_.size()-tail_);
             return linear_buf_;

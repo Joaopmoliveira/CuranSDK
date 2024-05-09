@@ -27,6 +27,7 @@ src/ImutableTextPanel.cpp
 src/ItemExplorer.cpp
 src/Loader.cpp
 src/RuntimeEffect.cpp
+src/Plotter.cpp
 )
 
 find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)

@@ -6,7 +6,7 @@ namespace robotic {
 void update_filter_properties(FilterProperties& filter_properties, const Observation& observation){
 	filter_properties.damper = (std::abs(observation.current_vel) < 0.2) ? std::pow(observation.current_vel / 0.2,2) : 1.0;
 	filter_properties.filtered_frequency = std::abs(observation.current_vel)*filter_properties.frequency;
-	filter_properties.cross_overlap = 1.0;
+	filter_properties.crosstalk_damper = 1.0;
 }
 
 void shift_filter_data(FilterData& data, const Observation& observation) {
@@ -25,7 +25,7 @@ void update_filter_data(FilterData& data, const Observation& observation) {
 double filter_implementation(const FilterProperties& properties, FilterData& data) {
 	const double A = 2.0 * properties.width * properties.frequency * data.delta;
 	const double B = 4.0 + properties.frequency * properties.frequency * data.delta * data.delta;
-	data.yf[2] = (properties.damper*properties.cross_overlap / (A + B)) * (A * data.y[2] - A * data.y[0] - 2.0 * (B - 8.0) * data.yf[1] - (B - A) * data.yf[0]);
+	data.yf[2] = (properties.damper*properties.crosstalk_damper / (A + B)) * (A * data.y[2] - A * data.y[0] - 2.0 * (B - 8.0) * data.yf[1] - (B - A) * data.yf[0]);
 	return data.yf[2];
 }
 
