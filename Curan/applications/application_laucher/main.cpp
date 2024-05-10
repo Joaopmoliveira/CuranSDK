@@ -23,18 +23,23 @@ asio::io_context* ptr_ctx = nullptr;
 
 std::unique_ptr<boost::process::child> child_process;
 boost::process::ipstream out;
+std::atomic<bool> signal_untriggered = true;
+
 
 void signal_handler(int signal)
 {
-	if (ptr_ctx) ptr_ctx->stop();
+	if (child_process) child_process->terminate();
+	child_process = nullptr;
+	signal_untriggered.store(false,std::memory_order_relaxed);
 }
 
-int viewer_code(asio::io_context& io_context) {
+int main() {
 	try {
 		using namespace curan::ui;
+		std::signal(SIGINT, signal_handler);
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 		std::unique_ptr<Context> context = std::make_unique<Context>();;
-		DisplayParams param{ std::move(context),2200,1800 };
+		DisplayParams param{ std::move(context)};
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 	    auto button1 = Button::make("Temporal Calibration",resources);
@@ -159,7 +164,7 @@ int viewer_code(asio::io_context& io_context) {
 
 		viewer->set_minimum_size(page.minimum_size());
 
-		while (!glfwWindowShouldClose(viewer->window) && !ptr_ctx->stopped()) {
+		while (!glfwWindowShouldClose(viewer->window) && signal_untriggered.load(std::memory_order_relaxed)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
 
@@ -188,25 +193,4 @@ int viewer_code(asio::io_context& io_context) {
 		std::cout << "Failed: " << e.what() << std::endl;
 		return 1;
 	}
-}
-
-int main() {
-	try {
-		std::signal(SIGINT, signal_handler);
-		asio::io_context io_context;
-		ptr_ctx = &io_context;
-		std::thread th{[&](){ viewer_code(io_context);}};
-
-		io_context.run();
-		th.join();
-	}
-	catch (std::exception& e) {
-		std::cout << "exception thrown : " << e.what() << std::endl;
-		return 1;
-	}
-	catch (...) {
-		std::cout << "exception thrown : " << std::endl;
-		return 1;
-	}
-	return 0;
 }

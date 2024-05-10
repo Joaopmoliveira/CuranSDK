@@ -102,6 +102,14 @@ template< class Rep, class Period>
 	return value;
 }
 
+[[nodiscard]] std::optional<T> back() {
+	std::lock_guard<std::mutex> lk(mut);
+	if (data_queue.empty())
+		return std::nullopt;
+	auto value = data_queue.back();
+	return value;
+}
+
 [[nodiscard]] bool empty(){
 	std::lock_guard<std::mutex> lk(mut);
 	return data_queue.empty();

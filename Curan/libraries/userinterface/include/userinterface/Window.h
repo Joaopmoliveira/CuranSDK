@@ -141,8 +141,20 @@ struct DisplayParams {
 		, fEnableBinaryArchive(false)
 		, cxt{ std::move(cxt) }
 		, windowName{"NoName"}
-		, width{ width }
-		, height{height}
+		, window_size_info{std::make_pair(width,height)}
+	{}
+
+	DisplayParams(std::unique_ptr<Context> cxt)
+		: fColorType(kN32_SkColorType)
+		, fColorSpace(SkColorSpace::MakeSRGB())
+		, fMSAASampleCount(1)
+		, fSurfaceProps(0, kRGB_H_SkPixelGeometry)
+		, fDisableVsync(false)
+		, fDelayDrawableAcquisition(false)
+		, fEnableBinaryArchive(false)
+		, cxt{ std::move(cxt) }
+		, windowName{"NoName"}
+		, window_size_info{true}
 	{}
 
 	SkColorType         fColorType;
@@ -154,8 +166,7 @@ struct DisplayParams {
 	bool                fDelayDrawableAcquisition;
 	bool                fEnableBinaryArchive;
 	std::unique_ptr<Context> cxt;
-	int width;
-	int height;
+	std::variant<std::pair<int,int>,bool> window_size_info;
 	std::string windowName;
 };
 

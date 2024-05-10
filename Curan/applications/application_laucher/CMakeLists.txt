@@ -14,7 +14,6 @@ target_include_directories(ApplicationLauncher PUBLIC ${Boost_INCLUDE_DIRS})
 
 target_link_libraries(ApplicationLauncher PUBLIC
 userinterface
-processmanagement
 ${ITK_LIBRARIES}
 ${Boost_LIBRARIES}
 )

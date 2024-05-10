@@ -1,5 +1,6 @@
 #include "userinterface/Window.h"
 #include "utils/Logger.h"
+#include "utils/Overloading.h"
 
 namespace curan {
 namespace ui {
@@ -7,7 +8,7 @@ namespace ui {
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const int EXTRA_BACK_BUFFER = 1;
 
-Window::Window(DisplayParams&& pars) : params{ std::move(pars) }, width{ params.width }, height{ params.height }, windowName{params.windowName} {
+Window::Window(DisplayParams&& pars) : params{ std::move(pars) }, width{ 1000 }, height{ 1000 }, windowName{params.windowName} {
 	context = std::move(params.cxt);
 	params.cxt = nullptr;
 	bool val = initialize();
@@ -124,8 +125,28 @@ void Window::connect_handler() {
 bool Window::initialize()
 {
 	VkResult res;
-	// create a glfw window
-	window = glfwCreateWindow(width, height, windowName.c_str(), nullptr, nullptr);
+	std::visit(curan::utilities::overloaded{
+		[&]
+		(const std::pair<int,int> &size){
+			window = glfwCreateWindow(size.first, size.second, windowName.c_str(), nullptr, nullptr);
+		},
+		[&](const bool &) { 
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			int x_pos = 0;
+			int y_pos = 0;
+			glfwGetMonitorWorkarea (monitor,&x_pos, &y_pos,&width,&height);
+			window = glfwCreateWindow(width, height, windowName.c_str(),nullptr, nullptr);
+		}},
+		params.window_size_info
+	);
+
+	if(!window)
+		throw std::runtime_error("failure to create window");
+
+	glfwGetWindowSize(window, &width, &height);
+	
+	//window = glfwCreateWindow(width, height, windowName.c_str(), glfwGetPrimaryMonitor(), nullptr);
+	
 	glfwSetWindowUserPointer(window, this);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 

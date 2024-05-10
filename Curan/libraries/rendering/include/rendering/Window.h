@@ -14,6 +14,8 @@
 namespace curan {
     namespace renderable {
 
+        constexpr bool full_screen_mode = true;
+
         struct Window {
             vsg::ref_ptr<vsg::Window> window;
             vsg::ref_ptr<vsg::WindowTraits> traits;

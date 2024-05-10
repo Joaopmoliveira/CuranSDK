@@ -29,7 +29,7 @@ find_package(Ceres CONFIG REQUIRED)
 find_package(unofficial-skia CONFIG REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
-find_package(Boost COMPONENTS filesystem interprocess)
+find_package(Boost COMPONENTS filesystem)
 
 #Externally provided targets
 add_subdirectory(third_party)

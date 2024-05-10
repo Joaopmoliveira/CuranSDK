@@ -96,8 +96,7 @@ try{
    info.is_debug = false;
    info.screen_number = 0;
    info.title = "myviewer";
-   curan::renderable::Window::WindowSize size_window{2000, 1200};
-   info.window_size = size_window;
+   curan::renderable::Window::WindowSize size_window{curan::renderable::full_screen_mode};
    curan::renderable::Window window{info};
    robot_state->window_pointer = &window;
 
@@ -168,6 +167,7 @@ try{
    std::thread communication_thread(communication_callable);
 
    window.run();
+   
    robot_state->kill_yourself();
    communication_thread.join();
 

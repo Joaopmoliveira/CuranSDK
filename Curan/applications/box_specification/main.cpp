@@ -69,8 +69,7 @@ try{
    info.screen_number = 0;
    info.title = "myviewer";
    info.imgui_interface = ui_interface;
-   curan::renderable::Window::WindowSize size{2000, 1200};
-   info.window_size = size;
+   curan::renderable::Window::WindowSize size{curan::renderable::full_screen_mode};
    curan::renderable::Window window{info};
    robot_state->window_pointer = &window;
 
