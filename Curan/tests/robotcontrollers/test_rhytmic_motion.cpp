@@ -109,7 +109,7 @@ struct RhytmicMotion : public curan::robotic::UserData{
         static Eigen::Matrix<double,7,1> equilibrium_joint_pos = state.q;
         
         
-        Eigen::Matrix<double,3,1> velocity_translation = generator.compute<FixedPlane::PLANE_Y>(state.translation);
+        Eigen::Matrix<double,3,1> velocity_translation = generator.compute<FixedPlane::PLANE_X>(state.translation);
         Eigen::Matrix<double,3,3> desired_rotation_mat;
         desired_rotation_mat << 0.0, 1.0 , 0.0 ,
                                 1.0, 0.0 , 0.0 ,
