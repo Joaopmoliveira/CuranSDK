@@ -19,7 +19,6 @@ target_link_libraries(RealTimeRobotBoxSpecifier
 PUBLIC
 ${ITK_LIBRARIES}
 communication
-processmanagement
 imageprocessing
 KukaRobotLibrary 
 FRILibrary

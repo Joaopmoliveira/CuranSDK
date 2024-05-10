@@ -10,9 +10,12 @@ target_compile_definitions(ApplicationLauncher PRIVATE CURAN_COPIED_RESOURCE_PAT
 add_compile_definitions(ApplicationLauncher CURAN_BINARY_LOCATION="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_compile_definitions(ApplicationLauncher CURAN_BINARY_SUFFIX="${CMAKE_EXECUTABLE_SUFFIX}")
 
+target_include_directories(ApplicationLauncher PUBLIC ${Boost_INCLUDE_DIRS})
+
 target_link_libraries(ApplicationLauncher PUBLIC
 userinterface
 processmanagement
 ${ITK_LIBRARIES}
+${Boost_LIBRARIES}
 )
 

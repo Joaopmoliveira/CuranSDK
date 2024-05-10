@@ -10,7 +10,6 @@
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Overlay.h"
 #include "userinterface/widgets/Loader.h"
-#include "processmanagement/SingleChildParent.h"
 #include "utils/Logger.h"
 #include "utils/Overloading.h"
 #include <variant>
@@ -18,15 +17,19 @@
 
 #include <iostream>
 #include <thread>
+#include <boost/process.hpp>
 
 asio::io_context* ptr_ctx = nullptr;
+
+std::unique_ptr<boost::process::child> child_process;
+boost::process::ipstream out;
 
 void signal_handler(int signal)
 {
 	if (ptr_ctx) ptr_ctx->stop();
 }
 
-int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* parent) {
+int viewer_code(asio::io_context& io_context) {
 	try {
 		using namespace curan::ui;
 		IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
@@ -40,10 +43,13 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
                 .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button1->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/TemporalCalibration" CURAN_BINARY_SUFFIX);
+			if(!child_process){
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/TemporalCalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+				inbut->set_waiting_color(SK_ColorGREEN);
 			} else {
-				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+				inbut->set_waiting_color(SK_ColorRED);
+				child_process->terminate();
+				child_process = nullptr;
 			}
 		});
 
@@ -53,10 +59,13 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
                 .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button2->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/Ultrasoundcalibration" CURAN_BINARY_SUFFIX);
+			if(!child_process){
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/Ultrasoundcalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+				inbut->set_waiting_color(SK_ColorGREEN);
 			} else {
-				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+				inbut->set_waiting_color(SK_ColorRED);
+				child_process->terminate();
+				child_process = nullptr;
 			}
 		});
 
@@ -66,10 +75,13 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
                 .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button3->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/RealTimeRobotBoxSpecifier" CURAN_BINARY_SUFFIX);
+			if(!child_process){
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RealTimeRobotBoxSpecifier" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+				inbut->set_waiting_color(SK_ColorGREEN);
 			} else {
-				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+				inbut->set_waiting_color(SK_ColorRED);
+				child_process->terminate();
+				child_process = nullptr;
 			}
 		});
 
@@ -79,10 +91,13 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
                 .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button4->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/RealTimeRobotReconstructor" CURAN_BINARY_SUFFIX);
+			if(!child_process){
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RealTimeRobotReconstructor" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+				inbut->set_waiting_color(SK_ColorGREEN);
 			} else {
-				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+				inbut->set_waiting_color(SK_ColorRED);
+				child_process->terminate();
+				child_process = nullptr;
 			}
 		});
 
@@ -92,10 +107,13 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
                 .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button5->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/RoboticRegistration" CURAN_BINARY_SUFFIX);
+			if(!child_process){
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RoboticRegistration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+				inbut->set_waiting_color(SK_ColorGREEN);
 			} else {
-				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+				inbut->set_waiting_color(SK_ColorRED);
+				child_process->terminate();
+				child_process = nullptr;
 			}
 		});
 
@@ -105,10 +123,13 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
                 .set_waiting_color(SK_ColorRED)
                 .set_size(SkRect::MakeWH(300, 300));
 		button6->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(!parent->handles){
-				parent->async_lauch_process([inbut](bool sucess) { if(sucess) inbut->set_waiting_color(SK_ColorGREEN); }, CURAN_BINARY_LOCATION"/InteroperativeNavigation" CURAN_BINARY_SUFFIX);
+			if(!child_process){
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/InteroperativeNavigation" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+				inbut->set_waiting_color(SK_ColorGREEN);
 			} else {
-				parent->async_terminate(std::chrono::milliseconds(300),[inbut,parent](){ inbut->set_waiting_color(SK_ColorRED);});
+				inbut->set_waiting_color(SK_ColorRED);
+				child_process->terminate();
+				child_process = nullptr;
 			}
 		});
 
@@ -171,17 +192,10 @@ int viewer_code(asio::io_context& io_context,curan::process::ProcessLaucher* par
 
 int main() {
 	try {
-		using namespace curan::communication;
 		std::signal(SIGINT, signal_handler);
 		asio::io_context io_context;
 		ptr_ctx = &io_context;
-		auto parent = std::make_unique<curan::process::ProcessLaucher>(io_context, std::chrono::milliseconds(100),std::chrono::milliseconds(0), 10);
-
-		std::thread th{[&]()
-			{ 
-				viewer_code(io_context,parent.get());
-			}	
-		};
+		std::thread th{[&](){ viewer_code(io_context);}};
 
 		io_context.run();
 		th.join();

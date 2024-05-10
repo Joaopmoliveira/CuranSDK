@@ -29,6 +29,7 @@ find_package(Ceres CONFIG REQUIRED)
 find_package(unofficial-skia CONFIG REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
+find_package(Boost COMPONENTS filesystem interprocess)
 
 #Externally provided targets
 add_subdirectory(third_party)
@@ -54,7 +55,7 @@ add_custom_target(
   DEPENDS resources
 )
 
-#Add internal Curan libraries to the list of known targets
+# Add internal Curan libraries to the list of known targets
 add_subdirectory(libraries)
 
 # Add medical applications
