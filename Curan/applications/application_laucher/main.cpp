@@ -26,6 +26,9 @@ boost::process::ipstream out;
 std::atomic<bool> signal_untriggered = true;
 
 
+constexpr auto waiting_color_active = SkColorSetARGB(120, 0, 255, 0);
+constexpr auto waiting_color_inactive = SkColorSetARGB(120, 255, 0, 0);
+
 void signal_handler(int signal)
 {
 	if (child_process) child_process->terminate();
@@ -45,14 +48,14 @@ int main() {
 	    auto button1 = Button::make("Temporal Calibration",resources);
 	    button1->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorRED)
+                .set_waiting_color(waiting_color_inactive)
                 .set_size(SkRect::MakeWH(300, 300));
 		button1->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/TemporalCalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
-				inbut->set_waiting_color(SK_ColorGREEN);
+				inbut->set_waiting_color(waiting_color_active);
 			} else {
-				inbut->set_waiting_color(SK_ColorRED);
+				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 			}
@@ -61,14 +64,14 @@ int main() {
 	    auto button2 = Button::make("Spatial Calibration",resources);
 	   	button2->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorRED)
+                .set_waiting_color(waiting_color_inactive)
                 .set_size(SkRect::MakeWH(300, 300));
 		button2->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/Ultrasoundcalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
-				inbut->set_waiting_color(SK_ColorGREEN);
+				inbut->set_waiting_color(waiting_color_active);
 			} else {
-				inbut->set_waiting_color(SK_ColorRED);
+				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 			}
@@ -77,14 +80,14 @@ int main() {
 	    auto button3 = Button::make("Volume ROI",resources);
 	   	button3->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorRED)
+                .set_waiting_color(waiting_color_inactive)
                 .set_size(SkRect::MakeWH(300, 300));
 		button3->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RealTimeRobotBoxSpecifier" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
-				inbut->set_waiting_color(SK_ColorGREEN);
+				inbut->set_waiting_color(waiting_color_active);
 			} else {
-				inbut->set_waiting_color(SK_ColorRED);
+				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 			}
@@ -93,14 +96,14 @@ int main() {
 		auto button4 = Button::make("Reconstruction",resources);
 	   	button4->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorRED)
+                .set_waiting_color(waiting_color_inactive)
                 .set_size(SkRect::MakeWH(300, 300));
 		button4->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RealTimeRobotReconstructor" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
-				inbut->set_waiting_color(SK_ColorGREEN);
+				inbut->set_waiting_color(waiting_color_active);
 			} else {
-				inbut->set_waiting_color(SK_ColorRED);
+				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 			}
@@ -109,14 +112,14 @@ int main() {
 		auto button5 = Button::make("Registration",resources);
 	   	button5->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorRED)
+                .set_waiting_color(waiting_color_inactive)
                 .set_size(SkRect::MakeWH(300, 300));
 		button5->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RoboticRegistration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
-				inbut->set_waiting_color(SK_ColorGREEN);
+				inbut->set_waiting_color(waiting_color_active);
 			} else {
-				inbut->set_waiting_color(SK_ColorRED);
+				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 			}
@@ -125,14 +128,14 @@ int main() {
 		auto button6 = Button::make("Neuro Navigation",resources);
 	   	button6->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(SK_ColorRED)
+                .set_waiting_color(waiting_color_inactive)
                 .set_size(SkRect::MakeWH(300, 300));
 		button6->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/InteroperativeNavigation" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
-				inbut->set_waiting_color(SK_ColorGREEN);
+				inbut->set_waiting_color(waiting_color_active);
 			} else {
-				inbut->set_waiting_color(SK_ColorRED);
+				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 			}
