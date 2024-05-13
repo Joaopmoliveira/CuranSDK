@@ -14,7 +14,6 @@ struct ExtractRippleCrossMitigation : public UserData{
 
     std::array<joint_filters,number_of_joints> first_harmonic;
     std::array<joint_filters,number_of_joints> second_harmonic;
-    std::array<joint_filters,number_of_joints> third_harmonic;
     EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
 };
 
