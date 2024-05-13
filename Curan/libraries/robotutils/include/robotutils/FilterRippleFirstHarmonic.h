@@ -43,7 +43,7 @@ struct FilterProperties {
 	double frequency;
 	double filtered_frequency;
 
-	FilterProperties(double in_width = 5.0, double in_frequency = 320.0) : filtered_frequency{1.0} , damper{1.0}, crosstalk_damper{1.0} , width{ in_width }, frequency{ in_frequency } {};
+	FilterProperties(double in_width = 1.0, double in_frequency = 320.0) : filtered_frequency{1.0} , damper{1.0}, crosstalk_damper{1.0} , width{ in_width }, frequency{ in_frequency } {};
 };
 
 struct FilterData {

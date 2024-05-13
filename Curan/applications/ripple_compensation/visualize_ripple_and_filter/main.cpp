@@ -139,7 +139,7 @@ void rendering(curan::robotic::RobotLBR& client){
 
 int main(){
 	std::signal(SIGINT, signal_handler);
-    std::unique_ptr<curan::robotic::ExtractRippleCrossMitigation> handguinding_controller = std::make_unique<curan::robotic::ExtractRippleCrossMitigation>();
+    std::unique_ptr<curan::robotic::ExtractRipple> handguinding_controller = std::make_unique<curan::robotic::ExtractRipple>();
     curan::robotic::RobotLBR client{handguinding_controller.get()};
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
