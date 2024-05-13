@@ -33,8 +33,11 @@ struct EigenState{
     Eigen::Matrix<double,6,number_of_joints> jacobian;
     Eigen::Matrix<double,number_of_joints,number_of_joints> massmatrix;
     Eigen::Matrix<double,number_of_joints,number_of_joints> invmassmatrix;
+
     Eigen::Matrix<double,number_of_joints,1> user_defined;
     Eigen::Matrix<double,number_of_joints,1> user_defined2;
+    Eigen::Matrix<double,number_of_joints,1> user_defined3;
+    Eigen::Matrix<double,number_of_joints,1> user_defined4;
 
     double sampleTime{1e-3}; 
 
@@ -84,6 +87,8 @@ struct State{
 
     std::array<double,number_of_joints> user_defined;
     std::array<double,number_of_joints> user_defined2;
+    std::array<double,number_of_joints> user_defined3;
+    std::array<double,number_of_joints> user_defined4;
     double sampleTime{1e-3};
     bool initialized{false};
 

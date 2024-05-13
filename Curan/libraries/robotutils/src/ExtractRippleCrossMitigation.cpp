@@ -33,23 +33,32 @@ namespace robotic {
             // frequencies of the previous filter as they are applied, we then pass an iterator
             // to this array 
             std::array<double,number_of_joints*2> previous_filtered_joint_frequencies;
+            std::array<double,number_of_joints*2> joints_to_see_later;
+            auto post_recording_stuff = joints_to_see_later.begin();
             auto processed_frequencies = previous_filtered_joint_frequencies.begin();
             double filtered_joint_torque{0.0};
-            size_t index_of_processed_joint = 0;
             for(size_t cross_phenomena_j = 0; cross_phenomena_j < number_of_joints;++cross_phenomena_j){
-                double filtered_torque_joint_i = run_filter(first_harmonic[torque_joint_i][cross_phenomena_j].first, first_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],state.tau[torque_joint_i]},previous_filtered_joint_frequencies.begin(),processed_frequencies);
+                double filtered_torque_joint_i = run_filter(first_harmonic[torque_joint_i][cross_phenomena_j].first, 
+                                                            first_harmonic[torque_joint_i][cross_phenomena_j].second, 
+                                                            { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],state.tau[torque_joint_i]},
+                                                            previous_filtered_joint_frequencies.begin(),processed_frequencies);
+                *post_recording_stuff = first_harmonic[torque_joint_i][cross_phenomena_j].second.crosstalk_damper*first_harmonic[torque_joint_i][cross_phenomena_j].second.damper;
                 filtered_joint_torque += filtered_torque_joint_i;
                 *processed_frequencies = first_harmonic[torque_joint_i][cross_phenomena_j].second.filtered_frequency;
                 ++processed_frequencies;
-                ++index_of_processed_joint;
+                ++post_recording_stuff;
             }
 
             for(size_t cross_phenomena_j = 0; cross_phenomena_j < number_of_joints;++cross_phenomena_j){
-                double filtered_torque_joint_i = run_filter(second_harmonic[torque_joint_i][cross_phenomena_j].first, second_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],state.tau[torque_joint_i]},previous_filtered_joint_frequencies.begin(),processed_frequencies);
+                double filtered_torque_joint_i = run_filter(second_harmonic[torque_joint_i][cross_phenomena_j].first, 
+                                                            second_harmonic[torque_joint_i][cross_phenomena_j].second, 
+                                                            { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],state.tau[torque_joint_i]},
+                                                            previous_filtered_joint_frequencies.begin(),processed_frequencies);
+                *post_recording_stuff = second_harmonic[torque_joint_i][cross_phenomena_j].second.crosstalk_damper*second_harmonic[torque_joint_i][cross_phenomena_j].second.damper;
                 filtered_joint_torque += filtered_torque_joint_i;
-                *processed_frequencies = first_harmonic[torque_joint_i][cross_phenomena_j].second.filtered_frequency;
+                *processed_frequencies = second_harmonic[torque_joint_i][cross_phenomena_j].second.filtered_frequency;
                 ++processed_frequencies;
-                ++index_of_processed_joint;
+                ++post_recording_stuff;
             }
 
             state.user_defined[torque_joint_i] = state.tau[torque_joint_i]-filtered_joint_torque;

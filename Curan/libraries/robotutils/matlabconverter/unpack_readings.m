@@ -20,8 +20,10 @@ measurments.rotation = reshape(str2num(decoded_information.rotation),[3 3 n_read
 measurments.tau = str2num(decoded_information.tau); 
 measurments.tau_ext = str2num(decoded_information.tau_ext); 
 measurments.translation = str2num(decoded_information.translation); 
+
 measurments.userdef = str2num(decoded_information.userdef); 
-
-
+measurments.userdef2 = str2num(decoded_information.userdef2); 
+measurments.userdef3 = str2num(decoded_information.userdef3); 
+measurments.userdef4 = str2num(decoded_information.userdef4); 
 
 end

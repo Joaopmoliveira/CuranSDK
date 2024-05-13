@@ -62,6 +62,8 @@ void State::convertFrom(const EigenState& state){
     }
     user_defined = convert<double,number_of_joints>(state.user_defined);
     user_defined2 = convert<double,number_of_joints>(state.user_defined2);
+    user_defined3 = convert<double,number_of_joints>(state.user_defined3);
+    user_defined4 = convert<double,number_of_joints>(state.user_defined4);
     sampleTime = state.sampleTime;
 }
 
@@ -86,6 +88,8 @@ EigenState State::converteigen(){
     }
     converted_state.user_defined = convert(user_defined);
     converted_state.user_defined2 = convert(user_defined2);
+    converted_state.user_defined3 = convert(user_defined3);
+    converted_state.user_defined4 = convert(user_defined4);
     converted_state.sampleTime = sampleTime;
     return converted_state;
 }
@@ -302,6 +306,8 @@ std::ostream& operator<<(std::ostream& os, const std::list<State>& cont)
     Eigen::Matrix<double,number_of_joints*number_of_joints,Eigen::Dynamic> arr_massmatrix = Eigen::Matrix<double,number_of_joints*number_of_joints,Eigen::Dynamic>::Zero(number_of_joints*number_of_joints,cont.size());
     Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
     Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined_2 = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined_3 = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined_4 = Eigen::Matrix<double,number_of_joints,Eigen::Dynamic>::Zero(number_of_joints,cont.size());
     
     auto begin = cont.begin();
     for(size_t i=0; begin!=cont.end(); ++i,++begin){
@@ -321,6 +327,8 @@ std::ostream& operator<<(std::ostream& os, const std::list<State>& cont)
         arr_massmatrix.col(i) = convert((*begin).massmatrix);
         arr_user_defined.col(i) = convert((*begin).user_defined);
         arr_user_defined_2.col(i) = convert((*begin).user_defined2);
+        arr_user_defined_3.col(i) = convert((*begin).user_defined3);
+        arr_user_defined_4.col(i) = convert((*begin).user_defined4);
     }
 
     nlohmann::json measurments;
@@ -369,6 +377,12 @@ std::ostream& operator<<(std::ostream& os, const std::list<State>& cont)
     ss = std::stringstream{};
     ss << arr_user_defined_2;
     measurments["userdef2"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_user_defined_3;
+    measurments["userdef3"] = ss.str();
+    ss = std::stringstream{};
+    ss << arr_user_defined_4;
+    measurments["userdef4"] = ss.str();
     os << measurments.dump();
     return os;
 } 
