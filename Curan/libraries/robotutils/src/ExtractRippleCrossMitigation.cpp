@@ -32,23 +32,27 @@ namespace robotic {
             // this array is always initialized to zero, and its filled with the 
             // frequencies of the previous filter as they are applied, we then pass an iterator
             // to this array 
-            std::array<double,number_of_joints*2> previous_filtered_joints;
-            auto processed_frequencies = previous_filtered_joints.begin();
-            double initial_torque_joint_i = state.tau[torque_joint_i];
-            double current_torque_joint_i = initial_torque_joint_i;
+            std::array<double,number_of_joints*2> previous_filtered_joint_frequencies;
+            auto processed_frequencies = previous_filtered_joint_frequencies.begin();
+            double filtered_joint_torque{0.0};
+            size_t index_of_processed_joint = 0;
             for(size_t cross_phenomena_j = 0; cross_phenomena_j < number_of_joints;++cross_phenomena_j){
-                double filtered_torque_joint_i = run_filter(first_harmonic[torque_joint_i][cross_phenomena_j].first, first_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],current_torque_joint_i},previous_filtered_joints.begin(),processed_frequencies);
+                double filtered_torque_joint_i = run_filter(first_harmonic[torque_joint_i][cross_phenomena_j].first, first_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],state.tau[torque_joint_i]},previous_filtered_joint_frequencies.begin(),processed_frequencies);
+                filtered_joint_torque += filtered_torque_joint_i;
                 *processed_frequencies = first_harmonic[torque_joint_i][cross_phenomena_j].second.filtered_frequency;
                 ++processed_frequencies;
-                current_torque_joint_i -= filtered_torque_joint_i;
+                ++index_of_processed_joint;
             }
+
             for(size_t cross_phenomena_j = 0; cross_phenomena_j < number_of_joints;++cross_phenomena_j){
-                double filtered_torque_joint_i = run_filter(second_harmonic[torque_joint_i][cross_phenomena_j].first, second_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],current_torque_joint_i},previous_filtered_joints.begin(),processed_frequencies);
+                double filtered_torque_joint_i = run_filter(second_harmonic[torque_joint_i][cross_phenomena_j].first, second_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],state.tau[torque_joint_i]},previous_filtered_joint_frequencies.begin(),processed_frequencies);
+                filtered_joint_torque += filtered_torque_joint_i;
                 *processed_frequencies = first_harmonic[torque_joint_i][cross_phenomena_j].second.filtered_frequency;
                 ++processed_frequencies;
-                current_torque_joint_i -= filtered_torque_joint_i;
+                ++index_of_processed_joint;
             }
-            state.user_defined[torque_joint_i] = current_torque_joint_i;
+
+            state.user_defined[torque_joint_i] = state.tau[torque_joint_i]-filtered_joint_torque;
         }
         
         prev_state = state;
