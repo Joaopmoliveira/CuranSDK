@@ -81,8 +81,9 @@ void update_filter_properties(FilterProperties& filter_properties, const Observa
 	filter_properties.log_filtered_frequency = std::log10(std::abs(observation.current_vel)*filter_properties.frequency);
 	filter_properties.crosstalk_damper = 1.0;
 	while(first!=last){
-		typename std::iterator_traits<Iter>::value_type tmp = *first;
-		filter_properties.crosstalk_damper *= 1.0-std::exp((-1.0/(covariance*covariance))*std::pow(filter_properties.log_filtered_frequency-tmp,2.0));
+		double tmp = *first;
+		double powered_diff_mean = (-1.0/(covariance*covariance))*std::pow(filter_properties.log_filtered_frequency-tmp,2.0);
+		filter_properties.crosstalk_damper *= 1.0-std::exp(std::max(-30.0,powered_diff_mean));
 		++first;
 	}
 }
