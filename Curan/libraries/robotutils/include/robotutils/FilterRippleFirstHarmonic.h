@@ -10,7 +10,7 @@
 namespace curan {
 namespace robotic {
 
-constexpr double covariance = 40.0;
+constexpr double covariance = 2.0;
 
 struct FilterProperties {
 	/*
@@ -41,11 +41,11 @@ struct FilterProperties {
 	trying to filter the first harmonic 
 	*/
 	double frequency;
-	double filtered_frequency;
+	double log_filtered_frequency;
 
 	FilterProperties(double in_width = 5.0, 
 					 double in_frequency = 320.0) : 
-							filtered_frequency{1.0} , 
+							log_filtered_frequency{1.0} , 
 							damper{1.0}, 
 							crosstalk_damper{1.0} , 
 							width{ in_width }, 
@@ -78,11 +78,11 @@ void update_filter_properties(FilterProperties& filter_properties, const Observa
 template<typename Iter>
 void update_filter_properties(FilterProperties& filter_properties, const Observation& observation, Iter first, Iter last){
 	filter_properties.damper = (std::abs(observation.current_vel) < 0.2) ? std::pow(observation.current_vel / 0.2,2) : 1.0;
-	filter_properties.filtered_frequency = std::abs(observation.current_vel)*filter_properties.frequency;
+	filter_properties.log_filtered_frequency = std::log10(std::abs(observation.current_vel)*filter_properties.frequency);
 	filter_properties.crosstalk_damper = 1.0;
 	while(first!=last){
 		typename std::iterator_traits<Iter>::value_type tmp = *first;
-		filter_properties.crosstalk_damper *= 1.0-std::exp((-1.0/(covariance*covariance))*std::pow(filter_properties.filtered_frequency-tmp,2.0));
+		filter_properties.crosstalk_damper *= 1.0-std::exp((-1.0/(covariance*covariance))*std::pow(filter_properties.log_filtered_frequency-tmp,2.0));
 		++first;
 	}
 }

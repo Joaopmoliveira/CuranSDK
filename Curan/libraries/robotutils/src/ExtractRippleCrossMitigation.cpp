@@ -39,11 +39,11 @@ namespace robotic {
                                                             first_harmonic[torque_joint_i][cross_phenomena_j].second, 
                                                             { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],state.tau[torque_joint_i]},
                                                             previous_filtered_joint_frequencies.begin(),processed_frequencies);
-                state.user_defined[cross_phenomena_j] = filtered_torque_joint_i;
+                state.user_defined3[cross_phenomena_j] = filtered_torque_joint_i;
                 
                 *post_recording_stuff = first_harmonic[torque_joint_i][cross_phenomena_j].second.crosstalk_damper*first_harmonic[torque_joint_i][cross_phenomena_j].second.damper;
                 filtered_joint_torque += filtered_torque_joint_i;
-                *processed_frequencies = first_harmonic[torque_joint_i][cross_phenomena_j].second.filtered_frequency;
+                *processed_frequencies = first_harmonic[torque_joint_i][cross_phenomena_j].second.log_filtered_frequency;
                 state.user_defined3[cross_phenomena_j] = *processed_frequencies;
                 ++processed_frequencies;
                 ++post_recording_stuff;
@@ -57,13 +57,13 @@ namespace robotic {
                 state.user_defined2[cross_phenomena_j] = filtered_torque_joint_i;
                 *post_recording_stuff = second_harmonic[torque_joint_i][cross_phenomena_j].second.crosstalk_damper*second_harmonic[torque_joint_i][cross_phenomena_j].second.damper;
                 filtered_joint_torque += filtered_torque_joint_i;
-                *processed_frequencies = second_harmonic[torque_joint_i][cross_phenomena_j].second.filtered_frequency;
+                *processed_frequencies = second_harmonic[torque_joint_i][cross_phenomena_j].second.log_filtered_frequency;
                 state.user_defined4[cross_phenomena_j] = *processed_frequencies;
                 ++processed_frequencies;
                 ++post_recording_stuff;
             }
 
-            //state.user_defined[torque_joint_i] = state.tau[torque_joint_i]-filtered_joint_torque;
+            state.user_defined[torque_joint_i] = state.tau[torque_joint_i]-filtered_joint_torque;
         }
         
         prev_state = state;
