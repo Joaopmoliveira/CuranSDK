@@ -1,7 +1,5 @@
 #include "robotutils/LBRController.h"
-#include "robotutils/ExtractRipple.h"
 #include "robotutils/ExtractRippleCrossMitigation.h"
-#include "robotutils/FilterRippleFirstHarmonic.h"
 #include "utils/Logger.h"
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
@@ -159,12 +157,14 @@ int main(){
 		}
 		app.disconnect();
         robot_renderer.join();
+		
 		auto now = std::chrono::system_clock::now();
 		auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-		std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments"+std::to_string(UTC)+".json"};
+		std::string filename{CURAN_COPIED_RESOURCE_PATH"/godsent"+std::to_string(UTC)+".json"};
 		std::cout << "creating filename with measurments :" << filename << std::endl;
 		std::ofstream o(filename);
 		o << list_of_recorded_states;
+		
 		return 0;
 	}
 	catch (...)

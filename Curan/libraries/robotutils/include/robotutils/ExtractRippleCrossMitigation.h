@@ -7,13 +7,12 @@
 namespace curan {
 namespace robotic {
 
-using joint_filters = std::array<std::pair<FilterData,FilterProperties>,number_of_joints>;
-
 struct ExtractRippleCrossMitigation : public UserData{
     ExtractRippleCrossMitigation();
-
-    std::array<joint_filters,number_of_joints> first_harmonic;
-    std::array<joint_filters,number_of_joints> second_harmonic;
+    std::array<FilterData,number_of_joints> joint_data_first_harmonic;
+    std::array<FilterData,number_of_joints> joint_data_second_harmonic;
+    std::array<FilterProperties,number_of_joints> first_harmonic;
+    std::array<FilterProperties,number_of_joints> second_harmonic;
     EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
 };
 

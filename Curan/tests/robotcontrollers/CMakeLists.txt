@@ -82,3 +82,13 @@ utils
 robotutils
 renderable
 )
+
+
+add_executable(stupid_filter_test stupid_filter_test.cpp)
+
+target_compile_definitions(stupid_filter_test PRIVATE NOMINMAX)
+
+target_link_libraries(stupid_filter_test PUBLIC
+utils
+robotutils
+)

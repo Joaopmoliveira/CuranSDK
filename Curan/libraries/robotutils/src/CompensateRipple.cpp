@@ -37,11 +37,19 @@ namespace robotic {
             double initial_torque_joint_i = state.tau[torque_joint_i]; //+state.gravity[torque_joint_i];
             double current_torque_joint_i = initial_torque_joint_i;
             for(size_t cross_phenomena_j = 0; cross_phenomena_j < number_of_joints;++cross_phenomena_j){
-                double filtered_torque_joint_i = run_filter(first_harmonic[torque_joint_i][cross_phenomena_j].first, first_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],current_torque_joint_i});
+                const Observation obser_i_j{state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j]};
+                update_filter_properties(first_harmonic[torque_joint_i][cross_phenomena_j].second, obser_i_j);
+	            update_filter_data(first_harmonic[torque_joint_i][cross_phenomena_j].first, current_torque_joint_i);
+	            double filtered_torque_joint_i = filter_implementation(first_harmonic[torque_joint_i][cross_phenomena_j].second, first_harmonic[torque_joint_i][cross_phenomena_j].first);
+	            shift_filter_data(first_harmonic[torque_joint_i][cross_phenomena_j].first,filtered_torque_joint_i);                
                 current_torque_joint_i -= filtered_torque_joint_i;
             }
             for(size_t cross_phenomena_j = 0; cross_phenomena_j < number_of_joints;++cross_phenomena_j){
-                double filtered_torque_joint_i = run_filter(second_harmonic[torque_joint_i][cross_phenomena_j].first, second_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],current_torque_joint_i});
+                const Observation obser_i_j{state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j]};
+                update_filter_properties(second_harmonic[torque_joint_i][cross_phenomena_j].second, obser_i_j);
+	            update_filter_data(second_harmonic[torque_joint_i][cross_phenomena_j].first, current_torque_joint_i);
+	            double filtered_torque_joint_i = filter_implementation(second_harmonic[torque_joint_i][cross_phenomena_j].second, second_harmonic[torque_joint_i][cross_phenomena_j].first);
+	            shift_filter_data(second_harmonic[torque_joint_i][cross_phenomena_j].first,filtered_torque_joint_i);                
                 current_torque_joint_i -= filtered_torque_joint_i;
             }
             state.user_defined[torque_joint_i] = current_torque_joint_i;
