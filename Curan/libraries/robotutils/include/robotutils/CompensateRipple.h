@@ -6,9 +6,7 @@
 
 namespace curan {
 namespace robotic {
-
-using joint_filters = std::array<std::pair<FilterData,FilterProperties>,number_of_joints>;
-
+    
 enum type_of_compensation{
     ADAPTIVE_FILTERING_SCHEME,
     CLASSIC_APPROACH,
@@ -19,10 +17,11 @@ struct CompensateRipple : public UserData{
     CompensateRipple();
 
     std::atomic<type_of_compensation> activate = NO_FILTERING_SCHEME;
-
-    std::array<joint_filters,number_of_joints> first_harmonic;
-    std::array<joint_filters,number_of_joints> second_harmonic;
-    std::array<joint_filters,number_of_joints> third_harmonic;
+    
+    std::array<FilterData,number_of_joints> joint_data_first_harmonic;
+    std::array<FilterData,number_of_joints> joint_data_second_harmonic;
+    std::array<FilterProperties,number_of_joints> first_harmonic;
+    std::array<FilterProperties,number_of_joints> second_harmonic;
     EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
 };
 

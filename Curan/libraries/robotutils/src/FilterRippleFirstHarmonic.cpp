@@ -5,7 +5,6 @@ namespace robotic {
 
 void update_filter_properties(FilterProperties& filter_properties, const Observation& observation){
 	filter_properties.damper = (std::abs(observation.current_vel) < 0.2) ? std::pow(observation.current_vel / 0.2,2) : 1.0;
-	std::printf("%.2f\n",observation.current_vel);
 	filter_properties.log_filtered_frequency = std::log10(std::abs(observation.current_vel)*filter_properties.frequency);
 	filter_properties.delta = std::abs(observation.current_delta);
 }
