@@ -8,15 +8,10 @@ namespace robotic {
     }
 
     CompensateRipple::CompensateRipple(){
-        for(size_t i = 0 ; i < number_of_joints; ++i)
-            for(size_t filter_index = 0 ; filter_index < number_of_joints; ++filter_index)
-                first_harmonic[i][filter_index].second.frequency = (filter_index == 4) ? 200.0 : 320.0;
-        for(size_t i = 0 ; i < number_of_joints; ++i)
-            for(size_t filter_index = 0 ; filter_index < number_of_joints; ++filter_index)
-                second_harmonic[i][filter_index].second.frequency = (filter_index == 4) ? 400.0 : 640.0;
-        for(size_t i = 0 ; i < number_of_joints; ++i)
-            for(size_t filter_index = 0 ; filter_index < number_of_joints; ++filter_index)
-                third_harmonic[i][filter_index].second.frequency = (filter_index == 4) ? 800.0 : 1280.0;
+        for(size_t filter_index = 0 ; filter_index < number_of_joints; ++filter_index){
+            first_harmonic[filter_index].frequency = 320.0;
+            second_harmonic[filter_index].frequency = 640.0;
+        }
     }
 
     EigenState&& CompensateRipple::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
@@ -29,26 +24,44 @@ namespace robotic {
 
         
         static EigenState first_state = state;
+        static Eigen::Matrix<double,7,1> reference = state.q;
 
         state.cmd_tau = Eigen::Matrix<double,7,1>::Zero();
         static EigenState prev_state = state;
         
+        double largest_frequency_found = std::numeric_limits<double>::min();
+        size_t offset_fastest_filter = 0;
+
+        for(size_t joint_i = 0; joint_i < number_of_joints; ++joint_i){
+            const Observation obser_i_j{state.dq[joint_i],state.q[joint_i] - prev_state.q[joint_i]};
+            update_filter_properties(first_harmonic[joint_i], obser_i_j);
+            update_filter_properties(second_harmonic[joint_i], obser_i_j);
+            if(largest_frequency_found < first_harmonic[joint_i].log_filtered_frequency){
+                largest_frequency_found =  first_harmonic[joint_i].log_filtered_frequency;
+                offset_fastest_filter = joint_i;
+            }
+        }
+        
         for(size_t torque_joint_i = 0; torque_joint_i < number_of_joints; ++torque_joint_i){
-            double initial_torque_joint_i = state.tau[torque_joint_i]; //+state.gravity[torque_joint_i];
-            double current_torque_joint_i = initial_torque_joint_i;
-            for(size_t cross_phenomena_j = 0; cross_phenomena_j < number_of_joints;++cross_phenomena_j){
-                double filtered_torque_joint_i = run_filter(first_harmonic[torque_joint_i][cross_phenomena_j].first, first_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],current_torque_joint_i});
-                current_torque_joint_i -= filtered_torque_joint_i;
-            }
-            for(size_t cross_phenomena_j = 0; cross_phenomena_j < number_of_joints;++cross_phenomena_j){
-                double filtered_torque_joint_i = run_filter(second_harmonic[torque_joint_i][cross_phenomena_j].first, second_harmonic[torque_joint_i][cross_phenomena_j].second, { state.dq[cross_phenomena_j],state.q[cross_phenomena_j] - prev_state.q[cross_phenomena_j],current_torque_joint_i});
-                current_torque_joint_i -= filtered_torque_joint_i;
-            }
-            state.user_defined[torque_joint_i] = current_torque_joint_i;
+            double filtered_torque_value = state.tau[torque_joint_i];
+            shift_filter_data(joint_data_first_harmonic[torque_joint_i],0.0);
+            update_filter_data(joint_data_first_harmonic[torque_joint_i], filtered_torque_value);
+            double filtered_torque_first_harmonic = filter_implementation(first_harmonic[offset_fastest_filter], joint_data_first_harmonic[torque_joint_i]);
+            filtered_torque_value -= filtered_torque_first_harmonic;
+            shift_filter_data(joint_data_second_harmonic[torque_joint_i],0.0);
+            update_filter_data(joint_data_second_harmonic[torque_joint_i], filtered_torque_value);
+            double filtered_torque_second_harmonic = filter_implementation(first_harmonic[offset_fastest_filter], joint_data_second_harmonic[torque_joint_i]);
+            filtered_torque_value -= filtered_torque_second_harmonic;
+            state.user_defined[torque_joint_i] = filtered_torque_value;
         }
 
-        static size_t counter = 0;
-
+        std::pair<double,double> upper_lower_limit{1.0,-1.0};
+        static Eigen::Matrix<double,7,1> angular_velocity = Eigen::Matrix<double,7,1>::Ones();
+        static bool positive_direction = true; 
+        
+        /*
+        Filtering of state variables 
+        */
         static Eigen::Matrix<double,7,1> filtered_velocity = first_state.dq;
         filtered_velocity = ((0.8)*filtered_velocity+(0.2)*state.dq).eval();
  
@@ -68,45 +81,49 @@ namespace robotic {
         constexpr double impedance_proportional_gain = 100;
         constexpr double impedance_derivative_gain = 7;
 
-        constexpr double reduction_ratio = 4.5;
-        constexpr double proportional_gain = 1-reduction_ratio;
-        //constexpr double derivative_gain = -0.001*proportional_gain;
-        constexpr double derivative_gain = -0.001*proportional_gain;
+        constexpr double reduction_ratio = 2.0;
+        constexpr double proportional_gain = reduction_ratio-1;
+        constexpr double derivative_gain = 0.0005*proportional_gain;
 
-        static Eigen::Matrix<double,7,1> proportional_error = Eigen::Matrix<double,7,1>::Zero();
-        static Eigen::Matrix<double,7,1> derivative_error = Eigen::Matrix<double,7,1>::Zero();
+        Eigen::Matrix<double,7,1> proportional_error = Eigen::Matrix<double,7,1>::Zero();
+        Eigen::Matrix<double,7,1> derivative_error = Eigen::Matrix<double,7,1>::Zero();
         
         switch(activate.load(std::memory_order_acq_rel)){
             case ADAPTIVE_FILTERING_SCHEME:
             {
-                if(counter % 5 == 0 ){
-                    if(static_cast<int>(std::round(currentTime)) % 6 >= 3){
-                        proportional_error = (-0.25*Eigen::Matrix<double,7,1>::Ones())-state.q;
-                        derivative_error = -filtered_velocity;
-                    } else {
-                        proportional_error = 0.25*Eigen::Matrix<double,7,1>::Ones()-state.q;
-                        derivative_error = -filtered_velocity;
-                    }
-                }
-                const Eigen::Matrix<double,7,1> desired_torque = -state.gravity-impedance_proportional_gain*proportional_error-impedance_derivative_gain*derivative_error;
+                for(size_t i = 0; i < 7; ++i)
+                    if(reference[i]+angular_velocity[i]*state.sampleTime > upper_lower_limit.first || reference[i]+angular_velocity[i]*state.sampleTime < upper_lower_limit.second)  
+                        angular_velocity[i] *= -1;
+                reference += angular_velocity*state.sampleTime;
+
+                proportional_error = reference-state.q;
+                derivative_error = -filtered_velocity;
+
+                //const Eigen::Matrix<double,7,1> desired_torque = -state.gravity-impedance_proportional_gain*proportional_error-impedance_derivative_gain*derivative_error;
+                const Eigen::Matrix<double,7,1> desired_torque = impedance_proportional_gain*proportional_error+impedance_derivative_gain*derivative_error;
                 state.user_defined2[6] = desired_torque[6]+proportional_gain*(desired_torque[6]-state.user_defined[6])-derivative_gain*filtered_derivative_torque[6];
                 state.user_defined2[4] = desired_torque[4]+proportional_gain*(desired_torque[4]-state.user_defined[4])-derivative_gain*filtered_derivative_torque[4];
+                state.user_defined4[0] = proportional_gain*(desired_torque[4]-state.user_defined[4]);
+                state.user_defined4[1] = derivative_gain*filtered_derivative_torque[4];
+                state.user_defined4[2] = 1;
+                state.user_defined4[3] = 1;
                 state.cmd_tau[6] = state.user_defined2[6];
                 state.cmd_tau[4] = state.user_defined2[4];
                 break;
             }
             case CLASSIC_APPROACH:
             {
-                if(counter % 5 == 0 ){
-                    if(static_cast<int>(std::round(currentTime)) % 6 >= 3){
-                        proportional_error = (-0.25*Eigen::Matrix<double,7,1>::Ones())-state.q;
-                        derivative_error = -filtered_velocity;
-                    } else {
-                        proportional_error = 0.25*Eigen::Matrix<double,7,1>::Ones()-state.q;
-                        derivative_error = -filtered_velocity;
-                    }
-                }
-                const Eigen::Matrix<double,7,1> desired_torque = -state.gravity-impedance_proportional_gain*proportional_error-impedance_derivative_gain*derivative_error;
+                for(size_t i = 0; i < 7; ++i)
+                    if(reference[i]+angular_velocity[i]*state.sampleTime > upper_lower_limit.first || reference[i]+angular_velocity[i]*state.sampleTime < upper_lower_limit.second)  
+                        angular_velocity[i] *= -1;
+                reference += angular_velocity*state.sampleTime;
+
+                proportional_error = reference-state.q;
+                derivative_error = -filtered_velocity;
+
+                //const Eigen::Matrix<double,7,1> desired_torque = -state.gravity-impedance_proportional_gain*proportional_error-impedance_derivative_gain*derivative_error;
+                const Eigen::Matrix<double,7,1> desired_torque = impedance_proportional_gain*proportional_error+impedance_derivative_gain*derivative_error;
+                
                 state.user_defined2[6] = desired_torque[6]+proportional_gain*(desired_torque[6]-state.tau[6])-derivative_gain*filtered_derivative_torque_unclean[6];
                 state.user_defined2[4] = desired_torque[4]+proportional_gain*(desired_torque[4]-state.tau[4])-derivative_gain*filtered_derivative_torque_unclean[4];
                 state.cmd_tau[6] = state.user_defined2[6];
@@ -116,15 +133,14 @@ namespace robotic {
             case NO_FILTERING_SCHEME:
             default:
             {
-                if(counter % 5 == 0 ){
-                    if(static_cast<int>(std::round(currentTime)) % 6 >= 3){
-                        proportional_error = (-0.25*Eigen::Matrix<double,7,1>::Ones())-state.q;
-                        derivative_error = -filtered_velocity;
-                    } else {
-                        proportional_error = 0.25*Eigen::Matrix<double,7,1>::Ones()-state.q;
-                        derivative_error = -filtered_velocity;
-                    }
-                }
+                for(size_t i = 0; i < 7; ++i)
+                    if(reference[i]+angular_velocity[i]*state.sampleTime > upper_lower_limit.first || reference[i]+angular_velocity[i]*state.sampleTime < upper_lower_limit.second)  
+                        angular_velocity[i] *= -1;
+                reference += angular_velocity*state.sampleTime;
+
+                proportional_error = reference-state.q;
+                derivative_error = -filtered_velocity;
+
                 const Eigen::Matrix<double,7,1> desired_torque = impedance_proportional_gain*proportional_error+impedance_derivative_gain*derivative_error;
                 state.user_defined2[6] = desired_torque[6];
                 state.user_defined2[4] = desired_torque[4];
@@ -134,22 +150,11 @@ namespace robotic {
             }
         }
 
-        ++counter;
-
-        //state.user_defined2[6] = -state.gravity[6]+proportional_gain*(-state.gravity[6]-state.user_defined[6])-derivative_gain*filtered_derivative_torque[6];
-        //state.user_defined2[4] = -state.gravity[4]+proportional_gain*(-state.gravity[4]-state.user_defined[4])-derivative_gain*filtered_derivative_torque[4];
- 
-        //state.user_defined2[6] = -state.gravity[6]+proportional_gain*(-state.gravity[6]-state.tau[6])-derivative_gain*filtered_derivative_torque_unclean[6];
-        //state.user_defined2[4] = -state.gravity[4]+proportional_gain*(-state.gravity[4]-state.tau[4])-derivative_gain*filtered_derivative_torque_unclean[4];
-
- 
-        //state.user_defined2[6] = state.gravity[6];
-        //state.user_defined2[4] = state.gravity[4];
-        //state.cmd_tau[6] = state.user_defined2[6];
-        //state.cmd_tau[4] = state.user_defined2[4];
-
+        
+        state.user_defined3 = reference;
         prev_state = state;
         prev_state_for_torque_derivative = state;
+
         /*
         The Java controller has two values which it reads, namely: 
         1) commanded_joint_position 

@@ -10,6 +10,9 @@ src/CompensateRipple.cpp
 src/LimitCycleController.cpp
 src/JointVelocityController.cpp
 src/ExtractRippleCrossMitigation.cpp
+src/ExtractSingleJoint.cpp
+src/CompensateRippleFreehand.cpp
+src/RippleReinjection.cpp
 )
 
 target_include_directories(robotutils

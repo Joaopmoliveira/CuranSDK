@@ -1,6 +1,5 @@
 #include "robotutils/LBRController.h"
-#include "robotutils/CompensateRipple.h"
-#include "robotutils/FilterRippleFirstHarmonic.h"
+#include "robotutils/CompensateRippleFreehand.h"
 #include "utils/Logger.h"
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
@@ -43,7 +42,7 @@ struct ScrollingBuffer
 	}
 };
 
-void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
+void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client,curan::robotic::CompensateRippleFreehand* freehand)
 {
 	static size_t counter = 0;
     static const auto& atomic_access = client.atomic_acess();
@@ -51,7 +50,10 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 	ImGui::Begin("Torques"); // Create a window called "Hello, world!" and append into it.
 	static std::array<ScrollingBuffer, 2> buffers;
     static std::array<ScrollingBuffer, 2> filtered_buffers;
-	 static std::array<ScrollingBuffer, 2> actuation_buffers;
+	static std::array<ScrollingBuffer, 2> actuation_buffers;
+	static std::array<ScrollingBuffer, 2> proportional;
+	static std::array<ScrollingBuffer, 2> derivative;
+
 	static float t = 0;
 
 	t += ImGui::GetIO().DeltaTime;
@@ -59,10 +61,9 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 	static float history = 10.0f;
 	ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
 
-	ImGui::Text("Select Compensation type.");                 // Display some text (you can use a format strings too)
-        
-    const char* items[] = {"None","Adaptive","Classic"};
-    static const char* current_item = items[1];
+	static bool local_record_data = true;
+   	ImGui::Checkbox("Activate Filtering ", &local_record_data); 
+   	freehand->activate.store(local_record_data);
 
 	/*
     if (ImGui::BeginCombo("##combo", current_item)) // The second parameter is the label previewed before opening the combo.
@@ -108,9 +109,16 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		filtered_buffers[index].AddPoint(t, (float)state.user_defined[4]);
 		ImPlot::PlotLine(loc.data(), &filtered_buffers[index].Data[0].x, &filtered_buffers[index].Data[0].y, filtered_buffers[index].Data.size(), 0, filtered_buffers[index].Offset, 2 * sizeof(float));
 		loc = "acuation " + std::to_string(index);
-		actuation_buffers[index].AddPoint(t, (float)state.user_defined2[4]);
+		actuation_buffers[index].AddPoint(t, (float)state.cmd_tau[4]);
 		ImPlot::PlotLine(loc.data(), &actuation_buffers[index].Data[0].x, &actuation_buffers[index].Data[0].y, actuation_buffers[index].Data.size(), 0, actuation_buffers[index].Offset, 2 * sizeof(float));
-		
+		loc = "deriv "+ std::to_string(index);
+		derivative[index].AddPoint(t, (float)state.user_defined3[4]);
+		ImPlot::PlotLine(loc.data(), &derivative[index].Data[0].x, &derivative[index].Data[0].y, derivative[index].Data.size(), 0, derivative[index].Offset, 2 * sizeof(float));
+		loc = "prop "+ std::to_string(index);
+		proportional[index].AddPoint(t, (float)state.user_defined2[4]);
+		ImPlot::PlotLine(loc.data(), &proportional[index].Data[0].x, &proportional[index].Data[0].y, proportional[index].Data.size(), 0, proportional[index].Offset, 2 * sizeof(float));
+
+
 		index = 1;
 		loc = "tau " + std::to_string(index);
 		buffers[index].AddPoint(t, (float)state.tau[6]);
@@ -119,9 +127,16 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		filtered_buffers[index].AddPoint(t, (float)state.user_defined[6]);
 		ImPlot::PlotLine(loc.data(), &filtered_buffers[index].Data[0].x, &filtered_buffers[index].Data[0].y, filtered_buffers[index].Data.size(), 0, filtered_buffers[index].Offset, 2 * sizeof(float));
 		loc = "acuation " + std::to_string(index);
-		actuation_buffers[index].AddPoint(t, (float)state.user_defined2[6]);
+		actuation_buffers[index].AddPoint(t, (float)state.cmd_tau[6]);
 		ImPlot::PlotLine(loc.data(), &actuation_buffers[index].Data[0].x, &actuation_buffers[index].Data[0].y, actuation_buffers[index].Data.size(), 0, actuation_buffers[index].Offset, 2 * sizeof(float));
-	
+		loc = "deriv "+ std::to_string(index);
+		derivative[index].AddPoint(t, (float)state.user_defined3[4]);
+		ImPlot::PlotLine(loc.data(), &derivative[index].Data[0].x, &derivative[index].Data[0].y, derivative[index].Data.size(), 0, derivative[index].Offset, 2 * sizeof(float));
+		loc = "prop "+ std::to_string(index);
+		proportional[index].AddPoint(t, (float)state.user_defined2[6]);
+		ImPlot::PlotLine(loc.data(), &proportional[index].Data[0].x, &proportional[index].Data[0].y, proportional[index].Data.size(), 0, proportional[index].Offset, 2 * sizeof(float));
+
+
 		ImPlot::EndPlot();
 	}
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -138,10 +153,10 @@ void signal_handler(int signal){
         robot_pointer->cancel();
 }
 
-void rendering(curan::robotic::RobotLBR& client){
+void rendering(curan::robotic::RobotLBR& client,curan::robotic::CompensateRippleFreehand* freehand){
 
     auto interface_callable = [&](vsg::CommandBuffer &cb){
-        custom_interface(cb,client);
+        custom_interface(cb,client,freehand);
     };
 
     curan::renderable::Window::Info info;
@@ -177,13 +192,14 @@ void rendering(curan::robotic::RobotLBR& client){
 
 int main(){
 	std::signal(SIGINT, signal_handler);
-    std::unique_ptr<curan::robotic::CompensateRipple> handguinding_controller = std::make_unique<curan::robotic::CompensateRipple>();
-	handguinding_controller->activate.store(curan::robotic::NO_FILTERING_SCHEME,std::memory_order_acq_rel);
+    std::unique_ptr<curan::robotic::CompensateRippleFreehand> handguinding_controller = std::make_unique<curan::robotic::CompensateRippleFreehand>();
+	handguinding_controller->activate.store(curan::robotic::type_of_compensation::ADAPTIVE_FILTERING_SCHEME,std::memory_order_acq_rel);
+	constexpr size_t n_weights = 0;
 	curan::robotic::RobotLBR client{handguinding_controller.get()};
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
-    std::thread robot_renderer{[&](){rendering(client);}};
-	std::list<curan::robotic::State> list_of_recorded_states;
+    std::thread robot_renderer{[&](){rendering(client,handguinding_controller.get());}};
+	//std::list<curan::robotic::State> list_of_recorded_states;
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
@@ -194,18 +210,42 @@ int main(){
 		success = app.step();
 		while (client){
 			success = app.step();
-			list_of_recorded_states.push_back(access_point.load());
+			//list_of_recorded_states.push_back(access_point.load());
 		}
 		app.disconnect();
         robot_renderer.join();
+		/*
 		
 		auto now = std::chrono::system_clock::now();
 		auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-		std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments_filter_classic_45_"+std::to_string(UTC)+".json"};
-		std::cout << "creating filename with measurments :" << filename << std::endl;
-		std::ofstream o(filename);
-		o << list_of_recorded_states;
-		
+		switch(handguinding_controller->activate.load()){
+			case curan::robotic::type_of_compensation::ADAPTIVE_FILTERING_SCHEME:
+			{
+				std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments_adaptive_" + std::to_string(n_weights) + "_weight"+std::to_string(UTC)+".json"};
+				std::cout << "creating filename with measurments :" << filename << std::endl;
+				std::ofstream o(filename);
+				o << list_of_recorded_states;
+			}
+			break;
+			case curan::robotic::type_of_compensation::CLASSIC_APPROACH:
+			{
+				std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments_classic_" + std::to_string(n_weights) + "_weight"+std::to_string(UTC)+".json"};
+				std::cout << "creating filename with measurments :" << filename << std::endl;
+				std::ofstream o(filename);
+				o << list_of_recorded_states;
+			}
+			break;
+			case curan::robotic::type_of_compensation::NO_FILTERING_SCHEME:
+			default:
+			{
+				std::string filename{CURAN_COPIED_RESOURCE_PATH"/measurments_nofilter_" + std::to_string(n_weights) + "_weight"+std::to_string(UTC)+".json"};
+				std::cout << "creating filename with measurments :" << filename << std::endl;
+				std::ofstream o(filename);
+				o << list_of_recorded_states;
+			}
+			break;
+		}
+		*/
 		return 0;
 	}
 	catch (...)

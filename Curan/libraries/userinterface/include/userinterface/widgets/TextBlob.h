@@ -51,7 +51,7 @@ namespace curan {
 				return *(this);
 			}
 
-			void TextBlob::update(const std::string& user_text);
+			void update(const std::string& user_text);
 			
 			void compile() override;
 		};
