@@ -1,5 +1,7 @@
 
 #include "robotutils/FilterRippleFirstHarmonic.h"
+#include <string>
+#include <iostream>
 
 int main(){
     std::pair<curan::robotic::FilterData,curan::robotic::FilterProperties> first_harmonic;

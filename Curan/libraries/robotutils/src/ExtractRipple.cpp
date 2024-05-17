@@ -20,15 +20,11 @@ namespace robotic {
         /*
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
         */
-       
-        //state.cmd_tau = -iiwa->M * 10 * iiwa->qDot;
 
         static EigenState prev_state = state;
         static EigenState first_state = state;
 
         state.cmd_tau = Eigen::Matrix<double,7,1>::Zero();
-        //state.cmd_tau[6] = 2*std::sin(2*currentTime);
-        //state.cmd_tau[4] = 2*std::sin(10+2*currentTime);
         
         for(size_t torque_joint_i = 0; torque_joint_i < number_of_joints; ++torque_joint_i){
             double initial_torque_joint_i = state.tau[torque_joint_i];

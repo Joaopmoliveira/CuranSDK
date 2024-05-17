@@ -55,6 +55,8 @@ SafeQueue(SafeQueue const& other) = delete;
 
 void push(const T& new_value) {
 	std::lock_guard<std::mutex> lk(mut);
+	if(invalid)
+		return;
 	data_queue.push(new_value);
 	data_cond.notify_one();
 }

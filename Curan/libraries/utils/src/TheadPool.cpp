@@ -1,4 +1,5 @@
 #include "utils/TheadPool.h"
+#include <iostream>
 #include <memory>
 
 namespace curan{
@@ -13,6 +14,7 @@ ThreadPool::ThreadPool(size_t number_of_threads) : stopped{false}
 ThreadPool::~ThreadPool()
 {
 	std::lock_guard<std::mutex> lk(mut);
+	std::cout << "destroying thread pool\n";
 	if (!stopped){
 		stopped = true;
 		internal_shutdown();
