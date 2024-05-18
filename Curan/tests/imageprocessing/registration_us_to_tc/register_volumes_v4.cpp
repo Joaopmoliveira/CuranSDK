@@ -26,6 +26,8 @@
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include "utils/TheadPool.h"
+#include "itkRegionOfInterestImageFilter.h"
+
 const double pi = std::atan(1) * 4;
 
 using PixelType = float;
@@ -78,7 +80,7 @@ struct info_solve_registration
 
 std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_registration &info_registration)
 {
-    std::printf("Initial Configuration: %f %f %f\n", info_registration.initial_rotation[0], info_registration.initial_rotation[1], info_registration.initial_rotation[2]);
+    //std::printf("Initial Configuration: %f %f %f\n", info_registration.initial_rotation[0], info_registration.initial_rotation[1], info_registration.initial_rotation[2]);
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
     auto registration = RegistrationType::New();
@@ -90,8 +92,8 @@ std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_r
 
     metric->SetNumberOfHistogramBins(numberOfBins);
 
-    metric->SetUseMovingImageGradientFilter(false);
-    metric->SetUseFixedImageGradientFilter(false);
+    metric->SetUseMovingImageGradientFilter(true);
+    metric->SetUseFixedImageGradientFilter(true);
 
     using TransformInitializerType =
         itk::CenteredTransformInitializer<TransformType,
@@ -129,7 +131,7 @@ std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_r
     optimizer->SetReturnBestParametersAndValue(true);
     itk::SizeValueType value{10};
     optimizer->SetConvergenceWindowSize(value);
-    optimizer->SetRelaxationFactor(0.8);
+    optimizer->SetRelaxationFactor(0.9);
 
     constexpr unsigned int numberOfLevels = 4;
 
@@ -154,15 +156,13 @@ std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_r
     RegistrationType::MetricSamplingStrategyEnum samplingStrategy =
         RegistrationType::MetricSamplingStrategyEnum::RANDOM;
 
-    double samplingPercentage = 0.01;
+    double samplingPercentage = 0.2;
 
     registration->SetMetricSamplingStrategy(samplingStrategy);
     registration->SetMetricSamplingPercentage(samplingPercentage);
-    registration->MetricSamplingReinitializeSeed(121213);
 
-    ImageType::RegionType region = info_registration.fixed_image->GetLargestPossibleRegion();
-    ImageType::SizeType size_itk = region.GetSize();
-    ImageType::SpacingType spacing = info_registration.fixed_image->GetSpacing();
+    std::srand(std::time(nullptr)); 
+    registration->MetricSamplingReinitializeSeed(std::rand());
 
     CommandType::Pointer observer = CommandType::New();
     optimizer->AddObserver(itk::StartEvent(), observer);
@@ -190,9 +190,57 @@ std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_r
     return {optimizer->GetCurrentMetricValue(), finalTransform};
 }
 
+
+ImageType::Pointer manipulate_input_image(ImageType::Pointer image)
+{
+    using DuplicatorType = itk::ImageDuplicator<ImageType>;
+    auto duplicator = DuplicatorType::New();
+    duplicator->SetInputImage(image);
+    duplicator->Update();
+
+    ImageType::Pointer new_image = duplicator->GetOutput();
+    auto origin = image->GetOrigin();
+
+    auto new_origin = origin;
+    new_origin[0] += 10.0;
+    new_origin[1] += 10.0;
+    new_origin[2] += 10.0;
+
+    new_image->SetOrigin(new_origin);
+
+    auto direction = image->GetDirection();
+
+    double euler_vector[3] = {1.0, 1.0, 1.0};
+
+    double t1 = std::cos(euler_vector[2]);
+    double t2 = std::sin(euler_vector[2]);
+    double t3 = std::cos(euler_vector[1]);
+    double t4 = std::sin(euler_vector[1]);
+    double t5 = std::cos(euler_vector[0]);
+    double t6 = std::sin(euler_vector[0]);
+
+    direction(0, 0) = t1 * t3;
+    direction(0, 1) = t1 * t4 * t6 - t2 * t5;
+    direction(0, 2) = t2 * t6 + t1 * t4 * t5;
+
+    direction(1, 0) = t2 * t3;
+    direction(1, 1) = t1 * t5 + t2 * t4 * t6;
+    direction(1, 2) = t2 * t4 * t5 - t1 * t6;
+
+    direction(2, 0) = -t4;
+    direction(2, 1) = t3 * t6;
+    direction(2, 2) = t3 * t5;
+
+    new_image->SetDirection(image->GetDirection()*direction);
+
+    
+    return new_image;
+}
+
 int main(int argc, char **argv)
 {
     
+
     if(argc!=4){
         if(argc>4 || argc == 1){
             std::cout << "To run the executable you must provide three arguments:\n "
@@ -216,7 +264,23 @@ int main(int argc, char **argv)
                       return 1;
         }
     }
-
+    
+    /*
+      if(argc!=3){
+        if(argc>4 || argc == 1){
+            std::cout << "To run the executable you must provide three arguments:\n "
+                      << "first parameter - input volume, (fixed)\n"
+                      << "second parameter - output volume\n" ;
+                      return 1;
+            }
+        if(argc == 2){
+            std::cout << "To run the executable you must provide three arguments:\n "
+                      << "first parameter - " << std::string(argv[1]) << "\n"
+                      << "second parameter - output volume\n";
+                      return 1;
+        }
+    }  
+    */
     auto fixedImageReader = FixedImageReaderType::New();
     auto movingImageReader = MovingImageReaderType::New();
 
@@ -238,13 +302,33 @@ int main(int argc, char **argv)
     }
 
     ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
+    //ImageType::Pointer pointer2movingimage = manipulate_input_image(pointer2fixedimage);
     ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
+
+    auto print_image_info = [](itk::Image<PixelType,3>::Pointer image, std::string name){
+        std::cout << "-------------------\n";
+        std::cout << "(" << name << ") :\n -------------------\n";
+        std::cout << "direction :\n";
+        auto direction = image->GetDirection();
+        for(size_t i = 0; i < 3; ++i){
+            for(size_t j = 0; j < 3; ++j)
+                std::cout <<  direction(i,j) << " ";
+            std::cout << "\n";
+        }
+        auto origin = image->GetOrigin();
+        std::printf("\norigin: (%f %f %f)",image->GetOrigin()[0],image->GetOrigin()[1],image->GetOrigin()[2]);
+        std::printf("\nspacing: (%f %f %f)",image->GetSpacing()[0],image->GetSpacing()[1],image->GetSpacing()[2]);
+        std::cout << "\n-------------------\n";
+    };
+
+    print_image_info(pointer2fixedimage,"fixed image");
+    print_image_info(pointer2movingimage,"moving image");
 
     std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
 
     std::array<Eigen::Vector3d,20> initial_configs;
     for(auto & vals : initial_configs)
-        vals = Eigen::Vector3d::Random();
+        vals = Eigen::Vector3d::Random()*3;
 
     auto pool = curan::utilities::ThreadPool::create(8);
     std::mutex mut;
@@ -255,47 +339,39 @@ int main(int argc, char **argv)
         for (const auto &initial_config : initial_configs){
             {
                 std::lock_guard<std::mutex> g{mut};
-                
-                std::cout << "submiting async work to thread pool\n";
+                ++number_of_threads_running;
             }
             curan::utilities::Job job{"solving registration",[&](){
-                {
-                    std::lock_guard<std::mutex> g{mut};
-                    ++number_of_threads_running;
-                }
                 auto solution = solve_registration({pointer2fixedimage, pointer2movingimage, initial_config});
-                
                 {
                     std::lock_guard<std::mutex> g{mut};
                     full_runs.emplace_back(solution);
                     --number_of_threads_running;
+                    std::printf("%.2f %% \n",((initial_configs.size()-number_of_threads_running)/(double)initial_configs.size())*100.0);
                 }
                 cv.notify_one();
-                std::cout << "finished!\n";
+                
             }};
             pool->submit(job);
-        }
-        {
-            std::lock_guard<std::mutex> g{mut};
-            std::cout << "waiting for thread pool to stop\n";
         }
     }
     std::unique_lock lk(mut);
     cv.wait(lk, [&]{ return number_of_threads_running==0; });
-    std::cout << "destroyed thread pool\n";
 
     size_t minimum_index = 0;
     size_t current_index = 0;
     double minimum_val = std::numeric_limits<double>::max();
-    for (const auto &possible : full_runs){
-        if (minimum_val > std::get<0>(possible)){
+    for (const auto &possible_best_solution : full_runs){
+        if (minimum_val > std::get<0>(possible_best_solution)){
             minimum_index = current_index;
-            minimum_val = std::get<0>(possible);
+            minimum_val = std::get<0>(possible_best_solution);
         }
         ++current_index;
     }
 
     auto finalTransform = std::get<1>(full_runs[minimum_index]);
+
+    std::cout << "best estimated transform out of " << initial_configs.size() << " is: \n" << finalTransform;
 
      using ResampleFilterType = itk::ResampleImageFilter<ImageType, ImageType>;
  
