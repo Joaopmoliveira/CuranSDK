@@ -6,13 +6,16 @@
     "asio",
     "glfw3",
     "nlohmann-json",
-    "assimp",
     "boost-process",
-    "boost-interprocess",
+    "vsg",
+    "vsgimgui",
+    {
+      "name": "vsgxchange",
+      "features": [ "assimp" ]
+    },
     {
       "name": "skia",
       "features": [ "vulkan" ]
     }
-  ],
-  "builtin-baseline":"2b14b606cea54573eec11080a3ac00737958b6d6"
+  ]
 }
