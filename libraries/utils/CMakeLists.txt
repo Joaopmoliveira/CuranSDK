@@ -16,6 +16,7 @@ asio
 
 IF (WIN32)
   target_compile_definitions(utils PUBLIC CURAN_WINDOWS)
+  target_compile_definitions(utils PUBLIC NOMINMAX)
 ELSEIF(UNIX)
   target_compile_definitions(utils PUBLIC CURAN_LINUX)
 ENDIF()

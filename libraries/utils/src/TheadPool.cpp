@@ -28,10 +28,10 @@ void ThreadPool::infinite_loop()
 	while (true){
 		job = job_queue.wait_and_pop();
 		if (!job)
-			if(job_queue.is_invalid())
-				return;
-			else
-				continue;
+			continue;
+		
+		if(job_queue.is_invalid())
+			return;
 		{
 			std::lock_guard<std::mutex> lk(mut);
 			++number_of_tasks_executing;

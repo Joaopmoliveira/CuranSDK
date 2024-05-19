@@ -5,7 +5,6 @@
 // Exclude rarely-used stuff from Windows headers
 #ifdef CURAN_WINDOWS             
 // Windows Header Files
-#define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif

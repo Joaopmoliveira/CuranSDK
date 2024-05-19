@@ -1,6 +1,9 @@
 #ifndef CURAN_PROTOCOLS_HEADER_FILE_
 #define CURAN_PROTOCOLS_HEADER_FILE_
 
+#include "customprotocols/FRIContent.h"
+#include "customprotocols/ProcessHandler.h"
+
 #include <asio.hpp>
 #include <list>
 #include <functional>
@@ -25,8 +28,7 @@
 #include "igtlCapabilityMessage.h"
 #endif
 
-#include "customprotocols/FRIContent.h"
-#include "customprotocols/ProcessHandler.h"
+
 
 namespace curan {
 	namespace communication {
