@@ -186,7 +186,6 @@ std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_r
 
     finalTransform->SetParameters(finalParameters);
     finalTransform->SetFixedParameters(initialTransform->GetFixedParameters());
-
     return {optimizer->GetCurrentMetricValue(), finalTransform};
 }
 
@@ -239,8 +238,8 @@ ImageType::Pointer manipulate_input_image(ImageType::Pointer image)
 
 int main(int argc, char **argv)
 {
-    
 
+    
     if(argc!=4){
         if(argc>4 || argc == 1){
             std::cout << "To run the executable you must provide three arguments:\n "
@@ -285,9 +284,11 @@ int main(int argc, char **argv)
     auto movingImageReader = MovingImageReaderType::New();
 
     std::string dirName{argv[1]};
+    //std::string dirName{"precious_phantom.mha"};
     fixedImageReader->SetFileName(dirName);
 
     std::string dirName2{argv[2]};
+    //std::string dirName2{"ultrasound_precious_phantom.mha"};
     movingImageReader->SetFileName(dirName2);
 
     try
@@ -327,36 +328,32 @@ int main(int argc, char **argv)
     std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
 
     std::array<Eigen::Vector3d,20> initial_configs;
+    
     for(auto & vals : initial_configs)
         vals = Eigen::Vector3d::Random()*3;
 
-    auto pool = curan::utilities::ThreadPool::create(8);
-    std::mutex mut;
-    size_t number_of_threads_running = 0;
-    std::condition_variable cv;
     {
+        std::mutex mut;
+        size_t number_of_solved_positions = 0;
+        auto pool = curan::utilities::ThreadPool::create(4,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
         std::cout << "starting random registrations!\n";
         for (const auto &initial_config : initial_configs){
-            {
-                std::lock_guard<std::mutex> g{mut};
-                ++number_of_threads_running;
-            }
             curan::utilities::Job job{"solving registration",[&](){
+                {
+                    std::lock_guard<std::mutex> g{mut};
+                    std::cout << "solving registration...\n";
+                }
                 auto solution = solve_registration({pointer2fixedimage, pointer2movingimage, initial_config});
                 {
                     std::lock_guard<std::mutex> g{mut};
                     full_runs.emplace_back(solution);
-                    --number_of_threads_running;
-                    std::printf("%.2f %% \n",((initial_configs.size()-number_of_threads_running)/(double)initial_configs.size())*100.0);
-                }
-                cv.notify_one();
-                
+                    ++number_of_solved_positions;
+                    std::printf("%.2f %% \n",((initial_configs.size()-number_of_solved_positions)/(double)initial_configs.size())*100.0);
+                }              
             }};
             pool->submit(job);
-        }
+        } 
     }
-    std::unique_lock lk(mut);
-    cv.wait(lk, [&]{ return number_of_threads_running==0; });
 
     size_t minimum_index = 0;
     size_t current_index = 0;
@@ -397,6 +394,8 @@ int main(int argc, char **argv)
     auto caster = CastFilterType::New();
  
     writer->SetFileName(argv[3]);
+    //writer->SetFileName("output_test_1.mha");
+    
     caster->SetInput(resample->GetOutput());
     writer->SetInput(caster->GetOutput());
 

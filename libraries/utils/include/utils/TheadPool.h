@@ -36,13 +36,23 @@ what happens is that the work remains in the interal queue
 of the threadpool until the other older work has been processed.
 */
 
+/*
+Customize exactly how the thread pool destructor should behave when its called. In this scenario, 
+when things are added to the queue of tasks you can request all threads to stop as fast as possible, or 
+you can ask for all the pending tasks to be solved and then call the destructors.
+*/
+enum ThreadPoolDestructionBehavior{
+	TERMINATE_ALL_PENDING_TASKS,
+	RETURN_AS_FAST_AS_POSSIBLE
+};
+
 class ThreadPool{
 public:
 
 ~ThreadPool();
 ThreadPool(const ThreadPool& other) =  delete;
 
-static std::shared_ptr<ThreadPool> create(size_t num_of_threads);
+static std::shared_ptr<ThreadPool> create(size_t num_of_threads, ThreadPoolDestructionBehavior behavior = ThreadPoolDestructionBehavior::RETURN_AS_FAST_AS_POSSIBLE);
 
 void get_number_tasks(int& tasks_executing, int& tasks_in_queue);
 
@@ -59,7 +69,7 @@ private:
 
 void infinite_loop();
 
-ThreadPool(size_t number_of_threads);
+ThreadPool(size_t number_of_threads, ThreadPoolDestructionBehavior in_behavior);
 
 void internal_shutdown();
 
@@ -69,6 +79,7 @@ std::vector<std::thread> pool;
 SafeQueue<Job> job_queue;
 int number_of_tasks_executing = 0;
 int number_of_pending_tasks = 0;
+ThreadPoolDestructionBehavior behavior;
 };
 
 }

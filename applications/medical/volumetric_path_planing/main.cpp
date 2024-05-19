@@ -2,6 +2,7 @@
 #include "UserInterface.h"
 #include "LoadVolume.h"
 #include <nlohmann/json.hpp>
+#include <time.h>
 
 void load_all_files_in_directory(Application& app_data,curan::ui::ConfigDraw* drawing_data, std::atomic<bool>& stop_value,std::mutex& mut){
     std::vector<std::string> uids_to_load = get_representative_uids(app_data.path);
@@ -68,7 +69,6 @@ int main()
 	    auto return_current_time_and_date = [](){
 	        auto now = std::chrono::system_clock::now();
     	    auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
     	    std::stringstream ss;
     	    ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
    		    return ss.str();

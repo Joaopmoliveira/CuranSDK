@@ -68,6 +68,8 @@ void clear(){
 
 [[nodiscard]] std::optional<T> wait_and_pop() {
 	std::unique_lock<std::mutex> lk(mut);
+	if (invalid)
+		return std::nullopt;
 	data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });
 	if (invalid || data_queue.empty())
 		return std::nullopt;
@@ -79,6 +81,8 @@ void clear(){
 template< class Rep, class Period>
 [[nodiscard]] std::optional<T> wait_and_pop(const std::chrono::duration<Rep, Period>& rel_time) {
 	std::unique_lock<std::mutex> lk(mut);
+	if (invalid)
+		return std::nullopt;
 	data_cond.wait_until(lk,rel_time, [this] {return (!data_queue.empty() || invalid); });
 	if (invalid || data_queue.empty())
 		return std::nullopt;
@@ -133,6 +137,11 @@ void invalidate() {
 [[nodiscard]] bool is_invalid() {
 	std::lock_guard<std::mutex> lk(mut);
 	return invalid;
+}
+
+[[nodiscard]] std::queue<T> request_current_queue_copy(){
+	std::lock_guard<std::mutex> lk(mut);
+	return data_queue;
 }
 
 private:
