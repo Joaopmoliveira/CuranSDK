@@ -21,6 +21,7 @@
 #include "communication/Server.h"
 #include "communication/ProtoIGTL.h"
 #include <iostream>
+#include "userinterface/widgets/Plotter.h"
 
 struct ObservationEigenFormat {
 	Eigen::Vector3d flange_data;
@@ -39,6 +40,8 @@ struct ProcessingMessage {
 	std::vector<double> normalized_video_signal;
 	std::vector<double> normalized_position_signal;
 	curan::ui::ImageDisplay* processed_viwer = nullptr;
+	//curan::ui::Plotter* plot = nullptr;
+	curan::ui::ConfigDraw* config = nullptr;
 	curan::utilities::Flag connection_status;
 	curan::ui::Button* button;
 	curan::ui::Button* button_start_collection;
@@ -50,6 +53,7 @@ struct ProcessingMessage {
 	std::atomic<bool> show_pointstofit = false;
 	double timer = 0.0;
 	std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+    std::vector<double> shifted_signal;
 
 	//Recording parameters
 	std::array<float, 2> initial_delay_limit = {0, 20};

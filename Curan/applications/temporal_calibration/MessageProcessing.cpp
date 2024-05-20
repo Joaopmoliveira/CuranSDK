@@ -464,7 +464,10 @@ int AlignSignals(ProcessingMessage* processor){
     }
 
     //Criar o vetor com o sinal de posição corrigido com o alinhamento inicial
-    std::vector<double> shifted_signal = shiftSignal(processor->normalized_position_signal, best_coarse_shift);   
+    std::vector<double> shifted_signal = shiftSignal(processor->normalized_position_signal, best_coarse_shift);
+    for (const auto& elem : shifted_signal){
+        processor->shifted_signal.push_back(elem);
+    }
     //Dar resample para resolução de 1ms   
     auto resampled_tracker_signal = resampleSignal(shifted_signal, time_step/1000); //Já com o alinhamento inicial
     auto resampled_image_signal = resampleSignal(processor->normalized_video_signal, time_step/1000);
@@ -624,27 +627,52 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
         }
 
     }else if (processor->start_calibration && !(processor->calibration_finished)) {
-        try {
-            ProjectFlange(processor);
-        } catch (...) {
-            std::cerr << "An error occurred during ProjectFlange" << std::endl;
-        }
 
-        try {
-            NormalizeData(processor);
-        } catch (...) {
-            std::cerr << "An error occurred during NormalizeData" << std::endl;
-        }
+        //curan::utilities::Job job{"finis calibration and plot results",[processor](){
+            try {
+                ProjectFlange(processor);
+            } catch (...) {
+                std::cerr << "An error occurred during ProjectFlange" << std::endl;
+            }
 
-        try {
-            AlignSignals(processor);
-        } catch (...) {
-            std::cerr << "An error occurred during AlignSignals" << std::endl;
-        }
+            try {
+                NormalizeData(processor);
+            } catch (...) {
+                std::cerr << "An error occurred during NormalizeData" << std::endl;
+            }
 
-        std::cout << "---------------------------------------" << std::endl;
-        processor->calibration_finished.store(true);
-    }
+            try {
+                AlignSignals(processor);
+            } catch (...) {
+                std::cerr << "An error occurred during AlignSignals" << std::endl;
+            }
+
+            using namespace curan::ui;
+	        auto plotter = Plotter::make(processor->list_of_recorded_points.size(),2);
+	        auto plotter_aligned = Plotter::make(processor->list_of_recorded_points.size(),2);
+            plotter->set_size(SkRect::MakeWH(400,200));
+            plotter_aligned->set_size(SkRect::MakeWH(400,200));
+            auto pointer_video = processor->normalized_video_signal.begin();
+            auto pointer_position = processor->normalized_position_signal.begin();
+            auto pointer_aligned = processor->shifted_signal.begin();
+            for (const auto& observation : processor->list_of_recorded_points) {
+                plotter->append(SkPoint::Make(observation.time_stamp, *pointer_video), 0);
+                plotter->append(SkPoint::Make(observation.time_stamp, *pointer_position), 1);
+                plotter_aligned->append(SkPoint::Make(observation.time_stamp, *pointer_video), 0);
+                plotter_aligned->append(SkPoint::Make(observation.time_stamp, *pointer_aligned), 1);
+                ++pointer_position;
+                ++pointer_video;
+                ++pointer_aligned;
+            }
+
+            auto plot_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+	        *plot_container << std::move(plotter) << std::move(plotter_aligned);
+	        plot_container->set_color(SK_ColorTRANSPARENT);
+	
+            processor->config->stack_page->stack(Overlay::make(std::move(plot_container),SkColorSetARGB(10,125,125,125),true));
+            std::cout << "---------------------------------------" << std::endl;
+            processor->calibration_finished.store(true);
+    };
 
     //std::cout << size_itk << std::endl;
 

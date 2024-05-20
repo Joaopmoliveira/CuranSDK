@@ -173,6 +173,20 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 	return Overlay::make(std::move(viwers_container),SkColorSetARGB(10,125,125,125),true);
 }
 
+/*
+std::unique_ptr<curan::ui::Overlay> create_results_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources) {
+	using namespace curan::ui;
+	auto plotter = Plotter::make(2000,1);
+	auto plotter_aligned = Plotter::make(2000,1);
+
+	auto plot_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*plot_container << std::move(plotter) << std::move(plotter_aligned);
+	plot_container->set_color(SK_ColorTRANSPARENT);
+	
+	return Overlay::make(std::move(plot_container),SkColorSetARGB(10,125,125,125),true);
+}
+*/
+
 curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 
@@ -244,6 +258,7 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 		processing->timer = 0;
 		processing->calibration_value = 0;
     	processing->start_time = std::chrono::steady_clock::now();
+        processing->shifted_signal.clear();
 	});
 
 	auto button_options = Button::make("Options",resources);
@@ -251,7 +266,13 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 	button_options->add_press_call([&processing,&resources](Button* button,Press press , ConfigDraw* config) {
 		config->stack_page->stack(create_options_overlay(processing,resources));
 	});
-
+/*
+	auto button_results = Button::make("Results",resources);
+	button_results->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	button_results->add_press_call([&processing,&resources](Button* button,Press press , ConfigDraw* config) {
+		config->stack_page->stack(create_results_overlay(processing,resources));
+	});
+*/
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*buttoncontainer << std::move(start_connection) << std::move(segmentation) << std::move(lines) << std::move(points) << std::move(calibration) << std::move(button_options);
 	processing->button = start_connection_pointer;
