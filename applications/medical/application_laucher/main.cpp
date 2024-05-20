@@ -25,9 +25,8 @@ std::unique_ptr<boost::process::child> child_process;
 boost::process::ipstream out;
 std::atomic<bool> signal_untriggered = true;
 
-
-constexpr auto waiting_color_active = SkColorSetARGB(120, 0, 255, 0);
-constexpr auto waiting_color_inactive = SkColorSetARGB(120, 255, 0, 0);
+constexpr auto waiting_color_active = SkColorSetARGB(70, 0, 255, 0);
+constexpr auto waiting_color_inactive = SkColorSetARGB(70, 255, 0, 0);
 
 void signal_handler(int signal)
 {

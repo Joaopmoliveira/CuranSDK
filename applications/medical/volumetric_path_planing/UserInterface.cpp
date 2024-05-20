@@ -166,11 +166,14 @@
 			    config->stack_page->stack(create_volume_loader_page());
 		    } });
 
+        auto button6 = Button::make("Registration ROI", resources);
+        button6->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
         if(button2.get()!=nullptr)
-            *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5);
+            *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5) << std::move(button6);
         else
-            *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
+            *viwers_container << std::move(button) << std::move(button4) << std::move(button5) << std::move(button6);
 
         viwers_container->set_color(SK_ColorTRANSPARENT);
 
