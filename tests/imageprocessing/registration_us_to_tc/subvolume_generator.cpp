@@ -9,6 +9,12 @@
 #include "itkImageDuplicator.h"
 #include "itkRegionOfInterestImageFilter.h"
 
+/*The program takes 3 input arguments: the input volume, the start coordinate and the end coordinate. Example:
+./test_subvolume_generator ultrasound_precious_phantom1.mha  0,100,0 454,244,567
+It uses the post build resource path, so make sure to put the input files in that directory. 
+Then, by default, it creates the output volume in this path and names it according to the choosen coordinates
+to make the process easy when experimenting with lots of subvolumes.*/
+
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
