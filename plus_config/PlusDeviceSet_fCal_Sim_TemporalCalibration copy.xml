@@ -1,0 +1,54 @@
+<PlusConfiguration version="2.1">
+
+  <DataCollection StartupDelaySec="1.0">
+    <DeviceSet 
+      Name="TESTEEEEEE" 
+      Description="Replays a recorded sequence of imaging the bottom of a water tank. Image and tracking data is provided by separate devices." />
+
+
+    <Device
+      Id="VideoDeviceSavedDataset" 
+      Type="SavedDataSource"
+      UseData="IMAGE_AND_TRANSFORM"
+      AcquisitionRate="10" 
+      LocalTimeOffsetSec="0.0" 
+      SequenceFile="WaterTankBottomTranslationVideoBuffer.mha"
+      UseOriginalTimestamps="TRUE"
+      RepeatEnabled="TRUE" >
+      <DataSources>
+        <DataSource Type="Video" Id="Video" PortUsImageOrientation="MF"  />
+      </DataSources>
+      <OutputChannels>
+        <OutputChannel Id="TrackedVideoStream" VideoDataSourceId="Video" />
+      </OutputChannels>
+    </Device>
+    
+    
+  </DataCollection>
+
+  <CoordinateDefinitions>
+    <Transform From="Image" To="Probe"
+      Matrix="1.0 0.0 0.0 1000.0
+              0.0 1.0 0.0 1000.0
+              0.0 0.0 1.0 1000.0
+              0.0 0.0 0.0 1.0"
+      Date="2011.12.06 17:57:00" Error="0.0" /> 
+  </CoordinateDefinitions> 
+
+ <PlusOpenIGTLinkServer 
+	MaxNumberOfIgtlMessagesToSend="1" 
+	MaxTimeSpentWithProcessingMs="50" 
+	ListeningPort="18944" 
+	SendValidTransformsOnly="true" 
+	OutputChannelId="TrackedVideoStream" > 
+	<DefaultClientInfo> 
+		<MessageTypes> 
+			<Message Type="IMAGE" />
+		</MessageTypes>
+		<ImageNames>
+			<Image Name="Image" EmbeddedTransformToFrame="Tracker"/>
+		</ImageNames>
+	</DefaultClientInfo>
+  </PlusOpenIGTLinkServer> 
+
+</PlusConfiguration>

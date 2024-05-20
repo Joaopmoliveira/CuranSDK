@@ -1,67 +1,75 @@
-cmake_minimum_required(VERSION 3.14)
-
-IF (WIN32)
-set(VCPKG_TARGET_TRIPLET "x64-windows-static")
-ELSEIF(UNIX)
-set(VCPKG_TARGET_TRIPLET "x64-linux")
-ENDIF()
-
+cmake_minimum_required(VERSION 3.17)
 cmake_policy(SET CMP0091 NEW)
+cmake_policy(SET CMP0075 NEW)
+project(Curan)
 
-project(CuranSuperBuild)
-
-include(FetchContent)
-set(FETCHCONTENT_QUIET FALSE)
-
-set(DOWNLOADS_DIR ${PROJECT_BINARY_DIR}/downloads)
-set(COMPONENTS_DIR ${PROJECT_BINARY_DIR}/components)
-set(FETCHCONTENT_BASE_DIR ${COMPONENTS_DIR})
-
-# set compilation to use C++17
+#Language definitions used throught the entire project
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+if(WIN32)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif(WIN32)
 
-find_package(Threads)
+set(OPERATING_SYSTEM_REQUIRMENTS "")
 
-find_library(DL_LIBRARY dl)
-if(NOT DL_LIBRARY)
-    set(DL_LIBRARY "")
-endif()
+if(UNIX)
+  string(CONCAT OPERATING_SYSTEM_REQUIRMENTS "atomic")
+endif(UNIX)
 
-if (VULKAN_SDK)
-    set(ENV{VULKAN_SDK} ${VULKAN_SDK})
-endif()
+set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
+set(CMAKE_INSTALL_LIBDIR "${CMAKE_BINARY_DIR}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-find_package(Vulkan)
+#Find all required third parties (this should be moved elsewhere)
+find_package(asio CONFIG REQUIRED)
+find_package(Eigen3 CONFIG REQUIRED)
+find_package(Ceres CONFIG REQUIRED)
+find_package(unofficial-skia CONFIG REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(glfw3 3.3 REQUIRED)
+find_package(Boost COMPONENTS filesystem)
+find_package(vsg CONFIG REQUIRED)
+find_package(vsgXchange CONFIG REQUIRED)
+find_package(vsgImGui CONFIG REQUIRED)
 
-FetchContent_Declare(vsg
-    GIT_REPOSITORY https://github.com/vsg-dev/VulkanSceneGraph.git
-    GIT_TAG master
-    GIT_PROGRESS TRUE
+#Externally provided targets
+add_subdirectory(third_party)
+
+# In Curan we have the Application laucher which is a executable that 
+# lauches other executables. For us to know where these executables are
+# we define their names here. Thus because we know the build directory 
+# of all executables we can inject their path inside the Application laucher 
+
+cmake_path(SET original_resource_paths "${CMAKE_CURRENT_LIST_DIR}/resources")
+cmake_path(SET post_build_resource_path "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources")
+
+#Add resources necessary by the display library
+add_custom_command(OUTPUT resources
+               COMMAND ${CMAKE_COMMAND} -E copy_directory ${original_resource_paths} ${post_build_resource_path}
+               DEPENDS "${original_resource_paths}"
+               COMMENT "Currently copying the widget files to the correct directories"
+               )
+
+# create a target that includes some_file, this gives us a name that we can use later
+add_custom_target(
+  curan_resources
+  DEPENDS resources
 )
-FetchContent_MakeAvailable(vsg ${glslang_DEPENDENCY})
-set(vsg_DEPENDENCY vsg)
 
-FetchContent_Declare(vsgxchange
-    GIT_REPOSITORY https://github.com/vsg-dev/vsgXchange.git
-    GIT_TAG master
-    GIT_PROGRESS TRUE
-)
-FetchContent_MakeAvailable(vsgxchange ${vsg_DEPENDENCY})
-set(vsgXchange_DEPENDENCY vsgXchange)
+# Add internal Curan libraries to the list of known targets
+add_subdirectory(libraries)
 
-FetchContent_Declare(vsgimgui
-GIT_REPOSITORY https://github.com/vsg-dev/vsgImGui.git
-GIT_TAG master
-GIT_SUBMODULES src/imgui
-GIT_PROGRESS TRUE
-)
-FetchContent_MakeAvailable(vsgimgui ${vsg_DEPENDENCY} )
+# Add medical applications
+add_subdirectory(applications)
 
-FetchContent_Declare(Curan
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/Curan
-)
+# Most of the time there is no need to compile the tests and the tutorials
+# folder so you can comment out these subfolders from the build directory
 
-FetchContent_MakeAvailable(Curan ${vsg_DEPENDENCY} ${vsgXchange_DEPENDENCY})
+# Add tests for submodules of curan, i.e. utilities, communication, etc...
+add_subdirectory(tests)
+
+# Add medical applications
+#add_subdirectory(tutorialsrc)
+

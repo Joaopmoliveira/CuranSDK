@@ -1,0 +1,5 @@
+add_subdirectory(friopenigtlinktracker)
+add_subdirectory(friopenigtlinkfaketracker)
+add_subdirectory(gaussian_mixture)
+add_subdirectory(ripple_compensation)
+add_subdirectory(medical)

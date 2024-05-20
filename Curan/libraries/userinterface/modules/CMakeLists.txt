@@ -1,3 +1,0 @@
-add_subdirectory(skunicode)
-add_subdirectory(skshaper)
-add_subdirectory(skplaintexteditor)

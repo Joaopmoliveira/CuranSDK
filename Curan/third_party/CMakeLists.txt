@@ -1,7 +1,0 @@
-add_subdirectory(lib_GeometricTools)
-add_subdirectory(lib_OpenIGTLink)
-add_subdirectory(lib_rbdl)
-add_subdirectory(lib_FRILibrary)
-add_subdirectory(lib_KUKARobotLibrary)
-add_subdirectory(lib_robotParameters)
-add_subdirectory(lib_tasks)

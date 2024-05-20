@@ -1,0 +1,85 @@
+<PlusConfiguration version="2.1">
+
+  <DataCollection StartupDelaySec="1.0">
+    <DeviceSet 
+      Name="polaris + image"
+      Description="polaris + image" />
+
+    <Device
+      Id="TrackerDevice"
+      Type="PolarisTracker"
+      SerialPort="3"
+      BaudRate="115200"
+      LocalTimeOffsetSec="0"
+      ToolReferenceFrame="Polaris" >
+      <DataSources>
+        <DataSource Type="Tool" Id="Tracker" RomFile="NdiToolDefinitions/8700449.rom" />
+      </DataSources>
+      <OutputChannels>
+        <OutputChannel Id="TrackerStream" >
+		  <DataSource Id="Tracker"/>
+        </OutputChannel>
+      </OutputChannels>
+    </Device>
+	<Device
+      Id="VideoDevice" 
+      Type="ICCapturing"  
+	  AcquisitionRate="25"
+	  LocalTimeOffsetSec="0"
+      DeviceName="DFG/USB2pro"
+      VideoNorm="PAL_B"
+      VideoFormat="Y800"
+      FrameSize="768 576"
+      InputChannel="00 Video: Composite" 
+	  ICBufferSize="50" >
+      <DataSources>
+        <DataSource 
+			Type="Video" 
+			Id="Video" 
+			PortUsImageOrientation="MF" 
+			ClipRectangleOrigin="178 94"
+			ClipRectangleSize="386 426"/>
+      </DataSources>
+      <OutputChannels>
+        <OutputChannel Id="VideoStream" VideoDataSourceId="Video" />
+      </OutputChannels>
+    </Device>
+
+	<Device 
+		Id="VideoMixer" 
+		Type="VirtualMixer" >
+		<InputChannels>
+			<InputChannel Id="TrackerStream" />
+			<InputChannel Id="VideoStream" />
+		</InputChannels>
+		<OutputChannels>
+			<OutputChannel Id="TrackedVideoStream"/>
+		</OutputChannels>
+	</Device>    
+  </DataCollection>
+  
+    <CoordinateDefinitions>
+    <Transform From="Image" To="Tracker"
+      Matrix="
+      1 0 0 0 
+		  0 1 0 0
+		  0 0 1 0
+      0 0	0 1"/>
+  </CoordinateDefinitions>
+  
+ <PlusOpenIGTLinkServer 
+MaxNumberOfIgtlMessagesToSend="1" 
+MaxTimeSpentWithProcessingMs="50" 
+ListeningPort="18944" 
+SendValidTransformsOnly="true" 
+OutputChannelId="TrackedVideoStream" > 
+	<DefaultClientInfo> 
+		<MessageTypes> 
+			<Message Type="IMAGE" />
+		</MessageTypes>
+		<ImageNames>
+			<Image Name="Image" EmbeddedTransformToFrame="Polaris"/>
+		</ImageNames>
+	</DefaultClientInfo>
+  </PlusOpenIGTLinkServer> 
+</PlusConfiguration>

@@ -1,0 +1,51 @@
+[
+    {
+        "path": "GROUND.obj",
+        "d_offset" : 0.0,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : 0
+    },
+    {
+        "path": "BASE.obj",
+        "d_offset" : 0.1519,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : 90
+    },
+    {
+        "path": "SHOULDER.obj",
+        "d_offset" : 0.0,
+        "theta" : 0 ,
+        "a_offset" : -0.24365,
+        "alpha" : 0
+    },
+    {
+        "path": "ELBOW.obj",
+        "d_offset" : 0.0,
+        "theta" : 0 ,
+        "a_offset" : -0.21325,
+        "alpha" : 0
+    },
+    {
+        "path": "WRIST1.obj",
+        "d_offset" : 0.11235,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : 90
+    },
+    {
+        "path": "WRIST2.obj",
+        "d_offset" : 0.08535,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : -90
+    },
+    {
+        "path": "FLANGE.obj",
+        "d_offset" : 0.0819,
+        "theta" : 0 ,
+        "a_offset" : 0,
+        "alpha" : 0
+    }
+]

@@ -1,0 +1,21 @@
+{
+    "shared_memory_name" : "TRASH",
+    "messages" : [
+        {
+        "message" : "watchdog_message",
+        "fields" : [
+            {"name" : "counter", "type" : "size_t", "array" : 1},
+            {"name" : "sensors_receive_timestamp", "type" : "size_t" , "array" : 1},
+            {"name" : "sensors_send_timestamp", "type" : "size_t" , "array" : 1},
+            {"name" : "watchdog_command_timestamp", "type" : "size_t" , "array" : 1},
+            {"name" : "watchdog_sensor_reqst_timestamp", "type" : "size_t" , "array" : 1},
+            {"name" : "watchdog_sensor_receive_timestamp", "type" : "size_t" , "array" : 1},
+            {"name" : "watchdog_client_reqst_timestamp", "type" : "size_t" , "array" : 1},
+            {"name" : "watchdog_client_receive_timestamp", "type" : "size_t" , "array" : 1},
+            {"name" : "client_receive_timestamp", "type" : "size_t" , "array" : 1},
+            {"name" : "gps_reading_present", "type" : "int" , "array" : 1},
+            {"name" : "image_reading_present", "type" : "int" , "array" : 1}
+        ]
+        }
+        ]
+}

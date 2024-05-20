@@ -1,5 +1,0 @@
-add_executable(test_optimization_strategy test_optimization_strategy.cpp)
-
-target_link_libraries(test_optimization_strategy PUBLIC
-optimization
-)
