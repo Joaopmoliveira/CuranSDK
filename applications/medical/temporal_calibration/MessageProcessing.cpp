@@ -665,11 +665,12 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
                 ++pointer_aligned;
             }
 
-            auto plot_container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
+            auto plot_container = Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::VERTICAL);
 	        *plot_container << std::move(plotter) << std::move(plotter_aligned);
+            plot_container->set_variable_layout({SkRect::MakeXYWH(0.1,0.1,0.8,0.8),SkRect::MakeXYWH(0.1,0.1,0.8,0.8)});
 	        plot_container->set_color(SK_ColorTRANSPARENT);
 	
-            processor->config->stack_page->stack(Overlay::make(std::move(plot_container),SkColorSetARGB(10,125,125,125),true));
+            processor->config->stack_page->stack(Overlay::make(std::move(plot_container),SkColorSetARGB(10,125,125,125),false));
             std::cout << "---------------------------------------" << std::endl;
             processor->calibration_finished.store(true);
     };
