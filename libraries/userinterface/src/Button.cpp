@@ -1,6 +1,6 @@
 #include "userinterface/widgets/Button.h"
 #include "utils/Overloading.h"
-
+#include "userinterface/widgets/definitions/Interactive.h"
 namespace curan {
 namespace ui {
 
@@ -20,10 +20,7 @@ Button::Button(const std::string& in_button_text,IconResources& system_icons) : 
 	paint_text.setStrokeWidth(4);
 	paint_text.setColor(text_color);
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefEmpty();
-	typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+	typeface = defaultTypeface();
 }
 
 Button::Button(const std::string& in_button_text,const std::string& in_icon_identifier,IconResources& system_icons) : icon_identifier{in_icon_identifier}, button_text{in_button_text} , system_icons{system_icons}{
@@ -42,11 +39,7 @@ Button::Button(const std::string& in_button_text,const std::string& in_icon_iden
 	paint_text.setStrokeWidth(4);
 	paint_text.setColor(text_color);
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefEmpty();
-	typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
+	typeface = defaultTypeface();
 }
 
 

@@ -103,6 +103,10 @@ struct Path{
 
 using Stroke = std::variant<Point,Path>;
 
+sk_sp<SkFontMgr> fontMgr();
+
+sk_sp<SkTypeface> defaultTypeface();
+
 }
 }
 

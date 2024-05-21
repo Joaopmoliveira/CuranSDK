@@ -1,13 +1,12 @@
 #include "userinterface/widgets/ImutableTextPanel.h"
-
+#include "userinterface/widgets/definitions/Interactive.h"
 namespace curan
 {
     namespace ui
     {
         ImutableTextPanel::ImutableTextPanel(const std::string &in_default_text)
         {
-            auto font_manager = SkFontMgr::RefEmpty();
-            fEditor.setFontMgr(font_manager);
+            fEditor.setFontMgr(fontMgr());
             fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0,0},in_default_text.data(),in_default_text.size());
         }
 

@@ -134,5 +134,41 @@ namespace curan
 		return minimum;
     }
 
+    sk_sp<SkFontMgr> fontMgr() {
+        static bool init = false;
+        static sk_sp<SkFontMgr> fontMgr = nullptr;
+        if (!init) {
+#if defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
+            fontMgr = SkFontMgr_New_FontConfig(nullptr);
+#elif defined(SK_FONTMGR_CORETEXT_AVAILABLE)
+            fontMgr = SkFontMgr_New_CoreText(nullptr);
+#elif defined(SK_FONTMGR_DIRECTWRITE_AVAILABLE)
+            fontMgr = SkFontMgr_New_DirectWrite();
+#endif
+            init = true;
+        }
+        return fontMgr;
+    }
+
+    sk_sp<SkTypeface> defaultTypeface(){
+	    static bool init = false;
+	    static sk_sp<SkTypeface> typeface;
+
+	    if(!init){
+		    std::vector<SkString> families_contained;
+		    families_contained.resize(fontMgr()->countFamilies());
+		    size_t i = 0;
+		    for(auto& fam : families_contained){
+			    fontMgr()->getFamilyName(i,&fam);
+			    ++i;
+		    }
+
+		    typeface = fontMgr()->matchFamilyStyle(families_contained[0].data(),SkFontStyle::Normal());
+		    init = true;
+	    }
+
+	    return typeface;
+    }
+
     }
 }

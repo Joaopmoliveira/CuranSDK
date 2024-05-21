@@ -1,4 +1,5 @@
 #include "userinterface/widgets/MutatingTextPanel.h"
+#include "userinterface/widgets/definitions/Interactive.h"
 #include <sstream>
 
 namespace curan
@@ -8,7 +9,7 @@ namespace curan
 
         MutatingTextPanel::MutatingTextPanel(bool is_tight) : fTight{is_tight}
         {
-            auto font_manager = SkFontMgr::RefEmpty();
+            auto font_manager = fontMgr();
             fEditor.setFontMgr(font_manager);
         }
 

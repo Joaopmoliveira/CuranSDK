@@ -29,12 +29,7 @@ namespace ui{
 		bluring_paint.setImageFilter(imgfilter);
 		options = SkSamplingOptions();
 
-		const char* fontFamily = nullptr;
-		SkFontStyle fontStyle;
-		sk_sp<SkFontMgr> fontManager = SkFontMgr::RefEmpty();
-		auto typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-
-		text_font = SkFont(typeface, 20, 1.0f, 0.0f);
+		text_font = SkFont(defaultTypeface(), 20, 1.0f, 0.0f);
 		text_font.setEdging(SkFont::Edging::kAntiAlias);
 
 	}

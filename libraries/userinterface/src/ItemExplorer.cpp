@@ -1,4 +1,5 @@
 #include "userinterface/widgets/ItemExplorer.h"
+#include "userinterface/widgets/definitions/Interactive.h"
 #include "utils/Overloading.h"
 #include <iostream>
 
@@ -20,10 +21,7 @@ ItemExplorer::ItemExplorer(const std::string& default_icon_name,IconResources& s
 			color_waiting = SK_ColorGRAY;
 			color_text = SK_ColorWHITE;
 
-			const char* fontFamily = nullptr;
-			SkFontStyle fontStyle;
-			sk_sp<SkFontMgr> fontManager = SkFontMgr::RefEmpty();
-			typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+			typeface = defaultTypeface();
 
 			paint_image_background.setStyle(SkPaint::kFill_Style);
 			paint_image_background.setAntiAlias(true);
