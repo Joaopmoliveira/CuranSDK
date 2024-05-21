@@ -1,5 +1,6 @@
 #include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/widgets/TextBlob.h"
+#include "userinterface/widgets/definitions/Interactive.h"
 #include "utils/Overloading.h"
 #include <variant>
 #include <iostream>
@@ -20,10 +21,7 @@ TextBlob::TextBlob(const std::string& s) : text_to_compile{s} {
 	paint_text.setStrokeWidth(4);
 	paint_text.setColor(text_color);
 
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefEmpty();
-	typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
+	typeface = defaultTypeface();
 }
 
 std::unique_ptr<TextBlob> TextBlob::make(const std::string& button_text) {

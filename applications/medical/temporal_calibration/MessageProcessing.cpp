@@ -1,4 +1,5 @@
 #include "MessageProcessing.h"
+#include "userinterface/widgets/definitions/Interactive.h"
 #include "optimization/WireCalibration.h"
 #include <iostream>
 #include <vector>
@@ -759,11 +760,8 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             SkString text2;
             text2.printf("%.1f", countdown);
             text2 += "s";
-            const char* fontFamily = nullptr;  
-            SkFontStyle fontStyle;  
-            sk_sp<SkFontMgr> fontManager = SkFontMgr::RefEmpty();
-            sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-            SkFont font1(typeface, 40.0f, 1.0f, 0.0f);
+
+            SkFont font1(curan::ui::defaultTypeface(), 40.0f, 1.0f, 0.0f);
             font1.setEdging(SkFont::Edging::kAntiAlias);
             canvas->drawSimpleText(text1.data(),text1.size(),SkTextEncoding::kUTF8,widget_area.centerX()-200,widget_area.top()+50,font1,paint);
             canvas->drawSimpleText(text2.data(),text2.size(),SkTextEncoding::kUTF8,widget_area.centerX()-40,widget_area.top() + 90,font1,paint);
@@ -772,11 +770,8 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             SkPaint paint;
             paint.setColor(SK_ColorRED); 
             paint.setStyle(SkPaint::kFill_Style);
-            const char* fontFamily = nullptr; 
-            SkFontStyle fontStyle;  
-            sk_sp<SkFontMgr> fontManager = SkFontMgr::RefEmpty();
-            sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-            SkFont font1(typeface, 64.0f, 1.0f, 0.0f);
+
+            SkFont font1(curan::ui::defaultTypeface(), 64.0f, 1.0f, 0.0f);
             font1.setEdging(SkFont::Edging::kAntiAlias);
             const std::string text = "REC";
             float percentagem = ((processor->timer -processor->initial_delay*1000) / (processor->aquisition_time*1000))*100;
@@ -796,11 +791,8 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             paint.setStyle(SkPaint::kFill_Style);
             SkColor customColor = SkColorSetARGB(255, 178, 102, 255);
             paint.setColor(customColor); 
-            const char* fontFamily = nullptr; 
-            SkFontStyle fontStyle;  
-            sk_sp<SkFontMgr> fontManager = SkFontMgr::RefEmpty();
-            sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-            SkFont font1(typeface, 64.0f, 1.0f, 0.0f);
+
+            SkFont font1(curan::ui::defaultTypeface(), 64.0f, 1.0f, 0.0f);
             font1.setEdging(SkFont::Edging::kAntiAlias);
             const std::string text1 = "Calibration completed!";
             SkString text2;
