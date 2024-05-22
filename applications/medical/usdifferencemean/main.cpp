@@ -27,7 +27,8 @@ int main(int argc, char* argv[]) {
 	page.update_page(viewer.get());
 
 	ConfigDraw config{&page};
-
+	processing->config_draw = &config;
+	
 	while (!glfwWindowShouldClose(viewer->window)) {
 		auto start = std::chrono::high_resolution_clock::now();
 		SkSurface* pointer_to_surface = viewer->getBackbufferSurface();

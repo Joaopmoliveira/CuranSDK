@@ -32,16 +32,25 @@ std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(
 
 struct ProcessingMessage {
 	using ImageType = itk::Image<unsigned char, 3>;
+	using DiferenceImageType = itk::Image<unsigned char, 3>;
+
 	std::list<ImageType::Pointer> images_recorded; 
+	std::list<std::vector<double>> regions_recorded; 
+
+	curan::ui::ConfigDraw* config_draw;
+
 	std::optional<ImageType::Pointer> mean_image_computed;
+	std::optional<std::vector<double>> average_inactive_differences;
+
 	curan::ui::ImageDisplay* difference_image = nullptr;
+	curan::ui::ImageDisplay* accepted_region_image = nullptr;
 	curan::utilities::Flag connection_status;
 	curan::ui::Button* button;
 	asio::io_context io_context;
 	ConfigurationData& configuration;
 	short port = 10000;
 
-	ProcessingMessage(curan::ui::ImageDisplay* in_difference_image, ConfigurationData& in_configuration) : difference_image{ in_difference_image }, configuration{ in_configuration }
+	ProcessingMessage(curan::ui::ImageDisplay* in_difference_image,curan::ui::ImageDisplay* in_accepted_region_image, ConfigurationData& in_configuration, curan::ui::ConfigDraw* in_config_draw) : difference_image{ in_difference_image }, accepted_region_image{in_accepted_region_image}, configuration{ in_configuration }, config_draw{in_config_draw}
 	{
 	}
 

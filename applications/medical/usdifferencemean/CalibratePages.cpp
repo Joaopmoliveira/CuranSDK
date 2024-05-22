@@ -1,21 +1,30 @@
 #include "CalibratePages.h"
+#include "userinterface/widgets/definitions/Interactive.h"
+#include "userinterface/widgets/Loader.h"
+
 
 curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<ProcessingMessage>& processing ,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 
 	auto image_display_mean = ImageDisplay::make();
+	//image_display_mean->set_color_filter(compliantDicomTransform());
 	auto image_display_mean_pointer = image_display_mean.get();
 
-	auto displaycontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-	*displaycontainer << std::move(image_display_mean);
+	auto image_display_insertion = ImageDisplay::make();
+	//image_display_insertion->set_color_filter(compliantDicomTransform());
+	auto image_display_insertion_pointer = image_display_insertion.get();
 
-	processing = std::make_shared<ProcessingMessage>(image_display_mean_pointer, data);
+	auto displaycontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*displaycontainer << std::move(image_display_mean) << std::move(image_display_insertion);
+
+	processing = std::make_shared<ProcessingMessage>(image_display_mean_pointer,image_display_insertion_pointer, data,nullptr);
 	processing->port = data.port;
 
-	auto start_connection_callback = [&data,processing](Button* button, Press press ,ConfigDraw* config) {
+	auto start_connection_callback = [&data,processing,&resources](Button* button, Press press ,ConfigDraw* config) {
 		if (!processing->connection_status.value()) {
 			curan::utilities::Job val{"connection thread",[processing]() { processing->communicate();}};
 			data.shared_pool->submit(val);
+			processing->config_draw->stack_page->stack(Loader::make("human_robotics_logo.jpeg",resources));
 		}
 		else {
 			processing->attempt_stop();

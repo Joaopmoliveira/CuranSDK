@@ -107,6 +107,8 @@ sk_sp<SkFontMgr> fontMgr();
 
 sk_sp<SkTypeface> defaultTypeface();
 
+sk_sp<SkColorFilter> compliantDicomTransform(); 
+
 }
 }
 

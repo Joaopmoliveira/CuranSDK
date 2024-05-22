@@ -26,32 +26,32 @@ class ImageDisplay : public  Drawable, public utilities::Lockable, public Signal
 	std::optional<ImageWrapper> old_image = std::nullopt;
 	std::optional<ImageWrapper>  images_to_render = std::nullopt;
 	std::optional<custom_step> custom_drawing_call = std::nullopt;
-
+	std::optional<SkPaint> paint_compliant_filtered_image;
 	ImageDisplay();
+
+	std::optional<ImageWrapper> get_image_wrapper();
+	void override_image_wrapper(ImageWrapper wrapper);
+	std::optional<custom_step> get_custom_drawingcall();
 
 public:
 
 	static std::unique_ptr<ImageDisplay> make();
 
-	void update_image(ImageWrapper provider);
-
 	drawablefunction draw() override;
 	callablefunction call() override;
 	void compile() override;
 
-	std::optional<ImageWrapper> get_image_wrapper();
-
-	ImageDisplay& override_image_wrapper(ImageWrapper wrapper);
+	ImageDisplay& update_image(ImageWrapper provider);
 
 	ImageDisplay& update_custom_drawingcall(custom_step call);
 
 	ImageDisplay& clear_custom_drawingcall();
 
-	std::optional<custom_step> get_custom_drawingcall();
-
 	ImageDisplay& update_batch(custom_step call, ImageWrapper wrapper);
 
 	ImageDisplay& set_image_size();
+
+	ImageDisplay& set_color_filter(sk_sp<SkColorFilter> filter);
 };
 
 }

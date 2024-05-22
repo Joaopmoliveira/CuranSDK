@@ -16,9 +16,10 @@ std::unique_ptr<ImageDisplay> ImageDisplay::make() {
 	return image_display;
 }
 
-void ImageDisplay::update_image(ImageWrapper wrapped_image) {
+ImageDisplay& ImageDisplay::update_image(ImageWrapper wrapped_image) {
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	images_to_render = wrapped_image;
+	return *(this);
 }
 
 drawablefunction ImageDisplay::draw() {
@@ -31,6 +32,7 @@ drawablefunction ImageDisplay::draw() {
 		auto image = get_image_wrapper();
 		if(image)
 			override_image_wrapper(*image);
+
 		SkPaint paint_square;
 		paint_square.setStyle(SkPaint::kStroke_Style);
 		paint_square.setAntiAlias(true);
@@ -43,11 +45,13 @@ drawablefunction ImageDisplay::draw() {
 			current_selected_image_rectangle = compute_bounded_rectangle(widget_rect,image_display_surface->width(),image_display_surface->height());
 			canvas->drawRect(current_selected_image_rectangle,paint_square);
 			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
-			canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt);
+			std::lock_guard<std::mutex> g{ get_mutex() };
+			if(paint_compliant_filtered_image)
+				canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt,&(*paint_compliant_filtered_image));
+			else
+				canvas->drawImageRect(image_display_surface, current_selected_image_rectangle, opt);
 		}
-
 		auto custom_drawing = get_custom_drawingcall();
-
 		if (custom_drawing) (*custom_drawing)(canvas, current_selected_image_rectangle,widget_rect);
 	};
 	return lamb;
@@ -70,10 +74,9 @@ std::optional<ImageWrapper> ImageDisplay::get_image_wrapper() {
 	return copy;
 }
 
-ImageDisplay& ImageDisplay::override_image_wrapper(ImageWrapper wrapper) {
+void ImageDisplay::override_image_wrapper(ImageWrapper wrapper) {
 	std::lock_guard<std::mutex> g(get_mutex());
 	old_image = wrapper;
-	return *(this);
 }
 
 ImageDisplay& ImageDisplay::update_custom_drawingcall(custom_step call) {
@@ -102,6 +105,14 @@ ImageDisplay& ImageDisplay::update_batch(custom_step call, ImageWrapper provider
 
 void ImageDisplay::compile(){
 	compiled = true;
+}
+
+ImageDisplay& ImageDisplay::set_color_filter(sk_sp<SkColorFilter> filter){
+	SkPaint paint;
+	paint.setColorFilter(filter);
+	std::lock_guard<std::mutex> g(get_mutex());
+	paint_compliant_filtered_image = paint;
+	return *(this);
 }
 
 }
