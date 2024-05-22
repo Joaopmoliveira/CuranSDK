@@ -4,6 +4,8 @@
 #include "utils/Overloading.h"
 #include "utils/StringManipulation.h"
 #include "userinterface/widgets/ComputeImageBounds.h"
+#include "userinterface/widgets/definitions/Interactive.h"
+
 namespace curan {
 namespace ui {
 
@@ -44,11 +46,7 @@ void set_skia_image(ImageMessage& message) {
 };
 
 OpenIGTLinkViewer::OpenIGTLinkViewer() : last_pressed_position{ -20000.0,-20000.0 } {
-	const char* fontFamily = nullptr;
-	SkFontStyle fontStyle;
-	sk_sp<SkFontMgr> fontManager = SkFontMgr::RefEmpty();
-	sk_sp<SkTypeface> typeface = fontManager->legacyMakeTypeface(fontFamily, fontStyle);
-	text_font = SkFont(typeface, 10, 1.0f, 0.0f);
+	text_font = SkFont(defaultTypeface(), 10, 1.0f, 0.0f);
 	text_font.setEdging(SkFont::Edging::kAntiAlias);
 	set_size(SkRect::MakeWH(0.001,0.001));
 }

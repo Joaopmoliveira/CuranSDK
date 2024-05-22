@@ -10,10 +10,10 @@
       Type="PolarisTracker"
       SerialPort="3"
       BaudRate="115200"
-      LocalTimeOffsetSec="0"
+      LocalTimeOffsetSec="-0.350"
       ToolReferenceFrame="Polaris" >
       <DataSources>
-        <DataSource Type="Tool" Id="Tracker" RomFile="NdiToolDefinitions/8700449.rom" />
+        <DataSource Type="Tool" Id="Tracker" RomFile="NdiToolDefinitions/8700339.rom" />
       </DataSources>
       <OutputChannels>
         <OutputChannel Id="TrackerStream" >
@@ -82,4 +82,24 @@ OutputChannelId="TrackedVideoStream" >
 		</ImageNames>
 	</DefaultClientInfo>
   </PlusOpenIGTLinkServer> 
+  
+ <fCal
+    NumberOfCalibrationImagesToAcquire="200"
+    NumberOfValidationImagesToAcquire="100"
+    NumberOfStylusCalibrationPointsToAcquire="200"
+    RecordingIntervalMs="100"
+    MaxTimeSpentWithProcessingMs="70"
+    ImageCoordinateFrame="Image"
+    ProbeCoordinateFrame="Tracker"
+    ReferenceCoordinateFrame="Polaris"
+    TransducerOriginCoordinateFrame="TransducerOrigin"
+    TransducerOriginPixelCoordinateFrame="TransducerOriginPixel"
+    TemporalCalibrationDurationSec="10"
+    FixedChannelId="VideoStream" 
+    FixedSourceId="Video"
+    MovingChannelId="TrackerStream"
+    MovingSourceId="TrackerToPolaris"
+    DefaultSelectedChannelId="TrackedVideoStream" 
+    FreeHandStartupDelaySec="3" />
+  
 </PlusConfiguration>
