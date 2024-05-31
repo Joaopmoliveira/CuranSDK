@@ -29,11 +29,6 @@ int foo(curan::utilities::SafeQueue<double>& queue);
 int bar(curan::utilities::SafeQueue<double>& queue);
 
 /*
-we make this variable atomic to make sure that both threads manipulate the same variable in memory and not a cached value
-*/
-std::atomic<bool> variable_to_keep_threads_running = true;
-
-/*
 Internally function bar will apply a filter to the passed type, in this case a double, while foo gets values from a sensor, which
 in this example will be simulated through a random number generator
 */
@@ -44,15 +39,22 @@ int foo(curan::utilities::SafeQueue<double>& queue){
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
     std::uniform_real_distribution<> dis(1.0, 2.0);
 
-    while(variable_to_keep_threads_running){
+    while(!queue.is_invalid()){ // we keep running while the queue is valid
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        queue.push(dis(gen));
+        double sensor_reading = dis(gen);
+        queue.push(sensor_reading);  // this call internaly locks a mutex 
     }
 }
 
 int bar(curan::utilities::SafeQueue<double>& queue){
-    double filter_value = 0.0;
-    while(variable_to_keep_threads_running){
+    double filter_value = 0.0; 
+    while(!queue.is_invalid()){
+/*
+The wait and pop function locks the queue until a value has been pushed int.
+It returns an optional, i.e., the other side of the foo function might invalidate the queue so we 
+either return a value, in which case the application can keep running or we invalidate the queue
+in which case we can stop the application
+*/
         auto value = queue.wait_and_pop();
         if(!value)
             continue;
@@ -72,7 +74,7 @@ int main(){
     std::thread bar_thread{[&](){bar(queue);}};
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
-    variable_to_keep_threads_running = false;
+    queue.invalidate();
     bar_thread.join();
     foo_thread.join();
     return 0;
