@@ -45,32 +45,6 @@ using WriterType = itk::ImageFileWriter<OutputImageType>;
 using FixedImageReaderType = itk::ImageFileReader<ImageType>;
 using MovingImageReaderType = itk::ImageFileReader<ImageType>;
 
-class CommandType : public itk::Command
-{
-public:
-    using Self = CommandType;
-    using Superclass = itk::Command;
-    using Pointer = itk::SmartPointer<Self>;
-    itkNewMacro(Self);
-
-protected:
-    CommandType() = default;
-
-public:
-    using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
-    using OptimizerPointer = const OptimizerType *;
-    Eigen::Matrix<double, 4, 4> moving_homogenenous;
-    TransformType::Pointer initialTransform;
-
-    void Execute(itk::Object *caller, const itk::EventObject &event) override
-    {
-        Execute((const itk::Object *)caller, event);
-    }
-    void Execute(const itk::Object *object, const itk::EventObject &event) override
-    {
-    }
-};
-
 struct info_solve_registration
 {
     ImageType::Pointer fixed_image;
@@ -78,9 +52,8 @@ struct info_solve_registration
     const Eigen::Vector3d &initial_rotation;
 };
 
-std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_registration &info_registration)
+std::tuple<std::optional<double>,TransformType::Pointer,TransformType::Pointer> solve_registration(const info_solve_registration &info_registration)
 {
-    //std::printf("Initial Configuration: %f %f %f\n", info_registration.initial_rotation[0], info_registration.initial_rotation[1], info_registration.initial_rotation[2]);
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
     auto registration = RegistrationType::New();
@@ -88,7 +61,7 @@ std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_r
     registration->SetMetric(metric);
     registration->SetOptimizer(optimizer);
 
-    unsigned int numberOfBins = 50;
+    unsigned int numberOfBins = 30;
 
     metric->SetNumberOfHistogramBins(numberOfBins);
 
@@ -164,12 +137,6 @@ std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_r
     std::srand(std::time(nullptr)); 
     registration->MetricSamplingReinitializeSeed(std::rand());
 
-    CommandType::Pointer observer = CommandType::New();
-    optimizer->AddObserver(itk::StartEvent(), observer);
-    optimizer->AddObserver(itk::IterationEvent(), observer);
-    optimizer->AddObserver(itk::EndEvent(), observer);
-    observer->initialTransform = initialTransform;
-
     try
     {
         registration->Update();
@@ -178,15 +145,12 @@ std::tuple<double, TransformType::Pointer> solve_registration(const info_solve_r
     {
         std::cout << "ExceptionObject caught !" << std::endl;
         std::cout << err << std::endl;
-        throw err;
+        TransformType::Pointer finalTransform = registration->GetModifiableTransform();
+        return {std::nullopt, finalTransform,initialTransform};
     }
 
-    TransformType::Pointer finalTransform = TransformType::New();
-    auto finalParameters = registration->GetOutput()->Get()->GetParameters();
-
-    finalTransform->SetParameters(finalParameters);
-    finalTransform->SetFixedParameters(initialTransform->GetFixedParameters());
-    return {optimizer->GetCurrentMetricValue(), finalTransform};
+    TransformType::Pointer finalTransform = registration->GetModifiableTransform();
+    return {optimizer->GetCurrentMetricValue(), finalTransform,initialTransform};
 }
 
 
@@ -287,6 +251,8 @@ int main(int argc, char **argv)
     //std::string dirName{"precious_phantom.mha"};
     fixedImageReader->SetFileName(dirName);
 
+    
+
     std::string dirName2{argv[2]};
     //std::string dirName2{"ultrasound_precious_phantom.mha"};
     movingImageReader->SetFileName(dirName2);
@@ -303,13 +269,12 @@ int main(int argc, char **argv)
     }
 
     ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
-    //ImageType::Pointer pointer2movingimage = manipulate_input_image(pointer2fixedimage);
-    ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
+    ImageType::Pointer pointer2movingimage = manipulate_input_image(pointer2fixedimage);
 
     auto print_image_info = [](itk::Image<PixelType,3>::Pointer image, std::string name){
         std::cout << "-------------------\n";
         std::cout << "(" << name << ") :\n -------------------\n";
-        std::cout << "direction :\n";
+        std::cout << "direction:\n";
         auto direction = image->GetDirection();
         for(size_t i = 0; i < 3; ++i){
             for(size_t j = 0; j < 3; ++j)
@@ -325,79 +290,85 @@ int main(int argc, char **argv)
     print_image_info(pointer2fixedimage,"fixed image");
     print_image_info(pointer2movingimage,"moving image");
 
-    std::vector<std::tuple<double, TransformType::Pointer>> full_runs;
+    std::vector<std::tuple<std::optional<double>, TransformType::Pointer,TransformType::Pointer>> full_runs;
 
     std::array<Eigen::Vector3d,20> initial_configs;
     
+    std::printf("\nGenerating random initial guesses...\n");
     for(auto & vals : initial_configs)
-        vals = Eigen::Vector3d::Random()*3;
+        vals = Eigen::Vector3d::Random()*180.0;
 
     {
         std::mutex mut;
         size_t number_of_solved_positions = 0;
-        auto pool = curan::utilities::ThreadPool::create(4,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
+        auto pool = curan::utilities::ThreadPool::create(6,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
         std::cout << "starting random registrations!\n";
         for (const auto &initial_config : initial_configs){
             curan::utilities::Job job{"solving registration",[&](){
-                {
-                    std::lock_guard<std::mutex> g{mut};
-                    std::cout << "solving registration...\n";
-                }
                 auto solution = solve_registration({pointer2fixedimage, pointer2movingimage, initial_config});
                 {
                     std::lock_guard<std::mutex> g{mut};
+                    if(std::get<0>(solution))
+                        std::printf("cost: %.2f %.2f %% \n",*std::get<0>(solution),((initial_configs.size()-number_of_solved_positions)/(double)initial_configs.size())*100.0);
+                    else
+                        std::printf("%.2f %% \n",((initial_configs.size()-number_of_solved_positions)/(double)initial_configs.size())*100.0);
                     full_runs.emplace_back(solution);
                     ++number_of_solved_positions;
-                    std::printf("%.2f %% \n",((initial_configs.size()-number_of_solved_positions)/(double)initial_configs.size())*100.0);
+
+                   
                 }              
             }};
             pool->submit(job);
         } 
     }
 
-    size_t minimum_index = 0;
+    size_t minimum_index = std::numeric_limits<size_t>::max();
     size_t current_index = 0;
     double minimum_val = std::numeric_limits<double>::max();
     for (const auto &possible_best_solution : full_runs){
-        if (minimum_val > std::get<0>(possible_best_solution)){
+        if (std::get<0>(possible_best_solution) && minimum_val > *std::get<0>(possible_best_solution)){
             minimum_index = current_index;
-            minimum_val = std::get<0>(possible_best_solution);
+            minimum_val = *std::get<0>(possible_best_solution);
         }
         ++current_index;
     }
 
+    if(minimum_index==std::numeric_limits<size_t>::max()){
+        std::cout << "No solution found minimizes the error between the two images\n";
+        return 1;
+    }
     auto finalTransform = std::get<1>(full_runs[minimum_index]);
 
     std::cout << "best estimated transform out of " << initial_configs.size() << " is: \n" << finalTransform;
 
-     using ResampleFilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+    using CompositeTransformType = itk::CompositeTransform<double, Dimension>;
+    CompositeTransformType::Pointer outputCompositeTransform =
+    CompositeTransformType::New();
+    outputCompositeTransform->AddTransform(std::get<2>(full_runs[minimum_index]));
+    outputCompositeTransform->AddTransform(std::get<1>(full_runs[minimum_index]));
+
+    using ResampleFilterType = itk::ResampleImageFilter<ImageType, ImageType>;
  
     auto resample = ResampleFilterType::New();
-    resample->SetTransform(finalTransform);
+    resample->SetTransform(outputCompositeTransform);
     resample->SetInput(pointer2movingimage);
  
     resample->SetSize(pointer2fixedimage->GetLargestPossibleRegion().GetSize());
     resample->SetOutputOrigin(pointer2fixedimage->GetOrigin());
     resample->SetOutputSpacing(pointer2fixedimage->GetSpacing());
     resample->SetOutputDirection(pointer2fixedimage->GetDirection());
-    resample->SetDefaultPixelValue(0);
+    resample->SetDefaultPixelValue(100);
 
-    using OutputPixelType = unsigned char;
  
-    using OutputImageType = itk::Image<OutputPixelType, Dimension>;
- 
-    using CastFilterType = itk::CastImageFilter<ImageType, itk::Image<unsigned char,3>>;
- 
-    using WriterType = itk::ImageFileWriter<OutputImageType>;
+    using WriterType = itk::ImageFileWriter<ImageType>;
  
     auto writer = WriterType::New();
     auto caster = CastFilterType::New();
  
     writer->SetFileName(argv[3]);
     //writer->SetFileName("output_test_1.mha");
-    
-    caster->SetInput(resample->GetOutput());
-    writer->SetInput(caster->GetOutput());
+
+    writer->SetInput(resample->GetOutput());
 
     try{
         writer->Update();
