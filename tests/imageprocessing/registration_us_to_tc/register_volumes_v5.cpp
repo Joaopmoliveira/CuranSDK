@@ -28,70 +28,43 @@
 #include "utils/TheadPool.h"
 #include "itkRegionOfInterestImageFilter.h"
 
+#include "itkMultiResolutionImageRegistrationMethod.h"
+#include "itkVersorRigid3DTransform.h"
+#include "itkCenteredTransformInitializer.h"
+#include "itkMattesMutualInformationImageToImageMetric.h"
+#include "itkVersorRigid3DTransformOptimizer.h"
+#include "itkImage.h"
+#include "itkImageFileWriter.h"
+#include "itkResampleImageFilter.h"
+#include "itkCastImageFilter.h"
+#include "itkCheckerBoardImageFilter.h"
+#include "itkCommand.h"
+#include "itkShiftScaleImageFilter.h"
+#include "itkImageSeriesReader.h"
+#include "itkGDCMImageIO.h"
+#include "itkImageDuplicator.h"
+#include "itkGDCMSeriesFileNames.h"
+#include "itkCompositeTransform.h"
+#include "itkSubtractImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
+#include "itkRegionOfInterestImageFilter.h"
+
 const double pi = std::atan(1) * 4;
 
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
-using TransformType = itk::Euler3DTransform<double>;
-using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
-using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageType, ImageType>;
-using RegistrationType = itk::ImageRegistrationMethodv4<ImageType, ImageType, TransformType>;
-using OutputPixelType = unsigned char;
-using OutputImageType = itk::Image<PixelType, Dimension>;
-using CastFilterType = itk::CastImageFilter<ImageType, OutputImageType>;
-using RescaleFilterType = itk::RescaleIntensityImageFilter<ImageType, OutputImageType>;
-using WriterType = itk::ImageFileWriter<OutputImageType>;
+using TransformType = itk::VersorRigid3DTransform<double>;
+using OptimizerType = itk::VersorRigid3DTransformOptimizer;
+using MetricType = itk::MattesMutualInformationImageToImageMetric<ImageType,ImageType>;
+using RegistrationType = itk::MultiResolutionImageRegistrationMethod<ImageType,ImageType>;
+using WriterType = itk::ImageFileWriter<ImageType>;
 using FixedImageReaderType = itk::ImageFileReader<ImageType>;
 using MovingImageReaderType = itk::ImageFileReader<ImageType>;
+using ImagePyramidType = itk::MultiResolutionPyramidImageFilter<ImageType, ImageType>;
 using InterpolatorType = itk::LinearInterpolateImageFunction<
             ImageType,
             double>;
-
-
-class CommandIterationUpdate : public itk::Command
-{
-public:
-    using Self = CommandIterationUpdate;
-    using Superclass = itk::Command;
-    using Pointer = itk::SmartPointer<Self>;
-    itkNewMacro(Self);
-
-protected:
-    CommandIterationUpdate() { m_LastMetricValue = 0; }
-
-public:
-    using OptimizerPointer = const OptimizerType *;
-
-    void
-    Execute(itk::Object *caller, const itk::EventObject &event) override
-    {
-        Execute((const itk::Object *)caller, event);
-    }
-
-    void
-    Execute(const itk::Object *object, const itk::EventObject &event) override
-    {
-        auto optimizer = static_cast<OptimizerPointer>(object);
-        if (!itk::IterationEvent().CheckEvent(&event))
-        {
-            return;
-        }
-        double currentValue = optimizer->GetValue();
-        // Only print out when the Metric value changes
-        if (itk::Math::abs(m_LastMetricValue - currentValue) > 1e-7)
-        {
-            std::cout << optimizer->GetCurrentIteration() << "   ";
-            std::cout << currentValue << std::endl;
-            m_LastMetricValue = currentValue;
-        }
-    }
-
-private:
-    double m_LastMetricValue;
-};
-
-
 
 struct info_solve_registration
 {
@@ -105,9 +78,9 @@ std::tuple<std::optional<double>,TransformType::Pointer,TransformType::Pointer> 
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
     auto registration = RegistrationType::New();
-    InterpolatorType::Pointer interpolator_moving = InterpolatorType::New();
-    InterpolatorType::Pointer interpolator_fixed = InterpolatorType::New();
-
+    InterpolatorType::Pointer interpolator = InterpolatorType::New();
+    ImagePyramidType::Pointer fixedImagePyramid = ImagePyramidType::New();
+    ImagePyramidType::Pointer movingImagePyramid = ImagePyramidType::New();
     registration->SetMetric(metric);
     registration->SetOptimizer(optimizer);
 
@@ -115,82 +88,60 @@ std::tuple<std::optional<double>,TransformType::Pointer,TransformType::Pointer> 
 
     metric->SetNumberOfHistogramBins(numberOfBins);
 
-    metric->SetUseMovingImageGradientFilter(true);
-    metric->SetUseFixedImageGradientFilter(true);
-    metric->SetMovingInterpolator(interpolator_moving);
-    metric->SetFixedInterpolator(interpolator_fixed);
-
-     using TransformInitializerType =
+    using TransformInitializerType =
         itk::CenteredTransformInitializer<TransformType,
                                           ImageType,
                                           ImageType>;
 
     auto initialTransform = TransformType::New();
-    itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
-    matrix->SetRotation(info_registration.initial_rotation[0] * (3.14159265359 / 180), info_registration.initial_rotation[1] * (3.14159265359 / 180), info_registration.initial_rotation[2] * (3.14159265359 / 180));
-    TransformInitializerType::Pointer initializer =TransformInitializerType::New();
-    initialTransform->SetMatrix(matrix->GetMatrix());
+    TransformInitializerType::Pointer initializer =
+        TransformInitializerType::New();
     initializer->SetTransform(initialTransform);
     initializer->SetFixedImage(info_registration.fixed_image);
     initializer->SetMovingImage(info_registration.moving_image);
     initializer->InitializeTransform();
-    initializer->GeometryOn();
-
+    TransformType::VersorType versor;
+    itk::Euler3DTransform<double>::Pointer matrix;
+    matrix->SetRotation(info_registration.initial_rotation[0] * (3.14159265359 / 180), info_registration.initial_rotation[1] * (3.14159265359 / 180), info_registration.initial_rotation[2] * (3.14159265359 / 180));
+    versor.Set(matrix->GetMatrix());
+    initialTransform->SetRotation(versor);
     registration->SetFixedImage(info_registration.fixed_image);
     registration->SetMovingImage(info_registration.moving_image);
-    registration->SetInitialTransform(initialTransform);
+    registration->SetTransform(initialTransform);
+    registration->SetInterpolator(interpolator);
 
     using OptimizerScalesType = OptimizerType::ScalesType;
     OptimizerScalesType optimizerScales(
         initialTransform->GetNumberOfParameters());
     constexpr double translationScale = 1.0 / 1000.0;
-    optimizerScales[0] = 5.0;
-    optimizerScales[1] = 5.0;
-    optimizerScales[2] = 5.0;
+    optimizerScales[0] = 1.0;
+    optimizerScales[1] = 1.0;
+    optimizerScales[2] = 1.0;
     optimizerScales[3] = translationScale;
     optimizerScales[4] = translationScale;
     optimizerScales[5] = translationScale;
     optimizer->SetScales(optimizerScales);
-    optimizer->SetNumberOfIterations(10);
-    optimizer->SetLearningRate(8);
+    optimizer->SetNumberOfIterations(2000);
     optimizer->SetMinimumStepLength(0.001);
-    optimizer->SetReturnBestParametersAndValue(false);
     itk::SizeValueType value{10};
-    optimizer->SetConvergenceWindowSize(value);
-    optimizer->SetRelaxationFactor(0.7);
-    //auto observer = CommandIterationUpdate::New();
-    //optimizer->AddObserver(itk::IterationEvent(), observer);
 
-    constexpr unsigned int numberOfLevels = 1;
+    optimizer->SetRelaxationFactor(0.9);
 
-    RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
-    shrinkFactorsPerLevel.SetSize(numberOfLevels);
-    shrinkFactorsPerLevel[0] = 1;
-    //shrinkFactorsPerLevel[1] = 3;
-    //shrinkFactorsPerLevel[2] = 2;
-    //shrinkFactorsPerLevel[3] = 1;
-
-    RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
-    smoothingSigmasPerLevel.SetSize(numberOfLevels);
-    smoothingSigmasPerLevel[0] = 0;
-    //smoothingSigmasPerLevel[1] = 1;
-    //smoothingSigmasPerLevel[2] = 0;
-    //smoothingSigmasPerLevel[3] = 0;
+    constexpr unsigned int numberOfLevels = 4;
 
     registration->SetNumberOfLevels(numberOfLevels);
-    registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
-    registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
+    registration->SetFixedImagePyramid(fixedImagePyramid);
+    registration->SetMovingImagePyramid(movingImagePyramid);
 
-    RegistrationType::MetricSamplingStrategyEnum samplingStrategy =
-        RegistrationType::MetricSamplingStrategyEnum::RANDOM;
+    registration->SetFixedImageRegion(info_registration.fixed_image->GetBufferedRegion());
+    using ParametersType = RegistrationType::ParametersType;
+    metric->SetNumberOfHistogramBins(64);
+    metric->SetNumberOfSpatialSamples(2000);
+    metric->SetUseExplicitPDFDerivatives(true);
 
-    double samplingPercentage = 0.4;
-
-    registration->SetMetricSamplingStrategy(samplingStrategy);
-    registration->SetMetricSamplingPercentage(samplingPercentage);
+    double samplingPercentage = 0.2;
 
     std::srand(std::time(nullptr)); 
-    registration->MetricSamplingReinitializeSeed(std::rand());
 
     try
     {
@@ -201,11 +152,11 @@ std::tuple<std::optional<double>,TransformType::Pointer,TransformType::Pointer> 
         std::cout << "ExceptionObject caught !" << std::endl;
         std::cout << err << std::endl;
         TransformType::Pointer finalTransform = registration->GetModifiableTransform();
-        return {100.0, finalTransform,initialTransform};
+        return {std::nullopt, finalTransform,initialTransform};
     }
 
     TransformType::Pointer finalTransform = registration->GetModifiableTransform();
-    return {optimizer->GetCurrentMetricValue(), finalTransform,initialTransform};
+    return {optimizer->GetValue(), finalTransform,initialTransform};
 }
 
 
@@ -220,15 +171,15 @@ ImageType::Pointer manipulate_input_image(ImageType::Pointer image)
     auto origin = image->GetOrigin();
 
     auto new_origin = origin;
-    new_origin[0] += 1111.0;
-    new_origin[1] += 1111.0;
-    new_origin[2] += 1111.0;
+    new_origin[0] += 10.0;
+    new_origin[1] += 10.0;
+    new_origin[2] += 10.0;
 
     new_image->SetOrigin(new_origin);
 
     auto direction = image->GetDirection();
 
-    double euler_vector[3] = {1.1, -1.1, 1.1};
+    double euler_vector[3] = {0.1, 0.1, 0.1};
 
     double t1 = std::cos(euler_vector[2]);
     double t2 = std::sin(euler_vector[2]);
@@ -283,6 +234,22 @@ int main(int argc, char **argv)
         }
     }
     
+    /*
+      if(argc!=3){
+        if(argc>4 || argc == 1){
+            std::cout << "To run the executable you must provide three arguments:\n "
+                      << "first parameter - input volume, (fixed)\n"
+                      << "second parameter - output volume\n" ;
+                      return 1;
+            }
+        if(argc == 2){
+            std::cout << "To run the executable you must provide three arguments:\n "
+                      << "first parameter - " << std::string(argv[1]) << "\n"
+                      << "second parameter - output volume\n";
+                      return 1;
+        }
+    }  
+    */
     auto fixedImageReader = FixedImageReaderType::New();
     auto movingImageReader = MovingImageReaderType::New();
 
@@ -308,7 +275,7 @@ int main(int argc, char **argv)
     }
 
     ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
-    ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
+    ImageType::Pointer pointer2movingimage = manipulate_input_image(pointer2fixedimage);
 
     auto print_image_info = [](itk::Image<PixelType,3>::Pointer image, std::string name){
         std::cout << "-------------------\n";
@@ -323,7 +290,6 @@ int main(int argc, char **argv)
         auto origin = image->GetOrigin();
         std::printf("\norigin: (%f %f %f)",image->GetOrigin()[0],image->GetOrigin()[1],image->GetOrigin()[2]);
         std::printf("\nspacing: (%f %f %f)",image->GetSpacing()[0],image->GetSpacing()[1],image->GetSpacing()[2]);
-        std::printf("\nsize: (%d %d %d)",(int)image->GetLargestPossibleRegion().GetSize()[0],(int)image->GetLargestPossibleRegion().GetSize()[1],(int)image->GetLargestPossibleRegion().GetSize()[2]);
         std::cout << "\n-------------------\n";
     };
 
@@ -332,35 +298,11 @@ int main(int argc, char **argv)
 
     std::vector<std::tuple<std::optional<double>, TransformType::Pointer,TransformType::Pointer>> full_runs;
 
-    std::array<Eigen::Vector3d,125> initial_configs;
+    std::array<Eigen::Vector3d,20> initial_configs;
     
     std::printf("\nGenerating random initial guesses...\n");
-    double advancement_x = 6.28318530718/(std::cbrt(initial_configs.size())-1);
-    double advancement_y = 6.28318530718/(std::cbrt(initial_configs.size())-1);
-    double advancement_z = 6.28318530718/(std::cbrt(initial_configs.size())-1);
-    double current_x = 0;
-    double current_y = 0;
-    double current_z = 0;
-
-    for(auto & vals : initial_configs){
-        vals[0] = current_x;
-        vals[1] = current_y;
-        vals[2] = current_z;
-        current_z += advancement_z;
-        if(current_z>6.28318530718){
-            current_z = 0.0;
-            current_y +=advancement_y;
-        }
-
-        if(current_y>6.28318530718){
-            current_z = 0.0;
-            current_y = 0.0;
-            current_x +=advancement_x;
-        } 
-
-        std::printf("initial values: (%.2f %.2f %.2f)\n",vals[0],vals[1],vals[2]);
-    }
-        
+    for(auto & vals : initial_configs)
+        vals = Eigen::Vector3d::Random()*180.0;
 
     {
         std::mutex mut;
@@ -373,7 +315,7 @@ int main(int argc, char **argv)
                 {
                     std::lock_guard<std::mutex> g{mut};
                     if(std::get<0>(solution))
-                        std::printf("cost: %.2f %.2f %% \n",*std::get<0>(solution),100.0-((initial_configs.size()-number_of_solved_positions)/(double)initial_configs.size())*100.0);
+                        std::printf("cost: %.2f %.2f %% \n",*std::get<0>(solution),((initial_configs.size()-number_of_solved_positions)/(double)initial_configs.size())*100.0);
                     else
                         std::printf("%.2f %% \n",((initial_configs.size()-number_of_solved_positions)/(double)initial_configs.size())*100.0);
                     full_runs.emplace_back(solution);
@@ -402,64 +344,47 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    std::printf("Choosen cost: %.2f\n",std::get<0>(full_runs[minimum_index]));
+    std::printf("Choosen cost: %.2f\n",std::get<1>(full_runs[minimum_index]));
     
     auto finalTransform = std::get<1>(full_runs[minimum_index]);
 
-    std::cout << "best estimated transform out of " << initial_configs.size() << " is: \n" << std::get<1>(full_runs[minimum_index]) << " and other is: " << std::get<2>(full_runs[minimum_index]) ;
+    std::cout << "best estimated transform out of " << initial_configs.size() << " is: \n" << finalTransform;
 
     using CompositeTransformType = itk::CompositeTransform<double, Dimension>;
     CompositeTransformType::Pointer outputCompositeTransform =
     CompositeTransformType::New();
-    //outputCompositeTransform->AddTransform(std::get<2>(full_runs[minimum_index]));
-    //outputCompositeTransform->AddTransform());
+    outputCompositeTransform->AddTransform(std::get<2>(full_runs[minimum_index]));
+    outputCompositeTransform->AddTransform(std::get<1>(full_runs[minimum_index]));
 
     using ResampleFilterType = itk::ResampleImageFilter<ImageType, ImageType>;
  
-    {
-        auto resample = ResampleFilterType::New();
-        resample->SetTransform(std::get<1>(full_runs[minimum_index]));
-        resample->SetInput(pointer2movingimage);
+    auto resample = ResampleFilterType::New();
+    resample->SetTransform(outputCompositeTransform);
+    resample->SetInput(pointer2movingimage);
  
-        resample->SetSize(pointer2fixedimage->GetLargestPossibleRegion().GetSize());
-        resample->SetOutputOrigin(pointer2fixedimage->GetOrigin());
-        resample->SetOutputSpacing(pointer2fixedimage->GetSpacing());
-        resample->SetOutputDirection(pointer2fixedimage->GetDirection());
-        resample->SetDefaultPixelValue(0);
+    resample->SetSize(pointer2fixedimage->GetLargestPossibleRegion().GetSize());
+    resample->SetOutputOrigin(pointer2fixedimage->GetOrigin());
+    resample->SetOutputSpacing(pointer2fixedimage->GetSpacing());
+    resample->SetOutputDirection(pointer2fixedimage->GetDirection());
+    resample->SetDefaultPixelValue(100);
 
  
-        using WriterType = itk::ImageFileWriter<ImageType>;
+    using WriterType = itk::ImageFileWriter<ImageType>;
  
-        auto writer = WriterType::New();
+    auto writer = WriterType::New();
+    auto caster = CastFilterType::New();
  
-        writer->SetFileName(argv[3]);
-        //writer->SetFileName("output_test_1.mha");
+    writer->SetFileName(argv[3]);
+    //writer->SetFileName("output_test_1.mha");
 
-        writer->SetInput(resample->GetOutput());
+    writer->SetInput(resample->GetOutput());
 
-        try{
-            writer->Update();
-        }
-        catch (...){
-            std::cout << "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n";
-            return 1;
-        }    
+    try{
+        writer->Update();
     }
-
-    {
-        auto writer = WriterType::New();
- 
-        writer->SetFileName("moving"+std::string{argv[3]});
-        writer->SetInput(pointer2movingimage);
-
-        try{
-            writer->Update();
-        }
-        catch (...){
-            std::cout << "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n";
-            return 1;
-        }    
-    }
-
+    catch (...){
+        std::cout << "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n";
+        return 1;
+    }    
     return 0;
 }
