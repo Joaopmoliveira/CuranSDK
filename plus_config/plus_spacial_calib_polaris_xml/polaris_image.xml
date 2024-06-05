@@ -10,7 +10,7 @@
       Type="PolarisTracker"
       SerialPort="3"
       BaudRate="115200"
-      LocalTimeOffsetSec="0.0"
+      LocalTimeOffsetSec="0.122"
       ToolReferenceFrame="Polaris" >
       <DataSources>
         <DataSource Type="Tool" Id="Tracker" RomFile="NdiToolDefinitions/8700339.rom" />

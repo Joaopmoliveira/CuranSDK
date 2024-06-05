@@ -1,0 +1,5 @@
+add_executable(tutorial_utilities tutorial_utilities.cpp)
+
+target_link_libraries(tutorial_utilities PUBLIC
+utils
+)
