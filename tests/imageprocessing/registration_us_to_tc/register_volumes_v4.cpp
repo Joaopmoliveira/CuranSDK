@@ -27,6 +27,7 @@
 #include <iostream>
 #include "utils/TheadPool.h"
 #include "itkRegionOfInterestImageFilter.h"
+#include <fstream>
 
 const double pi = std::atan(1) * 4;
 
@@ -47,166 +48,6 @@ using MovingImageReaderType = itk::ImageFileReader<ImageType>;
 using InterpolatorType = itk::LinearInterpolateImageFunction<
             ImageType,
             double>;
-
-
-class CommandIterationUpdate : public itk::Command
-{
-public:
-    using Self = CommandIterationUpdate;
-    using Superclass = itk::Command;
-    using Pointer = itk::SmartPointer<Self>;
-    itkNewMacro(Self);
-
-protected:
-    CommandIterationUpdate() { m_LastMetricValue = 0; }
-
-public:
-    using OptimizerPointer = const OptimizerType *;
-
-    void
-    Execute(itk::Object *caller, const itk::EventObject &event) override
-    {
-        Execute((const itk::Object *)caller, event);
-    }
-
-    void
-    Execute(const itk::Object *object, const itk::EventObject &event) override
-    {
-        auto optimizer = static_cast<OptimizerPointer>(object);
-        if (!itk::IterationEvent().CheckEvent(&event))
-        {
-            return;
-        }
-        double currentValue = optimizer->GetValue();
-        // Only print out when the Metric value changes
-        if (itk::Math::abs(m_LastMetricValue - currentValue) > 1e-7)
-        {
-            std::cout << optimizer->GetCurrentIteration() << "   ";
-            std::cout << currentValue << std::endl;
-            m_LastMetricValue = currentValue;
-        }
-    }
-
-private:
-    double m_LastMetricValue;
-};
-
-
-
-struct info_solve_registration
-{
-    ImageType::Pointer fixed_image;
-    ImageType::Pointer moving_image;
-    const Eigen::Vector3d &initial_rotation;
-};
-
-std::tuple<std::optional<double>,TransformType::Pointer,TransformType::Pointer> solve_registration(const info_solve_registration &info_registration)
-{
-    auto metric = MetricType::New();
-    auto optimizer = OptimizerType::New();
-    auto registration = RegistrationType::New();
-    InterpolatorType::Pointer interpolator_moving = InterpolatorType::New();
-    InterpolatorType::Pointer interpolator_fixed = InterpolatorType::New();
-
-    registration->SetMetric(metric);
-    registration->SetOptimizer(optimizer);
-
-    unsigned int numberOfBins = 30;
-
-    metric->SetNumberOfHistogramBins(numberOfBins);
-
-    metric->SetUseMovingImageGradientFilter(true);
-    metric->SetUseFixedImageGradientFilter(true);
-    metric->SetMovingInterpolator(interpolator_moving);
-    metric->SetFixedInterpolator(interpolator_fixed);
-
-     using TransformInitializerType =
-        itk::CenteredTransformInitializer<TransformType,
-                                          ImageType,
-                                          ImageType>;
-
-    auto initialTransform = TransformType::New();
-    itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
-    matrix->SetRotation(info_registration.initial_rotation[0] * (3.14159265359 / 180), info_registration.initial_rotation[1] * (3.14159265359 / 180), info_registration.initial_rotation[2] * (3.14159265359 / 180));
-    TransformInitializerType::Pointer initializer =TransformInitializerType::New();
-    initialTransform->SetMatrix(matrix->GetMatrix());
-    initializer->SetTransform(initialTransform);
-    initializer->SetFixedImage(info_registration.fixed_image);
-    initializer->SetMovingImage(info_registration.moving_image);
-    initializer->InitializeTransform();
-    initializer->GeometryOn();
-
-    registration->SetFixedImage(info_registration.fixed_image);
-    registration->SetMovingImage(info_registration.moving_image);
-    registration->SetInitialTransform(initialTransform);
-
-    using OptimizerScalesType = OptimizerType::ScalesType;
-    OptimizerScalesType optimizerScales(
-        initialTransform->GetNumberOfParameters());
-    constexpr double translationScale = 1.0 / 1000.0;
-    optimizerScales[0] = 5.0;
-    optimizerScales[1] = 5.0;
-    optimizerScales[2] = 5.0;
-    optimizerScales[3] = translationScale;
-    optimizerScales[4] = translationScale;
-    optimizerScales[5] = translationScale;
-    optimizer->SetScales(optimizerScales);
-    optimizer->SetNumberOfIterations(10);
-    optimizer->SetLearningRate(8);
-    optimizer->SetMinimumStepLength(0.001);
-    optimizer->SetReturnBestParametersAndValue(false);
-    itk::SizeValueType value{10};
-    optimizer->SetConvergenceWindowSize(value);
-    optimizer->SetRelaxationFactor(0.7);
-    //auto observer = CommandIterationUpdate::New();
-    //optimizer->AddObserver(itk::IterationEvent(), observer);
-
-    constexpr unsigned int numberOfLevels = 1;
-
-    RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
-    shrinkFactorsPerLevel.SetSize(numberOfLevels);
-    shrinkFactorsPerLevel[0] = 1;
-    //shrinkFactorsPerLevel[1] = 3;
-    //shrinkFactorsPerLevel[2] = 2;
-    //shrinkFactorsPerLevel[3] = 1;
-
-    RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
-    smoothingSigmasPerLevel.SetSize(numberOfLevels);
-    smoothingSigmasPerLevel[0] = 0;
-    //smoothingSigmasPerLevel[1] = 1;
-    //smoothingSigmasPerLevel[2] = 0;
-    //smoothingSigmasPerLevel[3] = 0;
-
-    registration->SetNumberOfLevels(numberOfLevels);
-    registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
-    registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
-
-    RegistrationType::MetricSamplingStrategyEnum samplingStrategy =
-        RegistrationType::MetricSamplingStrategyEnum::RANDOM;
-
-    double samplingPercentage = 0.4;
-
-    registration->SetMetricSamplingStrategy(samplingStrategy);
-    registration->SetMetricSamplingPercentage(samplingPercentage);
-
-    std::srand(std::time(nullptr)); 
-    registration->MetricSamplingReinitializeSeed(std::rand());
-
-    try
-    {
-        registration->Update();
-    }
-    catch (const itk::ExceptionObject &err)
-    {
-        std::cout << "ExceptionObject caught !" << std::endl;
-        std::cout << err << std::endl;
-        TransformType::Pointer finalTransform = registration->GetModifiableTransform();
-        return {100.0, finalTransform,initialTransform};
-    }
-
-    TransformType::Pointer finalTransform = registration->GetModifiableTransform();
-    return {optimizer->GetCurrentMetricValue(), finalTransform,initialTransform};
-}
 
 
 ImageType::Pointer manipulate_input_image(ImageType::Pointer image)
@@ -255,6 +96,131 @@ ImageType::Pointer manipulate_input_image(ImageType::Pointer image)
     return new_image;
 }
 
+constexpr size_t number_of_piramids = 4;
+
+struct RegistrationParameters{
+    size_t bin_numbers = 1;
+    double relative_scales = 1;
+    double learning_rate = 1;
+    double sampling_percentage = .1;
+    double relaxation_factor = 1;
+    size_t convergence_window_size;
+    size_t optimization_iterations = 1;
+    std::array<size_t,number_of_piramids> piramid_sizes;
+    std::array<size_t,number_of_piramids> bluering_sizes;
+};
+
+struct info_solve_registration
+{
+    ImageType::Pointer fixed_image;
+    ImageType::Pointer moving_image;
+    const Eigen::Vector3d &initial_rotation;
+};
+
+std::tuple<double,TransformType::Pointer,TransformType::Pointer> solve_registration(const info_solve_registration &info_registration, const RegistrationParameters& parameters)
+{
+    auto metric = MetricType::New();
+    auto optimizer = OptimizerType::New();
+    auto registration = RegistrationType::New();
+    InterpolatorType::Pointer interpolator_moving = InterpolatorType::New();
+    InterpolatorType::Pointer interpolator_fixed = InterpolatorType::New();
+
+    registration->SetMetric(metric);
+    registration->SetOptimizer(optimizer);
+
+    metric->SetNumberOfHistogramBins(parameters.bin_numbers);
+
+    metric->SetUseMovingImageGradientFilter(true);
+    metric->SetUseFixedImageGradientFilter(true);
+    metric->SetMovingInterpolator(interpolator_moving);
+    metric->SetFixedInterpolator(interpolator_fixed);
+
+     using TransformInitializerType =
+        itk::CenteredTransformInitializer<TransformType,
+                                          ImageType,
+                                          ImageType>;
+
+    auto initialTransform = TransformType::New();
+    itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
+    matrix->SetRotation(info_registration.initial_rotation[0] * (3.14159265359 / 180), info_registration.initial_rotation[1] * (3.14159265359 / 180), info_registration.initial_rotation[2] * (3.14159265359 / 180));
+    TransformInitializerType::Pointer initializer =TransformInitializerType::New();
+    initialTransform->SetMatrix(matrix->GetMatrix());
+    initializer->SetTransform(initialTransform);
+    initializer->SetFixedImage(info_registration.fixed_image);
+    initializer->SetMovingImage(info_registration.moving_image);
+    initializer->InitializeTransform();
+    initializer->GeometryOn();
+
+    registration->SetFixedImage(info_registration.fixed_image);
+    registration->SetMovingImage(info_registration.moving_image);
+    registration->SetInitialTransform(initialTransform);
+
+    using OptimizerScalesType = OptimizerType::ScalesType;
+    OptimizerScalesType optimizerScales(
+        initialTransform->GetNumberOfParameters());
+
+    optimizerScales[0] = 1.0;
+    optimizerScales[1] = 1.0;
+    optimizerScales[2] = 1.0;
+    optimizerScales[3] = parameters.relative_scales;
+    optimizerScales[4] = parameters.relative_scales;
+    optimizerScales[5] = parameters.relative_scales;
+
+    optimizer->SetScales(optimizerScales);
+
+    optimizer->SetNumberOfIterations(parameters.optimization_iterations);
+    optimizer->SetLearningRate(parameters.learning_rate);
+    optimizer->SetMinimumStepLength(0.001);
+    optimizer->SetReturnBestParametersAndValue(false);
+    itk::SizeValueType value{parameters.convergence_window_size};
+    optimizer->SetConvergenceWindowSize(value);
+    optimizer->SetRelaxationFactor(parameters.relaxation_factor);
+
+    RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
+    shrinkFactorsPerLevel.SetSize(number_of_piramids);
+    shrinkFactorsPerLevel[0] = parameters.piramid_sizes[0];
+    shrinkFactorsPerLevel[1] = parameters.piramid_sizes[1];
+    shrinkFactorsPerLevel[2] = parameters.piramid_sizes[2];
+    shrinkFactorsPerLevel[3] = parameters.piramid_sizes[2];
+
+    RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+    smoothingSigmasPerLevel.SetSize(number_of_piramids);
+    smoothingSigmasPerLevel[0] = parameters.bluering_sizes[0];
+    smoothingSigmasPerLevel[1] = parameters.bluering_sizes[1];
+    smoothingSigmasPerLevel[2] = parameters.bluering_sizes[2];
+    smoothingSigmasPerLevel[3] = parameters.bluering_sizes[3];
+
+    registration->SetNumberOfLevels(number_of_piramids);
+    registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
+    registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
+
+    RegistrationType::MetricSamplingStrategyEnum samplingStrategy =
+        RegistrationType::MetricSamplingStrategyEnum::RANDOM;
+
+    registration->SetMetricSamplingStrategy(samplingStrategy);
+    registration->SetMetricSamplingPercentage(parameters.sampling_percentage);
+
+    std::srand(std::time(nullptr)); 
+    registration->MetricSamplingReinitializeSeed(std::rand());
+
+    try
+    {
+        registration->Update();
+    }
+    catch (const itk::ExceptionObject &err)
+    {
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err << std::endl;
+        TransformType::Pointer finalTransform = registration->GetModifiableTransform();
+        return {100.0, finalTransform,initialTransform};
+    }
+
+    TransformType::Pointer finalTransform = registration->GetModifiableTransform();
+    return {optimizer->GetCurrentMetricValue(), finalTransform,initialTransform};
+}
+
+
+
 int main(int argc, char **argv)
 {
 
@@ -287,13 +253,9 @@ int main(int argc, char **argv)
     auto movingImageReader = MovingImageReaderType::New();
 
     std::string dirName{argv[1]};
-    //std::string dirName{"precious_phantom.mha"};
     fixedImageReader->SetFileName(dirName);
 
-    
-
     std::string dirName2{argv[2]};
-    //std::string dirName2{"ultrasound_precious_phantom.mha"};
     movingImageReader->SetFileName(dirName2);
 
     try
@@ -330,9 +292,7 @@ int main(int argc, char **argv)
     print_image_info(pointer2fixedimage,"fixed image");
     print_image_info(pointer2movingimage,"moving image");
 
-    std::vector<std::tuple<std::optional<double>, TransformType::Pointer,TransformType::Pointer>> full_runs;
-
-    std::array<Eigen::Vector3d,125> initial_configs;
+    std::array<Eigen::Vector3d,27> initial_configs;
     
     std::printf("\nGenerating random initial guesses...\n");
     double advancement_x = 6.28318530718/(std::cbrt(initial_configs.size())-1);
@@ -360,49 +320,82 @@ int main(int argc, char **argv)
 
         std::printf("initial values: (%.2f %.2f %.2f)\n",vals[0],vals[1],vals[2]);
     }
-        
 
-    {
-        std::mutex mut;
-        size_t number_of_solved_positions = 0;
-        auto pool = curan::utilities::ThreadPool::create(6,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
-        std::cout << "starting random registrations!\n";
-        for (const auto &initial_config : initial_configs){
-            curan::utilities::Job job{"solving registration",[&](){
-                auto solution = solve_registration({pointer2fixedimage, pointer2movingimage, initial_config});
-                {
-                    std::lock_guard<std::mutex> g{mut};
-                    if(std::get<0>(solution))
-                        std::printf("cost: %.2f %.2f %% \n",*std::get<0>(solution),100.0-((initial_configs.size()-number_of_solved_positions)/(double)initial_configs.size())*100.0);
-                    else
-                        std::printf("%.2f %% \n",((initial_configs.size()-number_of_solved_positions)/(double)initial_configs.size())*100.0);
-                    full_runs.emplace_back(solution);
-                    ++number_of_solved_positions;
+    std::ofstream myfile;
+    myfile.open("results_of_fullscale_optimization.csv");
+    myfile << "run,bins,sampling percentage,relative_scales,learning rate,relaxation,convergence window,piramid sizes,bluring sizes,best cost,total time\n";
 
-                   
-                }              
-            }};
-            pool->submit(job);
-        } 
-    }
+    constexpr size_t local_permut = 1;
+/*
+    std::array<size_t,local_permut> bin_numbers{10,20,50};
+    std::array<double,local_permut> percentage_numbers{0.05,0.1,0.4};
+    std::array<double,local_permut> relative_scales{2000.0,1000.0,800.0};
+    std::array<double,local_permut> learning_rate{10,8,5};
+    std::array<double,local_permut> relaxation_factor{0.9,0.7,0.5};
+    std::array<size_t,local_permut> optimization_iterations{100,300,500};
+    std::array<size_t,local_permut> convergence_window_size{5,10,20};
+    std::array<std::array<size_t,4>,local_permut> piramid_sizes{{{4,3,1,0},{8,6,2,0},{8,4,2,0}}};
+    std::array<std::array<size_t,4>,local_permut> bluering_sizes{{{6,3,2,0},{6,3,1,0},{8,4,2,0}}};
+*/
+    std::array<size_t,local_permut> bin_numbers{50};
+    std::array<double,local_permut> percentage_numbers{0.1};
+    std::array<double,local_permut> relative_scales{1000.0};
+    std::array<double,local_permut> learning_rate{8};
+    std::array<double,local_permut> relaxation_factor{0.7};
+    std::array<size_t,local_permut> optimization_iterations{500};
+    std::array<size_t,local_permut> convergence_window_size{20};
+    std::array<std::array<size_t,4>,local_permut> piramid_sizes{{{8,4,2,0}}};
+    std::array<std::array<size_t,4>,local_permut> bluering_sizes{{{8,4,2,0}}};
 
-    size_t minimum_index = std::numeric_limits<size_t>::max();
-    size_t current_index = 0;
-    double minimum_val = std::numeric_limits<double>::max();
-    for (const auto &possible_best_solution : full_runs){
-        if (std::get<0>(possible_best_solution) && minimum_val > *std::get<0>(possible_best_solution)){
-            minimum_index = current_index;
-            minimum_val = *std::get<0>(possible_best_solution);
+    constexpr size_t total_permutations = bin_numbers.size()*percentage_numbers.size()*relative_scales.size()*learning_rate.size()*relaxation_factor.size()*convergence_window_size.size()*piramid_sizes.size()*bluering_sizes.size();
+
+    auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales,double learning_rate, double relaxation_factor,size_t window_size, std::array<size_t,4> piramid_sizes, std::array<size_t,4> bluering_sizes){
+        std::vector<std::tuple<double, TransformType::Pointer,TransformType::Pointer>> full_runs;
+        {         
+            std::mutex mut;
+            auto pool = curan::utilities::ThreadPool::create(4,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
+            for (const auto &initial_config : initial_configs){
+                curan::utilities::Job job{"solving registration",[&](){
+                    auto solution = solve_registration({pointer2fixedimage, pointer2movingimage, initial_config},{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
+                    {
+                        std::lock_guard<std::mutex> g{mut};
+                        full_runs.emplace_back(solution);
+                        std::cout << ".";
+                    }              
+                }};
+                pool->submit(job);
+            } 
         }
-        ++current_index;
-    }
+        return full_runs;
+    };
 
-    if(minimum_index==std::numeric_limits<size_t>::max()){
-        std::cout << "No solution found minimizes the error between the two images\n";
-        return 1;
-    }
-
-    std::printf("Choosen cost: %.2f\n",std::get<0>(full_runs[minimum_index]));
+    size_t total_runs = 0;
+    for(const auto& bin_n : bin_numbers)
+        for(const auto& percent_n : percentage_numbers)
+            for(const auto& rel_scale : relative_scales)
+                for(const auto& learn_rate : learning_rate)
+                    for(const auto& relax_factor : relaxation_factor)
+                        for(const auto& wind_size : convergence_window_size)
+                            for(const auto& pira_size : piramid_sizes)
+                                for(const auto& iters : optimization_iterations)
+                                    for(const auto& blur_size : bluering_sizes) {
+                                        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                                        auto cost = run_parameterized_optimization(bin_n,iters,percent_n,rel_scale,learn_rate,relax_factor,wind_size,pira_size,blur_size);
+                                        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                                        for(auto&& run : cost){
+                                            myfile << total_runs << "," << bin_n << "," << percent_n << "," << rel_scale << "," << learn_rate << "," << relax_factor << "," << wind_size << ", {";
+                                            for(const auto& val : pira_size)
+                                                myfile << val << ";";
+                                            myfile << "}, {";
+                                            for(const auto& val : blur_size)
+                                                myfile << val << ";"; 
+                                            myfile <<"}," << std::get<0>(run) << "," << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+                                            std::printf("\n==(%d/%d)==\n",(int)total_runs,(int)total_permutations);
+                                        }
+                                        ++total_runs;
+                                    }
+/*
+    std::printf("Choosen cost: %.2f\n",minimum_val);
     
     auto finalTransform = std::get<1>(full_runs[minimum_index]);
 
@@ -460,6 +453,6 @@ int main(int argc, char **argv)
             return 1;
         }    
     }
-
+*/
     return 0;
 }

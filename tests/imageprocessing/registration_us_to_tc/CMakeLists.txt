@@ -50,3 +50,15 @@ utils
 ${ITK_LIBRARIES}
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+
+add_executable(test_apply_laplacian apply_laplacian.cpp)
+
+target_compile_definitions(test_apply_laplacian PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_apply_laplacian
+PUBLIC
+utils
+${ITK_LIBRARIES}
+${OPERATING_SYSTEM_REQUIRMENTS}
+)
+
