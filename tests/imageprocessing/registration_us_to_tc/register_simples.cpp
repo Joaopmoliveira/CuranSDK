@@ -13,15 +13,16 @@
 #include "itkCommand.h"
 #include "itkMattesMutualInformationImageToImageMetric.h"
 #include "itkLinearInterpolateImageFunction.h"
-
-
+#include "itkSmoothingRecursiveGaussianImageFilter.h"
+#include "itkConnectedComponentImageFilter.h"
+#include "itkRelabelComponentImageFilter.h"
 
 
 class CommandIterationUpdate : public itk::Command
 {
 public:
   using Self = CommandIterationUpdate;
-       using Superclass = itk::Command;
+  using Superclass = itk::Command;
   using Pointer = itk::SmartPointer<Self>;
   itkNewMacro(Self);
  
@@ -50,6 +51,74 @@ public:
   }
 };
 
+
+template <typename TRegistration>
+class RegistrationInterfaceCommand : public itk::Command
+{
+public:
+  using Self = RegistrationInterfaceCommand;
+  using Superclass = itk::Command;
+  using Pointer = itk::SmartPointer<Self>;
+  itkNewMacro(Self);
+ 
+protected:
+  RegistrationInterfaceCommand() = default;
+
+public:
+  using RegistrationType = TRegistration;
+  using RegistrationPointer = RegistrationType *;
+  using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+  using OptimizerPointer = OptimizerType *;
+
+  void
+  Execute(itk::Object * object, const itk::EventObject & event) override
+  {
+    if (!(itk::MultiResolutionIterationEvent().CheckEvent(&event)))
+    {
+      return;
+    }
+    auto registration = static_cast<RegistrationPointer>(object);
+    auto optimizer =
+      static_cast<OptimizerPointer>(registration->GetModifiableOptimizer());
+ 
+    unsigned int currentLevel = registration->GetCurrentLevel();
+    typename RegistrationType::ShrinkFactorsPerDimensionContainerType
+      shrinkFactors =
+        registration->GetShrinkFactorsPerDimension(currentLevel);
+    typename RegistrationType::SmoothingSigmasArrayType smoothingSigmas =
+      registration->GetSmoothingSigmasPerLevel();
+ 
+    std::cout << "-------------------------------------" << std::endl;
+    std::cout << " Current level = " << currentLevel << std::endl;
+    std::cout << "    shrink factor = " << shrinkFactors << std::endl;
+    std::cout << "    smoothing sigma = ";
+    std::cout << smoothingSigmas[currentLevel] << std::endl;
+    std::cout << std::endl;
+    if (registration->GetCurrentLevel() == 0)
+    {
+      optimizer->SetNumberOfIterations(500);
+      optimizer->SetLearningRate(16.00);
+      optimizer->SetMinimumStepLength(0.001);
+    }
+    else
+    {
+      optimizer->SetLearningRate(optimizer->GetCurrentStepLength());
+      optimizer->SetMinimumStepLength(optimizer->GetMinimumStepLength() *
+                                      0.2);
+                                        optimizer->SetNumberOfIterations(200);
+                                        optimizer->SetLearningRate(5);
+
+    }
+  }
+  void
+  Execute(const itk::Object *, const itk::EventObject &) override
+  {
+    return;
+  }
+};
+
+
+
 int RegisterImages(const std::string& fixedImagePath, const std::string& movingImagePath){
 
   constexpr unsigned int Dimension = 3;
@@ -61,9 +130,9 @@ int RegisterImages(const std::string& fixedImagePath, const std::string& movingI
   using MetricType = itk::MattesMutualInformationImageToImageMetricv4<FixedImageType, MovingImageType>;
   using InterpolatorType = itk::LinearInterpolateImageFunction<FixedImageType, double>;
   using RegistrationType = itk::ImageRegistrationMethodv4<FixedImageType, MovingImageType, TransformType>;
-using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
+  using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
   using MovingImageReaderType = itk::ImageFileReader<MovingImageType>;
-    using TransformInitializerType = itk::CenteredTransformInitializer<TransformType,FixedImageType,MovingImageType>;
+  using TransformInitializerType = itk::CenteredTransformInitializer<TransformType,FixedImageType,MovingImageType>;
   using VersorType = TransformType::VersorType;
   using VectorType = VersorType::VectorType;
   using OptimizerScalesType = OptimizerType::ScalesType;
@@ -76,7 +145,7 @@ using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
     auto fixedInterpolator = InterpolatorType::New();
     auto movingInterpolator = InterpolatorType::New();
 
-    unsigned int numberOfBins = 50;
+    unsigned int numberOfBins = 100;
     metric->SetNumberOfHistogramBins(numberOfBins);
     metric->SetUseMovingImageGradientFilter(false);
     metric->SetUseFixedImageGradientFilter(false);
@@ -84,10 +153,9 @@ using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
     metric->SetMovingInterpolator(movingInterpolator);
     RegistrationType::MetricSamplingStrategyEnum samplingStrategy =
     RegistrationType::MetricSamplingStrategyEnum::RANDOM;
-    double samplingPercentage = 0.30;
+    double samplingPercentage = 0.99;
 
 
- 
   registration->SetMetric(metric);
   registration->SetOptimizer(optimizer);
       registration->SetMetricSamplingStrategy(samplingStrategy);
@@ -130,35 +198,42 @@ using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
   OptimizerScalesType optimizerScales(
     initialTransform->GetNumberOfParameters());
   const double translationScale = 1.0 / 1000.0;
-  optimizerScales[0] = 10.0;
-  optimizerScales[1] = 10.0;
-  optimizerScales[2] = 10.0;
+  optimizerScales[0] = 1.0;
+  optimizerScales[1] = 1.0;
+  optimizerScales[2] = 1.0;
   optimizerScales[3] = translationScale;
   optimizerScales[4] = translationScale;
   optimizerScales[5] = translationScale;
   optimizer->SetScales(optimizerScales);
-  optimizer->SetNumberOfIterations(150);
-  optimizer->SetLearningRate(40);
+  
   optimizer->SetMinimumStepLength(0.001);
-  optimizer->SetReturnBestParametersAndValue(true);
- 
 
+  optimizer->SetRelaxationFactor(0.9);
+
+ 
+  optimizer->SetReturnBestParametersAndValue(true);
   auto observer = CommandIterationUpdate::New();
   optimizer->AddObserver(itk::IterationEvent(), observer);
- 
-  constexpr unsigned int numberOfLevels = 1;
- 
-  RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
-  shrinkFactorsPerLevel.SetSize(1);
-  shrinkFactorsPerLevel[0] = 1;
- 
-  RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
-  smoothingSigmasPerLevel.SetSize(1);
-  smoothingSigmasPerLevel[0] = 0;
- 
-  registration->SetNumberOfLevels(numberOfLevels);
-  registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
-  registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
+
+  using CommandType = RegistrationInterfaceCommand<RegistrationType>;
+  CommandType::Pointer command = CommandType::New();
+  registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
+
+  constexpr unsigned int numberOfLevels = 3;
+ RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
+ shrinkFactorsPerLevel.SetSize(3);
+ shrinkFactorsPerLevel[0] = 1;
+ shrinkFactorsPerLevel[1] = 1;
+ shrinkFactorsPerLevel[2] = 1;
+ RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+ smoothingSigmasPerLevel.SetSize(3);
+ smoothingSigmasPerLevel[0] = 2;
+ smoothingSigmasPerLevel[1] = 1;
+ smoothingSigmasPerLevel[2] = 0;
+ registration->SetNumberOfLevels(numberOfLevels);
+ registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
+ registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
+
  
   try
   {
@@ -225,7 +300,7 @@ using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
   resampler->SetOutputOrigin(fixedImage->GetOrigin());
   resampler->SetOutputSpacing(fixedImage->GetSpacing());
   resampler->SetOutputDirection(fixedImage->GetDirection());
-  resampler->SetDefaultPixelValue(100);
+  resampler->SetDefaultPixelValue(0);
  
  // Write result
     auto writer = itk::ImageFileWriter<MovingImageType>::New();
@@ -255,9 +330,12 @@ int main(int argc, char *argv[]) {
     std::string aux = "/precious_phantom/";
     std::string fixed_image{argv[1]};
     std::string fixed_image_path = CURAN_COPIED_RESOURCE_PATH + aux + fixed_image;
-    std::string moving_image{argv[2]};
+          std::string moving_image{argv[2]};
     std::string moving_image_path = CURAN_COPIED_RESOURCE_PATH + aux + moving_image;
  
     RegisterImages(fixed_image_path, moving_image_path);
     return 0;
 }
+
+
+

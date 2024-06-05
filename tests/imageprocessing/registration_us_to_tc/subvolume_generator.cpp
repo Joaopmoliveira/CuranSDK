@@ -82,10 +82,10 @@ int main(int argc, char* argv[]){
     auto fixedImageReader = FixedImageReaderType::New();
     const std::string aux = "/precious_phantom/";
     const std::string path = CURAN_COPIED_RESOURCE_PATH + aux + input_volume;
-    if(true)
-        fixedImageReader->SetFileName(input_volume);
-    else
-        fixedImageReader->SetFileName(path);
+    
+    std::cout << path << std::endl;
+    fixedImageReader->SetFileName(path);
+
     try {
         fixedImageReader->Update();
     } catch (const itk::ExceptionObject & error) {

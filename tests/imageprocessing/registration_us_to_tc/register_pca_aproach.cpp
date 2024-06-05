@@ -46,6 +46,8 @@
 #include "itkMattesMutualInformationImageToImageMetric.h"
 #include "itkLinearInterpolateImageFunction.h"
 #include "itkBinaryContourImageFilter.h"
+#include <Eigen/Dense>
+#include <vector>
 
 
 using PixelType = float;
@@ -220,322 +222,210 @@ itk::PointSet<itk::Point<float, 3>, 3>::Pointer extract_point_cloud(ImageType::P
     return pointCloud;
 }
 
-itk::Matrix<double, 3, 3> PCA(itk::PointSet<itk::Point<float, 3>, 3>::Pointer pointCloud) {
-    using PointType = itk::Point<float, 3>;
-    unsigned int numberOfPoints = pointCloud->GetNumberOfPoints();
-
-    // centroid
-    PointType centroid;
-    centroid.Fill(0.0);
-    for (unsigned int i = 0; i < numberOfPoints; ++i) {
-        PointType point = pointCloud->GetPoint(i);
-        for (unsigned int j = 0; j < 3; ++j) {
-            centroid[j] += point[j];
-        }
-    }
-    for (unsigned int j = 0; j < 3; ++j) {
-        centroid[j] /= numberOfPoints;
-    }
-
-    //  covariance matrix
-    itk::Matrix<double, 3, 3> covarianceMatrix;
-    covarianceMatrix.Fill(0.0);
-    for (unsigned int i = 0; i < numberOfPoints; ++i) {
-        PointType point = pointCloud->GetPoint(i);
-        for (unsigned int j = 0; j < 3; ++j) {
-            for (unsigned int k = 0; k < 3; ++k) {
-                covarianceMatrix[j][k] += (point[j] - centroid[j]) * (point[k] - centroid[k]);
+Eigen::Matrix3d NormalizeEigenvectors(const Eigen::Matrix3d& eigenvectors) {
+    Eigen::Matrix3d normalized = eigenvectors;
+    for (int i = 0; i < 3; ++i) {
+        double maxAbsValue = 0.0;
+        int maxIndex = 0;
+        for (int j = 0; j < 3; ++j) {
+            if (std::abs(normalized(j, i)) > maxAbsValue) {
+                maxAbsValue = std::abs(normalized(j, i));
+                maxIndex = j;
             }
         }
-    }
-    for (unsigned int j = 0; j < 3; ++j) {
-        for (unsigned int k = 0; k < 3; ++k) {
-            covarianceMatrix[j][k] /= (numberOfPoints - 1);
+        if (normalized(maxIndex, i) < 0) {
+            normalized.col(i) = -normalized.col(i);
         }
     }
-
-    vnl_matrix<double> vnlCovarianceMatrix(3, 3);
-    for (unsigned int i = 0; i < 3; ++i) {
-        for (unsigned int j = 0; j < 3; ++j) {
-            vnlCovarianceMatrix[i][j] = covarianceMatrix[i][j];
-        }
-    }    vnl_symmetric_eigensystem<double> eigensystem(vnlCovarianceMatrix);
-
-    itk::Matrix<double, 3, 3> principalAxes;
-    for (unsigned int i = 0; i < 3; ++i) {
-        for (unsigned int j = 0; j < 3; ++j) {
-            principalAxes[j][i] = eigensystem.get_eigenvector(i)[j];
-        }
-    }
-
-    std::cout << "Principal Axes:" << std::endl;
-    for (unsigned int i = 0; i < 3; ++i) {
-        for (unsigned int j = 0; j < 3; ++j) {
-            std::cout << principalAxes[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    return principalAxes;
+    return normalized;
 }
 
-itk::Matrix<double, 3, 3> GetRotationMatrix(itk::Matrix<double, 3, 3> &source, itk::Matrix<double, 3, 3> &target) {
-    itk::Matrix<double, 3, 3> rotationMatrix;
-    for (unsigned int i = 0; i < 3; ++i) {
-        for (unsigned int j = 0; j < 3; ++j) {
-            rotationMatrix[i][j] = 0.0;
-            for (unsigned int k = 0; k < 3; ++k) {
-                rotationMatrix[i][j] += target[i][k] * source[k][j];
-            }
-        }
+ std::pair<itk::Point<double, 3U>, Eigen::Matrix3d> PCA2 (PointSetType::Pointer pointCloud){
+    using namespace Eigen;
+	using namespace std;
+    using PointSetType = itk::PointSet<float, 3>;
+    using PointType = PointSetType::PointType;
+    using PointsContainer = PointSetType::PointsContainer;
+    using PointsIterator = PointsContainer::ConstIterator;
+
+    vector<Vector3d> eigen_points;
+    // Iterate through the points in the pointCloud
+    PointsIterator it = pointCloud->GetPoints()->Begin();
+    PointsIterator end = pointCloud->GetPoints()->End();
+
+    for (; it != end; ++it){
+        PointType itk_point = it.Value();
+        Eigen::Vector3d eigen_point(itk_point[0], itk_point[1], itk_point[2]);
+        eigen_points.push_back(eigen_point);
+    };
+
+    Vector3d mean = Vector3d::Zero();
+    for (const auto& vec : eigen_points) {
+        mean += vec;
+    }
+    mean /= eigen_points.size();
+
+    itk::Point<double, 3> itk_mean;
+    itk_mean[0] = mean[0];
+    itk_mean[1] = mean[1];
+    itk_mean[2] = mean[2];
+
+    std::cout << "Centroid:" << std::endl;
+    std::cout << mean << std::endl;
+
+    //Centrar os dados tendo em conta a posição média
+    MatrixXd centered_data(3, eigen_points.size());
+    for (size_t i = 0; i < eigen_points.size(); ++i) {
+        centered_data.col(i) = eigen_points[i] - mean;
     }
 
-    std::cout << "Rotation Matrix:" << std::endl;
-    for (unsigned int i = 0; i < 3; ++i) {
-        for (unsigned int j = 0; j < 3; ++j) {
-            std::cout << rotationMatrix[i][j] << " ";
-        }
-        std::cout << std::endl;
+    //Covariance matrix
+    MatrixXd covariance = (centered_data * centered_data.transpose()) / (eigen_points.size() - 1);
+    //std::cout << "Covariance Matrix:\n" << covariance<< std::endl
+
+    //Eigendecomposition da covariance matrix
+    SelfAdjointEigenSolver<MatrixXd> eigensolver(covariance);
+
+    //Eigenvectors e eigenvalues
+    Vector3d eigenvalues = eigensolver.eigenvalues();
+    Matrix3d eigenvectors = eigensolver.eigenvectors();
+
+        // Normalize the eigenvectors
+    eigenvectors = NormalizeEigenvectors(eigenvectors);
+
+    //Pares de valores prórpios com o respetivo vetor próprio
+    vector<pair<double, Vector3d>> eigen_pairs;
+    for (int i = 0; i < 3; ++i) {
+        eigen_pairs.push_back(make_pair(eigenvalues(i), eigenvectors.col(i)));
+    }
+   
+    //Lambda function para comparar os valores prórpios dos pares
+    auto compare = [](const pair<double, Vector3d>& a, const pair<double, Vector3d>& b) {
+        return a.first > b.first;
+    };
+
+    //Organiza os pares por ordem decrescente de valor próprio 
+    sort(eigen_pairs.begin(), eigen_pairs.end(), compare);
+
+    /* 
+    //Printa os pares eigenvalue-eigenvector
+    cout << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Sorted Eigenvalue-Eigenvector Pairs:" << endl;
+    for (const auto& pair : eigen_pairs) {
+        cout << "Eigenvalue: " << pair.first << ", Eigenvector: \n" << pair.second << endl;
+    }
+    cout << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Principal Component: " << eigen_pairs[0].second.transpose() << endl;
+    */
+    
+    Matrix3d principal_components;
+    for (int i = 0; i < 3; ++i) {
+        principal_components.col(i) = eigen_pairs[i].second;
     }
 
-    return rotationMatrix;
+    // Print the principal components matrix
+    cout << "Principal Components Matrix:\n" << principal_components << endl;
+    auto pair = make_pair(itk_mean, principal_components);
+
+    return pair;
+    }
+
+itk::Matrix<double, 3, 3> CalculateRotationMatrix(Eigen::Matrix<double, 3, 3> movingPCA, Eigen::Matrix<double, 3, 3> fixedPCA) {
+     auto rotation = fixedPCA * movingPCA.transpose();
+
+    // Define the ITK matrix
+    itk::Matrix<double, 3, 3> itk_matrix;
+
+    // Convert Eigen matrix to ITK matrix by copying elements
+    for (unsigned int i = 0; i < 3; ++i) {
+        for (unsigned int j = 0; j < 3; ++j) {
+            itk_matrix[i][j] = rotation(i, j);
+        }
+    }
+    return itk_matrix;
 }
+#include "itkEuler3DTransform.h"
 
-
-
-class CommandIterationUpdate : public itk::Command
+void RotationMatrixToEulerAngles(const itk::Matrix<double, 3, 3>& R, double& alpha, double& beta, double& gamma)
 {
-public:
-  using Self = CommandIterationUpdate;
-       using Superclass = itk::Command;
-  using Pointer = itk::SmartPointer<Self>;
-  itkNewMacro(Self);
- 
-protected:
-  CommandIterationUpdate() = default;
- 
-public:
-  using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
-  using OptimizerPointer = const OptimizerType *;
-  void
-  Execute(itk::Object * caller, const itk::EventObject & event) override
-  {
-    Execute((const itk::Object *)caller, event);
-  }
-  void
-  Execute(const itk::Object * object, const itk::EventObject & event) override
-  {
-    auto optimizer = static_cast<OptimizerPointer>(object);
-    if (!itk::IterationEvent().CheckEvent(&event))
-    {
-      return;
+    beta = std::atan2(-R[2][0], std::sqrt(R[0][0] * R[0][0] + R[1][0] * R[1][0]));
+
+    if (std::cos(beta) != 0) {
+        alpha = std::atan2(R[2][1], R[2][2]);
+        gamma = std::atan2(R[1][0], R[0][0]);
+    } else {
+        alpha = 0;
+        gamma = std::atan2(-R[0][1], R[1][1]);
     }
-    std::cout << optimizer->GetCurrentIteration() << "   ";
-    std::cout << optimizer->GetValue() << "   ";
-    std::cout << optimizer->GetCurrentPosition() << std::endl;
-  }
-};
+}
 
+ImageType::Pointer transform_and_resample(
+    ImageType::Pointer inputImage,
+    ImageType::Pointer fixedImage,
+    const itk::Point<double, 3>& fixedCentroid,
+    const itk::Point<double, 3>& movingCentroid,
+    const itk::Matrix<double, 3, 3>& rotationMatrix) {
+/*
+    // Define the transform
+    using TransformType = itk::Euler3DTransform<double>;
+    TransformType::Pointer transform = TransformType::New();
+    transform->SetCenter(movingCentroid);
 
-int RegisterImages(const std::string& fixedImagePath, const std::string& movingImagePath, itk::Matrix<double>& rotationMatrix){
+    double alpha, beta, gamma;
+    RotationMatrixToEulerAngles(rotationMatrix, alpha, beta, gamma);
+    // Set rotation angles
+    const double radiansX = 20 * itk::Math::pi / 180.0;
+    const double radiansY = 0 * itk::Math::pi / 180.0;
+    const double radiansZ = 0 * itk::Math::pi / 180.0;
+    transform->SetRotation(alpha, beta, gamma);
 
-  constexpr unsigned int Dimension = 3;
-  using PixelType = float;
-  using FixedImageType = itk::Image<PixelType, Dimension>;
-  using MovingImageType = itk::Image<PixelType, Dimension>;
-  using TransformType = itk::VersorRigid3DTransform<double>;
-  using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
-  using MetricType = itk::MattesMutualInformationImageToImageMetricv4<FixedImageType, MovingImageType>;
-  using InterpolatorType = itk::LinearInterpolateImageFunction<FixedImageType, double>;
-  using RegistrationType = itk::ImageRegistrationMethodv4<FixedImageType, MovingImageType, TransformType>;
-using FixedImageReaderType = itk::ImageFileReader<FixedImageType>;
-  using MovingImageReaderType = itk::ImageFileReader<MovingImageType>;
-    using TransformInitializerType = itk::CenteredTransformInitializer<TransformType,FixedImageType,MovingImageType>;
-  using VersorType = TransformType::VersorType;
-  using VectorType = VersorType::VectorType;
-  using OptimizerScalesType = OptimizerType::ScalesType;
+    // Set translation
+    TransformType::OutputVectorType translation;
 
+    auto T = fixedCentroid - rotationMatrix * movingCentroid;
+    transform->SetTranslation(T);
+    */
 
-  auto metric = MetricType::New();
-  auto optimizer = OptimizerType::New();
-  auto registration = RegistrationType::New();
+       // Define the transform
+    using TransformType = itk::VersorRigid3DTransform<double>;
+    TransformType::Pointer transform = TransformType::New();
+    transform->SetCenter(movingCentroid);
 
-    auto fixedInterpolator = InterpolatorType::New();
-    auto movingInterpolator = InterpolatorType::New();
+    itk::Versor<double> versor;
+    versor.Set(rotationMatrix);
+    transform->SetRotation(versor);
+    TransformType::OutputVectorType translation = fixedCentroid - rotationMatrix * movingCentroid;
+    transform->SetTranslation(translation);
 
-    unsigned int numberOfBins = 50;
-    metric->SetNumberOfHistogramBins(numberOfBins);
-    metric->SetUseMovingImageGradientFilter(false);
-    metric->SetUseFixedImageGradientFilter(false);
-    metric->SetFixedInterpolator(fixedInterpolator);
-    metric->SetMovingInterpolator(movingInterpolator);
-    RegistrationType::MetricSamplingStrategyEnum samplingStrategy =
-    RegistrationType::MetricSamplingStrategyEnum::RANDOM;
-    double samplingPercentage = 0.30;
+    using ResampleFilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+    auto resampleFilter = ResampleFilterType::New();
+    resampleFilter->SetInput(inputImage);
+    resampleFilter->SetTransform(transform);
 
+    resampleFilter->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
+    resampleFilter->SetOutputSpacing(fixedImage->GetSpacing());
+    resampleFilter->SetOutputOrigin(fixedImage->GetOrigin());
+    resampleFilter->SetOutputDirection(fixedImage->GetDirection());
 
- 
-  registration->SetMetric(metric);
-  registration->SetOptimizer(optimizer);
-      registration->SetMetricSamplingStrategy(samplingStrategy);
-    registration->SetMetricSamplingPercentage(samplingPercentage);
-    registration->MetricSamplingReinitializeSeed(121213);
-
-  auto initialTransform = TransformType::New();
-  auto fixedImageReader = FixedImageReaderType::New();
-  auto movingImageReader = MovingImageReaderType::New();
- 
-  fixedImageReader->SetFileName(fixedImagePath);
-  movingImageReader->SetFileName(movingImagePath);
- 
-  registration->SetFixedImage(fixedImageReader->GetOutput());
-  registration->SetMovingImage(movingImageReader->GetOutput());
-
-
-  auto initializer = TransformInitializerType::New();
-  initializer->SetTransform(initialTransform);
-  initializer->SetFixedImage(fixedImageReader->GetOutput());
-  initializer->SetMovingImage(movingImageReader->GetOutput());
-  initializer->MomentsOn();
-  initializer->InitializeTransform();
-
-
-
-  VersorType rotation;
-  VectorType axis;
-  axis[0] = 0.0;
-  axis[1] = 0.0;
-  axis[2] = 1.0;
-  constexpr double angle = 0;
-  rotation.Set(axis, angle);
-
-  initialTransform->SetRotation(rotation);
-//initialTransform->SetMatrix(rotationMatrix);
-
-
-  registration->SetInitialTransform(initialTransform);
-
- 
-
-  OptimizerScalesType optimizerScales(
-    initialTransform->GetNumberOfParameters());
-  const double translationScale = 1.0 / 1000.0;
-  optimizerScales[0] = 10.0;
-  optimizerScales[1] = 10.0;
-  optimizerScales[2] = 10.0;
-  optimizerScales[3] = translationScale;
-  optimizerScales[4] = translationScale;
-  optimizerScales[5] = translationScale;
-  optimizer->SetScales(optimizerScales);
-  optimizer->SetNumberOfIterations(5);
-  optimizer->SetLearningRate(40);
-  optimizer->SetMinimumStepLength(0.001);
-  optimizer->SetReturnBestParametersAndValue(true);
- 
-
-  auto observer = CommandIterationUpdate::New();
-  optimizer->AddObserver(itk::IterationEvent(), observer);
- 
-  constexpr unsigned int numberOfLevels = 1;
- 
-  RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
-  shrinkFactorsPerLevel.SetSize(1);
-  shrinkFactorsPerLevel[0] = 1;
- 
-  RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
-  smoothingSigmasPerLevel.SetSize(1);
-  smoothingSigmasPerLevel[0] = 0;
- 
-  registration->SetNumberOfLevels(numberOfLevels);
-  registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
-  registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
- 
-  try
-  {
-    registration->Update();
-    std::cout << "Optimizer stop condition: "
-              << registration->GetOptimizer()->GetStopConditionDescription()
-              << std::endl;
-  }
-  catch (const itk::ExceptionObject & err)
-  {
-    std::cerr << "ExceptionObject caught !" << std::endl;
-    std::cerr << err << std::endl;
-    return EXIT_FAILURE;
-  }
- 
-  const TransformType::ParametersType finalParameters =
-    registration->GetOutput()->Get()->GetParameters();
- 
-  const double       versorX = finalParameters[0];
-  const double       versorY = finalParameters[1];
-  const double       versorZ = finalParameters[2];
-  const double       finalTranslationX = finalParameters[3];
-  const double       finalTranslationY = finalParameters[4];
-  const double       finalTranslationZ = finalParameters[5];
-  const unsigned int numberOfIterations = optimizer->GetCurrentIteration();
-  const double       bestValue = optimizer->GetValue();
- 
-
-  std::cout << std::endl << std::endl;
-  std::cout << "Result = " << std::endl;
-  std::cout << " versor X      = " << versorX << std::endl;
-  std::cout << " versor Y      = " << versorY << std::endl;
-  std::cout << " versor Z      = " << versorZ << std::endl;
-  std::cout << " Translation X = " << finalTranslationX << std::endl;
-  std::cout << " Translation Y = " << finalTranslationY << std::endl;
-  std::cout << " Translation Z = " << finalTranslationZ << std::endl;
-  std::cout << " Iterations    = " << numberOfIterations << std::endl;
-  std::cout << " Metric value  = " << bestValue << std::endl;
- 
-
-  auto finalTransform = TransformType::New();
- 
-  finalTransform->SetFixedParameters(
-    registration->GetOutput()->Get()->GetFixedParameters());
-  finalTransform->SetParameters(finalParameters);
- 
-  // Software Guide : BeginCodeSnippet
-  TransformType::MatrixType matrix = finalTransform->GetMatrix();
-  TransformType::OffsetType offset = finalTransform->GetOffset();
-  std::cout << "Matrix = " << std::endl << matrix << std::endl;
-  std::cout << "Offset = " << std::endl << offset << std::endl;
-
-  using ResampleFilterType =
-    itk::ResampleImageFilter<MovingImageType, FixedImageType>;
- 
-  auto resampler = ResampleFilterType::New();
- 
-  resampler->SetTransform(finalTransform);
-  resampler->SetInput(movingImageReader->GetOutput());
- 
-  FixedImageType::Pointer fixedImage = fixedImageReader->GetOutput();
- 
-  resampler->SetSize(fixedImage->GetLargestPossibleRegion().GetSize());
-  resampler->SetOutputOrigin(fixedImage->GetOrigin());
-  resampler->SetOutputSpacing(fixedImage->GetSpacing());
-  resampler->SetOutputDirection(fixedImage->GetDirection());
-  resampler->SetDefaultPixelValue(100);
- 
- // Write result
-    auto writer = itk::ImageFileWriter<MovingImageType>::New();
-    std::string aux = "/precious_phantom/outputRegisteredImage.mha";
-    std::string output_image_path = CURAN_COPIED_RESOURCE_PATH + aux;
-    writer->SetFileName(output_image_path);
-    writer->SetInput(resampler->GetOutput());
+    using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
+    auto interpolator = InterpolatorType::New();
+    resampleFilter->SetInterpolator(interpolator);
 
     try {
-        writer->Update();
+        resampleFilter->Update();
     } catch (const itk::ExceptionObject & error) {
-        std::cerr << "Error: " << error << std::endl;
-        return EXIT_FAILURE;
+        std::cerr << "Error during resampling: " << error << std::endl;
+        return nullptr;
     }
-  return 0;
+
+    return resampleFilter->GetOutput();
 }
 
 int main(){
-    std::string moving = "/precious_phantom/output_volume_0,100,350_454,244,567.mha";
-    std::string fixed = "/precious_phantom/output_volume_0,0,350_454,244,567.mha";
+    std::string moving = "/precious_phantom/output_volume_0,0,350_454,244,567.mha";
+    std::string fixed = "/precious_phantom/output_volume_0,0,90_512,200,197.mha";
     std::string moving_preprocessed = "/precious_phantom/moving_preprocessed.mha";
     std::string fixed_preprocessed = "/precious_phantom/fixed_preprocessed.mha";
     std::string moving_pointcloudd = "/precious_phantom/moving_pointcloud.txt";
@@ -594,13 +484,46 @@ int main(){
     if (!fixed_pointcloud) {
     std::cerr << "Failed to extract fixed pointcloud" << std::endl;
     return EXIT_FAILURE;
+
+    } itk::Point<double, 3> movingCentroid;
+    itk::Point<double, 3> fixedCentroid;
+
+    auto movingPC_matrix = PCA2(moving_pointcloud);
+    auto moving_principal_components = movingPC_matrix.second;
+    auto moving_centroid = movingPC_matrix.first;
+    
+    auto fixedPC_matrix = PCA2(fixed_pointcloud);
+    auto fixed_principal_components = fixedPC_matrix.second;
+    auto fixed_centroid = fixedPC_matrix.first;
+
+    auto rotationMatrix = CalculateRotationMatrix(moving_principal_components, fixed_principal_components);
+
+
+    std::cout << "Rotation Matrix:" << std::endl;
+    for (unsigned int i = 0; i < 3; ++i) {
+        for (unsigned int j = 0; j < 3; ++j) {
+            std::cout << rotationMatrix[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "---------------------------------------" << std::endl;
+
+
+    
+    auto transformed_moving_volume = transform_and_resample(moving_volume, fixed_volume, fixed_centroid, moving_centroid, rotationMatrix);
+    if (!transformed_moving_volume) {
+        std::cerr << "Failed to transform and resample moving volume" << std::endl;
+        return EXIT_FAILURE;
     }
 
-    auto pca_moving = PCA(moving_pointcloud);
-    auto pca_fixed = PCA(fixed_pointcloud);
-    auto rotationMatrix = GetRotationMatrix(pca_moving, pca_fixed);
+    if (write_volume(transformed_moving_volume, output_transformed_image_path) != EXIT_SUCCESS) {
+        std::cerr << "Failed to write transformed moving volume" << std::endl;
+        return EXIT_FAILURE;
+    }
 
-    //RegisterImages(fixed_image_path, moving_image_path, rotationMatrix);
+    std::cout << "Transformed moving volume written to " << output_transformed_image_path << std::endl;
+
+
 
     return 0;
 }
