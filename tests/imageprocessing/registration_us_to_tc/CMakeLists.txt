@@ -50,3 +50,13 @@ utils
 ${ITK_LIBRARIES}
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+add_executable(test_us_preprocessing us_preprocess.cpp)
+
+target_compile_definitions(test_us_preprocessing PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_us_preprocessing
+PUBLIC
+utils
+${ITK_LIBRARIES}
+${OPERATING_SYSTEM_REQUIRMENTS}
+)
