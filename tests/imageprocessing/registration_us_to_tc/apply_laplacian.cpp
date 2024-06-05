@@ -8,17 +8,20 @@
 #include <optional>
 #include <iostream>
 #include <fstream>
+#include "itkRelabelComponentImageFilter.h"
 #include "itkLaplacianRecursiveGaussianImageFilter.h"
 #include "itkGradientRecursiveGaussianImageFilter.h"
 #include "itkVectorIndexSelectionCastImageFilter.h"
 #include "itkVectorGradientAnisotropicDiffusionImageFilter.h"
-
+#include "itkThresholdImageFilter.h"
 #include "itkImageToListSampleAdaptor.h"
 #include "itkImage.h"
+#include "itkConnectedComponentImageFilter.h"
 #include "itkImageFileReader.h"
 #include "itkHistogram.h"
 #include "itkSampleToHistogramFilter.h"
-
+#include "itkMaskImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
 
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
@@ -48,10 +51,16 @@ int main(int argc, char **argv)
     std::string dirName{argv[1]};
     fixedImageReader->SetFileName(dirName);
 
+    using RescaleFilterType = itk::RescaleIntensityImageFilter<ImageType, ImageType>;
+    auto rescale_filter = RescaleFilterType::New();
+    rescale_filter->SetInput(fixedImageReader->GetOutput());
+    rescale_filter->SetOutputMinimum(0.0);
+    rescale_filter->SetOutputMaximum(1.0);
+
 
     try
     {
-        fixedImageReader->Update();
+        rescale_filter->Update();
     }
     catch (...)
     {
@@ -59,20 +68,70 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
+    ImageType::Pointer pointer2fixedimage = rescale_filter->GetOutput();
 
- using FilterType10 =
-itk::LaplacianRecursiveGaussianImageFilter<ImageType, ImageType>;
+    using FilterType10 =
+    itk::LaplacianRecursiveGaussianImageFilter<ImageType, ImageType>;
 
-auto laplacian = FilterType10::New();
-laplacian->SetNormalizeAcrossScale(true);
-laplacian->SetInput(pointer2fixedimage);
-laplacian->SetSigma(10);
+    auto laplacian = FilterType10::New();
+    laplacian->SetNormalizeAcrossScale(true);
+    laplacian->SetInput(pointer2fixedimage);
+    laplacian->SetSigma(1);
+    laplacian->Update();
+
+    using MinMaxCalculatorType = itk::MinimumMaximumImageCalculator<ImageType>;
+    auto minMaxCalculator = MinMaxCalculatorType::New();
+    minMaxCalculator->SetImage(laplacian->GetOutput());
+    minMaxCalculator->Compute();
+
+    PixelType minValue = minMaxCalculator->GetMinimum();
+    PixelType maxValue = minMaxCalculator->GetMaximum();
+
+    using ThresholdFilterType = itk::ThresholdImageFilter<ImageType>;
+    ThresholdFilterType::Pointer thresholdFilter = ThresholdFilterType::New();
+    thresholdFilter->SetInput(laplacian->GetOutput());
+    thresholdFilter->ThresholdOutside(minValue, -0.02);
+    thresholdFilter->SetOutsideValue(0);
+    thresholdFilter->Update();
+
+    std::cout << "Thresholding completed." << std::endl;
+
+    using LabelType = unsigned short;
+    using LabelImageType = itk::Image<LabelType, 3>;
+    using ConnectedComponentFilterType = itk::ConnectedComponentImageFilter<ImageType, LabelImageType>;
+    ConnectedComponentFilterType::Pointer connectedComponentFilter = ConnectedComponentFilterType::New();
+    connectedComponentFilter->SetInput(thresholdFilter->GetOutput());
+    connectedComponentFilter->Update();
+
+    std::cout << "Connected components filter completed." << std::endl;
+
+    using RelabelFilterType = itk::RelabelComponentImageFilter<LabelImageType, LabelImageType>;
+    RelabelFilterType::Pointer relabelFilter = RelabelFilterType::New();
+    relabelFilter->SetInput(connectedComponentFilter->GetOutput());
+    relabelFilter->Update();
+
+    std::cout << "Relabeling completed. Number of objects: " << relabelFilter->GetNumberOfObjects() << std::endl;
+
+    using ThresholdFilterType2 = itk::ThresholdImageFilter<LabelImageType>;
+    ThresholdFilterType2::Pointer thresholdFilter2 = ThresholdFilterType2::New();
+    thresholdFilter2->SetInput(relabelFilter->GetOutput());
+    thresholdFilter2->ThresholdOutside(1, 5); // Keep only the label 1 (largest component)
+    thresholdFilter2->SetOutsideValue(0);
+    thresholdFilter2->Update();
+
+    LabelImageType::Pointer largestComponentMask = thresholdFilter2->GetOutput();
+    std::cout << "Thresholding to keep largest component completed." << std::endl;
+
+    using MaskFilterType = itk::MaskImageFilter<ImageType, LabelImageType, ImageType>;
+    MaskFilterType::Pointer maskFilter = MaskFilterType::New();
+    maskFilter->SetInput(pointer2fixedimage);
+    maskFilter->SetMaskImage(largestComponentMask);
+    maskFilter->Update();
 
     std::string outputname{argv[2]};
     auto writer = WriterType::New();
-    writer->SetFileName("2"+outputname);
-     writer->SetInput(laplacian->GetOutput());
+    writer->SetFileName(outputname);
+     writer->SetInput(maskFilter->GetOutput());
   try
   {
     writer->Update();

@@ -28,6 +28,57 @@
 #include "utils/TheadPool.h"
 #include "itkRegionOfInterestImageFilter.h"
 #include <fstream>
+#include "itkImage.h"
+#include "itkBinaryThresholdImageFilter.h"
+#include "itkBinaryBallStructuringElement.h"
+#include "itkBinaryMorphologicalClosingImageFilter.h"
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+#include "itkBinaryMask3DMeshSource.h"
+#include "itkMesh.h"
+#include "itkPointSet.h"
+#include "itkCovariantVector.h"
+#include "itkImageMomentsCalculator.h"
+#include "itkMatrix.h"
+#include "itkVersorRigid3DTransform.h"
+#include "itkImage.h"
+#include "itkBinaryThresholdImageFilter.h"
+#include "itkBinaryBallStructuringElement.h"
+#include "itkBinaryMorphologicalClosingImageFilter.h"
+#include "itkMinimumMaximumImageCalculator.h"
+#include "itkSmoothingRecursiveGaussianImageFilter.h"
+#include "itkConnectedComponentImageFilter.h"
+#include "itkRelabelComponentImageFilter.h"
+#include "itkBinaryMorphologicalOpeningImageFilter.h"
+#include "itkBinaryErodeImageFilter.h"
+#include "itkBinaryDilateImageFilter.h"
+#include <vnl/vnl_matrix.h>
+#include <vnl/algo/vnl_symmetric_eigensystem.h>
+#include <optional>
+#include <fstream>
+#include <itkResampleImageFilter.h>
+#include <itkLinearInterpolateImageFunction.h>
+#include <itkTransform.h>
+#include <itkVersorRigid3DTransform.h>
+#include "itkImageRegistrationMethodv4.h"
+#include "itkMeanSquaresImageToImageMetricv4.h"
+#include "itkVersorRigid3DTransform.h"
+#include "itkCenteredTransformInitializer.h"
+#include "itkRegularStepGradientDescentOptimizerv4.h"
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+#include "itkResampleImageFilter.h"
+#include "itkCastImageFilter.h"
+#include "itkSubtractImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
+#include "itkExtractImageFilter.h"
+#include "itkCommand.h"
+#include "itkMattesMutualInformationImageToImageMetric.h"
+#include "itkLinearInterpolateImageFunction.h"
+#include "itkBinaryContourImageFilter.h"
+#include <Eigen/Dense>
+#include <vector>
+
 
 const double pi = std::atan(1) * 4;
 
@@ -114,7 +165,8 @@ struct info_solve_registration
 {
     ImageType::Pointer fixed_image;
     ImageType::Pointer moving_image;
-    const Eigen::Vector3d &initial_rotation;
+    const itk::Matrix<double> &initial_rotation;
+    
 };
 
 std::tuple<double,TransformType::Pointer,TransformType::Pointer> solve_registration(const info_solve_registration &info_registration, const RegistrationParameters& parameters)
@@ -142,7 +194,8 @@ std::tuple<double,TransformType::Pointer,TransformType::Pointer> solve_registrat
 
     auto initialTransform = TransformType::New();
     itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
-    matrix->SetRotation(info_registration.initial_rotation[0] * (3.14159265359 / 180), info_registration.initial_rotation[1] * (3.14159265359 / 180), info_registration.initial_rotation[2] * (3.14159265359 / 180));
+    matrix->SetMatrix(info_registration.initial_rotation);
+    //matrix->SetRotation(info_registration.initial_rotation[0] * (3.14159265359 / 180), info_registration.initial_rotation[1] * (3.14159265359 / 180), info_registration.initial_rotation[2] * (3.14159265359 / 180));
     TransformInitializerType::Pointer initializer =TransformInitializerType::New();
     initialTransform->SetMatrix(matrix->GetMatrix());
     initializer->SetTransform(initialTransform);
@@ -219,7 +272,240 @@ std::tuple<double,TransformType::Pointer,TransformType::Pointer> solve_registrat
     return {optimizer->GetCurrentMetricValue(), finalTransform,initialTransform};
 }
 
+itk::PointSet<itk::Point<float, 3>, 3>::Pointer extract_point_cloud(ImageType::Pointer segmentedImage){
+    using MeshType = itk::Mesh<float, 3>;
+    using MeshSourceType = itk::BinaryMask3DMeshSource<ImageType, MeshType>;
+    using PointType = itk::Point<float, 3>;
+    using PointSetType = itk::PointSet<PointType, 3>;
 
+    auto meshSource = MeshSourceType::New();
+    meshSource->SetInput(segmentedImage);
+    meshSource->Update();
+    auto mesh = meshSource->GetOutput();
+
+    auto pointCloud = PointSetType::New();
+    auto points = mesh->GetPoints();
+
+    PointSetType::PointsContainer::Pointer pointContainer = PointSetType::PointsContainer::New();
+    pointContainer->Reserve(points->Size());
+
+    auto pointIter = points->Begin();
+    while (pointIter != points->End()) {
+        PointType point = pointIter.Value();
+        pointContainer->InsertElement(pointIter.Index(), point);
+        ++pointIter;
+    }
+    pointCloud->SetPoints(pointContainer);
+    //WritePointCloudToTxt(pointCloud, fileName);
+
+    return pointCloud;
+}
+
+Eigen::Matrix3d NormalizeEigenvectors(const Eigen::Matrix3d& eigenvectors) {
+    Eigen::Matrix3d normalized = eigenvectors;
+    for (int i = 0; i < 3; ++i) {
+        double maxAbsValue = 0.0;
+        int maxIndex = 0;
+        for (int j = 0; j < 3; ++j) {
+            if (std::abs(normalized(j, i)) > maxAbsValue) {
+                maxAbsValue = std::abs(normalized(j, i));
+                maxIndex = j;
+            }
+        }
+        if (normalized(maxIndex, i) < 0) {
+            normalized.col(i) = -normalized.col(i);
+        }
+    }
+    return normalized;
+}
+
+
+using PointSetType = itk::PointSet<itk::Point<float, 3>, 3>;
+
+ std::pair<itk::Point<double, 3U>, Eigen::Matrix3d> PCA2 (PointSetType::Pointer pointCloud){
+    using namespace Eigen;
+	using namespace std;
+    using PointSetType = itk::PointSet<float, 3>;
+    using PointType = PointSetType::PointType;
+    using PointsContainer = PointSetType::PointsContainer;
+    using PointsIterator = PointsContainer::ConstIterator;
+
+    vector<Vector3d> eigen_points;
+    // Iterate through the points in the pointCloud
+    PointsIterator it = pointCloud->GetPoints()->Begin();
+    PointsIterator end = pointCloud->GetPoints()->End();
+
+    for (; it != end; ++it){
+        PointType itk_point = it.Value();
+        Eigen::Vector3d eigen_point(itk_point[0], itk_point[1], itk_point[2]);
+        eigen_points.push_back(eigen_point);
+    };
+
+    Vector3d mean = Vector3d::Zero();
+    for (const auto& vec : eigen_points) {
+        mean += vec;
+    }
+    mean /= eigen_points.size();
+
+    itk::Point<double, 3> itk_mean;
+    itk_mean[0] = mean[0];
+    itk_mean[1] = mean[1];
+    itk_mean[2] = mean[2];
+
+    std::cout << "Centroid:" << std::endl;
+    std::cout << mean << std::endl;
+
+    //Centrar os dados tendo em conta a posição média
+    MatrixXd centered_data(3, eigen_points.size());
+    for (size_t i = 0; i < eigen_points.size(); ++i) {
+        centered_data.col(i) = eigen_points[i] - mean;
+    }
+
+    //Covariance matrix
+    MatrixXd covariance = (centered_data * centered_data.transpose()) / (eigen_points.size() - 1);
+    //std::cout << "Covariance Matrix:\n" << covariance<< std::endl
+
+    //Eigendecomposition da covariance matrix
+    SelfAdjointEigenSolver<MatrixXd> eigensolver(covariance);
+
+    //Eigenvectors e eigenvalues
+    Vector3d eigenvalues = eigensolver.eigenvalues();
+    Matrix3d eigenvectors = eigensolver.eigenvectors();
+
+        // Normalize the eigenvectors
+    eigenvectors = NormalizeEigenvectors(eigenvectors);
+
+    //Pares de valores prórpios com o respetivo vetor próprio
+    vector<pair<double, Vector3d>> eigen_pairs;
+    for (int i = 0; i < 3; ++i) {
+        eigen_pairs.push_back(make_pair(eigenvalues(i), eigenvectors.col(i)));
+    }
+   
+    //Lambda function para comparar os valores prórpios dos pares
+    auto compare = [](const pair<double, Vector3d>& a, const pair<double, Vector3d>& b) {
+        return a.first > b.first;
+    };
+
+    //Organiza os pares por ordem decrescente de valor próprio 
+    sort(eigen_pairs.begin(), eigen_pairs.end(), compare);
+
+    /* 
+    //Printa os pares eigenvalue-eigenvector
+    cout << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Sorted Eigenvalue-Eigenvector Pairs:" << endl;
+    for (const auto& pair : eigen_pairs) {
+        cout << "Eigenvalue: " << pair.first << ", Eigenvector: \n" << pair.second << endl;
+    }
+    cout << endl;
+    cout << "---------------------------------------" << endl;
+    cout << "Principal Component: " << eigen_pairs[0].second.transpose() << endl;
+    */
+    
+    Matrix3d principal_components;
+    for (int i = 0; i < 3; ++i) {
+        principal_components.col(i) = eigen_pairs[i].second;
+    }
+
+    // Print the principal components matrix
+    cout << "Principal Components Matrix:\n" << principal_components << endl;
+    auto pair = make_pair(itk_mean, principal_components);
+
+    return pair;
+    }
+
+itk::Matrix<double, 3, 3> CalculateRotationMatrix(Eigen::Matrix<double, 3, 3> movingPCA, Eigen::Matrix<double, 3, 3> fixedPCA) {
+     auto rotation = fixedPCA * movingPCA.transpose();
+
+    // Define the ITK matrix
+    itk::Matrix<double, 3, 3> itk_matrix;
+
+    // Convert Eigen matrix to ITK matrix by copying elements
+    for (unsigned int i = 0; i < 3; ++i) {
+        for (unsigned int j = 0; j < 3; ++j) {
+            itk_matrix[i][j] = rotation(i, j);
+        }
+    }
+    return itk_matrix;
+}
+
+ImageType::Pointer pre_processing_us(ImageType::Pointer volume, int low_threshold, int upper_threshold, float sigma) {
+    using LabelPixelType = unsigned int;
+    using LabelImageType = itk::Image<LabelPixelType, 3>;
+    using SmoothingFilterType = itk::SmoothingRecursiveGaussianImageFilter<ImageType, ImageType>;
+    auto smoothingFilter = SmoothingFilterType::New();
+    smoothingFilter->SetInput(volume);
+    smoothingFilter->SetSigma(sigma);
+
+    auto thresholdFilter = itk::BinaryThresholdImageFilter<ImageType, ImageType>::New();
+    thresholdFilter->SetInput(smoothingFilter->GetOutput());
+    thresholdFilter->SetLowerThreshold(low_threshold);
+    thresholdFilter->SetUpperThreshold(upper_threshold);
+    thresholdFilter->SetInsideValue(1);
+    thresholdFilter->SetOutsideValue(0);
+
+    using CastFilterType = itk::CastImageFilter<ImageType, LabelImageType>;
+    auto castFilter = CastFilterType::New();
+    castFilter->SetInput(thresholdFilter->GetOutput());
+    using ConnectedComponentFilterType = itk::ConnectedComponentImageFilter<LabelImageType, LabelImageType>;
+    auto connectedComponentFilter = ConnectedComponentFilterType::New();
+    connectedComponentFilter->SetInput(castFilter->GetOutput());
+
+    using RelabelFilterType = itk::RelabelComponentImageFilter<LabelImageType, LabelImageType>;
+    auto relabelFilter = RelabelFilterType::New();
+    relabelFilter->SetInput(connectedComponentFilter->GetOutput());
+    relabelFilter->SetMinimumObjectSize(500); 
+
+    using ReverseCastFilterType = itk::CastImageFilter<LabelImageType, ImageType>;
+    auto finalCastFilter = ReverseCastFilterType::New();
+    finalCastFilter->SetInput(relabelFilter->GetOutput());
+
+    auto finalThresholdFilter = itk::BinaryThresholdImageFilter<ImageType, ImageType>::New();
+    finalThresholdFilter->SetInput(finalCastFilter->GetOutput());
+    finalThresholdFilter->SetLowerThreshold(1);
+    finalThresholdFilter->SetUpperThreshold(1);
+    finalThresholdFilter->SetInsideValue(1);
+    finalThresholdFilter->SetOutsideValue(0);
+
+    using ContourFilterType = itk::BinaryContourImageFilter<ImageType, ImageType>;
+    auto contourFilter = ContourFilterType::New();
+    contourFilter->SetInput(finalThresholdFilter->GetOutput());
+    contourFilter->SetForegroundValue(1);
+    contourFilter->SetBackgroundValue(0);
+
+    try {
+        contourFilter->Update();
+    } catch (const itk::ExceptionObject & error) {
+        std::cerr << "Error: " << error << std::endl;
+        return nullptr;
+    }
+
+    return contourFilter->GetOutput();
+}
+
+ImageType::Pointer pre_processing_ct(ImageType::Pointer volume, int low_threshold, int upper_threshold) {
+    auto thresholdFilter = itk::BinaryThresholdImageFilter<ImageType, ImageType>::New();
+    thresholdFilter->SetInput(volume);
+    thresholdFilter->SetLowerThreshold(low_threshold);
+    thresholdFilter->SetUpperThreshold(upper_threshold);
+    thresholdFilter->SetInsideValue(1);
+    thresholdFilter->SetOutsideValue(0);
+
+    using ContourFilterType = itk::BinaryContourImageFilter<ImageType, ImageType>;
+    auto contourFilter = ContourFilterType::New();
+    contourFilter->SetInput(thresholdFilter->GetOutput());
+    contourFilter->SetForegroundValue(1);
+    contourFilter->SetBackgroundValue(0);
+
+    try {
+        contourFilter->Update();
+    } catch (const itk::ExceptionObject & error) {
+        std::cerr << "Error: " << error << std::endl;
+        return nullptr;
+    }
+
+    return contourFilter->GetOutput();
+}
 
 int main(int argc, char **argv)
 {
@@ -293,34 +579,44 @@ int main(int argc, char **argv)
     print_image_info(pointer2movingimage,"moving image");
 
     std::array<Eigen::Vector3d,27> initial_configs;
-    
-    std::printf("\nGenerating random initial guesses...\n");
-    double advancement_x = 6.28318530718/(std::cbrt(initial_configs.size())-1);
-    double advancement_y = 6.28318530718/(std::cbrt(initial_configs.size())-1);
-    double advancement_z = 6.28318530718/(std::cbrt(initial_configs.size())-1);
-    double current_x = 0;
-    double current_y = 0;
-    double current_z = 0;
 
-    for(auto & vals : initial_configs){
-        vals[0] = current_x;
-        vals[1] = current_y;
-        vals[2] = current_z;
-        current_z += advancement_z;
-        if(current_z>6.28318530718){
-            current_z = 0.0;
-            current_y +=advancement_y;
-        }
 
-        if(current_y>6.28318530718){
-            current_z = 0.0;
-            current_y = 0.0;
-            current_x +=advancement_x;
-        } 
-
-        std::printf("initial values: (%.2f %.2f %.2f)\n",vals[0],vals[1],vals[2]);
+    auto preprocessed_moving = pre_processing_us(pointer2movingimage, 80, 255, 2);
+    if (!preprocessed_moving) {
+        std::cerr << "Failed to preprocess moving volume" << std::endl;
+        return EXIT_FAILURE;
     }
 
+    auto preprocessed_fixed = pre_processing_ct(pointer2fixedimage, -500, 168);
+    if (!preprocessed_fixed) {
+        std::cerr << "Failed to preprocess fixed volume" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    auto moving_pointcloud = extract_point_cloud(preprocessed_moving);
+    if (!moving_pointcloud) {
+    std::cerr << "Failed to extract moving pointcloud" << std::endl;
+    return EXIT_FAILURE;
+    }
+
+    auto fixed_pointcloud = extract_point_cloud(preprocessed_fixed);
+    if (!fixed_pointcloud) {
+    std::cerr << "Failed to extract fixed pointcloud" << std::endl;
+    return EXIT_FAILURE;
+
+    } itk::Point<double, 3> movingCentroid;
+    itk::Point<double, 3> fixedCentroid;
+
+    auto movingPC_matrix = PCA2(moving_pointcloud);
+    auto moving_principal_components = movingPC_matrix.second;
+    auto moving_centroid = movingPC_matrix.first;
+    
+    auto fixedPC_matrix = PCA2(fixed_pointcloud);
+    auto fixed_principal_components = fixedPC_matrix.second;
+    auto fixed_centroid = fixedPC_matrix.first;
+
+    auto rotationMatrix = CalculateRotationMatrix(moving_principal_components, fixed_principal_components);
+    
     std::ofstream myfile;
     myfile.open("results_of_fullscale_optimization.csv");
     myfile << "run,bins,sampling percentage,relative_scales,learning rate,relaxation,convergence window,piramid sizes,bluring sizes,best cost,total time\n";
@@ -354,9 +650,9 @@ int main(int argc, char **argv)
         {         
             std::mutex mut;
             auto pool = curan::utilities::ThreadPool::create(6,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
-            for (const auto &initial_config : initial_configs){
+            //for (const auto &initial_config : initial_configs){
                 curan::utilities::Job job{"solving registration",[&](){
-                    auto solution = solve_registration({pointer2fixedimage, pointer2movingimage, initial_config},{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
+                    auto solution = solve_registration({pointer2fixedimage, pointer2movingimage, rotationMatrix},{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
                     {
                         std::lock_guard<std::mutex> g{mut};
                         full_runs.emplace_back(solution);
@@ -364,7 +660,7 @@ int main(int argc, char **argv)
                     }              
                 }};
                 pool->submit(job);
-            } 
+            //} 
         }
         return full_runs;
     };
