@@ -47,7 +47,7 @@
 const double pi = std::atan(1) * 4;
 
 using PixelType = float;
-using RegistrationPixelType = unsigned char;
+using RegistrationPixelType = PixelType;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using ImageRegistrationType = itk::Image<RegistrationPixelType, Dimension>;
@@ -201,7 +201,6 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
     for(size_t i = 0; i < size_info; ++i){
         shrinkFactorsPerLevel[i] = parameters.piramid_sizes[i];
         smoothingSigmasPerLevel[i] = parameters.bluering_sizes[i];
-        //std::printf("shrinkFactorsPerLevel(%llu) smoothingSigmasPerLevel(%.4f)\n",shrinkFactorsPerLevel[i],smoothingSigmasPerLevel[i]);
     }
 
     registration->SetNumberOfLevels(size_info);
@@ -231,12 +230,6 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
             final_transformation(row,col) = final_registration->GetMatrix()(row,col);
         }
     }
-
-    //std::cout << "final_transform vs initial transform :\n====================\n" ;
-    //std::cout << "final: \n" << final_registration << std::endl;
-    //std::cout << "initial transform: \n" << initialTransform << std::endl;
-    //std::cout << "\n====================\n" ;
-
     return {optimizer->GetValue(), final_transformation,info_registration.initial_rotation};
 }
 
@@ -388,7 +381,7 @@ int main(int argc, char **argv)
         return 1;
     }
     
-    pointer2fixedimage_registration = castfilter->GetOutput();
+    pointer2fixedimage_registration = rescale->GetOutput();
     auto mesh = meshSource->GetOutput();
     Eigen::Matrix<double,Eigen::Dynamic,3> points_in_matrix_form = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh->GetNumberOfPoints(),3);
     using PointsIterator = MeshType::PointsContainer::Iterator;
@@ -448,7 +441,7 @@ int main(int argc, char **argv)
         std::cout << err.GetDescription() << std::endl;
         return 1;
     }
-    pointer2movingimage_registration = castfilter->GetOutput();
+    pointer2movingimage_registration = rescale->GetOutput();
     auto mesh = meshSource->GetOutput();
     Eigen::Matrix<double,Eigen::Dynamic,3> points_in_matrix_form = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh->GetNumberOfPoints(),3);
     using PointsIterator = MeshType::PointsContainer::Iterator;
@@ -578,7 +571,7 @@ int main(int argc, char **argv)
                                         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                                         auto paralel_solutions = run_parameterized_optimization(bin_n,iters,percent_n,rel_scale,learn_rate,relax_factor,wind_size,pira_size,blur_size);
                                         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-                                        for(auto&& run : full_runs){
+                                        for(auto&& run : paralel_solutions){
                                             myfile << total_runs << "," << bin_n << "," << percent_n << "," << rel_scale << "," << learn_rate << "," << relax_factor << "," << wind_size << ", {";
                                             for(const auto& val : pira_size)
                                                 myfile << val << ";";
