@@ -647,20 +647,24 @@ int main(int argc, char **argv)
     modify_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_image_moved_to_origin.mha");
 
-    modify_image_with_transform(finalTransform,pointer2movingimage);
+    modify_image_with_transform(finalTransform*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_correct1.mha");
 
-    modify_image_with_transform(finalTransform.inverse(),pointer2movingimage);
+    modify_image_with_transform(finalTransform.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_correct2.mha");
 
-    modify_image_with_transform(std::get<2>(full_runs[minimum_index])*finalTransform,pointer2movingimage);
+    modify_image_with_transform(std::get<2>(full_runs[minimum_index])*finalTransform*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_correct3.mha");
 
-    modify_image_with_transform((std::get<2>(full_runs[minimum_index])*finalTransform).inverse(),pointer2movingimage);
+    modify_image_with_transform((std::get<2>(full_runs[minimum_index])*finalTransform).inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_correct4.mha");
 
-    modify_image_with_transform(finalTransform*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+    modify_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving*finalTransform,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_correct5.mha");
+
+    modify_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving*finalTransform.inverse(),pointer2movingimage);
+    print_image_with_transform(pointer2movingimage,"moving_correct6.mha");
+
     return 0;
 }
     catch(const itk::ExceptionObject &err){
