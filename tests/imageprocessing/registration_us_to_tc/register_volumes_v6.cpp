@@ -480,9 +480,6 @@ int main(int argc, char **argv)
     // along the principal axis, followed by the Y axis followed by the Z axis, thus this is the orientation we use 
     // to generate our initial transforms
 
-    //std::cout << "T_origin_fixed: \n" << T_origin_fixed << std::endl;
-    //std::cout << "T_origin_moving: \n" << T_origin_moving << std::endl;
-
     Eigen::Matrix<double,4,4> Timage_origin_fixed = Eigen::Matrix<double,4,4>::Identity();
     Eigen::Matrix<double,4,4> Timage_origin_moving = Eigen::Matrix<double,4,4>::Identity();
 
@@ -494,40 +491,6 @@ int main(int argc, char **argv)
             Timage_origin_moving(row,col) = pointer2movingimage->GetDirection()(row,col);
         }
     }
-
-    //std::cout << "Timage_origin_fixed: \n" << Timage_origin_fixed << std::endl;
-    //std::cout << "Timage_origin_moving: \n" << Timage_origin_moving << std::endl;
-/*
-    auto print_image_with_transform = [](Eigen::Matrix<double,4,4> transform,ImageType::Pointer image){
-        itk::Point<double,3> origin;
-        itk::Matrix<double> direction;
-        for(size_t row = 0; row < 3; ++row){
-            origin[row] = transform(row,3);
-            for(size_t col = 0; col < 3; ++col){
-                direction(row,col) = transform(row,col);
-            }
-        }
-        image->SetOrigin(origin);
-        image->SetDirection(direction);
-
-
-        auto writer = WriterType::New();
-        writer->SetFileName(path_to_output);
-        writer->SetInput(image);
-        try
-        {
-            writer->Update();
-        }
-        catch (...)
-        {
-            std::cout << "Failed to write image";
-            return image;
-        }
-
-        return 1;
-    };
-*/
-
 
     auto transform = [](double alpha){
         Eigen::Matrix<double,3,3> poorly_constrained_direction;
