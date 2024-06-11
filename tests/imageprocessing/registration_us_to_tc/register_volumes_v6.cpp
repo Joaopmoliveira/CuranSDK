@@ -631,59 +631,5 @@ int main(int argc, char **argv)
         std::cout << "Some exception was thrown.\n";
         return 1;
     }
-
-
-
-/*
-    if(print_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage,"moving_1_"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-
-    if(print_image_with_transform(T_origin_fixed.inverse()*Timage_origin_fixed,pointer2fixedimage,"fixed_1_"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-
-    if(print_image_with_transform(transform(0)*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage,"moving_1_alpha_0"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-
-    if(print_image_with_transform(transform(0.0174532925*90.0)*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage,"moving_1_alpha_90"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-
-    if(print_image_with_transform(transform(0.0174532925*180.0)*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage,"moving_1_alpha_180"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-
-    if(print_image_with_transform(transform(0.0174532925*270.0)*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage,"moving_1_alpha_270"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-
-    if(print_image_with_transform(transform_flipped_principal_component(0.0174532925*0.0)*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage,"moving_flipped_alpha_0"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-
-    if(print_image_with_transform(transform_flipped_principal_component(0.0174532925*90.0)*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage,"moving_flipped_alpha_90"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-
-    if(print_image_with_transform(transform_flipped_principal_component(0.0174532925*180.0)*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage,"moving_flipped_alpha_180"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-
-    if(print_image_with_transform(transform_flipped_principal_component(0.0174532925*270.0)*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage,"moving_flipped_alpha_270"+std::string{argv[3]})){
-        std::cout << "Failure to print image" << std::endl;
-        return 1;
-    }
-*/
     return 0;
 }
