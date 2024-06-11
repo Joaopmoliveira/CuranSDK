@@ -70,13 +70,12 @@ int main(int argc, char **argv)
 
     ImageType::Pointer pointer2fixedimage = rescale_filter->GetOutput();
 
-    using FilterType10 =
-    itk::LaplacianRecursiveGaussianImageFilter<ImageType, ImageType>;
+    using FilterType10 = itk::LaplacianRecursiveGaussianImageFilter<ImageType, ImageType>;
 
     auto laplacian = FilterType10::New();
     laplacian->SetNormalizeAcrossScale(true);
     laplacian->SetInput(pointer2fixedimage);
-    laplacian->SetSigma(1);
+    laplacian->SetSigma(3);
     laplacian->Update();
 
     using MinMaxCalculatorType = itk::MinimumMaximumImageCalculator<ImageType>;
@@ -90,7 +89,7 @@ int main(int argc, char **argv)
     using ThresholdFilterType = itk::ThresholdImageFilter<ImageType>;
     ThresholdFilterType::Pointer thresholdFilter = ThresholdFilterType::New();
     thresholdFilter->SetInput(laplacian->GetOutput());
-    thresholdFilter->ThresholdOutside(minValue, -0.02);
+    thresholdFilter->ThresholdOutside(minValue, -0.04); //0.02 para a precious
     thresholdFilter->SetOutsideValue(0);
     thresholdFilter->Update();
 
@@ -115,7 +114,7 @@ int main(int argc, char **argv)
     using ThresholdFilterType2 = itk::ThresholdImageFilter<LabelImageType>;
     ThresholdFilterType2::Pointer thresholdFilter2 = ThresholdFilterType2::New();
     thresholdFilter2->SetInput(relabelFilter->GetOutput());
-    thresholdFilter2->ThresholdOutside(1, 5); // Keep only the label 1 (largest component)
+    thresholdFilter2->ThresholdOutside(1, 1); // Keep only the label 1 (largest component) for US and 5 for ultrasound
     thresholdFilter2->SetOutsideValue(0);
     thresholdFilter2->Update();
 
