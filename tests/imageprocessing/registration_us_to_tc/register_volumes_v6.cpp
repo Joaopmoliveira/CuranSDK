@@ -582,29 +582,30 @@ int main(int argc, char **argv)
 
     modify_image_with_transform(T_origin_fixed.inverse()*Timage_origin_fixed,pointer2fixedimage_registration);
     modify_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage_registration);
-    /*
-    {
-        auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales,double learning_rate, double relaxation_factor,size_t window_size, auto piramid_sizes, auto bluering_sizes){
-            std::vector<std::tuple<double, Eigen::Matrix<double,4,4>>> full_runs_inner;
-            {         
+    
+    auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales,double learning_rate, double relaxation_factor,size_t window_size, auto piramid_sizes, auto bluering_sizes){
+        std::vector<std::tuple<double, Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>>> full_runs_inner;
+        {         
             std::mutex mut;
             auto pool = curan::utilities::ThreadPool::create(6,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
             for (const auto &initial_config : angles_regular){
                 curan::utilities::Job job{"solving registration",[&](){
+                    {
+                        std::lock_guard<std::mutex> g{mut};
+                        std::cout << "." << std::endl;
+                    } 
                     auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,std::nullopt,std::nullopt,initial_config},RegistrationParameters{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
                     {
                         std::lock_guard<std::mutex> g{mut};
                         full_runs_inner.emplace_back(solution);
-                        std::cout << "cost: <<" << std::get<0>(solution) << "\n";
+                        std::cout << "cost: <<" << std::get<0>(solution) << std::endl;
                     }              
                 }};
                 pool->submit(job);
             } 
         }
         return full_runs_inner;
-        };
-    */
-
+    };
 
     size_t total_runs = 0;
     for(const auto& bin_n : bin_numbers)
@@ -615,13 +616,14 @@ int main(int argc, char **argv)
                         for(const auto& wind_size : convergence_window_size)
                             for(const auto& pira_size : piramid_sizes)
                                 for(const auto& iters : optimization_iterations)
-                                    for(const auto& blur_size : bluering_sizes)
-                                        for (const auto &initial_config : angles_regular){
-                                            auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,std::nullopt,std::nullopt,initial_config},
-                                            RegistrationParameters{bin_n,rel_scale,learn_rate,1.0,relax_factor,wind_size,iters,pira_size,blur_size});
-                                            full_runs.emplace_back(solution);
-                                            std::cout << "cost: <<" << std::get<0>(solution) << "\n";            
-                                        } 
+                                    for(const auto& blur_size : bluering_sizes){
+                                        auto paralel_solutions = run_parameterized_optimization(bin_n,iters,percent_n,rel_scale,learn_rate,relax_factor,wind_size,pira_size,blur_size);
+                                        //auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,std::nullopt,std::nullopt,initial_config},
+                                        //RegistrationParameters{bin_n,rel_scale,learn_rate,1.0,relax_factor,wind_size,iters,pira_size,blur_size});
+                                        //full_runs.emplace_back(solution);
+                                        full_runs.insert(std::end(full_runs),std::begin(paralel_solutions),std::end(paralel_solutions));
+                                        //std::cout << "cost: <<" << std::get<0>(solution) << "\n";            
+                                    } 
 
     size_t minimum_index = 0;
     size_t current_index = 0;
@@ -647,23 +649,8 @@ int main(int argc, char **argv)
     modify_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_image_moved_to_origin.mha");
 
-    modify_image_with_transform(finalTransform*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct1.mha");
-
     modify_image_with_transform(finalTransform.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct2.mha");
-
-    modify_image_with_transform(std::get<2>(full_runs[minimum_index])*finalTransform*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct3.mha");
-
-    modify_image_with_transform((std::get<2>(full_runs[minimum_index])*finalTransform).inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct4.mha");
-
-    modify_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving*finalTransform,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct5.mha");
-
-    modify_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving*finalTransform.inverse(),pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct6.mha");
+    print_image_with_transform(pointer2movingimage,"moving_correct.mha");
 
     return 0;
 }
