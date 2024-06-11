@@ -553,15 +553,10 @@ int main(int argc, char **argv)
             auto pool = curan::utilities::ThreadPool::create(6,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
             for (const auto &initial_config : angles_regular){
                 curan::utilities::Job job{"solving registration",[&](){
-                    {
-                        std::lock_guard<std::mutex> g{mut};
-                        std::cout << "." << std::endl;
-                    } 
                     auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,std::nullopt,std::nullopt,initial_config},RegistrationParameters{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
                     {
                         std::lock_guard<std::mutex> g{mut};
                         full_runs_inner.emplace_back(solution);
-                        std::cout << "cost: <<" << std::get<0>(solution) << std::endl;
                     }              
                 }};
                 pool->submit(job);
@@ -580,12 +575,20 @@ int main(int argc, char **argv)
                             for(const auto& pira_size : piramid_sizes)
                                 for(const auto& iters : optimization_iterations)
                                     for(const auto& blur_size : bluering_sizes){
+                                        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                                         auto paralel_solutions = run_parameterized_optimization(bin_n,iters,percent_n,rel_scale,learn_rate,relax_factor,wind_size,pira_size,blur_size);
-                                        //auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,std::nullopt,std::nullopt,initial_config},
-                                        //RegistrationParameters{bin_n,rel_scale,learn_rate,1.0,relax_factor,wind_size,iters,pira_size,blur_size});
-                                        //full_runs.emplace_back(solution);
-                                        full_runs.insert(std::end(full_runs),std::begin(paralel_solutions),std::end(paralel_solutions));
-                                        //std::cout << "cost: <<" << std::get<0>(solution) << "\n";            
+                                        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                                        for(auto&& run : full_runs){
+                                            myfile << total_runs << "," << bin_n << "," << percent_n << "," << rel_scale << "," << learn_rate << "," << relax_factor << "," << wind_size << ", {";
+                                            for(const auto& val : pira_size)
+                                                myfile << val << ";";
+                                            myfile << "}, {";
+                                            for(const auto& val : blur_size)
+                                                myfile << val << ";"; 
+                                            myfile <<"}," << std::get<0>(run) << "," << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+                                        }
+                                        ++total_runs;
+                                        full_runs.insert(std::end(full_runs),std::begin(paralel_solutions),std::end(paralel_solutions));          
                                     } 
 
     size_t minimum_index = 0;
@@ -614,6 +617,9 @@ int main(int argc, char **argv)
 
     modify_image_with_transform(finalTransform.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_correct.mha");
+
+    modify_image_with_transform(std::get<2>(full_runs[minimum_index]).inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+    print_image_with_transform(pointer2movingimage,"moving_correct_initial_guess.mha");
 
     return 0;
 }
