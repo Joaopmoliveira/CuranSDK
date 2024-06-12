@@ -43,7 +43,7 @@
 const double pi = std::atan(1) * 4;
 
 using PixelType = float;
-using RegistrationPixelType = unsigned char;
+using RegistrationPixelType = PixelType;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using ImageRegistrationType = itk::Image<RegistrationPixelType, Dimension>;
@@ -362,10 +362,10 @@ int main(int argc, char **argv)
 
     ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
     auto fixedSpatialObjectMask = MaskType::New();
-    ImageRegistrationType::Pointer pointer2fixedimage_registration;
+    ImageType::Pointer pointer2fixedimage_registration;
     ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
     auto movingSpatialObjectMask = MaskType::New();
-    ImageRegistrationType::Pointer pointer2movingimage_registration;
+    ImageType::Pointer pointer2movingimage_registration;
 
 {
     using MaskPixelType = unsigned char;
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
     filter_threshold->ThresholdBelow(1);
     fixedSpatialObjectMask->SetImage(filter_threshold->GetOutput());
     fixedSpatialObjectMask->Update();
-    pointer2fixedimage_registration = filter_threshold->GetOutput();
+    pointer2fixedimage_registration = rescale->GetOutput();
         using WriterType = itk::ImageFileWriter<MaskImageType>;
  
         auto writer = WriterType::New();
@@ -427,7 +427,7 @@ int main(int argc, char **argv)
     filter_threshold->ThresholdBelow(1);
     movingSpatialObjectMask->SetImage(filter_threshold->GetOutput());
     movingSpatialObjectMask->Update();
-    pointer2movingimage_registration = filter_threshold->GetOutput();
+    pointer2movingimage_registration = rescale->GetOutput();
 
         using WriterType = itk::ImageFileWriter<MaskImageType>;
  
