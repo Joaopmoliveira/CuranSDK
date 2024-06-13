@@ -388,3 +388,19 @@ renderable
 vsgImGui::vsgImGui
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+add_executable(rendering_new_fused
+rendering_new_fused.cpp
+)
+
+target_compile_definitions(rendering_new_fused PRIVATE vsgXchange_FOUND)
+target_compile_definitions(rendering_new_fused PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(rendering_new_fused
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
+)
