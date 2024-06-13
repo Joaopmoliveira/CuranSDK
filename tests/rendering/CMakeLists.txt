@@ -389,22 +389,6 @@ vsgImGui::vsgImGui
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
-add_executable(test_new_window_mecanism_for_reconstruction_and_roi
-test_new_window_mecanism_for_reconstruction_and_roi.cpp
-)
-
-target_compile_definitions(test_new_window_mecanism_for_reconstruction_and_roi PRIVATE vsgXchange_FOUND)
-target_compile_definitions(test_new_window_mecanism_for_reconstruction_and_roi PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_new_window_mecanism_for_reconstruction_and_roi
-PUBLIC
-vsg::vsg
-vsgXchange::vsgXchange
-renderable
-vsgImGui::vsgImGui
-${OPERATING_SYSTEM_REQUIRMENTS}
-)
-
 add_executable(rendering_new_fused
 rendering_new_fused.cpp
 )
