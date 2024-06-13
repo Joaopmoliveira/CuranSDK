@@ -290,7 +290,7 @@ int print_image_with_transform(ImageType::Pointer image,std::string image_path){
 int main(int argc, char **argv)
 {
 
-    /*
+    
     if(argc!=4){
         if(argc>4 || argc == 1){
             std::cout << "To run the executable you must provide three arguments:\n "
@@ -314,17 +314,15 @@ int main(int argc, char **argv)
                       return 1;
         }
     }
-    */ 
+    
     try{
     auto fixedImageReader = FixedImageReaderType::New();
     auto movingImageReader = MovingImageReaderType::New();
 
-    //std::string dirName{argv[1]};
-    std::string dirName{"precious_with_mask_manual.mha"};
+    std::string dirName{argv[1]};
     fixedImageReader->SetFileName(dirName);
 
-    //std::string dirName2{argv[2]};
-    std::string dirName2{"usreconstruction_with_mask.mha"};
+    std::string dirName2{argv[2]};
     movingImageReader->SetFileName(dirName2);
 
     try
@@ -380,6 +378,8 @@ int main(int argc, char **argv)
         std::cout << err.GetDescription() << std::endl;
         return 1;
     }
+
+    //fixedSpatialObjectMask = meshSource->GetOutput();
     
     pointer2fixedimage_registration = rescale->GetOutput();
     auto mesh = meshSource->GetOutput();
@@ -441,6 +441,9 @@ int main(int argc, char **argv)
         std::cout << err.GetDescription() << std::endl;
         return 1;
     }
+
+    //movingSpatialObjectMask = filter_threshold->GetOutput();
+
     pointer2movingimage_registration = rescale->GetOutput();
     auto mesh = meshSource->GetOutput();
     Eigen::Matrix<double,Eigen::Dynamic,3> points_in_matrix_form = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh->GetNumberOfPoints(),3);
@@ -544,12 +547,15 @@ int main(int argc, char **argv)
         {         
             std::mutex mut;
             auto pool = curan::utilities::ThreadPool::create(6,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
+            size_t counter = 0;
             for (const auto &initial_config : angles_regular){
                 curan::utilities::Job job{"solving registration",[&](){
                     auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,std::nullopt,std::nullopt,initial_config},RegistrationParameters{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
                     {
                         std::lock_guard<std::mutex> g{mut};
                         full_runs_inner.emplace_back(solution);
+                        ++counter;
+                        std::printf("%.2f %%\n",counter/(double)angles_regular.size());
                     }              
                 }};
                 pool->submit(job);

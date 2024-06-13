@@ -22,6 +22,9 @@
 #include "itkSampleToHistogramFilter.h"
 #include "itkMaskImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
+#include "itkImageSliceConstIteratorWithIndex.h"
+#include "itkImageLinearIteratorWithIndex.h"
+#include "itkExtractImageFilter.h"
 
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
@@ -75,7 +78,7 @@ int main(int argc, char **argv)
     auto laplacian = FilterType10::New();
     laplacian->SetNormalizeAcrossScale(true);
     laplacian->SetInput(pointer2fixedimage);
-    laplacian->SetSigma(3);
+    laplacian->SetSigma(5);
     laplacian->Update();
 
     using MinMaxCalculatorType = itk::MinimumMaximumImageCalculator<ImageType>;
@@ -127,126 +130,68 @@ int main(int argc, char **argv)
     maskFilter->SetMaskImage(largestComponentMask);
     maskFilter->Update();
 
-    std::string outputname{argv[2]};
-    auto writer = WriterType::New();
-    writer->SetFileName(outputname);
-     writer->SetInput(maskFilter->GetOutput());
-  try
-  {
-    writer->Update();
-  }
-  catch (const itk::ExceptionObject & err)
-  {
-    std::cout << "ExceptionObject caught !" << std::endl;
-    std::cout << err << std::endl;
-    return EXIT_FAILURE;
-  }
-  return EXIT_SUCCESS;
-}
+   
 
+  using ConstIteratorType = itk::ImageRegionConstIterator<LabelImageType>;
+  ConstIteratorType inputIt(thresholdFilter2->GetOutput(), thresholdFilter2->GetOutput()->GetRequestedRegion());
+  
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  
+  std::pair<size_t,size_t> xlimits = {std::numeric_limits<size_t>::max(),0}; 
+  std::pair<size_t,size_t> ylimits = {std::numeric_limits<size_t>::max(),0}; 
+  std::pair<size_t,size_t> zlimits = {std::numeric_limits<size_t>::max(),0}; 
+  while (!inputIt.IsAtEnd())
+  {
 
-int mumumummain(int argc, char **argv)
-{
-    if(argc!=3){
-        std::cout << "To run the executable you must provide three arguments:\n "
-                << "first parameter - input volume\n"
-                << "second parameter - output volume \n";
-        return 1;
+    if(inputIt.Get()>0){
+      const auto& index = inputIt.GetIndex();
+      if(xlimits.first>index[0] ){
+        xlimits.first = index[0];
+      }
+      if(xlimits.second<index[0] ){
+        xlimits.second = index[0];
+      }
+      if(ylimits.first>index[1] ){
+        ylimits.first = index[1];
+      }
+      if(ylimits.second<index[1] ){
+        ylimits.second = index[1];
+      }
+      if(zlimits.first>index[2] ){
+        zlimits.first = index[2];
+      }
+      if(zlimits.second<index[2] ){
+        zlimits.second = index[2];
+      }
     }
+    ++inputIt;
+  }
     
-    auto fixedImageReader = FixedImageReaderType::New();
-
-    std::string dirName{argv[1]};
-    fixedImageReader->SetFileName(dirName);
-
-
-    try
-    {
-        fixedImageReader->Update();
-    }
-    catch (...)
-    {
-        std::cout << "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n";
-        return 1;
-    }
-
-    ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
-
-  using FilterType4 = itk::VectorGradientAnisotropicDiffusionImageFilter<VectorImageType,VectorImageType>;
-  FilterType4::Pointer filter = FilterType4::New();
-  // Software Guide : EndCodeSnippet
-  typedef itk::GradientRecursiveGaussianImageFilter<
-                       ImageType, VectorImageType >   GradientFilterType;
-  GradientFilterType::Pointer gradient = GradientFilterType::New();
-  //  Software Guide : BeginLatex
-  //
-  //  The input image can be obtained from the output of another filter. Here,
-  //  an image reader is used as source and its data is passed through a
-  //  gradient filter in order to generate an image of vectors.
-  //
-  //  Software Guide : EndLatex
-  // Software Guide : BeginCodeSnippet
-  gradient->SetInput( pointer2fixedimage );
-  filter->SetInput( gradient->GetOutput() );
-
-  filter->SetNumberOfIterations( 40 );
-  filter->SetTimeStep( 0.019);
-  filter->SetConductanceParameter(1.0);
-  filter->Update();
-  typedef itk::VectorIndexSelectionCastImageFilter<
-                  VectorImageType, ImageType > ComponentFilterType;
-  ComponentFilterType::Pointer component = ComponentFilterType::New();
-  // Select the component to extract.
-
-{
-
-
-component->SetIndex( 0 );
-component->SetInput( filter->GetOutput() );
-component->Update();
-
-/*
-
-using AdaptorType = itk::Statistics::ImageToListSampleAdaptor<ImageType>;
-auto adaptor = AdaptorType::New();
-adaptor->SetImage(component->GetOutput());
-
-using HistogramMeasurementType = PixelType;
-using HistogramType = itk::Statistics::Histogram<HistogramMeasurementType>;
-using FilterType6 =
-itk::Statistics::SampleToHistogramFilter<AdaptorType, HistogramType>;
-auto filter6 = FilterType6::New();
-
-constexpr unsigned int numberOfComponents = 1;
-HistogramType::SizeType size(numberOfComponents);
-size.Fill(255);
-filter6->SetInput(adaptor);
-filter6->SetHistogramSize(size);
-filter6->SetMarginalScale(10);
-HistogramType::MeasurementVectorType min(numberOfComponents);
-HistogramType::MeasurementVectorType max(numberOfComponents);
-min.Fill(-1.0);
-max.Fill(10.0);
-filter6->SetHistogramBinMinimum(min);
-filter6->SetHistogramBinMaximum(max);
-filter6->Update();
-
-HistogramType::ConstPointer histogram = filter6->GetOutput();
-
-const unsigned int histogramSize = histogram->Size();
-std::cout << "Histogram size " << histogramSize << std::endl;
-for (unsigned int bin = 0; bin < histogramSize; ++bin){
-    std::cout << "bin = " << bin << " frequency = ";
-    std::cout << histogram->GetFrequency(bin, 0) << std::endl;
-}
-
-
-*/
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+  std::printf("The limits of the image are: \ndirection 0 (%llu %llu / %llu)\ndirection 1 (%llu %llu / %llu)\ndirection 2 (%llu %llu / %llu)\n",xlimits.first,xlimits.second,maskFilter->GetOutput()->GetRequestedRegion().GetSize()[0],ylimits.first,ylimits.second,maskFilter->GetOutput()->GetRequestedRegion().GetSize()[1],zlimits.first,zlimits.second,maskFilter->GetOutput()->GetRequestedRegion().GetSize()[2]);
+  
+  using FilterType = itk::ExtractImageFilter<ImageType, ImageType>;
+  FilterType::Pointer filter = FilterType::New();
+  filter->SetInput(maskFilter->GetOutput());
+  ImageType::RegionType inputRegion = maskFilter->GetOutput()->GetLargestPossibleRegion();
+  ImageType::SizeType size = inputRegion.GetSize();
+  size[0] = xlimits.second - xlimits.first + 1;
+  size[1] = ylimits.second - ylimits.first + 1;
+  size[2] = zlimits.second - zlimits.first + 1;
+  ImageType::IndexType start = inputRegion.GetIndex();
+  start[0] = xlimits.first;
+  start[1] = ylimits.first;
+  start[2] = zlimits.first;
+  ImageType::RegionType desiredRegion;
+  desiredRegion.SetSize(size);
+  desiredRegion.SetIndex(start);
+  
     std::string outputname{argv[2]};
-
     auto writer = WriterType::New();
-    writer->SetFileName("0"+outputname);
-     writer->SetInput(component->GetOutput());
+  filter->SetExtractionRegion(desiredRegion);
+  writer->SetInput(filter->GetOutput());
+  writer->SetFileName(outputname);
   try
   {
     writer->Update();
@@ -257,126 +202,7 @@ for (unsigned int bin = 0; bin < histogramSize; ++bin){
     std::cout << err << std::endl;
     return EXIT_FAILURE;
   }
- }
-
- {
 
 
-component->SetIndex( 1 );
-component->SetInput( filter->GetOutput() );
-component->Update();
-
-/*
-
-using AdaptorType = itk::Statistics::ImageToListSampleAdaptor<ImageType>;
-auto adaptor = AdaptorType::New();
-adaptor->SetImage(component->GetOutput());
-
-using HistogramMeasurementType = PixelType;
-using HistogramType = itk::Statistics::Histogram<HistogramMeasurementType>;
-using FilterType6 =
-itk::Statistics::SampleToHistogramFilter<AdaptorType, HistogramType>;
-auto filter6 = FilterType6::New();
-
-constexpr unsigned int numberOfComponents = 1;
-HistogramType::SizeType size(numberOfComponents);
-size.Fill(255);
-filter6->SetInput(adaptor);
-filter6->SetHistogramSize(size);
-filter6->SetMarginalScale(10);
-HistogramType::MeasurementVectorType min(numberOfComponents);
-HistogramType::MeasurementVectorType max(numberOfComponents);
-min.Fill(-1.0);
-max.Fill(10.0);
-filter6->SetHistogramBinMinimum(min);
-filter6->SetHistogramBinMaximum(max);
-filter6->Update();
-
-HistogramType::ConstPointer histogram = filter6->GetOutput();
-
-const unsigned int histogramSize = histogram->Size();
-std::cout << "Histogram size " << histogramSize << std::endl;
-for (unsigned int bin = 0; bin < histogramSize; ++bin){
-    std::cout << "bin = " << bin << " frequency = ";
-    std::cout << histogram->GetFrequency(bin, 0) << std::endl;
-}
-
-
-*/
-    std::string outputname{argv[2]};
-    auto writer = WriterType::New();
-    writer->SetFileName("1"+outputname);
-     writer->SetInput(component->GetOutput());
-  try
-  {
-    writer->Update();
-  }
-  catch (const itk::ExceptionObject & err)
-  {
-    std::cout << "ExceptionObject caught !" << std::endl;
-    std::cout << err << std::endl;
-    return EXIT_FAILURE;
-  }
- }
-
- {
-
-
-component->SetIndex( 2 );
-component->SetInput( filter->GetOutput() );
-component->Update();
-
-/*
-
-using AdaptorType = itk::Statistics::ImageToListSampleAdaptor<ImageType>;
-auto adaptor = AdaptorType::New();
-adaptor->SetImage(component->GetOutput());
-
-using HistogramMeasurementType = PixelType;
-using HistogramType = itk::Statistics::Histogram<HistogramMeasurementType>;
-using FilterType6 =
-itk::Statistics::SampleToHistogramFilter<AdaptorType, HistogramType>;
-auto filter6 = FilterType6::New();
-
-constexpr unsigned int numberOfComponents = 1;
-HistogramType::SizeType size(numberOfComponents);
-size.Fill(255);
-filter6->SetInput(adaptor);
-filter6->SetHistogramSize(size);
-filter6->SetMarginalScale(10);
-HistogramType::MeasurementVectorType min(numberOfComponents);
-HistogramType::MeasurementVectorType max(numberOfComponents);
-min.Fill(-1.0);
-max.Fill(10.0);
-filter6->SetHistogramBinMinimum(min);
-filter6->SetHistogramBinMaximum(max);
-filter6->Update();
-
-HistogramType::ConstPointer histogram = filter6->GetOutput();
-
-const unsigned int histogramSize = histogram->Size();
-std::cout << "Histogram size " << histogramSize << std::endl;
-for (unsigned int bin = 0; bin < histogramSize; ++bin){
-    std::cout << "bin = " << bin << " frequency = ";
-    std::cout << histogram->GetFrequency(bin, 0) << std::endl;
-}
-
-
-*/
-    std::string outputname{argv[2]};
-    auto writer = WriterType::New();
-    writer->SetFileName("2"+outputname);
-     writer->SetInput(component->GetOutput());
-  try
-  {
-    writer->Update();
-  }
-  catch (const itk::ExceptionObject & err)
-  {
-    std::cout << "ExceptionObject caught !" << std::endl;
-    std::cout << err << std::endl;
-    return EXIT_FAILURE;
-  }
- }
   return EXIT_SUCCESS;
 }
