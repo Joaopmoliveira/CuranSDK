@@ -154,15 +154,20 @@ try{
 	vol_direction[1] = {direction(0,1),direction(1,1),direction(2,1)};
 	vol_direction[2] = {direction(0,2),direction(1,2),direction(2,2)};
 	curan::image::IntegratedReconstructor::Info recon_info{vol_spacing,vol_origin,vol_size,vol_direction};
-   
-   robot_state->integrated_volume = curan::image::IntegratedReconstructor::make(recon_info);
-   robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
-      .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
-   
-   window << robot_state->integrated_volume;
 
-   auto communication_callable = [robot_state](){
+   
+
+   auto communication_callable = [robot_state,&recon_info,&window](){
+      std::thread local_thread{[robot_state,&recon_info,&window](){ 
+         std::this_thread::sleep_for(std::chrono::seconds(5));
+         robot_state->integrated_volume = curan::image::IntegratedReconstructor::make(recon_info);
+         robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
+            .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
+         window << robot_state->integrated_volume;
+      }};
+     
       communication(robot_state);
+      local_thread.join();
    };
    std::thread communication_thread(communication_callable);
 

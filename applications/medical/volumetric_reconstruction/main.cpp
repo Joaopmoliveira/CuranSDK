@@ -88,12 +88,13 @@ public:
 
     void record_frames(RecordStatus status)
     {
+        //std::cout << "flag \"record_frames\" updated!!!";
         f_record_frame.store(status == START_RECORDING_FOR_BOX_UPDATE);
     }
 
     bool record_frames()
     {
-        return f_record_frame.load() == START_RECORDING_FOR_BOX_UPDATE;
+        return f_record_frame.load();
     }
 
     enum GenerateStatus
@@ -104,12 +105,13 @@ public:
 
     void generate_volume(GenerateStatus status)
     {
+        //std::cout << "flag \"generate_volume\" updated!!!";
         f_regenerate_integrated_reconstructor_frame.store(status == GENERATE_VOLUME);
     }
 
     bool generate_volume()
     {
-        return f_regenerate_integrated_reconstructor_frame.load() == GENERATE_VOLUME;
+        return f_regenerate_integrated_reconstructor_frame.load();
     }
 
     enum InjectVolumeStatus
@@ -120,12 +122,13 @@ public:
 
     void inject_frame(InjectVolumeStatus status)
     {
+        //std::cout << "flag \"inject_frame\" updated!!!";
         f_inject_frame.store(status == INJECT_FRAME);
     }
 
     bool inject_frame()
     {
-        return f_inject_frame.load() == INJECT_FRAME;
+        return f_inject_frame.load();
     }
 
 
@@ -309,6 +312,8 @@ struct ApplicationState
                                                    importFilter->SetDirection(orientation);
 
                                                    const bool importImageFilterWillOwnTheBuffer = false;
+                                                   if(robot_state.integrated_volume.get()==nullptr)
+                                                    return;
                                                    float *my_beatiful_pointer = robot_state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->data();
                                                    importFilter->SetImportPointer(my_beatiful_pointer, numberOfPixels, importImageFilterWillOwnTheBuffer);
 
@@ -344,6 +349,7 @@ struct ApplicationState
             operation_in_progress = true;
             operation_description = "collecting data from ultrasound for region of interest";
             robot_state.record_frames(RobotState::START_RECORDING_FOR_BOX_UPDATE);
+            robot_state.inject_frame(RobotState::InjectVolumeStatus::FREEZE_VOLUME);
             if (previous_local_record_data != local_record_data)
             {
                 robot_state.box_class.reset();
@@ -453,7 +459,7 @@ struct ApplicationState
                                                    
                                                    robot_state.integrated_volume_create_info = recon_info;
                                                    robot_state.generate_volume(RobotState::GenerateStatus::GENERATE_VOLUME);
-
+                                                   robot_state.inject_frame(RobotState::InjectVolumeStatus::FREEZE_VOLUME);
                                                    std::lock_guard<std::mutex> g{mut};
                                                    success_description = "saved volume information";
                                                    operation_in_progress = false;
@@ -513,6 +519,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         return false; // failed to unpack message, therefore returning without doing anything
     if (!state.dynamic_texture)
     {
+        std::cout << "creating dynamic texture\n";
         int x, y, z;
         message_body->GetDimensions(x, y, z);
         curan::renderable::DynamicTexture::Info infotexture;
@@ -525,6 +532,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         state.dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
         state.window_pointer << *state.dynamic_texture;
 
+        std::cout << "creating bounding box texture\n";
         curan::renderable::Box::Info infobox;
         infobox.builder = vsg::Builder::create();
         infobox.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
@@ -569,7 +577,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         }
     };
 
-    state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+    //state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
     igtl::Matrix4x4 image_transform;
     message_body->GetMatrix(image_transform);
     vsg::dmat4 homogeneous_transformation;
@@ -604,7 +612,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
     constexpr size_t update_rate = 4;
     ++counter;
 
-    if (state.record_frames() && counter % update_rate == 0)
+    if (state.record_frames() && (counter % update_rate == 0))
     {
         state.box_class.add_frame(image_to_render);
         state.box_class.update();
@@ -653,16 +661,20 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
     state.rendered_box->update_transform(box_transform_matrix);
 
     if(state.generate_volume()){
+        std::cout << "generating volumes\n";
         auto integrated_volume = curan::image::IntegratedReconstructor::make(state.integrated_volume_create_info);
         integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE).set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
 
         state.window_pointer.erase(state.integrated_volume);
         state.integrated_volume = integrated_volume;
         state.window_pointer << integrated_volume;
+        state.generate_volume(RobotState::GenerateStatus::ALREADY_GENERATED);
     }
 
-    if(state.integrated_volume.get()!=nullptr && state.inject_frame())
+    if(state.integrated_volume.get()!=nullptr && state.inject_frame() && false){
         state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(image_to_render);
+        std::cout << "injecting frame in volumes\n";
+    }
 
     return true;
 }
@@ -711,7 +723,8 @@ int communication(RobotState &state, asio::io_context &context)
         }
     };
     client->connect(lam);
-
+    std::cout << "connecting to client\n";
+    /*
     curan::communication::interface_fri fri_interface;
     curan::communication::Client::Info fri_construction{context, fri_interface};
     asio::ip::tcp::resolver fri_resolver(context);
@@ -732,8 +745,9 @@ int communication(RobotState &state, asio::io_context &context)
         }
     };
     fri_client->connect(lam_fri);
-
+    */
     context.run();
+    std::cout << "stopped connecting to client\n";
     return 0;
 }
 
