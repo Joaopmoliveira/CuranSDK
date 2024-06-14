@@ -58,6 +58,7 @@ public:
     vsg::ref_ptr<curan::renderable::Renderable> integrated_volume;
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> dynamic_texture;
     vsg::dmat4 calibration_matrix;
+    std::string filename{CURAN_COPIED_RESOURCE_PATH "/reconstruction_results.mha"};
 
     RobotState(curan::renderable::Window &wind) : window_pointer{wind},integrated_volume_create_info{{{0.1,0.1,0.1}}, {{0,0,0}}, {{10,10,10}}, {{{1,0,0},{0,1,0},{0,0,1}}}}
     {
