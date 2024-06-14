@@ -47,7 +47,7 @@ class RobotState
     std::atomic<bool> commit_senpuko = false;
     std::atomic<bool> f_record_frame = false;
     std::atomic<bool> f_regenerate_integrated_reconstructor_frame = false;
-    std::atomic<bool> f_save_volume = false;
+    std::atomic<bool> f_inject_frame = false;
 
 public:
     vsg::ref_ptr<curan::renderable::Renderable> robot;
@@ -110,20 +110,20 @@ public:
         return f_regenerate_integrated_reconstructor_frame.load() == GENERATE_VOLUME;
     }
 
-    enum SaveVolumeStatus
+    enum InjectVolumeStatus
     {
-        SAVE_VOLUME,
-        VOLUME_SAVED
+        INJECT_FRAME,
+        FREEZE_VOLUME
     };
 
-    void save_volume(SaveVolumeStatus status)
+    void inject_frame(InjectVolumeStatus status)
     {
-        f_save_volume.store(status == SAVE_VOLUME);
+        f_inject_frame.store(status == INJECT_FRAME);
     }
 
-    bool save_volume()
+    bool inject_frame()
     {
-        return f_save_volume.load() == SAVE_VOLUME;
+        return f_inject_frame.load() == INJECT_FRAME;
     }
 
 
@@ -227,6 +227,7 @@ struct ApplicationState
                 std::lock_guard<std::mutex> g{mut};
                 operation_in_progress = true;
                 operation_description = "saving volumetric reconstruction";
+                robot_state.inject_frame(RobotState::InjectVolumeStatus::FREEZE_VOLUME);
             }
             pool->submit(curan::utilities::Job{"testing", [this]()
                                                {
@@ -313,6 +314,7 @@ struct ApplicationState
                                                        success_description = "saved volume information";
                                                        operation_in_progress = false;
                                                        show_sucess = true;
+                                                       robot_state.inject_frame(RobotState::InjectVolumeStatus::INJECT_FRAME);
                                                    }
                                                }});
         }
@@ -341,9 +343,11 @@ struct ApplicationState
         ImGui::SameLine();
         if (ImGui::Button("Save Region of Interest"))
         {
+            robot_state.record_frames(RobotState::NOT_RECORDING);
             local_record_data = false;
             operation_in_progress = true;
             operation_description = "saving region of interest";
+
             pool->submit(curan::utilities::Job{"testing", [this]()
                                                {
                                                    auto final_box = robot_state.box_class.get_final_volume_vertices();
@@ -644,7 +648,8 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         state.window_pointer << integrated_volume;
     }
 
-    state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(image_to_render);
+    if(state.integrated_volume.get()!=nullptr && state.inject_frame())
+        state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(image_to_render);
 
     return true;
 }
