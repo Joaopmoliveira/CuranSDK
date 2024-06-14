@@ -27,6 +27,7 @@
 #include "itkImage.h"
 #include "itkImageFileWriter.h"
 #include "itkImportImageFilter.h"
+#include "imgui_stdlib.h"
 #include <map>
 
 using OutputPixelType = unsigned char;
@@ -58,7 +59,7 @@ public:
     vsg::ref_ptr<curan::renderable::Renderable> integrated_volume;
     std::optional<vsg::ref_ptr<curan::renderable::Renderable>> dynamic_texture;
     vsg::dmat4 calibration_matrix;
-    std::string filename{CURAN_COPIED_RESOURCE_PATH "/reconstruction_results.mha"};
+    
 
     RobotState(curan::renderable::Window &wind) : window_pointer{wind},integrated_volume_create_info{{{0.1,0.1,0.1}}, {{0,0,0}}, {{10,10,10}}, {{{1,0,0},{0,1,0},{0,0,1}}}}
     {
@@ -149,6 +150,7 @@ struct ApplicationState
     ImVec2 padding{0, 40};
     std::shared_ptr<curan::utilities::ThreadPool> pool;
     RobotState robot_state;
+    std::string filename{CURAN_COPIED_RESOURCE_PATH "/reconstruction_results.mha"};
 
     ApplicationState(curan::renderable::Window &wind) : robot_state{wind}
     {
@@ -222,6 +224,12 @@ struct ApplicationState
 
     void showReconstructionWindow()
     {
+        ImGui::Dummy(padding); ImGui::SameLine();
+        {
+            std::lock_guard<std::mutex> g{mut};
+            ImGui::InputText("Filename",&filename);
+        }
+        
         if (ImGui::Button("Save Volume"))
         {
             {
@@ -306,7 +314,11 @@ struct ApplicationState
 
                                                    using WriterType = itk::ImageFileWriter<ImageType>;
                                                    WriterType::Pointer writer = WriterType::New();
-                                                   writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/reconstruction_results.mha");
+
+                                                   {
+                                                       std::lock_guard<std::mutex> g{mut};
+                                                       writer->SetFileName(filename);
+                                                   }
                                                    writer->SetInput(importFilter->GetOutput());
                                                    writer->Update();
 
