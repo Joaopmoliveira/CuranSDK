@@ -25,6 +25,7 @@ int main(int argc, char* argv[]) {
 	ConfigDraw config{&page};
 	processing->config = &config;
 	
+	
 
 	while (!glfwWindowShouldClose(viewer->window)) {
 		auto start = std::chrono::high_resolution_clock::now();

@@ -157,7 +157,7 @@ try{
    
    robot_state->integrated_volume = curan::image::IntegratedReconstructor::make(recon_info);
    robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE)
-      .set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
+      .set_interpolation(curan::image::reconstruction::Interpolation::LINEAR_INTERPOLATION);
    
    window << robot_state->integrated_volume;
 

@@ -78,7 +78,7 @@ int main(int argc, char **argv)
     auto laplacian = FilterType10::New();
     laplacian->SetNormalizeAcrossScale(true);
     laplacian->SetInput(pointer2fixedimage);
-    laplacian->SetSigma(5);
+    laplacian->SetSigma(4);
     laplacian->Update();
 
     using MinMaxCalculatorType = itk::MinimumMaximumImageCalculator<ImageType>;
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     using ThresholdFilterType = itk::ThresholdImageFilter<ImageType>;
     ThresholdFilterType::Pointer thresholdFilter = ThresholdFilterType::New();
     thresholdFilter->SetInput(laplacian->GetOutput());
-    thresholdFilter->ThresholdOutside(minValue, -0.04); //0.02 para a precious
+    thresholdFilter->ThresholdOutside(minValue, -0.02); //0.02 para a precious
     thresholdFilter->SetOutsideValue(0);
     thresholdFilter->Update();
 
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     using ThresholdFilterType2 = itk::ThresholdImageFilter<LabelImageType>;
     ThresholdFilterType2::Pointer thresholdFilter2 = ThresholdFilterType2::New();
     thresholdFilter2->SetInput(relabelFilter->GetOutput());
-    thresholdFilter2->ThresholdOutside(1, 1); // Keep only the label 1 (largest component) for US and 5 for ultrasound
+    thresholdFilter2->ThresholdOutside(1, 5); // Keep only the label 1 (largest component) for US and 5 for ultrasound
     thresholdFilter2->SetOutsideValue(0);
     thresholdFilter2->Update();
 

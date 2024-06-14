@@ -739,11 +739,13 @@ int communication(RobotState &state, asio::io_context &context)
 
 void interface(vsg::CommandBuffer &cb,ApplicationState** app)
 {
-    (**app).showMainWindow();
+    if(*app!=nullptr)
+        (**app).showMainWindow();
 }
 
 int main(int argc, char **argv)
 {
+    asio::io_context context;
     ApplicationState* app_pointer = nullptr;
     curan::renderable::ImGUIInterface::Info info_gui{[pointer_to_address = &app_pointer](vsg::CommandBuffer &cb){interface(cb,pointer_to_address);}};
     auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
@@ -786,6 +788,8 @@ int main(int argc, char **argv)
     create_info.number_of_links = 8;
     application_state.robot_state.robot = curan::renderable::SequencialLinks::make(create_info);
     window << application_state.robot_state.robot;
+
+    application_state.pool->submit(curan::utilities::Job{"communication with robot",[&](){communication( application_state.robot_state,context);}});
 
     window.run();
     return 0;
