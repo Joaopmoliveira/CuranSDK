@@ -15,7 +15,6 @@ void Renderable::partial_async_attachment(const Updatable& update) {
         return;
 
     transform->addChild(obj_contained);
-
     result = owner_viewer->compileManager->compile(obj_contained);
 }
 

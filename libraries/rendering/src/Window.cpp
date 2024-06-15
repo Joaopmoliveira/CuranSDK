@@ -220,10 +220,9 @@ bool Window::erase(const std::string& identifier){
 Window& operator<<(Window& ref, vsg::ref_ptr<Renderable> renderable) {
     std::lock_guard<std::mutex> g{ref.mut};
     if (!renderable->obj_contained)
-        return ref;
+        throw std::runtime_error("n0o object contained");
     if (!ref.window) {
-        utilities::cout << "failed to get window\n";
-        return ref;
+        throw std::runtime_error("failed to get window");
     }
     vsg::observer_ptr<vsg::Viewer> observer_viewer(ref.viewer);
     renderable->partial_async_attachment({ observer_viewer,ref.root });

@@ -88,6 +88,7 @@ public:
 
     void record_frames(RecordStatus status)
     {
+        //std::cout << "flag \"record_frames\" updated!!!";
         f_record_frame.store(status == START_RECORDING_FOR_BOX_UPDATE);
     }
 
@@ -104,6 +105,7 @@ public:
 
     void generate_volume(GenerateStatus status)
     {
+        //std::cout << "flag \"generate_volume\" updated!!!";
         f_regenerate_integrated_reconstructor_frame.store(status == GENERATE_VOLUME);
     }
 
@@ -120,6 +122,7 @@ public:
 
     void inject_frame(InjectVolumeStatus status)
     {
+        //std::cout << "flag \"inject_frame\" updated!!!";
         f_inject_frame.store(status == INJECT_FRAME);
     }
 
@@ -315,6 +318,8 @@ struct ApplicationState
                                                    importFilter->SetDirection(orientation);
 
                                                    const bool importImageFilterWillOwnTheBuffer = false;
+                                                   if(robot_state.integrated_volume.get()==nullptr)
+                                                    return;
                                                    float *my_beatiful_pointer = robot_state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_texture_data()->data();
                                                    importFilter->SetImportPointer(my_beatiful_pointer, numberOfPixels, importImageFilterWillOwnTheBuffer);
 
@@ -461,7 +466,7 @@ struct ApplicationState
                                                    
                                                    robot_state.integrated_volume_create_info = recon_info;
                                                    robot_state.generate_volume(RobotState::GenerateStatus::GENERATE_VOLUME);
-                                                   robot_state.inject_frame(RobotState::InjectVolumeStatus::INJECT_FRAME);
+                                                   robot_state.inject_frame(RobotState::InjectVolumeStatus::FREEZE_VOLUME);
                                                    std::lock_guard<std::mutex> g{mut};
                                                    success_description = "saved volume information";
                                                    operation_in_progress = false;
@@ -521,6 +526,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         return false; // failed to unpack message, therefore returning without doing anything
     if (!state.dynamic_texture)
     {
+        std::cout << "creating dynamic texture\n";
         int x, y, z;
         message_body->GetDimensions(x, y, z);
         curan::renderable::DynamicTexture::Info infotexture;
@@ -533,6 +539,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         state.dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
         state.window_pointer << *state.dynamic_texture;
 
+        std::cout << "creating bounding box texture\n";
         curan::renderable::Box::Info infobox;
         infobox.builder = vsg::Builder::create();
         infobox.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
@@ -615,7 +622,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
     constexpr size_t update_rate = 4;
     ++counter;
 
-    if (state.record_frames() && counter % update_rate == 0)
+    if (state.record_frames() && (counter % update_rate == 0))
     {
         std::cout << "injecting frame into box\n";
         state.box_class.add_frame(image_to_render);
@@ -738,7 +745,8 @@ int communication(RobotState &state, asio::io_context &context)
         }
     };
     client->connect(lam);
-
+    std::cout << "connecting to client\n";
+    
     curan::communication::interface_fri fri_interface;
     curan::communication::Client::Info fri_construction{context, fri_interface};
     asio::ip::tcp::resolver fri_resolver(context);
@@ -759,12 +767,9 @@ int communication(RobotState &state, asio::io_context &context)
         }
     };
     fri_client->connect(lam_fri);
-
-
     
-
-
     context.run();
+    std::cout << "stopped connecting to client\n";
     return 0;
 }
 
