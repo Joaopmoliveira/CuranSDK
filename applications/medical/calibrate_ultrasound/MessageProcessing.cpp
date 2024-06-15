@@ -117,7 +117,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		AccumulatorPixelType,
 		RadiusPixelType>;
 	auto houghFilter = HoughTransformFilterType::New();
-	if (processor->list_of_recorded_points.size() == 0){
+	if (processor->list_size() == 0){
 		houghFilter->SetNumberOfCircles(processor->number_of_circles);
 	} else {
 		houghFilter->SetNumberOfCircles(processor->number_of_circles_plus_extra);	
@@ -150,7 +150,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	ObservationEigenFormat observation_n;
 	CirclesListType::const_iterator itCircles = circles.begin();
 	Eigen::Matrix<double, 3, Eigen::Dynamic> segmented_wires;
-	if (processor->list_of_recorded_points.size() == 0){
+	if (processor->list_size() == 0){
 		segmented_wires = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3, processor->number_of_circles);
 	} else {
 		segmented_wires = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3, processor->number_of_circles_plus_extra);
@@ -174,25 +174,20 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		for (size_t lines = 0; lines < 4; ++lines)
 			observation_n.flange_data(lines, cols) = local_mat[lines][cols];
 
-	if (processor->list_of_recorded_points.size() == 0 && processor->should_record) {
-		//if first time we assume that the matrix has the correct number of observations, i.e it has number_of_wires observations
-		observation_n.segmented_wires = segmented_wires;
-		std::cout << "recorded first point \n";
-		processor->list_of_recorded_points.push_back(observation_n);
-	}
-	else {
-		if(processor->should_record){
-			auto possible_arrangement = rearrange_wire_geometry(segmented_wires, processor->list_of_recorded_points.back().segmented_wires,processor->threshold);
+	if(processor->should_record){
+		if(processor->list_size()){ //there are already points on the list
+			auto possible_arrangement = rearrange_wire_geometry(segmented_wires, processor->list_back().segmented_wires,processor->threshold);
 			if (possible_arrangement) {
 				observation_n.segmented_wires = *possible_arrangement;
 				segmented_wires = observation_n.segmented_wires;
-				processor->list_of_recorded_points.push_back(observation_n);
-				std::printf("recorded another point cols size: %d \n",(int)segmented_wires.cols());
+				processor->list_push_back(observation_n);
 			} else{
 				std::printf("possible arrangement failure \n");
 			}
+		} else { // there are no points on the list
+			observation_n.segmented_wires = segmented_wires;
+			processor->list_push_back(observation_n);
 		}
-
 	}
 
 	if (processor->show_circles.load()) {
@@ -214,9 +209,9 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 			paint_square.setAntiAlias(true);
 			paint_square.setStrokeWidth(4);
 			paint_square.setColor(SK_ColorGREEN);
-			//assert(processor->list_of_recorded_points.back().segmented_wires.cols() == local_colors.size());
+
 			auto coliter = local_colors.begin();
-			if(!processor->should_record){
+			if(!processor->should_record || processor->list_size()==0){
 				for (const auto& circles : segmented_wires.colwise()) {
 					float xloc = image_area.x()+ scalling_factor_x * circles(0, 0);
 					float yloc = image_area.y()+ scalling_factor_y * circles(1, 0);
@@ -226,7 +221,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 					++coliter;
 				}
 			} else{
-				for (const auto& circles : processor->list_of_recorded_points.back().segmented_wires.colwise()) {
+				for (const auto& circles : processor->list_back().segmented_wires.colwise()) {
 					float xloc = image_area.x()+ scalling_factor_x * circles(0, 0);
 					float yloc = image_area.y()+ scalling_factor_y * circles(1, 0);
 					SkPoint center{xloc,yloc};
@@ -278,7 +273,11 @@ bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_
 }
 
 void ProcessingMessage::communicate() {
-	list_of_recorded_points.clear();
+	{
+		std::lock_guard<std::mutex> g{mut};
+		list_of_recorded_points.clear();
+	}
+	
 	using namespace curan::communication;
 	button->set_waiting_color(SK_ColorGREEN);
 	io_context.reset();

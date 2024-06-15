@@ -43,7 +43,8 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
         desired_clip.clipRectangleOrigin[1] = clip_origin_y;
         desired_clip.clipRectangleSize[0] = x;
         desired_clip.clipRectangleSize[1] = y-15;
-        state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_clipping(desired_clip);
+        if(state->integrated_volume.get()!=nullptr)
+            state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_clipping(desired_clip);
     }
     auto updateBaseTexture = [message_body](vsg::vec4Array2D& image)
     {
@@ -97,7 +98,8 @@ bool process_image_message(std::shared_ptr<SharedRobotState> state , igtl::Messa
     origin[1] = product(3,1);
     origin[2] = product(3,2);
     image_to_render->SetOrigin(origin);
-    state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(image_to_render);
+    if(state->integrated_volume.get()!=nullptr)
+        state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(image_to_render);
 	return true;
 }
 

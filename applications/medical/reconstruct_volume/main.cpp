@@ -162,6 +162,7 @@ try{
    window << robot_state->integrated_volume;
 
    auto communication_callable = [robot_state](){
+      
       communication(robot_state);
    };
    std::thread communication_thread(communication_callable);
@@ -170,18 +171,6 @@ try{
    
    robot_state->kill_yourself();
    communication_thread.join();
-
-   /*
-   robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_fillstrategy(curan::image::reconstruction::FillingStrategy::NEAREST_NEIGHBOR);
-            curan::image::reconstruction::KernelDescriptor descript;
-          
-   descript.fillType = curan::image::reconstruction::FillingStrategy::NEAREST_NEIGHBOR;
-   descript.size = 3.0;
-   descript.stdev = 0.5;
-   descript.minRatio = 0.5;
-   robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_kernel_descritor(descript);
-   robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->fill_holes();
-   */
 
    itk::Size<3U>  output_size;
    output_size = robot_state->integrated_volume->cast<curan::image::IntegratedReconstructor>()->get_output_size();

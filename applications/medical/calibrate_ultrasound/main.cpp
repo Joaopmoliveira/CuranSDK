@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 		data.minimum_radius.load(), data.maximum_radius.load(), data.sweep_angle.load(),data.sigma_gradient.load(), 
 		data.variance.load(), data.disk_ratio.load(),data.threshold.load());
 
-	if(processing->list_of_recorded_points.size()==0){
+	if(processing->list_size()==0){
 		std::cout << "no calibration data was recorded\n";
 		return 1;
 	}
@@ -73,14 +73,15 @@ int main(int argc, char* argv[]) {
 	constexpr size_t number_of_variables = 6 + 4 * number_of_strings;
 
 	curan::optim::WireData optimizationdata;
-	optimizationdata.wire_data.reserve(number_of_strings * processing->list_of_recorded_points.size());
+	optimizationdata.wire_data.reserve(number_of_strings * processing->list_size());
 
 	nlohmann::json flange_data_to_matlab;
-	flange_data_to_matlab["number_of_observations"] = processing->list_of_recorded_points.size();
+	flange_data_to_matlab["number_of_observations"] = processing->list_size();
 	flange_data_to_matlab["number_of_wires"] = number_of_strings;
 	
 	size_t counter = 0;
-	for (const auto& f : processing->list_of_recorded_points) {
+	auto list_copy = processing->list_deep_copy();
+	for (const auto& f : list_copy) {
 		nlohmann::json recording;
 		std::stringstream ss;
 		ss << f.flange_data;

@@ -53,8 +53,10 @@ struct ObservationEigenFormat {
 std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(Eigen::Matrix<double, 3, Eigen::Dynamic>& current, Eigen::Matrix<double, 3, Eigen::Dynamic>& previous, double threshold);
 
 struct ProcessingMessage {
+private:
 	std::list<ObservationEigenFormat> list_of_recorded_points;
-
+	std::mutex mut;
+public:
 	curan::ui::ImageDisplay* processed_viwer = nullptr;
 	curan::ui::OpenIGTLinkViewer* open_viwer = nullptr;
 	curan::utilities::Flag connection_status;
@@ -69,6 +71,29 @@ struct ProcessingMessage {
 	std::atomic<bool> should_record = false;
 	std::atomic<bool> show_circles = false;
 	short port = 10000;
+
+
+	inline ObservationEigenFormat& list_back(){
+		std::lock_guard<std::mutex> g{mut};
+		return list_of_recorded_points.back();
+	}
+
+	inline void list_push_back(const ObservationEigenFormat& format){
+		std::lock_guard<std::mutex> g{mut};
+		list_of_recorded_points.push_back(format);
+	}
+
+	inline size_t list_size(){
+		std::lock_guard<std::mutex> g{mut};
+		return list_of_recorded_points.size();
+	}
+ 
+	inline std::list<ObservationEigenFormat> list_deep_copy(){
+		std::list<ObservationEigenFormat> copy;
+		std::lock_guard<std::mutex> g{mut};
+		std::copy(std::begin(list_of_recorded_points),std::end(list_of_recorded_points),std::back_inserter(copy));
+		return copy;
+	}
 
 	ProcessingMessage(curan::ui::ImageDisplay* in_processed_viwer,
 		curan::ui::OpenIGTLinkViewer* in_open_viwer, ConfigurationData& in_configuration) : processed_viwer{ in_processed_viwer }, open_viwer{ in_open_viwer }, configuration{ in_configuration }
