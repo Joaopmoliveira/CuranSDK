@@ -653,7 +653,7 @@ int main(int argc, char **argv)
     print_image_with_transform(pointer2movingimage,"moving_correct_in_fixed.mha");
 
     modify_image_with_transform(T_origin_fixed*finalTransform.inverse()*T_origin_moving.inverse()*get_image_transform(pointer2fullmovingimage),pointer2fullmovingimage);
-    print_image_with_transform(pointer2movingimage,"full_moving_correct_in_fixed.mha");
+    print_image_with_transform(pointer2fullmovingimage,"full_moving_correct_in_fixed.mha");
     /*-----------*/
 
     return 0;
