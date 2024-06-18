@@ -357,7 +357,7 @@ namespace curan
 			float dragable_percent_size = 0.01f;
 
 			SkSamplingOptions options;
-			sk_sp<SkImageFilter> imgfilter;
+			std::optional<SkPaint> paint_compliant_filtered_image;
 
 			SkColor hover_color = SK_ColorLTGRAY;
 			SkColor waiting_color = SK_ColorLTGRAY;
@@ -492,6 +492,14 @@ namespace curan
 			{
 				std::lock_guard<std::mutex> g{get_mutex()};
 				current_state = state;
+				return *(this);
+			}
+
+			inline SlidingPanel& set_color_filter(sk_sp<SkColorFilter> filter){
+				SkPaint paint;
+				paint.setColorFilter(filter);
+				std::lock_guard<std::mutex> g(get_mutex());
+				paint_compliant_filtered_image = paint;
 				return *(this);
 			}
 

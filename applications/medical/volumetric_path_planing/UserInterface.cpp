@@ -3,6 +3,9 @@
 #include "utils/Overloading.h"
 #include "LoadVolume.h"
 
+uint_least8_t dicom_compliant_conversion[256] = {0 ,30 ,33 ,35 ,37 ,39 ,40 ,41 ,43 ,44 ,45 ,46 ,47 ,48 ,48 ,49 ,50 ,51 ,51 ,52 ,53 ,54 ,55 ,55 ,56 ,57 ,57 ,58 ,59 ,60 ,60 ,61 ,62 ,62 ,63 ,64 ,64 ,65 ,65 ,66 ,67 ,67 ,68 ,69 ,69 ,70 ,71 ,71 ,72 ,73 ,73 ,74 ,75 ,76 ,76 ,77 ,77 ,78 ,79 ,80 ,80 ,80 ,81 ,82 ,83 ,83 ,84 ,84 ,85 ,86 ,86 ,87 ,88 ,88 ,89 ,90 ,90 ,91 ,92 ,93 ,93 ,94 ,95 ,95 ,96 ,96 ,97 ,98 ,98 ,99 ,100 ,101 ,101 ,102 ,103 ,103 ,104 ,105 ,106 ,106 ,107 ,108 ,109 ,109 ,110 ,111 ,111 ,112 ,113 ,113 ,114 ,115 ,116 ,116 ,117 ,118 ,119 ,119 ,120 ,121 ,122 ,123 ,123 ,124 ,125 ,126 ,126 ,127 ,128 ,128 ,129 ,130 ,131 ,132 ,132 ,133 ,134 ,135 ,136 ,136 ,137 ,138 ,139 ,140 ,141 ,141 ,142 ,143 ,144 ,145 ,145 ,146 ,147 ,148 ,149 ,150 ,151 ,151 ,152 ,153 ,154 ,155 ,156 ,157 ,158 ,158 ,159 ,160 ,161 ,162 ,163 ,164 ,164 ,166 ,167 ,167 ,169 ,170 ,170 ,171 ,172 ,173 ,174 ,175 ,176 ,176 ,178 ,178 ,180 ,181 ,182 ,183 ,184 ,184 ,186 ,186 ,188 ,188 ,189 ,191 ,191 ,192 ,194 ,194 ,196 ,197 ,197 ,199 ,200 ,201 ,202 ,203 ,204 ,205 ,207 ,207 ,208 ,209 ,210 ,212 ,213 ,214 ,215 ,216 ,217 ,218 ,220 ,221 ,222 ,223 ,224 ,225 ,226 ,228 ,229 ,230 ,231 ,233 ,234 ,235 ,236 ,238 ,239 ,240 ,241 ,242 ,244 ,245 ,246 ,248 ,249 ,250 ,251 ,253 ,254 ,255};
+
+
     void Application::compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
         std::optional<Eigen::Matrix<double, 3, 1>> possible_point;
         if(dir_stroke.point){
@@ -184,6 +187,7 @@
         case Panels::ONE_PANEL:
         {
             std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+	        image_display->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
             *image_container << std::move(image_display);
         }
         break;
@@ -191,6 +195,8 @@
         {
             std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
+	        image_display_x->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            image_display_y->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
             *image_container << std::move(image_display_x) << std::move(image_display_y);
         }
         break;
@@ -199,12 +205,17 @@
             std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
             std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &map[current_volume], Direction::Z);
+	        image_display_x->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            image_display_y->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            image_display_z->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+
             *image_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
         }
         break;
         default:
         {
             std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+	        image_display->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
             *image_container << std::move(image_display);
         }
         break;
@@ -293,6 +304,7 @@
         case Panels::ONE_PANEL:
         {
             std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            image_display->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
             *image_container << std::move(image_display);
         }
         break;
@@ -300,6 +312,8 @@
         {
             std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
+            image_display_x->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            image_display_y->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
             *image_container << std::move(image_display_x) << std::move(image_display_y);
         }
         break;
@@ -308,12 +322,16 @@
             std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
             std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
             std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &map[current_volume], Direction::Z);
+            image_display_x->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            image_display_y->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            image_display_z->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
             *image_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
         }
         break;
         default:
         {
             std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            image_display->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
             *image_container << std::move(image_display);
         }
         break;
@@ -744,83 +762,11 @@
         }
     }
 
-    /*
-    std::unique_ptr<curan::ui::Overlay> Application::option_overlay()
-    {
-        using namespace curan::ui;
-        auto button = Button::make("Layout", resources);
-        button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-        button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
-                               {
-		if(config->stack_page!=nullptr){
-			config->stack_page->stack(layout_overlay());
-		} });
-
-        std::unique_ptr<Button> button2;
-
-        switch (current_volume){
-        case PanelType::ORIGINAL_VOLUME:
-            button2 = Button::make("Resample AC-PC", resources);
-            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-            button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-                                    {
-            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
-                if (config->stack_page != nullptr)
-                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
-                return;
-            }
-		    is_acpc_being_defined = !is_acpc_being_defined;
-		    point_selection(); });
-        case PanelType::RESAMPLED_VOLUME:
-            button2 = Button::make("Define Trajectory", resources);
-            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-            button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-                                    {
-            if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
-                if (config->stack_page != nullptr)
-                    config->stack_page->stack(warning_overlay("cannot resample processed volume"));
-                return;
-            }
-		    is_acpc_being_defined = !is_acpc_being_defined;
-		    point_selection(); });
-        default:
-            std::cout << "default\n";
-            break;
-        };
-
-        auto button4 = Button::make("Change Volume", resources);
-        button4->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-        button4->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-                                {
-            if(config->stack_page!=nullptr){
-			    config->stack_page->stack(create_volume_explorer_page());
-		    } });
-
-        auto button5 = Button::make("Load Series", resources);
-        button5->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-        button5->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-                                {
-            if(config->stack_page!=nullptr){
-			    config->stack_page->stack(create_volume_loader_page());
-		    } });
-
-        auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-        if(button2.get()!=nullptr)
-            *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5);
-        else
-            *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
-
-        viwers_container->set_color(SK_ColorTRANSPARENT);
-
-        return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
-    }
-    */
-
     std::unique_ptr<curan::ui::Container> Application::main_page()
     {
         using namespace curan::ui;
         std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
-
+	    image_display->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
         using namespace curan::ui;
         auto button = Button::make("Layout", resources);
         button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));

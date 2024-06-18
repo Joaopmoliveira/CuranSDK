@@ -343,7 +343,11 @@ namespace ui {
 				auto val = *background.image;
 				auto image_display_surface = val.image;
 				SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{1.0f / 3.0f, 1.0f / 3.0f});
-				canvas->drawImageRect(image_display_surface, background_rect, opt);
+				if(paint_compliant_filtered_image)
+					canvas->drawImageRect(image_display_surface, background_rect, opt,&(*paint_compliant_filtered_image));
+				else
+					canvas->drawImageRect(image_display_surface, background_rect, opt);
+				
 			}
 
 			canvas->drawPoints(SkCanvas::PointMode::kPoints_PointMode, current_stroke.transformed_recorded_points.size(), current_stroke.transformed_recorded_points.data(), paint_stroke);
