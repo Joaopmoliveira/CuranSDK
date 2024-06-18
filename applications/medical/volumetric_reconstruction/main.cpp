@@ -532,7 +532,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         curan::renderable::DynamicTexture::Info infotexture;
         infotexture.height = y;
         infotexture.width = x;
-        infotexture.spacing = {0.0001852, 0.0001852, 0.0001852};
+        infotexture.spacing = {0.00018867924, 0.00018867924, 0.00018867924};
         infotexture.origin = {0.0, 0.0, 0.0};
         infotexture.identifier = "ultrasound";
         infotexture.builder = vsg::Builder::create();
@@ -603,7 +603,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
 
     OutputImageType::Pointer image_to_render;
     curan::image::igtl2ITK_im_convert(message_body, image_to_render);
-    const itk::SpacePrecisionType spacing[3] = {0.0001852, 0.0001852, 0.0001852};
+    const itk::SpacePrecisionType spacing[3] = {0.00018867924, 0.00018867924, 0.00018867924};
     image_to_render->SetSpacing(spacing);
 
     itk::Matrix<double, 3, 3> itk_matrix;

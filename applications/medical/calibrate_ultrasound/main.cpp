@@ -111,8 +111,8 @@ int main(int argc, char* argv[]) {
 		size_t wire_number = 0;
 		for (const auto& wire_observation : f.segmented_wires.colwise()) {
 			localobservation.wire_number = wire_number;
-			localobservation.wire_data.values[0] = wire_observation(0, 0)*0.0001852;
-			localobservation.wire_data.values[1] = wire_observation(1, 0)*0.0001852;
+			localobservation.wire_data.values[0] = wire_observation(0, 0)*0.00018867924; 
+			localobservation.wire_data.values[1] = wire_observation(1, 0)*0.00018867924;
 			localobservation.wire_data.values[2] = 0.0;
 			optimizationdata.wire_data.push_back(localobservation);
 			++wire_number;
