@@ -24,6 +24,7 @@ namespace curan {
             vsg::ref_ptr<vsg::Group> root_plus_floor;
             vsg::ref_ptr<vsg::Viewer> viewer;
             vsg::ref_ptr<vsg::Camera> camera;
+            vsg::ref_ptr<vsg::LookAt> lookAt;
             vsg::ref_ptr<vsg::CommandGraph> commandGraph;
             vsg::ref_ptr<vsg::ProjectionMatrix> perspective;
             vsg::ref_ptr<vsg::ViewportState> viewportState;
@@ -69,6 +70,10 @@ namespace curan {
             bool erase(vsg::ref_ptr<Renderable> renderable);
 
             friend Window& operator<<(Window& ref, vsg::ref_ptr<Renderable> renderable);
+
+            inline vsg::ref_ptr<vsg::LookAt> look_at(){
+                return lookAt;
+            }
         };
 
     }

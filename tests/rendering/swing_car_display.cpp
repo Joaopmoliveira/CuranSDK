@@ -2,6 +2,7 @@
 #include "rendering/Renderable.h"
 #include "rendering/Mesh.h"
 #include <iostream>
+#include "utils/TheadPool.h"
 
 int main(int argc, char **argv) {
     try {
@@ -16,15 +17,39 @@ int main(int argc, char **argv) {
         info.window_size = size;
         curan::renderable::Window window{info};
 
-        std::filesystem::path swingcar_path = CURAN_COPIED_RESOURCE_PATH"/swing/R4F_stable_II.glb";
+        std::filesystem::path swingcar_path = CURAN_COPIED_RESOURCE_PATH"/swing/R4F_stable.glb";
         curan::renderable::Mesh::Info create_info;
         create_info.convetion = vsg::CoordinateConvention::Y_UP;
         create_info.mesh_path = swingcar_path;
         vsg::ref_ptr<curan::renderable::Renderable> swingcar = curan::renderable::Mesh::make(create_info);
         window << swingcar;
+        volatile bool running = true; 
+        auto pool = curan::utilities::ThreadPool::create(2);
 
+        pool->submit(curan::utilities::Job{"camera update",[&](){
+            auto lookat = window.look_at();
+            vsg::dvec3 equilibrium = lookat->center;
+            double t = 0.0;
+            while(running){
+
+                for(size_t i = 0; i< 3 ; ++i)
+                    lookat->center[i]=-0.016*(equilibrium[i]-lookat->center[i]);
+
+
+                lookat->eye[0] = 2.0+std::sin(t);
+                lookat->eye[1] = 2.0+std::sin(t);
+                lookat->eye[2] = 2.0+std::sin(t);
+                t += 0.016;
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+
+                lookat->up[0] = 0;
+                lookat->up[1] = 0;
+                lookat->up[2] = 1;
+            }
+            
+        }});
         window.run();
-
+        running = false;
         window.transverse_identifiers(
             [](const std::unordered_map<std::string, vsg::ref_ptr<curan::renderable::Renderable>>
                    &map) {

@@ -48,7 +48,7 @@ Window::Window(Info& info) : number_of_images{5} {
     double radius = 10;
     double nearFarRatio = 0.001;
 
-    auto lookAt = vsg::LookAt::create(centre + vsg::dvec3(3.5, -3.5, 3.5), centre, vsg::dvec3(.0, .0, 1.0));
+    lookAt = vsg::LookAt::create(centre + vsg::dvec3(3.5, -3.5, 3.5), centre, vsg::dvec3(.0, .0, 1.0));
     perspective = vsg::Perspective::create(30.0, static_cast<double>(window->extent2D().width) / static_cast<double>(window->extent2D().height), nearFarRatio * radius, radius * 4.5);
 
     viewportState = vsg::ViewportState::create(window->extent2D());

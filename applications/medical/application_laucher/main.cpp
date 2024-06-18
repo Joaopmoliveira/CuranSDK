@@ -92,44 +92,12 @@ int main() {
 			}
 		});
 
-		auto button4 = Button::make("Reconstruction",resources);
+		auto button4 = Button::make("Neuro Navigation",resources);
 	   	button4->set_click_color(SK_ColorDKGRAY)
                 .set_hover_color(SK_ColorLTGRAY)
                 .set_waiting_color(waiting_color_inactive)
                 .set_size(SkRect::MakeWH(300, 300));
 		button4->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(!child_process){
-    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RealTimeRobotReconstructor" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
-				inbut->set_waiting_color(waiting_color_active);
-			} else {
-				inbut->set_waiting_color(waiting_color_inactive);
-				child_process->terminate();
-				child_process = nullptr;
-			}
-		});
-
-		auto button5 = Button::make("Registration",resources);
-	   	button5->set_click_color(SK_ColorDKGRAY)
-                .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(waiting_color_inactive)
-                .set_size(SkRect::MakeWH(300, 300));
-		button5->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
-			if(!child_process){
-    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RoboticRegistration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
-				inbut->set_waiting_color(waiting_color_active);
-			} else {
-				inbut->set_waiting_color(waiting_color_inactive);
-				child_process->terminate();
-				child_process = nullptr;
-			}
-		});
-
-		auto button6 = Button::make("Neuro Navigation",resources);
-	   	button6->set_click_color(SK_ColorDKGRAY)
-                .set_hover_color(SK_ColorLTGRAY)
-                .set_waiting_color(waiting_color_inactive)
-                .set_size(SkRect::MakeWH(300, 300));
-		button6->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/InteroperativeNavigation" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
 				inbut->set_waiting_color(waiting_color_active);
@@ -150,9 +118,7 @@ int main() {
 	    *widgetcontainer << std::move(button1) 
                         << std::move(button2) 
                         << std::move(button3) 
-                        << std::move(button4) 
-                        << std::move(button5) 
-                        << std::move(button6);
+                        << std::move(button4);
 
 		widgetcontainer->set_variable_layout({SkRect::MakeXYWH(0.0,0.0,0.3333,0.5),SkRect::MakeXYWH(0.3332,0.0,0.3333,0.5),SkRect::MakeXYWH(0.6665,0.0,0.3333,0.5),
 											  SkRect::MakeXYWH(0.0,0.5,0.3333,0.5),SkRect::MakeXYWH(0.3332,0.5,0.3333,0.5),SkRect::MakeXYWH(0.6665,0.5,0.3333,0.5)});

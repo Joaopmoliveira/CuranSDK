@@ -91,3 +91,13 @@ utils
 ${ITK_LIBRARIES}
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+add_executable(test_register_volumes_v7 register_volumes_v7.cpp)
+
+target_compile_definitions(test_register_volumes_v7 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_register_volumes_v7
+PUBLIC
+utils
+${ITK_LIBRARIES}
+${OPERATING_SYSTEM_REQUIRMENTS}
+)
