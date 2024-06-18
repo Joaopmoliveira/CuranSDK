@@ -145,6 +145,7 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 	auto image_display = ImageDisplay::make();
 	auto image_display_pointer = image_display.get();
 	image_display->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+	igtlink_viewer->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
 
 	auto displaycontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*displaycontainer << std::move(igtlink_viewer) << std::move(image_display);

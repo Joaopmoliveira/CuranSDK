@@ -25,10 +25,10 @@ void create_skia_image(ImageMessage& message) {
 	case igtl::ImageMessage::TYPE_INT32:
 		return;
 	case igtl::ImageMessage::TYPE_INT8:
-		message.information = SkImageInfo::Make(width, height, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
+		message.information = SkImageInfo::Make(width, height, SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType,SkColorSpace::MakeSRGBLinear());
 		break;
 	case igtl::ImageMessage::TYPE_UINT8:
-		message.information = SkImageInfo::Make(width, height, SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType);
+		message.information = SkImageInfo::Make(width, height, SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType,SkColorSpace::MakeSRGBLinear());
 		break;
 	default:
 		return;
@@ -143,10 +143,14 @@ if(!compiled)
 				[](TransformMessage message) {
 
 				},
-				[canvas,widget_rect](ImageMessage message) {
+				[canvas,widget_rect,this](ImageMessage message) {
 					SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0 / 3, 1.0 / 3 });
 					SkRect current_selected_image_rectangle = compute_bounded_rectangle(widget_rect,message.skia_image->width(),message.skia_image->height());
-					canvas->drawImageRect(message.skia_image, current_selected_image_rectangle, opt);
+					if(paint_compliant_filtered_image)
+						canvas->drawImageRect(message.skia_image, current_selected_image_rectangle, opt,&(*paint_compliant_filtered_image));
+					else
+						canvas->drawImageRect(message.skia_image, current_selected_image_rectangle, opt);
+
 				}},mess
 			);
 		}
@@ -278,7 +282,10 @@ if(!compiled)
 					SkRect current_selected_image_rectangle = compute_bounded_rectangle(allowed_area,image_width,image_height);
 					
 					SkSamplingOptions options;
-					canvas->drawImageRect(message.skia_image, current_selected_image_rectangle, options);
+					if(paint_compliant_filtered_image)
+						canvas->drawImageRect(message.skia_image, current_selected_image_rectangle, options,&(*paint_compliant_filtered_image));
+					else
+						canvas->drawImageRect(message.skia_image, current_selected_image_rectangle, options);
 				}
 				},*clicked);
 		}

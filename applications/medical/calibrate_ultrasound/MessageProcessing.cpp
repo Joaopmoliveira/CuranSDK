@@ -235,7 +235,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		ImageType::Pointer pointer_to_block_of_memory = rescale->GetOutput();
     	ImageType::SizeType size_itk =  pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
     	auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(),pointer_to_block_of_memory->GetPixelContainer()->Size()*sizeof(char),pointer_to_block_of_memory);
-    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
+    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1],SkColorType::kAlpha_8_SkColorType,SkAlphaType::kUnpremul_SkAlphaType};
 		processor->processed_viwer->update_batch(special_custom,wrapper);
 	}
 	else {
@@ -244,7 +244,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 		ImageType::Pointer pointer_to_block_of_memory = rescale->GetOutput();
     	ImageType::SizeType size_itk =  pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
     	auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(),pointer_to_block_of_memory->GetPixelContainer()->Size()*sizeof(char),pointer_to_block_of_memory);
-    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
+    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1],SkColorType::kAlpha_8_SkColorType,SkAlphaType::kUnpremul_SkAlphaType};
 		processor->processed_viwer->update_image(wrapper);
 	}
 	end = std::chrono::steady_clock::now();

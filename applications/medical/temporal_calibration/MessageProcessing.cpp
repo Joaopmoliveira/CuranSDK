@@ -679,7 +679,8 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
     //std::cout << size_itk << std::endl;
 
     auto buff = curan::utilities::CaptureBuffer::make_shared(shr_ptr_imported->GetBufferPointer(),shr_ptr_imported->GetPixelContainer()->Size()*sizeof(char),shr_ptr_imported);
-    curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
+    curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1],SkColorType::kGray_8_SkColorType,SkAlphaType::kPremul_SkAlphaType};
+    //curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
     processor->processed_viwer->update_batch([inliers, pointsToFit, size_itk, processor,bestModelParams,cx , cy](SkCanvas* canvas, SkRect image_area,SkRect widget_area){ 
         if (processor->show_line){ //Vizualizador da linha
             //Fator de escala

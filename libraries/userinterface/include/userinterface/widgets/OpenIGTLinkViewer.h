@@ -50,6 +50,7 @@ namespace curan {
 			Press last_pressed_position;
 			SkRect widget_rect; 
 			std::array<sk_sp<SkTextBlob>, 4> table_headers;
+			std::optional<SkPaint> paint_compliant_filtered_image;
 			SkFont text_font;
 			SkPaint paint;
 			SkPaint paint_text;
@@ -77,6 +78,14 @@ namespace curan {
 
 			inline MessageContainer& get_container() {
 				return container;
+			}
+
+			inline OpenIGTLinkViewer& set_color_filter(sk_sp<SkColorFilter> filter){
+				SkPaint paint;
+				paint.setColorFilter(filter);
+				std::lock_guard<std::mutex> g(get_mutex());
+				paint_compliant_filtered_image = paint;
+				return *(this);
 			}
 		};
 	}
