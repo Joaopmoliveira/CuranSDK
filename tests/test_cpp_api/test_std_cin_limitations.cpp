@@ -1,17 +1,225 @@
 #include <iostream>
 #include <thread>
+#include <list>
+#include <mutex>
+#include <optional>
 
-int main(){
+/*
 
-    std::cout << "going to sleep\n";
-    std::thread t{[](){
-        std::cout << "entering the long wait\n";
-        std::string s;
-        std::cin >> s;
-        std::cout << "exception thrown\n";
-    }};
-    t.detach();
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+enum ReadingStatus{
+    WRITING,
+    READING,
+    UNTOUCHED
+};
+
+struct Message{
+    ReadingStatus esp1;
+    ReadingStatus esp2;
+    ReadingStatus esp3;
+};
+
+template<typename T>
+class wrapped_list{
+    std::list<T> temp;
+    std::mutex mut;
+public:
+    template<typename ...U>
+    void emplace_back(){
+        std::lock_guard<std::mutex> g{mut};
+        temp.emplace_back(std::forward(U...));
+    }
+
+    void push_back(const T& t){
+        std::lock_guard<std::mutex> g{mut};
+        temp.push_back(t);
+    }
+
+    bool wait_and_pop(T& t){
+        std::lock_guard<std::mutex> g{mut};
+        if(temp.size()>0){
+            t = temp.back();
+            temp.pop_back();
+            return true;
+        }
+        return false;
+    }
+};
+
+struct WritingPrimitive{
+
+};
+
+struct ReadingPrimitive{
+    std::atomic<ReadingStatus> current_status = UNTOUCHED;
+    bool should_write = false;
+    std::atomic<size_t> f_tick_counter = 0;
+    std::mutex mut;
+    const size_t f_sensor_multiple;
+
+    ReadingPrimitive(size_t sensor_multiple) : f_sensor_multiple{sensor_multiple}{
+
+    }
     
+    operator bool() const{
+        return should_write;
+    }
+
+    bool will_write() const {
+         return !(f_tick_counter+1% f_sensor_multiple);
+    }
+
+    void status(ReadingStatus in_status){
+        current_status = in_status;
+    }
+
+    ReadingStatus status(){
+         return current_status;
+    }
+
+    void finished(){
+        current_status = UNTOUCHED;
+    }
+
+    size_t operator++(){
+        if(!(f_tick_counter+1% f_sensor_multiple))
+            should_write = true;
+        return ++f_tick_counter;
+    }
+
+};
+
+void esp1(ReadingPrimitive& prim){
+    while(true){
+        if(prim){ // we have orders to write into the shared memory
+            //mimic that we wrote to a shared memory
+            prim.finished();
+        }
+
+        //query sensor
+    }
+}
+
+void esp2(ReadingPrimitive& prim){
+    while(true){
+        if(prim){ // we have orders to write into the shared memory
+            //mimic that we wrote to a shared memory
+            prim.finished();
+        }
+
+        //query sensor
+    }
+}
+
+void esp3(ReadingPrimitive& prim){
+    while(true){
+        if(prim){ // we have orders to write into the shared memory
+            //mimic that we wrote to a shared memory
+            prim.finished();
+        }
+
+        //query sensor
+    }
+}
+
+void sensors(wrapped_list<Message>& pipe){
+    ReadingPrimitive prim1{3};
+    ReadingPrimitive prim2{10};
+    ReadingPrimitive prim3{30};
+
+    std::thread esp1_thread {prim1};
+    std::thread esp2_thread {prim2};
+    std::thread esp3_thread {prim3};
+
+    Message watchdogmessage;
+
+    while(true){
+        // read message from watchdog
+        if(!pipe.wait_and_pop(watchdogmessage))
+            return;
+
+        // before we tick the ReadingPrimitives we copy the status of acess of the shared memory into the primities
+        // but the caveat is that we only copy the current memory acess status if its different from writing, becase if 
+        // the previous loop was writing, but in this loop we assycronously we have stopped writing, we don't want to override 
+        // that result
+        if(watchdogmessage.esp1!=WRITING)
+            prim1.status(watchdogmessage.esp1);
+        if(watchdogmessage.esp2!=WRITING)
+            prim2.status(watchdogmessage.esp2);
+        if(watchdogmessage.esp3!=WRITING)
+            prim3.status(watchdogmessage.esp3);
+
+        if(prim1.will_write() && !(watchdogmessage.esp1 & UNTOUCHED))
+            return; //if we would write in this loop yet the message is still not free due to the controller reading from the shared memory, we failed to respect the total sample time
+        else
+            prim1.status(WRITING);
+
+        if(prim2.will_write() && !(watchdogmessage.esp2 & UNTOUCHED))
+            return; //if we would write in this loop yet the message is still not free due to the controller reading from the shared memory, we failed to respect the total sample time
+        else
+            prim2.status(WRITING);
+
+        if(prim3.will_write() && !(watchdogmessage.esp3 & UNTOUCHED))
+            return; //if we would write in this loop yet the message is still not free due to the controller reading from the shared memory, we failed to respect the total sample time
+        else
+            prim3.status(WRITING);
+
+
+        // update all ticks of the reading primitives
+        ++prim1, ++prim2, ++prim3;
+
+        watchdogmessage.esp1 = prim1.current_status;
+        watchdogmessage.esp2 = prim2.current_status;
+        watchdogmessage.esp3 = prim3.current_status;
+
+        // write message to watchdog
+        pipe.push_back(watchdogmessage);
+    }
+
+    esp1_thread.join();
+    esp2_thread.join();
+    esp3_thread.join();
+}
+
+void watchdog(wrapped_list<Message>& pipe_sensors,wrapped_list<Message>& pipe_controller){
+    Message watchdogmessage;
+
+    while(true){
+        // read control action from shared memory
+
+        // tick sensor
+        pipe_sensors.push_back(watchdogmessage);
+
+        // read sensor ack
+        if(pipe_sensors.wait_and_pop(watchdogmessage))
+            return; // we failed to receive a message from the 
+
+        // tick controller
+        pipe_controller.push_back(watchdogmessage);
+
+        // read controller ack
+        if(pipe_controller.wait_and_pop(watchdogmessage))
+            return; // we failed to receive a message from the 
+    }
+}
+
+void controller(wrapped_list<Message>& pipe){
+    Message watchdogmessage;
+
+
+
+    while(true){
+        // read message from watchdog
+        if(!pipe.wait_and_pop(watchdogmessage))
+            return;
+
+
+        // write message to watchdog
+        pipe.push_back(watchdogmessage);
+    }
+}
+*/
+int main(){
+    //wrapped_list<Message> watchdog_to_sensors;
+    //wrapped_list<Message> watchdog_to_controller;
     return 0;
 }
