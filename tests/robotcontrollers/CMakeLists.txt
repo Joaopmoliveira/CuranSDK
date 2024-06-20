@@ -92,3 +92,15 @@ target_link_libraries(stupid_filter_test PUBLIC
 utils
 robotutils
 )
+
+
+add_executable(test_internal_rbdl_logic test_internal_rbdl_logic.cpp)
+
+target_compile_definitions(test_internal_rbdl_logic PRIVATE NOMINMAX)
+
+target_link_libraries(test_internal_rbdl_logic PUBLIC
+utils
+robotutils
+nlohmann_json 
+nlohmann_json::nlohmann_json 
+)
