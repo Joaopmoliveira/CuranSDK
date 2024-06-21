@@ -470,12 +470,12 @@ public:
     typename RegistrationType::SmoothingSigmasArrayType smoothingSigmas =
       registration->GetSmoothingSigmasPerLevel();
  
-    std::cout << "-------------------------------------" << std::endl;
-    std::cout << " Current level = " << currentLevel << std::endl;
-    std::cout << "    shrink factor = " << shrinkFactors << std::endl;
-    std::cout << "    smoothing sigma = ";
-    std::cout << smoothingSigmas[currentLevel] << std::endl;
-    std::cout << std::endl;
+    //std::cout << "-------------------------------------" << std::endl;
+    //std::cout << " Current level = " << currentLevel << std::endl;
+    //std::cout << "    shrink factor = " << shrinkFactors << std::endl;
+    //std::cout << "    smoothing sigma = ";
+    //std::cout << smoothingSigmas[currentLevel] << std::endl;
+    //std::cout << std::endl;
     if (registration->GetCurrentLevel() == 0)
     {
       optimizer->SetNumberOfIterations(1000);

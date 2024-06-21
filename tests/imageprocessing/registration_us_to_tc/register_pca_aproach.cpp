@@ -424,8 +424,8 @@ ImageType::Pointer transform_and_resample(
 }
 
 int main(){
-    std::string moving = "/precious_phantom/output_volume_0,0,350_454,244,567.mha";
-    std::string fixed = "/precious_phantom/output_volume_0,0,90_512,200,197.mha";
+    std::string moving = "/precious_phantom/US_temporal_both_sides_post_laplacian.mha";
+    std::string fixed = "/precious_phantom/CT_temporal_both_sides.mha";
     std::string moving_preprocessed = "/precious_phantom/moving_preprocessed.mha";
     std::string fixed_preprocessed = "/precious_phantom/fixed_preprocessed.mha";
     std::string moving_pointcloudd = "/precious_phantom/moving_pointcloud.txt";
@@ -451,7 +451,7 @@ int main(){
         std::cerr << "Failed to read fixed volume" << std::endl;
         return EXIT_FAILURE;
     }
-
+/*
     auto preprocessed_moving = pre_processing_us(moving_volume, 80, 255, 2);
     if (!preprocessed_moving) {
         std::cerr << "Failed to preprocess moving volume" << std::endl;
@@ -473,14 +473,14 @@ int main(){
         std::cerr << "Failed to write preprocessed fixed volume" << std::endl;
         return EXIT_FAILURE;
     }
-
-    auto moving_pointcloud = extract_point_cloud(preprocessed_moving, moving_pointcloud_path);
+*/
+    auto moving_pointcloud = extract_point_cloud(moving_volume, moving_pointcloud_path);
     if (!moving_pointcloud) {
     std::cerr << "Failed to extract moving pointcloud" << std::endl;
     return EXIT_FAILURE;
     }
 
-    auto fixed_pointcloud = extract_point_cloud(preprocessed_fixed, fixed_pointcloud_path);
+    auto fixed_pointcloud = extract_point_cloud(fixed_volume, fixed_pointcloud_path);
     if (!fixed_pointcloud) {
     std::cerr << "Failed to extract fixed pointcloud" << std::endl;
     return EXIT_FAILURE;

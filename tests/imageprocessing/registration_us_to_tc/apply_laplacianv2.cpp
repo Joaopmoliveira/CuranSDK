@@ -28,7 +28,7 @@
 #include "itkSmoothingRecursiveGaussianImageFilter.h"
 #include "itkLaplacianImageFilter.h"
 
-using PixelType = int;
+using PixelType = float;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using WriterType = itk::ImageFileWriter<ImageType>;
@@ -101,14 +101,26 @@ int main(int argc, char **argv)
     laplacian->SetInput(gaussianFilter->GetOutput());
     laplacian->Update();
 
+    writer->SetInput(laplacian->GetOutput());
+    writer->SetFileName("Laplacian.mha");
+
+    try
+    {
+        writer->Update();
+    }
+    catch (const itk::ExceptionObject & err)
+    {
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err << std::endl;
+        return EXIT_FAILURE;
+    }
 
     using MinMaxCalculatorType = itk::MinimumMaximumImageCalculator<ImageType>;
     auto minMaxCalculator = MinMaxCalculatorType::New();
-    minMaxCalculator->SetImage(pointer2fixedimage);
+    minMaxCalculator->SetImage(laplacian->GetOutput());
     minMaxCalculator->Compute();
 
     PixelType minValue = minMaxCalculator->GetMinimum();
-    //std::cout << minValue << std::endl;
     PixelType maxValue = minMaxCalculator->GetMaximum();
 
     using ThresholdFilterType = itk::ThresholdImageFilter<ImageType>;
