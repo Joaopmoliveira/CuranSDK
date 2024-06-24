@@ -23,6 +23,7 @@
 asio::io_context* ptr_ctx = nullptr;
 
 std::unique_ptr<boost::process::child> child_process;
+std::unique_ptr<boost::process::child> plus_process;
 boost::process::ipstream out;
 std::atomic<bool> signal_untriggered = true;
 
@@ -67,6 +68,7 @@ int main() {
 			}
 		});
 
+		std::cout << PLUS_SERVER_PATH;
 
 	    auto button2 = Button::make("Temporal Calibration",resources);
 	    button2->set_click_color(SK_ColorDKGRAY)

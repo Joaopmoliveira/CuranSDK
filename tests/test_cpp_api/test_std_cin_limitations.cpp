@@ -4,7 +4,7 @@
 #include <mutex>
 #include <optional>
 
-
+/*
 
 enum ReadingStatus{
     WRITING,
@@ -221,5 +221,11 @@ void controller(wrapped_list<Message>& pipe){
 int main(){
     //wrapped_list<Message> watchdog_to_sensors;
     //wrapped_list<Message> watchdog_to_controller;
+    return 0;
+}
+
+*/
+
+int main(){
     return 0;
 }
