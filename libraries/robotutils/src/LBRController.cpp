@@ -275,8 +275,6 @@ void RobotLBR::command(){
     eigen_state = std::move(user_data->update(robot.get(),iiwa.get(),std::move(eigen_state),task_jacobian));
     auto cmd_tau = eigen_state.cmd_tau;
     eigen_state.cmd_tau = addConstraints(eigen_state.cmd_tau, 0.005);
-    eigen_state.cmd_tau[4] = cmd_tau[4];
-    eigen_state.cmd_tau[6] = cmd_tau[6];
     current_state.convertFrom(eigen_state);
     atomic_state.store(current_state,std::memory_order_relaxed);
 

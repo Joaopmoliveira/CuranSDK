@@ -5,6 +5,8 @@
 #include <chrono>
 #include "utils/Reader.h"
 #include "robotutils/LBRController.h"
+#include <fstream>
+#include <sstream>
 
 std::tuple<double,size_t,size_t,size_t,size_t,double> eval_model_mass(RigidBodyDynamics::Model* model, RigidBodyDynamics::Math::VectorNd Q){
 	RigidBodyDynamics::Math::VectorNd QDot = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
@@ -18,6 +20,7 @@ std::tuple<double,size_t,size_t,size_t,size_t,double> eval_model_mass(RigidBodyD
 	RigidBodyDynamics::Math::VectorNd QDDot_zero = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
 	RigidBodyDynamics::Math::VectorNd QDDot_crba = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
     
+    RigidBodyDynamics::UpdateKinematics(*model,Q,QDot,QDDot);
     H1.setZero();
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     CompositeRigidBodyAlgorithm(*model, Q, H1, false);
@@ -59,33 +62,40 @@ class Tool{
 	RigidBodyDynamics::Math::Vector3d axis_origin;
 };
 
+namespace robotutils{
+
 template<size_t model_joints>
 class RobotModel{
     private:
     // Data describing the robot
-    std::array<double,model_joints> mass;
-    std::array<double,model_joints> center_of_mass;
-    std::array<RigidBodyDynamics::Math::Matrix3d,model_joints> inertia;
-    std::array<RigidBodyDynamics::Math::Vector3d,model_joints> axis_direction;
-    std::array<RigidBodyDynamics::Math::Vector3d,model_joints> axis_origin;
+    std::array<double,model_joints> f_mass;
+    std::array<RigidBodyDynamics::Math::Vector3d,model_joints> f_center_of_mass;
+    std::array<RigidBodyDynamics::Math::Matrix3d,model_joints> f_inertia;
+    std::array<RigidBodyDynamics::Math::Vector3d,model_joints> f_axis_direction;
+    std::array<RigidBodyDynamics::Math::Vector3d,model_joints> f_axis_origin;
 
     // Parameters for computation of dynamics
-	std::array<unsigned int,model_joints>body_id;
-	std::array<RigidBodyDynamics::Body,model_joints> body;   
-	std::array<RigidBodyDynamics::Joint,model_joints> joint;   
-	RigidBodyDynamics::Model model{};  
+	std::array<unsigned int,model_joints> f_body_id;
+	std::array<RigidBodyDynamics::Body,model_joints> f_body;   
+	std::array<RigidBodyDynamics::Joint,model_joints> f_joint;   
+	RigidBodyDynamics::Model f_model{};  
 
     // Parameters to store current state of the robot
-    Eigen::Matrix<double,model_joint,model_joint> massmatrix;
-    Eigen::Matrix<double,model_joint,1> coriolis;
-    Eigen::Matrix<double,model_joint,1> gravity;
-    Eigen::Matrix<double,model_joint,1> q;
-    Eigen::Matrix<double,model_joint,1> dq;
-    Eigen::Matrix<double,model_joint,1> ddq;
-    Eigen::Vector3d pointPosition;
+    Eigen::Matrix<double,model_joints,model_joints> f_massmatrix;
+    Eigen::Matrix<double,model_joints,model_joints> f_inverse_massmatrix;
+    Eigen::Matrix<double,model_joints,1> f_coriolis;
+    Eigen::Matrix<double,model_joints,1> f_gravity;
+    Eigen::Matrix<double,model_joints,1> f_q;
+    Eigen::Matrix<double,model_joints,1> f_dq;
+    Eigen::Matrix<double,model_joints,1> f_ddq;
+    Eigen::Matrix<double,6,model_joints> f_jacobian;
+    Eigen::Matrix<double,4,4> f_end_effector;
 
     // Variable that signals if the control loop should continue
-    std::atomic<bool> continue_robot_motion = true;
+    std::atomic<bool> f_continue_robot_motion = true;
+
+    //Flange position
+    Eigen::Vector3d f_flange_position;
 
     public:
     //delete all robot copy operators so that we do not have to deal with nasty copies
@@ -95,61 +105,252 @@ class RobotModel{
     RobotModel& operator=(const RobotModel& other) = delete; 
 
     RobotModel(std::filesystem::path models_data_directory){
+        // Initialize to zero everything
+        f_massmatrix = Eigen::Matrix<double,model_joints,model_joints>::Zero();
+        f_coriolis = Eigen::Matrix<double,model_joints,1>::Zero();
+        f_gravity = Eigen::Matrix<double,model_joints,1>::Zero();
+        f_q = Eigen::Matrix<double,model_joints,1>::Zero();
+        f_dq = Eigen::Matrix<double,model_joints,1>::Zero();
+        f_ddq = Eigen::Matrix<double,model_joints,1>::Zero();
+        f_end_effector = Eigen::Matrix<double,4,4>::Zero();
+        f_jacobian = Eigen::Matrix<double,6,model_joints>::Zero();
+
+        // except the electrical flange which we set to this offset
+        f_flange_position= Vector3d(0, 0, 0.045); 
+
+        // Parse mass data from input file
         nlohmann::json table_data = nlohmann::json::parse(std::ifstream(models_data_directory));
         if(table_data.size()!=model_joints)
             throw std::runtime_error("the supplied model has a different number of parameters from the compiled model");
 
-        auto iterator = tableDH.begin();
+        auto iterator = table_data.begin();
 
-        for(size_t joint = 0; joint < model_joints; ++joint,++iterator){
-            mass[joint] = (*iterator)["mass"];
+        for(size_t ind = 0; ind < model_joints; ++ind,++iterator){
+            f_mass[ind] = (*iterator)["mass"];       
             {
-                std::stringstream ss{(*iterator)["center_of_mass"];};
-                center_of_mass[joint] = curan::utilities::convert_matrix(ss,',');
+                std::string content = (*iterator)["center_of_mass"];
+                std::stringstream ss{content};
+                f_center_of_mass[ind] = curan::utilities::convert_matrix(ss,',');
             }
             {
-                std::stringstream ss{(*iterator)["inertia"];};
-                inertia[joint] = curan::utilities::convert_matrix(ss,',');
+                std::string content = (*iterator)["inertia"];
+                std::stringstream ss{content};
+                f_inertia[ind] = curan::utilities::convert_matrix(ss,',');
             }
             {
-                std::stringstream ss{(*iterator)["axis_direction"];};
-                axis_direction[joint] = curan::utilities::convert_matrix(ss,',');
+                std::string content = (*iterator)["axis_direction"];
+                std::stringstream ss{content};
+                f_axis_direction[ind] = curan::utilities::convert_matrix(ss,',');
             }
             {
-                std::stringstream ss{(*iterator)["axis_origin"];};
-                axis_origin[joint] = curan::utilities::convert_matrix(ss,',');
+                std::string content = (*iterator)["axis_origin"]; 
+                std::stringstream ss{content};
+                f_axis_origin[ind] = curan::utilities::convert_matrix(ss,',');
             }
         }
 
-        model.gravity = RigidBodyDynamics::Math::Vector3d (0.0, 0.0, -9.81);
+        f_model.gravity = RigidBodyDynamics::Math::Vector3d (0.0, 0.0, -9.81);
 
-        body[0] = RigidBodyDynamics::Body(mass[0], com[0], inertia[0]);     
-	    joint[0] = RigidBodyDynamics::Joint(RigidBodyDynamics::JointTypeRevolute,axisDirection[0]);  
-	    body_id[0] = model.AddBody(body_id[0], RigidBodyDynamics::Math::Xtrans(axisOrigin[0]), joint[0], body[0], std::to_string(0));
+        f_body[0] = RigidBodyDynamics::Body(f_mass[0], f_center_of_mass[0], f_inertia[0]);; 
+	    f_joint[0] = RigidBodyDynamics::Joint(RigidBodyDynamics::JointTypeRevolute,f_axis_direction[0]);  
+	    f_body_id[0] = f_model.AddBody(0, RigidBodyDynamics::Math::Xtrans(f_axis_origin[0]), f_joint[0], f_body[0], std::to_string(0));
 
-        for(size_t joint = 1; joint < model_joint; ++joint){
-            body[joint] = RigidBodyDynamics::Body(mass[joint], com[joint], inertia[joint]);     
-	        joint[joint] = RigidBodyDynamics::Joint(RigidBodyDynamics::JointTypeRevolute,axisDirection[joint]);  
-	        body_id[joint] = model.AddBody(body_id[joint-1], RigidBodyDynamics::Math::Xtrans(axisOrigin[joint]), joint[joint], body[joint], std::to_string(joint));
+
+        for(size_t ind = 1; ind < model_joints; ++ind){
+            f_body[ind] = RigidBodyDynamics::Body(f_mass[ind], f_center_of_mass[ind], f_inertia[ind]);     
+	        f_joint[ind] = RigidBodyDynamics::Joint(RigidBodyDynamics::JointTypeRevolute,f_axis_direction[ind]);  
+	        f_body_id[ind] = f_model.AddBody(f_body_id[ind-1], RigidBodyDynamics::Math::Xtrans(f_axis_origin[ind]), f_joint[ind], f_body[ind], std::to_string(ind));
         }
 
     }
 
     inline operator bool() const {
-        return continue_robot_motion.load(std::memory_order_relaxed); 
+        return f_continue_robot_motion.load(std::memory_order_relaxed); 
     }
 
     inline void cancel(){
-        continue_robot_motion.store(false,std::memory_order_relaxed);
+        f_continue_robot_motion.store(false,std::memory_order_relaxed);
     }
+
+    void update(const curan::robotic::State& in_state){
+        f_q = curan::robotic::convert(in_state.q);
+        f_dq = curan::robotic::convert(in_state.dq);
+        f_ddq = curan::robotic::convert(in_state.ddq);
+
+        {
+            static RigidBodyDynamics::Math::VectorNd rbdl_q = RigidBodyDynamics::Math::VectorNd::Zero(model_joints);
+            static RigidBodyDynamics::Math::VectorNd rbdl_dq = RigidBodyDynamics::Math::VectorNd::Zero(model_joints);
+            static RigidBodyDynamics::Math::VectorNd rbdl_ddq = RigidBodyDynamics::Math::VectorNd::Zero(model_joints);
+            rbdl_q = f_q;
+            rbdl_dq = f_dq;
+            rbdl_ddq = f_ddq;
+            RigidBodyDynamics::UpdateKinematics(f_model,rbdl_q,rbdl_dq,rbdl_ddq);
+        }
+        
+
+        // now we want the kinematic data 
+        f_end_effector.block<3,1>(0,3) = RigidBodyDynamics::CalcBodyToBaseCoordinates(f_model, f_q , f_body_id[model_joints-1], f_flange_position, false);
+        f_end_effector.block<3,3>(0,0) = RigidBodyDynamics::CalcBodyWorldOrientation(f_model, f_q, f_body_id[model_joints-1], false).transpose();
+	    
+        {
+            RigidBodyDynamics::Math::MatrixNd J0 = RigidBodyDynamics::Math::MatrixNd::Zero(6, model_joints);
+            RigidBodyDynamics::Math::MatrixNd JP = RigidBodyDynamics::Math::MatrixNd::Zero(6, model_joints);
+        
+            RigidBodyDynamics::CalcBodySpatialJacobian(f_model, f_q, f_body_id[model_joints-1], J0, false);
+
+            RigidBodyDynamics::Math::MatrixNd rotate_jacobian = RigidBodyDynamics::Math::MatrixNd::Identity(6,6);
+            RigidBodyDynamics::Math::MatrixNd translate_jacobian = RigidBodyDynamics::Math::MatrixNd::Identity(6,6);
+
+            RigidBodyDynamics::Math::Vector3d r = f_flange_position;
+        
+            rotate_jacobian.block(0,0,3,3) = f_end_effector.block<3,3>(0,0);
+            rotate_jacobian.block(3,3,3,3) = f_end_effector.block<3,3>(0,0);
+        
+
+            translate_jacobian(4,0) = -r[2];
+            translate_jacobian(5,0) = +r[1];
+            translate_jacobian(3,1) = +r[2];
+            translate_jacobian(5,1) = -r[0];
+            translate_jacobian(3,2) = -r[1];
+            translate_jacobian(4,2) = +r[0];
+        
+
+            JP = rotate_jacobian*translate_jacobian*J0;
+            f_jacobian.block(0,0,3,model_joints) = JP.block(3,0,3, model_joints);
+            f_jacobian.block(3,0,3,model_joints) = JP.block(0,0,3, model_joints);
+        }
+
+        
+        {
+            static RigidBodyDynamics::Math::MatrixNd mass_wrapper = RigidBodyDynamics::Math::MatrixNd::Zero(model_joints,model_joints);
+            //according to RBDL we need to zero out the mass matrix 
+            mass_wrapper.setZero();
+            RigidBodyDynamics::CompositeRigidBodyAlgorithm(f_model, f_q, mass_wrapper, true);
+            f_massmatrix = mass_wrapper;
+        }
+
+        
+        {
+            // compute the gravity dependent terms
+            static RigidBodyDynamics::Math::VectorNd gravity_wrapper = RigidBodyDynamics::Math::VectorNd::Zero(model_joints);
+            RigidBodyDynamics::InverseDynamics(f_model, f_q, RigidBodyDynamics::Math::VectorNd::Zero(model_joints), RigidBodyDynamics::Math::VectorNd::Zero(model_joints), gravity_wrapper);
+            f_gravity = gravity_wrapper;
+        }
+                
+        
+        {
+            // compute terms dependent on the velocity as well, e.g. Centrifugal, Coriolis, Gravity
+            static RigidBodyDynamics::Math::VectorNd full_nonlinear_terms = RigidBodyDynamics::Math::VectorNd::Zero(model_joints);
+            RigidBodyDynamics::InverseDynamics(f_model, f_q, f_dq, RigidBodyDynamics::Math::VectorNd::Zero(model_joints), full_nonlinear_terms);
+            f_coriolis = full_nonlinear_terms-f_gravity;
+        }
+
+        f_inverse_massmatrix = f_massmatrix.inverse();
+    }
+
+    inline const Eigen::Matrix<double,6,model_joints>& jacobian(){
+        return f_jacobian;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,model_joints>& mass(){
+        return f_massmatrix;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,model_joints>& invmass(){
+        return f_inverse_massmatrix;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,1>& joints(){
+        return f_q;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,1>& velocities(){
+        return f_dq;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,1>& accelerations(){
+        return f_ddq;
+    }
+
+    inline Eigen::Matrix<double,3,1> translation(){
+        return f_end_effector.block<3,1>(0,3);
+    }
+
+    inline Eigen::Matrix<double,3,3> rotation(){
+        return f_end_effector.block<3,3>(0,0);
+    }
+
 };
 
-int main(){
+    template<size_t number_of_joints>
+    Eigen::Matrix<double,number_of_joints,1> add_constraints(const Eigen::Matrix<double,number_of_joints,1>& tauStack, double dt){
+        Eigen::Matrix<double,number_of_joints,1> dt2 = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> dtvar = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> qDownBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> qTopBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
 
+        Eigen::Matrix<double,number_of_joints,1> qDotMaxFromQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> qDotMinFromQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> qDotMaxFormQDotDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> qDotMinFormQDotDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+
+        Eigen::Matrix<double,3,1> vMaxVector = Eigen::Matrix<double,3,1>::Zero(3);
+        Eigen::Matrix<double,3,1> vMinVector = Eigen::Matrix<double,3,1>::Zero(3);
+
+        Eigen::Matrix<double,number_of_joints,1> qDotMaxFinal = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> qDotMinFinal =Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> aMaxqDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> aMinqDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> aMaxQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> aMinQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
+
+        Eigen::Matrix<double,3,1> aMaxVector = Eigen::Matrix<double,3,1>::Zero(3);
+        Eigen::Matrix<double,3,1> aMinVector = Eigen::Matrix<double,3,1>::Zero(3);
+
+        Eigen::Matrix<double,number_of_joints,1> qDotDotMaxFinal = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> qDotDotMinFinal = Eigen::Matrix<double,number_of_joints,1>::Zero();
+
+        Eigen::Matrix<double,number_of_joints,number_of_joints> Iden = Eigen::Matrix<double,number_of_joints,number_of_joints>::Identity();
+
+        Eigen::Matrix<double,number_of_joints,1> TauBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> qDotDotGot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,3,number_of_joints> Js =Eigen::Matrix<double,2,number_of_joints>::Zero(); 
+    }
+
+}
+
+int twomain(){
+    try{
+        curan::robotic::State state;
+        state.q = std::array<double,7>{};
+        robotutils::RobotModel<7> robot_model{"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json"};
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        robot_model.update(state);
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        std::cout << "joint: " << robot_model.joints() << std::endl;
+        std::cout << "vel: " << robot_model.velocities() << std::endl;
+        std::cout << "accel: " << robot_model.accelerations() << std::endl;
+        //std::cout << "translation: " << robot_model.translation() << std::endl;
+        std::cout << "mass: " << robot_model.mass() << std::endl;
+        std::cout << "time taken: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+
+    } catch(std::runtime_error& e){
+        std::cout << "exception thrown : " << e.what() << std::endl;
+        return 1; 
+    } catch(...){
+        std::cout << "unknown exception thrown" << std::endl;
+        return 2;
+    }
     return 0;
 }
 
-int fooo(){
+
+
+
+
+
+
+int main(){
 	unsigned int body1_id, body2_id, body3_id, body4_id, body5_id, body6_id, body7_id;
 	RigidBodyDynamics::Body body1, body2, body3, body4, body5, body6, body7;   
 	RigidBodyDynamics::Joint joint1, joint2, joint3, joint4, joint5, joint6, joint7;   
@@ -305,4 +506,7 @@ int fooo(){
         std::cout << "average time to invert with fixed matrix: \n" <<  mean_value << " nanoseconds" << std::endl;
         std::cout << "variance with fixed matrix: \n" << std::sqrt((centered.transpose()*centered)(0,0)/centered.rows()) << std::endl;
     }
+
+
+    return 0;
 }
