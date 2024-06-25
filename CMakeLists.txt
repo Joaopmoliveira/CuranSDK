@@ -33,6 +33,7 @@ find_package(Boost COMPONENTS filesystem)
 find_package(vsg CONFIG REQUIRED)
 find_package(vsgXchange CONFIG REQUIRED)
 find_package(vsgImGui CONFIG REQUIRED)
+find_package(pugixml CONFIG REQUIRED)
 
 #Externally provided targets
 add_subdirectory(third_party)

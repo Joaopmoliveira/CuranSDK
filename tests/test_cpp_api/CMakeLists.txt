@@ -12,7 +12,14 @@ target_link_libraries(test_new_capture_buffer_arquitecture PUBLIC
 utils
 )
 
+find_package(pugixml CONFIG REQUIRED)
+
 add_executable(test_std_cin_limitations test_std_cin_limitations.cpp)
+
+target_link_libraries(test_std_cin_limitations PUBLIC 
+pugixml::static 
+pugixml::pugixml
+)
 
 add_executable(test_cpp_laucher test_cpp_laucher.cpp)
 

@@ -5,6 +5,7 @@
 #include <optional>
 
 /*
+/*
 
 enum ReadingStatus{
     WRITING,
@@ -218,14 +219,81 @@ void controller(wrapped_list<Message>& pipe){
     }
 }
 
-int main(){
-    //wrapped_list<Message> watchdog_to_sensors;
-    //wrapped_list<Message> watchdog_to_controller;
-    return 0;
-}
-
 */
 
+#include "pugixml.hpp"
+#include <cassert>
+#include <charconv>
+#include <iomanip>
+#include <iostream>
+#include <optional>
+#include <string_view>
+#include <system_error>
+#include <filesystem>
+
+enum ErrorCode{
+    SUCCESS = 0,
+    PATH_NOT_FOUND,
+    CHILD_NOT_FOUND,
+    ROBOT_DEVICE_NOT_FOUND,
+    INVALID_ARGUMENT,
+};
+
+[[nodiscard]] ErrorCode modify_robot_time_offset(const std::filesystem::path& path, std::string device_identifier,double new_value){
+    bool found_the_desired_device = false;
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(path.c_str());
+    if(!result)
+        return PATH_NOT_FOUND;
+    if(!doc.child("PlusConfiguration").child("DataCollection"))
+        return CHILD_NOT_FOUND;
+    for(auto val : doc.child("PlusConfiguration").child("DataCollection").children()){
+        for(auto atrib : val.attributes()){
+            if(!std::string{atrib.name()}.compare("LocalTimeOffsetSec") && !std::string{val.attribute("Id").value()}.compare(device_identifier)){
+                std::string value_before{atrib.value()};
+                double contained_value = 0.0;
+                auto [ptr, ec] = std::from_chars(value_before.data(), value_before.data() + value_before.size(), contained_value);
+ 
+                if (ec == std::errc())
+                    found_the_desired_device = true;
+                else if (ec == std::errc::invalid_argument)
+                    return INVALID_ARGUMENT;
+                else if (ec == std::errc::result_out_of_range)
+                    return INVALID_ARGUMENT;
+                if(found_the_desired_device){
+                    auto strin = std::to_string(contained_value+new_value);
+                    atrib.set_value(strin.data());
+                    break;
+                }
+
+            }
+        }
+        if(found_the_desired_device)
+            break;
+    }
+    return (found_the_desired_device) ? SUCCESS : ROBOT_DEVICE_NOT_FOUND;
+}
+
 int main(){
+    const std::string device_id{"ROBOT"};
+    switch(modify_robot_time_offset("C:/Dev/Curan/resources/plus_config/plus_spacial_calib_robot_xml/robot_image.xml",device_id,10)){
+        case ErrorCode::SUCCESS:
+            std::cout << "success" << std::endl;
+        break;
+        case ErrorCode::CHILD_NOT_FOUND:
+            std::cout << "data collection not found" << std::endl;
+        break;
+        case ErrorCode::INVALID_ARGUMENT:
+            std::cout << "invalid argument" << std::endl; 
+        break;
+        case ErrorCode::PATH_NOT_FOUND:
+            std::cout << "path not found" << std::endl;
+        break;
+        case ErrorCode::ROBOT_DEVICE_NOT_FOUND:
+            std::cout << "device id: " << device_id << " - device not found" << std::endl;
+        break;
+        default:
+            std::cout << "unknown error" << std::endl;
+    }
     return 0;
 }
