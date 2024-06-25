@@ -45,3 +45,12 @@ add_executable(test_geometry_computation test_geometry_computation.cpp)
 target_link_libraries(test_geometry_computation PUBLIC 
 GeometricTools
 )
+
+add_executable(test_process_lauch_with_asio test_process_lauch_with_asio.cpp)
+
+target_include_directories(test_process_lauch_with_asio PUBLIC ${Boost_INCLUDE_DIRS})
+
+target_link_libraries(test_process_lauch_with_asio PUBLIC 
+${Boost_LIBRARIES}
+)
+

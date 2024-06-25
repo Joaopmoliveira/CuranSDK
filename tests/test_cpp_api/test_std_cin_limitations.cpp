@@ -220,6 +220,7 @@ void controller(wrapped_list<Message>& pipe){
 }
 
 */
+/*
 
 #include "pugixml.hpp"
 #include <cassert>
@@ -295,5 +296,12 @@ int main(){
         default:
             std::cout << "unknown error" << std::endl;
     }
+    return 0;
+}
+*/
+
+
+
+int main(){
     return 0;
 }
