@@ -6,6 +6,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "CalibratePages.h"
+#include "utils/ModifyXMLField.h"
 
 #include <random>
 
@@ -25,8 +26,6 @@ int main(int argc, char* argv[]) {
 	ConfigDraw config{&page};
 	processing->config = &config;
 	
-	
-
 	while (!glfwWindowShouldClose(viewer->window)) {
 		auto start = std::chrono::high_resolution_clock::now();
 		SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
@@ -51,5 +50,28 @@ int main(int argc, char* argv[]) {
 	processing->attempt_stop();
 	std::cout << "trying to stop communication\n" << std::endl;
 
-	return 0;
+	if(processing->calibration_value){ // if the calibration was performed successefully then we can replace the temporal calibration in the xml file
+		const std::string device_id{"ROBOT"};
+    	switch(curan::utilities::modify_xml_field_in_place(CURAN_COPIED_RESOURCE_PATH"/plus_config/plus_spacial_calib_robot_xml/robot_image.xml","LocalTimeOffsetSec","Id",device_id,*processing->calibration_value,{"PlusConfiguration","DataCollection"})){
+        case curan::utilities::ErrorCode::SUCCESS:
+			return 0;
+        break;
+        case curan::utilities::ErrorCode::CHILD_NOT_FOUND:
+            std::cout << "child not found in XML file" << std::endl;
+        break;
+        case curan::utilities::ErrorCode::INVALID_ARGUMENT:
+            std::cout << "invalid argument present in XML file" << std::endl; 
+        break;
+        case curan::utilities::ErrorCode::PATH_NOT_FOUND:
+            std::cout << "path to XML file not found" << std::endl;
+        break;
+        case curan::utilities::ErrorCode::ATRIBUTE_NOT_FOUND:
+            std::cout << "device id: " << device_id << " - device not found" << std::endl;
+        break;
+        default:
+            std::cout << "unknown error" << std::endl;
+    	}
+	}
+
+	return 1;
 }

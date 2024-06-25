@@ -787,7 +787,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             canvas->drawSimpleText(text.data(),text.size(),SkTextEncoding::kUTF8,widget_area.left()+30,widget_area.top() + 120,font1,paint);
             canvas->drawSimpleText(text2.data(),text2.size(),SkTextEncoding::kUTF8,widget_area.left()+30,widget_area.top() + 180,font1,paint2);
         
-        }else if(processor->calibration_finished){ //GUI quando a calibração acabar
+        }else if(processor->calibration_finished && processor->calibration_value){ //GUI quando a calibração acabar
             SkPaint paint;
             paint.setStyle(SkPaint::kFill_Style);
             SkColor customColor = SkColorSetARGB(255, 178, 102, 255);
@@ -797,7 +797,8 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
             font1.setEdging(SkFont::Edging::kAntiAlias);
             const std::string text1 = "Calibration completed!";
             SkString text2;
-            float calib = processor->calibration_value;
+
+            float calib = *(processor->calibration_value);
             text2.printf("Result: %.1f", calib);
             text2 += "ms";
             canvas->drawSimpleText(text1.data(),text1.size(),SkTextEncoding::kUTF8,widget_area.centerX()-300,widget_area.top()+100,font1,paint);

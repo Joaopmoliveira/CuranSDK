@@ -75,7 +75,7 @@ struct ProcessingMessage {
 	std::array<float, 2> inlierThreshold_limit = {0, 10};
     double inlierThreshold = 1;
 
-	float calibration_value =0;
+	std::optional<float> calibration_value;
 	
 	std::shared_ptr<curan::utilities::ThreadPool> shared_pool = curan::utilities::ThreadPool::create(4);
 	short port = 18944;
