@@ -905,10 +905,10 @@ int main(int argc, char **argv)
     }
 
     //Já tá pronto para receber as configs em eigen
-    auto icp_solution = icp_registration(initial_config);
+    //auto icp_solution = icp_registration(initial_config);
 
-    modify_image_with_transform(icp_solution.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct_icp.mha");
+    //modify_image_with_transform(icp_solution.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+    //print_image_with_transform(pointer2movingimage,"moving_correct_icp.mha");
     
 
     auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales,double learning_rate, double relaxation_factor,size_t window_size, auto piramid_sizes, auto bluering_sizes){

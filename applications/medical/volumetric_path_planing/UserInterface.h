@@ -70,8 +70,6 @@ struct Application
 
     std::unique_ptr<curan::ui::Overlay> layout_overlay();
 
-    //std::unique_ptr<curan::ui::Overlay> option_overlay();
-
     std::unique_ptr<curan::ui::Container> main_page();
 };
 

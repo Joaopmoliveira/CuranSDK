@@ -90,6 +90,21 @@ namespace curan
 		class VolumetricMask;
 		using pressedhighlighted_event = std::function<void(VolumetricMask*, ConfigDraw*, const std::optional<directed_stroke>&)>;
 
+
+
+
+		/*
+		Geometric shapes are entities that live in 3D,
+		therefore they don't belong to any particular mask.
+		There are a couple of assumptions with this class. There
+		are not a lot of geometric shapes for a particular screen,
+		if violated the delay between user action and rendered actions
+		can increase up to the point where is deteriorates the quality
+		*/
+		//class GeometricShapes{
+
+		//};
+
 		class VolumetricMask
 		{
 
@@ -101,6 +116,8 @@ namespace curan
 			std::vector<Mask> masks_x;
 			std::vector<Mask> masks_y;
 			std::vector<Mask> masks_z;
+
+			//std::vector<GeometricShapes> three_dimensional_entities;
 
 			ImageType::Pointer image;
 		public:

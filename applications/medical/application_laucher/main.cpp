@@ -23,12 +23,16 @@
 asio::io_context* ptr_ctx = nullptr;
 
 std::unique_ptr<boost::process::child> child_process;
+boost::process::ipstream child_out;
+std::stringstream child_stream;
 
 #ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
 std::unique_ptr<boost::process::child> plus_process;
+boost::process::ipstream plus_out;
+std::stringstream plus_stream;
 #endif
 
-boost::process::ipstream out;
+
 std::atomic<bool> signal_untriggered = true;
 
 constexpr auto waiting_color_active = SkColorSetARGB(70, 0, 255, 0);
@@ -63,7 +67,7 @@ int main() {
                 .set_size(SkRect::MakeWH(300, 300));
 		button1->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
-    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/VolumetricPathPlanning" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/VolumetricPathPlanning" CURAN_BINARY_SUFFIX, boost::process::std_out > child_out);
 				inbut->set_waiting_color(waiting_color_active);
 			} else {
 				inbut->set_waiting_color(waiting_color_inactive);
@@ -71,8 +75,6 @@ int main() {
 				child_process = nullptr;
 			}
 		});
-
-		std::cout << CURAN_PLUS_EXECUTABLE_PATH;
 
 	    auto button2 = Button::make("Temporal Calibration",resources);
 	    button2->set_click_color(SK_ColorDKGRAY)
@@ -82,16 +84,18 @@ int main() {
 		button2->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
 	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
-
+				plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,"--config-file="CURAN_COPIED_RESOURCE_PATH"/plus_config/wire_reconstructions/wire_reconstruction_recording/wire_reconstruction_recording/RecordingTest_config.xml","--verbose=1", boost::process::std_out > plus_out);
+				//plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,"--config-file="CURAN_COPIED_RESOURCE_PATH"/plus_config/plus_spacial_calib_robot_xml/robot_image.xml","--verbose=1", boost::process::std_out > plus_out);
 	#endif
-    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/TemporalCalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/TemporalCalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > child_out);
 				inbut->set_waiting_color(waiting_color_active);
 			} else {
 				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
-
+				plus_process->terminate();
+				plus_process = nullptr;
 	#endif
 			}
 		});
@@ -104,16 +108,18 @@ int main() {
 		button3->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
 	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
-
+			plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,"--config-file="CURAN_COPIED_RESOURCE_PATH"/plus_config/wire_reconstructions/wire_reconstruction_recording/wire_reconstruction_recording/RecordingTest_config.xml","--verbose=1", boost::process::std_out > plus_out);
+			//plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,"--config-file="CURAN_COPIED_RESOURCE_PATH"/plus_config/plus_spacial_calib_robot_xml/robot_image.xml","--verbose=1", boost::process::std_out > plus_out);
 	#endif
-    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/Ultrasoundcalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/Ultrasoundcalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > child_out);
 				inbut->set_waiting_color(waiting_color_active);
 			} else {
 				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
-
+				plus_process->terminate();
+				plus_process = nullptr;
 	#endif
 			}
 		});
@@ -126,16 +132,18 @@ int main() {
 		button4->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
 	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
-
+				plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,"--config-file="CURAN_COPIED_RESOURCE_PATH"/plus_config/wire_reconstructions/wire_reconstruction_recording/wire_reconstruction_recording/RecordingTest_config.xml","--verbose=1", boost::process::std_out > plus_out);
+				//plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,"--config-file="CURAN_COPIED_RESOURCE_PATH"/plus_config/plus_spacial_calib_robot_xml/robot_image.xml","--verbose=1", boost::process::std_out > plus_out);
 	#endif
-    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RealTimeReconstructor" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RealTimeReconstructor" CURAN_BINARY_SUFFIX, boost::process::std_out > child_out);
 				inbut->set_waiting_color(waiting_color_active);
 			} else {
 				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
-
+				plus_process->terminate();
+				plus_process = nullptr;
 	#endif
 			}
 		});
@@ -148,16 +156,18 @@ int main() {
 		button5->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
 	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
-
+				plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,"--config-file="CURAN_COPIED_RESOURCE_PATH"/plus_config/wire_reconstructions/wire_reconstruction_recording/wire_reconstruction_recording/RecordingTest_config.xml","--verbose=1", boost::process::std_out > plus_out);
+				//plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,"--config-file="CURAN_COPIED_RESOURCE_PATH"/plus_config/plus_spacial_calib_robot_xml/robot_image.xml","--verbose=1", boost::process::std_out > plus_out);
 	#endif
-    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/InteroperativeNavigation" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
+    			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/InteroperativeNavigation" CURAN_BINARY_SUFFIX, boost::process::std_out > child_out);
 				inbut->set_waiting_color(waiting_color_active);
 			} else {
 				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
 	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
-
+				plus_process->terminate();
+				plus_process = nullptr;
 	#endif
 			}
 		});

@@ -39,3 +39,9 @@ add_executable(test_executable_name_injection test_executable_name_injection.cpp
 
 add_compile_definitions(test_executable_name_injection CURAN_BINARY_LOCATION="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_compile_definitions(test_executable_name_injection CURAN_BINARY_SUFFIX="${CMAKE_EXECUTABLE_SUFFIX}")
+
+add_executable(test_geometry_computation test_geometry_computation.cpp)
+
+target_link_libraries(test_geometry_computation PUBLIC 
+GeometricTools
+)
