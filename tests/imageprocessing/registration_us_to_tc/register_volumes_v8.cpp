@@ -45,6 +45,10 @@
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkBinaryBallStructuringElement.h"
 #include "itkBinaryDilateImageFilter.h"
+#include "itkEuclideanDistancePointMetric.h"
+#include "itkLevenbergMarquardtOptimizer.h"
+#include "itkPointSetToPointSetRegistrationMethod.h"
+#include <random>
 
 
 const double pi = std::atan(1) * 4;
@@ -149,6 +153,8 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
     itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
     itk::Vector<double,3> origin;
     itk::Matrix<double> direction;
+    //std::cout << info_registration.initial_rotation << std::endl;
+
     for(size_t row = 0; row < 3; ++row){
         origin[row] = info_registration.initial_rotation(row,3);
         for(size_t col = 0; col < 3; ++col){
@@ -175,9 +181,9 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
     using OptimizerScalesType = OptimizerType::ScalesType;
     OptimizerScalesType optimizerScales(initialTransform->GetNumberOfParameters());
 
-    optimizerScales[0] = 5.0;
-    optimizerScales[1] = 0.2;
-    optimizerScales[2] = 0.2;
+    optimizerScales[0] = 1.00;
+    optimizerScales[1] = 1.00;
+    optimizerScales[2] = 1.00;
     optimizerScales[3] = parameters.relative_scales;
     optimizerScales[4] = parameters.relative_scales;
     optimizerScales[5] = parameters.relative_scales;
@@ -186,7 +192,7 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
 
     optimizer->SetNumberOfIterations(parameters.optimization_iterations);
 
-    std::srand(std::time(nullptr)); 
+    std::srand(std::time(nullptr));
     
     optimizer->SetLearningRate(parameters.learning_rate);
     optimizer->SetMinimumStepLength(0.0001);
@@ -232,6 +238,148 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
     }
     return {optimizer->GetValue(), final_transformation,info_registration.initial_rotation};
 }
+
+    Eigen::Matrix<double,4,4> icp_registration(Eigen::Matrix4d initial_config){
+    constexpr unsigned int Dimension = 3;
+    using PointSetType = itk::PointSet<float, Dimension>;
+    
+    auto fixedPointSet = PointSetType::New();
+    auto movingPointSet = PointSetType::New();
+    
+    using PointType = PointSetType::PointType;
+    using PointsContainer = PointSetType::PointsContainer;
+    
+    auto fixedPointContainer = PointsContainer::New();
+    auto movingPointContainer = PointsContainer::New();
+    
+    PointType fixedPoint;
+    PointType movingPoint;
+
+    std::ifstream fixedFile;
+    fixedFile.open("fixed_point_cloud.txt");
+    if (fixedFile.fail())
+    {
+        std::cerr << "Error opening points file with name : " << std::endl;
+        std::cerr << "fixed_point_cloud.txt" << std::endl;
+    }
+    
+    unsigned int pointId = 0;
+    fixedFile >> fixedPoint;
+    while (!fixedFile.eof())
+    {
+        fixedPointContainer->InsertElement(pointId, fixedPoint);
+        fixedFile >> fixedPoint;
+        pointId++;
+    }
+
+    fixedPointSet->SetPoints(fixedPointContainer);
+    std::cout << "Number of fixed Points = "
+                << fixedPointSet->GetNumberOfPoints() << std::endl;
+    
+    // Read the file containing coordinates of moving points.
+    std::ifstream movingFile;
+    movingFile.open("moving_point_cloud.txt");
+    if (movingFile.fail())
+    {
+        std::cerr << "Error opening points file with name : " << std::endl;
+        std::cerr << "moving_point_cloud.txt" << std::endl;
+    }
+    
+    pointId = 0;
+    movingFile >> movingPoint;
+    while (!movingFile.eof())
+    {
+        movingPointContainer->InsertElement(pointId, movingPoint);
+        movingFile >> movingPoint;
+        pointId++;
+    }
+    movingPointSet->SetPoints(movingPointContainer);
+    std::cout << "Number of moving Points = "
+                << movingPointSet->GetNumberOfPoints() << std::endl;
+
+    using MetricType =
+        itk::EuclideanDistancePointMetric<PointSetType, PointSetType>;
+    auto metric = MetricType::New();
+    using TransformType = itk::Euler3DTransform<double>;
+    auto transform = TransformType::New();
+    using OptimizerType = itk::LevenbergMarquardtOptimizer;
+    auto optimizer = OptimizerType::New();
+    optimizer->SetUseCostFunctionGradient(false);
+    
+    using RegistrationType =
+        itk::PointSetToPointSetRegistrationMethod<PointSetType, PointSetType>;
+    auto registration = RegistrationType::New();
+    OptimizerType::ScalesType scales(transform->GetNumberOfParameters());
+    constexpr double translationScale = 1000.0;
+    constexpr double rotationScale = 1.0;       
+    scales[0] = 1.0 / rotationScale;
+    scales[1] = 1.0 / rotationScale;
+    scales[2] = 1.0 / rotationScale;
+    scales[3] = 1.0 / translationScale;
+    scales[4] = 1.0 / translationScale;
+    scales[5] = 1.0 / translationScale;
+    
+    unsigned long numberOfIterations = 2000;
+    double        gradientTolerance = 1e-4; 
+    double        valueTolerance = 1e-4;   
+    double        epsilonFunction = 1e-5;  
+    
+    optimizer->SetScales(scales);
+    optimizer->SetNumberOfIterations(numberOfIterations);
+    optimizer->SetValueTolerance(valueTolerance);
+    optimizer->SetGradientTolerance(gradientTolerance);
+    optimizer->SetEpsilonFunction(epsilonFunction);
+
+    auto initialTransform = TransformType::New();
+    itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
+    itk::Vector<double,3> origin;
+    itk::Matrix<double> direction;
+
+    for(size_t row = 0; row < 3; ++row){
+        origin[row] = initial_config(row,3);
+        for(size_t col = 0; col < 3; ++col){
+            direction(row,col) = initial_config(row,col);
+        }
+    }
+
+    initialTransform->SetMatrix(direction);
+    initialTransform->SetTranslation(origin);
+
+    registration->SetInitialTransformParameters(initialTransform->GetParameters());
+    registration->SetMetric(metric);
+    registration->SetOptimizer(optimizer);
+    registration->SetTransform(transform);
+    registration->SetFixedPointSet(fixedPointSet);
+    registration->SetMovingPointSet(movingPointSet);
+
+    try
+    {
+        registration->Update();
+    }
+    catch (const itk::ExceptionObject & e)
+    {
+        std::cerr << e << std::endl;
+    }
+    
+    std::cout << "Solution = " << transform->GetParameters() << std::endl;
+    std::cout << "Stopping condition: "
+                << optimizer->GetStopConditionDescription() << std::endl;
+
+
+    Eigen::Matrix<double,4,4> final_transformation = Eigen::Matrix<double,4,4>::Identity();
+    for(size_t row = 0; row < 3; ++row){
+        final_transformation(row,3) = transform->GetOffset()[row];
+        for(size_t col = 0; col < 3; ++col){
+            final_transformation(row,col) = transform->GetMatrix()(row,col);
+        }
+    }
+
+    std::cout << "Final transformation:" << std::endl;
+    std::cout << final_transformation << std::endl;
+
+    return final_transformation;
+    }
+
 
 void print_image_info(itk::Image<PixelType,3>::Pointer image, std::string name){
         std::cout << "-------------------\n";
@@ -317,6 +465,29 @@ void writePointCloudToFile(const std::string& filename, const Eigen::Matrix<doub
     }
     file.close();
 }
+
+Eigen::Matrix<double, Eigen::Dynamic, 3> downsample_points(const Eigen::Matrix<double, Eigen::Dynamic, 3>& points_in_matrix_form, double downsampling_percentage) {
+    size_t total_points = points_in_matrix_form.rows();
+    size_t reduced_points = static_cast<size_t>(total_points * downsampling_percentage);
+    
+    std::vector<size_t> indices(total_points);
+    for (size_t i = 0; i < total_points; ++i) {
+        indices[i] = i;
+    }
+    
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(indices.begin(), indices.end(), g);
+    indices.resize(reduced_points);
+    
+    Eigen::Matrix<double, Eigen::Dynamic, 3> selected_points(reduced_points, 3);
+    for (size_t i = 0; i < reduced_points; ++i) {
+        selected_points.row(i) = points_in_matrix_form.row(indices[i]);
+    }
+    
+    return selected_points;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -434,7 +605,6 @@ int main(int argc, char **argv)
         ++pointIterator;
         ++index;
     }
-    writePointCloudToFile("fixed_point_cloud.txt", points_in_matrix_form);
     Eigen::Matrix<double,3,1> center_of_fixed_image = points_in_matrix_form.colwise().mean().transpose();
     Eigen::Matrix<double,1,3> to_subtract = center_of_fixed_image.transpose();
     points_in_matrix_form.rowwise() -= to_subtract;    
@@ -480,8 +650,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    //movingSpatialObjectMask->SetImage(filter_threshold->GetOutput());
-
     pointer2movingimage_registration = rescale->GetOutput();
     auto mesh = meshSource->GetOutput();
     Eigen::Matrix<double,Eigen::Dynamic,3> points_in_matrix_form = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh->GetNumberOfPoints(),3);
@@ -498,7 +666,6 @@ int main(int argc, char **argv)
         ++pointIterator;
         ++index;
     }
-    writePointCloudToFile("moving_point_cloud.txt", points_in_matrix_form);
     Eigen::Matrix<double,3,1> center_of_moving_image = points_in_matrix_form.colwise().mean().transpose();
     Eigen::Matrix<double,1,3> to_subtract = center_of_moving_image.transpose();
     points_in_matrix_form.rowwise() -= to_subtract;    
@@ -561,7 +728,7 @@ int main(int argc, char **argv)
     std::array<size_t,local_permut> bin_numbers{50};
     std::array<double,local_permut> percentage_numbers{1};
     std::array<double,local_permut> relative_scales{1000.0};
-    std::array<double,local_permut> learning_rate{0.15};
+    std::array<double,local_permut> learning_rate{0.1};
     std::array<double,local_permut> relaxation_factor{0.7};
     std::array<size_t,local_permut> optimization_iterations{5000};
     std::array<size_t,local_permut> convergence_window_size{30};
@@ -588,6 +755,8 @@ int main(int argc, char **argv)
     using MaskImageType = itk::Image<MaskPixelType, Dimension>;
     using CastFilterType = itk::CastImageFilter<ImageType, MaskImageType>;
     using FilterTypeThreshold = itk::BinaryThresholdImageFilter<MaskImageType,MaskImageType>;
+    using MeshType =  itk::Mesh<double>;
+    using MeshSourceType = itk::BinaryMask3DMeshSource<MaskImageType, MeshType>;
     
     auto castfilter_fixed = CastFilterType::New();
     castfilter_fixed->SetInput(pointer2fixedimage_registration);
@@ -599,10 +768,44 @@ int main(int argc, char **argv)
     filter_threshold_fixed->SetUpperThreshold(255);
     filter_threshold_fixed->Update();
 
+    fixedSpatialObjectMask->SetImage(filter_threshold_fixed->GetOutput());
+
+    //Tá repetido porque agora vou buscar a mesh das imagens já na origem
+    auto meshSource_fixed = MeshSourceType::New();
+    meshSource_fixed->SetObjectValue(1);
+    meshSource_fixed->SetInput(filter_threshold_fixed->GetOutput());
+    try{
+        meshSource_fixed->Update();
+    }catch(const itk::ExceptionObject &err){
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err.GetDescription() << std::endl;
+        return 1;
+    }
+
+    auto mesh_fixed = meshSource_fixed->GetOutput();
+    Eigen::Matrix<double,Eigen::Dynamic,3> fixed_points = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh_fixed->GetNumberOfPoints(),3);
+    using PointsIterator = MeshType::PointsContainer::Iterator;
+    PointsIterator pointIterator_fixed = mesh_fixed->GetPoints()->Begin();
+    PointsIterator end_fixed = mesh_fixed->GetPoints()->End();
+    size_t index = 0;
+    while (pointIterator_fixed != end_fixed)
+    {
+        auto p = pointIterator_fixed->Value();
+        fixed_points(index,0) = p[0];
+        fixed_points(index,1) = p[1];
+        fixed_points(index,2) = p[2];
+        ++pointIterator_fixed;
+        ++index;
+    }
+
+    auto downsampled_fixed_points = downsample_points(fixed_points, 0.1);
+    writePointCloudToFile("fixed_point_cloud.txt", downsampled_fixed_points);
+
     //Não em uso at the moment
+    /*
     using StructuringElementType = itk::BinaryBallStructuringElement<MaskImageType::PixelType, MaskImageType::ImageDimension>;
     StructuringElementType structuringElement;
-    structuringElement.SetRadius(10); 
+    structuringElement.SetRadius(5); 
     structuringElement.CreateStructuringElement();
     using DilateFilterType = itk::BinaryDilateImageFilter<MaskImageType, MaskImageType, StructuringElementType>;
     DilateFilterType::Pointer dilateFilter = DilateFilterType::New();
@@ -610,9 +813,8 @@ int main(int argc, char **argv)
     dilateFilter->SetKernel(structuringElement);
     dilateFilter->SetDilateValue(1);
     dilateFilter->Update();
-    fixedSpatialObjectMask->SetImage(filter_threshold_fixed->GetOutput());
-
-
+    fixedSpatialObjectMask->SetImage(dilateFilter->GetOutput());
+*/
     auto writer = itk::ImageFileWriter<MaskImageType>::New();
     writer->SetFileName("fixed_mask.mha");
     writer->SetInput(filter_threshold_fixed->GetOutput());
@@ -624,7 +826,6 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-
     try{
         fixedSpatialObjectMask->Update();
     }catch(const itk::ExceptionObject &err){
@@ -632,6 +833,7 @@ int main(int argc, char **argv)
         std::cout << err.GetDescription() << std::endl;
         return 1;
     }
+
 
     auto castfilter_moving = CastFilterType::New();
     castfilter_moving->SetInput(pointer2movingimage_registration);
@@ -643,12 +845,55 @@ int main(int argc, char **argv)
     filter_threshold_moving->SetUpperThreshold(255);
     filter_threshold_moving->Update();
 
+    auto meshSource_moving = MeshSourceType::New();
+    meshSource_moving->SetObjectValue(1);
+    meshSource_moving->SetInput(filter_threshold_moving->GetOutput());
+    try{
+        meshSource_moving->Update();
+    }catch(const itk::ExceptionObject &err){
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err.GetDescription() << std::endl;
+        return 1;
+    }
+
+    auto mesh_moving = meshSource_moving->GetOutput();
+    Eigen::Matrix<double,Eigen::Dynamic,3> moving_points = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh_moving->GetNumberOfPoints(),3);
+    using PointsIterator = MeshType::PointsContainer::Iterator;
+    PointsIterator pointIterator_moving = mesh_moving->GetPoints()->Begin();
+    PointsIterator end_moving = mesh_moving->GetPoints()->End();
+    size_t index2 = 0;
+    while (pointIterator_moving != end_moving)
+    {
+        auto p = pointIterator_moving->Value();
+        moving_points(index2,0) = p[0];
+        moving_points(index2,1) = p[1];
+        moving_points(index2,2) = p[2];
+        ++pointIterator_moving;
+        ++index2;
+    }
+
+    auto downsampled_moving_points = downsample_points(moving_points, 0.1);
+    writePointCloudToFile("moving_point_cloud.txt", downsampled_moving_points);
+
     //Não em uso at the moment
+    /*
     DilateFilterType::Pointer dilateFilter2 = DilateFilterType::New();
     dilateFilter2->SetInput(filter_threshold_moving->GetOutput());
     dilateFilter2->SetKernel(structuringElement);
     dilateFilter2->SetDilateValue(1); 
     dilateFilter2->Update();
+    */
+
+    writer->SetFileName("moving_mask.mha");
+    writer->SetInput(filter_threshold_moving->GetOutput());
+
+    try {
+        writer->Update();
+    } catch (const itk::ExceptionObject & error) {
+        std::cerr << "Error: " << error << std::endl;
+        return EXIT_FAILURE;
+    }
+
 
     movingSpatialObjectMask->SetImage(filter_threshold_moving->GetOutput());
     try{
@@ -658,7 +903,14 @@ int main(int argc, char **argv)
         std::cout << err.GetDescription() << std::endl;
         return 1;
     }
+
+    //Já tá pronto para receber as configs em eigen
+    auto icp_solution = icp_registration(initial_config);
+
+    modify_image_with_transform(icp_solution.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+    print_image_with_transform(pointer2movingimage,"moving_correct_icp.mha");
     
+
     auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales,double learning_rate, double relaxation_factor,size_t window_size, auto piramid_sizes, auto bluering_sizes){
         std::vector<std::tuple<double, Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>>> full_runs_inner;
         {         
@@ -681,6 +933,7 @@ int main(int argc, char **argv)
         }
         return full_runs_inner;
     };
+
 
     size_t total_runs = 0;
     for(const auto& bin_n : bin_numbers)

@@ -53,6 +53,10 @@ void print_body(const RigidBodyDynamics::Body& body){
     std::cout << "mass: \n" << body.mMass << std::endl;
 }
 
+
+
+namespace robotutils{
+
 class Tool{
 	double mass;
 	RigidBodyDynamics::Math::Vector3d center_of_mass;
@@ -62,7 +66,53 @@ class Tool{
 	RigidBodyDynamics::Math::Vector3d axis_origin;
 };
 
-namespace robotutils{
+template<size_t model_joints>
+class KinematicLimits{
+
+    Eigen::Matrix<double,model_joints,1> f_min_q;
+    Eigen::Matrix<double,model_joints,1> f_max_q;
+    Eigen::Matrix<double,model_joints,1> f_min_dq;
+    Eigen::Matrix<double,model_joints,1> f_max_dq;
+    Eigen::Matrix<double,model_joints,1> f_min_ddq;
+    Eigen::Matrix<double,model_joints,1> f_max_ddq;
+public:
+    KinematicLimits(std::filesystem::path robot_limits_directory)
+    {
+        f_min_q = -Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_max_q = Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_min_dq = -Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_max_dq = Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_min_ddq = -Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_max_ddq = Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+
+        // Parse mass data from input file
+        nlohmann::json table_data = nlohmann::json::parse(std::ifstream(robot_limits_directory));
+        if(table_data.size()!=model_joints)
+            throw std::runtime_error("the supplied model has a different number of parameters from the compiled model");
+
+        auto iterator = table_data.begin();
+
+        for(size_t ind = 0; ind < model_joints; ++ind,++iterator){
+            f_min_q[ind] = (*iterator)["min_q"];       
+            f_max_q[ind] = (*iterator)["max_q"];          
+            f_min_dq[ind] = (*iterator)["min_dq"]; 
+            f_max_dq[ind] = (*iterator)["max_dq"]; 
+            f_min_ddq[ind] = (*iterator)["min_ddq"]; 
+            f_max_ddq[ind] = (*iterator)["max_ddq"];    
+        }
+    }
+
+    KinematicLimits()
+    {
+        f_min_q = -Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_max_q = Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_min_dq = -Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_max_dq = Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_min_ddq = -Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+        f_max_ddq = Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
+    }
+
+};
 
 template<size_t model_joints>
 class RobotModel{
@@ -97,12 +147,20 @@ class RobotModel{
     //Flange position
     Eigen::Vector3d f_flange_position;
 
+    const KinematicLimits<model_joints> f_kinematic_limits;
+
     public:
     //delete all robot copy operators so that we do not have to deal with nasty copies
     RobotModel(const RobotModel& other) = delete;
     RobotModel(RobotModel&& other) = delete;
     RobotModel& operator=(RobotModel&& other) = delete;
     RobotModel& operator=(const RobotModel& other) = delete; 
+
+    RobotModel(std::filesystem::path models_data_directory,
+               std::filesystem::path kinematic_limits_directory) : f_kinematic_limits{kinematic_limits_directory},
+                                                                   RobotModel{models_data_directory}{
+
+    }
 
     RobotModel(std::filesystem::path models_data_directory){
         // Initialize to zero everything
@@ -280,10 +338,14 @@ class RobotModel{
         return f_end_effector.block<3,3>(0,0);
     }
 
+    inline const KinematicLimits<model_joints>& kinematic_limits() const {
+        return f_kinematic_limits;
+    }
+
 };
 
     template<size_t number_of_joints>
-    Eigen::Matrix<double,number_of_joints,1> add_constraints(const Eigen::Matrix<double,number_of_joints,1>& tauStack, double dt){
+    Eigen::Matrix<double,number_of_joints,1> add_constraints(const RobotModel<number_of_joints>& model,const Eigen::Matrix<double,number_of_joints,1>& tauStack, double dt){
         Eigen::Matrix<double,number_of_joints,1> dt2 = Eigen::Matrix<double,number_of_joints,1>::Zero();
         Eigen::Matrix<double,number_of_joints,1> dtvar = Eigen::Matrix<double,number_of_joints,1>::Zero();
         Eigen::Matrix<double,number_of_joints,1> qDownBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
@@ -315,6 +377,44 @@ class RobotModel{
         Eigen::Matrix<double,number_of_joints,1> TauBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
         Eigen::Matrix<double,number_of_joints,1> qDotDotGot = Eigen::Matrix<double,number_of_joints,1>::Zero();
         Eigen::Matrix<double,3,number_of_joints> Js =Eigen::Matrix<double,2,number_of_joints>::Zero(); 
+
+        constexpr double lowestdtFactor = 10;
+
+        qDownBar = model.joints() - model.kinematic_limits().f_min_q;
+        qTopBar = model.kinematic_limits().f_max_q - model.joints();
+        dtvar[0] = 3 * dt;
+        dtvar[1] = 3 * dt;
+        dtvar[2] = 2 * dt;
+        dtvar[3] = 3 * dt;
+        dtvar[4] = dt;
+        dtvar[5] = dt;
+        dtvar[6] = dt;
+
+        qDownBar.rowwise()
+
+        dt2[i] = dtvar[i];
+        if (qDownBar[i] < 10 * M_PI / 180)
+        {
+
+            if (qDownBar[i] < 0)
+                qDownBar[i] = 0;
+
+            dt2[i] = ((lowestdtFactor) + (sqrt(lowestdtFactor) * sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
+
+            if (dt2[i] < lowestdtFactor * dtvar[i])
+                dt2[i] = lowestdtFactor * dtvar[i];
+        }
+        if (qTopBar[i] < 10 * M_PI / 180)
+        {
+
+            if (qTopBar[i] < 0)
+                qTopBar[i] = 0;
+
+            dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor) * sqrt(qTopBar[i] * 180 / M_PI))) * dtvar[i];
+            if (dt2[i] < lowestdtFactor * dtvar[i])
+                dt2[i] = lowestdtFactor * dtvar[i];
+
+        }
     }
 
 }

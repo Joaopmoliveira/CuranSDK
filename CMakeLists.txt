@@ -45,10 +45,11 @@ add_subdirectory(third_party)
 
 cmake_path(SET original_resource_paths "${CMAKE_CURRENT_LIST_DIR}/resources")
 cmake_path(SET post_build_resource_path "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources")
+set(plus_server_path "D:/Programas/PlusApp/bin/PlusServer.exe")
 
 #Add resources necessary by the display library
 add_custom_command(OUTPUT resources
-               COMMAND ${CMAKE_COMMAND} -E copy_directory ${original_resource_paths} ${post_build_resource_path}
+               COMMAND ${CMAKE_COMMAND} -E copy_directory ${original_resource_paths} ${post_build_resource_path} 
                DEPENDS "${original_resource_paths}"
                COMMENT "Currently copying the widget files to the correct directories"
                )
