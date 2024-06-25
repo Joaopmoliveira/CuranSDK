@@ -154,15 +154,6 @@ int main() {
 
 		viewer->set_minimum_size(page.minimum_size());
 
-		//auto pool = curan::utilities::ThreadPool::create(2);
-		// we create a function that from time to time checks the directories and 
-		// verifies the intermidiate files from temporal calibration, among others
-		//pool->submit(curan::utilities::Job{"",[](){
-		//	while(signal_untriggered.load(std::memory_order_relaxed)){
-
-		//	}
-		//}}); 
-
 		while (!glfwWindowShouldClose(viewer->window) && signal_untriggered.load(std::memory_order_relaxed)) {
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface* pointer_to_surface = viewer->getBackbufferSurface();

@@ -11,3 +11,11 @@ add_executable(test_circular test_circular.cpp)
 target_link_libraries(test_circular PUBLIC
 utils
 )
+
+add_executable(test_xml_plus_parsing test_xml_plus_parsing.cpp)
+
+target_link_libraries(test_xml_plus_parsing PUBLIC
+utils
+)
+
+target_compile_definitions(test_xml_plus_parsing PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")

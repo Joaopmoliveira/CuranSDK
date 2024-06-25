@@ -9,6 +9,7 @@
     "boost-process",
     "vsg",
     "vsgimgui",
+    "pugixml",
     {
       "name": "vsgxchange",
       "features": [ "assimp" ]

@@ -4,6 +4,7 @@ src/Logger.cpp
 src/TheadPool.cpp
 src/MemoryUtils.cpp
 src/Reader.cpp
+src/ModifyXMLField.cpp
 )
 
 target_include_directories(utils
@@ -12,6 +13,8 @@ target_include_directories(utils
 
 target_link_libraries(utils PUBLIC
 asio
+pugixml::static 
+pugixml::pugixml
 )
 
 IF (WIN32)
