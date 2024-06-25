@@ -23,7 +23,11 @@
 asio::io_context* ptr_ctx = nullptr;
 
 std::unique_ptr<boost::process::child> child_process;
+
+#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
 std::unique_ptr<boost::process::child> plus_process;
+#endif
+
 boost::process::ipstream out;
 std::atomic<bool> signal_untriggered = true;
 
@@ -68,7 +72,7 @@ int main() {
 			}
 		});
 
-		std::cout << PLUS_SERVER_PATH;
+		std::cout << CURAN_PLUS_EXECUTABLE_PATH;
 
 	    auto button2 = Button::make("Temporal Calibration",resources);
 	    button2->set_click_color(SK_ColorDKGRAY)
@@ -77,12 +81,18 @@ int main() {
                 .set_size(SkRect::MakeWH(300, 300));
 		button2->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
+	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
+
+	#endif
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/TemporalCalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
 				inbut->set_waiting_color(waiting_color_active);
 			} else {
 				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
+	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
+
+	#endif
 			}
 		});
 
@@ -93,12 +103,18 @@ int main() {
                 .set_size(SkRect::MakeWH(300, 300));
 		button3->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
+	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
+
+	#endif
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/Ultrasoundcalibration" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
 				inbut->set_waiting_color(waiting_color_active);
 			} else {
 				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
+	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
+
+	#endif
 			}
 		});
 
@@ -109,12 +125,18 @@ int main() {
                 .set_size(SkRect::MakeWH(300, 300));
 		button4->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
+	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
+
+	#endif
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/RealTimeReconstructor" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
 				inbut->set_waiting_color(waiting_color_active);
 			} else {
 				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
+	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
+
+	#endif
 			}
 		});
 
@@ -125,12 +147,18 @@ int main() {
                 .set_size(SkRect::MakeWH(300, 300));
 		button5->add_press_call([&](Button* inbut,Press pres, ConfigDraw* config){
 			if(!child_process){
+	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
+
+	#endif
     			child_process = std::make_unique<boost::process::child>(CURAN_BINARY_LOCATION"/InteroperativeNavigation" CURAN_BINARY_SUFFIX, boost::process::std_out > out);
 				inbut->set_waiting_color(waiting_color_active);
 			} else {
 				inbut->set_waiting_color(waiting_color_inactive);
 				child_process->terminate();
 				child_process = nullptr;
+	#ifdef CURAN_PLUS_EXECUTABLE_PATH //conditionally compile code with plus process lauching mechanics
+
+	#endif
 			}
 		});
 

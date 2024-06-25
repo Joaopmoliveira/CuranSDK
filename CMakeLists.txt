@@ -44,7 +44,15 @@ add_subdirectory(third_party)
 
 cmake_path(SET original_resource_paths "${CMAKE_CURRENT_LIST_DIR}/resources")
 cmake_path(SET post_build_resource_path "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources")
-set(plus_server_path "D:/Programas/PlusApp/bin/PlusServer.exe")
+
+set(WAS_PLUS_SPECIFIED OFF)
+if(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
+  set(WAS_PLUS_SPECIFIED ON)
+  message("Plus path was specified!")
+  message("${CURAN_PLUS_EXECUTABLE_PATH}")
+else(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
+  message("Plus path was NOT specified!")
+endif(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
 
 #Add resources necessary by the display library
 add_custom_command(OUTPUT resources
@@ -74,3 +82,5 @@ add_subdirectory(tests)
 # Add medical applications
 #add_subdirectory(tutorialsrc)
 
+# https://www.fnac.pt/Monitor-Tatil-Portatil-Verbatim-PMT-15-FHD-15-6-Monitor-Monitor-LED/a10756603
+# https://www.fnac.pt/Monitor-Portatil-Asus-ZenScreen-15-6-FHD-MB166C-60Hz-Monitor-Monitor-LED/a11231749#int=S:Suggestion|FA%3AMIC|10|11231749|BL3|L1

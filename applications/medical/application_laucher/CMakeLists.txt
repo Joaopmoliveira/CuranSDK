@@ -7,9 +7,15 @@ add_executable(ApplicationLauncher
 main.cpp
 )
 
-target_compile_definitions(ApplicationLauncher PRIVATE
-CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}"
-PLUS_SERVER_PATH="${plus_server_path}")
+if(WAS_PLUS_SPECIFIED)
+    target_compile_definitions(ApplicationLauncher PRIVATE
+    CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}"
+    CURAN_PLUS_EXECUTABLE_PATH="${CURAN_PLUS_EXECUTABLE_PATH}")
+else()
+    target_compile_definitions(ApplicationLauncher PRIVATE
+    CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+endif()
+
 
 add_compile_definitions(ApplicationLauncher CURAN_BINARY_LOCATION="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 add_compile_definitions(ApplicationLauncher CURAN_BINARY_SUFFIX="${CMAKE_EXECUTABLE_SUFFIX}")
