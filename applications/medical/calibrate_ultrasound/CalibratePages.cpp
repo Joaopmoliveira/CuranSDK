@@ -161,6 +161,7 @@ curan::ui::Page create_main_page(ConfigurationData& data, std::shared_ptr<Proces
 		}
 		else {
 			processing->attempt_stop();
+			processing->connection_status.set(false);
 		}
 	};
 

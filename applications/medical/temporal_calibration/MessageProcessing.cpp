@@ -842,12 +842,10 @@ void ProcessingMessage::communicate() {
 	construction.endpoints = endpoints;
 	auto client = Client::make(construction);
 	connection_status.set(true);
-
 	auto lam = [this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 		try{
 			if (process_message(protocol_defined_val, er, val))
 			{
-				connection_status.set(false);
 				attempt_stop();
 			}
 		}catch(...){
@@ -856,6 +854,7 @@ void ProcessingMessage::communicate() {
 	};
 	client->connect(lam);
 	io_context.run();
+    connection_status.set(false);
 	button->set_waiting_color(SK_ColorRED);
 	return;
 }

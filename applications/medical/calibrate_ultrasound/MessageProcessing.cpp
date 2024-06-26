@@ -273,35 +273,34 @@ bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_
 }
 
 void ProcessingMessage::communicate() {
+	std::cout << "connecting to server" << std::endl;
 	{
 		std::lock_guard<std::mutex> g{mut};
 		list_of_recorded_points.clear();
+		
 	}
-	
-	using namespace curan::communication;
 	button->set_waiting_color(SK_ColorGREEN);
 	io_context.reset();
-	interface_igtl igtlink_interface;
-	Client::Info construction{ io_context,igtlink_interface };
+	curan::communication::interface_igtl igtlink_interface;
+	curan::communication::Client::Info construction{ io_context,igtlink_interface };
 	asio::ip::tcp::resolver resolver(io_context);
 	auto endpoints = resolver.resolve("localhost", std::to_string(port));
 	construction.endpoints = endpoints;
-	auto client = Client::make(construction);
+	auto client = curan::communication::Client::make(construction);
 	connection_status.set(true);
 
-	auto lam = [this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
+	client->connect([this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
 		try{
 			if (process_message(protocol_defined_val, er, val))
 			{
-				connection_status.set(false);
 				attempt_stop();
 			}
 		}catch(...){
 			std::cout << "Exception was thrown\n";
 		}
-	};
-	client->connect(lam);
+	});
 	io_context.run();
+	connection_status.set(false);
 	button->set_waiting_color(SK_ColorRED);
 	return;
 }

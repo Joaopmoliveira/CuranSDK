@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <boost/process.hpp>
+#include <boost/asio/read_until.hpp>
 
 constexpr auto waiting_color_active = SkColorSetARGB(70, 0, 255, 0);
 constexpr auto waiting_color_inactive = SkColorSetARGB(70, 255, 0, 0);
@@ -52,19 +53,18 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 		{
 			static std::string line;
 			static std::istream istr(&async_data->plus_buf);
-			if (!ec && size > 0)
-			{
+			if (!ec){
 				std::getline(istr, line);
 				std::cout << "plus >> " << line << std::endl;
 			}
-			if (!async_data->in_use)
+			if (!async_data->in_use){
+				std::cout << "plus >> stopping......" << line << std::endl;
 				return;
-			if (!ec)
-			{
-				async_data->post_async_plus_read();
 			}
+			if (!ec)
+				async_data->post_async_plus_read();
 		};
-		boost::asio::async_read(plus_out, plus_buf, plus_asyn_read_callback);
+		boost::asio::async_read_until(plus_out,plus_buf,'\n',plus_asyn_read_callback);
 	}
 #endif
 	void post_async_read()
@@ -73,19 +73,18 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 		{
 			static std::string line;
 			static std::istream istr(&async_data->child_buf);
-			if (!ec && size > 0)
-			{
+			if (!ec){
 				std::getline(istr, line);
 				std::cout << "child >> " << line << std::endl;
 			}
-			if (!async_data->in_use)
+			if (!async_data->in_use){
+				std::cout << "child >> stopping......" << line << std::endl;
 				return;
-			if (!ec)
-			{
-				async_data->post_async_read();
 			}
+			if (!ec)
+				async_data->post_async_read();
 		};
-		boost::asio::async_read(child_out, child_buf, child_async_read_callback);
+		boost::asio::async_read_until(child_out,child_buf,'\n',child_async_read_callback);
 	}
 
 	void launch_child(const std::string &executable)
@@ -106,7 +105,7 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 	{
 		plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,
 															   std::string{"--config-file="} + std::string{CURAN_COPIED_RESOURCE_PATH "/plus_config/wire_reconstructions/New Text Document.xml"},
-															   "--verbose=1",
+															   "--verbose=4",
 															   boost::process::std_out > plus_out,
 															   plus_ec,
 															   asio_ctx,
