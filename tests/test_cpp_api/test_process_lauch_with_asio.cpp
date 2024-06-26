@@ -21,7 +21,7 @@ int main(){
     std::error_code ec;
     boost::process::ipstream child_out;
     boost::process::child child("C:/Users/joaom/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe",
-                                "--config-file=C:/Dev/Curan/build/bin/resources/plus_config/wire_reconstructions/wire_reconstruction_recording/wire_reconstruction_recording/RecordingTest_config.xml",
+                                "--config-file=C:/Dev/Curan/build/bin/resources/plus_config/wire_reconstructions/New Text Document.xml",
                                 "--verbose=4",
                                 boost::process::std_out > child_out,
                                 ec,
