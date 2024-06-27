@@ -112,6 +112,30 @@ public:
         f_max_ddq = Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
     }
 
+    inline const Eigen::Matrix<double,model_joints,1>& qmax(){
+        return f_max_q;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,1>& qmin(){
+        return f_min_q;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,1>& dqmax(){
+        return f_max_dq;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,1>& dqmin(){
+        return f_min_dq;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,1>& ddqmax(){
+        return f_max_ddq;
+    }
+
+    inline const Eigen::Matrix<double,model_joints,1>& ddqmin(){
+        return f_min_ddq;
+    }
+
 };
 
 template<size_t model_joints>
@@ -149,20 +173,7 @@ class RobotModel{
 
     const KinematicLimits<model_joints> f_kinematic_limits;
 
-    public:
-    //delete all robot copy operators so that we do not have to deal with nasty copies
-    RobotModel(const RobotModel& other) = delete;
-    RobotModel(RobotModel&& other) = delete;
-    RobotModel& operator=(RobotModel&& other) = delete;
-    RobotModel& operator=(const RobotModel& other) = delete; 
-
-    RobotModel(std::filesystem::path models_data_directory,
-               std::filesystem::path kinematic_limits_directory) : f_kinematic_limits{kinematic_limits_directory},
-                                                                   RobotModel{models_data_directory}{
-
-    }
-
-    RobotModel(std::filesystem::path models_data_directory){
+    void initialize_all(const std::filesystem::path& models_data_directory){
         // Initialize to zero everything
         f_massmatrix = Eigen::Matrix<double,model_joints,model_joints>::Zero();
         f_coriolis = Eigen::Matrix<double,model_joints,1>::Zero();
@@ -220,6 +231,22 @@ class RobotModel{
 	        f_body_id[ind] = f_model.AddBody(f_body_id[ind-1], RigidBodyDynamics::Math::Xtrans(f_axis_origin[ind]), f_joint[ind], f_body[ind], std::to_string(ind));
         }
 
+    }
+
+    public:
+    //delete all robot copy operators so that we do not have to deal with nasty copies
+    RobotModel(const RobotModel& other) = delete;
+    RobotModel(RobotModel&& other) = delete;
+    RobotModel& operator=(RobotModel&& other) = delete;
+    RobotModel& operator=(const RobotModel& other) = delete; 
+
+    RobotModel(const std::filesystem::path& models_data_directory,
+               const std::filesystem::path& kinematic_limits_directory) : f_kinematic_limits{kinematic_limits_directory}{
+        initialize_all(models_data_directory);
+    }
+
+    RobotModel(const std::filesystem::path& models_data_directory){
+        initialize_all(models_data_directory);
     }
 
     inline operator bool() const {
@@ -382,10 +409,10 @@ class RobotModel{
         static Eigen::Matrix<double,number_of_joints,1> qDotDotGot = Eigen::Matrix<double,number_of_joints,1>::Zero();
         static Eigen::Matrix<double,3,number_of_joints> Js =Eigen::Matrix<double,2,number_of_joints>::Zero(); 
 
-        constexpr double lowestdtFactor = 10;
+        constexpr double lowestdtFactor = 10.0;
 
-        qDownBar = model.joints() - model.kinematic_limits().f_min_q;
-        qTopBar = model.kinematic_limits().f_max_q - model.joints();
+        qDownBar = model.joints() - model.kinematic_limits().qmin();
+        qTopBar = model.kinematic_limits().qmax() - model.joints();
         dtvar[0] = 3 * dt;
         dtvar[1] = 3 * dt;
         dtvar[2] = 2 * dt;
@@ -403,12 +430,12 @@ class RobotModel{
             dt2[i] = (dt2[i] < lowestdtFactor * dtvar[i]) ? lowestdtFactor * dtvar[i] : dt2[i];
             dt2[i] = (dt2[i] < lowestdtFactor * dtvar[i]) ? lowestdtFactor * dtvar[i] : dt2[i];
 
-            qDotMaxFromQ[i] = (model.kinematic_limits().f_max_q[i] - model.joints()[i]) / dt2[i];
-            qDotMinFromQ[i] = (model.kinematic_limits().f_min_q[i] - model.joints()[i]) / dt2[i];
-            qDotMaxFormQDotDot[i] = std::sqrt(2.0 * model.kinematic_limits().f_max_ddq[i] * (model.kinematic_limits().f_max_q[i] - model.joints()[i]));
-            qDotMaxFormQDotDot[i] = (model.kinematic_limits().f_max_q[i] - model.joints()[i] < 0) ? 1000000.0 : qDotMaxFormQDotDot[i];
-            qDotMinFormQDotDot[i] = -std::sqrt(2.0 * model.kinematic_limits().f_max_ddq[i] * (model.joints()[i] - model.kinematic_limits().f_min_q[i]));
-            qDotMinFormQDotDot[i] = (model.joints()[i] - model.kinematic_limits().f_min_q[i] < 0) ?-1000000.0 : qDotMinFormQDotDot[i];
+            qDotMaxFromQ[i] = (model.kinematic_limits().qmax()[i] - model.joints()[i]) / dt2[i];
+            qDotMinFromQ[i] = (model.kinematic_limits().qmin()[i] - model.joints()[i]) / dt2[i];
+            qDotMaxFormQDotDot[i] = std::sqrt(2.0 * model.kinematic_limits().qmax()[i] * (model.kinematic_limits().qmax()[i] - model.joints()[i]));
+            qDotMaxFormQDotDot[i] = (model.kinematic_limits().qmax()[i] - model.joints()[i] < 0) ? 1000000.0 : qDotMaxFormQDotDot[i];
+            qDotMinFormQDotDot[i] = -std::sqrt(2.0 * model.kinematic_limits().ddqmax()[i] * (model.joints()[i] - model.kinematic_limits().qmin()[i]));
+            qDotMinFormQDotDot[i] = (model.joints()[i] - model.kinematic_limits().qmin()[i] < 0) ?-1000000.0 : qDotMinFormQDotDot[i];
 
             vMaxVector = Vector3d(myIIWALimits.qDotMax[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
             qDotMaxFinal[i] = vMaxVector.minCoeff();
@@ -418,8 +445,8 @@ class RobotModel{
             aMaxqDot[i] = (qDotMaxFinal[i] - model.velocities()[i]) / dtvar[i];
             aMinqDot[i] = (qDotMinFinal[i] - model.velocities()[i]) / dtvar[i];
             
-            aMaxQ[i] = 2.0 * (model.kinematic_limits().f_max_q[i] - model.joints()[i] - model.velocities()[i] * dt2[i]) / std::pow(dt2[i], 2);
-            aMinQ[i] = 2.0 * (model.kinematic_limits().f_min_q[i] - model.joints()[i] - model.velocities()[i] * dt2[i]) / std::pow(dt2[i], 2);
+            aMaxQ[i] = 2.0 * (model.kinematic_limits().qmax()[i] - model.joints()[i] - model.velocities()[i] * dt2[i]) / std::pow(dt2[i], 2);
+            aMinQ[i] = 2.0 * (model.kinematic_limits().qmin()[i] - model.joints()[i] - model.velocities()[i] * dt2[i]) / std::pow(dt2[i], 2);
 
             aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000.0);
             qDotDotMaxFinal[i] = aMaxVector.minCoeff();
