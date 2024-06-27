@@ -132,6 +132,49 @@ project called .vscode) with a file inside it called settings.json with the foll
 
 Notice that we are forcing the cmake extension to pass the arguments of where vcpkg is installed in the line --CMAKE_TOOLCHAIN_FILE: "path to your vcpkg instalation directory"--. This should compile out of the box once all the steps are solved.
 
+## Integrating Plus directly in the source code
+
+When doing demonstrations for outsiders, or trying to use the software in real world environments, having to deal with manually lauching Plus
+can be a bother. Thus CURAN allows you to attach the root path to the Plus Server so that when you launch the main application, ApplicationLauncher
+plus is automatically launches as well, reducing the ammount of work required by you. This is an optinal behavior, thus if you desire to trigger it,
+you must pass to CMAKE the command line option 
+```
+"-DCURAN_PLUS_EXECUTABLE_PATH=C:/Users/joaom/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe"
+```
+Assume that you have your plus executable installed in the root folder
+
+```
+C:/Users/example/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe
+```
+
+If you are using vscode as your development environment, you can instead modify settings.json with the following extra parameter
+
+```
+{
+    "cmake.generator": "Ninja",
+    "cmake.configureArgs": [
+        "-DVCPKG_APPLOCAL_DEPS=ON",
+        "-DX_VCPKG_APPLOCAL_DEPS_INSTALL=ON",
+        "-DVCPKG_MANIFEST_MODE=ON",
+        "-DVCPKG_TARGET_TRIPLET=x64-windows-static",
+        "-DCURAN_PLUS_EXECUTABLE_PATH=C:/Users/example/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe"
+    ],
+    "vcpkg.general.enable": true,
+    "vcpkg.target.hostTriplet": "x64-windows-static",
+    "vcpkg.target.defaultTriplet": "x64-windows-static",
+    "vcpkg.target.useStaticLib": true,
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "path to your vcpkg instalation directory",
+        "CMAKE_MSVC_RUNTIME_LIBRARY" : "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+    },
+    "vcpkg.target.installDependencies": true,
+    "vcpkg.target.preferSystemLibs": false,
+    "vcpkg.target.useManifest": true
+}
+```
+
+Now once you build the executable ApplicationLauncher will deal with the pesky details of launching plus for you.
+
 ## Build Problems
 
 When using VScode to compile the project, if the previous order of the build instructions is not followed properly, the build fails due to incorrect configurations. When you find yourself faced with these problems the simplest solution is to delete the .vscode folder and the build folder and reconfigure the project, this usually solves all the problems. 
