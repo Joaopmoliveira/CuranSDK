@@ -344,39 +344,43 @@ class RobotModel{
 
 };
 
+    /*
+    The function preallocates all the memory once, the first time it is ran, then the memory will never need to be reallocated
+    because it already exists, plus it all packed together, being cache friendly. 
+    */
     template<size_t number_of_joints>
-    Eigen::Matrix<double,number_of_joints,1> add_constraints(const RobotModel<number_of_joints>& model,const Eigen::Matrix<double,number_of_joints,1>& tauStack, double dt){
-        Eigen::Matrix<double,number_of_joints,1> dt2 = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> dtvar = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> qDownBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> qTopBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
+    Eigen::Matrix<double,number_of_joints,1> add_constraints(const RobotModel<number_of_joints>& model,const Eigen::Matrix<double,number_of_joints,1>& tauStack, const double& dt){
+        static Eigen::Matrix<double,number_of_joints,1> dt2 = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> dtvar = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDownBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qTopBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
 
-        Eigen::Matrix<double,number_of_joints,1> qDotMaxFromQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> qDotMinFromQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> qDotMaxFormQDotDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> qDotMinFormQDotDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDotMaxFromQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDotMinFromQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDotMaxFormQDotDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDotMinFormQDotDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
 
-        Eigen::Matrix<double,3,1> vMaxVector = Eigen::Matrix<double,3,1>::Zero(3);
-        Eigen::Matrix<double,3,1> vMinVector = Eigen::Matrix<double,3,1>::Zero(3);
+        static Eigen::Matrix<double,3,1> vMaxVector = Eigen::Matrix<double,3,1>::Zero(3);
+        static Eigen::Matrix<double,3,1> vMinVector = Eigen::Matrix<double,3,1>::Zero(3);
 
-        Eigen::Matrix<double,number_of_joints,1> qDotMaxFinal = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> qDotMinFinal =Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> aMaxqDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> aMinqDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> aMaxQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> aMinQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDotMaxFinal = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDotMinFinal =Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> aMaxqDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> aMinqDot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> aMaxQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> aMinQ = Eigen::Matrix<double,number_of_joints,1>::Zero();
 
-        Eigen::Matrix<double,3,1> aMaxVector = Eigen::Matrix<double,3,1>::Zero(3);
-        Eigen::Matrix<double,3,1> aMinVector = Eigen::Matrix<double,3,1>::Zero(3);
+        static Eigen::Matrix<double,3,1> aMaxVector = Eigen::Matrix<double,3,1>::Zero(3);
+        static Eigen::Matrix<double,3,1> aMinVector = Eigen::Matrix<double,3,1>::Zero(3);
 
-        Eigen::Matrix<double,number_of_joints,1> qDotDotMaxFinal = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> qDotDotMinFinal = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDotDotMaxFinal = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDotDotMinFinal = Eigen::Matrix<double,number_of_joints,1>::Zero();
 
-        Eigen::Matrix<double,number_of_joints,number_of_joints> Iden = Eigen::Matrix<double,number_of_joints,number_of_joints>::Identity();
+        static Eigen::Matrix<double,number_of_joints,number_of_joints> Iden = Eigen::Matrix<double,number_of_joints,number_of_joints>::Identity();
 
-        Eigen::Matrix<double,number_of_joints,1> TauBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,number_of_joints,1> qDotDotGot = Eigen::Matrix<double,number_of_joints,1>::Zero();
-        Eigen::Matrix<double,3,number_of_joints> Js =Eigen::Matrix<double,2,number_of_joints>::Zero(); 
+        static Eigen::Matrix<double,number_of_joints,1> TauBar = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> qDotDotGot = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,3,number_of_joints> Js =Eigen::Matrix<double,2,number_of_joints>::Zero(); 
 
         constexpr double lowestdtFactor = 10;
 
@@ -390,91 +394,133 @@ class RobotModel{
         dtvar[5] = dt;
         dtvar[6] = dt;
 
-        for (Eigen::Index i = 0; i < number_of_joints; i++)
-        {
-            qDownBar[i] = (qDownBar[i]<0) ? 0 : qDownBar[i]: 
-            dt2[i] = (qDownBar[i] < 10 * M_PI / 180) ? ((lowestdtFactor) + (std::sqrt(lowestdtFactor) * std::sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
+        for (Eigen::Index i = 0; i < number_of_joints; ++i){
+            dt2[i] = dtvar[i];
+            qDownBar[i] = (qDownBar[i]<0) ? 0 : qDownBar[i];
+            qTopBar[i] = (qTopBar[i]<0) ? 0 : qTopBar[i];
+            dt2[i] = (qTopBar[i] < 10 * M_PI / 180) ? ((lowestdtFactor) + (std::sqrt(lowestdtFactor) * std::sqrt(qTopBar[i] * 180 / M_PI))) * dtvar[i] : dt2[i];
+            dt2[i] = (qDownBar[i] < 10 * M_PI / 180) ? ((lowestdtFactor) + (std::sqrt(lowestdtFactor) * std::sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i] : dt2[i];
+            dt2[i] = (dt2[i] < lowestdtFactor * dtvar[i]) ? lowestdtFactor * dtvar[i] : dt2[i];
+            dt2[i] = (dt2[i] < lowestdtFactor * dtvar[i]) ? lowestdtFactor * dtvar[i] : dt2[i];
 
+            qDotMaxFromQ[i] = (model.kinematic_limits().f_max_q[i] - model.joints()[i]) / dt2[i];
+            qDotMinFromQ[i] = (model.kinematic_limits().f_min_q[i] - model.joints()[i]) / dt2[i];
+            qDotMaxFormQDotDot[i] = std::sqrt(2.0 * model.kinematic_limits().f_max_ddq[i] * (model.kinematic_limits().f_max_q[i] - model.joints()[i]));
+            qDotMaxFormQDotDot[i] = (model.kinematic_limits().f_max_q[i] - model.joints()[i] < 0) ? 1000000.0 : qDotMaxFormQDotDot[i];
+            qDotMinFormQDotDot[i] = -std::sqrt(2.0 * model.kinematic_limits().f_max_ddq[i] * (model.joints()[i] - model.kinematic_limits().f_min_q[i]));
+            qDotMinFormQDotDot[i] = (model.joints()[i] - model.kinematic_limits().f_min_q[i] < 0) ?-1000000.0 : qDotMinFormQDotDot[i];
 
-            if (qDownBar[i] < 10 * M_PI / 180)
-            {
-
-            if (qDownBar[i] < 0)
-                qDownBar[i] = 0;
-
-            dt2[i] = ((lowestdtFactor) + (sqrt(lowestdtFactor) * sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
-
-            if (dt2[i] < lowestdtFactor * dtvar[i])
-                dt2[i] = lowestdtFactor * dtvar[i];
-        }
-        if (qTopBar[i] < 10 * M_PI / 180)
-        {
-
-            if (qTopBar[i] < 0)
-                qTopBar[i] = 0;
-
-            dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor) * sqrt(qTopBar[i] * 180 / M_PI))) * dtvar[i];
-            if (dt2[i] < lowestdtFactor * dtvar[i])
-                dt2[i] = lowestdtFactor * dtvar[i];
-
-        }
-
-        qDotMaxFromQ[i] = (myIIWALimits.qMax[i] - iiwa->q[i]) / dt2[i];
-        qDotMinFromQ[i] = (myIIWALimits.qMin[i] - iiwa->q[i]) / dt2[i];
-        qDotMaxFormQDotDot[i] = sqrt(2 * myIIWALimits.qDotDotMax[i] * (myIIWALimits.qMax[i] - iiwa->q[i]));
-        qDotMinFormQDotDot[i] = -sqrt(2 * myIIWALimits.qDotDotMax[i] * (iiwa->q[i] - myIIWALimits.qMin[i]));
-
-        if (myIIWALimits.qMax[i] - iiwa->q[i] < 0)
-            qDotMaxFormQDotDot[i] = 1000000;
-
-        if (iiwa->q[i] - myIIWALimits.qMin[i] < 0)
-            qDotMinFormQDotDot[i] = -1000000;
-
-        vMaxVector = Vector3d(myIIWALimits.qDotMax[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
-        qDotMaxFinal[i] = vMaxVector.minCoeff();
-
-
-        vMinVector = Vector3d(myIIWALimits.qDotMin[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
-        qDotMinFinal[i] = vMinVector.maxCoeff();
-
-        aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
-        aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
-
-        aMaxQ[i] = 2 * (myIIWALimits.qMax[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
-        aMinQ[i] = 2 * (myIIWALimits.qMin[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
-
-        aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
-        qDotDotMaxFinal[i] = aMaxVector.minCoeff();
-        aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
-        qDotDotMinFinal[i] = aMinVector.maxCoeff();
-
-        if (qDotDotMaxFinal[i] < qDotDotMinFinal[i])
-        {
-            vMaxVector = Vector3d(INFINITY, qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+            vMaxVector = Vector3d(myIIWALimits.qDotMax[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
             qDotMaxFinal[i] = vMaxVector.minCoeff();
-
-            vMinVector = Vector3d(-INFINITY, qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+            vMinVector = Vector3d(myIIWALimits.qDotMin[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
             qDotMinFinal[i] = vMinVector.maxCoeff();
 
-            aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
-            aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
+            aMaxqDot[i] = (qDotMaxFinal[i] - model.velocities()[i]) / dtvar[i];
+            aMinqDot[i] = (qDotMinFinal[i] - model.velocities()[i]) / dtvar[i];
+            
+            aMaxQ[i] = 2.0 * (model.kinematic_limits().f_max_q[i] - model.joints()[i] - model.velocities()[i] * dt2[i]) / std::pow(dt2[i], 2);
+            aMinQ[i] = 2.0 * (model.kinematic_limits().f_min_q[i] - model.joints()[i] - model.velocities()[i] * dt2[i]) / std::pow(dt2[i], 2);
 
-            aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
+            aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000.0);
             qDotDotMaxFinal[i] = aMaxVector.minCoeff();
-            aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
+            aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000.0);
             qDotDotMinFinal[i] = aMinVector.maxCoeff();
-        }
-    }
 
+            if (qDotDotMaxFinal[i] < qDotDotMinFinal[i])
+            {
+                vMaxVector = Vector3d(std::numeric_limits<double>::max(), qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+                qDotMaxFinal[i] = vMaxVector.minCoeff();
+
+                vMinVector = Vector3d(-std::numeric_limits<double>::max(), qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+                qDotMinFinal[i] = vMinVector.maxCoeff();
+
+                aMaxqDot[i] = (qDotMaxFinal[i] - model.velocities()[i]) / dtvar[i];
+                aMinqDot[i] = (qDotMinFinal[i] - model.velocities()[i]) / dtvar[i];
+
+                aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
+                qDotDotMaxFinal[i] = aMaxVector.minCoeff();
+                aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
+                qDotDotMinFinal[i] = aMinVector.maxCoeff();
+            }
+        }
+
+        Eigen::Matrix<double,number_of_joints,1> qDotDotS = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,1> tauS = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        Eigen::Matrix<double,number_of_joints,number_of_joints> Psat = Iden;
+        bool LimitedExceeded = true;
+        bool CreateTaskSat = false;
+        int NumSatJoints = 0;
+        Eigen::Vector<Eigen::Index,Eigen::Dynamic> theMostCriticalOld = Eigen::Vector<Eigen::Index,Eigen::Dynamic>::Zero(number_of_joints);
+        theMostCriticalOld.conservativeResize(1);
+        theMostCriticalOld[0] = 100;
+        bool isThere = false;
+        int iO = 0;
+        int cycle = 0;
+        while (LimitedExceeded){
+            LimitedExceeded = false;
+            if (CreateTaskSat){
+                Js.conservativeResize(NumSatJoints, number_of_joints);
+                for (Eigen::Index i = 0; i < NumSatJoints; i++){
+                    for (Eigen::Index k = 0; k < number_of_joints; k++)
+                            Js(i, k) = 0;
+                    Js(i,theMostCriticalOld[i]) = 1;
+                }
+                Eigen::Matrix<double,number_of_joints,1> LambdaSatInv = Js * model.invmass() * Js.transpose();
+                Eigen::Matrix<double,number_of_joints,1> LambdaSatInv_aux = LambdaSatInv * LambdaSatInv.transpose();
+                Eigen::Matrix<double,number_of_joints,1> LambdaSat_aux = LambdaSatInv_aux.inverse();
+                Eigen::Matrix<double,number_of_joints,1> LambdaSat = LambdaSatInv.transpose() * LambdaSat_aux;
+
+                Eigen::Matrix<double,number_of_joints,1> JsatBar = model.invmass() * Js.transpose() * LambdaSat;
+                Psat = Iden - Js.transpose() * JsatBar.transpose();
+                VectorNd xDotDot_s = Js * qDotDotS;
+                tauS = Js.transpose() * (LambdaSat * xDotDot_s);
+            }
+
+            TauBar = tauS + Psat * tauStack;
+            qDotDotGot = model.invmass() * (TauBar);
+            isThere = false;
+            for (int i = 0; i < number_of_joints; i++){
+                if ((qDotDotMaxFinal[i] + 0.001 < qDotDotGot[i]) || (qDotDotGot[i] < qDotDotMinFinal[i] - 0.001)){
+                    LimitedExceeded = true;
+                    CreateTaskSat = true;
+                    for (int k = 0; k < theMostCriticalOld.size(); k++)
+                        if (i == theMostCriticalOld[k])
+                            isThere = true;
+                    if (!isThere){
+                        theMostCriticalOld.conservativeResize(iO + 1);
+                        theMostCriticalOld[iO] = i;
+                        iO += 1;
+                    }
+                }
+            }
+
+            if (LimitedExceeded){
+                NumSatJoints = iO;
+                theMostCriticalOld.conservativeResize(iO);
+                cycle += 1;
+                if (cycle > 8)
+                    LimitedExceeded = false;
+
+                for (int i = 0; i < theMostCriticalOld.size(); i++){
+                    Eigen::Index jM = theMostCriticalOld[i];
+                    if (qDotDotGot[jM] > qDotDotMaxFinal[jM])
+                        qDotDotS[jM] = qDotDotMaxFinal[jM];
+
+                    if (qDotDotGot[jM] < qDotDotMinFinal[jM])
+                        qDotDotS[jM] = qDotDotMinFinal[jM];
+                }
+            }
+        }
+        return TauBar;
     }
 
 }
 
-int twomain(){
+int main(){
     try{
         curan::robotic::State state;
         state.q = std::array<double,7>{};
-        robotutils::RobotModel<7> robot_model{"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json"};
+        robotutils::RobotModel<7> robot_model{"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         robot_model.update(state);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -501,7 +547,7 @@ int twomain(){
 
 
 
-int main(){
+int twomain(){
 	unsigned int body1_id, body2_id, body3_id, body4_id, body5_id, body6_id, body7_id;
 	RigidBodyDynamics::Body body1, body2, body3, body4, body5, body6, body7;   
 	RigidBodyDynamics::Joint joint1, joint2, joint3, joint4, joint5, joint6, joint7;   
