@@ -144,7 +144,7 @@ public:
 			throw std::runtime_error("parent must be specified");
 	}
 #else
-	PendinAsyncData(Private, boost::asio::io_context &in_asio_ctx, const std::string &executable, Application *parent, bool all = true) : asio_ctx{in_asio_ctx}, child_out{in_asio_ctx}, parent{in_parent}
+	PendinAsyncData(Private, boost::asio::io_context &in_asio_ctx, const std::string &executable, Application *in_parent, bool all = true) : asio_ctx{in_asio_ctx}, child_out{in_asio_ctx}, parent{in_parent}
 	{
 		++identifier;
 		if (!parent)
@@ -166,7 +166,9 @@ public:
 	{
 		auto shared_async_resource = std::make_shared<PendinAsyncData>(Private(), asio_ctx, executable, in_parent, all);
 		shared_async_resource->launch_all(executable, all);
+#ifdef CURAN_PLUS_EXECUTABLE_PATH // conditionally compile code with plus process lauching mechanics
 		shared_async_resource->post_async_plus_read();
+#endif
 		shared_async_resource->post_async_read();
 		return shared_async_resource;
 	}
@@ -369,11 +371,13 @@ void PendinAsyncData::terminate_all()
 	if (child_process)
 		child_process->terminate();
 	child_process = nullptr;
+	child_out.async_close();
+#ifdef CURAN_PLUS_EXECUTABLE_PATH // conditionally compile code with plus process lauching mechanics
 	if (plus_process)
 		plus_process->terminate();
 	plus_process = nullptr;
-	child_out.async_close();
 	plus_out.async_close();
+#endif
 	parent->warn_terminate_all();
 }
 

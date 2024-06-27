@@ -52,7 +52,7 @@ if(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
   message("Plus path was specified!")
   message("${CURAN_PLUS_EXECUTABLE_PATH}")
 else(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
-  message("Plus path was NOT specified!")
+  message("Plus path executable not specified. If you wish\nto specify it please provive the variable CURAN_PLUS_EXECUTABLE_PATH with the\ncorrect plus server path.")
 endif(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
 
 #Add resources necessary by the display library

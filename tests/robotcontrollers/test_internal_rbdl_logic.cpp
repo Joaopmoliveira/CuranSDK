@@ -390,11 +390,14 @@ class RobotModel{
         dtvar[5] = dt;
         dtvar[6] = dt;
 
-        qDownBar.rowwise()
-
-        dt2[i] = dtvar[i];
-        if (qDownBar[i] < 10 * M_PI / 180)
+        for (Eigen::Index i = 0; i < number_of_joints; i++)
         {
+            qDownBar[i] = (qDownBar[i]<0) ? 0 : qDownBar[i]: 
+            dt2[i] = (qDownBar[i] < 10 * M_PI / 180) ? ((lowestdtFactor) + (std::sqrt(lowestdtFactor) * std::sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
+
+
+            if (qDownBar[i] < 10 * M_PI / 180)
+            {
 
             if (qDownBar[i] < 0)
                 qDownBar[i] = 0;
@@ -415,6 +418,54 @@ class RobotModel{
                 dt2[i] = lowestdtFactor * dtvar[i];
 
         }
+
+        qDotMaxFromQ[i] = (myIIWALimits.qMax[i] - iiwa->q[i]) / dt2[i];
+        qDotMinFromQ[i] = (myIIWALimits.qMin[i] - iiwa->q[i]) / dt2[i];
+        qDotMaxFormQDotDot[i] = sqrt(2 * myIIWALimits.qDotDotMax[i] * (myIIWALimits.qMax[i] - iiwa->q[i]));
+        qDotMinFormQDotDot[i] = -sqrt(2 * myIIWALimits.qDotDotMax[i] * (iiwa->q[i] - myIIWALimits.qMin[i]));
+
+        if (myIIWALimits.qMax[i] - iiwa->q[i] < 0)
+            qDotMaxFormQDotDot[i] = 1000000;
+
+        if (iiwa->q[i] - myIIWALimits.qMin[i] < 0)
+            qDotMinFormQDotDot[i] = -1000000;
+
+        vMaxVector = Vector3d(myIIWALimits.qDotMax[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+        qDotMaxFinal[i] = vMaxVector.minCoeff();
+
+
+        vMinVector = Vector3d(myIIWALimits.qDotMin[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+        qDotMinFinal[i] = vMinVector.maxCoeff();
+
+        aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
+        aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
+
+        aMaxQ[i] = 2 * (myIIWALimits.qMax[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
+        aMinQ[i] = 2 * (myIIWALimits.qMin[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
+
+        aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
+        qDotDotMaxFinal[i] = aMaxVector.minCoeff();
+        aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
+        qDotDotMinFinal[i] = aMinVector.maxCoeff();
+
+        if (qDotDotMaxFinal[i] < qDotDotMinFinal[i])
+        {
+            vMaxVector = Vector3d(INFINITY, qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+            qDotMaxFinal[i] = vMaxVector.minCoeff();
+
+            vMinVector = Vector3d(-INFINITY, qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+            qDotMinFinal[i] = vMinVector.maxCoeff();
+
+            aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
+            aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
+
+            aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
+            qDotDotMaxFinal[i] = aMaxVector.minCoeff();
+            aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
+            qDotDotMinFinal[i] = aMinVector.maxCoeff();
+        }
+    }
+
     }
 
 }

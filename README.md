@@ -196,6 +196,6 @@ The volume reconstruction code is essencially a copy of [IGSIO](https://github.c
 >
 > -Rui Coelho (commited to the implementation of the RealTime kernel)
 >
-> -Álvaro Lopes (commited to temporal calibration) 
+> -Álvaro Lopes (commited to temporal calibration and registration) 
 > 
 > - (You) Become a contributer!
