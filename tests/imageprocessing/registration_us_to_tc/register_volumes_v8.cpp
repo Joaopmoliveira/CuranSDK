@@ -239,7 +239,7 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
     return {optimizer->GetValue(), final_transformation,info_registration.initial_rotation};
 }
 
-    Eigen::Matrix<double,4,4> icp_registration(Eigen::Matrix4d initial_config){
+std::tuple<double,Eigen::Matrix<double,4,4>> icp_registration(Eigen::Matrix4d initial_config){
     constexpr unsigned int Dimension = 3;
     using PointSetType = itk::PointSet<float, Dimension>;
     
@@ -273,8 +273,6 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
     }
 
     fixedPointSet->SetPoints(fixedPointContainer);
-    std::cout << "Number of fixed Points = "
-                << fixedPointSet->GetNumberOfPoints() << std::endl;
     
     // Read the file containing coordinates of moving points.
     std::ifstream movingFile;
@@ -294,8 +292,6 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
         pointId++;
     }
     movingPointSet->SetPoints(movingPointContainer);
-    std::cout << "Number of moving Points = "
-                << movingPointSet->GetNumberOfPoints() << std::endl;
 
     using MetricType =
         itk::EuclideanDistancePointMetric<PointSetType, PointSetType>;
@@ -361,11 +357,6 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
         std::cerr << e << std::endl;
     }
     
-    std::cout << "Solution = " << transform->GetParameters() << std::endl;
-    std::cout << "Stopping condition: "
-                << optimizer->GetStopConditionDescription() << std::endl;
-
-
     Eigen::Matrix<double,4,4> final_transformation = Eigen::Matrix<double,4,4>::Identity();
     for(size_t row = 0; row < 3; ++row){
         final_transformation(row,3) = transform->GetOffset()[row];
@@ -373,12 +364,9 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
             final_transformation(row,col) = transform->GetMatrix()(row,col);
         }
     }
-
-    std::cout << "Final transformation:" << std::endl;
-    std::cout << final_transformation << std::endl;
-
-    return final_transformation;
-    }
+    // Not sure about the optimization value
+    return {optimizer->GetValue().two_norm(),final_transformation};
+}
 
 
 void print_image_info(itk::Image<PixelType,3>::Pointer image, std::string name){
@@ -905,10 +893,36 @@ int main(int argc, char **argv)
     }
 
     //Já tá pronto para receber as configs em eigen
-    //auto icp_solution = icp_registration(initial_config);
+    auto run_parameterized_icp_optimization = [&](){
+        std::vector<std::tuple<double, Eigen::Matrix<double,4,4>>> full_runs_inner;
+        {         
+            std::mutex mut;
+            auto pool = curan::utilities::ThreadPool::create(6,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
+            size_t counter = 0;
+            for (const auto &initial_config : angles_regular){
+                curan::utilities::Job job{"solving icp",[&](){
+                    auto solution = icp_registration(initial_config);
+                    //auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,nullptr,nullptr,initial_config},RegistrationParameters{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
+                    {
+                        std::lock_guard<std::mutex> g{mut};
+                        full_runs_inner.emplace_back(solution);
+                        ++counter;
+                        std::printf("%.2f %% %.3f\n",counter/(double)angles_regular.size(),std::get<0>(solution));
+                    }              
+                }};
+                pool->submit(job);
+            } 
+        }
+        return full_runs_inner;
+    };
+
+    /*
+    There you go, there are n paralel solutions in the return vector
+    */
+    auto paralel_solutions = run_parameterized_icp_optimization();
 
     //modify_image_with_transform(icp_solution.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    //print_image_with_transform(pointer2movingimage,"moving_correct_icp.mha");
+    print_image_with_transform(pointer2movingimage,"moving_correct_icp.mha");
     
 
     auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales,double learning_rate, double relaxation_factor,size_t window_size, auto piramid_sizes, auto bluering_sizes){
