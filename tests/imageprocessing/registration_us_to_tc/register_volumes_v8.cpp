@@ -921,6 +921,10 @@ int main(int argc, char **argv)
     */
     auto paralel_solutions = run_parameterized_icp_optimization();
 
+    /*
+    Agora tens de decidier o que queres fazer com estes valores, não estou 100% dentro de quais são as tuas ideias ou modificações locais, mas pronto.
+    */
+
     //modify_image_with_transform(icp_solution.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_correct_icp.mha");
     
