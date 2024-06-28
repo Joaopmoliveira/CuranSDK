@@ -8,50 +8,6 @@
 #include <fstream>
 #include <sstream>
 
-std::tuple<double,size_t,size_t,size_t,size_t,double> eval_model_mass(RigidBodyDynamics::Model* model, RigidBodyDynamics::Math::VectorNd Q){
-	RigidBodyDynamics::Math::VectorNd QDot = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
-	RigidBodyDynamics::Math::VectorNd QDDot = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
-	RigidBodyDynamics::Math::VectorNd Tau = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
-	RigidBodyDynamics::Math::VectorNd TauInv = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
-
-	RigidBodyDynamics::Math::MatrixNd H1 = RigidBodyDynamics::Math::MatrixNd::Constant ((size_t) model->dof_count, (size_t) model->dof_count, 0.);
-    RigidBodyDynamics::Math::MatrixNd H2 = RigidBodyDynamics::Math::MatrixNd::Constant ((size_t) model->dof_count, (size_t) model->dof_count, 0.);
-	RigidBodyDynamics::Math::VectorNd C = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
-	RigidBodyDynamics::Math::VectorNd QDDot_zero = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
-	RigidBodyDynamics::Math::VectorNd QDDot_crba = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
-    
-    RigidBodyDynamics::UpdateKinematics(*model,Q,QDot,QDDot);
-    H1.setZero();
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    CompositeRigidBodyAlgorithm(*model, Q, H1, false);
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    size_t difference_with_aprox =  std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-
-    H2.setZero();
-    begin = std::chrono::steady_clock::now();
-    CompositeRigidBodyAlgorithm(*model, Q, H2, true);
-    end = std::chrono::steady_clock::now();
-    size_t difference_without_aprox = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-
-    Eigen::Matrix<double,7,7> value = H2;
-    begin = std::chrono::steady_clock::now();
-    auto inverse_1 = value.inverse();
-    end = std::chrono::steady_clock::now();
-    size_t inversion_with_fixed_matrix = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-
-    begin = std::chrono::steady_clock::now();
-    auto inverse_2 = H2.inverse();
-    end = std::chrono::steady_clock::now();
-    size_t inversion_with_variable_matrix = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-    return {(H2-H1).norm(),difference_with_aprox,difference_without_aprox,inversion_with_variable_matrix,inversion_with_fixed_matrix,(inverse_1-inverse_2).norm()};
-}
-
-void print_body(const RigidBodyDynamics::Body& body){
-    std::cout << "body:\n";
-    std::cout << "center of mass: \n" << body.mCenterOfMass << std::endl;
-    std::cout << "inertia: \n" << body.mInertia << std::endl;
-    std::cout << "mass: \n" << body.mMass << std::endl;
-}
 
 
 
@@ -375,6 +331,11 @@ class RobotModel{
     The function preallocates all the memory once, the first time it is ran, then the memory will never need to be reallocated
     because it already exists, plus it all packed together, being cache friendly. 
     */
+
+   constexpr double deg2rad(double in){
+        return in*M_PI / 180.0;
+   };
+
     template<size_t number_of_joints>
     Eigen::Matrix<double,number_of_joints,1> add_constraints(const RobotModel<number_of_joints>& model,const Eigen::Matrix<double,number_of_joints,1>& tauStack, const double& dt){
         static Eigen::Matrix<double,number_of_joints,1> dt2 = Eigen::Matrix<double,number_of_joints,1>::Zero();
@@ -428,22 +389,25 @@ class RobotModel{
             qTopBar[i] = std::max(qTopBar[i],0.0);
             
             // recompute the delta time to reach the boundary condition
-            dt2[i] = (qTopBar[i] < 10.0 * M_PI / 180.0) ? ((lowestdtFactor) + (std::sqrt(lowestdtFactor) * std::sqrt(qTopBar[i] * 180 / M_PI))) * dtvar[i] : dt2[i];
-            dt2[i] = (qDownBar[i] < 10.0 * M_PI / 180.0) ? ((lowestdtFactor) + (std::sqrt(lowestdtFactor) * std::sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i] : dt2[i];
+            dt2[i] = (qTopBar[i] < deg2rad(10.0)) ? (lowestdtFactor + std::sqrt(lowestdtFactor) * std::sqrt(deg2rad(qTopBar[i]))) * dtvar[i] : dt2[i];
+            dt2[i] = (qDownBar[i] < deg2rad(10.0)) ? (lowestdtFactor + std::sqrt(lowestdtFactor) * std::sqrt(deg2rad(qDownBar[i]))) * dtvar[i] : dt2[i];
 
             // impose a lower bound on this delta time
-            dt2[i] = ( ((qDownBar[i] < 10 * M_PI / 180)||(qTopBar[i] < 10 * M_PI / 180)) && dt2[i] < lowestdtFactor * dtvar[i]) ? lowestdtFactor * dtvar[i] : dt2[i];
+            dt2[i] = ( ((qDownBar[i] < deg2rad(10))||(qTopBar[i] < deg2rad(10))) && dt2[i] < lowestdtFactor * dtvar[i]) ? lowestdtFactor * dtvar[i] : dt2[i];
 
             // compute maximum velocity given the boundary condition
             qDotMaxFromQ[i] = (model.kinematic_limits().qmax()[i] - model.joints()[i]) / dt2[i];
             qDotMinFromQ[i] = (model.kinematic_limits().qmin()[i] - model.joints()[i]) / dt2[i];
 
-            qDotMaxFormQDotDot[i] = std::sqrt(2.0 * model.kinematic_limits().qmax()[i] * (model.kinematic_limits().qmax()[i] - model.joints()[i]));
-            qDotMaxFormQDotDot[i] = (model.kinematic_limits().qmax()[i] - model.joints()[i] < 0) ? 1000000.0 : qDotMaxFormQDotDot[i];
+            // compute maximum acceleration given this geometric constraint
+            qDotMaxFormQDotDot[i] = std::sqrt(2.0 * model.kinematic_limits().ddqmax()[i] * (model.kinematic_limits().qmax()[i] - model.joints()[i]));
+            qDotMaxFormQDotDot[i] = (model.kinematic_limits().qmax()[i] - model.joints()[i] < 0.0) ? 1000000.0 : qDotMaxFormQDotDot[i];
 
+            // compute maximum acceleration given this geometric constraint
             qDotMinFormQDotDot[i] = -std::sqrt(2.0 * model.kinematic_limits().ddqmax()[i] * (model.joints()[i] - model.kinematic_limits().qmin()[i]));
-            qDotMinFormQDotDot[i] = (model.joints()[i] - model.kinematic_limits().qmin()[i] < 0) ?-1000000.0 : qDotMinFormQDotDot[i];
+            qDotMinFormQDotDot[i] = (model.joints()[i] - model.kinematic_limits().qmin()[i] < 0.0) ?-1000000.0 : qDotMinFormQDotDot[i];
                 
+            
             vMaxVector = Vector3d(model.kinematic_limits().dqmax()[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
             qDotMaxFinal[i] = vMaxVector.minCoeff();
             vMinVector = Vector3d(model.kinematic_limits().dqmin()[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
@@ -471,9 +435,9 @@ class RobotModel{
                 aMaxqDot[i] = (qDotMaxFinal[i] - model.velocities()[i]) / dtvar[i];
                 aMinqDot[i] = (qDotMinFinal[i] - model.velocities()[i]) / dtvar[i];
 
-                aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
+                aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000.0);
                 qDotDotMaxFinal[i] = aMaxVector.minCoeff();
-                aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
+                aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000.0);
                 qDotDotMinFinal[i] = aMinVector.maxCoeff();
             }
         }
@@ -481,9 +445,9 @@ class RobotModel{
         Eigen::Matrix<double,number_of_joints,1> qDotDotS = Eigen::Matrix<double,number_of_joints,1>::Zero();
         Eigen::Matrix<double,number_of_joints,1> tauS = Eigen::Matrix<double,number_of_joints,1>::Zero();
         Eigen::Matrix<double,number_of_joints,number_of_joints> Psat = Iden;
-        bool LimitedExceeded = true;
+        bool violation_detected = true;
         bool CreateTaskSat = false;
-        int NumSatJoints = 0;
+        Eigen::Index NumSatJoints = 0;
         Eigen::Vector<Eigen::Index,Eigen::Dynamic> theMostCriticalOld = Eigen::Vector<Eigen::Index,Eigen::Dynamic>::Zero(number_of_joints);
         theMostCriticalOld.conservativeResize(1);
         theMostCriticalOld[0] = 100;
@@ -491,8 +455,8 @@ class RobotModel{
         int iO = 0;
         int cycle = 0;
         Eigen::Matrix<double,Eigen::Dynamic,number_of_joints> Js =Eigen::Matrix<double,Eigen::Dynamic,number_of_joints>::Zero(3,number_of_joints); 
-        while (LimitedExceeded){
-            LimitedExceeded = false;
+        while (violation_detected){
+            violation_detected = false;
             if (CreateTaskSat){
                 Js.conservativeResize(NumSatJoints, number_of_joints);
                 for (Eigen::Index i = 0; i < NumSatJoints; i++){
@@ -514,11 +478,11 @@ class RobotModel{
             TauBar = tauS + Psat * tauStack;
             qDotDotGot = model.invmass() * (TauBar);
             isThere = false;
-            for (int i = 0; i < number_of_joints; i++){
+            for (Eigen::Index i = 0; i < number_of_joints; ++i){
                 if ((qDotDotMaxFinal[i] + 0.001 < qDotDotGot[i]) || (qDotDotGot[i] < qDotDotMinFinal[i] - 0.001)){
-                    LimitedExceeded = true;
+                    violation_detected = true;
                     CreateTaskSat = true;
-                    for (int k = 0; k < theMostCriticalOld.size(); k++)
+                    for (Eigen::Index k = 0; k < theMostCriticalOld.size(); ++k)
                         if (i == theMostCriticalOld[k])
                             isThere = true;
                     if (!isThere){
@@ -529,12 +493,12 @@ class RobotModel{
                 }
             }
 
-            if (LimitedExceeded){
+            if (violation_detected){
                 NumSatJoints = iO;
                 theMostCriticalOld.conservativeResize(iO);
                 cycle += 1;
                 if (cycle > 8)
-                    LimitedExceeded = false;
+                    violation_detected = false;
 
                 for (size_t i = 0; i < theMostCriticalOld.size(); ++i){
                     Eigen::Index jM = theMostCriticalOld[i];
@@ -551,6 +515,26 @@ class RobotModel{
 
 }
 
+void predict_mass_classic(){
+
+}
+
+void predict_mass_mine(){
+
+}
+
+void predict_actuation_torque_classic(){
+
+}
+
+void predict_actuation_torque_mine(){
+
+}
+
+void compare_predictions(){
+
+}
+
 int main(){
     try{
         curan::robotic::State state;
@@ -558,15 +542,31 @@ int main(){
         robotutils::RobotModel<7> robot_model{"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         robot_model.update(state);
+        auto computed_torque = robotutils::add_constraints<7>(robot_model,Eigen::Matrix<double,7,1>::Ones(),0.005);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        auto first_round = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+
+        begin = std::chrono::steady_clock::now();
+        computed_torque = robotutils::add_constraints<7>(robot_model,Eigen::Matrix<double,7,1>::Ones(),0.002);
+        end = std::chrono::steady_clock::now();
+
+        auto second_round = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+
+        begin = std::chrono::steady_clock::now();
+        computed_torque = robotutils::add_constraints<7>(robot_model,Eigen::Matrix<double,7,1>::Ones(),0.001);
+        end = std::chrono::steady_clock::now();
+
+        auto third_round = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+
         std::cout << "joint: " << robot_model.joints().transpose() << std::endl;
         std::cout << "vel: " << robot_model.velocities().transpose() << std::endl;
         std::cout << "accel: " << robot_model.accelerations().transpose() << std::endl;
         std::cout << "translation: " << robot_model.translation().transpose() << std::endl;
         std::cout << "mass: " << robot_model.mass() << std::endl;
-        std::cout << "time taken: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
-        auto computed_torque = robotutils::add_constraints<7>(robot_model,Eigen::Matrix<double,7,1>::Ones(),0.005);
-        std::cout << "torque constrained: " << computed_torque.transpose() << std::endl;
+        std::cout << "time taken (first round): " << first_round << std::endl;
+        std::cout << "time taken (second round): " << second_round << std::endl;
+        std::cout << "time taken (third round): " << third_round << std::endl;
+        //std::cout << "torque constrained: " << computed_torque.transpose() << std::endl;
     } catch(std::runtime_error& e){
         std::cout << "exception thrown : " << e.what() << std::endl;
         return 1; 
@@ -581,6 +581,51 @@ int main(){
 
 
 
+/*
+std::tuple<double,size_t,size_t,size_t,size_t,double> eval_model_mass(RigidBodyDynamics::Model* model, RigidBodyDynamics::Math::VectorNd Q){
+	RigidBodyDynamics::Math::VectorNd QDot = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
+	RigidBodyDynamics::Math::VectorNd QDDot = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
+	RigidBodyDynamics::Math::VectorNd Tau = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
+	RigidBodyDynamics::Math::VectorNd TauInv = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
+
+	RigidBodyDynamics::Math::MatrixNd H1 = RigidBodyDynamics::Math::MatrixNd::Constant ((size_t) model->dof_count, (size_t) model->dof_count, 0.);
+    RigidBodyDynamics::Math::MatrixNd H2 = RigidBodyDynamics::Math::MatrixNd::Constant ((size_t) model->dof_count, (size_t) model->dof_count, 0.);
+	RigidBodyDynamics::Math::VectorNd C = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
+	RigidBodyDynamics::Math::VectorNd QDDot_zero = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
+	RigidBodyDynamics::Math::VectorNd QDDot_crba = RigidBodyDynamics::Math::VectorNd::Constant ((size_t) model->dof_count, 0.);
+    
+    RigidBodyDynamics::UpdateKinematics(*model,Q,QDot,QDDot);
+    H1.setZero();
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    CompositeRigidBodyAlgorithm(*model, Q, H1, false);
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    size_t difference_with_aprox =  std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+
+    H2.setZero();
+    begin = std::chrono::steady_clock::now();
+    CompositeRigidBodyAlgorithm(*model, Q, H2, true);
+    end = std::chrono::steady_clock::now();
+    size_t difference_without_aprox = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+
+    Eigen::Matrix<double,7,7> value = H2;
+    begin = std::chrono::steady_clock::now();
+    auto inverse_1 = value.inverse();
+    end = std::chrono::steady_clock::now();
+    size_t inversion_with_fixed_matrix = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+
+    begin = std::chrono::steady_clock::now();
+    auto inverse_2 = H2.inverse();
+    end = std::chrono::steady_clock::now();
+    size_t inversion_with_variable_matrix = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+    return {(H2-H1).norm(),difference_with_aprox,difference_without_aprox,inversion_with_variable_matrix,inversion_with_fixed_matrix,(inverse_1-inverse_2).norm()};
+}
+
+void print_body(const RigidBodyDynamics::Body& body){
+    std::cout << "body:\n";
+    std::cout << "center of mass: \n" << body.mCenterOfMass << std::endl;
+    std::cout << "inertia: \n" << body.mInertia << std::endl;
+    std::cout << "mass: \n" << body.mMass << std::endl;
+}
 
 
 int twomain(){
@@ -743,3 +788,4 @@ int twomain(){
 
     return 0;
 }
+*/
