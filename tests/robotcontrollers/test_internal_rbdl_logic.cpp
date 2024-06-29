@@ -347,6 +347,10 @@ class RobotModel{
         return in*M_PI / 180.0;
    };
 
+   constexpr double rad2deg(double in){
+        return in* 180.0/M_PI;
+   };
+
     template<size_t number_of_joints>
     Eigen::Matrix<double,number_of_joints,1> add_constraints(const RobotModel<number_of_joints>& model,const Eigen::Matrix<double,number_of_joints,1>& tauStack, const double& dt){
         static Eigen::Matrix<double,number_of_joints,1> dt2 = Eigen::Matrix<double,number_of_joints,1>::Zero();
@@ -400,8 +404,8 @@ class RobotModel{
             qTopBar[i] = std::max(qTopBar[i],0.0);
             
             // recompute the delta time to reach the boundary condition
-            dt2[i] = (qDownBar[i] < deg2rad(10.0)) ? (lowestdtFactor + std::sqrt(lowestdtFactor) * std::sqrt(deg2rad(qDownBar[i]))) * dtvar[i] : dt2[i];
-            dt2[i] = (qTopBar[i] < deg2rad(10.0)) ? (lowestdtFactor + std::sqrt(lowestdtFactor) * std::sqrt(deg2rad(qTopBar[i]))) * dtvar[i] : dt2[i];
+            dt2[i] = (qDownBar[i] < deg2rad(10.0)) ? (lowestdtFactor + std::sqrt(lowestdtFactor) * std::sqrt(rad2deg(qDownBar[i]))) * dtvar[i] : dt2[i];
+            dt2[i] = (qTopBar[i] < deg2rad(10.0)) ? (lowestdtFactor + std::sqrt(lowestdtFactor) * std::sqrt(rad2deg(qTopBar[i]))) * dtvar[i] : dt2[i];
             
             // impose a lower bound on this delta time
             dt2[i] = ( ((qDownBar[i] < deg2rad(10) ) || (qTopBar[i] < deg2rad(10) )) && (dt2[i] < lowestdtFactor * dtvar[i])) ? lowestdtFactor * dtvar[i] : dt2[i];
@@ -451,13 +455,6 @@ class RobotModel{
                 aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000.0);
                 qDotDotMinFinal[i] = aMinVector.maxCoeff();
             }
-            std::cout << "index: " << i << " dt2: " << dt2[i] 
-                                    << " qDownBar: " << qDownBar[i] 
-                                    << " qTopBar: " << qTopBar[i] 
-                                    << " qDotMaxFromQ: " << qDotMaxFromQ[i]
-                                    << " qDotMinFromQ: " << qDotMinFromQ[i] 
-                                    << " qDotMaxFormQDotDot: " << qDotMaxFormQDotDot[i]  
-                                    << " qDotMinFormQDotDot: "<< qDotMinFormQDotDot[i] << std::endl;
         }
 
         Eigen::Matrix<double,number_of_joints,1> qDotDotS = Eigen::Matrix<double,number_of_joints,1>::Zero();
@@ -530,7 +527,6 @@ class RobotModel{
         }
         return TauBar;
     }
-
 }
 
 struct RobotLimits
@@ -616,7 +612,6 @@ VectorNd addConstraints(RobotParameters* iiwa,RobotLimits& myIIWALimits,const Ve
                 qDownBar[i] = 0;
 
             dt2[i] = ((lowestdtFactor) + (sqrt(lowestdtFactor) * sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
-
             if (dt2[i] < lowestdtFactor * dtvar[i])
                 dt2[i] = lowestdtFactor * dtvar[i];
         }
@@ -625,7 +620,6 @@ VectorNd addConstraints(RobotParameters* iiwa,RobotLimits& myIIWALimits,const Ve
 
             if (qTopBar[i] < 0)
                 qTopBar[i] = 0;
-
             dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor) * sqrt(qTopBar[i] * 180 / M_PI))) * dtvar[i];
             if (dt2[i] < lowestdtFactor * dtvar[i])
                 dt2[i] = lowestdtFactor * dtvar[i];
@@ -677,15 +671,6 @@ VectorNd addConstraints(RobotParameters* iiwa,RobotLimits& myIIWALimits,const Ve
             aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
             qDotDotMinFinal[i] = aMinVector.maxCoeff();
         }
-
-        std::cout << "index: " << i << " dt2: " << dt2[i] 
-                                    << " qDownBar: " << qDownBar[i] 
-                                    << " qTopBar: " << qTopBar[i] 
-                                    << " qDotMaxFromQ: " << qDotMaxFromQ[i]
-                                    << " qDotMinFromQ: " << qDotMinFromQ[i] 
-                                    << " qDotMaxFormQDotDot: " << qDotMaxFormQDotDot[i]  
-                                    << " qDotMinFormQDotDot: "<< qDotMinFormQDotDot[i] << std::endl;
-
     }
 
 
@@ -776,7 +761,6 @@ VectorNd addConstraints(RobotParameters* iiwa,RobotLimits& myIIWALimits,const Ve
             }
         }
     }
-
     VectorNd SJSTorque = TauBar;
     return SJSTorque;
 };
@@ -818,7 +802,7 @@ std::tuple<double,double> compare_predictions(curan::robotic::State state,robotu
     Eigen::VectorXd prediction3 = Eigen::VectorXd::Zero(7);
     for(size_t index = 0; index < 7; ++index)
         prediction3[index] = prediction2[index];
-    auto difference_torques = (prediction-prediction3).squaredNorm();
+    auto difference_torques = (prediction-prediction3).squaredNorm()/prediction.squaredNorm();
     return {difference_masses,difference_torques};
 
 }
@@ -881,13 +865,13 @@ int main(){
 
     std::cout << "mine limits:\n" << robot_model.kinematic_limits() << std::endl;
 
-    double time = 0.1*31765;
+    double time = 0.1;
     curan::robotic::State state;
     state.q = std::array<double,7>{};
     state.dq = std::array<double,7>{};
     state.ddq = std::array<double,7>{};
     std::list<std::tuple<double,double>> list_of_comparisons;
-    for(size_t iter = 0 ; iter < 4; ++iter,time+=0.1){
+    for(size_t iter = 0 ; iter < 100000; ++iter,time+=0.1){
         for(size_t index = 0; index < 7; ++index){
             state.q[index] = 3*std::sin(time);
             state.cmd_tau[index] = 8*std::cos(time);
