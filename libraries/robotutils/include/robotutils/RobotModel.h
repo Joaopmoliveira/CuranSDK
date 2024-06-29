@@ -134,6 +134,8 @@ class RobotModel{
     //Flange position
     Eigen::Vector3d f_flange_position;
 
+    curan::robotic::State* f_ptr_state = nullptr;
+
     const KinematicLimits<model_joints> f_kinematic_limits;
 
     void initialize_all(const std::filesystem::path& models_data_directory){
@@ -221,6 +223,7 @@ class RobotModel{
     }
 
     void update(curan::robotic::State& in_state){
+        f_ptr_state = in_state;
         f_sample_time = in_state.sampleTime;
         f_q = curan::robotic::convert(in_state.q);
         f_dq = curan::robotic::convert(in_state.dq);
@@ -310,6 +313,10 @@ class RobotModel{
                 in_state.rotation[cart_row][cart_col] = f_end_effector(cart_row,cart_col);
         }
 
+    }
+
+    inline const curan::robotic::State* measured_state() const {
+        return f_ptr_state;
     }
 
     inline const Eigen::Matrix<double,6,model_joints>& jacobian() const {
