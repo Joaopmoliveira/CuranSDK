@@ -1,7 +1,7 @@
 add_library(robotutils STATIC
 src/LBRController.cpp
-#src/HandGuidance.cpp
-#src/PassiveControllerAude.cpp
+src/HandGuidance.cpp
+src/PassiveControllerAude.cpp
 #src/NeedleController.cpp
 #src/WallAvoidanceData.cpp
 src/FilterRippleFirstHarmonic.cpp

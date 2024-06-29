@@ -126,6 +126,8 @@ class RobotModel{
     Eigen::Matrix<double,6,model_joints> f_jacobian;
     Eigen::Matrix<double,4,4> f_end_effector;
 
+    double f_sample_time = 0.001;
+
     // Variable that signals if the control loop should continue
     std::atomic<bool> f_continue_robot_motion = true;
 
@@ -219,6 +221,7 @@ class RobotModel{
     }
 
     void update(curan::robotic::State& in_state){
+        f_sample_time = in_state.sampleTime;
         f_q = curan::robotic::convert(in_state.q);
         f_dq = curan::robotic::convert(in_state.dq);
         f_ddq = curan::robotic::convert(in_state.ddq);
@@ -315,6 +318,10 @@ class RobotModel{
 
     inline const Eigen::Matrix<double,model_joints,model_joints>& mass() const {
         return f_massmatrix;
+    }
+
+    inline double sample_time() const{
+        return f_sample_time;
     }
 
     inline const Eigen::Matrix<double,model_joints,model_joints>& invmass() const {

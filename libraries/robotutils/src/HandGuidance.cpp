@@ -6,13 +6,13 @@ namespace robotic {
     HandGuidance::HandGuidance(){
     }
 
-    EigenState&& HandGuidance::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
+    EigenState&& HandGuidance::update(const RobotModel<number_of_joints>& iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
         static double currentTime = 0.0;
         /*
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
         */
        
-        state.cmd_tau = -iiwa->M * 10 * iiwa->qDot;
+        state.cmd_tau = -iiwa.mass() * 10 * iiwa.velocities();
 
 
         /*
@@ -25,9 +25,9 @@ namespace robotic {
         both commanded and current position is always zero, which results in the friction compensator being "shut off". We avoid this problem
         by adding a small perturbation to the reference position with a relative high frequency. 
         */
-        state.cmd_q = state.q + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
+        state.cmd_q = iiwa.joints() + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
 
-        currentTime += state.sampleTime;
+        currentTime += iiwa.sample_time();
         return std::move(state);
     }
 
