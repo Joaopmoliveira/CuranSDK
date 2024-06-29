@@ -3,6 +3,7 @@
 
 #include "RobotState.h"
 #include <nlohmann/json.hpp>
+#include <fstream>
 
 namespace curan {
 namespace robotic {
@@ -145,7 +146,7 @@ class RobotModel{
         f_jacobian = Eigen::Matrix<double,6,model_joints>::Zero();
 
         // except the electrical flange which we set to this offset
-        f_flange_position= Vector3d(0, 0, 0.045); 
+        f_flange_position= Eigen::Vector3d(0, 0, 0.045); 
 
         // Parse mass data from input file
         nlohmann::json table_data = nlohmann::json::parse(std::ifstream(models_data_directory));
@@ -217,7 +218,7 @@ class RobotModel{
         f_continue_robot_motion.store(false,std::memory_order_relaxed);
     }
 
-    void update(const curan::robotic::State& in_state){
+    void update(curan::robotic::State& in_state){
         f_q = curan::robotic::convert(in_state.q);
         f_dq = curan::robotic::convert(in_state.dq);
         f_ddq = curan::robotic::convert(in_state.ddq);
@@ -232,7 +233,6 @@ class RobotModel{
             RigidBodyDynamics::UpdateKinematics(f_model,rbdl_q,rbdl_dq,rbdl_ddq);
         }
         
-
         // now we want the kinematic data 
         f_end_effector.block<3,1>(0,3) = RigidBodyDynamics::CalcBodyToBaseCoordinates(f_model, f_q , f_body_id[model_joints-1], f_flange_position, false);
         f_end_effector.block<3,3>(0,0) = RigidBodyDynamics::CalcBodyWorldOrientation(f_model, f_q, f_body_id[model_joints-1], false).transpose();
@@ -291,6 +291,22 @@ class RobotModel{
         }
 
         f_inverse_massmatrix = f_massmatrix.inverse();
+
+        for(size_t row = 0; row < model_joints; ++row){
+            in_state.gravity[row] = f_gravity[row];
+            in_state.coriolis[row] = f_coriolis[row]; 
+            for(size_t col = 0; col < model_joints; ++col){
+                if(row < 6) in_state.jacobian[row][col] = f_jacobian(row,col);
+                in_state.massmatrix[row][col] = f_massmatrix(row,col);
+                in_state.invmassmatrix[row][col] = f_inverse_massmatrix(row,col);
+            }
+        }
+        for(size_t cart_row = 0; cart_row < 3; ++cart_row){
+            in_state.translation[cart_row] = f_end_effector(cart_row,3);
+            for(size_t cart_col = 0; cart_col < 3; ++cart_col)
+                in_state.rotation[cart_row][cart_col] = f_end_effector(cart_row,cart_col);
+        }
+
     }
 
     inline const Eigen::Matrix<double,6,model_joints>& jacobian() const {
@@ -416,9 +432,9 @@ class RobotModel{
             qDotMinFormQDotDot[i] = (model.joints()[i] - model.kinematic_limits().qmin()[i] < 0.0) ?-1000000.0 : qDotMinFormQDotDot[i];
                 
             
-            vMaxVector = Vector3d(model.kinematic_limits().dqmax()[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+            vMaxVector = Eigen::Vector3d(model.kinematic_limits().dqmax()[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
             qDotMaxFinal[i] = vMaxVector.minCoeff();
-            vMinVector = Vector3d(model.kinematic_limits().dqmin()[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+            vMinVector = Eigen::Vector3d(model.kinematic_limits().dqmin()[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
             qDotMinFinal[i] = vMinVector.maxCoeff();
 
             aMaxqDot[i] = (qDotMaxFinal[i] - model.velocities()[i]) / dtvar[i];
@@ -427,25 +443,25 @@ class RobotModel{
             aMaxQ[i] = 2.0 * (model.kinematic_limits().qmax()[i] - model.joints()[i] - model.velocities()[i] * dt2[i]) / std::pow(dt2[i], 2);
             aMinQ[i] = 2.0 * (model.kinematic_limits().qmin()[i] - model.joints()[i] - model.velocities()[i] * dt2[i]) / std::pow(dt2[i], 2);
 
-            aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000.0);
+            aMaxVector = Eigen::Vector3d(aMaxQ[i], aMaxqDot[i], 10000000.0);
             qDotDotMaxFinal[i] = aMaxVector.minCoeff();
-            aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000.0);
+            aMinVector = Eigen::Vector3d(aMinQ[i], aMinqDot[i], -10000000.0);
             qDotDotMinFinal[i] = aMinVector.maxCoeff();
 
             if (qDotDotMaxFinal[i] < qDotDotMinFinal[i])
             {
-                vMaxVector = Vector3d(std::numeric_limits<double>::max(), qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+                vMaxVector = Eigen::Vector3d(std::numeric_limits<double>::max(), qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
                 qDotMaxFinal[i] = vMaxVector.minCoeff();
 
-                vMinVector = Vector3d(-std::numeric_limits<double>::max(), qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+                vMinVector = Eigen::Vector3d(-std::numeric_limits<double>::max(), qDotMinFromQ[i], qDotMinFormQDotDot[i]);
                 qDotMinFinal[i] = vMinVector.maxCoeff();
 
                 aMaxqDot[i] = (qDotMaxFinal[i] - model.velocities()[i]) / dtvar[i];
                 aMinqDot[i] = (qDotMinFinal[i] - model.velocities()[i]) / dtvar[i];
 
-                aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000.0);
+                aMaxVector = Eigen::Vector3d(aMaxQ[i], aMaxqDot[i], 10000000.0);
                 qDotDotMaxFinal[i] = aMaxVector.minCoeff();
-                aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000.0);
+                aMinVector = Eigen::Vector3d(aMinQ[i], aMinqDot[i], -10000000.0);
                 qDotDotMinFinal[i] = aMinVector.maxCoeff();
             }
         }
@@ -478,7 +494,7 @@ class RobotModel{
 
                 Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> JsatBar = model.invmass() * Js.transpose() * LambdaSat;
                 Psat = Iden - Js.transpose() * JsatBar.transpose();
-                VectorNd xDotDot_s = Js * qDotDotS;
+                Eigen::Matrix<double,6,1> xDotDot_s = Js * qDotDotS;
                 tauS = Js.transpose() * (LambdaSat * xDotDot_s);
             }
        
@@ -524,3 +540,5 @@ class RobotModel{
     }
 }
 }
+
+#endif

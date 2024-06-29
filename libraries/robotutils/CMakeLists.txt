@@ -4,7 +4,7 @@ src/LBRController.cpp
 #src/PassiveControllerAude.cpp
 #src/NeedleController.cpp
 #src/WallAvoidanceData.cpp
-#src/FilterRippleFirstHarmonic.cpp
+src/FilterRippleFirstHarmonic.cpp
 #src/ExtractRipple.cpp
 #src/CompensateRipple.cpp
 #src/LimitCycleController.cpp

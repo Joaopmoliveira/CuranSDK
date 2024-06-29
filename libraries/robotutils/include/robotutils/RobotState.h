@@ -4,6 +4,7 @@
 #include "rbdl/Logging.h"
 #include "rbdl/Model.h"
 #include "rbdl/Dynamics.h"
+#include "rbdl/Kinematics.h"
 #include "utils/Reader.h"
 #include "friLBRClient.h"
 
