@@ -70,7 +70,7 @@ int Robot::getDOF()
 void Robot::getMassMatrix(MatrixNd& M, VectorNd& Q)
 {	
 	// Get the mass matrix
-	CompositeRigidBodyAlgorithm(*robotModel->model(), Q, M, false);
+	CompositeRigidBodyAlgorithm(*robotModel->model(), Q, M, true);
 	//std::cout << "\n M = \n" <<  M << std::endl; 
 }
 

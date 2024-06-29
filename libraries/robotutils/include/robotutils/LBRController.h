@@ -64,7 +64,21 @@ struct State{
     };
 
     State(const KUKA::FRI::LBRState& state, const command_mode& mode);
-    State(){};
+    State() :q{},
+            dq{},
+            ddq{},
+            cmd_q{},
+            cmd_tau{},
+            tau{},
+            gravity{},
+            coriolis{},
+            tau_ext{},
+            translation{},
+            rotation{},
+            jacobian{},
+            massmatrix{},
+            invmassmatrix{}
+            {}
 
     std::array<double,number_of_joints> q;
     std::array<double,number_of_joints> dq;

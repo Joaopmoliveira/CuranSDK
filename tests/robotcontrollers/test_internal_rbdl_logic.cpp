@@ -68,6 +68,17 @@ public:
         f_max_ddq = Eigen::Matrix<double,model_joints,1>::Ones()*std::numeric_limits<double>::max();
     }
 
+    template<size_t model_joints>
+    friend std::ostream& operator<<(std::ostream& o, const KinematicLimits<model_joints>& obj){
+        std::cout << "qMin: " << obj.f_min_q.transpose() << std::endl; 
+        std::cout << "qMax: " << obj.f_max_q.transpose() << std::endl; 
+        std::cout << "qDotMin: " << obj.f_min_dq.transpose() << std::endl; 
+        std::cout << "qDotMax: " << obj.f_max_dq.transpose() << std::endl; 
+        std::cout << "qDotDotMax: " << obj.f_max_ddq.transpose() << std::endl; 
+        std::cout << "qDotDotMin: " << obj.f_min_ddq.transpose() << std::endl; 
+        return o;
+    }
+
     inline const Eigen::Matrix<double,model_joints,1>& qmax() const {
         return f_max_q;
     }
@@ -389,11 +400,11 @@ class RobotModel{
             qTopBar[i] = std::max(qTopBar[i],0.0);
             
             // recompute the delta time to reach the boundary condition
-            dt2[i] = (qTopBar[i] < deg2rad(10.0)) ? (lowestdtFactor + std::sqrt(lowestdtFactor) * std::sqrt(deg2rad(qTopBar[i]))) * dtvar[i] : dt2[i];
             dt2[i] = (qDownBar[i] < deg2rad(10.0)) ? (lowestdtFactor + std::sqrt(lowestdtFactor) * std::sqrt(deg2rad(qDownBar[i]))) * dtvar[i] : dt2[i];
-
+            dt2[i] = (qTopBar[i] < deg2rad(10.0)) ? (lowestdtFactor + std::sqrt(lowestdtFactor) * std::sqrt(deg2rad(qTopBar[i]))) * dtvar[i] : dt2[i];
+            
             // impose a lower bound on this delta time
-            dt2[i] = ( ((qDownBar[i] < deg2rad(10))||(qTopBar[i] < deg2rad(10))) && dt2[i] < lowestdtFactor * dtvar[i]) ? lowestdtFactor * dtvar[i] : dt2[i];
+            dt2[i] = ( ((qDownBar[i] < deg2rad(10) ) || (qTopBar[i] < deg2rad(10) )) && (dt2[i] < lowestdtFactor * dtvar[i])) ? lowestdtFactor * dtvar[i] : dt2[i];
 
             // compute maximum velocity given the boundary condition
             qDotMaxFromQ[i] = (model.kinematic_limits().qmax()[i] - model.joints()[i]) / dt2[i];
@@ -440,6 +451,13 @@ class RobotModel{
                 aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000.0);
                 qDotDotMinFinal[i] = aMinVector.maxCoeff();
             }
+            std::cout << "index: " << i << " dt2: " << dt2[i] 
+                                    << " qDownBar: " << qDownBar[i] 
+                                    << " qTopBar: " << qTopBar[i] 
+                                    << " qDotMaxFromQ: " << qDotMaxFromQ[i]
+                                    << " qDotMinFromQ: " << qDotMinFromQ[i] 
+                                    << " qDotMaxFormQDotDot: " << qDotMaxFormQDotDot[i]  
+                                    << " qDotMinFormQDotDot: "<< qDotMinFormQDotDot[i] << std::endl;
         }
 
         Eigen::Matrix<double,number_of_joints,1> qDotDotS = Eigen::Matrix<double,number_of_joints,1>::Zero();
@@ -515,27 +533,386 @@ class RobotModel{
 
 }
 
-void predict_mass_classic(){
+struct RobotLimits
+{
+    VectorNd qMin;
+    VectorNd qMax;
+    VectorNd qDotMin;
+    VectorNd qDotMax;
+    VectorNd qDotDotMax;
+    VectorNd qDotDotMin;
 
+    RobotLimits()
+    {
+        qMin = VectorNd::Zero(7, 1);
+        qMax = VectorNd::Zero(7, 1);
+        qDotMin = VectorNd::Zero(7, 1);
+        qDotMax = VectorNd::Zero(7, 1);
+        qDotDotMax = VectorNd::Zero(7, 1);
+        qDotDotMin = VectorNd::Zero(7, 1);
+
+    }
+
+
+    friend std::ostream& operator<<(std::ostream& o,const RobotLimits& limits){
+        std::cout << "qMin: " << limits.qMin.transpose() << std::endl; 
+        std::cout << "qMax: " << limits.qMax.transpose() << std::endl; 
+        std::cout << "qDotMin: " << limits.qDotMin.transpose() << std::endl; 
+        std::cout << "qDotMax: " << limits.qDotMax.transpose() << std::endl; 
+        std::cout << "qDotDotMax: " << limits.qDotDotMax.transpose() << std::endl; 
+        std::cout << "qDotDotMin: " << limits.qDotDotMin.transpose() << std::endl;
+        return o; 
+    }
+
+};
+
+VectorNd addConstraints(RobotParameters* iiwa,RobotLimits& myIIWALimits,const VectorNd& tauStack, double dt)
+{
+    VectorNd dt2 = VectorNd::Zero(7, 1);
+    VectorNd dtvar = VectorNd::Zero(7, 1);
+    VectorNd qDownBar = VectorNd::Zero(7, 1);
+    VectorNd qTopBar = VectorNd::Zero(7, 1);
+
+    VectorNd qDotMaxFromQ = VectorNd::Zero(7, 1);
+    VectorNd qDotMinFromQ = VectorNd::Zero(7, 1);
+    VectorNd qDotMaxFormQDotDot = VectorNd::Zero(7, 1);
+    VectorNd qDotMinFormQDotDot = VectorNd::Zero(7, 1);
+    VectorNd vMaxVector = Vector3d::Zero(3);
+    VectorNd vMinVector = Vector3d::Zero(3);
+    VectorNd qDotMaxFinal = VectorNd::Zero(7, 1);
+    VectorNd qDotMinFinal = VectorNd::Zero(7, 1);
+    VectorNd aMaxqDot = VectorNd::Zero(7, 1);
+    VectorNd aMinqDot = VectorNd::Zero(7, 1);
+    VectorNd aMaxQ = VectorNd::Zero(7, 1);
+    VectorNd aMinQ = VectorNd::Zero(7, 1);
+    VectorNd aMaxVector = Vector3d::Zero(3);
+    VectorNd aMinVector = Vector3d::Zero(3);
+    VectorNd qDotDotMaxFinal = VectorNd::Zero(7, 1);
+    VectorNd qDotDotMinFinal = VectorNd::Zero(7, 1);
+    MatrixNd Iden = MatrixNd::Identity(7, 7);
+    VectorNd TauBar = VectorNd::Zero(7, 1);
+    VectorNd qDotDotGot = VectorNd::Zero(7, 1);
+    MatrixNd Js = MatrixNd::Zero(3, 7);
+
+    double lowestdtFactor = 10;
+
+    qDownBar = iiwa->q - myIIWALimits.qMin;
+    qTopBar = myIIWALimits.qMax - iiwa->q;
+    dtvar[0] = 3 * dt;
+    dtvar[1] = 3 * dt;
+    dtvar[2] = 2 * dt;
+    dtvar[3] = 3 * dt;
+    dtvar[4] = dt;
+    dtvar[5] = dt;
+    dtvar[6] = dt;
+
+    for (int i = 0; i < 7; i++)
+    {
+        dt2[i] = dtvar[i];
+        if (qDownBar[i] < 10 * M_PI / 180)
+        {
+
+            if (qDownBar[i] < 0)
+                qDownBar[i] = 0;
+
+            dt2[i] = ((lowestdtFactor) + (sqrt(lowestdtFactor) * sqrt(qDownBar[i] * 180 / M_PI))) * dtvar[i];
+
+            if (dt2[i] < lowestdtFactor * dtvar[i])
+                dt2[i] = lowestdtFactor * dtvar[i];
+        }
+        if (qTopBar[i] < 10 * M_PI / 180)
+        {
+
+            if (qTopBar[i] < 0)
+                qTopBar[i] = 0;
+
+            dt2[i] = (lowestdtFactor + (sqrt(lowestdtFactor) * sqrt(qTopBar[i] * 180 / M_PI))) * dtvar[i];
+            if (dt2[i] < lowestdtFactor * dtvar[i])
+                dt2[i] = lowestdtFactor * dtvar[i];
+
+        }
+
+        qDotMaxFromQ[i] = (myIIWALimits.qMax[i] - iiwa->q[i]) / dt2[i];
+        qDotMinFromQ[i] = (myIIWALimits.qMin[i] - iiwa->q[i]) / dt2[i];
+        qDotMaxFormQDotDot[i] = sqrt(2 * myIIWALimits.qDotDotMax[i] * (myIIWALimits.qMax[i] - iiwa->q[i]));
+        qDotMinFormQDotDot[i] = -sqrt(2 * myIIWALimits.qDotDotMax[i] * (iiwa->q[i] - myIIWALimits.qMin[i]));
+
+        if (myIIWALimits.qMax[i] - iiwa->q[i] < 0)
+            qDotMaxFormQDotDot[i] = 1000000;
+
+        if (iiwa->q[i] - myIIWALimits.qMin[i] < 0)
+            qDotMinFormQDotDot[i] = -1000000;
+
+        vMaxVector = Vector3d(myIIWALimits.qDotMax[i], qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+        qDotMaxFinal[i] = vMaxVector.minCoeff();
+
+
+        vMinVector = Vector3d(myIIWALimits.qDotMin[i], qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+        qDotMinFinal[i] = vMinVector.maxCoeff();
+
+        aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
+        aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
+
+        aMaxQ[i] = 2 * (myIIWALimits.qMax[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
+        aMinQ[i] = 2 * (myIIWALimits.qMin[i] - iiwa->q[i] - iiwa->qDot[i] * dt2[i]) / pow(dt2[i], 2);
+
+        aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
+        qDotDotMaxFinal[i] = aMaxVector.minCoeff();
+        aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
+        qDotDotMinFinal[i] = aMinVector.maxCoeff();
+
+        if (qDotDotMaxFinal[i] < qDotDotMinFinal[i])
+        {
+            vMaxVector = Vector3d(INFINITY, qDotMaxFromQ[i], qDotMaxFormQDotDot[i]);
+            qDotMaxFinal[i] = vMaxVector.minCoeff();
+
+            vMinVector = Vector3d(-INFINITY, qDotMinFromQ[i], qDotMinFormQDotDot[i]);
+            qDotMinFinal[i] = vMinVector.maxCoeff();
+
+            aMaxqDot[i] = (qDotMaxFinal[i] - iiwa->qDot[i]) / dtvar[i];
+            aMinqDot[i] = (qDotMinFinal[i] - iiwa->qDot[i]) / dtvar[i];
+
+            aMaxVector = Vector3d(aMaxQ[i], aMaxqDot[i], 10000000);
+            qDotDotMaxFinal[i] = aMaxVector.minCoeff();
+            aMinVector = Vector3d(aMinQ[i], aMinqDot[i], -10000000);
+            qDotDotMinFinal[i] = aMinVector.maxCoeff();
+        }
+
+        std::cout << "index: " << i << " dt2: " << dt2[i] 
+                                    << " qDownBar: " << qDownBar[i] 
+                                    << " qTopBar: " << qTopBar[i] 
+                                    << " qDotMaxFromQ: " << qDotMaxFromQ[i]
+                                    << " qDotMinFromQ: " << qDotMinFromQ[i] 
+                                    << " qDotMaxFormQDotDot: " << qDotMaxFormQDotDot[i]  
+                                    << " qDotMinFormQDotDot: "<< qDotMinFormQDotDot[i] << std::endl;
+
+    }
+
+
+    VectorNd qDotDotS = VectorNd::Zero(7);
+    VectorNd tauS = VectorNd::Zero(7);
+    MatrixNd Psat = Iden;
+    bool LimitedExceeded = true;
+    bool CreateTaskSat = false;
+    int NumSatJoints = 0;
+    Eigen::Vector<Eigen::Index,Eigen::Dynamic> theMostCriticalOld = Eigen::Vector<Eigen::Index,Eigen::Dynamic>::Zero(7);
+    theMostCriticalOld.conservativeResize(1);
+    theMostCriticalOld[0] = 100;
+    bool isThere = false;
+    int iO = 0;
+    int cycle = 0;
+    while (LimitedExceeded)
+    {
+        LimitedExceeded = false;
+        if (CreateTaskSat)
+        {
+            Js.conservativeResize(NumSatJoints, 7);
+            for (int i = 0; i < NumSatJoints; i++)
+            {
+                
+                for (int k = 0; k < 7; k++)
+                {
+                    Js(i, k) = 0;
+                }
+                Js(i, (int)theMostCriticalOld[i]) = 1;
+            }
+
+            MatrixNd LambdaSatInv = Js * iiwa->Minv * Js.transpose();
+            MatrixNd LambdaSatInv_aux = LambdaSatInv * LambdaSatInv.transpose();
+            MatrixNd LambdaSat_aux = LambdaSatInv_aux.inverse();
+            MatrixNd LambdaSat = LambdaSatInv.transpose() * LambdaSat_aux;
+
+            MatrixNd JsatBar = iiwa->Minv * Js.transpose() * LambdaSat;
+            Psat = Iden - Js.transpose() * JsatBar.transpose();
+            VectorNd xDotDot_s = Js * qDotDotS;
+            tauS = Js.transpose() * (LambdaSat * xDotDot_s);
+        }
+
+        TauBar = tauS + Psat * tauStack;
+        qDotDotGot = iiwa->Minv * (TauBar); // it should -g -c
+
+        isThere = false;
+        for (int i = 0; i < 7; i++)
+        {
+            if ((qDotDotMaxFinal[i] + 0.001 < qDotDotGot[i]) || (qDotDotGot[i] < qDotDotMinFinal[i] - 0.001))
+            {
+                LimitedExceeded = true;
+                CreateTaskSat = true;
+
+                for (int k = 0; k < theMostCriticalOld.size(); k++)
+                {
+                    if (i == theMostCriticalOld[k])
+                    {
+                        isThere = true;
+                    }
+                }
+                if (isThere == false)
+                {
+
+                    theMostCriticalOld.conservativeResize(iO + 1);
+                    theMostCriticalOld[iO] = i;
+                    iO += 1;
+                }
+            }
+        }
+
+        if (LimitedExceeded == true)
+        {
+            NumSatJoints = iO;
+            theMostCriticalOld.conservativeResize(iO);
+            cycle += 1;
+            if (cycle > 8)
+                LimitedExceeded = false;
+
+            for (int i = 0; i < theMostCriticalOld.size(); i++)
+            {
+                Eigen::Index jM = theMostCriticalOld[i];
+
+                if (qDotDotGot[jM] > qDotDotMaxFinal[jM])
+                    qDotDotS[jM] = qDotDotMaxFinal[jM];
+
+                if (qDotDotGot[jM] < qDotDotMinFinal[jM])
+                    qDotDotS[jM] = qDotDotMinFinal[jM];
+            }
+        }
+    }
+
+    VectorNd SJSTorque = TauBar;
+    return SJSTorque;
+};
+
+auto predict_mass_classic(RobotParameters* iiwa){
+    return iiwa->M;
 }
 
-void predict_mass_mine(){
-
+auto predict_mass_mine(robotutils::RobotModel<7>& robot){
+    return robot.mass();
 }
 
-void predict_actuation_torque_classic(){
-
+auto predict_actuation_torque_classic(curan::robotic::State& current_state, RobotParameters* iiwa,RobotLimits& myIIWALimits){
+    return addConstraints(iiwa,myIIWALimits,curan::robotic::convert(current_state.cmd_tau), 0.005);
 }
 
-void predict_actuation_torque_mine(){
-
+auto predict_actuation_torque_mine(curan::robotic::State& current_state,robotutils::RobotModel<7>& robot){
+    return robotutils::add_constraints<7>(robot,curan::robotic::convert(current_state.cmd_tau), 0.005);
 }
 
-void compare_predictions(){
+std::tuple<double,double> compare_predictions(curan::robotic::State state,robotutils::RobotModel<7>& robot,RobotParameters* iiwa,kuka::Robot* robot_ptr,RobotLimits& myIIWALimits){
+    static curan::robotic::State current_state;
+    static Vector3d pointPosition = Vector3d(0, 0, 0.045); 
+    current_state.differential(state);
+
+    current_state.update_iiwa(iiwa,robot_ptr,pointPosition);
+    robot.update(current_state);
+    auto mass_from_iiwa = predict_mass_classic(iiwa);
+    auto mass_mine = predict_mass_mine(robot);
+    //std::cout << "mass 1: " << mass_from_iiwa << std::endl;
+    //std::cout << "mass 2: " << mass_mine << std::endl;
+    //std::cout << "difference: " << mass_from_iiwa-mass_mine << std::endl;
+    auto difference_masses = (mass_from_iiwa-mass_mine).squaredNorm();
+    auto prediction = predict_actuation_torque_classic(current_state,iiwa,myIIWALimits);
+    auto prediction2 = predict_actuation_torque_mine(current_state,robot);
+    //std::cout << "desired torque: " << curan::robotic::convert(current_state.cmd_tau).transpose() << std::endl;
+    //std::cout << "fixed torque 1: " << prediction.transpose() << std::endl;
+    //std::cout << "fixed torque 2: " << prediction2.transpose() << std::endl;
+    Eigen::VectorXd prediction3 = Eigen::VectorXd::Zero(7);
+    for(size_t index = 0; index < 7; ++index)
+        prediction3[index] = prediction2[index];
+    auto difference_torques = (prediction-prediction3).squaredNorm();
+    return {difference_masses,difference_torques};
 
 }
 
 int main(){
+    kuka::Robot::robotName myName(kuka::Robot::LBRiiwa);
+    auto robot = std::make_unique<kuka::Robot>(myName); // myLBR = Model
+    auto iiwa = std::make_unique<RobotParameters>();
+    robotutils::RobotModel<7> robot_model{"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
+    auto myIIWALimits = RobotLimits();
+    myIIWALimits.qMax[0] = 163 * M_PI / 180;
+    myIIWALimits.qMax[1] = 113 * M_PI / 180;
+    myIIWALimits.qMax[2] = 163 * M_PI / 180;
+    myIIWALimits.qMax[3] = 115 * M_PI / 180;
+    myIIWALimits.qMax[4] = 160 * M_PI / 180;
+    myIIWALimits.qMax[5] = 110 * M_PI / 180;
+    myIIWALimits.qMax[6] = 165 * M_PI / 180;
+
+    myIIWALimits.qMin[0] = -163 * M_PI / 180;
+    myIIWALimits.qMin[1] = -113 * M_PI / 180;
+    myIIWALimits.qMin[2] = -163 * M_PI / 180;
+    myIIWALimits.qMin[3] = -115 * M_PI / 180;
+    myIIWALimits.qMin[4] = -160 * M_PI / 180;
+    myIIWALimits.qMin[5] = -110 * M_PI / 180;
+    myIIWALimits.qMin[6] = -165 * M_PI / 180;
+
+    myIIWALimits.qDotMax[0] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[1] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[2] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[3] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[4] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[5] = 150 * M_PI / 180;
+    myIIWALimits.qDotMax[6] = 155 * M_PI / 180;
+
+    myIIWALimits.qDotMin[0] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[1] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[2] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[3] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[4] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[5] = -150 * M_PI / 180;
+    myIIWALimits.qDotMin[6] = -155 * M_PI / 180;
+
+    myIIWALimits.qDotDotMax[0] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[1] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[2] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[3] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[4] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[5] = 300 * M_PI / 180;
+    myIIWALimits.qDotDotMax[6] = 300 * M_PI / 180;
+
+    myIIWALimits.qDotDotMin[0] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[1] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[2] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[3] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[4] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[5] = -300 * M_PI / 180;
+    myIIWALimits.qDotDotMin[6] = -300 * M_PI / 180;
+
+    std::cout << "myIIWALimits:\n" << myIIWALimits <<  std::endl;
+
+    std::cout << "mine limits:\n" << robot_model.kinematic_limits() << std::endl;
+
+    double time = 0.1*31765;
+    curan::robotic::State state;
+    state.q = std::array<double,7>{};
+    state.dq = std::array<double,7>{};
+    state.ddq = std::array<double,7>{};
+    std::list<std::tuple<double,double>> list_of_comparisons;
+    for(size_t iter = 0 ; iter < 4; ++iter,time+=0.1){
+        for(size_t index = 0; index < 7; ++index){
+            state.q[index] = 3*std::sin(time);
+            state.cmd_tau[index] = 8*std::cos(time);
+        }
+        list_of_comparisons.push_back(compare_predictions(state,robot_model,iiwa.get(),robot.get(),myIIWALimits));
+    }
+    std::tuple<double,double,size_t> accumulator = std::make_tuple(0,0,0);
+    double max = -std::numeric_limits<double>::max();
+    size_t index = 0;
+    size_t max_index = 0;
+    //double min = std::numeric_limits<double>::max();
+    for(const auto & val : list_of_comparisons){
+        if(max<std::get<1>(val)){
+            max = std::get<1>(val);
+            max_index = index;
+        }
+        accumulator = std::make_tuple(std::get<0>(accumulator)+std::get<0>(val),std::get<1>(accumulator)+std::get<1>(val),index);
+        ++index;
+    }
+    auto final_mean = std::make_tuple(std::get<0>(accumulator)/list_of_comparisons.size(),std::get<1>(accumulator)/list_of_comparisons.size());
+    std::cout << "difference: \nmass: " << std::get<0>(final_mean) << "\ntorque: " << std::get<1>(final_mean) << "max difference: "<< max << std::endl << "max index: " << max_index << std::endl;
+    return 0;
+}
+
+int main2(){
     try{
         curan::robotic::State state;
         state.q = std::array<double,7>{};

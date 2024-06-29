@@ -126,7 +126,7 @@ void State::update_iiwa(RobotParameters* iiwa,kuka::Robot* robot,const Vector3d&
     Matrix3d  tmp_R_0_7 = Matrix3d::Identity(); 
     MatrixNd tmp_jacobian = MatrixNd::Zero(number_of_joints,number_of_joints);
     robot->getMassMatrix(iiwa->M, iiwa->q);
-    iiwa->M(6, 6) = 45 * iiwa->M(6, 6);   
+    //iiwa->M(6, 6) = 45 * iiwa->M(6, 6);   
     iiwa->Minv = iiwa->M.inverse();
     robot->getCoriolisAndGravityVector(iiwa->c, iiwa->g, iiwa->q, iiwa->qDot);
     robot->getWorldCoordinates(tmp_p_0_7, iiwa->q, pointPosition, 7);  
