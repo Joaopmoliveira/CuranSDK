@@ -72,13 +72,13 @@ add_custom_target(
 add_subdirectory(libraries)
 
 # Add medical applications
-add_subdirectory(applications)
+#add_subdirectory(applications)
 
 # Most of the time there is no need to compile the tests and the tutorials
 # folder so you can comment out these subfolders from the build directory
 
 # Add tests for submodules of curan, i.e. utilities, communication, etc...
-add_subdirectory(tests)
+#add_subdirectory(tests)
 
 # Add medical applications
 #add_subdirectory(tutorialsrc)

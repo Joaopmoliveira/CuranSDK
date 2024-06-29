@@ -1,18 +1,19 @@
 add_library(robotutils STATIC
 src/LBRController.cpp
-src/HandGuidance.cpp
-src/PassiveControllerAude.cpp
-src/NeedleController.cpp
-src/WallAvoidanceData.cpp
-src/FilterRippleFirstHarmonic.cpp
-src/ExtractRipple.cpp
-src/CompensateRipple.cpp
-src/LimitCycleController.cpp
-src/JointVelocityController.cpp
-src/ExtractRippleCrossMitigation.cpp
-src/ExtractSingleJoint.cpp
-src/CompensateRippleFreehand.cpp
-src/RippleReinjection.cpp
+#src/HandGuidance.cpp
+#src/PassiveControllerAude.cpp
+#src/NeedleController.cpp
+#src/WallAvoidanceData.cpp
+#src/FilterRippleFirstHarmonic.cpp
+#src/ExtractRipple.cpp
+#src/CompensateRipple.cpp
+#src/LimitCycleController.cpp
+#src/JointVelocityController.cpp
+#src/ExtractRippleCrossMitigation.cpp
+#src/ExtractSingleJoint.cpp
+#src/CompensateRippleFreehand.cpp
+#src/RippleReinjection.cpp
+src/RobotState.cpp
 )
 
 target_include_directories(robotutils
@@ -26,9 +27,8 @@ ENDIF()
 target_link_libraries(robotutils 
 PUBLIC
 Eigen3::Eigen
-KukaRobotLibrary 
+rbdl-static
 FRILibrary
-robotParameters
 gaussianmixture
 nlohmann_json 
 nlohmann_json::nlohmann_json 
