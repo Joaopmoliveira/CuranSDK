@@ -223,7 +223,7 @@ class RobotModel{
     }
 
     void update(curan::robotic::State& in_state){
-        f_ptr_state = in_state;
+        f_ptr_state = &in_state;
         f_sample_time = in_state.sampleTime;
         f_q = curan::robotic::convert(in_state.q);
         f_dq = curan::robotic::convert(in_state.dq);

@@ -14,7 +14,7 @@ namespace robotic {
         }
     }
 
-    EigenState&& CompensateRipple::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
+    EigenState&& CompensateRipple::update(const RobotModel<number_of_joints>& iiwa, EigenState&& eigen_state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
         static double currentTime = 0.0;
         /*
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
@@ -23,17 +23,17 @@ namespace robotic {
         //state.cmd_tau = -iiwa->M * 10 * iiwa->qDot;
 
         
-        static EigenState first_state = state;
-        static Eigen::Matrix<double,7,1> reference = state.q;
+        static EigenState first_state = *iiwa.measured_state();
+        static Eigen::Matrix<double,7,1> reference = iiwa.joints();
 
-        state.cmd_tau = Eigen::Matrix<double,7,1>::Zero();
-        static EigenState prev_state = state;
-        
+        eigen_state.cmd_tau = Eigen::Matrix<double,7,1>::Zero();
+        static EigenState prev_state = *iiwa.measured_state();
+            
         double largest_frequency_found = std::numeric_limits<double>::min();
         size_t offset_fastest_filter = 0;
 
         for(size_t joint_i = 0; joint_i < number_of_joints; ++joint_i){
-            const Observation obser_i_j{state.dq[joint_i],state.q[joint_i] - prev_state.q[joint_i]};
+            const Observation obser_i_j{iiwa.measured_state()->dq[joint_i],iiwa.measured_state()->q[joint_i] - prev_state.q[joint_i]};
             update_filter_properties(first_harmonic[joint_i], obser_i_j);
             update_filter_properties(second_harmonic[joint_i], obser_i_j);
             if(largest_frequency_found < first_harmonic[joint_i].log_filtered_frequency){
@@ -43,7 +43,7 @@ namespace robotic {
         }
         
         for(size_t torque_joint_i = 0; torque_joint_i < number_of_joints; ++torque_joint_i){
-            double filtered_torque_value = state.tau[torque_joint_i];
+            double filtered_torque_value = iiwa.measured_state()->tau[torque_joint_i];
             shift_filter_data(joint_data_first_harmonic[torque_joint_i],0.0);
             update_filter_data(joint_data_first_harmonic[torque_joint_i], filtered_torque_value);
             double filtered_torque_first_harmonic = filter_implementation(first_harmonic[offset_fastest_filter], joint_data_first_harmonic[torque_joint_i]);
@@ -52,7 +52,7 @@ namespace robotic {
             update_filter_data(joint_data_second_harmonic[torque_joint_i], filtered_torque_value);
             double filtered_torque_second_harmonic = filter_implementation(first_harmonic[offset_fastest_filter], joint_data_second_harmonic[torque_joint_i]);
             filtered_torque_value -= filtered_torque_second_harmonic;
-            state.user_defined[torque_joint_i] = filtered_torque_value;
+            eigen_state.user_defined[torque_joint_i] = filtered_torque_value;
         }
 
         std::pair<double,double> upper_lower_limit{1.0,-1.0};
@@ -62,19 +62,19 @@ namespace robotic {
         /*
         Filtering of state variables 
         */
-        static Eigen::Matrix<double,7,1> filtered_velocity = first_state.dq;
-        filtered_velocity = ((0.8)*filtered_velocity+(0.2)*state.dq).eval();
+        static Eigen::Matrix<double,7,1> filtered_velocity = iiwa.velocities();
+        filtered_velocity = ((0.8)*filtered_velocity+(0.2)*iiwa.velocities()).eval();
  
-        static EigenState prev_state_for_torque_derivative = state;
+        static EigenState prev_state_for_torque_derivative = eigen_state;
 
         constexpr double filter_weight = 0.3;
         static_assert(filter_weight > 0.0 && filter_weight < 1.0);
         
-        Eigen::Matrix<double,7,1> derivative_torque = (state.user_defined-prev_state_for_torque_derivative.user_defined)*(1/state.sampleTime);
+        Eigen::Matrix<double,7,1> derivative_torque = (eigen_state.user_defined-prev_state_for_torque_derivative.user_defined)*(1/iiwa.sample_time());
         static Eigen::Matrix<double,7,1> filtered_derivative_torque = derivative_torque;
         filtered_derivative_torque = ((1-filter_weight)*filtered_derivative_torque + filter_weight*derivative_torque).eval();
         
-        Eigen::Matrix<double,7,1> derivative_torque_unclean = (state.tau-prev_state_for_torque_derivative.tau)*(1/state.sampleTime);
+        Eigen::Matrix<double,7,1> derivative_torque_unclean = (state.tau-prev_state_for_torque_derivative.tau)*(1/iiwa.sample_time());
         static Eigen::Matrix<double,7,1> filtered_derivative_torque_unclean = derivative_torque_unclean;
         filtered_derivative_torque_unclean = ((1-filter_weight)*filtered_derivative_torque_unclean + filter_weight*derivative_torque_unclean).eval();
         
@@ -92,9 +92,9 @@ namespace robotic {
             case ADAPTIVE_FILTERING_SCHEME:
             {
                 for(size_t i = 0; i < 7; ++i)
-                    if(reference[i]+angular_velocity[i]*state.sampleTime > upper_lower_limit.first || reference[i]+angular_velocity[i]*state.sampleTime < upper_lower_limit.second)  
+                    if(reference[i]+angular_velocity[i]*iiwa.sample_time() > upper_lower_limit.first || reference[i]+angular_velocity[i]*iiwa.sample_time() < upper_lower_limit.second)  
                         angular_velocity[i] *= -1;
-                reference += angular_velocity*state.sampleTime;
+                reference += angular_velocity*iiwa.sample_time();
 
                 proportional_error = reference-state.q;
                 derivative_error = -filtered_velocity;

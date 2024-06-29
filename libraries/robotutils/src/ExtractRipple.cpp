@@ -30,7 +30,7 @@ namespace robotic {
             double initial_torque_joint_i = iiwa.measured_state()->tau[torque_joint_i];
             double current_torque_joint_i = initial_torque_joint_i;
             for(size_t cross_phenomena_j = 0; cross_phenomena_j < number_of_joints;++cross_phenomena_j){
-                const Observation obser_i_j{iiwa.measured_state()->dq[cross_phenomena_j],iiwa.measured_state()->[cross_phenomena_j] - prev_state.q[cross_phenomena_j]};
+                const Observation obser_i_j{iiwa.measured_state()->dq[cross_phenomena_j],iiwa.measured_state()->q[cross_phenomena_j] - prev_state.q[cross_phenomena_j]};
                 update_filter_properties(first_harmonic[torque_joint_i][cross_phenomena_j].second, obser_i_j);
 	            shift_filter_data(first_harmonic[torque_joint_i][cross_phenomena_j].first,0.0);   
                 update_filter_data(first_harmonic[torque_joint_i][cross_phenomena_j].first, current_torque_joint_i);
