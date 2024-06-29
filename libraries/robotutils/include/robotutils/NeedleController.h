@@ -9,7 +9,7 @@ namespace robotic {
 struct NeedleController : public UserData{
     NeedleController();
 
-    EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
+    EigenState&& update(const RobotModel<number_of_joints>& iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
 
     Eigen::Matrix3d desRotation;
     Eigen::Matrix<double,3,1> direction;

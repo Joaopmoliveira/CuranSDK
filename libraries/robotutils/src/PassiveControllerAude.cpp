@@ -18,30 +18,26 @@ namespace robotic
         }
     };
 
-    EigenState &&PassiveControllerData::update(kuka::Robot *robot, RobotParameters *iiwa, EigenState &&state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
+    EigenState &&PassiveControllerData::update(const RobotModel<number_of_joints>& iiwa, EigenState &&state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
         static double currentTime = 0.0;
-        auto desLinVelocity = model.likeliest(state.translation);
+        auto desLinVelocity = model.likeliest(iiwa.translation());
         // Operational Space Control (OSC)
 
         // Compute goal position based on desired velocity.
-        Eigen::Vector3d posDes = state.translation + desLinVelocity * state.sampleTime;
+        Eigen::Vector3d posDes = iiwa.translation() + desLinVelocity * iiwa.sample_time();
 
         // Set matrices for current robot configuration.
-        const Eigen::MatrixXd jacobianPos = state.jacobian.block(0, 0, 3, LBR_N_JOINTS);
-        const Eigen::MatrixXd jacobianRot = state.jacobian.block(3, 0, 3, LBR_N_JOINTS);
-        Eigen::MatrixXd lambda = getLambdaLeastSquares(iiwa->M, state.jacobian, 0.071);
-        Eigen::MatrixXd lambdaPos = getLambdaLeastSquares(iiwa->M, jacobianPos, 0.071);
-        Eigen::MatrixXd lambdaRot = getLambdaLeastSquares(iiwa->M, jacobianRot, 0.071);
-
-        // ############################################################################################
-        // Compute positional part.
-        // ############################################################################################
+        const Eigen::MatrixXd jacobianPos = iiwa.jacobian().block(0, 0, 3, number_of_joints);
+        const Eigen::MatrixXd jacobianRot = iiwa.jacobian().block(3, 0, 3, number_of_joints);
+        Eigen::MatrixXd lambda = getLambdaLeastSquares(iiwa.mass(), iiwa.jacobian(), 0.071);
+        Eigen::MatrixXd lambdaPos = getLambdaLeastSquares(iiwa.mass(), jacobianPos, 0.071);
+        Eigen::MatrixXd lambdaRot = getLambdaLeastSquares(iiwa.mass(), jacobianRot, 0.071);
 
         auto maxCartSpeed = 0.3;
         const double stiffness = 800;
         const double damping = 100;
-        Eigen::Vector3d posErr = posDes - state.translation;
-        Eigen::Vector3d velCurr = jacobianPos * state.dq;
+        Eigen::Vector3d posErr = posDes - iiwa.translation();
+        Eigen::Vector3d velCurr = jacobianPos * iiwa.velocities();
         Eigen::Vector3d velDes = desLinVelocity + (stiffness / damping) * posErr;
         // Limit velocity to maxCartSpeed.
         velDes = velDes.norm() == 0.0
@@ -57,16 +53,16 @@ namespace robotic
         const double maxRotSpeed = 3.0;
         const double angularStiffness = 400;
         const double angularDamping = 40;
-        Eigen::Matrix3d R_E_Ed = state.rotation.transpose() * desRotation;
+        Eigen::Matrix3d R_E_Ed = iiwa.rotation().transpose() * desRotation;
         // Convert rotation error in eef frame to axis angle representation.
         Eigen::AngleAxisd E_AxisAngle(R_E_Ed);
         Eigen::Vector3d E_u = E_AxisAngle.axis();
         double angleErr = E_AxisAngle.angle();
         // Convert axis to base frame.
-        Eigen::Vector3d O_u = state.rotation * E_u;
+        Eigen::Vector3d O_u = iiwa.rotation() * E_u;
         // Compute rotational error. (Scaled axis angle)
         Eigen::Vector3d rotErr = O_u * angleErr;
-        Eigen::Vector3d rotVelCurr = jacobianRot * state.dq;
+        Eigen::Vector3d rotVelCurr = jacobianRot * iiwa.velocities();
         Eigen::Vector3d rotVelDes = (angularStiffness / angularDamping) * rotErr; // + 0 desired
         // Limit rotational velocity to maxRotSpeed.
         rotVelDes = rotVelDes.norm() == 0.0
@@ -79,9 +75,9 @@ namespace robotic
         // Compute positional and rotational nullspace.
         // ############################################################################################
 
-        Eigen::MatrixXd I = Eigen::MatrixXd::Identity(LBR_N_JOINTS, LBR_N_JOINTS);
-        Eigen::MatrixXd jbarPos = iiwa->Minv * jacobianPos.transpose() * lambdaPos;
-        Eigen::MatrixXd jbarRot = iiwa->Minv * jacobianRot.transpose() * lambdaRot;
+        Eigen::MatrixXd I = Eigen::MatrixXd::Identity(number_of_joints, number_of_joints);
+        Eigen::MatrixXd jbarPos = iiwa.invmass() * jacobianPos.transpose() * lambdaPos;
+        Eigen::MatrixXd jbarRot = iiwa.invmass() * jacobianRot.transpose() * lambdaRot;
         Eigen::MatrixXd nullSpaceTranslation = I - jacobianPos.transpose() * jbarPos.transpose();
         Eigen::MatrixXd nullSpaceRotation = I - jacobianRot.transpose() * jbarRot.transpose();
 
@@ -102,9 +98,9 @@ namespace robotic
         both commanded and current position is always zero, which results in the friction compensator being "shut off". We avoid this problem
         by adding a small perturbation to the reference position with a relative high frequency. 
         */
-        state.cmd_q = state.q + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
+        state.cmd_q = iiwa.joints() + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
 
-        currentTime += state.sampleTime;
+        currentTime += iiwa.sample_time();
         // Set nullspace.
         //nullSpace = nullSpaceTranslation * nullSpaceRotation;
         return std::move(state);
