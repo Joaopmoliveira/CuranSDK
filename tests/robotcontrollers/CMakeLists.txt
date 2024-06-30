@@ -70,20 +70,6 @@ robotutils
 renderable
 )
 
-
-add_executable(test_mass_matrix_api test_mass_matrix_api.cpp)
-
-target_compile_definitions(test_mass_matrix_api PRIVATE SK_VULKAN)
-target_compile_definitions(test_mass_matrix_api PRIVATE NOMINMAX)
-target_compile_definitions(test_mass_matrix_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_mass_matrix_api PUBLIC
-utils
-robotutils
-renderable
-)
-
-
 add_executable(stupid_filter_test stupid_filter_test.cpp)
 
 target_compile_definitions(stupid_filter_test PRIVATE NOMINMAX)

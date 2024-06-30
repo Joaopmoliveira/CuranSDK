@@ -125,6 +125,7 @@ class RobotModel{
     Eigen::Matrix<double,model_joints,1> f_ddq;
     Eigen::Matrix<double,6,model_joints> f_jacobian;
     Eigen::Matrix<double,4,4> f_end_effector;
+    Eigen::Matrix<double,model_joints,1> f_measured_torque;
 
     double f_sample_time = 0.001;
 
@@ -146,6 +147,7 @@ class RobotModel{
         f_q = Eigen::Matrix<double,model_joints,1>::Zero();
         f_dq = Eigen::Matrix<double,model_joints,1>::Zero();
         f_ddq = Eigen::Matrix<double,model_joints,1>::Zero();
+        f_measured_torque = Eigen::Matrix<double,model_joints,1>::Zero();
         f_end_effector = Eigen::Matrix<double,4,4>::Zero();
         f_jacobian = Eigen::Matrix<double,6,model_joints>::Zero();
 
@@ -225,6 +227,7 @@ class RobotModel{
     void update(curan::robotic::State& in_state){
         f_ptr_state = &in_state;
         f_sample_time = in_state.sampleTime;
+        f_measured_torque = curan::robotic::convert(in_state.tau);
         f_q = curan::robotic::convert(in_state.q);
         f_dq = curan::robotic::convert(in_state.dq);
         f_ddq = curan::robotic::convert(in_state.ddq);
@@ -334,6 +337,10 @@ class RobotModel{
     inline const Eigen::Matrix<double,model_joints,model_joints>& invmass() const {
         return f_inverse_massmatrix;
     }
+
+     inline const Eigen::Matrix<double,model_joints,1>& measured_torque() const {
+        return f_measured_torque;
+    }   
 
     inline const Eigen::Matrix<double,model_joints,1>& joints() const {
         return f_q;

@@ -17,7 +17,7 @@ void signal_handler(int signal)
 
 int main(){
     std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
-    curan::robotic::RobotLBR client{handguinding_controller.get()};
+    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";

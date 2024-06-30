@@ -46,7 +46,7 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
 	ImGui::Begin("Control Torques"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, LBR_N_JOINTS> buffers;
+	static std::array<ScrollingBuffer, curan::robotic::number_of_joints> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
 
@@ -61,7 +61,7 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for (size_t index = 0; index < LBR_N_JOINTS; ++index)
+		for (size_t index = 0; index < curan::robotic::number_of_joints; ++index)
 		{
 			std::string loc = "cmd" + std::to_string(index);
 			buffers[index].AddPoint(t, (float)state.cmd_tau[index]);
@@ -72,7 +72,7 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
-    static std::array<ScrollingBuffer, LBR_N_JOINTS> dqref;
+    static std::array<ScrollingBuffer, curan::robotic::number_of_joints> dqref;
     ImGui::Begin("Velocities"); // Create a window called "Hello, world!" and append into it.
     if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
 	{
@@ -80,7 +80,7 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for (size_t index = 0; index < LBR_N_JOINTS; ++index)
+		for (size_t index = 0; index < curan::robotic::number_of_joints; ++index)
 		{
 			std::string loc = "dqref" + std::to_string(index);
 			dqref[index].AddPoint(t, (float)state.user_defined[index]);
@@ -140,7 +140,7 @@ void rendering(curan::robotic::RobotLBR& client){
 
 int main(){
     std::unique_ptr<curan::robotic::JointVelocityController> handguinding_controller = std::make_unique<curan::robotic::JointVelocityController>();
-    curan::robotic::RobotLBR client{handguinding_controller.get()};
+    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
     std::thread robot_renderer{[&](){rendering(client);}};
     const auto& access_point = client.atomic_acess();
 	try

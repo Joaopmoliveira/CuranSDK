@@ -218,8 +218,7 @@ target_compile_definitions(test_world_position PRIVATE CURAN_COPIED_RESOURCE_PAT
 
 target_link_libraries(test_world_position
 PUBLIC
-KukaRobotLibrary 
-robotParameters
+robotutils
 vsg::vsg
 vsgXchange::vsgXchange
 renderable

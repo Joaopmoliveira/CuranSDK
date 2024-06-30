@@ -14,7 +14,7 @@ namespace robotic {
         }
     }
 
-    EigenState&& CompensateRippleFreehand::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
+    EigenState&& CompensateRippleFreehand::update(const RobotModel<number_of_joints>& iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
         static double currentTime = 0.0;
         /*
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
@@ -22,17 +22,14 @@ namespace robotic {
        
         //state.cmd_tau = -iiwa->M * 10 * iiwa->qDot;
 
-        
-        static EigenState first_state = state;
-
-        state.cmd_tau = Eigen::Matrix<double,7,1>::Zero();
-        static EigenState prev_state = state;
+        state.cmd_tau = Eigen::Matrix<double,number_of_joints,1>::Zero();
+        static Eigen::Matrix<double,number_of_joints,1> prev_state = iiwa.joints();
         
         double largest_frequency_found = std::numeric_limits<double>::min();
         size_t offset_fastest_filter = 0;
 
         for(size_t joint_i = 0; joint_i < number_of_joints; ++joint_i){
-            const Observation obser_i_j{state.dq[joint_i],state.q[joint_i] - prev_state.q[joint_i]};
+            const Observation obser_i_j{iiwa.velocities()[joint_i],iiwa.joints()[joint_i] - prev_state[joint_i]};
             update_filter_properties(first_harmonic[joint_i], obser_i_j);
             update_filter_properties(second_harmonic[joint_i], obser_i_j);
             if(largest_frequency_found < first_harmonic[joint_i].log_filtered_frequency){
@@ -42,7 +39,7 @@ namespace robotic {
         }
         
         for(size_t torque_joint_i = 0; torque_joint_i < number_of_joints; ++torque_joint_i){
-            double filtered_torque_value = state.tau[torque_joint_i];
+            double filtered_torque_value = iiwa.measured_torque()[torque_joint_i];
             shift_filter_data(joint_data_first_harmonic[torque_joint_i],0.0);
             update_filter_data(joint_data_first_harmonic[torque_joint_i], filtered_torque_value);
             double filtered_torque_first_harmonic = filter_implementation(first_harmonic[offset_fastest_filter], joint_data_first_harmonic[torque_joint_i]);
@@ -59,7 +56,7 @@ namespace robotic {
         constexpr double filter_weight = 0.02;
         static_assert(filter_weight > 0.0 && filter_weight < 1.0);
         
-        Eigen::Matrix<double,7,1> derivative_torque = (state.user_defined-prev_state_for_torque_derivative.user_defined)*(1/state.sampleTime);
+        Eigen::Matrix<double,7,1> derivative_torque = (state.user_defined-prev_state_for_torque_derivative.user_defined)*(1/iiwa.sample_time());
         static Eigen::Matrix<double,7,1> filtered_derivative_torque = derivative_torque;
         auto temp = ((1-filter_weight)*filtered_derivative_torque + filter_weight*derivative_torque);
         filtered_derivative_torque = temp;
@@ -77,7 +74,7 @@ namespace robotic {
             state.cmd_tau[4] = proportional_gain*state.user_defined[4]-derivative_gain*filtered_derivative_torque[4];
         }
 
-        prev_state = state;
+        prev_state = iiwa.joints();
         prev_state_for_torque_derivative = state;
 
         /*
@@ -90,12 +87,13 @@ namespace robotic {
         both commanded and current position is always zero, which results in the friction compensator being "shut off". We avoid this problem
         by adding a small perturbation to the reference position with a relative high frequency. 
         */
-        auto perturbations = state.q + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
-        state.cmd_q = first_state.q;
+        auto perturbations = iiwa.joints() + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
+        static auto first_joints_state = iiwa.joints();
+        state.cmd_q = first_joints_state;
         state.cmd_q[4] = perturbations[4];
         state.cmd_q[6] = perturbations[6];
 
-        currentTime += state.sampleTime;
+        currentTime += iiwa.sample_time();
         return std::move(state);
     }
 
