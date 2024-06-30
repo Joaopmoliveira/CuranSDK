@@ -10,14 +10,14 @@ namespace robotic {
         }
     }
 
-    EigenState&& ExtractRippleCrossMitigation::update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
+    EigenState&& ExtractRippleCrossMitigation::update(const RobotModel<number_of_joints>& iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
         static double currentTime = 0.0;
         /*
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
         */
        
-        static EigenState prev_state = state;
-        static EigenState first_state = state;
+        static State prev_state = *iiwa.measured_state();
+        static State first_state = *iiwa.measured_state();
 
         state.cmd_tau = Eigen::Matrix<double,7,1>::Zero();
 
@@ -25,7 +25,7 @@ namespace robotic {
         size_t offset_fastest_filter = 0;
 
         for(size_t joint_i = 0; joint_i < number_of_joints; ++joint_i){
-            const Observation obser_i_j{state.dq[joint_i],state.q[joint_i] - prev_state.q[joint_i]};
+            const Observation obser_i_j{iiwa.velocities()[joint_i],iiwa.joints()[joint_i] - prev_state.q[joint_i]};
             update_filter_properties(first_harmonic[joint_i], obser_i_j);
             update_filter_properties(second_harmonic[joint_i], obser_i_j);
             if(largest_frequency_found < first_harmonic[joint_i].log_filtered_frequency){
@@ -35,7 +35,7 @@ namespace robotic {
         }
         
         for(size_t torque_joint_i = 0; torque_joint_i < number_of_joints; ++torque_joint_i){
-            double filtered_torque_value = state.tau[torque_joint_i];
+            double filtered_torque_value = iiwa.measured_state()->tau[torque_joint_i];
             shift_filter_data(joint_data_first_harmonic[torque_joint_i],0.0);
             update_filter_data(joint_data_first_harmonic[torque_joint_i], filtered_torque_value);
             double filtered_torque_first_harmonic = filter_implementation(first_harmonic[offset_fastest_filter], joint_data_first_harmonic[torque_joint_i]);
@@ -47,7 +47,7 @@ namespace robotic {
             state.user_defined[torque_joint_i] = filtered_torque_value;
         }
         
-        prev_state = state;
+        prev_state = *iiwa.measured_state();
 
         /*
         The Java controller has two values which it reads, namely: 
@@ -59,12 +59,12 @@ namespace robotic {
         both commanded and current position is always zero, which results in the friction compensator being "shut off". We avoid this problem
         by adding a small perturbation to the reference position with a relative high frequency. 
         */
-        auto perturbations = state.q + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
-        state.cmd_q = first_state.q;
+        auto perturbations = iiwa.joints() + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
+        state.cmd_q = convert<double,number_of_joints>(first_state.q);
         state.cmd_q[6] = perturbations[6];
         state.cmd_q[4] = perturbations[4];
 
-        currentTime += state.sampleTime;
+        currentTime += iiwa.sample_time();
         return std::move(state);
     }
 

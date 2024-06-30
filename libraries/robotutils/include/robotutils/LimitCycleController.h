@@ -16,7 +16,7 @@ struct Transformation{
 struct LimitCycleController : public UserData{
     LimitCycleController(const std::string& model_file,const std::string& transform_file);
 
-    EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
+    EigenState&& update(const RobotModel<number_of_joints>& iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
 
     curan::gaussian::GMR<2,2> model;
     Transformation transformation_to_model_coordinates;

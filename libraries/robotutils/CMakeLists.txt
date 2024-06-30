@@ -7,12 +7,12 @@ src/WallAvoidanceData.cpp
 src/FilterRippleFirstHarmonic.cpp
 src/ExtractRipple.cpp
 src/CompensateRipple.cpp
-#src/LimitCycleController.cpp
-#src/JointVelocityController.cpp
-#src/ExtractRippleCrossMitigation.cpp
-#src/ExtractSingleJoint.cpp
-#src/CompensateRippleFreehand.cpp
-#src/RippleReinjection.cpp
+src/LimitCycleController.cpp
+src/JointVelocityController.cpp
+src/ExtractRippleCrossMitigation.cpp
+src/ExtractSingleJoint.cpp
+src/CompensateRippleFreehand.cpp
+src/RippleReinjection.cpp
 src/RobotState.cpp
 )
 
