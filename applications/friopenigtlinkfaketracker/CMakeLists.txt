@@ -5,11 +5,7 @@ main.cpp
 target_link_libraries(FakeFRIPlusBridge 
 PUBLIC 
 Eigen3::Eigen
-rbdl-static 
-KukaRobotLibrary 
-FRILibrary
-tasksLib
-robotParameters
+robotutils
 utils
 communication
 ${OPERATING_SYSTEM_REQUIRMENTS}

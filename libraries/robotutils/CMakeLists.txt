@@ -13,6 +13,7 @@ src/ExtractRippleCrossMitigation.cpp
 src/ExtractSingleJoint.cpp
 src/CompensateRippleFreehand.cpp
 src/RippleReinjection.cpp
+src/RobotState.cpp
 )
 
 target_include_directories(robotutils
@@ -26,9 +27,8 @@ ENDIF()
 target_link_libraries(robotutils 
 PUBLIC
 Eigen3::Eigen
-KukaRobotLibrary 
+rbdl-static
 FRILibrary
-robotParameters
 gaussianmixture
 nlohmann_json 
 nlohmann_json::nlohmann_json 

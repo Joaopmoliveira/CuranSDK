@@ -1,5 +1,5 @@
 add_executable(LimitCycleController 
-replacement_implementation.cpp
+main.cpp
 )
 
 target_compile_definitions(LimitCycleController PRIVATE vsgXchange_FOUND)

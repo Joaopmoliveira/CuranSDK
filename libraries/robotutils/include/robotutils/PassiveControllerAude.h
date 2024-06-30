@@ -10,7 +10,7 @@ namespace robotic {
 struct PassiveControllerData : public UserData{
     PassiveControllerData(const std::string& model_file);
 
-    EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
+    EigenState&& update(const RobotModel<number_of_joints>& iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
 
     curan::gaussian::GMR<3,3> model;
     Eigen::Matrix3d desRotation;

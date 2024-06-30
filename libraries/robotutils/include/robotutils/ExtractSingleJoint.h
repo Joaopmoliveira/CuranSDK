@@ -11,7 +11,7 @@ struct ExtractSingleRipple : public UserData{
     ExtractSingleRipple();
 
     std::pair<FilterData,FilterProperties> first_harmonic;
-    EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
+    EigenState&& update(const RobotModel<number_of_joints>& iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
 };
 
 }

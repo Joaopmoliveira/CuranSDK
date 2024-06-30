@@ -1,185 +1,150 @@
-#include "communication/Server.h"
-#include "communication/ProtoIGTL.h"
-#include "communication/ProtoFRI.h"
+#include "robotutils/LBRController.h"
+#include "robotutils/LimitCycleController.h"
+#include "robotutils/FilterRippleFirstHarmonic.h"
+#include "utils/Logger.h"
+#include "friUdpConnection.h"
+#include "friClientApplication.h"
 
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "rendering/SequencialLinks.h"
 
-#include <iostream>
-#include <thread>
-#include "utils/Logger.h"
-#include "utils/Flag.h"
-#include "utils/SafeQueue.h"
-
-#include "MyLBRClient.h"
-#include "friUdpConnection.h"
-#include "friClientApplication.h"
+#include <chrono>
 #include <csignal>
 
-constexpr unsigned short DEFAULT_PORTID = 30200;
-
-std::atomic<bool> progress = true;
-
-void signal_handler(int signal)
-{
-	progress.store(false);
-}
 
 // utility structure for realtime plot
-struct ScrollingBuffer
-{
-	int MaxSize;
-	int Offset;
-	ImVector<ImVec2> Data;
-	ScrollingBuffer(int max_size = 2000)
-	{
-		MaxSize = max_size;
-		Offset = 0;
-		Data.reserve(MaxSize);
-	}
-	void AddPoint(float x, float y)
-	{
-		if (Data.size() < MaxSize)
-			Data.push_back(ImVec2(x, y));
-		else
-		{
-			Data[Offset] = ImVec2(x, y);
-			Offset = (Offset + 1) % MaxSize;
-		}
-	}
-	void Erase()
-	{
-		if (Data.size() > 0)
-		{
-			Data.shrink(0);
-			Offset = 0;
-		}
-	}
+struct ScrollingBuffer {
+    int MaxSize;
+    int Offset;
+    ImVector<ImVec2> Data;
+    ScrollingBuffer(int max_size = 2000) {
+        MaxSize = max_size;
+        Offset  = 0;
+        Data.reserve(MaxSize);
+    }
+    void AddPoint(float x, float y) {
+        if (Data.size() < MaxSize)
+            Data.push_back(ImVec2(x,y));
+        else {
+            Data[Offset] = ImVec2(x,y);
+            Offset =  (Offset + 1) % MaxSize;
+        }
+    }
+    void Erase() {
+        if (Data.size() > 0) {
+            Data.shrink(0);
+            Offset  = 0;
+        }
+    }
 };
 
-constexpr size_t CartesianDimension = 3;
-std::atomic<std::array<double, CartesianDimension>> velocities;
-
-void interface(vsg::CommandBuffer &cb)
+void display_interface(vsg::CommandBuffer& cb, curan::robotic::RobotLBR& client)
 {
-	ImGui::Begin("Desired Velocity"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, CartesianDimension> buffers;
-	static float t = 0;
-	t += ImGui::GetIO().DeltaTime;
-	auto local_copy = velocities.load();
+    static const auto& atomic_access = client.atomic_acess();
+    auto state = atomic_access.load(std::memory_order_relaxed);
+    ImGui::Begin("Joint Angles"); // Create a window called "Hello, world!" and append into it.
+	static std::array<ScrollingBuffer,3> buffers;
+    static float t = 0;
+    t += ImGui::GetIO().DeltaTime;
 
-	static float history = 10.0f;
-	ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
+    static float history = 10.0f;
+    ImGui::SliderFloat("History",&history,1,30,"%.1f s");
 
-	static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+    static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
 
-	if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, 150)))
-	{
-		ImPlot::SetupAxes(NULL, NULL, flags, flags);
-		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
-		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
-		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for (size_t index = 0; index < CartesianDimension; ++index)
-		{
-			std::string loc = "dx_" + std::to_string(index);
-			buffers[index].AddPoint(t, (float)local_copy[index]);
+    if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1,-1))) {
+        ImPlot::SetupAxes(NULL, NULL, flags, flags);
+        ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
+        ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+		for(size_t index = 0; index < 3 ; ++index){
+			std::string loc = "dot x"+std::to_string(index);
+            buffers[index].AddPoint(t,(float)state.user_defined[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 		}
-		ImPlot::EndPlot();
-	}
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-	ImGui::End();
+        ImPlot::EndPlot();
+    }
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
 }
 
-void robot_control(std::shared_ptr<SharedState> shared_state, curan::utilities::Flag& flag)
-{
+
+curan::robotic::RobotLBR* robot_pointer = nullptr;
+constexpr unsigned short DEFAULT_PORTID = 30200;
+
+void signal_handler(int signal){
+	if(robot_pointer)
+        robot_pointer->cancel();
+}
+
+void rendering(curan::robotic::RobotLBR& client){
+
+    auto interface_callable = [&](vsg::CommandBuffer &cb){
+        display_interface(cb,client);
+    };
+
+    curan::renderable::Window::Info info;
+	curan::renderable::ImGUIInterface::Info info_gui{interface_callable};
+	auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
+	info.api_dump = false;
+	info.display = "";
+	info.full_screen = false;
+	info.is_debug = false;
+	info.screen_number = 0;
+	info.imgui_interface = ui_interface;
+	info.title = "myviewer";
+	curan::renderable::Window::WindowSize size{2000, 1200};
+	info.window_size = size;
+	curan::renderable::Window window{info};
+
+	std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";
+	curan::renderable::SequencialLinks::Info create_info;
+	create_info.convetion = vsg::CoordinateConvention::Y_UP;
+	create_info.json_path = robot_path;
+	create_info.number_of_links = 8;
+	auto robot = curan::renderable::SequencialLinks::make(create_info);
+	window << robot;
+
+    const auto& atomic_state = client.atomic_acess();
+
+    while(client && window.run_once()){
+        auto state = atomic_state.load(std::memory_order_relaxed);
+        for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
+			robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, state.q[joint_index]);
+    }
+
+	std::raise(SIGINT);
+
+}
+
+int main(int argc, char* argv[]) {
+	std::signal(SIGINT, signal_handler);
+    std::unique_ptr<curan::robotic::LimitCycleController> handguinding_controller = std::make_unique<curan::robotic::LimitCycleController>( CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel_new.txt",CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mytransform.txt");
+    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
+	robot_pointer = &client;
+	const auto& access_point = client.atomic_acess();
+    std::thread robot_renderer{[&](){rendering(client);}};
+
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
-		MyLBRClient client = MyLBRClient(shared_state, CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel.txt",CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mytransform.txt");
-		KUKA::FRI::UdpConnection connection{};
+		
+		KUKA::FRI::UdpConnection connection{20};
 		KUKA::FRI::ClientApplication app(connection, client);
-		app.connect(DEFAULT_PORTID, NULL);
-		bool success = true;
-		while (success && flag.value())
+		bool success = app.connect(DEFAULT_PORTID, NULL);
+		success = app.step();
+		
+		while (client){
 			success = app.step();
-		app.disconnect();
-		return;
-	}
-	catch (std::exception& e)
-	{
-		std::cout << "robot control exception\n" << e.what() << std::endl;
-		return;
-	}
-}
-
-int main(int argc, char *argv[])
-{
-	// Install a signal handler
-	std::signal(SIGINT, signal_handler);
-	try
-	{
-		curan::utilities::Flag robot_flag;
-		robot_flag.set(true);
-
-		auto shared_state = std::make_shared<SharedState>();
-		shared_state->is_initialized.store(false);
-
-		auto robot_functional_control = [shared_state, &robot_flag]()
-		{
-			robot_control(shared_state, robot_flag);
-		};
-
-		std::thread thred_robot_control{robot_functional_control};
-
-		curan::renderable::Window::Info info;
-		curan::renderable::ImGUIInterface::Info info_gui{interface};
-		auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
-		info.api_dump = false;
-		info.display = "";
-		info.full_screen = false;
-		info.is_debug = false;
-		info.screen_number = 0;
-		info.imgui_interface = ui_interface;
-		info.title = "myviewer";
-		curan::renderable::Window::WindowSize size{2000, 1200};
-		info.window_size = size;
-		curan::renderable::Window window{info};
-
-		std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";
-		curan::renderable::SequencialLinks::Info create_info;
-		create_info.convetion = vsg::CoordinateConvention::Y_UP;
-		create_info.json_path = robot_path;
-		create_info.number_of_links = 8;
-		auto robot = curan::renderable::SequencialLinks::make(create_info);
-		window << robot;
-
-		// Use of KUKA Robot Library/robot.h (M, J, World Coordinates, Rotation Matrix, ...)
-		kuka::Robot::robotName myName(kuka::Robot::LBRiiwa); // Select the robot here
-
-		auto robot_control = std::make_unique<kuka::Robot>(myName); // myLBR = Model
-		auto iiwa = std::make_unique<RobotParameters>();			// myIIWA = Parameters as inputs for model and control, e.g., q, qDot, c, g, M, Minv, J, ...
-
-		Vector3d pointPosition = Vector3d(0, 0, 0.045); // Point on center of flange for MF-Electric
-														// Positions and orientations
-		Vector3d p_0_cur = Vector3d::Zero(3, 1);
-		Matrix3d R_0_7 = Matrix3d::Zero(3, 3);
-
-		while (progress.load())
-		{
-			if (!window.run_once())
-				progress = false;
-			if (shared_state->is_initialized)
-				velocities.store(shared_state->velocity.load());
-			
 		}
-		robot_flag.set(false);
-		thred_robot_control.join();
+		app.disconnect();
+        robot_renderer.join();
 		return 0;
 	}
-	catch (std::exception &e)
+	catch (...)
 	{
-		std::cout << "main Exception : " << e.what() << std::endl;
+		std::cout << "robot control exception\n";
+		return 1;
 	}
 }

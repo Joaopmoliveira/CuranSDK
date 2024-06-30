@@ -18,9 +18,6 @@ PUBLIC
 ${ITK_LIBRARIES}
 communication
 imageprocessing
-KukaRobotLibrary 
-FRILibrary
-robotParameters
 vsg::vsg
 vsgXchange::vsgXchange
 renderable

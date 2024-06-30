@@ -98,7 +98,7 @@ struct RhytmicMotion : public curan::robotic::UserData{
 
     }
 
-    curan::robotic::EigenState&& update(kuka::Robot* robot, RobotParameters* iiwa, curan::robotic::EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override{
+    curan::robotic::EigenState&& update(const curan::robotic::RobotModel<curan::robotic::number_of_joints>& iiwa, curan::robotic::EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override{
         static double currentTime = 0.0;
         /*
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
@@ -106,30 +106,30 @@ struct RhytmicMotion : public curan::robotic::UserData{
        
         //state.cmd_tau = -iiwa->M * 10 * iiwa->qDot;
 
-        static Eigen::Matrix<double,7,1> equilibrium_joint_pos = state.q;
+        static Eigen::Matrix<double,7,1> equilibrium_joint_pos = iiwa.joints();
         
         
-        Eigen::Matrix<double,3,1> velocity_translation = generator.compute<FixedPlane::PLANE_X>(state.translation);
+        Eigen::Matrix<double,3,1> velocity_translation = generator.compute<FixedPlane::PLANE_X>(iiwa.translation());
         Eigen::Matrix<double,3,3> desired_rotation_mat;
         desired_rotation_mat << 0.0, 1.0 , 0.0 ,
                                 1.0, 0.0 , 0.0 ,
                                 0.0, 0.0 ,-1.0;
-        Eigen::Matrix<double,3,3> error_matrix = desired_rotation_mat.transpose()*state.rotation;
+        Eigen::Matrix<double,3,3> error_matrix = desired_rotation_mat.transpose()*iiwa.rotation();
         Eigen::AngleAxisd E_AxisAngle(error_matrix);
-        Eigen::Matrix<double,3,1> velocity_rotation = -E_AxisAngle.angle()*state.rotation*E_AxisAngle.axis();
+        Eigen::Matrix<double,3,1> velocity_rotation = -E_AxisAngle.angle()*iiwa.rotation()*E_AxisAngle.axis();
 
         Eigen::Matrix<double,6,1> desired_velocity = Eigen::Matrix<double,6,1>::Zero();
         desired_velocity.block(0,0,3,1) = velocity_translation;
         desired_velocity.block(3,0,3,1) = velocity_rotation;
 
-        Eigen::Matrix<double,6,1> current_velocity = state.jacobian*state.dq;
+        Eigen::Matrix<double,6,1> current_velocity =  iiwa.jacobian()*iiwa.velocities();
 
-        Eigen::Matrix<double,6,6> lambda = (state.jacobian*state.invmassmatrix*state.jacobian.transpose()+Eigen::Matrix<double,6,6>::Identity()*0.1*0.3).inverse();
-	    Eigen::Matrix<double,7,6> jbar = state.invmassmatrix * state.jacobian.transpose() * lambda;
-	    Eigen::Matrix<double,7,7> nullSpaceTranslation = Eigen::Matrix<double,7,7>::Identity() - state.jacobian.transpose() * jbar.transpose();
+        Eigen::Matrix<double,6,6> lambda = ( iiwa.jacobian()*iiwa.invmass()* iiwa.jacobian().transpose()+Eigen::Matrix<double,6,6>::Identity()*0.1*0.3).inverse();
+	    Eigen::Matrix<double,7,6> jbar = iiwa.invmass() *  iiwa.jacobian().transpose() * lambda;
+	    Eigen::Matrix<double,7,7> nullSpaceTranslation = Eigen::Matrix<double,7,7>::Identity() -  iiwa.jacobian().transpose() * jbar.transpose();
 
         state.user_defined.block(0,0,6,1) = desired_velocity;
-        state.user_defined2 = state.jacobian.transpose()*lambda*gain*(desired_velocity-current_velocity)-nullSpaceTranslation*(state.massmatrix * 10 * equilibrium_joint_pos);
+        state.user_defined2 = iiwa.jacobian().transpose()*lambda*gain*(desired_velocity-current_velocity)-nullSpaceTranslation*(iiwa.mass() * 10 * equilibrium_joint_pos);
         state.cmd_tau = state.user_defined2;
 
         /*
@@ -142,9 +142,9 @@ struct RhytmicMotion : public curan::robotic::UserData{
         both commanded and current position is always zero, which results in the friction compensator being "shut off". We avoid this problem
         by adding a small perturbation to the reference position with a relative high frequency. 
         */
-        state.cmd_q = state.q + Eigen::Matrix<double,7,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
+        state.cmd_q = iiwa.joints() + Eigen::Matrix<double,7,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
 
-        currentTime += state.sampleTime;
+        currentTime += iiwa.sample_time();
         return std::move(state);
     }
 
@@ -153,7 +153,7 @@ struct RhytmicMotion : public curan::robotic::UserData{
 int main(){
     std::signal(SIGINT, signal_handler);
     std::unique_ptr<RhytmicMotion> handguinding_controller = std::make_unique<RhytmicMotion>();
-    curan::robotic::RobotLBR client{handguinding_controller.get()};
+    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
     const auto& access_point = client.atomic_acess();
     robot_pointer = &client;
 	try

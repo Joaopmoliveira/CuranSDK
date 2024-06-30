@@ -46,7 +46,7 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
 	ImGui::Begin("Control Torques"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, LBR_N_JOINTS> buffers;
+	static std::array<ScrollingBuffer, curan::robotic::number_of_joints> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
 
@@ -61,7 +61,7 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for (size_t index = 0; index < LBR_N_JOINTS; ++index)
+		for (size_t index = 0; index < curan::robotic::number_of_joints; ++index)
 		{
 			std::string loc = "tau_ext " + std::to_string(index);
 			buffers[index].AddPoint(t, (float)state.tau_ext[index]);
@@ -133,7 +133,7 @@ void rendering(curan::robotic::RobotLBR& client){
 
     while(client && window.run_once()){
         auto state = atomic_state.load(std::memory_order_relaxed);
-        for (size_t joint_index = 0; joint_index < LBR_N_JOINTS; ++joint_index)
+        for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
 			robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, state.q[joint_index]);
     }
 
@@ -143,7 +143,7 @@ int main(){
     Eigen::Vector3d plane_point{{-0.658657 , 0.276677 , 0.404548}};
     Eigen::Vector3d plane_direction{{0.0 , 1.0 , 0.0}};
     std::unique_ptr<curan::robotic::WallAvoidanceData> handguinding_controller = std::make_unique<curan::robotic::WallAvoidanceData>(plane_point,plane_direction);
-    curan::robotic::RobotLBR client{handguinding_controller.get()};
+    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
     std::thread robot_renderer{[&](){rendering(client);}};
 	try
 	{

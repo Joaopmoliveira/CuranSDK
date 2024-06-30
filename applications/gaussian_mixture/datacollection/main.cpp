@@ -46,7 +46,7 @@ void common_interface(vsg::CommandBuffer& cb, curan::robotic::RobotLBR& client)
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
     ImGui::Begin("Joint Angles"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer,LBR_N_JOINTS> buffers;
+	static std::array<ScrollingBuffer,curan::robotic::number_of_joints> buffers;
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 
@@ -64,7 +64,7 @@ void common_interface(vsg::CommandBuffer& cb, curan::robotic::RobotLBR& client)
         ImPlot::SetupAxisLimits(ImAxis_X1,t - history, t, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1,0,1);
         ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
-		for(size_t index = 0; index < LBR_N_JOINTS ; ++index){
+		for(size_t index = 0; index < curan::robotic::number_of_joints ; ++index){
 			std::string loc = "joint "+std::to_string(index);
             buffers[index].AddPoint(t,(float)state.q[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
@@ -116,7 +116,7 @@ void rendering(curan::robotic::RobotLBR& client){
 
     while(client && window.run_once()){
         auto state = atomic_state.load(std::memory_order_relaxed);
-        for (size_t joint_index = 0; joint_index < LBR_N_JOINTS; ++joint_index)
+        for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
 			robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, state.q[joint_index]);
     }
 
@@ -127,7 +127,7 @@ void rendering(curan::robotic::RobotLBR& client){
 int main(int argc, char* argv[]) {
 	std::signal(SIGINT, signal_handler);
     std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
-    curan::robotic::RobotLBR client{handguinding_controller.get()};
+    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
     std::thread robot_renderer{[&](){rendering(client);}};
@@ -157,7 +157,7 @@ int main(int argc, char* argv[]) {
 				previous_state = snapshot_record_data;
 				if(snapshot_record_data){
 					demonstrations.emplace_back(list_of_recorded_states);				
-					std::printf("new %lu size\n",list_of_recorded_states.size());
+					std::printf("new %llu size\n",list_of_recorded_states.size());
 					list_of_recorded_states = std::list<curan::robotic::State>{};
 				}
 			}

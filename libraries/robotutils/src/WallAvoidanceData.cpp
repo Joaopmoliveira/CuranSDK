@@ -18,19 +18,19 @@ namespace robotic
 
     };
 
-    EigenState &&WallAvoidanceData::update(kuka::Robot *robot, RobotParameters *iiwa, EigenState &&state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
+    EigenState &&WallAvoidanceData::update(const RobotModel<number_of_joints>& iiwa,EigenState &&state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians){
         static double currentTime = 0.0;
         
         double Dmax = -f_direction_along_valid_region.transpose()*f_plane_point;
-        double D = f_direction_along_valid_region.transpose()*state.translation+Dmax;
+        double D = f_direction_along_valid_region.transpose()*iiwa.translation()+Dmax;
         Dmax= 0;
 
-        Eigen::VectorXd vel = state.jacobian*state.dq;
+        Eigen::VectorXd vel = iiwa.jacobian()*iiwa.velocities();
         Eigen::Vector3d vel_pos = vel.block(0,0,3,1);
         double dotD = (f_direction_along_valid_region.transpose()*vel_pos)(0,0);
 
         constexpr double scalling_factor = 15.0;
-        double dtvar = scalling_factor*state.sampleTime;
+        double dtvar = scalling_factor*iiwa.sample_time();
         if(dtvar<0.001)
             dtvar = scalling_factor*0.001;
         double dt2 = dtvar;
@@ -62,19 +62,17 @@ namespace robotic
         state.user_defined[1] = dotD;
         state.user_defined[2] = dotdotDMaxFinal;
         
-        auto invMass = state.massmatrix.inverse();
-        
-        Eigen::Matrix<double,1,7> jacobianPos = f_direction_along_valid_region.transpose()*state.jacobian.block(0,0,3,7);
+        Eigen::Matrix<double,1,7> jacobianPos = f_direction_along_valid_region.transpose()*iiwa.jacobian().block(0,0,3,7);
 
-        double LambdaInvPos = (jacobianPos*invMass*jacobianPos.transpose())(0,0)+(std::pow(0.3,2));
+        double LambdaInvPos = (jacobianPos*iiwa.invmass()*jacobianPos.transpose())(0,0)+(std::pow(0.3,2));
         double lambdaPos = 1/LambdaInvPos;
-        Eigen::Matrix<double,7,1> JsatBar = invMass * jacobianPos.transpose() * lambdaPos;
+        Eigen::Matrix<double,7,1> JsatBar = iiwa.invmass() * jacobianPos.transpose() * lambdaPos;
 
         bool CreateTaskSat = false;
 
         Eigen::Matrix<double,7,7> Psat = Eigen::Matrix<double,7,7>::Identity();
 
-        Eigen::Matrix<double,6,1> linear_acceleration_cartesian = state.jacobian*invMass*state.cmd_tau;
+        Eigen::Matrix<double,6,1> linear_acceleration_cartesian = iiwa.jacobian()*iiwa.invmass()*state.cmd_tau;
         Eigen::Matrix<double,3,1> translation_acceleration = linear_acceleration_cartesian.block(0,0,3,1);
         double linear_acceleration = translation_acceleration.transpose()*f_direction_along_valid_region;
         if(dotdotDMaxFinal + 0.001 < linear_acceleration)
@@ -90,9 +88,9 @@ namespace robotic
         auto projected_control = tauS+Psat*state.cmd_tau;
         state.cmd_tau = projected_control;
 
-        state.cmd_q = state.q + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
+        state.cmd_q = iiwa.joints() + Eigen::Matrix<double,number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
 
-        currentTime += state.sampleTime;
+        currentTime += iiwa.sample_time();
         return std::move(state);
 };
 }

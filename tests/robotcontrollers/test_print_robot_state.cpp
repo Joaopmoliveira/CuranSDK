@@ -21,7 +21,7 @@ void signal_handler(int signal)
 
 int main(){
     std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
-    curan::robotic::RobotLBR client{handguinding_controller.get()};
+    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
 
     std::thread thr{[&](){
         const auto& reading_point = client.atomic_acess();
@@ -29,10 +29,6 @@ int main(){
             auto current = reading_point.load(std::memory_order_relaxed);
             std::cout << "\n";
             auto current_value = current.converteigen();
-            std::cout << "=========================================\n" 
-                      << "rotation:\n" <<  current_value.rotation 
-                      << "\ntranslation:" << current_value.translation.transpose()                                   
-                      << "\n=========================================\n";
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
     }};

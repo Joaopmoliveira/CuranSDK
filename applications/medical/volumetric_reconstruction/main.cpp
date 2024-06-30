@@ -8,9 +8,6 @@
 #include <vsg/all.h>
 #include <vsgXchange/all.h>
 #include <iostream>
-#include "Robot.h"
-#include "ToolData.h"
-#include "robotParameters.h"
 #include "rendering/Window.h"
 #include "rendering/Renderable.h"
 #include "rendering/SequencialLinks.h"

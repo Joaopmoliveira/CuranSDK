@@ -224,21 +224,18 @@ int main(int argc, char *argv[])
 		server->connect(callme);
 
 		std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
-    	curan::robotic::RobotLBR client{handguinding_controller.get()};
+    	curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
 		robot_pointer = &client;
 
- 		auto robot_functional_control = [&]()
-		{
+		std::thread thred_robot_control{[&](){
 			robot_control(client);
 			std::cout << "robot control stopping" << std::endl;
-		};
-
-		std::thread thred_robot_control{robot_functional_control}; //--------------------
+		}}; 
 
 		std::thread thred{[&](){
 			start_tracking(server, client,server_has_connections);
 			std::cout << "robot tracking stopping" << std::endl;
-		}};  //------------------------
+		}}; 
 
 		unsigned short port_fri = 50010;
 
@@ -246,12 +243,11 @@ int main(int argc, char *argv[])
 		curan::communication::Server::Info construction_joints{context, fri_interface, port_fri};
 		auto server_joints = curan::communication::Server::make(construction_joints);
  
-		auto joint_tracking = [&]()
+		std::thread thred_joint{[&]()
 		{
 			start_joint_tracking(server_joints, client);
 			std::cout << "joint tracking stopping" << std::endl;
-		};
-		std::thread thred_joint{joint_tracking}; //--------------------------- 
+		}}; //--------------------------- 
 
 		curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
 		context.run();

@@ -70,20 +70,6 @@ robotutils
 renderable
 )
 
-
-add_executable(test_mass_matrix_api test_mass_matrix_api.cpp)
-
-target_compile_definitions(test_mass_matrix_api PRIVATE SK_VULKAN)
-target_compile_definitions(test_mass_matrix_api PRIVATE NOMINMAX)
-target_compile_definitions(test_mass_matrix_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_mass_matrix_api PUBLIC
-utils
-robotutils
-renderable
-)
-
-
 add_executable(stupid_filter_test stupid_filter_test.cpp)
 
 target_compile_definitions(stupid_filter_test PRIVATE NOMINMAX)
@@ -104,3 +90,13 @@ robotutils
 nlohmann_json 
 nlohmann_json::nlohmann_json 
 )
+
+add_executable(eigen_decomposition_for_impedance_controller eigen_decomposition_for_impedance_controller.cpp)
+
+target_compile_definitions(eigen_decomposition_for_impedance_controller PRIVATE NOMINMAX)
+
+target_link_libraries(eigen_decomposition_for_impedance_controller PUBLIC
+utils
+robotutils
+)
+
