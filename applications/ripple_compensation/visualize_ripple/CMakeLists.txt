@@ -1,6 +1,5 @@
 add_executable(RippleVisualization 
 main.cpp
-MyLBRClient.cpp
 )
 
 target_compile_definitions(RippleVisualization PRIVATE vsgXchange_FOUND)
@@ -14,11 +13,7 @@ endif(WIN32)
 target_link_libraries(RippleVisualization 
 PUBLIC 
 Eigen3::Eigen
-rbdl-static 
-KukaRobotLibrary 
-FRILibrary
-tasksLib
-robotParameters
+robotutils
 utils
 renderable
 ${OPERATING_SYSTEM_REQUIRMENTS}

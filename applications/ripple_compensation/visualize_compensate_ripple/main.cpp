@@ -185,7 +185,7 @@ void rendering(curan::robotic::RobotLBR& client,curan::robotic::CompensateRipple
 
     while(client && window.run_once()){
         auto state = atomic_state.load(std::memory_order_relaxed);
-        for (size_t joint_index = 0; joint_index < LBR_N_JOINTS; ++joint_index)
+        for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
 			robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, state.q[joint_index]);
     }
 }
@@ -195,7 +195,7 @@ int main(){
     std::unique_ptr<curan::robotic::CompensateRippleFreehand> handguinding_controller = std::make_unique<curan::robotic::CompensateRippleFreehand>();
 	handguinding_controller->activate.store(curan::robotic::type_of_compensation::ADAPTIVE_FILTERING_SCHEME,std::memory_order_acq_rel);
 	constexpr size_t n_weights = 0;
-	curan::robotic::RobotLBR client{handguinding_controller.get()};
+	curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
     std::thread robot_renderer{[&](){rendering(client,handguinding_controller.get());}};

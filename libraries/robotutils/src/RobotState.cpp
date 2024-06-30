@@ -4,6 +4,26 @@
 namespace curan {
 namespace robotic {
 
+WrappedState::WrappedState(const State& in){
+    f_q = Eigen::Matrix<double,number_of_joints,1>::Zero();
+    f_dq = Eigen::Matrix<double,number_of_joints,1>::Zero();
+    f_ddq = Eigen::Matrix<double,number_of_joints,1>::Zero();
+    f_end_effector = Eigen::Matrix<double,4,4>::Identity();
+    f_measured_torque = Eigen::Matrix<double,number_of_joints,1>::Zero();
+    for(size_t row = 0; row < number_of_joints; ++row){
+        f_q[row] = in.q[row];
+        f_dq[row] = in.dq[row];
+        f_ddq[row] = in.ddq[row];
+        f_measured_torque[row] = in.tau[row];
+    }
+    for(size_t cart_row = 0; cart_row < 3; ++cart_row){
+        f_end_effector(cart_row,3) = in.translation[cart_row];
+        for(size_t cart_col = 0; cart_col < 3; ++cart_col)
+            f_end_effector(cart_row,cart_col) = in.rotation[cart_row][cart_col];
+    }
+
+}
+
 State::State(const  KUKA::FRI::LBRState& state, const command_mode& mode){
     sampleTime = state.getSampleTime();
     switch(mode){

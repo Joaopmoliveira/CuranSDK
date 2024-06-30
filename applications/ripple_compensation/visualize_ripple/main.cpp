@@ -8,10 +8,11 @@
 #include "utils/Flag.h"
 #include "utils/SafeQueue.h"
 
-#include "MyLBRClient.h"
+#include "robotutils/LBRController.h"
+#include "robotutils/HandGuidance.h"
+#include <csignal>
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
-#include <csignal>
 
 constexpr unsigned short DEFAULT_PORTID = 30200;
 
@@ -50,18 +51,15 @@ struct ScrollingBuffer
 	}
 };
 
-constexpr size_t Joints = 7;
+using AtomicState = std::atomic<curan::robotic::State>;
 
-void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
+void inter(curan::robotic::RobotLBR& client, vsg::CommandBuffer &cb)
 {
 	ImGui::Begin("Joint Torques"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, Joints> measured_torques;
+	static std::array<ScrollingBuffer, curan::robotic::number_of_joints> measured_torques;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
-
-	KUKA::FRI::LBRState local_copy;
-	if(shared_state->is_initialized.load())
-		local_copy = shared_state->robot_state.load();
+	auto local_copy = client.atomic_acess().load();
 
 	static float history = 30.0f;
 	ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
@@ -74,18 +72,17 @@ void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for (size_t index = 0; index < Joints; ++index)
+		for (size_t index = 0; index < curan::robotic::number_of_joints; ++index)
 		{
 			std::string loc = "tau_" + std::to_string(index);
-			if(shared_state->is_initialized.load())
-				measured_torques[index].AddPoint(t, (float)local_copy.getMeasuredTorque()[index]);
+			measured_torques[index].AddPoint(t, (float)local_copy.tau[index]);
 			ImPlot::PlotLine(loc.data(), &measured_torques[index].Data[0].x, &measured_torques[index].Data[0].y, measured_torques[index].Data.size(), 0, measured_torques[index].Offset, 2 * sizeof(float));
 		}
 		ImPlot::EndPlot();
 	}
 	ImGui::End();
 
-	static std::array<ScrollingBuffer, Joints> commanded_torques;
+	static std::array<ScrollingBuffer, curan::robotic::number_of_joints> commanded_torques;
 	
 	ImGui::Begin("Commanded Joint Torques"); // Create a window called "Hello, world!" and append into it.
 	if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, 150)))
@@ -94,11 +91,10 @@ void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for (size_t index = 0; index < Joints; ++index)
+		for (size_t index = 0; index < curan::robotic::number_of_joints; ++index)
 		{
 			std::string loc = "cmd_" + std::to_string(index);
-			if(shared_state->is_initialized.load())
-				commanded_torques[index].AddPoint(t, (float)local_copy.getCommandedTorque()[index]);
+			commanded_torques[index].AddPoint(t, (float)local_copy.cmd_tau[index]);
 			ImPlot::PlotLine(loc.data(), &commanded_torques[index].Data[0].x, &commanded_torques[index].Data[0].y, commanded_torques[index].Data.size(), 0, commanded_torques[index].Offset, 2 * sizeof(float));
 		}
 		ImPlot::EndPlot();
@@ -107,12 +103,11 @@ void inter(std::shared_ptr<SharedState> shared_state, vsg::CommandBuffer &cb)
 	ImGui::End();
 }
 
-void robot_control(std::shared_ptr<SharedState> shared_state, curan::utilities::Flag &flag)
+void robot_control(curan::robotic::RobotLBR& client, curan::utilities::Flag &flag)
 {
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
-		MyLBRClient client = MyLBRClient(shared_state);
 		KUKA::FRI::UdpConnection connection{};
 		KUKA::FRI::ClientApplication app(connection, client);
 		app.connect(DEFAULT_PORTID, NULL);
@@ -137,13 +132,11 @@ int main(int argc, char *argv[])
 
 	curan::utilities::Flag robot_flag;
 	robot_flag.set(true);
-
-	auto shared_state = std::make_shared<SharedState>();
-	shared_state->is_initialized.store(false);
+	std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
+	curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
 
 	curan::renderable::Window::Info info;
-	curan::renderable::ImGUIInterface::Info info_gui{[shared_state](vsg::CommandBuffer &cb)
-													 { inter(shared_state, cb); }};
+	curan::renderable::ImGUIInterface::Info info_gui{[&](vsg::CommandBuffer &cb){ inter(client, cb); }};
 	auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
 	info.api_dump = false;
 	info.display = "";
@@ -164,12 +157,7 @@ int main(int argc, char *argv[])
 	auto robot = curan::renderable::SequencialLinks::make(create_info);
 	window << robot;
 
-	auto robot_functional_control = [shared_state, &robot_flag]()
-	{
-		robot_control(shared_state, robot_flag);
-	};
-
-	std::thread thred_robot_control{robot_functional_control};
+	std::thread thred_robot_control{[&](){robot_control(client, robot_flag);}};
 
 	window.run();
 

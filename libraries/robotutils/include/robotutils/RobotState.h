@@ -31,6 +31,18 @@ struct EigenState{
     }
 };
 
+struct State;
+
+struct WrappedState{
+    Eigen::Matrix<double,number_of_joints,1> f_q;
+    Eigen::Matrix<double,number_of_joints,1> f_dq;
+    Eigen::Matrix<double,number_of_joints,1> f_ddq;
+    Eigen::Matrix<double,4,4> f_end_effector;
+    Eigen::Matrix<double,number_of_joints,1> f_measured_torque;
+
+    WrappedState(const State& in);
+};
+
 struct State{
 
     enum command_mode{
@@ -85,7 +97,10 @@ struct State{
     void differential(const State& next);
     EigenState converteigen();
     void convertFrom(const EigenState&);
+    
 };
+
+
 
 std::ostream& operator<<(std::ostream& os, const std::list<State>& cont);
 

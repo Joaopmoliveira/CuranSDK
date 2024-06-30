@@ -3,6 +3,7 @@
 
 #include "RobotState.h"
 #include <nlohmann/json.hpp>
+#include "ConvertEigenToArray.h"
 #include <fstream>
 
 namespace curan {

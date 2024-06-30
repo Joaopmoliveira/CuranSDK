@@ -90,3 +90,13 @@ robotutils
 nlohmann_json 
 nlohmann_json::nlohmann_json 
 )
+
+add_executable(eigen_decomposition_for_impedance_controller eigen_decomposition_for_impedance_controller.cpp)
+
+target_compile_definitions(eigen_decomposition_for_impedance_controller PRIVATE NOMINMAX)
+
+target_link_libraries(eigen_decomposition_for_impedance_controller PUBLIC
+utils
+robotutils
+)
+
