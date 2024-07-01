@@ -58,15 +58,23 @@ project has the following dependencies
     "eigen3",
     "itk",
     "ceres",
-    "openigtlink",
     "asio",
     "glfw3",
-    "assimp",
+    "nlohmann-json",
+    "boost-process",
+    "vsg",
+    "vsgimgui",
+    "pugixml",
+    {
+      "name": "vsgxchange",
+      "features": [ "assimp" ]
+    },
     {
       "name": "skia",
       "features": [ "vulkan" ]
     }
-  ]
+  ],
+  "builtin-baseline":"7eb700c9688daed6d8bdcdc571ebe3eedea6a774"
 }
 ```
 
