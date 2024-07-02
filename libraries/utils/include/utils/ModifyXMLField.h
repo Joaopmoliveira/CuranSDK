@@ -2,6 +2,7 @@
 #define CURAN_MODIFY_XML_FIELD_HEADER_FILE_
 
 #include <filesystem>
+#include <vector>
 #include <string>
 
 namespace curan {

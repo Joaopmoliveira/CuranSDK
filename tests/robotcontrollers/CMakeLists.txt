@@ -6,6 +6,7 @@ target_compile_definitions(test_handguidance_algorithm PRIVATE CURAN_COPIED_RESO
 target_link_libraries(test_handguidance_algorithm PUBLIC
 utils
 robotutils
+renderable
 )
 
 add_executable(test_print_robot_state test_print_robot_state.cpp)

@@ -82,6 +82,3 @@ add_subdirectory(tests)
 
 # Add medical applications
 #add_subdirectory(tutorialsrc)
-
-# https://www.fnac.pt/Monitor-Tatil-Portatil-Verbatim-PMT-15-FHD-15-6-Monitor-Monitor-LED/a10756603
-# https://www.fnac.pt/Monitor-Portatil-Asus-ZenScreen-15-6-FHD-MB166C-60Hz-Monitor-Monitor-LED/a11231749#int=S:Suggestion|FA%3AMIC|10|11231749|BL3|L1
