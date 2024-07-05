@@ -104,6 +104,14 @@ struct RegistrationParameters{
     }
 };
 
+struct preprocessing_parameters
+{
+    float fixed_sigma;
+    float fixed_threshold;
+    float moving_sigma;
+    float moving_threshold;
+};
+
 struct info_solve_registration
 {
     ImageRegistrationType::Pointer fixed_image;
@@ -113,7 +121,6 @@ struct info_solve_registration
     const Eigen::Matrix<double,4,4> &initial_rotation;
 };
 
-
 std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_registration(const info_solve_registration &info_registration, const RegistrationParameters& parameters)
 {
     using InterpolatorType = itk::LinearInterpolateImageFunction<
@@ -121,11 +128,6 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
             double>;
     using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
     using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageRegistrationType, ImageRegistrationType>;
-    //using MetricType = itk::MeanSquaresImageToImageMetricv4<ImageRegistrationType,ImageRegistrationType>;
-    //using MetricType = itk::CorrelationImageToImageMetricv4<ImageRegistrationType, ImageRegistrationType>;
-    //using MetricType = itk::JointHistogramMutualInformationImageToImageMetricv4<ImageRegistrationType, ImageRegistrationType>;
-    //using MetricType = itk::DemonsImageToImageMetricv4<ImageRegistrationType, ImageRegistrationType>;
-    //using MetricType = itk::ANTSNeighborhoodCorrelationImageToImageMetricv4<ImageRegistrationType, ImageRegistrationType>;
     using RegistrationType = itk::ImageRegistrationMethodv4<ImageRegistrationType, ImageRegistrationType, TransformType>;
 
     auto metric = MetricType::New();
@@ -181,9 +183,9 @@ std::tuple<double,Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>> solve_reg
     using OptimizerScalesType = OptimizerType::ScalesType;
     OptimizerScalesType optimizerScales(initialTransform->GetNumberOfParameters());
 
-    optimizerScales[0] = 1.00;
-    optimizerScales[1] = 1.00;
-    optimizerScales[2] = 1.00;
+    optimizerScales[0] = 1.0;
+    optimizerScales[1] = 1.0;
+    optimizerScales[2] = 1.0;
     optimizerScales[3] = parameters.relative_scales;
     optimizerScales[4] = parameters.relative_scales;
     optimizerScales[5] = parameters.relative_scales;
@@ -364,41 +366,10 @@ std::tuple<double,Eigen::Matrix<double,4,4>> icp_registration(Eigen::Matrix4d in
             final_transformation(row,col) = transform->GetMatrix()(row,col);
         }
     }
-    // Not sure about the optimization value
+    
     return {optimizer->GetValue().two_norm(),final_transformation};
 }
 
-
-void print_image_info(itk::Image<PixelType,3>::Pointer image, std::string name){
-        std::cout << "-------------------\n";
-        std::cout << "(" << name << ") :\n -------------------\n";
-        std::cout << "direction:\n";
-        auto direction = image->GetDirection();
-        for(size_t i = 0; i < 3; ++i){
-            for(size_t j = 0; j < 3; ++j)
-                std::cout <<  direction(i,j) << " ";
-            std::cout << "\n";
-        }
-        auto origin = image->GetOrigin();
-        std::printf("\norigin: (%f %f %f)",image->GetOrigin()[0],image->GetOrigin()[1],image->GetOrigin()[2]);
-        std::printf("\nspacing: (%f %f %f)",image->GetSpacing()[0],image->GetSpacing()[1],image->GetSpacing()[2]);
-        std::printf("\nsize: (%d %d %d)",(int)image->GetLargestPossibleRegion().GetSize()[0],(int)image->GetLargestPossibleRegion().GetSize()[1],(int)image->GetLargestPossibleRegion().GetSize()[2]);
-        std::cout << "\n-------------------\n";
-};
-
-int modify_image_with_transform(Eigen::Matrix<double,4,4> transform,itk::Image<unsigned char,Dimension>::Pointer image){
-    itk::Point<double,3> origin;
-    itk::Matrix<double> direction;
-    for(size_t row = 0; row < 3; ++row){
-        origin[row] = transform(row,3);
-        for(size_t col = 0; col < 3; ++col){
-            direction(row,col) = transform(row,col);
-        }
-     }
-    image->SetOrigin(origin);
-    image->SetDirection(direction);
-    return 1;
-};
 
 int modify_image_with_transform(Eigen::Matrix<double,4,4> transform,ImageType::Pointer image){
     itk::Point<double,3> origin;
@@ -476,39 +447,48 @@ Eigen::Matrix<double, Eigen::Dynamic, 3> downsample_points(const Eigen::Matrix<d
     return selected_points;
 }
 
-
 int main(int argc, char **argv)
 {
-
-    
-    if(argc!=4){
-        if(argc>4 || argc == 1){
-            std::cout << "To run the executable you must provide three arguments:\n "
-                      << "first parameter - input volume, (fixed)\n"
-                      << "second parameter - input volume (static)\n"
-                      << "third parameter - Full moving volume";
+    if(argc!=5){
+        if(argc>5 || argc == 1){
+            std::cout << "To run the executable you must provide four arguments:\n"
+                      << "First parameter - cuted volume (fixed)\n"
+                      << "Second parameter - cuted volume (moving)\n"
+                      << "Third parameter - Full moving volume\n"
+                      << "Forth parameter - Full fixed volume";
                       return 1;
             }
         if(argc == 2){
-            std::cout << "To run the executable you must provide three arguments:\n "
-                      << "first parameter - " << std::string(argv[1]) << "\n"
-                      << "second parameter - input volume (static)\n"
-                      << "third parameter - Full moving volume";
+            std::cout << "To run the executable you must provide four arguments:\n "
+                      << "First parameter - " << std::string(argv[1]) << "\n"
+                      << "Second parameter - input volume (static)\n"
+                      << "Third parameter - Full moving volume\n"
+                      << "Forth parameter - Full fixed volume";
                       return 1;
         }
         if(argc == 3){
-            std::cout << "To run the executable you must provide three arguments:\n "
-                      << "first parameter - " << std::string(argv[1]) << "\n"
-                      << "second parameter - "<< std::string(argv[2]) << "\n"
-                      << "third parameter - Full moving volume";
+            std::cout << "To run the executable you must provide four arguments:\n "
+                      << "First parameter - " << std::string(argv[1]) << "\n"
+                      << "Second parameter - "<< std::string(argv[2]) << "\n"
+                      << "Third parameter - Full moving volume\n"
+                      << "Forth parameter - Full fixed volume";
                       return 1;
         }
+        if(argc == 4){
+            std::cout << "To run the executable you must provide four arguments:\n "
+                      << "First parameter - " << std::string(argv[1]) << "\n"
+                      << "Second parameter - "<< std::string(argv[2]) << "\n"
+                      << "Third parameter - " << std::string(argv[3]) << "\n"
+                      << "Forth parameter - Full fixed volume";
+                      return 1;
+        }        
     }
     
     try{
     auto fixedImageReader = FixedImageReaderType::New();
     auto movingImageReader = MovingImageReaderType::New();
     auto movingFullImageReader = MovingImageReaderType::New();
+    auto fixedFullImageReader = MovingImageReaderType::New();
 
     std::string dirName{argv[1]};
     fixedImageReader->SetFileName(dirName);
@@ -519,11 +499,15 @@ int main(int argc, char **argv)
     std::string dirName3{argv[3]};
     movingFullImageReader->SetFileName(dirName3);
 
+    std::string dirName4{argv[4]};
+    fixedFullImageReader->SetFileName(dirName4);
+
     try
     {
         fixedImageReader->Update();
         movingImageReader->Update();
         movingFullImageReader->Update();
+        fixedFullImageReader->Update();
     }
     catch(const itk::ExceptionObject &err){
         std::cout << "ExceptionObject caught !" << std::endl;
@@ -532,10 +516,46 @@ int main(int argc, char **argv)
     }
 
     ImageType::Pointer pointer2fixedimage = fixedImageReader->GetOutput();
-    ImageRegistrationType::Pointer pointer2fixedimage_registration;
     ImageType::Pointer pointer2movingimage = movingImageReader->GetOutput();
     ImageType::Pointer pointer2fullmovingimage = movingFullImageReader->GetOutput();
+    ImageType::Pointer pointer2fullfixedimage = fixedFullImageReader->GetOutput();
+
+
+    Eigen::Matrix<double,4,4> Tfull_image_origin_fixed = Eigen::Matrix<double,4,4>::Identity();
+    Eigen::Matrix<double,4,4> Tfull_image_origin_moving = Eigen::Matrix<double,4,4>::Identity();
+
+    for(size_t row = 0; row < 3; ++row){
+        Tfull_image_origin_fixed(row,3) = pointer2fullfixedimage->GetOrigin()[row];
+        Tfull_image_origin_moving(row,3) = pointer2fullmovingimage->GetOrigin()[row];
+        for(size_t col = 0; col < 3; ++col){
+            Tfull_image_origin_fixed(row,col) = pointer2fullfixedimage->GetDirection()(row,col);
+            Tfull_image_origin_moving(row,col) = pointer2fullmovingimage->GetDirection()(row,col);
+        }
+    }
+
+    ImageRegistrationType::Pointer pointer2fixedimage_registration;
     ImageRegistrationType::Pointer pointer2movingimage_registration;
+    ImageRegistrationType::Pointer pointer2fullfixedimage_registration;
+    ImageRegistrationType::Pointer pointer2fullmovingimage_registration;
+
+
+    using MaskPixelType = unsigned char;
+    using MaskImageType = itk::Image<MaskPixelType, Dimension>;
+    using RescaleType = itk::RescaleIntensityImageFilter<ImageType, ImageType>;
+    auto rescale = RescaleType::New();
+    rescale->SetInput(pointer2fullfixedimage);
+    rescale->SetOutputMinimum(0);
+    rescale->SetOutputMaximum(itk::NumericTraits<MaskPixelType>::max());
+    pointer2fullfixedimage_registration = rescale->GetOutput();
+    pointer2fullfixedimage_registration->Update();
+
+    auto rescale2 = RescaleType::New();
+    rescale2->SetInput(pointer2fullmovingimage);
+    rescale2->SetOutputMinimum(0);
+    rescale2->SetOutputMaximum(itk::NumericTraits<MaskPixelType>::max());
+    pointer2fullmovingimage_registration = rescale2->GetOutput();
+    pointer2fullmovingimage_registration->Update();
+
 
     Eigen::Matrix<double,4,4> T_origin_fixed = Eigen::Matrix<double,4,4>::Identity();
     Eigen::Matrix<double,4,4> T_origin_moving = Eigen::Matrix<double,4,4>::Identity();
@@ -573,10 +593,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    //fixedSpatialObjectMask->SetImage(filter_threshold->GetOutput());
-
     pointer2fixedimage_registration = rescale->GetOutput();
-
 
     auto mesh = meshSource->GetOutput();
     Eigen::Matrix<double,Eigen::Dynamic,3> points_in_matrix_form = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh->GetNumberOfPoints(),3);
@@ -639,6 +656,7 @@ int main(int argc, char **argv)
     }
 
     pointer2movingimage_registration = rescale->GetOutput();
+
     auto mesh = meshSource->GetOutput();
     Eigen::Matrix<double,Eigen::Dynamic,3> points_in_matrix_form = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh->GetNumberOfPoints(),3);
     using PointsIterator = MeshType::PointsContainer::Iterator;
@@ -718,7 +736,7 @@ int main(int argc, char **argv)
     std::array<double,local_permut> relative_scales{1000.0};
     std::array<double,local_permut> learning_rate{0.1};
     std::array<double,local_permut> relaxation_factor{0.7};
-    std::array<size_t,local_permut> optimization_iterations{5000};
+    std::array<size_t,local_permut> optimization_iterations{5};
     std::array<size_t,local_permut> convergence_window_size{30};
     std::array<std::array<size_t,size_info>,local_permut> piramid_sizes{{{1}}};
     std::array<std::array<double,size_info>,local_permut> bluering_sizes{{{0}}};
@@ -939,26 +957,33 @@ int main(int argc, char **argv)
         std::cout << "No solutions found." << std::endl;
     }
 
-    /*
-    Agora tens de decidier o que queres fazer com estes valores, não estou 100% dentro de quais são as tuas ideias ou modificações locais, mas pronto.
-    */
-
+/*
     modify_image_with_transform(min_transformation.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_correct_icp.mha");
 
+   
+   
     modify_image_with_transform(T_origin_fixed*min_transformation.inverse()*T_origin_moving.inverse()*get_image_transform(pointer2fullmovingimage),pointer2fullmovingimage);
     print_image_with_transform(pointer2fullmovingimage,"full_moving_correct_in_fixed.mha");
-    
-    auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales,double learning_rate, double relaxation_factor,size_t window_size, auto piramid_sizes, auto bluering_sizes){
+*/
+    //------------------------------------//
+
+    modify_image_with_transform(T_origin_fixed.inverse()*Tfull_image_origin_fixed,pointer2fullfixedimage_registration);
+    print_image_with_transform(pointer2fullfixedimage_registration,"full_fixed_for_reg.mha");
+
+    modify_image_with_transform(T_origin_moving.inverse()*Tfull_image_origin_moving,pointer2fullmovingimage_registration);
+    print_image_with_transform(pointer2fullmovingimage_registration,"full_moving_for_reg.mha");
+
+ auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales,double learning_rate, double relaxation_factor,size_t window_size, auto piramid_sizes, auto bluering_sizes){
         std::vector<std::tuple<double, Eigen::Matrix<double,4,4>,Eigen::Matrix<double,4,4>>> full_runs_inner;
         {         
             std::mutex mut;
             auto pool = curan::utilities::ThreadPool::create(6,curan::utilities::TERMINATE_ALL_PENDING_TASKS);
             size_t counter = 0;
-            for (const auto &initial_config : angles_regular){
+            //for (const auto &initial_config : angles_regular){
                 curan::utilities::Job job{"solving registration",[&](){
-                    auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,fixedSpatialObjectMask,movingSpatialObjectMask,initial_config},RegistrationParameters{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
-                    //auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,nullptr,nullptr,initial_config},RegistrationParameters{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
+                    //auto solution = solve_registration(info_solve_registration{pointer2fixedimage_registration, pointer2movingimage_registration,fixedSpatialObjectMask,movingSpatialObjectMask,min_transformation},RegistrationParameters{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
+                    auto solution = solve_registration(info_solve_registration{pointer2fullfixedimage_registration, pointer2fullmovingimage_registration,nullptr,nullptr,min_transformation},RegistrationParameters{bins,relative_scales,learning_rate,percentage,relaxation_factor,window_size,iters,piramid_sizes,bluering_sizes});
                     {
                         std::lock_guard<std::mutex> g{mut};
                         full_runs_inner.emplace_back(solution);
@@ -967,11 +992,10 @@ int main(int argc, char **argv)
                     }              
                 }};
                 pool->submit(job);
-            } 
+            //} 
         }
         return full_runs_inner;
     };
-
 
     size_t total_runs = 0;
     for(const auto& bin_n : bin_numbers)
@@ -1010,7 +1034,6 @@ int main(int argc, char **argv)
         ++current_index;
     }
 
-
     std::printf("Choosen cost: %.2f\n",minimum_val);
     
     auto finalTransform = std::get<1>(full_runs[minimum_index]);
@@ -1027,8 +1050,11 @@ int main(int argc, char **argv)
     modify_image_with_transform(finalTransform.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
     print_image_with_transform(pointer2movingimage,"moving_correct.mha");
 
-    modify_image_with_transform(std::get<2>(full_runs[minimum_index]).inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct_initial_guess.mha");
+    modify_image_with_transform(T_origin_fixed.inverse()*Tfull_image_origin_fixed,pointer2fullfixedimage);
+    print_image_with_transform(pointer2fullfixedimage,"full_fixed_image_moved_to_origin.mha");
+
+    modify_image_with_transform(T_origin_moving.inverse()*Tfull_image_origin_moving,pointer2fullmovingimage);
+    print_image_with_transform(pointer2fullmovingimage,"full_moving_image_moved_to_origin.mha");
     /*-----------*/
 
     std::cout << "final transform: \n" << T_origin_fixed*finalTransform.inverse()*T_origin_moving.inverse() << std::endl;
