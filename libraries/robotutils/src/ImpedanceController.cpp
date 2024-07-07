@@ -33,6 +33,7 @@ namespace robotic {
 
         state.cmd_tau = iiwa.jacobian().transpose()*Lambda*(stiffness*error-damping*iiwa.jacobian()*iiwa.velocities()) + 
                             (Eigen::Matrix<double,number_of_joints,number_of_joints>::Identity() - iiwa.jacobian().transpose() * (iiwa.invmass() * iiwa.jacobian().transpose() * Lambda).inverse())*(-iiwa.mass() * 10 * iiwa.velocities());
+        
         /*
         The Java controller has two values which it reads, namely: 
         1) commanded_joint_position 

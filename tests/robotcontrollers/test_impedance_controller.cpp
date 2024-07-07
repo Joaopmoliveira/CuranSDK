@@ -29,6 +29,7 @@ int main(){
 		while (success && client)
 			success = app.step();
 		app.disconnect();
+		curan::utilities::cout << "Terminating robot control thread\n";
 		return 0;
 	}
 	catch (...)

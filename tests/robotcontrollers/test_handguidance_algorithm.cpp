@@ -57,7 +57,7 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
 	ImGui::Begin("Torques"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, curan::robotic::number_of_joints> buffers;
+	static std::array<ScrollingBuffer, 3> buffers;
 	static float t = 0;
 
 	t += ImGui::GetIO().DeltaTime;
@@ -73,9 +73,9 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 		ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 		ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-		for(size_t index = 0; index< curan::robotic::number_of_joints; ++index){
-			std::string loc = "tau_cmd" + std::to_string(index);
-			buffers[index].AddPoint(t, (float)state.cmd_tau[index]);
+		for(size_t index = 0; index< 3; ++index){
+			std::string loc = "userdef" + std::to_string(index);
+			buffers[index].AddPoint(t, (float)state.user_defined2[index]);
 			ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 		}
 
@@ -112,14 +112,16 @@ int main(){
 		try
 		{
 			curan::utilities::cout << "Lauching robot control thread\n";
-		
 			KUKA::FRI::UdpConnection connection;
 			KUKA::FRI::ClientApplication app(connection, client);
 			bool success = app.connect(DEFAULT_PORTID, NULL);
+			curan::utilities::cout << (success ? "Connected successefully\n" : "Failure to connect\n");
 			success = app.step();
-			while (success && client)
+			while (success && client){
 				success = app.step();
+			}
 			app.disconnect();
+			curan::utilities::cout << "Terminating robot control thread\n";
 			return 0;
 		}
 		catch (...)

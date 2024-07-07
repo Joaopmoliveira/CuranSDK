@@ -30,19 +30,23 @@ void RobotLBR::onStateChange(KUKA::FRI::ESessionState oldState, KUKA::FRI::ESess
     {
     case KUKA::FRI::MONITORING_WAIT:
     {
+        std::cout << "MONITORING_WAIT\n";
         break;
     }
     case KUKA::FRI::MONITORING_READY:
     {
+        std::cout << "MONITORING_READY\n";
         sampleTime = robotState().getSampleTime();
         break;
     }
     case KUKA::FRI::COMMANDING_WAIT:
     {
+        std::cout << "COMMANDING_WAIT\n";
         break;
     }
     case KUKA::FRI::COMMANDING_ACTIVE:
     {
+        std::cout << "COMMANDING_ACTIVE\n";
         break;
     }
     default:
@@ -65,6 +69,7 @@ void RobotLBR::waitForCommand(){
     // specific value into account.
     current_state.differential(State{robotState(),State::WAIT_COMMAND});
     robot_model.update(current_state);
+    eigen_state = current_state.converteigen();
     if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
         robotCommand().setTorque(current_state.cmd_tau.data());
         robotCommand().setJointPosition(robotState().getIpoJointPosition());            // Just overlaying same position
@@ -78,15 +83,20 @@ void RobotLBR::command(){
     eigen_state = current_state.converteigen();
     Eigen::MatrixXd task_jacobian = Eigen::MatrixXd::Identity(number_of_joints,number_of_joints);
     eigen_state = std::move(user_data->update(robot_model,std::move(eigen_state),task_jacobian));
-    eigen_state.cmd_tau = add_constraints<number_of_joints>(robot_model,eigen_state.cmd_tau, 0.005);
+    auto cmd_tau = add_constraints<number_of_joints>(robot_model,eigen_state.cmd_tau, 0.005);
+    auto correct_cmd_tau = addConstraints<number_of_joints>(robot_model,eigen_state.cmd_tau, 0.005);
+    eigen_state.cmd_tau = std::get<0>(correct_cmd_tau);
+
+    eigen_state.user_defined2[0] = (std::get<0>(cmd_tau)-std::get<0>(correct_cmd_tau)).norm();
+    eigen_state.user_defined2[1] = (std::get<1>(cmd_tau)-std::get<1>(correct_cmd_tau)).norm();
+    eigen_state.user_defined2[2] = (std::get<2>(cmd_tau)-std::get<2>(correct_cmd_tau)).norm();
+
     current_state.convertFrom(eigen_state);
     atomic_state.store(current_state,std::memory_order_relaxed);
-
     if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
         robotCommand().setJointPosition(eigen_state.cmd_q.data());
         robotCommand().setTorque(eigen_state.cmd_tau.data());
     }
-
     currentTime = currentTime + robotState().getSampleTime();
 }
 

@@ -60,6 +60,11 @@ State::State(const  KUKA::FRI::LBRState& state, const command_mode& mode){
 void State::convertFrom(const EigenState& state){
     cmd_q = convert<double,number_of_joints>(state.cmd_q);
     cmd_tau = convert<double,number_of_joints>(state.cmd_tau);
+
+    user_defined = convert<double,number_of_joints>(state.user_defined);
+    user_defined2 = convert<double,number_of_joints>(state.user_defined2);
+    user_defined3 = convert<double,number_of_joints>(state.user_defined3);
+    user_defined4 = convert<double,number_of_joints>(state.user_defined4);
 }
 
 EigenState State::converteigen(){
@@ -88,6 +93,8 @@ void State::differential(const State& next){
     else 
         for(size_t index = 0; index < number_of_joints; ++index){
             q[index] = next.q[index];
+            dq[index] = 0.0;
+            ddq[index] = 0.0;
             cmd_q[index] = next.cmd_q[index];
             cmd_tau[index] = next.cmd_tau[index];
             tau[index] = next.tau[index];
