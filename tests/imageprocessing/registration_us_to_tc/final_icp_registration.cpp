@@ -958,7 +958,7 @@ int main(int argc, char **argv)
                         std::lock_guard<std::mutex> g{mut};
                         full_runs_inner.emplace_back(solution);
                         ++counter;
-                        std::printf("%.0f %% %.3f\n",(counter/(double)angles_regular.size())*100,std::get<0>(solution),std::get<1>(solution));
+                        std::printf("%.0f %% %.3f\n",(counter/(double)angles_regular.size())*100,std::get<0>(solution));
                     }              
                 }};
                 pool->submit(job);

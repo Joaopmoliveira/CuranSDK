@@ -48,7 +48,7 @@ int main()
                                            desired_translation << -0.66809, -0.00112052, 0.443678;
                                            Transformation equilibrium{desired_rotation, desired_translation};
                                            std::unique_ptr<ImpedanceController> handguinding_controller = std::make_unique<ImpedanceController>(equilibrium,
-                                                                                                                                                std::initializer_list<double>({100.0, 100.0, 100.0, 10.0, 10.0, 10.0}),
+                                                                                                                                                std::initializer_list<double>({800.0, 800.0, 800.0, 100.0, 100.0, 100.0}),
                                                                                                                                                 std::initializer_list<double>({1.0, 1.0, 1.0, 1.0, 1.0, 1.0}));
 
                                            curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
@@ -61,11 +61,20 @@ int main()
                                            state.q = std::array<double, 7>{};
                                            curan::robotic::State next = state;
                                            double time = 0;
-                                           Eigen::Matrix<double, 7, 1> external_torque = 0.1 * Eigen::Matrix<double, 7, 1>::Ones() * std::sin(time);
+                                           Eigen::Matrix<double, 7, 1> external_torque = Eigen::Matrix<double, 7, 1>::Zero();
 
                                            while (keep_running.load())
                                            {
-                                               external_torque = Eigen::Matrix<double, 7, 1>::Ones() * 0.1 * std::sin(time);
+                                               std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                                               if(time>10 && time < 15){
+                                                    external_torque = 10*Eigen::Matrix<double, 7, 1>::Ones();
+                                               } else if(time> 15){
+                                                    time = 0.0;
+                                                    external_torque = Eigen::Matrix<double, 7, 1>::Zero();
+                                               } else {
+                                                    external_torque = Eigen::Matrix<double, 7, 1>::Zero();
+                                               }
+                                               
                                                state.differential(next);
                                                robot_model.update(state);
                                                auto actuation = handguinding_controller->update(robot_model, curan::robotic::EigenState{}, jacobian);
@@ -75,8 +84,11 @@ int main()
                                                next = state;
                                                next.q = curan::robotic::convert<double, 7>(q);
                                                atomic_state.store(state);
+                                               std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                                               std::printf("time %f duration: %llu\n",time,std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
                                                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                                               time += delta_time;
+                                               end = std::chrono::steady_clock::now();
+                                               time += 1e-6*std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                                            }
                                        }});
     while (window.run_once())
