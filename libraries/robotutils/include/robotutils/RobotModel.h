@@ -277,6 +277,13 @@ namespace curan
 
                     RigidBodyDynamics::Math::Vector3d r = f_flange_position;
 
+                    // the nomenclature of RBDL makes it so that we obtain the jacobian assuming that 
+                    // x_cart = J*q
+                    // where x_cart = [w_x,w_y,w_z,x,y,z]
+                    // but instead we use the nomenclature of  
+                    // where x_cart = [x,y,z,w_x,w_y,w_z]
+                    // thus we must switch the rows to account for this nomenclature difference
+
                     rotate_jacobian.block(0, 0, 3, 3) = f_end_effector.block<3, 3>(0, 0);
                     rotate_jacobian.block(3, 3, 3, 3) = f_end_effector.block<3, 3>(0, 0);
 
@@ -286,7 +293,7 @@ namespace curan
                     translate_jacobian(5, 1) = -r[0];
                     translate_jacobian(3, 2) = -r[1];
                     translate_jacobian(4, 2) = +r[0];
-
+                    
                     JP = rotate_jacobian * translate_jacobian * J0;
                     f_jacobian.block(0, 0, 3, model_joints) = JP.block(3, 0, 3, model_joints);
                     f_jacobian.block(3, 0, 3, model_joints) = JP.block(0, 0, 3, model_joints);
@@ -389,6 +396,11 @@ namespace curan
             inline Eigen::Matrix<double, 3, 3> rotation() const
             {
                 return f_end_effector.block<3, 3>(0, 0);
+            }
+
+            inline Eigen::Matrix<double, 4, 4> homogenenous_transformation() const
+            {
+                return f_end_effector;
             }
 
             inline const KinematicLimits<model_joints> &kinematic_limits() const

@@ -107,9 +107,22 @@ nlohmann_json::nlohmann_json
 add_executable(eigen_decomposition_for_impedance_controller eigen_decomposition_for_impedance_controller.cpp)
 
 target_compile_definitions(eigen_decomposition_for_impedance_controller PRIVATE NOMINMAX)
+target_compile_definitions(eigen_decomposition_for_impedance_controller PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(eigen_decomposition_for_impedance_controller PUBLIC
 utils
 robotutils
 )
 
+
+
+add_executable(test_simulated_robot test_simulated_robot.cpp)
+
+target_compile_definitions(test_simulated_robot PRIVATE NOMINMAX)
+target_compile_definitions(test_simulated_robot PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_simulated_robot PUBLIC
+utils
+robotutils
+renderable
+)

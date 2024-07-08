@@ -44,7 +44,7 @@ struct ImpedanceController : public UserData{
 
     The damping is automatically addapted depending on the mass matrix of the robot
     */
-    ImpedanceController(Transformation equilibrium,std::initializer_list<double> stiffness_diagonal_gains,std::initializer_list<double> in_diagonal_damping) : f_equilibrium{equilibrium}{
+    ImpedanceController(const Transformation& equilibrium,std::initializer_list<double> stiffness_diagonal_gains,std::initializer_list<double> in_diagonal_damping) : f_equilibrium{equilibrium}{
         if(stiffness_diagonal_gains.size()!=6)
             throw std::runtime_error("the dimensions of the diagonal matrix must be 6x6");
         if(in_diagonal_damping.size()!=6)
@@ -53,10 +53,10 @@ struct ImpedanceController : public UserData{
         auto stiffness_entry_value = stiffness_diagonal_gains.begin();
         auto damping_entry_value = in_diagonal_damping.begin();
         for(size_t entry = 0; entry< 6; ++entry,++stiffness_entry_value,++damping_entry_value){
-            if(*damping_entry_value>=0.0)
-                throw std::runtime_error("the damping matrix must be positive definite");
-            if(*stiffness_entry_value>=0.0)
-                throw std::runtime_error("the stiffness matrix must be positive definite");
+            if(*damping_entry_value<0.0 || *damping_entry_value>1.0)
+                throw std::runtime_error("the damping matrix must be positive definite (in [0 1]) : (" +std::to_string(entry) + ") -> (" +std::to_string(*damping_entry_value)+ ")");
+            if(*stiffness_entry_value<0.0)
+                throw std::runtime_error("the stiffness matrix must be positive definite : (" +std::to_string(entry) + ") -> (" +std::to_string(*stiffness_entry_value)+ ")");
             diagonal_damping(entry,entry) = *damping_entry_value;
             stiffness(entry,entry) = *stiffness_entry_value;
         }
