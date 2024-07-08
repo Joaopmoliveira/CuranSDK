@@ -1,6 +1,7 @@
 #include "robotutils/LBRController.h"
 #include "robotutils/HandGuidance.h"
 #include "utils/Logger.h"
+#include "utils/TheadPool.h"
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
 
@@ -21,17 +22,17 @@ void signal_handler(int signal)
 
 int main(){
     std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
-    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
-
-    std::thread thr{[&](){
+    curan::robotic::RobotLBR client{handguinding_controller.get(),CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_mass_data.json",CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_kinematic_limits.json"};
+	auto pool = curan::utilities::ThreadPool::create(1);
+	pool->submit(curan::utilities::Job{"printing_robot_state",[&](){
         const auto& reading_point = client.atomic_acess();
         while(client){
             auto current = reading_point.load(std::memory_order_relaxed);
-            std::cout << "\n";
-            auto current_value = current.converteigen();
+			current.print_state = static_cast<curan::robotic::PrintInfo>(curan::robotic::PrintInfo::TRANSLATION | curan::robotic::PrintInfo::ROTATION);
+            std::cout << current << "\n";
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
-    }};
+    }});
 
 	try
 	{
@@ -44,13 +45,11 @@ int main(){
 		while (success && client)
 			success = app.step();
 		app.disconnect();
-        thr.join();
 		return 0;
 	}
 	catch (...)
 	{
         client.cancel();
-        thr.join();
 		std::cout << "robot control exception\n";
 		return 1;
 	}
