@@ -59,7 +59,7 @@ void start_tracking(std::shared_ptr<curan::communication::Server> server, curan:
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
 		curan::robotic::State current_state;
-		curan::robotic::RobotModel<curan::robotic::number_of_joints> robot_model{"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
+		curan::robotic::RobotModel<curan::robotic::number_of_joints> robot_model{CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_mass_data.json",CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_kinematic_limits.json"};
 
 		while (!in_context.stopped())
 		{

@@ -2,6 +2,7 @@
 #define CURAN_PROCESS_HANDLER_HEADER_FILE_
 
 #include <array>
+#include <cstring>
 
 namespace curan{
 namespace communication{

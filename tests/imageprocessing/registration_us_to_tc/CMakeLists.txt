@@ -131,3 +131,33 @@ utils
 ${ITK_LIBRARIES}
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+add_executable(test_register_volumes_v9 register_volumes_v9.cpp)
+
+target_compile_definitions(test_register_volumes_v9 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_register_volumes_v9
+PUBLIC
+utils
+${ITK_LIBRARIES}
+${OPERATING_SYSTEM_REQUIRMENTS}
+)
+
+add_executable(test_apply_laplacian_v3 apply_laplacianv3.cpp)
+
+target_compile_definitions(test_apply_laplacian_v3 PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_apply_laplacian_v3
+PUBLIC
+utils
+${ITK_LIBRARIES}
+${OPERATING_SYSTEM_REQUIRMENTS}
+)
+
+add_executable(test_final_icp_registration final_icp_registration.cpp)
+
+target_compile_definitions(test_final_icp_registration PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_final_icp_registration
+PUBLIC
+utils
+${ITK_LIBRARIES}
+${OPERATING_SYSTEM_REQUIRMENTS}
+)

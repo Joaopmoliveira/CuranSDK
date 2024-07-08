@@ -65,6 +65,7 @@ void RobotLBR::waitForCommand(){
     // specific value into account.
     current_state.differential(State{robotState(),State::WAIT_COMMAND});
     robot_model.update(current_state);
+    eigen_state = current_state.converteigen();
     if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
         robotCommand().setTorque(current_state.cmd_tau.data());
         robotCommand().setJointPosition(robotState().getIpoJointPosition());            // Just overlaying same position
@@ -78,16 +79,13 @@ void RobotLBR::command(){
     eigen_state = current_state.converteigen();
     Eigen::MatrixXd task_jacobian = Eigen::MatrixXd::Identity(number_of_joints,number_of_joints);
     eigen_state = std::move(user_data->update(robot_model,std::move(eigen_state),task_jacobian));
-    auto cmd_tau = eigen_state.cmd_tau;
     eigen_state.cmd_tau = add_constraints<number_of_joints>(robot_model,eigen_state.cmd_tau, 0.005);
     current_state.convertFrom(eigen_state);
     atomic_state.store(current_state,std::memory_order_relaxed);
-
     if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {
         robotCommand().setJointPosition(eigen_state.cmd_q.data());
         robotCommand().setTorque(eigen_state.cmd_tau.data());
     }
-
     currentTime = currentTime + robotState().getSampleTime();
 }
 

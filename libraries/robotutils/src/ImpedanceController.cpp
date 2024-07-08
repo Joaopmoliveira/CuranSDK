@@ -11,9 +11,8 @@ namespace robotic {
         Eigen::Matrix<double,6,6> Lambda_Inv = iiwa.jacobian() * iiwa.invmass() * iiwa.jacobian().transpose() + (0.071*0.071)*Iden;
         Eigen::Matrix<double,6,6> Lambda = Lambda_Inv.inverse();
         static Eigen::Matrix<double,6,1> error = Eigen::Matrix<double,6,1>::Zero();
-        error.block<3,1>(0,0) = f_equilibrium.translation-iiwa.translation();
-        Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * f_equilibrium.rotation);
-        error.block<3,1>(3,0) = f_equilibrium.translation-iiwa.translation();
+        Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * f_equilibrium.desired_rotation());
+        error.block<3,1>(3,0) = f_equilibrium.desired_translation()-iiwa.translation();
         error.block<3,1>(3,0) = E_AxisAngle.angle()*iiwa.rotation() *E_AxisAngle.axis();
         /*
         We use the decomposition introduced in 
@@ -31,8 +30,8 @@ namespace robotic {
         Eigen::Matrix<double,6,6> B0 = Qinv*stiffness*Qinv.transpose();
         Eigen::Matrix<double,6,6> damping = 2*Q.transpose()*diagonal_damping*B0.diagonal().array().sqrt().matrix().asDiagonal()*Q;
 
-        state.cmd_tau = iiwa.jacobian().transpose()*Lambda*(stiffness*error-damping*iiwa.jacobian()*iiwa.velocities()) + 
-                            (Eigen::Matrix<double,number_of_joints,number_of_joints>::Identity() - iiwa.jacobian().transpose() * (iiwa.invmass() * iiwa.jacobian().transpose() * Lambda).inverse())*(-iiwa.mass() * 10 * iiwa.velocities());
+        state.cmd_tau = iiwa.jacobian().transpose()*Lambda*(stiffness*error-damping*iiwa.jacobian()*iiwa.velocities());//(Eigen::Matrix<double,number_of_joints,number_of_joints>::Identity() - iiwa.jacobian().transpose() * (iiwa.invmass() * iiwa.jacobian().transpose() * Lambda).inverse())*(-iiwa.mass() * 10 * iiwa.velocities());
+        
         /*
         The Java controller has two values which it reads, namely: 
         1) commanded_joint_position 

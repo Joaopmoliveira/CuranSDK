@@ -157,6 +157,9 @@
 #include "include/gpu/ganesh/vk/GrVkBackendSurface.h"
 #include "include/gpu/ganesh/vk/GrBackendDrawableInfo.h"
 
+#if defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
+#include "include/ports/SkFontMgr_fontconfig.h"
+#endif
 
 constexpr auto DEFAULT_TEXT_SIZE = 15.0;
 constexpr auto DEFAULT_FRAME_DELAY = std::chrono::milliseconds(15);

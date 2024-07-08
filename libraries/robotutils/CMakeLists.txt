@@ -14,6 +14,7 @@ src/ExtractSingleJoint.cpp
 src/CompensateRippleFreehand.cpp
 src/RippleReinjection.cpp
 src/RobotState.cpp
+src/ImpedanceController.cpp
 )
 
 target_include_directories(robotutils

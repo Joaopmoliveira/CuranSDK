@@ -18,7 +18,6 @@ namespace robotic {
 
 
         static Eigen::Matrix<double,7,1> filtered_velocity = iiwa.velocities();
-        
         auto val = 0.8187*filtered_velocity + 0.1813*iiwa.velocities();
         filtered_velocity = val;
 

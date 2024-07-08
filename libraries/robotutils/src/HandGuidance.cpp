@@ -12,7 +12,7 @@ namespace robotic {
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
         */
        
-        state.cmd_tau = -iiwa.mass() * 10 * iiwa.velocities();
+        state.cmd_tau = -iiwa.mass() * iiwa.velocities();
 
 
         /*

@@ -2,7 +2,9 @@
 #define CURAN_FRIMESSAGE_HEADER_FILE_
 
 #include <array>
-
+#include <stddef.h>
+#include <stdint.h>
+#include <cstring>
 namespace curan{
 namespace communication{
 
@@ -26,9 +28,9 @@ namespace communication{
 
         size_t body_size = message_size;
 
-        std::array<unsigned char, message_size+sizeof(size_t)> buffer;
+        std::array<unsigned char, message_size+sizeof(std::size_t)> buffer;
 
-        inline size_t get_header_size(){
+        inline std::size_t get_header_size(){
             return sizeof(body_size);
         }
 

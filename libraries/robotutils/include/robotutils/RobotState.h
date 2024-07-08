@@ -43,7 +43,30 @@ struct WrappedState{
     WrappedState(const State& in);
 };
 
+enum PrintInfo : std::uint32_t {
+    Q = 1<<1,
+    DQ = 1<<2,
+    DDQ = 1<<3,
+    CMD_Q = 1<<4,
+    CMD_TAU = 1<<5,
+    TAU = 1<<6,
+    GRAVITY = 1<<7,
+    CORIOLIS = 1<<8,
+    TAU_EXT = 1<<9,
+    TRANSLATION = 1<<10,
+    ROTATION = 1<<11,
+    JACOBIAN = 1<<12,
+    MASS_MATRIX = 1<<13,
+    USER_DEFINED = 1<<14,
+    USER_DEFINED_2 = 1<<15,
+    USER_DEFINED_3 = 1<<16,
+    USER_DEFINED_4 = 1<<17,
+    PRINT_ALL = std::numeric_limits<std::uint32_t>::max()
+};
+
 struct State{
+
+    PrintInfo print_state = PrintInfo::PRINT_ALL;
 
     enum command_mode{
         MONITOR,
@@ -100,7 +123,7 @@ struct State{
     
 };
 
-
+std::ostream& operator<<(std::ostream& os, const State& cont);
 
 std::ostream& operator<<(std::ostream& os, const std::list<State>& cont);
 
