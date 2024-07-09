@@ -116,12 +116,23 @@ robotutils
 
 
 
-add_executable(test_simulated_robot test_simulated_robot.cpp)
+add_executable(test_simulated_impedance_robot test_simulated_impedance_robot.cpp)
 
-target_compile_definitions(test_simulated_robot PRIVATE NOMINMAX)
-target_compile_definitions(test_simulated_robot PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_compile_definitions(test_simulated_impedance_robot PRIVATE NOMINMAX)
+target_compile_definitions(test_simulated_impedance_robot PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-target_link_libraries(test_simulated_robot PUBLIC
+target_link_libraries(test_simulated_impedance_robot PUBLIC
+utils
+robotutils
+renderable
+)
+
+add_executable(test_simulated_velocity_robot test_simulated_velocity_robot.cpp)
+
+target_compile_definitions(test_simulated_velocity_robot PRIVATE NOMINMAX)
+target_compile_definitions(test_simulated_velocity_robot PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_simulated_velocity_robot PUBLIC
 utils
 robotutils
 renderable

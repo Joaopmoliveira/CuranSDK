@@ -67,7 +67,8 @@ int main()
                                            {
                                                std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                                                if(time>10 && time < 15){
-                                                    external_torque = 10*Eigen::Matrix<double, 7, 1>::Ones();
+                                                    external_torque = Eigen::Matrix<double, 7, 1>::Zero();
+                                                    external_torque[6] = 10;
                                                } else if(time> 15){
                                                     time = 0.0;
                                                     external_torque = Eigen::Matrix<double, 7, 1>::Zero();

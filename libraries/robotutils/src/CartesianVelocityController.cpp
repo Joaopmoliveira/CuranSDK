@@ -1,15 +1,27 @@
-#include "robotutils/ImpedanceController.h"
+#include "robotutils/CartersianVelocityController.h"
 
 namespace curan
 {
     namespace robotic
     {
-        EigenState &&ImpedanceController::update(const RobotModel<number_of_joints> &iiwa, EigenState &&state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
+
+        CartersianVelocityController::CartersianVelocityController(const Transformation& equilibrium,
+                                                                   double asyntotic_reduction_in_orientation_speed,
+                                                                   double asyntotic_reduction_in_space_speed) : f_equilibrium{equilibrium},
+                                                                                                                f_asyntotic_reduction_in_orientation_speed{asyntotic_reduction_in_orientation_speed},
+                                                                                                                f_asyntotic_reduction_in_space_speed{asyntotic_reduction_in_space_speed}
+        {
+            if(f_asyntotic_reduction_in_space_speed<0.001)
+                throw std::runtime_error("the scaling of the cartesian velocity must be larger than zero");
+            if(f_asyntotic_reduction_in_orientation_speed<0.001)
+                throw std::runtime_error("the scaling of the cartesian orientation must be larger than zero");
+            velocity_scalling.block<3,3>(0,0) = f_asyntotic_reduction_in_space_speed*Eigen::Matrix<double,3,3>::Identity();
+            velocity_scalling.block<3,3>(3,3) = f_asyntotic_reduction_in_orientation_speed*Eigen::Matrix<double,3,3>::Identity();
+        }
+
+        EigenState &&CartersianVelocityController::update(const RobotModel<number_of_joints> &iiwa, EigenState &&state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
         {
             static double currentTime = 0.0;
-            /*
-            We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
-            */
             Eigen::Matrix<double, 6, 6> Lambda;
             {
                 Eigen::JacobiSVD<Eigen::Matrix<double, 6, 6>> svdofsitff{iiwa.jacobian() * iiwa.invmass() * iiwa.jacobian().transpose(), Eigen::ComputeFullU};
@@ -18,39 +30,35 @@ namespace curan
                 for(auto& diag : singular_values)
                     diag = (diag<0.02) ? 0.02 : diag;
                 Lambda = (P*singular_values.asDiagonal()*P.transpose()).inverse();
-            }            
-            
-            Eigen::Matrix<double, number_of_joints, number_of_joints> nullspace_projector = Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity() - iiwa.jacobian().transpose() * (iiwa.invmass() * iiwa.jacobian().transpose() * Lambda).transpose();
-            Eigen::Matrix<double, 6, 1> error = Eigen::Matrix<double, 6, 1>::Zero();
-            Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * f_equilibrium.desired_rotation());
-            error.block<3, 1>(0, 0) = (f_equilibrium.desired_translation() - iiwa.translation());
-            error.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
-            Eigen::Matrix<double, number_of_joints, 1> error_in_nullspace = -iiwa.joints();
-            /*
-            We use the decomposition introduced in
-            "Cartesian Impedance Control of Redundant and Flexible-Joint Robots" page 37
-            but we use the nomenclature of the book in "Matrix Algebra From a Statistician's Perspective"
-            */
-
-           /*
-           We have two controllers running simultaneously, the first controller, the so called cartersian impedance controller 
-           has a stiffness specified by the user, while the second impedance controller focuses on bringing all joints to their 
-           home configuration.
-           */
-            Eigen::Matrix<double, 6, 6> B0_cartesian;
-            Eigen::Matrix<double, 6, 6> Q_cartesian;
-            {
-                Eigen::LLT<Eigen::Matrix<double, 6, 6>> lltOfLambda(Lambda);
-                Eigen::Matrix<double, 6, 6> L = lltOfLambda.matrixL();
-                Eigen::Matrix<double, 6, 6> R = L.inverse();
-                Eigen::Matrix<double, 6, 6> C = R * stiffness * R.transpose();
-                Eigen::JacobiSVD<Eigen::Matrix<double, 6, 6>> svdofsitff{C, Eigen::ComputeFullU};
-                Eigen::Matrix<double, 6, 6> P = svdofsitff.matrixU();
-                Q_cartesian = R.inverse() * P;
-                Eigen::Matrix<double, 6, 6> Qinv = Q_cartesian.inverse();
-                B0_cartesian = Qinv * stiffness * Qinv.transpose();
             }
-            Eigen::Matrix<double, number_of_joints, number_of_joints> nullspace_stiffness = 10.0*Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity();
+
+            Eigen::Matrix<double, number_of_joints, number_of_joints> nullspace_projector = Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity() - iiwa.jacobian().transpose() * (iiwa.invmass() * iiwa.jacobian().transpose() * Lambda).transpose();
+            Eigen::Matrix<double, 6, 1> desired_velocity = Eigen::Matrix<double, 6, 1>::Zero();
+
+            Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * f_equilibrium.desired_rotation());
+            auto equilibria = f_equilibrium.desired_translation();
+            if(currentTime<10.0){
+                equilibria[2] = equilibria[2]+0.1;
+                desired_velocity.block<3, 1>(0, 0) = (equilibria-iiwa.translation());
+            }
+            else if(currentTime < 20.0){
+                equilibria[2] = equilibria[2]-0.1;
+                desired_velocity.block<3, 1>(0, 0) = (equilibria-iiwa.translation());
+            }
+            else {
+                currentTime = 0.0;
+                equilibria[2] = equilibria[2]+0.1;
+                desired_velocity.block<3, 1>(0, 0) = (equilibria-iiwa.translation());
+            }
+
+            desired_velocity.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
+            Eigen::Matrix<double, number_of_joints, 1> error_in_nullspace = -iiwa.joints();
+
+            static Eigen::Matrix<double, 7, 1> filtered_velocity = iiwa.velocities();
+            auto val = 0.8187 * filtered_velocity + 0.1813 * iiwa.velocities();
+            filtered_velocity = val;
+
+            Eigen::Matrix<double, number_of_joints, number_of_joints> nullspace_stiffness = 10.0 * Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity();
             Eigen::Matrix<double, number_of_joints, number_of_joints> B0_nullspace;
             Eigen::Matrix<double, number_of_joints, number_of_joints> Q_nullspace;
             {
@@ -64,21 +72,13 @@ namespace curan
                 Eigen::Matrix<double, number_of_joints, number_of_joints> Qinv = Q_nullspace.inverse();
                 B0_nullspace = Qinv * nullspace_stiffness * Qinv.transpose();
             }
-
-            Eigen::Matrix<double, 6, 6> damping_cartesian = 2 * Q_cartesian * diagonal_damping * B0_cartesian.diagonal().array().sqrt().matrix().asDiagonal() * Q_cartesian.transpose();
-            //it is assumed that the nullspace has a diagonal damping ratio of 1.0. 
+            // it is assumed that the nullspace has a diagonal damping ratio of 1.0.
             Eigen::Matrix<double, number_of_joints, number_of_joints> damping_nullspace = 2 * Q_nullspace * B0_nullspace.diagonal().array().sqrt().matrix().asDiagonal() * Q_nullspace.transpose();
 
-            /*
-            We need to filer out the velocity because in steady stady state they can become problematic
-            */
-            static Eigen::Matrix<double, number_of_joints, 1> filtered_velocity =  iiwa.velocities();
-            auto val = 0.8187 * filtered_velocity + 0.1813 * iiwa.velocities();
-            filtered_velocity = val;
+            auto error_in_velocity = desired_velocity - iiwa.jacobian() * filtered_velocity;
+            state.cmd_tau = iiwa.jacobian().transpose() * (Lambda * velocity_scalling * error_in_velocity)+
+                         nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity);
 
-
-            // normalize the error to an upper bound
-            state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian *  iiwa.jacobian() * filtered_velocity) + nullspace_projector * ( nullspace_stiffness* error_in_nullspace-damping_nullspace*filtered_velocity);
             /*
             The Java controller has two values which it reads, namely:
             1) commanded_joint_position

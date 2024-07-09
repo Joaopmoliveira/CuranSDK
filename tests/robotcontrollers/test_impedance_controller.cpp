@@ -75,35 +75,8 @@ void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
 			ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
 			for (size_t index = 0; index < curan::robotic::number_of_joints; ++index)
 			{
-				std::string loc = "userdef" + std::to_string(index);
-				buffers[index].AddPoint(t, (float)state.user_defined[index]);
-				ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
-			}
-
-			ImPlot::EndPlot();
-		}
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::End();
-	}
-
-	{
-		ImGui::Begin("Damping"); // Create a window called "Hello, world!" and append into it.
-		static std::array<ScrollingBuffer, curan::robotic::number_of_joints> buffers;
-
-		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
-
-		static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
-
-		if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
-		{
-			ImPlot::SetupAxes(NULL, NULL, flags, flags);
-			ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
-			ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
-			ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-			for (size_t index = 0; index < curan::robotic::number_of_joints; ++index)
-			{
-				std::string loc = "userdef" + std::to_string(index);
-				buffers[index].AddPoint(t, (float)state.user_defined2[index]);
+				std::string loc = "cmd_tau" + std::to_string(index);
+				buffers[index].AddPoint(t, (float)state.cmd_tau[index]);
 				ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 			}
 
@@ -120,15 +93,15 @@ int main()
 {
 	using namespace curan::robotic;
 	Eigen::Matrix<double, 3, 3> desired_rotation = Eigen::Matrix<double, 3, 3>::Identity();
-	desired_rotation << -0.718163, -0.00186162, -0.695873,
-		-0.00329559, 0.999994, 0.000725931,
-		0.695868, 0.00281465, -0.718165;
+	desired_rotation << -0.980299 , -0.0225448  ,  0.196229,
+						-0.00628485  ,  0.996522  , 0.0830935,
+   						-0.19742 ,  0.0802232  , -0.977031;
 	Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
-	desired_translation << -0.66809, -0.00112052, 0.443678;
+	desired_translation << -0.596084 ,-0.00883157  ,  0.394593;
 	Transformation equilibrium{desired_rotation, desired_translation};
 
 	std::unique_ptr<ImpedanceController> handguinding_controller = std::make_unique<ImpedanceController>(equilibrium,
-																										 std::initializer_list<double>({10.0, 10.0, 10.0, 10.0, 10.0, 10.0}),
+																										 std::initializer_list<double>({500.0, 500.0, 500.0, 10.0, 10.0, 10.0}),
 																										 std::initializer_list<double>({1.0, 1.0, 1.0, 1.0, 1.0, 1.0}));
 	RobotLBR client{handguinding_controller.get(),
 					CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json",
