@@ -119,10 +119,21 @@ void rendering(curan::robotic::RobotLBR& client){
 
 int main(int argc, char* argv[]) {
 	std::signal(SIGINT, signal_handler);
-    std::unique_ptr<curan::robotic::CartersianVelocityController> handguinding_controller = std::make_unique<curan::robotic::CartersianVelocityController>( CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel_new.txt",CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mytransform.txt");
-    curan::robotic::RobotLBR client{handguinding_controller.get(),CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_mass_data.json",CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_kinematic_limits.json"};
+    Eigen::Matrix<double, 3, 3> desired_rotation = Eigen::Matrix<double, 3, 3>::Identity();
+	desired_rotation << -0.718163, -0.00186162, -0.695873,
+		                -0.00329559, 0.999994, 0.000725931,
+		                0.695868, 0.00281465, -0.718165;
+	Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
+	desired_translation << -0.66809, -0.00112052, 0.443678;
+	curan::robotic::Transformation equilibrium{desired_rotation, desired_translation};
+
+	std::unique_ptr<curan::robotic::CartersianVelocityController> handguinding_controller = std::make_unique<curan::robotic::CartersianVelocityController>(equilibrium,
+																										 std::initializer_list<double>({500.0, 500.0, 500.0, 10.0, 10.0, 10.0}),
+																										 std::initializer_list<double>({1.0, 1.0, 1.0, 1.0, 1.0, 1.0}));
+    curan::robotic::RobotLBR client{handguinding_controller.get(),
+                                    CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_mass_data.json",
+                                    CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_kinematic_limits.json"};
 	robot_pointer = &client;
-	const auto& access_point = client.atomic_acess();
     std::thread robot_renderer{[&](){rendering(client);}};
 
 	try
