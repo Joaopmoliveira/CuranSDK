@@ -1,6 +1,5 @@
 #include "robotutils/LBRController.h"
-#include "robotutils/LimitCycleController.h"
-#include "robotutils/FilterRippleFirstHarmonic.h"
+#include "robotutils/CartersianVelocityController.h"
 #include "utils/Logger.h"
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
@@ -120,8 +119,8 @@ void rendering(curan::robotic::RobotLBR& client){
 
 int main(int argc, char* argv[]) {
 	std::signal(SIGINT, signal_handler);
-    std::unique_ptr<curan::robotic::LimitCycleController> handguinding_controller = std::make_unique<curan::robotic::LimitCycleController>( CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel_new.txt",CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mytransform.txt");
-    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
+    std::unique_ptr<curan::robotic::CartersianVelocityController> handguinding_controller = std::make_unique<curan::robotic::CartersianVelocityController>( CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mymodel_new.txt",CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/mytransform.txt");
+    curan::robotic::RobotLBR client{handguinding_controller.get(),CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_mass_data.json",CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_kinematic_limits.json"};
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
     std::thread robot_renderer{[&](){rendering(client);}};

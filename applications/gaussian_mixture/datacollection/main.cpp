@@ -39,9 +39,7 @@ struct ScrollingBuffer {
     }
 };
 
-std::atomic<bool> record_data = false;
-
-void common_interface(vsg::CommandBuffer& cb, curan::robotic::RobotLBR& client)
+void common_interface(vsg::CommandBuffer& cb, curan::robotic::RobotLBR& client,std::list<std::list<curan::robotic::State>>& demonstrations)
 {
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
@@ -50,9 +48,22 @@ void common_interface(vsg::CommandBuffer& cb, curan::robotic::RobotLBR& client)
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 
+	static std::list<curan::robotic::State> list_of_recorded_states;
+	
 	static bool local_record_data = false;
+	static bool previous_recording_state = local_record_data;
 	ImGui::Checkbox("Active Data Collection", &local_record_data); // Edit bools storing our window open/close state
-    record_data.store(local_record_data);
+	if(previous_recording_state!=local_record_data){
+		if(local_record_data){
+			list_of_recorded_states.push_back(state);
+		} else {
+			demonstrations.push_back(list_of_recorded_states);
+			list_of_recorded_states = std::list<curan::robotic::State>{};
+		}
+	} else if(local_record_data){
+		list_of_recorded_states.push_back(state);
+	}
+	previous_recording_state = local_record_data;
 
     static float history = 10.0f;
     ImGui::SliderFloat("History",&history,1,30,"%.1f s");
@@ -84,10 +95,10 @@ void signal_handler(int signal){
         robot_pointer->cancel();
 }
 
-void rendering(curan::robotic::RobotLBR& client){
+void rendering(curan::robotic::RobotLBR& client,std::list<std::list<curan::robotic::State>>& demonstrations){
 
     auto interface_callable = [&](vsg::CommandBuffer &cb){
-        common_interface(cb,client);
+        common_interface(cb,client,demonstrations);
     };
 
     curan::renderable::Window::Info info;
@@ -126,13 +137,18 @@ void rendering(curan::robotic::RobotLBR& client){
 
 int main(int argc, char* argv[]) {
 	std::signal(SIGINT, signal_handler);
+
+	std::list<std::list<curan::robotic::State>> demonstrations;
+
     std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
-    curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
+    curan::robotic::RobotLBR client{handguinding_controller.get(),
+					CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json",
+					CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
+
 	robot_pointer = &client;
 	const auto& access_point = client.atomic_acess();
-    std::thread robot_renderer{[&](){rendering(client);}};
-	std::list<curan::robotic::State> list_of_recorded_states;
-	std::list<std::list<curan::robotic::State>> demonstrations;
+    std::thread robot_renderer{[&](){rendering(client,demonstrations);}};
+
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
@@ -142,26 +158,8 @@ int main(int argc, char* argv[]) {
 		bool success = app.connect(DEFAULT_PORTID, NULL);
 		success = app.step();
 		
-		size_t current_index_timestep = 0;
-		while (client){
+		while (success && client){
 			success = app.step();
-			auto snapshot_record_data = record_data.load();
-			static bool previous_state = snapshot_record_data;
-			bool state_changed = snapshot_record_data!=previous_state;
-			
-			if( current_index_timestep % 15 == 0 && snapshot_record_data)
-				list_of_recorded_states.push_back(access_point.load());
-			
-
-			if(state_changed){
-				previous_state = snapshot_record_data;
-				if(snapshot_record_data){
-					demonstrations.emplace_back(list_of_recorded_states);				
-					std::printf("new %llu size\n",list_of_recorded_states.size());
-					list_of_recorded_states = std::list<curan::robotic::State>{};
-				}
-			}
-			++current_index_timestep;
 		}
 		app.disconnect();
         robot_renderer.join();

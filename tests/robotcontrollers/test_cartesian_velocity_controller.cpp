@@ -1,5 +1,5 @@
 #include "robotutils/LBRController.h"
-#include "robotutils/ImpedanceController.h"
+#include "robotutils/CartersianVelocityController.h"
 #include "utils/Logger.h"
 #include "utils/TheadPool.h"
 #include "friUdpConnection.h"
@@ -56,12 +56,13 @@ void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
 	static size_t counter = 0;
 	static const auto &atomic_access = client.atomic_acess();
 	auto state = atomic_access.load(std::memory_order_relaxed);
+    
 	static float history = 10.0f;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
 	{
-		ImGui::Begin("Stiffness"); // Create a window called "Hello, world!" and append into it.
-		static std::array<ScrollingBuffer, curan::robotic::number_of_joints> buffers;
+		ImGui::Begin("Error"); // Create a window called "Hello, world!" and append into it.
+		static std::array<ScrollingBuffer, 6> buffers;
 
 		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
 
@@ -73,10 +74,37 @@ void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
 			ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
 			ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
 			ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-			for (size_t index = 0; index < curan::robotic::number_of_joints; ++index)
+			for (size_t index = 0; index < 6; ++index)
 			{
 				std::string loc = "cmd_tau" + std::to_string(index);
-				buffers[index].AddPoint(t, (float)state.cmd_tau[index]);
+				buffers[index].AddPoint(t, (float)state.user_defined2[index]);
+				ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
+			}
+
+			ImPlot::EndPlot();
+		}
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::End();
+	}
+
+	{
+		ImGui::Begin("Actuation"); // Create a window called "Hello, world!" and append into it.
+		static std::array<ScrollingBuffer, 6> buffers;
+
+		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
+
+		static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+
+		if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
+		{
+			ImPlot::SetupAxes(NULL, NULL, flags, flags);
+			ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
+			ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
+			ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
+			for (size_t index = 0; index < 6; ++index)
+			{
+				std::string loc = "userdef" + std::to_string(index);
+				buffers[index].AddPoint(t, (float)state.user_defined[index]);
 				ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 			}
 
@@ -94,15 +122,15 @@ int main()
 	using namespace curan::robotic;
 	Eigen::Matrix<double, 3, 3> desired_rotation = Eigen::Matrix<double, 3, 3>::Identity();
 	desired_rotation << -0.718163, -0.00186162, -0.695873,
-		-0.00329559, 0.999994, 0.000725931,
-		0.695868, 0.00281465, -0.718165;
+		                -0.00329559, 0.999994, 0.000725931,
+		                0.695868, 0.00281465, -0.718165;
 	Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
 	desired_translation << -0.66809, -0.00112052, 0.443678;
 	Transformation equilibrium{desired_rotation, desired_translation};
 
-	std::unique_ptr<ImpedanceController> handguinding_controller = std::make_unique<ImpedanceController>(equilibrium,
-																										 std::initializer_list<double>({500.0, 500.0, 500.0, 10.0, 10.0, 10.0}),
-																										 std::initializer_list<double>({1.0, 1.0, 1.0, 1.0, 1.0, 1.0}));
+	std::unique_ptr<CartersianVelocityController> handguinding_controller = std::make_unique<CartersianVelocityController>(equilibrium,
+                                                                                    std::initializer_list<double>({300.0, 300.0, 300.0, 10.0, 10.0, 10.0}),
+																					std::initializer_list<double>({1.0, 1.0, 1.0, 1.0, 1.0, 1.0}));
 	RobotLBR client{handguinding_controller.get(),
 					CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json",
 					CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};

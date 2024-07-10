@@ -137,3 +137,14 @@ utils
 robotutils
 renderable
 )
+
+add_executable(test_cartesian_velocity_controller test_cartesian_velocity_controller.cpp)
+
+target_compile_definitions(test_cartesian_velocity_controller PRIVATE NOMINMAX)
+target_compile_definitions(test_cartesian_velocity_controller PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_cartesian_velocity_controller PUBLIC
+utils
+robotutils
+renderable
+)

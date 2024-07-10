@@ -2,6 +2,7 @@
 #define CURAN_JOINT_VELOCITY_CONTROLLER_
 
 #include "LBRController.h"
+#include <variant>
 
 namespace curan {
 namespace robotic {
@@ -27,14 +28,16 @@ struct Transformation{
     }
 };
 
+using Generator = std::function<Eigen::Matrix<double,6,1>(const RobotModel<number_of_joints>&)>;
+
 struct CartersianVelocityController : public UserData{
-    Transformation f_equilibrium; 
-    CartersianVelocityController(const Transformation& equilibrium,double asyntotic_reduction_in_orientation_speed, double asyntotic_reduction_in_space_speed);
+    std::variant<Transformation,Generator> ref_trajectory; 
+    CartersianVelocityController(const Transformation& equilibrium,std::initializer_list<double> stiffness_diagonal_gains,std::initializer_list<double> in_diagonal_damping);
+    CartersianVelocityController(Generator&& generator,std::initializer_list<double> stiffness_diagonal_gains,std::initializer_list<double> in_diagonal_damping);
     EigenState&& update(const RobotModel<number_of_joints>& iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
 
-    double f_asyntotic_reduction_in_orientation_speed;
-    double f_asyntotic_reduction_in_space_speed;
-    Eigen::Matrix<double, 6, 6> velocity_scalling;
+    Eigen::Matrix<double, 6, 6> stiffness;
+    Eigen::Matrix<double, 6, 6> diagonal_damping;
 };
 
 }
