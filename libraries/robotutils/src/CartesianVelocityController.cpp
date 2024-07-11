@@ -121,8 +121,8 @@ namespace curan
         auto actuation = stiffness * desired_velocity + damping_cartesian * error_in_velocity;
 
         state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * desired_velocity + damping_cartesian * error_in_velocity) +
-                        nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity);
-
+                        nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity-10.0*iiwa.mass()*filtered_velocity);
+                                                                                                                    // absolute damper - this thing should avoid larger accelerations
         for (size_t i = 0; i < actuation.rows(); ++i)
         {
             state.user_defined[i] = actuation[i];

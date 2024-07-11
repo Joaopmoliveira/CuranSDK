@@ -68,7 +68,7 @@ void custom_interface(vsg::CommandBuffer &cb, AtomicState& atomic_state)
 			for (size_t index = 0; index < 6; ++index)
 			{
 				std::string loc = "userdef" + std::to_string(index);
-				buffers[index].AddPoint(t, (float)state.user_defined[index]);
+				buffers[index].AddPoint(t, (float)state.user_defined2[index]);
 				ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 			}
 
@@ -115,16 +115,43 @@ int main()
     auto pool = curan::utilities::ThreadPool::create(1);
     pool->submit(curan::utilities::Job{"value", [&]()
                                        {
-                                           Eigen::Matrix<double, 3, 3> desired_rotation = Eigen::Matrix<double, 3, 3>::Identity();
+                                           Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
+                                           desired_translation << -0.66809, -0.00112052, 0.443678;
+                                            Eigen::Matrix<double, 3, 3> desired_rotation = Eigen::Matrix<double, 3, 3>::Identity();
                                            desired_rotation << -0.718163, -0.00186162, -0.695873,
                                                                 -0.00329559, 0.999994, 0.000725931,
                                                                 0.695868, 0.00281465, -0.718165;
-                                           Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
-                                           desired_translation << -0.66809, -0.00112052, 0.443678;
-                                           Transformation equilibrium{desired_rotation, desired_translation};
-                                           std::unique_ptr<CartersianVelocityController> handguinding_controller = std::make_unique<CartersianVelocityController>(equilibrium,
-																										 std::initializer_list<double>({500.0, 500.0, 500.0, 10.0, 10.0, 10.0}),
-																										 std::initializer_list<double>({1.0, 1.0, 1.0, 1.0, 1.0, 1.0}));
+                                           std::unique_ptr<CartersianVelocityController> handguinding_controller = std::make_unique<CartersianVelocityController>([&](const RobotModel<number_of_joints>& iiwa){
+                                                        Eigen::Matrix<double,3,1> translated_position = iiwa.translation()-desired_translation;
+                                                        Eigen::Matrix<double,3,1> desired_translated_velocity_local_frame;
+                                                        double radius = std::sqrt(translated_position[0]*translated_position[0] + translated_position[1]*translated_position[1]);
+                                                        double angular_velocity = 0.3;
+                                                        double radial_equilibrium = 0.1;
+                                                        static double previous = radius;
+                                                        static double filtered_radius_derivative = (radius-previous)/iiwa.sample_time();
+                                                        filtered_radius_derivative = 0.8*filtered_radius_derivative+0.2*(radius-previous)/iiwa.sample_time();
+                                                        previous = radius;
+                                                        desired_translated_velocity_local_frame[2] = -translated_position[2];
+                                                        double angle_theta = (radius < 0.001) ? 0.0 : std::atan2(translated_position[1],translated_position[0]); 
+                                                        Eigen::Matrix<double,2,1> rotator = Eigen::Matrix<double,2,1>::Zero();
+                                                        rotator << (radial_equilibrium-radius) , angular_velocity;
+                                                        Eigen::Matrix<double,2,1> dot_rotator = Eigen::Matrix<double,2,1>::Zero();
+                                                        dot_rotator << -filtered_radius_derivative , 0;
+                                                        Eigen::Matrix<double,2,2> jacobian_of_limit_cycle = Eigen::Matrix<double,2,2>::Zero();
+                                                        jacobian_of_limit_cycle << std::cos(angle_theta) , -radius*std::sin(angle_theta) , std::sin(angle_theta) , radius*std::cos(angle_theta);
+                                                        Eigen::Matrix<double,2,2> dot_jacobian_of_limit_cycle = Eigen::Matrix<double,2,2>::Zero();
+                                                        dot_jacobian_of_limit_cycle << -angular_velocity*std::sin(angle_theta) , -angular_velocity*radius*std::cos(angle_theta) , angular_velocity*std::cos(angle_theta) , -angular_velocity*radius*std::sin(angle_theta);
+                                                        Eigen::Matrix<double,2,1> desired_acceleration = dot_jacobian_of_limit_cycle*rotator+jacobian_of_limit_cycle*dot_rotator;
+                                                        
+                                                        desired_translated_velocity_local_frame.block<2,1>(0,0) = jacobian_of_limit_cycle*rotator;
+                                                        Eigen::Matrix<double,6,1> desired_velocity;
+                                                        desired_velocity.block<3, 1>(0, 0) = desired_translated_velocity_local_frame;
+                                                        Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * desired_rotation);
+                                                        desired_velocity.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
+                                                        return desired_velocity;
+                                                    },
+														std::initializer_list<double>({100.0, 100.0, 100.0, 10.0, 10.0, 10.0}),
+														std::initializer_list<double>({1.0, 1.0, 1.0, 1.0, 1.0, 1.0}));
 
                                            curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
                                            double delta_time = 0.001;
@@ -166,7 +193,6 @@ int main()
                                                next.q = curan::robotic::convert<double, 7>(q);
                                                atomic_state.store(state);
                                                std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-                                               // std::printf("time %f duration: %ld\n",time,std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
                                                std::this_thread::sleep_for(std::chrono::milliseconds(1));
                                                end = std::chrono::steady_clock::now();
                                                time += 1e-6 * std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();

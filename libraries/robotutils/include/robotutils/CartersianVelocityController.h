@@ -28,14 +28,22 @@ struct Transformation{
     }
 };
 
+/*
+The generator is a function which returns the desired velocity in cartesian coordiantes
+*/
 using Generator = std::function<Eigen::Matrix<double,6,1>(const RobotModel<number_of_joints>&)>;
+/*
+The accelerator generator is a function which returns the desired velocity in cartesian coordiantes
+as the first argument in the tuple and the acceleration in the second argumet of the tuple
+*/
+using AcceleratedGenerator = std::function<std::tuple<Eigen::Matrix<double,6,1>,Eigen::Matrix<double,6,1>>(const RobotModel<number_of_joints>&)>;
 
 struct CartersianVelocityController : public UserData{
-    std::variant<Transformation,Generator> ref_trajectory; 
     CartersianVelocityController(const Transformation& equilibrium,std::initializer_list<double> stiffness_diagonal_gains,std::initializer_list<double> in_diagonal_damping);
     CartersianVelocityController(Generator&& generator,std::initializer_list<double> stiffness_diagonal_gains,std::initializer_list<double> in_diagonal_damping);
     EigenState&& update(const RobotModel<number_of_joints>& iiwa, EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override;
-
+    
+    std::variant<Transformation,Generator> ref_trajectory; 
     Eigen::Matrix<double, 6, 6> stiffness;
     Eigen::Matrix<double, 6, 6> diagonal_damping;
 };

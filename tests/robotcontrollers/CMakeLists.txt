@@ -148,3 +148,26 @@ utils
 robotutils
 renderable
 )
+
+add_executable(test_simulated_limit_cycle test_simulated_limit_cycle.cpp)
+
+target_compile_definitions(test_simulated_limit_cycle PRIVATE NOMINMAX)
+target_compile_definitions(test_simulated_limit_cycle PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_simulated_limit_cycle PUBLIC
+utils
+robotutils
+renderable
+)
+
+
+add_executable(test_limit_cycle_controller test_limit_cycle_controller.cpp)
+
+target_compile_definitions(test_limit_cycle_controller PRIVATE NOMINMAX)
+target_compile_definitions(test_limit_cycle_controller PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_limit_cycle_controller PUBLIC
+utils
+robotutils
+renderable
+)
