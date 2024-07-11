@@ -73,12 +73,12 @@ namespace curan
             We need to filer out the velocity because in steady stady state they can become problematic
             */
             static Eigen::Matrix<double, number_of_joints, 1> filtered_velocity =  iiwa.velocities();
-            auto val = 0.8187 * filtered_velocity + 0.1813 * iiwa.velocities();
+            auto val = 0.8 * filtered_velocity + 0.2 * iiwa.velocities();
             filtered_velocity = val;
 
 
             // normalize the error to an upper bound
-            state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian *  iiwa.jacobian() * filtered_velocity) + nullspace_projector * ( nullspace_stiffness* error_in_nullspace-damping_nullspace*filtered_velocity);
+            state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian *  iiwa.jacobian() * filtered_velocity) + nullspace_projector * ( nullspace_stiffness* error_in_nullspace-damping_nullspace*filtered_velocity-10.0*iiwa.mass()*filtered_velocity);
             /*
             The Java controller has two values which it reads, namely:
             1) commanded_joint_position

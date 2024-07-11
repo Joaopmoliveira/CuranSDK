@@ -142,7 +142,7 @@ int main()
                                                         Eigen::Matrix<double,2,2> dot_jacobian_of_limit_cycle = Eigen::Matrix<double,2,2>::Zero();
                                                         dot_jacobian_of_limit_cycle << -angular_velocity*std::sin(angle_theta) , -angular_velocity*radius*std::cos(angle_theta) , angular_velocity*std::cos(angle_theta) , -angular_velocity*radius*std::sin(angle_theta);
                                                         Eigen::Matrix<double,2,1> desired_acceleration = dot_jacobian_of_limit_cycle*rotator+jacobian_of_limit_cycle*dot_rotator;
-                                                        
+                                                        std::cout << "desired_acceleration: " << desired_acceleration.transpose() << std::endl;
                                                         desired_translated_velocity_local_frame.block<2,1>(0,0) = jacobian_of_limit_cycle*rotator;
                                                         Eigen::Matrix<double,6,1> desired_velocity;
                                                         desired_velocity.block<3, 1>(0, 0) = desired_translated_velocity_local_frame;

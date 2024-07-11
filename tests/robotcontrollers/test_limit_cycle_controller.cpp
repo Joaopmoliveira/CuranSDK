@@ -147,7 +147,7 @@ int main()
                                                         Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * desired_rotation);
                                                         desired_velocity.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
                                                         return desired_velocity; },
-                                                                                                                           std::initializer_list<double>({300.0, 300.0, 300.0, 10.0, 10.0, 10.0}),
+                                                                                                                           std::initializer_list<double>({500.0, 500.0, 500.0, 25.0, 25.0, 25.0}),
                                                                                                                            std::initializer_list<double>({1.0, 1.0, 1.0, 1.0, 1.0, 1.0}));
     RobotLBR client{handguinding_controller.get(),
                     CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json",
@@ -183,7 +183,7 @@ int main()
                                                           bool success = app.connect(DEFAULT_PORTID, NULL);
                                                           while(client){
                                                               success = app.step();
-                                                              recordings.push_back(client.atomic_acess().load(std::memory_order_relaxed));
+                                                              //recordings.push_back(client.atomic_acess().load(std::memory_order_relaxed));
                                                           }
                                                           app.disconnect();
                                                           curan::utilities::cout << "Terminating robot control thread\n";
@@ -200,6 +200,8 @@ int main()
         std::cout << "terminating window\n";
         client.cancel();
     } 
+    if(recordings.size()==0)
+        return 0;
     auto now = std::chrono::system_clock::now();
     auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
     std::string filename{CURAN_COPIED_RESOURCE_PATH "/rhytmic_measurments" + std::to_string(UTC) + ".json"};

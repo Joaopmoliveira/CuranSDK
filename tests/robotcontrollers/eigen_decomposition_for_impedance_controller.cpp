@@ -2,36 +2,67 @@
 #include <Eigen/Dense>
 #include "robotutils/LBRController.h"
 
-int main(){
+template <typename T>
+int sgn(T val)
+{
+    return (T(0) < val) - (val < T(0));
+}
+
+int main()
+{
     curan::robotic::State state;
-    state.q = std::array<double,7>{};
-    curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_mass_data.json",CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_kinematic_limits.json"};
+    state.q = {1.4, 1.4, 1.4, 1.4, .1, 1., -1.0};
+    state.sampleTime = 0.001;
+    curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
     robot_model.update(state);
 
-    static Eigen::Matrix<double,6,6> Iden = Eigen::Matrix<double,6,6>::Identity();
-    Eigen::Matrix<double,6,6> Lambda = (robot_model.jacobian() * robot_model.invmass() * robot_model.jacobian().transpose() + (0.071*0.071)*Iden).inverse();
+    static Eigen::Matrix<double, 6, 6> Iden = Eigen::Matrix<double, 6, 6>::Identity();
+    Eigen::Matrix<double, 6, 6> Lambda = (robot_model.jacobian() * robot_model.invmass() * robot_model.jacobian().transpose() + (0.071 * 0.071) * Iden).inverse();
 
-    Eigen::Matrix<double,6,6> diagonal_damping = Eigen::Matrix<double,6,6>::Identity();
+    Eigen::Matrix<double, 6, 6> diagonal_damping = Eigen::Matrix<double, 6, 6>::Identity();
 
-    Eigen::Matrix<double,6,6> random_mat_2 = Eigen::Matrix<double,6,6>::Random();
-    auto stiffness = 100*random_mat_2*random_mat_2.transpose();
+    Eigen::Matrix<double, 6, 6> random_mat_2 = Eigen::Matrix<double, 6, 6>::Random();
+    auto stiffness = 100 * random_mat_2 * random_mat_2.transpose();
 
-    Eigen::LLT<Eigen::Matrix<double,6,6>> lltOfLambda(Lambda);
-    Eigen::Matrix<double,6,6> L = lltOfLambda.matrixL();
-    Eigen::Matrix<double,6,6> R = L.inverse();
-    Eigen::Matrix<double,6,6> C = R*stiffness*R.transpose();
-    Eigen::JacobiSVD<Eigen::Matrix<double,6,6>> svdofsitff{C,Eigen::ComputeFullU};
-    Eigen::Matrix<double,6,6> P = svdofsitff.matrixU();
-    Eigen::Matrix<double,6,6> Q = R.inverse()*P;
-    Eigen::Matrix<double,6,6> Qinv = Q.inverse();
-    Eigen::Matrix<double,6,6> B0 = Qinv*stiffness*Qinv.transpose();
-    Eigen::Matrix<double,6,6> damping = 2*Q*diagonal_damping*B0.diagonal().array().sqrt().matrix().asDiagonal()*Q.transpose();
+    Eigen::LLT<Eigen::Matrix<double, 6, 6>> lltOfLambda(Lambda);
+    Eigen::Matrix<double, 6, 6> L = lltOfLambda.matrixL();
+    Eigen::Matrix<double, 6, 6> R = L.inverse();
+    Eigen::Matrix<double, 6, 6> C = R * stiffness * R.transpose();
+    Eigen::JacobiSVD<Eigen::Matrix<double, 6, 6>> svdofsitff{C, Eigen::ComputeFullU};
+    Eigen::Matrix<double, 6, 6> P = svdofsitff.matrixU();
+    Eigen::Matrix<double, 6, 6> Q = R.inverse() * P;
+    Eigen::Matrix<double, 6, 6> Qinv = Q.inverse();
+    Eigen::Matrix<double, 6, 6> B0 = Qinv * stiffness * Qinv.transpose();
+    Eigen::Matrix<double, 6, 6> damping = 2 * Q * diagonal_damping * B0.diagonal().array().sqrt().matrix().asDiagonal() * Q.transpose();
 
-    //std::cout << robot_model.jacobian() << std::endl << std::endl;
-    std::cout << Lambda << std::endl << std::endl;
-    std::cout << Lambda-L*L.transpose() << std::endl << std::endl;
-    std::cout << Lambda-Q*Q.transpose() << std::endl;
-    std::cout << stiffness << std::endl << std::endl;
-    std::cout << stiffness- Q*B0*Q.transpose() << std::endl << std::endl;
+    // std::cout << robot_model.jacobian() << std::endl << std::endl;
+    std::cout << Lambda << std::endl
+              << std::endl;
+    std::cout << Lambda - L * L.transpose() << std::endl
+              << std::endl;
+    std::cout << Lambda - Q * Q.transpose() << std::endl;
+    std::cout << stiffness << std::endl
+              << std::endl;
+    std::cout << stiffness - Q * B0 * Q.transpose() << std::endl
+              << std::endl;
+
+
+    
+    static auto previous_jacobian = robot_model.jacobian();
+    static Eigen::Matrix<double, 6, curan::robotic::number_of_joints> jacobian_derivative = (robot_model.jacobian() - previous_jacobian) / robot_model.sample_time();
+    jacobian_derivative = (0.8 * jacobian_derivative + 0.2 * (robot_model.jacobian() - previous_jacobian) / robot_model.sample_time()).eval();
+    previous_jacobian = robot_model.jacobian();
+
+    auto conditioned_matrix = robot_model.jacobian().transpose()*robot_model.jacobian();
+    Eigen::JacobiSVD<Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints>> svdjacobian{conditioned_matrix, Eigen::ComputeFullU};
+    auto U = svdjacobian.matrixU();
+    auto singular_values = svdjacobian.singularValues();
+    for (auto &diag : singular_values){
+        diag = (diag < 0.02) ? 0.02 : diag;
+    }
+    auto properly_conditioned_matrix = (U * singular_values.asDiagonal() * U.transpose());
+    auto inverse_jacobian = properly_conditioned_matrix.inverse()*robot_model.jacobian().transpose();
+    auto value = robot_model.mass() * inverse_jacobian * jacobian_derivative * inverse_jacobian;
+    std::cout << "extra sniff: " << value << std::endl;
     return 0;
 }
