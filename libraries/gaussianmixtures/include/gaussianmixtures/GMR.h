@@ -65,7 +65,6 @@ double gaussianPDF(const Eigen::Matrix<double, size_in, 1>& input,size_t k){
 template<bool debug_print>
 Eigen::Matrix<double, size_out, 1> likeliest(const Eigen::Matrix<double, size_in, 1>& input)
 {
-	std::lock_guard<std::recursive_mutex> guard(mut);
 	assert(is_usable==true);
 	Eigen::Matrix<double, Eigen::Dynamic, 1> H = Eigen::Matrix<double, Eigen::Dynamic, 1>::Zero(components(), 1);
 				
@@ -148,7 +147,7 @@ friend std::istream& operator >> (std::istream& in, GMR& model)
 
 public:
 
-	bool is_usable = false;
+	volatile bool is_usable = false;
 
 	std::vector<Eigen::Matrix<double, size_out, 1>> bk;
 	std::vector<Eigen::Matrix<double, size_out, size_in>> Ak;
@@ -161,8 +160,6 @@ public:
 	int nbStates = 1;
 	static constexpr int in_size = size_in;
 	static constexpr int out_size = size_out;
-
-	std::recursive_mutex mut;
 };
 
 

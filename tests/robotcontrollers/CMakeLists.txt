@@ -171,3 +171,15 @@ utils
 robotutils
 renderable
 )
+
+add_executable(test_limit_cycle_with_gmr_control test_limit_cycle_with_gmr_control.cpp)
+
+target_compile_definitions(test_limit_cycle_with_gmr_control PRIVATE NOMINMAX)
+target_compile_definitions(test_limit_cycle_with_gmr_control PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_limit_cycle_with_gmr_control PUBLIC
+utils
+robotutils
+renderable
+gaussianmixture
+)
