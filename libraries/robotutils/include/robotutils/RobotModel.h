@@ -114,6 +114,9 @@ namespace curan
         template <size_t model_joints>
         class RobotModel
         {
+        public:
+            const size_t robot_joints = model_joints;
+            using vector_type = Eigen::Matrix<double,model_joints,1>;
         private:
             // Data describing the robot
             std::array<double, model_joints> f_mass;
@@ -131,14 +134,14 @@ namespace curan
             // Parameters to store current state of the robot
             Eigen::Matrix<double, model_joints, model_joints> f_massmatrix;
             Eigen::Matrix<double, model_joints, model_joints> f_inverse_massmatrix;
-            Eigen::Matrix<double, model_joints, 1> f_coriolis;
-            Eigen::Matrix<double, model_joints, 1> f_gravity;
-            Eigen::Matrix<double, model_joints, 1> f_q;
-            Eigen::Matrix<double, model_joints, 1> f_dq;
-            Eigen::Matrix<double, model_joints, 1> f_ddq;
+            vector_type f_coriolis;
+            vector_type f_gravity;
+            vector_type f_q;
+            vector_type f_dq;
+            vector_type f_ddq;
             Eigen::Matrix<double, 6, model_joints> f_jacobian;
             Eigen::Matrix<double, 4, 4> f_end_effector;
-            Eigen::Matrix<double, model_joints, 1> f_measured_torque;
+            vector_type f_measured_torque;
 
             double f_sample_time = 0.001;
 
@@ -368,22 +371,22 @@ namespace curan
                 return f_inverse_massmatrix;
             }
 
-            inline const Eigen::Matrix<double, model_joints, 1> &measured_torque() const
+            inline const vector_type &measured_torque() const
             {
                 return f_measured_torque;
             }
 
-            inline const Eigen::Matrix<double, model_joints, 1> &joints() const
+            inline const vector_type &joints() const
             {
                 return f_q;
             }
 
-            inline const Eigen::Matrix<double, model_joints, 1> &velocities() const
+            inline const vector_type &velocities() const
             {
                 return f_dq;
             }
 
-            inline const Eigen::Matrix<double, model_joints, 1> &accelerations() const
+            inline const vector_type &accelerations() const
             {
                 return f_ddq;
             }

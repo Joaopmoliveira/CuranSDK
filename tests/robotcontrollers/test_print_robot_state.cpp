@@ -29,7 +29,7 @@ int main(){
         const auto& reading_point = client.atomic_acess();
         while(client){
             auto current = reading_point.load(std::memory_order_relaxed);
-			current.print_state = static_cast<curan::robotic::PrintInfo>(TRANSLATION | ROTATION);
+			current.print_state = static_cast<curan::robotic::PrintInfo>(TRANSLATION | JACOBIAN);
             std::cout << current << "\n";
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }

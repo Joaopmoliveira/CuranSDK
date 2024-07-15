@@ -1,5 +1,7 @@
 #include "robotutils/LBRController.h"
 #include "robotutils/CartersianVelocityController.h"
+#include "robotutils/SimulateModel.h"
+
 #include "utils/Logger.h"
 #include "utils/TheadPool.h"
 #include "friUdpConnection.h"
@@ -127,14 +129,9 @@ int main()
 																										 std::initializer_list<double>({1.0, 1.0, 1.0, 1.0, 1.0, 1.0}));
 
                                            curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
-                                           double delta_time = 0.001;
-                                           Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> jacobian;
-                                           Eigen::Matrix<double, 7, 1> dq = Eigen::Matrix<double, 7, 1>::Zero();
-                                           Eigen::Matrix<double, 7, 1> q = Eigen::Matrix<double, 7, 1>::Zero();
+                                           constexpr auto sample_time = std::chrono::milliseconds(1);
+
                                            curan::robotic::State state;
-                                           state.sampleTime = delta_time;
-                                           state.q = std::array<double, 7>{};
-                                           curan::robotic::State next = state;
                                            double time = 0;
                                            Eigen::Matrix<double, 7, 1> external_torque = Eigen::Matrix<double, 7, 1>::Zero();
 
@@ -155,21 +152,9 @@ int main()
                                                    external_torque = Eigen::Matrix<double, 7, 1>::Zero();
                                                }
 
-                                               state.differential(next);
-                                               robot_model.update(state);
-                                               auto actuation = handguinding_controller->update(robot_model, curan::robotic::EigenState{}, jacobian);
-                                               state.convertFrom(actuation);
-                                               Eigen::Matrix<double, 7, 1> ddq = robot_model.invmass() * (external_torque + actuation.cmd_tau);
-                                               dq = ddq * delta_time + dq;
-                                               q = dq * delta_time + q;
-                                               next = state;
-                                               next.q = curan::robotic::convert<double, 7>(q);
-                                               atomic_state.store(state);
-                                               std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-                                               // std::printf("time %f duration: %ld\n",time,std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
-                                               std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                                               end = std::chrono::steady_clock::now();
-                                               time += 1e-6 * std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+                                               state = curan::robotic::simulate_next_timestamp(robot_model,handguinding_controller.get(),sample_time,state,external_torque);
+                                               atomic_state.store(state,std::memory_order_relaxed);
+                                               time += std::chrono::duration<double>(sample_time).count();
                                            }
                                        }});
     while (window.run_once())
