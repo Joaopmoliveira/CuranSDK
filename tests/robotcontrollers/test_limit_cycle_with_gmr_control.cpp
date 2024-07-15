@@ -116,14 +116,14 @@ int main()
     window << robot;
 
     curan::gaussian::GMR<2,2> model;
-    std::fstream gmr_model_file{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/model2.json"};
+    std::fstream gmr_model_file{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/model3.json"};
     gmr_model_file >> model;
     
     std::atomic<bool> keep_running = true;
     auto pool = curan::utilities::ThreadPool::create(1);
     pool->submit(curan::utilities::Job{"value", [&]()
                                        {
-                                                                                   Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
+                                        Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
                                            desired_translation << -0.66809, -0.00112052, 0.443678;
                                           Eigen::Matrix<double, 3, 3> desired_rotation = Eigen::Matrix<double, 3, 3>::Identity();
                                            desired_rotation << -0.718163, -0.00186162, -0.695873,
