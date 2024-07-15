@@ -142,7 +142,6 @@ int main()
                                                         Eigen::Matrix<double,2,2> dot_jacobian_of_limit_cycle = Eigen::Matrix<double,2,2>::Zero();
                                                         dot_jacobian_of_limit_cycle << -angular_velocity*std::sin(angle_theta) , -angular_velocity*radius*std::cos(angle_theta) , angular_velocity*std::cos(angle_theta) , -angular_velocity*radius*std::sin(angle_theta);
                                                         Eigen::Matrix<double,2,1> desired_acceleration = dot_jacobian_of_limit_cycle*rotator+jacobian_of_limit_cycle*dot_rotator;
-                                                        std::cout << "desired_acceleration: " << desired_acceleration.transpose() << std::endl;
                                                         desired_translated_velocity_local_frame.block<2,1>(0,0) = jacobian_of_limit_cycle*rotator;
                                                         Eigen::Matrix<double,6,1> desired_velocity;
                                                         desired_velocity.block<3, 1>(0, 0) = desired_translated_velocity_local_frame;
@@ -167,7 +166,7 @@ int main()
 
                                            while (keep_running.load())
                                            {
-                                               std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                                               
                                                if (time > 10 && time < 15)
                                                {
                                                    external_torque = 0.0 * Eigen::Matrix<double, 7, 1>::Ones();
@@ -184,17 +183,23 @@ int main()
 
                                                state.differential(next);
                                                robot_model.update(state);
+                                               //std::cout << "q: " << robot_model.joints().transpose() << std::endl;
                                                auto actuation = handguinding_controller->update(robot_model, curan::robotic::EigenState{}, jacobian);
                                                state.convertFrom(actuation);
                                                Eigen::Matrix<double, 7, 1> ddq = robot_model.invmass() * (external_torque + actuation.cmd_tau);
+                                               //std::cout << "ddq: " << ddq.transpose() << std::endl;
                                                dq = ddq * delta_time + dq;
                                                q = dq * delta_time + q;
                                                next = state;
                                                next.q = curan::robotic::convert<double, 7>(q);
                                                atomic_state.store(state);
+                                               
+                                               std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                                                std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-                                               std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                                               end = std::chrono::steady_clock::now();
+                                               while(std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() < std::chrono::microseconds(1000).count()){
+                                                    end = std::chrono::steady_clock::now();
+                                               }
+                                               
                                                time += 1e-6 * std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                                            }
                                        }});

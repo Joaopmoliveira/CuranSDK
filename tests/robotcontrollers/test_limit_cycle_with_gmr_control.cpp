@@ -114,21 +114,24 @@ int main()
     window << robot;
 
     curan::gaussian::GMR<2,2> model;
-    std::fstream gmr_model_file{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/model.json"};
+    std::fstream gmr_model_file{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/model2.json"};
     gmr_model_file >> model;
     
     std::atomic<bool> keep_running = true;
     auto pool = curan::utilities::ThreadPool::create(1);
     pool->submit(curan::utilities::Job{"value", [&]()
                                        {
+                                                                                   Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
+                                           desired_translation << -0.66809, -0.00112052, 0.443678;
                                           Eigen::Matrix<double, 3, 3> desired_rotation = Eigen::Matrix<double, 3, 3>::Identity();
                                            desired_rotation << -0.718163, -0.00186162, -0.695873,
                                                                 -0.00329559, 0.999994, 0.000725931,
                                                                 0.695868, 0.00281465, -0.718165;
                                            std::unique_ptr<CartersianVelocityController> handguinding_controller = std::make_unique<CartersianVelocityController>([&](const RobotModel<number_of_joints>& iiwa){
                                                         Eigen::Matrix<double,6,1> desired_velocity = Eigen::Matrix<double,6,1>::Zero();
-                                                        desired_velocity.block<2, 1>(0, 0) = 0.0 * model.likeliest(iiwa.translation().block<2,1>(0,0));
-                                                        desired_velocity[2] = -iiwa.translation()[2];
+                                                        desired_velocity.block<2, 1>(0, 0) = model.likeliest(iiwa.translation().block<2,1>(0,0));
+                                                        desired_velocity[2] = desired_translation[2]-iiwa.translation()[2];
+                                                        std::cout << desired_velocity.transpose() << std::endl;
                                                         Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * desired_rotation);
                                                         desired_velocity.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
                                                         return desired_velocity;
@@ -150,7 +153,6 @@ int main()
 
                                            while (keep_running.load())
                                            {
-                                               std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                                                if (time > 10 && time < 15)
                                                {
                                                    external_torque = 0.0 * Eigen::Matrix<double, 7, 1>::Ones();
@@ -175,9 +177,11 @@ int main()
                                                next = state;
                                                next.q = curan::robotic::convert<double, 7>(q);
                                                atomic_state.store(state);
+                                               std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                                                std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-                                               std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                                               end = std::chrono::steady_clock::now();
+                                               while(std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() < std::chrono::microseconds(1000).count()){
+                                                    end = std::chrono::steady_clock::now();
+                                               }
                                                time += 1e-6 * std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
                                            }
                                        }});
