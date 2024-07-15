@@ -153,12 +153,12 @@ int main(int argc, char* argv[]) {
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
 		
-		KUKA::FRI::UdpConnection connection{20};
+		KUKA::FRI::UdpConnection connection{200};
 		KUKA::FRI::ClientApplication app(connection, client);
 		bool success = app.connect(DEFAULT_PORTID, NULL);
 		success = app.step();
 		
-		while (success && client){
+		while (client){
 			success = app.step();
 		}
 		app.disconnect();

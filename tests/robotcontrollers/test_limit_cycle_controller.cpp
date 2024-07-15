@@ -183,7 +183,9 @@ int main()
                                                           bool success = app.connect(DEFAULT_PORTID, NULL);
                                                           while(client){
                                                               success = app.step();
-                                                              //recordings.push_back(client.atomic_acess().load(std::memory_order_relaxed));
+                                                              if(recordings.size()< 199999)
+                                                                recordings.push_back(client.atomic_acess().load(std::memory_order_relaxed));
+                
                                                           }
                                                           app.disconnect();
                                                           curan::utilities::cout << "Terminating robot control thread\n";

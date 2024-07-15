@@ -52,7 +52,7 @@ void custom_interface(vsg::CommandBuffer &cb, AtomicState& atomic_state)
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
 	{
-		ImGui::Begin("Error Decay"); // Create a window called "Hello, world!" and append into it.
+		ImGui::Begin("Forces"); // Create a window called "Hello, world!" and append into it.
 		static std::array<ScrollingBuffer, 6> buffers;
 
 		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
@@ -67,8 +67,35 @@ void custom_interface(vsg::CommandBuffer &cb, AtomicState& atomic_state)
 			ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
 			for (size_t index = 0; index < 6; ++index)
 			{
-				std::string loc = "userdef" + std::to_string(index);
-				buffers[index].AddPoint(t, (float)state.user_defined2[index]);
+				std::string loc = "userdef3" + std::to_string(index);
+				buffers[index].AddPoint(t, (float)state.user_defined3[index]);
+				ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
+			}
+
+			ImPlot::EndPlot();
+		}
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::End();
+	}
+
+    {
+		ImGui::Begin("EigenValues"); // Create a window called "Hello, world!" and append into it.
+		static std::array<ScrollingBuffer, 6> buffers;
+
+		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
+
+		static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+
+		if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
+		{
+			ImPlot::SetupAxes(NULL, NULL, flags, flags);
+			ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
+			ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
+			ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
+			for (size_t index = 0; index < 6; ++index)
+			{
+				std::string loc = "userdef3" + std::to_string(index);
+				buffers[index].AddPoint(t, (float)state.user_defined4[index]);
 				ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
 			}
 
@@ -109,8 +136,6 @@ int main()
     auto robot = curan::renderable::SequencialLinks::make(create_info);
     window << robot;
 
-
-    
     std::atomic<bool> keep_running = true;
     auto pool = curan::utilities::ThreadPool::create(1);
     pool->submit(curan::utilities::Job{"value", [&]()
@@ -142,7 +167,6 @@ int main()
                                                         Eigen::Matrix<double,2,2> dot_jacobian_of_limit_cycle = Eigen::Matrix<double,2,2>::Zero();
                                                         dot_jacobian_of_limit_cycle << -angular_velocity*std::sin(angle_theta) , -angular_velocity*radius*std::cos(angle_theta) , angular_velocity*std::cos(angle_theta) , -angular_velocity*radius*std::sin(angle_theta);
                                                         Eigen::Matrix<double,2,1> desired_acceleration = dot_jacobian_of_limit_cycle*rotator+jacobian_of_limit_cycle*dot_rotator;
-                                                        std::cout << "desired_acceleration: " << desired_acceleration.transpose() << std::endl;
                                                         desired_translated_velocity_local_frame.block<2,1>(0,0) = jacobian_of_limit_cycle*rotator;
                                                         Eigen::Matrix<double,6,1> desired_velocity;
                                                         desired_velocity.block<3, 1>(0, 0) = desired_translated_velocity_local_frame;
