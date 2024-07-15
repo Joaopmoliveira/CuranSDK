@@ -45,24 +45,5 @@ int main()
               << std::endl;
     std::cout << stiffness - Q * B0 * Q.transpose() << std::endl
               << std::endl;
-
-
-    
-    static auto previous_jacobian = robot_model.jacobian();
-    static Eigen::Matrix<double, 6, curan::robotic::number_of_joints> jacobian_derivative = (robot_model.jacobian() - previous_jacobian) / robot_model.sample_time();
-    jacobian_derivative = (0.8 * jacobian_derivative + 0.2 * (robot_model.jacobian() - previous_jacobian) / robot_model.sample_time()).eval();
-    previous_jacobian = robot_model.jacobian();
-
-    auto conditioned_matrix = robot_model.jacobian().transpose()*robot_model.jacobian();
-    Eigen::JacobiSVD<Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints>> svdjacobian{conditioned_matrix, Eigen::ComputeFullU};
-    auto U = svdjacobian.matrixU();
-    auto singular_values = svdjacobian.singularValues();
-    for (auto &diag : singular_values){
-        diag = (diag < 0.02) ? 0.02 : diag;
-    }
-    auto properly_conditioned_matrix = (U * singular_values.asDiagonal() * U.transpose());
-    auto inverse_jacobian = properly_conditioned_matrix.inverse()*robot_model.jacobian().transpose();
-    auto value = robot_model.mass() * inverse_jacobian * jacobian_derivative * inverse_jacobian;
-    std::cout << "extra sniff: " << value << std::endl;
     return 0;
 }
