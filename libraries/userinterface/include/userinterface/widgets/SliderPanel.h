@@ -146,9 +146,13 @@ namespace curan
 				case Direction::X:
 				{
 					auto _current_index_x = std::round(along_dimension * (masks_x.size() - 1));
-					auto returned_pair = masks_x[_current_index_x].try_emplace(counter, std::forward<T>(u)...);
+					auto [iterator_to_inserted_object,insertion_successeful] = masks_x[_current_index_x].try_emplace(counter, std::forward<T>(u)...);
+					/*
+					We have inserted the object inside the set of masks, thus we need to query if the insertion on the other masks is also, sucessefull
+					if true then we can 
+					*/
 					bool erase = true;
-					if (returned_pair.second)
+					if (insertion_successeful)
 					{
 						std::visit(curan::utilities::overloaded{[&](const Path &path)
 																{
@@ -164,19 +168,19 @@ namespace curan
 																		masks_z[_current_index_z].try_emplace(counter, Point{SkPoint::Make(along_dimension, point.normalized_point.fX)});
 																	}
 																}},
-								   returned_pair.first->second);
+								   iterator_to_inserted_object->second);
 						++counter;
 					}
 					if (erase)
-						masks_x[_current_index_x].erase(returned_pair.first);
-					return returned_pair.second;
+						masks_x[_current_index_x].erase(iterator_to_inserted_object);
+					return insertion_successeful;
 				}
 				case Direction::Y:
 				{
 					auto _current_index_y = std::round(along_dimension * (masks_y.size() - 1));
-					auto returned_pair = masks_y[_current_index_y].try_emplace(counter, std::forward<T>(u)...);
+					auto [iterator_to_inserted_object,insertion_successeful] = masks_y[_current_index_y].try_emplace(counter, std::forward<T>(u)...);
 					bool erase = true;
-					if (returned_pair.second)
+					if (insertion_successeful)
 					{
 						std::visit(curan::utilities::overloaded{[&](const Path &path)
 																{
@@ -192,19 +196,19 @@ namespace curan
 																		masks_z[_current_index_z].try_emplace(counter, Point{SkPoint::Make(point.normalized_point.fX, along_dimension)});
 																	}
 																}},
-								   returned_pair.first->second);
+								   iterator_to_inserted_object->second);
 						++counter;
 					}
 					if (erase)
-						masks_y[_current_index_y].erase(returned_pair.first);
-					return returned_pair.second;
+						masks_y[_current_index_y].erase(iterator_to_inserted_object);
+					return insertion_successeful;
 				}
 				case Direction::Z:
 				{
 					auto _current_index_z = std::round(along_dimension * (masks_z.size() - 1));
-					auto returned_pair = masks_z[_current_index_z].try_emplace(counter, std::forward<T>(u)...);
+					auto [iterator_to_inserted_object,insertion_successeful] = masks_z[_current_index_z].try_emplace(counter, std::forward<T>(u)...);
 					bool erase = true;
-					if (returned_pair.second)
+					if (insertion_successeful)
 					{
 						std::visit(curan::utilities::overloaded{[&](const Path &path)
 																{
@@ -220,12 +224,12 @@ namespace curan
 																		masks_y[_current_index_y].try_emplace(counter, Point{SkPoint::Make(point.normalized_point.fX, along_dimension)});
 																	}
 																}},
-								   returned_pair.first->second);
+								   iterator_to_inserted_object->second);
 						++counter;
 					}
 					if (erase)
-						masks_z[_current_index_z].erase(returned_pair.first);
-					return returned_pair.second;
+						masks_z[_current_index_z].erase(iterator_to_inserted_object);
+					return insertion_successeful;
 				}
 				};
 			}
