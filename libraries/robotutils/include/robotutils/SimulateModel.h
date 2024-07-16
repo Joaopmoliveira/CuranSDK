@@ -28,7 +28,11 @@ namespace curan
 
            auto forces_without_friction = external_torque + actuation.cmd_tau;
             
-
+            /*
+            Any proper simulation should have friction in the intermal model of the mechanical system. 
+            We employ the model proposed in 
+            "A globally stable state feedback controller for flexible joint robots"
+            */
             typename RobotModel<propagated_size>::vector_type friction = RobotModel<propagated_size>::vector_type::Zero();
             constexpr double static_friction = 0.01 ;
             constexpr double dynamic_friction = 0.002 ;
