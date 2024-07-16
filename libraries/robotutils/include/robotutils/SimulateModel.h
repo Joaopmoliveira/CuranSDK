@@ -37,16 +37,13 @@ namespace curan
             constexpr double static_friction = 0.01 ;
             constexpr double dynamic_friction = 0.002 ;
             constexpr double viscous_friction = 0.01 ;
-            for(size_t i = 0; i<propagated_size ; ++i ){
-                if(std::abs(model.velocities()[i])<0.001){
-                    friction[i] = (std::abs(forces_without_friction[i]) < static_friction ) ? 
-                                                    forces_without_friction[i] : 
-                                                    std::copysign(1.0,forces_without_friction[i])*dynamic_friction;
-                } else {
-                    friction[i] = std::copysign(1.0,model.velocities()[i])*dynamic_friction + viscous_friction*model.velocities()[i];
-                }
+            for(size_t i = 0; i<propagated_size ; ++i )
+                friction[i] = (std::abs(model.velocities()[i])>0.001) ? 
+                                std::copysign(1.0,model.velocities()[i])*dynamic_friction + viscous_friction*model.velocities()[i] : 
+                                    (std::abs(forces_without_friction[i]) < static_friction ) ? 
+                                        forces_without_friction[i] : 
+                                        std::copysign(1.0,forces_without_friction[i])*dynamic_friction;
 
-            }
 
             typename RobotModel<propagated_size>::vector_type ddq = model.invmass() * ( forces_without_friction - friction );
             typename RobotModel<propagated_size>::vector_type dq = ddq * next.sampleTime + model.velocities();
