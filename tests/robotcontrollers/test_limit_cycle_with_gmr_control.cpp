@@ -115,9 +115,9 @@ int main()
     auto robot = curan::renderable::SequencialLinks::make(create_info);
     window << robot;
 
-    curan::gaussian::GMR<2,2> model;
-    std::fstream gmr_model_file{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/model3.json"};
-    gmr_model_file >> model;
+    curan::gaussian::GMR<2, 2> model;
+    std::ifstream modelfile{CURAN_COPIED_RESOURCE_PATH "/gaussianmixtures_testing/model.txt"};
+    modelfile >> model;
     
     std::atomic<bool> keep_running = true;
     auto pool = curan::utilities::ThreadPool::create(1);
@@ -131,9 +131,8 @@ int main()
                                                                 0.695868, 0.00281465, -0.718165;
                                            std::unique_ptr<CartersianVelocityController> handguinding_controller = std::make_unique<CartersianVelocityController>([&](const RobotModel<number_of_joints>& iiwa){
                                                         Eigen::Matrix<double,6,1> desired_velocity = Eigen::Matrix<double,6,1>::Zero();
-                                                        desired_velocity.block<2, 1>(0, 0) = model.likeliest(iiwa.translation().block<2,1>(0,0));
+                                                        desired_velocity.block<2, 1>(0, 0) = model.likeliest_robust(iiwa.translation().block<2,1>(0,0));
                                                         desired_velocity[2] = desired_translation[2]-iiwa.translation()[2];
-                                                        std::cout << desired_velocity.transpose() << std::endl;
                                                         Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * desired_rotation);
                                                         desired_velocity.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
                                                         return desired_velocity;

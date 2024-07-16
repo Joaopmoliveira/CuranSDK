@@ -2,6 +2,7 @@
 #define CURAN_ROBOT_SIMULATION_HEADER_
 
 #include "RobotModel.h"
+#include <cmath>
 
 namespace curan
 {
@@ -25,9 +26,30 @@ namespace curan
             auto actuation = controller->update(model, curan::robotic::EigenState{}, jacobian);
             next.convertFrom(actuation);
 
-            typename RobotModel<propagated_size>::vector_type ddq = model.invmass() * (external_torque + actuation.cmd_tau);
-            typename RobotModel<propagated_size>::vector_type dq = ddq * next.sampleTime + curan::robotic::convert(next.dq);
-            typename RobotModel<propagated_size>::vector_type q = dq * next.sampleTime + curan::robotic::convert(next.q);
+           auto forces_without_friction = external_torque + actuation.cmd_tau;
+            
+
+            typename RobotModel<propagated_size>::vector_type friction = RobotModel<propagated_size>::vector_type::Zero();
+            constexpr double static_friction = 0.1 ;
+            constexpr double dynamic_friction = 0.02 ;
+            constexpr double viscous_friction = 0.02 ;
+            for(size_t i = 0; i<propagated_size ; ++i ){
+                if(std::abs(model.velocities()[i])<0.001){
+                    friction[i] = (std::abs(forces_without_friction[i]) < static_friction ) ? 
+                                                    -forces_without_friction[i] : 
+                                                    -std::copysign(1.0,forces_without_friction[i])*dynamic_friction;
+                } else {
+                    friction[i] = std::copysign(1.0,model.velocities()[i])*dynamic_friction ;//- viscous_friction*model.velocities()[i];
+                }
+
+            }
+
+            std::cout << "friction: " << friction.transpose() << std::endl;
+            std::cout << "velocities: " << model.velocities().transpose() << std::endl;
+
+            typename RobotModel<propagated_size>::vector_type ddq = model.invmass() * ( forces_without_friction + friction );
+            typename RobotModel<propagated_size>::vector_type dq = ddq * next.sampleTime + model.velocities();
+            typename RobotModel<propagated_size>::vector_type q = dq * next.sampleTime + model.joints();
 
             next.q = curan::robotic::convert<double, propagated_size>(q);
             next.dq = curan::robotic::convert<double, propagated_size>(dq);

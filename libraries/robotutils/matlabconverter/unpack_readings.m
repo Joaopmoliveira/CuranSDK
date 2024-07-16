@@ -13,10 +13,24 @@ n_readings = size(measurments.cmd_q,2);
 measurments.cmd_tau = str2num(decoded_information.cmd_tau); 
 measurments.ddq = str2num(decoded_information.ddq); 
 measurments.dq = str2num(decoded_information.dq); 
-measurments.jacobians = reshape(str2num(decoded_information.jacobians),[6 7 n_readings]); 
+
+
+jacobians = reshape(str2num(decoded_information.jacobians),[7 6 n_readings]); 
 measurments.massmatrix = reshape(str2num(decoded_information.massmatrix),[7 7 n_readings]); 
-measurments.q = str2num(decoded_information.q); 
 measurments.rotation = reshape(str2num(decoded_information.rotation),[3 3 n_readings]); 
+
+measurments.jacobians = zeros(6,7,n_readings);
+
+% Matlab and cpp differ in colum and row major format
+% this makes it so they agree
+
+for i = 1 : n_readings
+    measurments.rotation(:,:,i) = measurments.rotation(:,:,i)';
+    measurments.massmatrix(:,:,i) = measurments.massmatrix(:,:,i)';
+    measurments.jacobians(:,:,i) = jacobians(:,:,i)';
+end
+
+measurments.q = str2num(decoded_information.q); 
 measurments.tau = str2num(decoded_information.tau); 
 measurments.tau_ext = str2num(decoded_information.tau_ext); 
 measurments.translation = str2num(decoded_information.translation); 
