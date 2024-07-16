@@ -90,9 +90,6 @@ namespace curan
 		class VolumetricMask;
 		using pressedhighlighted_event = std::function<void(VolumetricMask*, ConfigDraw*, const std::optional<directed_stroke>&)>;
 
-
-
-
 		/*
 		Geometric shapes are entities that live in 3D,
 		therefore they don't belong to any particular mask.
@@ -101,9 +98,9 @@ namespace curan
 		if violated the delay between user action and rendered actions
 		can increase up to the point where is deteriorates the quality
 		*/
-		//class GeometricShapes{
+		class GeometricShapes{
 
-		//};
+		};
 
 		class VolumetricMask
 		{
@@ -117,7 +114,7 @@ namespace curan
 			std::vector<Mask> masks_y;
 			std::vector<Mask> masks_z;
 
-			//std::vector<GeometricShapes> three_dimensional_entities;
+			std::vector<GeometricShapes> three_dimensional_entities;
 
 			ImageType::Pointer image;
 		public:
@@ -240,14 +237,12 @@ namespace curan
 				if(!filled())
 					return;
 				ImageType::RegionType inputRegion = image->GetBufferedRegion();
-				ImageType::SizeType size = inputRegion.GetSize();
-				masks_x = std::vector<Mask>(size[Direction::X]);
-				masks_y = std::vector<Mask>(size[Direction::Y]);
-				masks_z = std::vector<Mask>(size[Direction::Z]);
+				masks_x = std::vector<Mask>(inputRegion.GetSize()[Direction::X]);
+				masks_y = std::vector<Mask>(inputRegion.GetSize()[Direction::Y]);
+				masks_z = std::vector<Mask>(inputRegion.GetSize()[Direction::Z]);
 			}
 
-			inline ImageType::Pointer get_volume()
-			{
+			inline ImageType::Pointer get_volume(){
 				return image;
 			}
 
@@ -262,7 +257,7 @@ namespace curan
 				case Direction::Z:
 					return masks_z.size();
 				default:
-					return 0;
+					throw std::runtime_error("accessing direction with no meaning");
 				};
 			}
 
