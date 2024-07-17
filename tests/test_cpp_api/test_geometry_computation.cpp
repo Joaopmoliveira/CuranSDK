@@ -317,7 +317,7 @@ struct Factory
         // Generate geometry.
         std::vector<gte::Vector3<float>> vertices;
         vertices.resize(numVertices);
-
+        geometry.vertices.resize(numVertices);
         geometry.triangles.resize(numTriangles);
 
         gte::Vector3<float> pos{}, nor{};
@@ -756,8 +756,8 @@ int inner_main_dual()
     Factory factory;
     gte::ConvexMesh3<Rational> mPolyhedron = factory.CreateBox<Rational>(1, 1, 1);
     gte::ConvexMesh3<Rational> mPolyhedron2 = factory.CreateCylinderOpen<Rational>(100, 100, 1, 1);
-    gte::ConvexMesh3<Rational> mPolyhedron3 = factory.CreateCylinderClosed<Rational>(100, 100, 1, 1);
     gte::ConvexMesh3<Rational> mPolyhedron4 = factory.CreateSphere<Rational>(100, 100, 1);
+    gte::ConvexMesh3<Rational> mPolyhedron3 = factory.CreateCylinderClosed<Rational>(100, 100, 1, 1);
     gte::ConvexMesh3<Rational> mPolyhedron5 = factory.CreateTorus<Rational>(100, 100, 1, 1);
 
     gte::ConvexMesh3<Rational> mPolyhedron6 = factory.CreateTetrahedron<Rational>();
@@ -781,7 +781,7 @@ int inner_main_dual()
         std::cout << "];\n";
     }
 
-    auto const &imesh = mResult.intersectionMesh;
+    auto const &imesh = mResult.intersectionMesh; 
     bool mValidPolygonMesh = (imesh.vertices.size() > 0);
     if (mValidPolygonMesh)
     {
@@ -792,6 +792,7 @@ int inner_main_dual()
         uint32_t const numVertices = static_cast<uint32_t>(imesh.vertices.size());
 
         std::vector<int32_t> indices;
+        indices.resize(mResult.intersectionMesh.triangles.size()*3);
         size_t const numBytes = imesh.triangles.size() * sizeof(std::array<int32_t, 3>);
         std::memcpy(indices.data(), imesh.triangles.data(), numBytes);
 
