@@ -11,70 +11,14 @@
 #include <Mathematics/Logger.h>
 #include <Mathematics/EdgeKey.h>
 #include <Mathematics/TriangleKey.h>
+#include <Mathematics/IntrConvexMesh3Plane3.h>
+
 
 #include <iostream>
 
 #include <fstream>
 
-#include <Mathematics/IntrConvexMesh3Plane3.h>
 
-/* template <typename Numeric>
-struct Wrapper
-{
-
-    std::string name;
-
-    Wrapper(const ConvexPolyhedron<Numeric> &poly, std::string_view in_name) : name{in_name}
-    {
-        auto numVertices = poly.GetNumVertices();
-        int32_t numTriangles = poly.GetNumTriangles();
-        vertices.resize(numVertices);
-        indices.resize(numTriangles * 3);
-        for (int32_t i = 0; i < numVertices; ++i)
-            vertices[i] = poly.GetPoint(i);
-
-        for (int32_t i = 0; i < numTriangles; ++i)
-            for (int32_t j = 0; j < 3; ++j)
-                indices[3 * i + j] = poly.GetVLabel(poly.GetTriangle(i).GetVertex(j));
-    }
-
-    friend std::ostream &operator<<(std::ostream &os, Wrapper wrapper)
-    {
-        os << "V_" << wrapper.name << "=[";
-        for (auto &val : wrapper.vertices)
-            os << " " << (double)val[0] << " " << (double)val[1] << "  " << (double)val[2] << ";\n";
-        os << "];\n";
-
-        os << "Ind_" << wrapper.name << "=[";
-        for (auto &index : wrapper.indices)
-            os << " " << index << ";\n";
-        os << "];\n";
-        return os;
-    }
-
-    gte::ConvexMesh3<Numeric> convert()
-    {
-        gte::ConvexMesh3<Numeric> mesh;
-        mesh.vertices = vertices;
-        auto numTriangles = indices.size() / 3;
-        mesh.triangles.resize(numTriangles);
-        for (int32_t i = 0; i < numTriangles; ++i)
-        {
-            std::array<int, 3> triangle;
-            for (int32_t j = 0; j < 3; ++j)
-            {
-                size_t adress = 3 * i + j;
-                triangle[j] = indices[adress];
-            }
-            mesh.triangles[i] = triangle;
-        }
-        return mesh;
-    }
-
-    std::vector<gte::Vector3<Numeric>> vertices;
-    std::vector<int32_t> indices;
-};
- */
 using Rational = gte::BSRational<gte::UIntegerAP32>;
 
 struct Factory
