@@ -32,6 +32,23 @@
 
 namespace curan {
 	namespace communication {
+
+		/*
+		
+		Possible implementation
+
+		class Protocol{
+			using signature = std::function<void(const size_t&, const std::error_code&, igtl::MessageBase::Pointer)>;
+			
+			static void start(std::shared_ptr<Client<Protocol>> protocol){
+			
+			};
+		
+		}
+		
+		*/
+
+
 		/*
 		We have three abstractions, the classes that deal with user code,
 		the classes that deal with protocol implementations, which must

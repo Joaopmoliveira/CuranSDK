@@ -5,8 +5,6 @@
 #include <optional>
 
 /*
-/*
-
 enum ReadingStatus{
     WRITING,
     READING,
@@ -300,8 +298,59 @@ int main(){
 }
 */
 
+#include <functional>
+#include <type_traits>
 
+
+
+template<typename T>
+struct Client{
+    static_assert(std::is_invocable_v<decltype(T::start),std::shared_ptr<Client<T>>>, "the protocol must have a static start() function that receives a templated client");
+
+    Client(){
+        std::cout << "server connected...\n";
+    }
+};
+
+template<typename T>
+struct Server{
+    static_assert(std::is_invocable_v<decltype(T::start),std::shared_ptr<Client<T>>>, "the protocol must have a static start() function that receives a templated client");
+
+    std::list<Client<T>> clients;
+    std::list<typename T::signature> list_of_callbacks;
+    Server(){
+        std::cout << "connecting server...\n";
+    }
+};
+
+class GoodProtocol{
+    public:
+	using signature = std::function<void(const size_t&, const std::error_code&, std::string_view value)>;
+			
+	static void start(std::shared_ptr<Client<GoodProtocol>> client){
+			
+	};
+};
+
+class PretendToBeDogProtocol{
+    public:	
+	void start(std::shared_ptr<Client<PretendToBeDogProtocol>> client){
+			
+	};
+};
+
+class BadProtocol{
+    public:
+	using signature = std::function<void(const size_t&, const std::error_code&, std::string_view value)>;
+			
+	static void start(){
+			
+	};
+};
 
 int main(){
+    Server<GoodProtocol> protocol;
+    //auto function = [](){};
+    //static_assert(std::is_function<typename std::remove_pointer<decltype(function)>::type>::value);
     return 0;
 }

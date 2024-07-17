@@ -73,8 +73,7 @@ void read_body(IgtlinkClientConnection val, std::error_code ec) {
 }
 
 void start(std::shared_ptr<Client> client_pointer) {
-	implementation::IgtlinkClientConnection val{ client_pointer };
-	implementation::read_header_first_time(std::move(val));	
+	implementation::read_header_first_time(implementation::IgtlinkClientConnection{client_pointer});	
 }
 
 

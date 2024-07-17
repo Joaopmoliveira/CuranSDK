@@ -10,6 +10,9 @@ namespace curan {
 
 		class Client;
 
+
+		
+
 		namespace protocols {
 			namespace frimessage {
 				enum status {

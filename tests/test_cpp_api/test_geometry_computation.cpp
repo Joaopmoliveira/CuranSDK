@@ -26,11 +26,10 @@ public:
     };
 
     UnorderedSet(int32_t maxNumElements = 0, int32_t grow = 0)
-        :
-        mMaxNumElements(maxNumElements > 0 ? maxNumElements : DEFAULT_GROW),
-        mGrow(grow > 0 ? grow : DEFAULT_GROW),
-        mNumElements(0),
-        mElements(mMaxNumElements)
+        : mMaxNumElements(maxNumElements > 0 ? maxNumElements : DEFAULT_GROW),
+          mGrow(grow > 0 ? grow : DEFAULT_GROW),
+          mNumElements(0),
+          mElements(mMaxNumElements)
     {
     }
 
@@ -64,17 +63,17 @@ public:
         return mNumElements;
     }
 
-    T const& operator[](int32_t i) const
+    T const &operator[](int32_t i) const
     {
         return mElements[i];
     }
 
-    T& operator[] (int32_t i)
+    T &operator[](int32_t i)
     {
         return mElements[i];
     }
 
-    int32_t Find(T const& element) const
+    int32_t Find(T const &element) const
     {
         for (int32_t i = 0; i < mNumElements; ++i)
         {
@@ -86,7 +85,7 @@ public:
         return -1;
     }
 
-    bool Insert(T const& element)
+    bool Insert(T const &element)
     {
         for (int32_t i = 0; i < mNumElements; ++i)
         {
@@ -100,7 +99,7 @@ public:
         return true;
     }
 
-    int32_t Append(T const& element)
+    int32_t Append(T const &element)
     {
         GrowArray();
         int32_t location = mNumElements++;
@@ -108,7 +107,7 @@ public:
         return location;
     }
 
-    bool Remove(T const& element, int32_t* oldIndex = nullptr, int32_t* newIndex = nullptr)
+    bool Remove(T const &element, int32_t *oldIndex = nullptr, int32_t *newIndex = nullptr)
     {
         for (int32_t i = 0; i < mNumElements; i++)
         {
@@ -130,7 +129,7 @@ public:
         return false;
     }
 
-    bool RemoveAt(int32_t i, int32_t* oldIndex = nullptr, int32_t* newIndex = nullptr)
+    bool RemoveAt(int32_t i, int32_t *oldIndex = nullptr, int32_t *newIndex = nullptr)
     {
         if (0 <= i && i < mNumElements)
         {
@@ -168,7 +167,7 @@ protected:
     // point to the last member of mElements before the removal, newIndex
     // stores the index i to which the last member has been copied.  If i does
     // point to the last member, no copy occurs and newIndex is set to -1.
-    void RemoveElement(int32_t i, int32_t* oldIndex, int32_t* newIndex)
+    void RemoveElement(int32_t i, int32_t *oldIndex, int32_t *newIndex)
     {
         --mNumElements;
         if (oldIndex)
@@ -202,10 +201,9 @@ class MTVertex
 public:
     // Construction and destruction.
     MTVertex(int32_t label = -1, int32_t eGrow = 0, int32_t tGrow = 0)
-        :
-        mLabel(label),
-        mESet(eGrow, eGrow),
-        mTSet(tGrow, tGrow)
+        : mLabel(label),
+          mESet(eGrow, eGrow),
+          mTSet(tGrow, tGrow)
     {
     }
 
@@ -286,7 +284,7 @@ public:
         return false;
     }
 
-    inline bool operator==(MTVertex const& other) const
+    inline bool operator==(MTVertex const &other) const
     {
         return mLabel == other.mLabel;
     }
@@ -300,11 +298,10 @@ class MTTriangle
 {
 public:
     MTTriangle(int32_t label = -1)
-        :
-        mLabel(label),
-        mVertex{ -1, -1, -1 },
-        mEdge{ -1, -1, -1 },
-        mAdjacent{ -1, -1, -1 }
+        : mLabel(label),
+          mVertex{-1, -1, -1},
+          mEdge{-1, -1, -1},
+          mAdjacent{-1, -1, -1}
     {
     }
 
@@ -391,7 +388,7 @@ public:
         return false;
     }
 
-    bool operator==(MTTriangle const& other) const
+    bool operator==(MTTriangle const &other) const
     {
         if (mVertex[0] == other.mVertex[0])
         {
@@ -422,10 +419,9 @@ class MTEdge
 {
 public:
     MTEdge(int32_t label = -1)
-        :
-        mLabel(label),
-        mVertex{ -1, -1 },
-        mTriangle{ -1, -1 }
+        : mLabel(label),
+          mVertex{-1, -1},
+          mTriangle{-1, -1}
     {
     }
 
@@ -487,13 +483,12 @@ public:
         return false;
     }
 
-    inline bool operator==(MTEdge const& other) const
+    inline bool operator==(MTEdge const &other) const
     {
-        return
-            (mVertex[0] == other.mVertex[0] &&
-             mVertex[1] == other.mVertex[1]) ||
-            (mVertex[0] == other.mVertex[1] &&
-             mVertex[1] == other.mVertex[0]);
+        return (mVertex[0] == other.mVertex[0] &&
+                mVertex[1] == other.mVertex[1]) ||
+               (mVertex[0] == other.mVertex[1] &&
+                mVertex[1] == other.mVertex[0]);
     }
 
 protected:
@@ -506,12 +501,11 @@ class MTMesh
 {
 public:
     MTMesh(int32_t numVertices = 0, int32_t numEdges = 0, int32_t numTriangles = 0)
-        :
-        mVertices(numVertices),
-        mEdges(numEdges),
-        mTriangles(numTriangles),
-        mInitialELabel(-1),
-        mInitialTLabel(-1)
+        : mVertices(numVertices),
+          mEdges(numEdges),
+          mTriangles(numTriangles),
+          mInitialELabel(-1),
+          mInitialTLabel(-1)
     {
     }
 
@@ -540,7 +534,7 @@ public:
         return (iter != mVMap.end() ? iter->second : -1);
     }
 
-    inline MTVertex const& GetVertex(int32_t vIndex) const
+    inline MTVertex const &GetVertex(int32_t vIndex) const
     {
         return mVertices[vIndex];
     }
@@ -561,7 +555,7 @@ public:
         return (iter != mEMap.end() ? iter->second : -1);
     }
 
-    inline MTEdge const& GetEdge(int32_t eIndex) const
+    inline MTEdge const &GetEdge(int32_t eIndex) const
     {
         return mEdges[eIndex];
     }
@@ -587,7 +581,7 @@ public:
         return (iter != mTMap.end() ? iter->second : -1);
     }
 
-    inline MTTriangle const& GetTriangle(int32_t tIndex) const
+    inline MTTriangle const &GetTriangle(int32_t tIndex) const
     {
         return mTriangles[tIndex];
     }
@@ -643,13 +637,13 @@ public:
         int32_t e2 = InsertEdge(label2, label0);
 
         // Set the connections among the components.
-        MTTriangle& triangle = mTriangles[t];
-        MTVertex& vertex0 = mVertices[v0];
-        MTVertex& vertex1 = mVertices[v1];
-        MTVertex& vertex2 = mVertices[v2];
-        MTEdge& edge0 = mEdges[e0];
-        MTEdge& edge1 = mEdges[e1];
-        MTEdge& edge2 = mEdges[e2];
+        MTTriangle &triangle = mTriangles[t];
+        MTVertex &vertex0 = mVertices[v0];
+        MTVertex &vertex1 = mVertices[v1];
+        MTVertex &vertex2 = mVertices[v2];
+        MTEdge &edge0 = mEdges[e0];
+        MTEdge &edge1 = mEdges[e1];
+        MTEdge &edge2 = mEdges[e2];
 
         // Attach edges to vertices.
         vertex0.InsertEdge(e2);
@@ -690,30 +684,30 @@ public:
         }
         int32_t t = iter->second;
 
-        MTTriangle& triangle = mTriangles[t];
+        MTTriangle &triangle = mTriangles[t];
 
         // Detach triangle from edges.
         int32_t e0 = triangle.GetEdge(0);
         int32_t e1 = triangle.GetEdge(1);
         int32_t e2 = triangle.GetEdge(2);
-        MTEdge& edge0 = mEdges[e0];
-        MTEdge& edge1 = mEdges[e1];
-        MTEdge& edge2 = mEdges[e2];
+        MTEdge &edge0 = mEdges[e0];
+        MTEdge &edge1 = mEdges[e1];
+        MTEdge &edge2 = mEdges[e2];
         DetachTriangleFromEdge(t, triangle, 0, e0, edge0);
         DetachTriangleFromEdge(t, triangle, 1, e1, edge1);
         DetachTriangleFromEdge(t, triangle, 2, e2, edge2);
 
         // Detach triangle from vertices.
         int32_t v0 = triangle.GetVertex(0);
-        MTVertex& vertex0 = mVertices[v0];
+        MTVertex &vertex0 = mVertices[v0];
         vertex0.RemoveTriangle(t);
 
         int32_t v1 = triangle.GetVertex(1);
-        MTVertex& vertex1 = mVertices[v1];
+        MTVertex &vertex1 = mVertices[v1];
         vertex1.RemoveTriangle(t);
 
         int32_t v2 = triangle.GetVertex(2);
-        MTVertex& vertex2 = mVertices[v2];
+        MTVertex &vertex2 = mVertices[v2];
         vertex2.RemoveTriangle(t);
 
         // Detach edges from vertices (only if last edge to reference vertex).
@@ -784,7 +778,7 @@ public:
         return true;
     }
 
-    bool SubdivideCentroid(int32_t label0, int32_t label1, int32_t label2, int32_t& nextLabel)
+    bool SubdivideCentroid(int32_t label0, int32_t label1, int32_t label2, int32_t &nextLabel)
     {
         int32_t t = T(label0, label1, label2);
         if (t == -1)
@@ -808,7 +802,7 @@ public:
         return true;
     }
 
-    bool SubdivideCentroidAll(int32_t& nextLabel)
+    bool SubdivideCentroidAll(int32_t &nextLabel)
     {
         // Verify that the next-label range is valid.
         int32_t const tMax = mTriangles.GetNumElements();
@@ -839,7 +833,7 @@ public:
         for (t = 0; t < tMax; ++t, ++nextLabel)
         {
             // The triangle to subdivide.
-            MTTriangle& triangle = mTriangles[t];
+            MTTriangle &triangle = mTriangles[t];
             int32_t label0 = GetVLabel(triangle.GetVertex(0));
             int32_t label1 = GetVLabel(triangle.GetVertex(1));
             int32_t label2 = GetVLabel(triangle.GetVertex(2));
@@ -847,8 +841,8 @@ public:
             // Detach the triangle from two edges.
             int32_t e1 = triangle.GetEdge(1);
             int32_t e2 = triangle.GetEdge(2);
-            MTEdge& edge1 = mEdges[e1];
-            MTEdge& edge2 = mEdges[e2];
+            MTEdge &edge1 = mEdges[e1];
+            MTEdge &edge2 = mEdges[e2];
             DetachTriangleFromEdge(t, triangle, 1, e1, edge1);
             DetachTriangleFromEdge(t, triangle, 2, e2, edge2);
 
@@ -862,18 +856,18 @@ public:
             Insert(label2, label0, nextLabel);
 
             // Stitch the third subtriangle to the other subtriangles.
-            MTTriangle& triangleN = mTriangles[t];
+            MTTriangle &triangleN = mTriangles[t];
             int32_t subE1 = E(label1, nextLabel);
             int32_t subE2 = E(label0, nextLabel);
-            MTEdge& subEdge1 = mEdges[subE1];
-            MTEdge& subEdge2 = mEdges[subE2];
+            MTEdge &subEdge1 = mEdges[subE1];
+            MTEdge &subEdge2 = mEdges[subE2];
             AttachTriangleToEdge(t, triangleN, 1, subE1, subEdge1);
             AttachTriangleToEdge(t, triangleN, 2, subE2, subEdge2);
         }
         return true;
     }
 
-    bool SubdivideEdge(int32_t label0, int32_t label1, int32_t& nextLabel)
+    bool SubdivideEdge(int32_t label0, int32_t label1, int32_t &nextLabel)
     {
         int32_t e = E(label0, label1);
         if (e == -1)
@@ -888,14 +882,14 @@ public:
         }
 
         // Split the triangles sharing the edge.
-        MTEdge& edge = mEdges[e];
+        MTEdge &edge = mEdges[e];
         int32_t t0 = edge.GetTriangle(0);
         int32_t t1 = edge.GetTriangle(1);
         int32_t t0v0, t0v1, t0v2, t1v0, t1v1, t1v2, t0e0, t0e1, t1e0, t1e1;
         if (t0 >= 0 && t1 == -1)
         {
             // The edge is shared only by T0.
-            MTTriangle& triangle0 = mTriangles[t0];
+            MTTriangle &triangle0 = mTriangles[t0];
             t0v0 = GetVLabel(triangle0.GetVertex(0));
             t0v1 = GetVLabel(triangle0.GetVertex(1));
             t0v2 = GetVLabel(triangle0.GetVertex(2));
@@ -925,7 +919,7 @@ public:
             // not factored outside the conditional statements to avoid
             // potential reallocation side effects that would invalidate the
             // reference 'triangle1'.
-            MTTriangle& triangle1 = mTriangles[t1];
+            MTTriangle &triangle1 = mTriangles[t1];
             t1v0 = GetVLabel(triangle1.GetVertex(0));
             t1v1 = GetVLabel(triangle1.GetVertex(1));
             t1v2 = GetVLabel(triangle1.GetVertex(2));
@@ -957,14 +951,14 @@ public:
             // is not factored outside the conditional statements to avoid
             // potential reallocation side effects that would invalidate the
             /// references 'triangle0' and 'triangle1'.
-            MTTriangle& triangle0 = mTriangles[t0];
+            MTTriangle &triangle0 = mTriangles[t0];
             t0v0 = GetVLabel(triangle0.GetVertex(0));
             t0v1 = GetVLabel(triangle0.GetVertex(1));
             t0v2 = GetVLabel(triangle0.GetVertex(2));
             t0e0 = triangle0.GetEdge(0);
             t0e1 = triangle0.GetEdge(1);
 
-            MTTriangle& triangle1 = mTriangles[t1];
+            MTTriangle &triangle1 = mTriangles[t1];
             t1v0 = GetVLabel(triangle1.GetVertex(0));
             t1v1 = GetVLabel(triangle1.GetVertex(1));
             t1v2 = GetVLabel(triangle1.GetVertex(2));
@@ -1013,7 +1007,7 @@ public:
         return true;
     }
 
-    virtual void Print(std::ofstream& output) const
+    virtual void Print(std::ostream &output) const
     {
         int32_t v, e, t;
 
@@ -1022,7 +1016,7 @@ public:
         output << "vertex quantity = " << numVertices << std::endl;
         for (v = 0; v < numVertices; ++v)
         {
-            const MTVertex& vertex = mVertices[v];
+            const MTVertex &vertex = mVertices[v];
 
             output << "vertex<" << v << ">" << std::endl;
             output << "    l: " << vertex.GetLabel() << std::endl;
@@ -1048,13 +1042,13 @@ public:
         output << "edge quantity = " << numEdges << std::endl;
         for (e = 0; e < numEdges; ++e)
         {
-            const MTEdge& edge = mEdges[e];
+            const MTEdge &edge = mEdges[e];
 
             output << "edge<" << e << ">" << std::endl;
             output << "    v: " << edge.GetVertex(0) << ' ' << edge.GetVertex(1)
-                << std::endl;
+                   << std::endl;
             output << "    t: " << edge.GetTriangle(0) << ' '
-                << edge.GetTriangle(1) << std::endl;
+                   << edge.GetTriangle(1) << std::endl;
         }
         output << std::endl;
 
@@ -1063,26 +1057,26 @@ public:
         output << "triangle quantity = " << numTriangles << std::endl;
         for (t = 0; t < numTriangles; ++t)
         {
-            const MTTriangle& triangle = mTriangles[t];
+            const MTTriangle &triangle = mTriangles[t];
 
             output << "triangle<" << t << ">" << std::endl;
             output << "    v: "
-                << triangle.GetVertex(0) << ' '
-                << triangle.GetVertex(1) << ' '
-                << triangle.GetVertex(2) << std::endl;
+                   << triangle.GetVertex(0) << ' '
+                   << triangle.GetVertex(1) << ' '
+                   << triangle.GetVertex(2) << std::endl;
             output << "    e: "
-                << triangle.GetEdge(0) << ' '
-                << triangle.GetEdge(1) << ' '
-                << triangle.GetEdge(2) << std::endl;
+                   << triangle.GetEdge(0) << ' '
+                   << triangle.GetEdge(1) << ' '
+                   << triangle.GetEdge(2) << std::endl;
             output << "    a: "
-                << triangle.GetAdjacent(0) << ' '
-                << triangle.GetAdjacent(1) << ' '
-                << triangle.GetAdjacent(2) << std::endl;
+                   << triangle.GetAdjacent(0) << ' '
+                   << triangle.GetAdjacent(1) << ' '
+                   << triangle.GetAdjacent(2) << std::endl;
         }
         output << std::endl;
     }
 
-    virtual bool Print(std::string const& filename) const
+    virtual bool Print(std::string const &filename) const
     {
         std::ofstream output(filename);
         if (!output)
@@ -1099,7 +1093,7 @@ protected:
     typedef std::map<gte::EdgeKey<false>, int32_t> EMap;
     typedef std::map<gte::TriangleKey<false>, int32_t> TMap;
 
-    void AttachTriangleToEdge(int32_t t, MTTriangle& triangle, int32_t i, int32_t e, MTEdge& edge)
+    void AttachTriangleToEdge(int32_t t, MTTriangle &triangle, int32_t i, int32_t e, MTEdge &edge)
     {
         if (edge.GetTriangle(0) == -1)
         {
@@ -1108,7 +1102,7 @@ protected:
         else
         {
             int32_t a = edge.GetTriangle(0);
-            MTTriangle& adjacent = mTriangles[a];
+            MTTriangle &adjacent = mTriangles[a];
             triangle.SetAdjacent(i, a);
             for (int32_t j = 0; j < 3; ++j)
             {
@@ -1194,7 +1188,7 @@ protected:
         return t;
     }
 
-    void DetachTriangleFromEdge(int32_t t, MTTriangle& triangle, int32_t i, int32_t e, MTEdge& edge)
+    void DetachTriangleFromEdge(int32_t t, MTTriangle &triangle, int32_t i, int32_t e, MTEdge &edge)
     {
         // This function leaves T only partially complete.  The edge E is no
         // longer referenced by T, even though the vertices of T reference the
@@ -1207,7 +1201,7 @@ protected:
             if (a != -1)
             {
                 // T and TAdj share E, update adjacency information for both
-                MTTriangle& adjacent = mTriangles[a];
+                MTTriangle &adjacent = mTriangles[a];
                 for (int32_t j = 0; j < 3; ++j)
                 {
                     if (adjacent.GetEdge(j) == e)
@@ -1222,7 +1216,7 @@ protected:
         else if (edge.GetTriangle(1) == t)
         {
             // T and TAdj share E, update adjacency information for both
-            MTTriangle& adjacent = mTriangles[edge.GetTriangle(0)];
+            MTTriangle &adjacent = mTriangles[edge.GetTriangle(0)];
             for (int32_t j = 0; j < 3; ++j)
             {
                 if (adjacent.GetEdge(j) == e)
@@ -1265,19 +1259,19 @@ protected:
             // The vertex at the end of the array moved into the slot vacated
             // by the deleted vertex.  Update all the components sharing the
             // moved vertex.
-            MTVertex& vertex = mVertices[vNew];
+            MTVertex &vertex = mVertices[vNew];
 
             // Inform edges about location change.
             for (int32_t e = 0; e < vertex.GetNumEdges(); ++e)
             {
-                MTEdge& edge = mEdges[vertex.GetEdge(e)];
+                MTEdge &edge = mEdges[vertex.GetEdge(e)];
                 edge.ReplaceVertex(vOld, vNew);
             }
 
             // Inform triangles about location change.
             for (int32_t t = 0; t < vertex.GetNumTriangles(); ++t)
             {
-                MTTriangle& triangle = mTriangles[vertex.GetTriangle(t)];
+                MTTriangle &triangle = mTriangles[vertex.GetTriangle(t)];
                 triangle.ReplaceVertex(vOld, vNew);
             }
 
@@ -1308,11 +1302,11 @@ protected:
             // The edge at the end of the array moved into the slot vacated by
             // the deleted edge.  Update all the components sharing the moved
             // edge.
-            MTEdge& edge = mEdges[eNew];
+            MTEdge &edge = mEdges[eNew];
 
             // Inform vertices about location change.
-            MTVertex& vertex0 = mVertices[edge.GetVertex(0)];
-            MTVertex& vertex1 = mVertices[edge.GetVertex(1)];
+            MTVertex &vertex0 = mVertices[edge.GetVertex(0)];
+            MTVertex &vertex1 = mVertices[edge.GetVertex(1)];
             vertex0.ReplaceEdge(eOld, eNew);
             vertex1.ReplaceEdge(eOld, eNew);
 
@@ -1322,7 +1316,7 @@ protected:
                 int32_t tIndex = edge.GetTriangle(t);
                 if (tIndex != -1)
                 {
-                    MTTriangle& triangle = mTriangles[tIndex];
+                    MTTriangle &triangle = mTriangles[tIndex];
                     triangle.ReplaceEdge(eOld, eNew);
                 }
             }
@@ -1354,12 +1348,12 @@ protected:
             // The triangle at the end of the array moved into the slot
             // vacated by the deleted triangle.  Update all the components
             // sharing the moved triangle.
-            MTTriangle& triangle = mTriangles[tNew];
+            MTTriangle &triangle = mTriangles[tNew];
 
             // Inform vertices about location change.
-            MTVertex& vertex0 = mVertices[triangle.GetVertex(0)];
-            MTVertex& vertex1 = mVertices[triangle.GetVertex(1)];
-            MTVertex& vertex2 = mVertices[triangle.GetVertex(2)];
+            MTVertex &vertex0 = mVertices[triangle.GetVertex(0)];
+            MTVertex &vertex1 = mVertices[triangle.GetVertex(1)];
+            MTVertex &vertex2 = mVertices[triangle.GetVertex(2)];
             vertex0.ReplaceTriangle(tOld, tNew);
             vertex1.ReplaceTriangle(tOld, tNew);
             vertex2.ReplaceTriangle(tOld, tNew);
@@ -1367,7 +1361,7 @@ protected:
             // Inform edges about location change.
             for (int32_t e = 0; e < 3; ++e)
             {
-                MTEdge& edge = mEdges[triangle.GetEdge(e)];
+                MTEdge &edge = mEdges[triangle.GetEdge(e)];
                 edge.ReplaceTriangle(tOld, tNew);
             }
 
@@ -1377,7 +1371,7 @@ protected:
                 int32_t aIndex = triangle.GetAdjacent(a);
                 if (aIndex != -1)
                 {
-                    MTTriangle& adjacent = mTriangles[aIndex];
+                    MTTriangle &adjacent = mTriangles[aIndex];
                     adjacent.ReplaceAdjacent(tOld, tNew);
                 }
             }
@@ -1410,36 +1404,34 @@ public:
 
     // Construction.
     ConvexPolyhedron()
-        :
-        mPoints{},
-        mPlanes{},
-        mCentroid{ static_cast<Real>(0), static_cast<Real>(0), static_cast<Real>(0) },
-        mQuery{}
+        : mPoints{},
+          mPlanes{},
+          mCentroid{static_cast<Real>(0), static_cast<Real>(0), static_cast<Real>(0)},
+          mQuery{}
     {
     }
 
-    ConvexPolyhedron(V3Array const& points, IArray const& indices)
+    ConvexPolyhedron(V3Array const &points, IArray const &indices)
     {
         Create(points, indices);
     }
 
-    ConvexPolyhedron(V3Array const& points, IArray const& indices, PArray const& planes)
+    ConvexPolyhedron(V3Array const &points, IArray const &indices, PArray const &planes)
     {
         Create(points, indices, planes);
     }
 
-    ConvexPolyhedron(ConvexPolyhedron const& other)
-        :
-        MTMesh(other),
-        mPoints(other.mPoints),
-        mPlanes(other.mPlanes)
+    ConvexPolyhedron(ConvexPolyhedron const &other)
+        : MTMesh(other),
+          mPoints(other.mPoints),
+          mPlanes(other.mPlanes)
     {
     }
 
-    void Create(V3Array const& points, IArray const& indices)
+    void Create(V3Array const &points, IArray const &indices)
     {
         LogAssert(points.size() >= 4 && indices.size() >= 4,
-            "Polyhedron must be at least a tetrahedron.");
+                  "Polyhedron must be at least a tetrahedron.");
 
         int32_t const numVertices = static_cast<int32_t>(points.size());
         int32_t const numTriangles = static_cast<int32_t>(indices.size() / 3);
@@ -1453,7 +1445,7 @@ public:
         ComputeCentroid();
 
         // Get polyhedron edge and triangle information.
-        int32_t const* currentIndex = indices.data();
+        int32_t const *currentIndex = indices.data();
         for (int32_t t = 0; t < numTriangles; ++t)
         {
             // Get vertex indices for triangle.
@@ -1462,9 +1454,9 @@ public:
             int32_t v2 = *currentIndex++;
 
             // Make sure triangle is counterclockwise.
-            gte::Vector3<Real>& vertex0 = mPoints[v0];
-            gte::Vector3<Real>& vertex1 = mPoints[v1];
-            gte::Vector3<Real>& vertex2 = mPoints[v2];
+            gte::Vector3<Real> &vertex0 = mPoints[v0];
+            gte::Vector3<Real> &vertex1 = mPoints[v1];
+            gte::Vector3<Real> &vertex2 = mPoints[v2];
 
             gte::Vector3<Real> diff = mCentroid - vertex0;
             gte::Vector3<Real> edge1 = vertex1 - vertex0;
@@ -1499,10 +1491,10 @@ public:
         UpdatePlanes();
     }
 
-    void Create(const V3Array& points, const IArray& indices, const PArray& planes)
+    void Create(const V3Array &points, const IArray &indices, const PArray &planes)
     {
         LogAssert(points.size() >= 4 && indices.size() >= 4,
-            "Polyhedron must be at least a tetrahedron.");
+                  "Polyhedron must be at least a tetrahedron.");
 
         int32_t const numVertices = static_cast<int32_t>(points.size());
         int32_t const numTriangles = static_cast<int32_t>(indices.size() / 3);
@@ -1517,7 +1509,7 @@ public:
         ComputeCentroid();
 
         // Get polyhedron edge and triangle information.
-        int32_t const* currentIndex = indices.data();
+        int32_t const *currentIndex = indices.data();
         for (int32_t t = 0; t < numTriangles; ++t)
         {
             // Get vertex indices for triangle.
@@ -1540,7 +1532,7 @@ public:
     }
 
     // Assignment.
-    ConvexPolyhedron& operator=(const ConvexPolyhedron& polyhedron)
+    ConvexPolyhedron &operator=(const ConvexPolyhedron &polyhedron)
     {
         MTMesh::operator=(polyhedron);
         mPoints = polyhedron.mPoints;
@@ -1549,27 +1541,27 @@ public:
     }
 
     // Read points and planes.
-    inline V3Array const& GetPoints() const
+    inline V3Array const &GetPoints() const
     {
         return mPoints;
     }
 
-    inline gte::Vector3<Real> const& GetPoint(int32_t i) const
+    inline gte::Vector3<Real> const &GetPoint(int32_t i) const
     {
         return mPoints[i];
     }
 
-    inline void SetPoint(int32_t i, gte::Vector3<Real> const& point)
+    inline void SetPoint(int32_t i, gte::Vector3<Real> const &point)
     {
         mPoints[i] = point;
     }
 
-    inline PArray const& GetPlanes() const
+    inline PArray const &GetPlanes() const
     {
         return mPlanes;
     }
 
-    inline gte::Plane3<Real> const& GetPlane(int32_t i) const
+    inline gte::Plane3<Real> const &GetPlane(int32_t i) const
     {
         return mPlanes[i];
     }
@@ -1577,7 +1569,7 @@ public:
     // Allow vertex modification.  The caller is responsible for preserving
     // the convexity.  After modifying the vertices, call UpdatePlanes to
     // recompute the planes of the polyhedron faces.
-    int32_t AddPoint(gte::Vector3<Real> const& point)
+    int32_t AddPoint(gte::Vector3<Real> const &point)
     {
         int32_t numPoints = static_cast<int32_t>(mPoints.size());
         mPoints.push_back(point);
@@ -1595,13 +1587,13 @@ public:
         mPlanes.resize(numTriangles);
         for (int32_t t = 0; t < numTriangles; ++t)
         {
-            MTTriangle& triangle = mTriangles[t];
+            MTTriangle &triangle = mTriangles[t];
             int32_t v0 = GetVLabel(triangle.GetVertex(0));
             int32_t v1 = GetVLabel(triangle.GetVertex(1));
             int32_t v2 = GetVLabel(triangle.GetVertex(2));
-            gte::Vector3<Real>& vertex0 = mPoints[v0];
-            gte::Vector3<Real>& vertex1 = mPoints[v1];
-            gte::Vector3<Real>& vertex2 = mPoints[v2];
+            gte::Vector3<Real> &vertex0 = mPoints[v0];
+            gte::Vector3<Real> &vertex1 = mPoints[v1];
+            gte::Vector3<Real> &vertex2 = mPoints[v2];
 
             gte::Vector3<Real> diff = mCentroid - vertex0;
             gte::Vector3<Real> edge1 = vertex1 - vertex0;
@@ -1646,7 +1638,7 @@ public:
         int32_t const numTriangles = mTriangles.GetNumElements();
         for (int32_t t = 0; t < numTriangles; ++t)
         {
-            gte::Plane3<Real> const& plane = mPlanes[t];
+            gte::Plane3<Real> const &plane = mPlanes[t];
             for (int32_t i = 0; i < numPoints; ++i)
             {
                 Real signedDistance = mQuery(mPoints[i], plane).signedDistance;
@@ -1670,21 +1662,21 @@ public:
 
     void ComputeCentroid()
     {
-        mCentroid = { (Real)0, (Real)0, (Real)0 };
-        for (auto const& point : mPoints)
+        mCentroid = {(Real)0, (Real)0, (Real)0};
+        for (auto const &point : mPoints)
         {
             mCentroid += point;
         }
         mCentroid /= static_cast<Real>(mPoints.size());
     }
 
-    inline gte::Vector3<Real> const& GetCentroid() const
+    inline gte::Vector3<Real> const &GetCentroid() const
     {
         return mCentroid;
     }
 
     // Discard the portion of the mesh on the negative side of the plane.
-    bool Clip(gte::Plane3<Real> const& plane, ConvexPolyhedron& intersection) const
+    bool Clip(gte::Plane3<Real> const &plane, ConvexPolyhedron &intersection) const
     {
         Clipper clipper(*this);
         int32_t side = clipper.Clip(plane);
@@ -1704,12 +1696,35 @@ public:
         return true;
     }
 
+    // Discard the portion of the mesh on the negative side of the plane.
+    bool ClipOnlyPlane(gte::Plane3<Real> const &plane, ConvexPolyhedron &intersection) const
+    {
+        Clipper clipper(*this);
+        int32_t side = clipper.ClipIntersectionPlane(plane);
+
+        if (side > 0)
+        {
+            intersection = *this;
+            return true;
+        }
+
+        if (side < 0)
+        {
+            return false;
+        }
+
+        clipper.mFaces
+
+        clipper.Convert(intersection);
+        return true;
+    }
+
     // Compute the polyhedron of intersection.
-    bool FindIntersection(const ConvexPolyhedron& polyhedron, ConvexPolyhedron& intersection) const
+    bool FindIntersection(const ConvexPolyhedron &polyhedron, ConvexPolyhedron &intersection) const
     {
         Clipper clipper(*this);
 
-        for (auto const& plane : polyhedron.GetPlanes())
+        for (auto const &plane : polyhedron.GetPlanes())
         {
             if (clipper.Clip(plane) < 0)
             {
@@ -1724,8 +1739,8 @@ public:
     // Compute all possible intersections of the polyhedra.  The output array
     // is not fully populated; an output polyhedron is invalid when
     // GetPoints() returns an array with no elements.
-    static void FindAllIntersections(std::vector<ConvexPolyhedron> const& polyhedra,
-        std::vector<ConvexPolyhedron>& intersections)
+    static void FindAllIntersections(std::vector<ConvexPolyhedron> const &polyhedra,
+                                     std::vector<ConvexPolyhedron> &intersections)
     {
         // Only 2^16 possible combinations for intersections are currently
         // supported.  If you need more, then GetHighBit(int32_t) must be modified
@@ -1782,7 +1797,7 @@ public:
                     }
                 }
 #ifdef _DEBUG
-                else  // Test whether we have a well-formed convex polyhedron.
+                else // Test whether we have a well-formed convex polyhedron.
                 {
                     gte::Vector3<Real> centroid = intersections[i].GetCentroid();
                     bool contains = intersections[i].ContainsPoint(centroid);
@@ -1800,14 +1815,14 @@ public:
         int32_t const numTriangles = mTriangles.GetNumElements();
         for (int32_t t = 0; t < numTriangles; ++t)
         {
-            MTTriangle const& triangle = mTriangles[t];
+            MTTriangle const &triangle = mTriangles[t];
             int32_t v0 = GetVLabel(triangle.GetVertex(0));
             int32_t v1 = GetVLabel(triangle.GetVertex(1));
             int32_t v2 = GetVLabel(triangle.GetVertex(2));
-            gte::Vector3<Real> const& vertex0 = mPoints[v0];
-            gte::Vector3<Real> const& vertex1 = mPoints[v1];
-            gte::Vector3<Real> const& vertex2 = mPoints[v2];
-            gte::Vector3<Real> const& normal = mPlanes[t].normal;
+            gte::Vector3<Real> const &vertex0 = mPoints[v0];
+            gte::Vector3<Real> const &vertex1 = mPoints[v1];
+            gte::Vector3<Real> const &vertex2 = mPoints[v2];
+            gte::Vector3<Real> const &normal = mPlanes[t].normal;
 
             surfaceArea += GetTriangleArea(normal, vertex0, vertex1, vertex2);
         }
@@ -1822,13 +1837,13 @@ public:
         int32_t const numTriangles = mTriangles.GetNumElements();
         for (int32_t t = 0; t < numTriangles; ++t)
         {
-            MTTriangle const& triangle = mTriangles[t];
+            MTTriangle const &triangle = mTriangles[t];
             int32_t v0 = GetVLabel(triangle.GetVertex(0));
             int32_t v1 = GetVLabel(triangle.GetVertex(1));
             int32_t v2 = GetVLabel(triangle.GetVertex(2));
-            gte::Vector3<Real> const& vertex0 = mPoints[v0];
-            gte::Vector3<Real> const& vertex1 = mPoints[v1];
-            gte::Vector3<Real> const& vertex2 = mPoints[v2];
+            gte::Vector3<Real> const &vertex0 = mPoints[v0];
+            gte::Vector3<Real> const &vertex1 = mPoints[v1];
+            gte::Vector3<Real> const &vertex2 = mPoints[v2];
             volume += Dot(vertex0, Cross(vertex1, vertex2));
         }
 
@@ -1836,7 +1851,7 @@ public:
         return volume;
     }
 
-    bool ContainsPoint(gte::Vector3<Real> const& point) const
+    bool ContainsPoint(gte::Vector3<Real> const &point) const
     {
         int32_t const numTriangles = mTriangles.GetNumElements();
         for (int32_t t = 0; t < numTriangles; ++t)
@@ -1854,7 +1869,7 @@ public:
     // terminator, an ordered list of vertices forming a simple closed
     // polyline that separates the visible from invisible faces of the
     // polyhedron.
-    void ComputeTerminator(gte::Vector3<Real> const& eye, V3Array& terminator)
+    void ComputeTerminator(gte::Vector3<Real> const &eye, V3Array &terminator)
     {
         // Temporary storage for signed distances from eye to triangles.
         int32_t const numTriangles = mTriangles.GetNumElements();
@@ -1869,7 +1884,7 @@ public:
         // back-facing triangle or for a back-facing triangle that has an
         // adjacent front-facing triangle.
         int32_t tCurrent = 0;
-        MTTriangle* triangle = &mTriangles[tCurrent];
+        MTTriangle *triangle = &mTriangles[tCurrent];
         Real triDistance = GetDistance(eye, tCurrent, distances);
         int32_t eFirst = -1;
         for (i = 0; i < numTriangles; ++i)
@@ -1908,7 +1923,7 @@ public:
         }
         LogAssert(i < numTriangles, "Unexpected condition.");
 
-        MTEdge& edgeFirst = mEdges[eFirst];
+        MTEdge &edgeFirst = mEdges[eFirst];
         terminator.push_back(mPoints[GetVLabel(edgeFirst.GetVertex(0))]);
         terminator.push_back(mPoints[GetVLabel(edgeFirst.GetVertex(1))]);
 
@@ -1981,18 +1996,18 @@ public:
     // intersection of the ray whose origin is the eye point and that contains
     // a terminator point, Q = K+x*U+y*V+z*N where K is the origin of the
     // plane.
-    bool ComputeSilhouette(gte::Vector3<Real> const& eye,
-        gte::Plane3<Real> const& plane, gte::Vector3<Real> const& U,
-        gte::Vector3<Real> const& V, V2Array& silhouette)
+    bool ComputeSilhouette(gte::Vector3<Real> const &eye,
+                           gte::Plane3<Real> const &plane, gte::Vector3<Real> const &U,
+                           gte::Vector3<Real> const &V, V2Array &silhouette)
     {
         V3Array terminator;
         ComputeTerminator(eye, terminator);
         return ComputeSilhouette(terminator, eye, plane, U, V, silhouette);
     }
 
-    bool ComputeSilhouette(V3Array& terminator, gte::Vector3<Real> const& eye,
-        gte::Plane3<Real> const& plane, gte::Vector3<Real> const& U,
-        gte::Vector3<Real> const& V, V2Array& silhouette)
+    bool ComputeSilhouette(V3Array &terminator, gte::Vector3<Real> const &eye,
+                           gte::Plane3<Real> const &plane, gte::Vector3<Real> const &U,
+                           gte::Vector3<Real> const &V, V2Array &silhouette)
     {
         Real eyeDistance = mQuery(eye, plane).signedDistance;
         LogAssert(eyeDistance > (Real)0, "The eye must be outside the polyhedron.");
@@ -2001,7 +2016,7 @@ public:
         gte::Vector3<Real> closest = eye - eyeDistance * plane.normal;
 
         // Project the polyhedron points onto the plane.
-        for (auto const& point : terminator)
+        for (auto const &point : terminator)
         {
             Real vertexDistance = mQuery(point, plane).signedDistance;
             if (vertexDistance >= eyeDistance)
@@ -2016,7 +2031,7 @@ public:
 
             // Compute (x,y) so that Q = K + x*U + y*V + z*N.
             gte::Vector3<Real> diff = projected - closest;
-            silhouette.push_back(gte::Vector2<Real>{ Dot(U, diff), Dot(V, diff) });
+            silhouette.push_back(gte::Vector2<Real>{Dot(U, diff), Dot(V, diff)});
         }
 
         return true;
@@ -2025,9 +2040,9 @@ public:
     // Create an egg-shaped object that is axis-aligned and centered at
     // (xc,yc,zc).  The input bounds are all positive and represent the
     // distances from the center to the six extreme points on the egg.
-    static void CreateEggShape(gte::Vector3<Real> const& center, Real x0,
-        Real x1, Real y0, Real y1, Real z0, Real z1, int32_t maxSteps,
-        ConvexPolyhedron& egg)
+    static void CreateEggShape(gte::Vector3<Real> const &center, Real x0,
+                               Real x1, Real y0, Real y1, Real z0, Real z1, int32_t maxSteps,
+                               ConvexPolyhedron &egg)
     {
         LogAssert(x0 > (Real)0 && x1 > (Real)0, "Invalid input.");
         LogAssert(y0 > (Real)0 && y1 > (Real)0, "Invalid input.");
@@ -2038,22 +2053,38 @@ public:
         // (0,-y0,0), (0,y1,0), (0,0,-z0), (0,0,z1).  The center point will be
         // added later.
         V3Array points(6);
-        points[0] = { -x0, (Real)0, (Real)0 };
-        points[1] = { +x1, (Real)0, (Real)0 };
-        points[2] = { (Real)0, -y0, (Real)0 };
-        points[3] = { (Real)0, +y1, (Real)0 };
-        points[4] = { (Real)0, (Real)0, -z0 };
-        points[5] = { (Real)0, (Real)0, +z1 };
+        points[0] = {-x0, (Real)0, (Real)0};
+        points[1] = {+x1, (Real)0, (Real)0};
+        points[2] = {(Real)0, -y0, (Real)0};
+        points[3] = {(Real)0, +y1, (Real)0};
+        points[4] = {(Real)0, (Real)0, -z0};
+        points[5] = {(Real)0, (Real)0, +z1};
 
         IArray indices(24);
-        indices[0] = 1;  indices[1] = 3;  indices[2] = 5;
-        indices[3] = 3;  indices[4] = 0;  indices[5] = 5;
-        indices[6] = 0;  indices[7] = 2;  indices[8] = 5;
-        indices[9] = 2;  indices[10] = 1;  indices[11] = 5;
-        indices[12] = 3;  indices[13] = 1;  indices[14] = 4;
-        indices[15] = 0;  indices[16] = 3;  indices[17] = 4;
-        indices[18] = 2;  indices[19] = 0;  indices[20] = 4;
-        indices[21] = 1;  indices[22] = 2;  indices[23] = 4;
+        indices[0] = 1;
+        indices[1] = 3;
+        indices[2] = 5;
+        indices[3] = 3;
+        indices[4] = 0;
+        indices[5] = 5;
+        indices[6] = 0;
+        indices[7] = 2;
+        indices[8] = 5;
+        indices[9] = 2;
+        indices[10] = 1;
+        indices[11] = 5;
+        indices[12] = 3;
+        indices[13] = 1;
+        indices[14] = 4;
+        indices[15] = 0;
+        indices[16] = 3;
+        indices[17] = 4;
+        indices[18] = 2;
+        indices[19] = 0;
+        indices[20] = 4;
+        indices[21] = 1;
+        indices[22] = 2;
+        indices[23] = 4;
 
         egg.SetInitialELabel(0);
         egg.Create(points, indices);
@@ -2071,7 +2102,7 @@ public:
             for (int32_t i = 0; i < numEdges; ++i)
             {
                 // Get an edge.
-                MTEdge const& edge = egg.GetEdge(i);
+                MTEdge const &edge = egg.GetEdge(i);
                 int32_t v0 = egg.GetVLabel(edge.GetVertex(0));
                 int32_t v1 = egg.GetVLabel(edge.GetVertex(1));
 
@@ -2095,7 +2126,7 @@ public:
             // iteration and removal of the triangles.
             for (int32_t i = 0; i < numTriangles; ++i)
             {
-                MTTriangle const& triangle = egg.GetTriangle(i);
+                MTTriangle const &triangle = egg.GetTriangle(i);
                 int32_t v0 = egg.GetVLabel(triangle.GetVertex(0));
                 int32_t v1 = egg.GetVLabel(triangle.GetVertex(1));
                 int32_t v2 = egg.GetVLabel(triangle.GetVertex(2));
@@ -2111,7 +2142,7 @@ public:
         }
 
         // Add the center.
-        for (auto& point : egg.mPoints)
+        for (auto &point : egg.mPoints)
         {
             point += center;
         }
@@ -2120,7 +2151,7 @@ public:
     }
 
     // Debugging support.
-    virtual void Print(std::ofstream& output) const override
+    virtual void Print(std::ostream &output) const override
     {
         MTMesh::Print(output);
 
@@ -2128,7 +2159,7 @@ public:
         int32_t const numPoints = static_cast<int32_t>(mPoints.size());
         for (int32_t i = 0; i < numPoints; ++i)
         {
-            gte::Vector3<Real> const& point = mPoints[i];
+            gte::Vector3<Real> const &point = mPoints[i];
             output << "point<" << i << "> = (";
             output << point[0] << ", ";
             output << point[1] << ", ";
@@ -2141,7 +2172,7 @@ public:
         int32_t const numPlanes = static_cast<int32_t>(mPlanes.size());
         for (int32_t i = 0; i < numPlanes; ++i)
         {
-            gte::Plane3<Real> const& plane = mPlanes[i];
+            gte::Plane3<Real> const &plane = mPlanes[i];
             output << "plane<" << i << "> = (";
             output << plane.normal[0] << ", ";
             output << plane.normal[1] << ", ";
@@ -2152,7 +2183,7 @@ public:
         output << std::endl;
     }
 
-    virtual bool Print(std::string const& filename) const override
+    virtual bool Print(std::string const &filename) const override
     {
         std::ofstream output(filename);
         if (!output)
@@ -2173,11 +2204,10 @@ private:
         {
         public:
             Vertex()
-                :
-                point(gte::Vector3<Real>::Zero()),
-                distance((Real)0),
-                occurs(0),
-                visible(true)
+                : point(gte::Vector3<Real>::Zero()),
+                  distance((Real)0),
+                  occurs(0),
+                  visible(true)
             {
             }
 
@@ -2191,8 +2221,7 @@ private:
         {
         public:
             Edge()
-                :
-                visible(true)
+                : visible(true)
             {
                 vertex.fill(0);
                 face.fill(0);
@@ -2207,8 +2236,7 @@ private:
         {
         public:
             Face()
-                :
-                visible(true)
+                : visible(true)
             {
             }
 
@@ -2218,11 +2246,10 @@ private:
         };
 
         // Construction.
-        Clipper(ConvexPolyhedron<Real> const& polyhedron, Real epsilon = (Real)0)
-            :
-            mEpsilon(epsilon)
+        Clipper(ConvexPolyhedron<Real> const &polyhedron, Real epsilon = (Real)0)
+            : mEpsilon(epsilon)
         {
-            auto const& points = polyhedron.GetPoints();
+            auto const &points = polyhedron.GetPoints();
             int32_t numVertices = polyhedron.GetNumVertices();
             mVertices.resize(numVertices);
             for (int32_t v = 0; v < numVertices; ++v)
@@ -2234,7 +2261,7 @@ private:
             mEdges.resize(numEdges);
             for (int32_t e = 0; e < numEdges; ++e)
             {
-                auto const& edge = polyhedron.GetEdge(e);
+                auto const &edge = polyhedron.GetEdge(e);
                 for (int32_t i = 0; i < 2; ++i)
                 {
                     mEdges[e].vertex[i] = polyhedron.GetVLabel(edge.GetVertex(i));
@@ -2247,7 +2274,7 @@ private:
             for (int32_t t = 0; t < numTriangles; ++t)
             {
                 mFaces[t].plane = polyhedron.GetPlane(t);
-                auto const& triangle = polyhedron.GetTriangle(t);
+                auto const &triangle = polyhedron.GetTriangle(t);
                 for (int32_t i = 0; i < 3; ++i)
                 {
                     mFaces[t].edges.insert(triangle.GetEdge(i));
@@ -2255,15 +2282,189 @@ private:
             }
         }
 
+
         // Discard the portion of the mesh on the negative side of the plane.
         // This function is valid for any manifold triangle mesh (at most two
         // triangles shared per edge).
-        int32_t Clip(gte::Plane3<Real> const& plane)
+        int32_t ClipIntersectionPlane(gte::Plane3<Real> const &plane)
         {
             // Compute signed distances from vertices to plane.
             gte::DCPQuery<Real, gte::Vector3<Real>, gte::Plane3<Real>> query;
             int32_t numPositive = 0, numNegative = 0;
-            for (auto& vertex : mVertices)
+            for (auto &vertex : mVertices)
+            {
+                if (vertex.visible)
+                {
+                    vertex.distance = query(vertex.point, plane).signedDistance;
+                    if (vertex.distance > mEpsilon)
+                    {
+                        ++numPositive;
+                    }
+                    else if (vertex.distance < -mEpsilon)
+                    {
+                        ++numNegative;
+                        vertex.visible = false;
+                    }
+                    else
+                    {
+                        // The point is on the plane (within floating point
+                        // tolerance).
+                        vertex.distance = (Real)0;
+                    }
+                }
+            }
+
+            if (numPositive == 0 && numNegative !=0)
+            {
+                // Mesh is in negative half-space, fully clipped.
+                return -1;
+            }
+
+            if (numNegative == 0 && numPositive != 0)
+            {
+                // Mesh is in positive half-space, fully visible.
+                return +1;
+            }
+
+            // Clip the visible edges.
+            int32_t const numEdges = static_cast<int32_t>(mEdges.size());
+            for (int32_t e = 0; e < numEdges; ++e)
+            {
+                Edge &edge = mEdges[e];
+                if (edge.visible)
+                {
+                    int32_t v0 = edge.vertex[0];
+                    int32_t v1 = edge.vertex[1];
+                    int32_t f0 = edge.face[0];
+                    int32_t f1 = edge.face[1];
+                    Face &face0 = mFaces[f0];
+                    Face &face1 = mFaces[f1];
+                    Real d0 = mVertices[v0].distance;
+                    Real d1 = mVertices[v1].distance;
+
+                    if (d0 <= (Real)0 && d1 <= (Real)0)
+                    {
+                        // The edge is culled.  If the edge is exactly on the
+                        // clip plane, it is possible that a visible triangle
+                        // shares it.  The edge will be re-added during the
+                        // face loop.
+                        face0.edges.erase(e);
+                        if (face0.edges.empty())
+                        {
+                            face0.visible = false;
+                        }
+
+                        face1.edges.erase(e);
+                        if (face1.edges.empty())
+                        {
+                            face1.visible = false;
+                        }
+
+                        edge.visible = false;
+                        continue;
+                    }
+
+                    if (d0 >= (Real)0 && d1 >= (Real)0)
+                    {
+                        // Face retains the edge.
+                        continue;
+                    }
+
+                    // The edge is split by the plane.  Compute the point of
+                    // intersection.  If the old edge is <V0,V1> and I is the
+                    // intersection point, the new edge is <V0,I> when d0 > 0
+                    // or <I,V1> when d1 > 0.
+                    int32_t vNew = static_cast<int32_t>(mVertices.size());
+                    mVertices.push_back(Vertex());
+                    Vertex &vertexNew = mVertices[vNew];
+
+                    gte::Vector3<Real> &point0 = mVertices[v0].point;
+                    gte::Vector3<Real> &point1 = mVertices[v1].point;
+                    vertexNew.point = point0 + (d0 / (d0 - d1)) * (point1 - point0);
+
+                    if (d0 > (Real)0)
+                    {
+                        edge.vertex[1] = vNew;
+                    }
+                    else
+                    {
+                        edge.vertex[0] = vNew;
+                    }
+                }
+            }
+
+            // The mesh straddles the plane.  A new convex polygonal face will
+            // be generated.  Add it now and insert edges when they are visited.
+            int32_t fNew = static_cast<int32_t>(mFaces.size());
+            mFaces.push_back(Face());
+            Face &faceNew = mFaces[fNew];
+            faceNew.plane = plane;
+
+            // Process the faces.
+            for (int32_t f = 0; f < fNew; ++f)
+            {
+                Face &face = mFaces[f];
+                if (face.visible)
+                {
+                    // Determine if the face is on the negative side, the
+                    // positive side, or split by the clipping plane.  The
+                    // occurs members are set to zero to help find the
+                    // endpoints of the polyline that results from clipping
+                    // a face.
+                    LogAssert(face.edges.size() >= 2, "Unexpected condition.");
+                    for (auto e : face.edges)
+                    {
+                        Edge &edge = mEdges[e];
+                        LogAssert(edge.visible, "Unexpected condition.");
+                        mVertices[edge.vertex[0]].occurs = 0;
+                        mVertices[edge.vertex[1]].occurs = 0;
+                    }
+
+                    int32_t vStart, vFinal;
+                    if (GetOpenPolyline(face, vStart, vFinal))
+                    {
+                        // Polyline is open, close it up.
+                        int32_t eNew = static_cast<int32_t>(mEdges.size());
+                        mEdges.push_back(Edge());
+                        Edge &edgeNew = mEdges[eNew];
+
+                        edgeNew.vertex[0] = vStart;
+                        edgeNew.vertex[1] = vFinal;
+                        edgeNew.face[0] = f;
+                        edgeNew.face[1] = fNew;
+
+                        // Add new edge to polygons.
+                        face.edges.insert(eNew);
+                        faceNew.edges.insert(eNew);
+                    }
+                }
+            }
+
+            // Process 'faceNew' to make sure it is a simple polygon
+            // (theoretically convex, but numerically may be slightly not
+            // convex).  Floating-point round-off errors can cause the new
+            // face from the last loop to be needle-like with a collapse of
+            // two edges into a single edge.  This block guarantees the
+            // invariant "face always a simple polygon".
+            Postprocess(fNew, faceNew);
+            if (faceNew.edges.size() < 3)
+            {
+                // Face is completely degenerate, remove it from mesh.
+                mFaces.pop_back();
+            }
+
+            return 0;
+        }
+
+        // Discard the portion of the mesh on the negative side of the plane.
+        // This function is valid for any manifold triangle mesh (at most two
+        // triangles shared per edge).
+        int32_t Clip(gte::Plane3<Real> const &plane)
+        {
+            // Compute signed distances from vertices to plane.
+            gte::DCPQuery<Real, gte::Vector3<Real>, gte::Plane3<Real>> query;
+            int32_t numPositive = 0, numNegative = 0;
+            for (auto &vertex : mVertices)
             {
                 if (vertex.visible)
                 {
@@ -2302,15 +2503,15 @@ private:
             int32_t const numEdges = static_cast<int32_t>(mEdges.size());
             for (int32_t e = 0; e < numEdges; ++e)
             {
-                Edge& edge = mEdges[e];
+                Edge &edge = mEdges[e];
                 if (edge.visible)
                 {
                     int32_t v0 = edge.vertex[0];
                     int32_t v1 = edge.vertex[1];
                     int32_t f0 = edge.face[0];
                     int32_t f1 = edge.face[1];
-                    Face& face0 = mFaces[f0];
-                    Face& face1 = mFaces[f1];
+                    Face &face0 = mFaces[f0];
+                    Face &face1 = mFaces[f1];
                     Real d0 = mVertices[v0].distance;
                     Real d1 = mVertices[v1].distance;
 
@@ -2348,10 +2549,10 @@ private:
                     // or <I,V1> when d1 > 0.
                     int32_t vNew = static_cast<int32_t>(mVertices.size());
                     mVertices.push_back(Vertex());
-                    Vertex& vertexNew = mVertices[vNew];
+                    Vertex &vertexNew = mVertices[vNew];
 
-                    gte::Vector3<Real>& point0 = mVertices[v0].point;
-                    gte::Vector3<Real>& point1 = mVertices[v1].point;
+                    gte::Vector3<Real> &point0 = mVertices[v0].point;
+                    gte::Vector3<Real> &point1 = mVertices[v1].point;
                     vertexNew.point = point0 + (d0 / (d0 - d1)) * (point1 - point0);
 
                     if (d0 > (Real)0)
@@ -2369,13 +2570,13 @@ private:
             // be generated.  Add it now and insert edges when they are visited.
             int32_t fNew = static_cast<int32_t>(mFaces.size());
             mFaces.push_back(Face());
-            Face& faceNew = mFaces[fNew];
+            Face &faceNew = mFaces[fNew];
             faceNew.plane = plane;
 
             // Process the faces.
             for (int32_t f = 0; f < fNew; ++f)
             {
-                Face& face = mFaces[f];
+                Face &face = mFaces[f];
                 if (face.visible)
                 {
                     // Determine if the face is on the negative side, the
@@ -2386,7 +2587,7 @@ private:
                     LogAssert(face.edges.size() >= 2, "Unexpected condition.");
                     for (auto e : face.edges)
                     {
-                        Edge& edge = mEdges[e];
+                        Edge &edge = mEdges[e];
                         LogAssert(edge.visible, "Unexpected condition.");
                         mVertices[edge.vertex[0]].occurs = 0;
                         mVertices[edge.vertex[1]].occurs = 0;
@@ -2398,7 +2599,7 @@ private:
                         // Polyline is open, close it up.
                         int32_t eNew = static_cast<int32_t>(mEdges.size());
                         mEdges.push_back(Edge());
-                        Edge& edgeNew = mEdges[eNew];
+                        Edge &edgeNew = mEdges[eNew];
 
                         edgeNew.vertex[0] = vStart;
                         edgeNew.vertex[1] = vFinal;
@@ -2429,7 +2630,7 @@ private:
         }
 
         // Convert back to a convex polyhedron.
-        void Convert(ConvexPolyhedron<Real>& polyhedron)
+        void Convert(ConvexPolyhedron<Real> &polyhedron)
         {
             // Get visible vertices.
             int32_t numVertices = static_cast<int32_t>(mVertices.size());
@@ -2438,7 +2639,7 @@ private:
             std::fill(vMap.begin(), vMap.end(), -1);
             for (int32_t v = 0; v < numVertices; ++v)
             {
-                Vertex const& vertex = mVertices[v];
+                Vertex const &vertex = mVertices[v];
                 if (vertex.visible)
                 {
                     vMap[v] = static_cast<int32_t>(points.size());
@@ -2451,7 +2652,7 @@ private:
             GetTriangles(indices, planes);
 
             // Reorder the indices.
-            for (auto& index : indices)
+            for (auto &index : indices)
             {
                 int32_t oldC = index;
                 LogAssert(0 <= oldC && oldC < numVertices, "Index out of range.");
@@ -2464,7 +2665,7 @@ private:
         }
 
         // For debugging.
-        bool Print(std::string const& filename) const
+        bool Print(std::string const &filename) const
         {
             std::ofstream output(filename);
             if (!output)
@@ -2476,7 +2677,7 @@ private:
             output << numVertices << " vertices" << std::endl;
             for (int32_t v = 0; v < numVertices; ++v)
             {
-                Vertex const& vertex = mVertices[v];
+                Vertex const &vertex = mVertices[v];
                 output << "v<" << v << "> ";
                 output << (vertex.visible ? 'T' : 'F') << " (";
                 output << vertex.point[0] << ",";
@@ -2490,7 +2691,7 @@ private:
             output << numEdges << " edges" << std::endl;
             for (int32_t e = 0; e < numEdges; ++e)
             {
-                Edge const& edge = mEdges[e];
+                Edge const &edge = mEdges[e];
                 output << "e<" << e << "> ";
                 output << (edge.visible ? 'T' : 'F') << " ";
                 output << "v[" << edge.vertex[0] << "," << edge.vertex[1] << "], ";
@@ -2503,11 +2704,11 @@ private:
             output << numFaces << " faces" << std::endl;
             for (int32_t f = 0; f < numFaces; ++f)
             {
-                Face const& face = mFaces[f];
+                Face const &face = mFaces[f];
                 output << "t<" << f << "> ";
                 output << (face.visible ? 'T' : 'F') << " ";
                 output << "e = ";
-                for (auto const& edge : face.edges)
+                for (auto const &edge : face.edges)
                 {
                     output << edge << " ";
                 }
@@ -2523,14 +2724,12 @@ private:
         {
         public:
             EdgePlus()
-                :
-                e(0), v0(0), v1(0), f0(0), f1(0)
+                : e(0), v0(0), v1(0), f0(0), f1(0)
             {
             }
 
-            EdgePlus(int32_t inE, Edge const& edge)
-                :
-                e(inE)
+            EdgePlus(int32_t inE, Edge const &edge)
+                : e(inE)
             {
                 f0 = edge.face[0];
                 f1 = edge.face[1];
@@ -2547,7 +2746,7 @@ private:
                 }
             }
 
-            bool operator<(EdgePlus const& other) const
+            bool operator<(EdgePlus const &other) const
             {
                 if (v1 < other.v1)
                 {
@@ -2562,12 +2761,12 @@ private:
                 return false;
             }
 
-            bool operator==(EdgePlus const& other) const
+            bool operator==(EdgePlus const &other) const
             {
                 return v0 == other.v0 && v1 == other.v1;
             }
 
-            bool operator!=(EdgePlus const& other) const
+            bool operator!=(EdgePlus const &other) const
             {
                 return !operator==(other);
             }
@@ -2575,7 +2774,7 @@ private:
             int32_t e, v0, v1, f0, f1;
         };
 
-        void Postprocess(int32_t fNew, Face& faceNew)
+        void Postprocess(int32_t fNew, Face &faceNew)
         {
             int32_t const numEdges = static_cast<int32_t>(faceNew.edges.size());
             std::vector<EdgePlus> edges(numEdges);
@@ -2605,8 +2804,8 @@ private:
                     // has vertices V0, V1 and faces F1, NF.
                     int32_t e0 = edges[i0].e;
                     int32_t e1 = edges[i1].e;
-                    Edge& edge0 = mEdges[e0];
-                    Edge& edge1 = mEdges[e1];
+                    Edge &edge0 = mEdges[e0];
+                    Edge &edge1 = mEdges[e1];
 
                     // Remove E0 and E1 from faceNew.
                     faceNew.edges.erase(e0);
@@ -2637,7 +2836,7 @@ private:
                     // E2 is being booted from the system.  Update the face F1
                     // that shares it.  Update E1 to share F1.
                     int32_t f1 = edge1.face[0];
-                    Face& face1 = mFaces[f1];
+                    Face &face1 = mFaces[f1];
                     face1.edges.erase(e1);
                     face1.edges.insert(e0);
                     edge0.face[1] = f1;
@@ -2646,13 +2845,13 @@ private:
             }
         }
 
-        bool GetOpenPolyline(Face& face, int32_t& vStart, int32_t& vFinal)
+        bool GetOpenPolyline(Face &face, int32_t &vStart, int32_t &vFinal)
         {
             // Count the number of occurrences of each vertex in the polyline.
             bool okay = true;
             for (auto e : face.edges)
             {
-                Edge& edge = mEdges[e];
+                Edge &edge = mEdges[e];
 
                 int32_t v0 = edge.vertex[0];
                 ++mVertices[v0].occurs;
@@ -2683,10 +2882,10 @@ private:
                 std::ofstream output("error.txt");
                 for (auto e : face.edges)
                 {
-                    Edge& edge = mEdges[e];
+                    Edge &edge = mEdges[e];
                     output << "e<" << e << "> = <" << edge.vertex[0] << ","
-                        << edge.vertex[1] << "|" << edge.face[0] << ","
-                        << edge.face[1] << "> ";
+                           << edge.vertex[1] << "|" << edge.face[0] << ","
+                           << edge.face[1] << "> ";
                     output << (edge.visible ? 'T' : 'F') << std::endl;
                 }
                 output.close();
@@ -2702,7 +2901,7 @@ private:
             vFinal = -1;
             for (auto e : face.edges)
             {
-                Edge& edge = mEdges[e];
+                Edge &edge = mEdges[e];
 
                 int32_t v0 = edge.vertex[0];
                 if (mVertices[v0].occurs == 1)
@@ -2747,19 +2946,18 @@ private:
                 }
             }
 
-            LogAssert((vStart == -1 && vFinal == -1)
-                || (vStart != -1 && vFinal != -1), "Unexpected condition.");
+            LogAssert((vStart == -1 && vFinal == -1) || (vStart != -1 && vFinal != -1), "Unexpected condition.");
 
             return vStart != -1;
         }
 
-        void OrderVertices(Face& face, std::vector<int32_t>& vOrdered)
+        void OrderVertices(Face &face, std::vector<int32_t> &vOrdered)
         {
             // Copy edge indices into contiguous memory.
             size_t const numEdges = face.edges.size();
             std::vector<int32_t> eOrdered(numEdges);
             size_t i = 0;
-            for (auto const& e : face.edges)
+            for (auto const &e : face.edges)
             {
                 eOrdered[i++] = e;
             }
@@ -2767,12 +2965,12 @@ private:
             // Bubble sort (yes, it is...).
             for (size_t i0 = 0, i1 = 1, choice = 1; i1 < numEdges - 1; i0 = i1++)
             {
-                Edge& edgeCurr = mEdges[eOrdered[i0]];
+                Edge &edgeCurr = mEdges[eOrdered[i0]];
                 int32_t curr = edgeCurr.vertex[choice];
                 size_t j;
                 for (j = i1; j < numEdges; ++j)
                 {
-                    Edge& edgeTemp = mEdges[eOrdered[j]];
+                    Edge &edgeTemp = mEdges[eOrdered[j]];
                     if (edgeTemp.vertex[0] == curr)
                     {
                         std::swap(eOrdered[i1], eOrdered[j]);
@@ -2793,7 +2991,7 @@ private:
             vOrdered[1] = mEdges[eOrdered[0]].vertex[1];
             for (i = 1; i < numEdges; ++i)
             {
-                Edge& edge = mEdges[eOrdered[i]];
+                Edge &edge = mEdges[eOrdered[i]];
                 if (edge.vertex[0] == vOrdered[i])
                 {
                     vOrdered[i + 1] = edge.vertex[1];
@@ -2805,9 +3003,9 @@ private:
             }
         }
 
-        void GetTriangles(std::vector<int32_t>& indices, std::vector<gte::Plane3<Real>>& planes)
+        void GetTriangles(std::vector<int32_t> &indices, std::vector<gte::Plane3<Real>> &planes)
         {
-            for (auto& face : mFaces)
+            for (auto &face : mFaces)
             {
                 if (face.visible)
                 {
@@ -2857,8 +3055,8 @@ private:
 private:
     // Support for intersection testing.
     static ConvexPolyhedron FindSolidIntersection(
-        ConvexPolyhedron const& polyhedron0,
-        ConvexPolyhedron const& polyhedron1)
+        ConvexPolyhedron const &polyhedron0,
+        ConvexPolyhedron const &polyhedron1)
     {
         ConvexPolyhedron intersection;
         if (polyhedron0.FindIntersection(polyhedron1, intersection))
@@ -2902,19 +3100,19 @@ private:
                         return 0x4000;
                     }
                 }
-                else  // (i & 0x3000) != 0
+                else // (i & 0x3000) != 0
                 {
                     if ((i & 0x2000) != 0)
                     {
                         return 0x2000;
                     }
-                    else  // (i & 0x1000) != 0
+                    else // (i & 0x1000) != 0
                     {
                         return 0x1000;
                     }
                 }
             }
-            else  // (i & 0x0F00) != 0
+            else // (i & 0x0F00) != 0
             {
                 if ((i & 0x0C00) != 0)
                 {
@@ -2922,25 +3120,25 @@ private:
                     {
                         return 0x0800;
                     }
-                    else  // (i & 0x0400) != 0
+                    else // (i & 0x0400) != 0
                     {
                         return 0x0400;
                     }
                 }
-                else  // (i & 0x0300) != 0
+                else // (i & 0x0300) != 0
                 {
                     if ((i & 0x0200) != 0)
                     {
                         return 0x0200;
                     }
-                    else  // (i & 0x0100) != 0
+                    else // (i & 0x0100) != 0
                     {
                         return 0x0100;
                     }
                 }
             }
         }
-        else  // (i & 0x00FF)
+        else // (i & 0x00FF)
         {
             if ((i & 0x00F0) != 0)
             {
@@ -2950,24 +3148,24 @@ private:
                     {
                         return 0x0080;
                     }
-                    else  // (i & 0x0040) != 0
+                    else // (i & 0x0040) != 0
                     {
                         return 0x0040;
                     }
                 }
-                else  // (i & 0x0030) != 0
+                else // (i & 0x0030) != 0
                 {
                     if ((i & 0x0020) != 0)
                     {
                         return 0x0020;
                     }
-                    else  // (i & 0x0010) != 0
+                    else // (i & 0x0010) != 0
                     {
                         return 0x0010;
                     }
                 }
             }
-            else  // (i & 0x000F) != 0
+            else // (i & 0x000F) != 0
             {
                 if ((i & 0x000C) != 0)
                 {
@@ -2975,18 +3173,18 @@ private:
                     {
                         return 0x0008;
                     }
-                    else  // (i & 0x0004) != 0
+                    else // (i & 0x0004) != 0
                     {
                         return 0x0004;
                     }
                 }
-                else  // (i & 0x0003) != 0
+                else // (i & 0x0003) != 0
                 {
                     if ((i & 0x0002) != 0)
                     {
                         return 0x0002;
                     }
-                    else  // (i & 0x0001) != 0
+                    else // (i & 0x0001) != 0
                     {
                         return 0x0001;
                     }
@@ -2996,9 +3194,9 @@ private:
     }
 
     // Support for computing surface area.
-    Real GetTriangleArea(gte::Vector3<Real> const& normal,
-        gte::Vector3<Real> const& vertex0, gte::Vector3<Real> const& vertex1,
-        gte::Vector3<Real> const& vertex2) const
+    Real GetTriangleArea(gte::Vector3<Real> const &normal,
+                         gte::Vector3<Real> const &vertex0, gte::Vector3<Real> const &vertex1,
+                         gte::Vector3<Real> const &vertex2) const
     {
         // Compute maximum absolute component of normal vector.
         int32_t maxIndex = 0;
@@ -3053,7 +3251,7 @@ private:
     }
 
     // Support for computing the terminator and silhouette.
-    Real GetDistance(gte::Vector3<Real> const & eye, int32_t t, std::vector<Real>& distances) const
+    Real GetDistance(gte::Vector3<Real> const &eye, int32_t t, std::vector<Real> &distances) const
     {
         // Signed distance from eye to plane of triangle.  When distance is
         // positive, triangle is visible from eye (front-facing).  When
@@ -3071,8 +3269,7 @@ private:
 
     static bool IsNegativeProduct(Real distance0, Real distance1)
     {
-        return (distance0 != (Real)0 ? (distance0 * distance1 <= (Real)0) :
-            (distance1 != (Real)0));
+        return (distance0 != (Real)0 ? (distance0 * distance1 <= (Real)0) : (distance1 != (Real)0));
     }
 
     V3Array mPoints;
@@ -3081,52 +3278,74 @@ private:
     mutable gte::DCPQuery<Real, gte::Vector3<Real>, gte::Plane3<Real>> mQuery;
 };
 
-int main(){
-    ConvexPolyhedron<float> mPoly0, mPoly1, mIntersection;
+struct Wrapper
+{
 
-    // The first polyhedron is an ellipsoid.
-    ConvexPolyhedron<float>::CreateEggShape(gte::Vector3<float>::Zero(),
-        1.0f, 1.0f, 2.0f, 2.0f, 4.0f, 4.0f, 3, mPoly0);
+    std::string name;
 
-    // The second polyhedron is egg shaped.
-    ConvexPolyhedron<float>::CreateEggShape(gte::Vector3<float>::Zero(),
-        2.0f, 2.0f, 4.0f, 4.0f, 5.0f, 3.0f, 4, mPoly1);
-
-    mPoly0.UpdatePlanes();
-    mPoly1.UpdatePlanes();
-    bool hasIntersection = false;
-    try{
-        // Compute the intersection (if any) in world space.
-        hasIntersection = mPoly0.FindIntersection(mPoly1, mIntersection);
-    } catch(std::runtime_error& e){
-        std::cout << "exception throw: " << e.what() << std::endl;
-    } catch (...){
-        std::cout << "unknown exception throw" << std::endl;
-    }
-
-
-    if (hasIntersection)
+    Wrapper(const ConvexPolyhedron<float> &poly, std::string_view in_name) : name{in_name}
     {
-        std::cout << "There is intersection between geometries\n";
-        // Build the corresponding mesh.
-        auto numVertices = mIntersection.GetNumVertices();
-        int32_t numTriangles = mIntersection.GetNumTriangles();
-
-        std::vector<gte::Vector3<float>> vertices;
-        std::vector<int32_t> indices;
+        auto numVertices = poly.GetNumVertices();
+        int32_t numTriangles = poly.GetNumTriangles();
         vertices.resize(numVertices);
-        indices.resize(numTriangles);
-
+        indices.resize(numTriangles * 3);
         for (int32_t i = 0; i < numVertices; ++i)
-            vertices[i] = mIntersection.GetPoint(i);
-        
+            vertices[i] = poly.GetPoint(i);
+
         for (int32_t i = 0; i < numTriangles; ++i)
             for (int32_t j = 0; j < 3; ++j)
-                indices[3 * i + j] = mIntersection.GetVLabel(mIntersection.GetTriangle(i).GetVertex(j));
-        
-    } else {
-        std::cout << "There is no intersection between the geometries...\n";
+                indices[3 * i + j] = poly.GetVLabel(poly.GetTriangle(i).GetVertex(j));
     }
+
+    friend std::ostream &operator<<(std::ostream &os, Wrapper wrapper)
+    {
+        os << "V_" << wrapper.name << "=[";
+        for (auto &val : wrapper.vertices)
+            os << " " << val[0] << " " << val[1] << "  " << val[2] << ";\n";
+        os << "];\n";
+
+        os << "Ind_" << wrapper.name << "=[";
+        for (auto &index : wrapper.indices)
+            os << " " << index << ";\n";
+        os << "];\n";
+        return os;
+    }
+
+    std::vector<gte::Vector3<float>> vertices;
+    std::vector<int32_t> indices;
+};
+
+int main()
+{
+    ConvexPolyhedron<float> mPoly0, mIntersectionPos,mIntersectionNeg;
+
+    ConvexPolyhedron<float>::CreateEggShape(gte::Vector3<float>::Zero(),
+                                            1.0f, 1.0f, 2.0f, 2.0f, 4.0f, 4.0f, 0, mPoly0);
+
+    gte::Plane3<float> plane_pos{gte::Vector3<float>{0.0,0.0,1.0},gte::Vector3<float>{0.0,0.0,0.0}};
+    gte::Plane3<float> plane_neg{gte::Vector3<float>{0.0,0.0,-1.0},gte::Vector3<float>{0.0,0.0,0.0}};
+    
+    if (mPoly0.Clip(plane_pos, mIntersectionPos))
+        std::cout << "clip returned positive\n";
+    else
+    {
+        std::cout << "clip returned negative\n";
+        return 1;
+    }
+
+    if (mIntersectionPos.Clip(plane_neg, mIntersectionNeg))
+        std::cout << "clip returned positive\n";
+    else
+    {
+        std::cout << "clip returned negative\n";
+        return 1;
+    }
+
+    Wrapper fist_poly_header{mIntersectionNeg, "intersection"};
+    std::cout << fist_poly_header << std::endl;
+
+    Wrapper second_poly_header{mIntersectionPos, "original"};
+    std::cout << second_poly_header << std::endl;
 
     return 0;
 }
