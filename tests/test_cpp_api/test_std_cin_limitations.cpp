@@ -301,25 +301,32 @@ int main(){
 #include <functional>
 #include <type_traits>
 
+template<typename, typename = void>
+constexpr bool is_type_complete_v = false;
 
+template<typename T>
+constexpr bool is_type_complete_v
+    <T, std::void_t<decltype(sizeof(T))>> = true;
 
 template<typename T>
 struct Client{
     static_assert(std::is_invocable_v<decltype(T::start),std::shared_ptr<Client<T>>>, "the protocol must have a static start() function that receives a templated client");
-
+    static_assert(is_type_complete_v<typename T::signature>, "the protocol must have signature type function that broadcasts the the protocol messages");
+    
     Client(){
-        std::cout << "server connected...\n";
+
     }
 };
 
 template<typename T>
 struct Server{
     static_assert(std::is_invocable_v<decltype(T::start),std::shared_ptr<Client<T>>>, "the protocol must have a static start() function that receives a templated client");
+    static_assert(is_type_complete_v<typename T::signature>, "the protocol must have signature type function that broadcasts the the protocol messages");
 
     std::list<Client<T>> clients;
     std::list<typename T::signature> list_of_callbacks;
     Server(){
-        std::cout << "connecting server...\n";
+
     }
 };
 
@@ -332,9 +339,12 @@ class GoodProtocol{
 	};
 };
 
-class PretendToBeDogProtocol{
+
+
+class PretendToBeGoodProtocol{
     public:	
-	void start(std::shared_ptr<Client<PretendToBeDogProtocol>> client){
+    using signature = std::function<void(const size_t&, const std::error_code&, std::string_view value)>;
+	void start(std::shared_ptr<Client<PretendToBeGoodProtocol>> client){
 			
 	};
 };
@@ -348,9 +358,21 @@ class BadProtocol{
 	};
 };
 
+class BadProtocolForLackOfSignature{
+    public:
+			
+	static void start(std::shared_ptr<Client<BadProtocolForLackOfSignature>> client){
+			
+	};
+};
+
 int main(){
     Server<GoodProtocol> protocol;
-    //auto function = [](){};
-    //static_assert(std::is_function<typename std::remove_pointer<decltype(function)>::type>::value);
+
+    //Server<PretendToBeGoodProtocol> protocol1;
+
+    //Server<BadProtocol> protocol2;
+
+    //Server<BadProtocolForLackOfSignature> protocol3;
     return 0;
 }
