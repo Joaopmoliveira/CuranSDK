@@ -1712,9 +1712,6 @@ public:
         {
             return false;
         }
-
-        clipper.mFaces
-
         clipper.Convert(intersection);
         return true;
     }
@@ -2342,7 +2339,7 @@ private:
                     Real d0 = mVertices[v0].distance;
                     Real d1 = mVertices[v1].distance;
 
-                    if (d0 <= (Real)0 && d1 <= (Real)0)
+                    if (d0 < (Real)0 && d1 < (Real)0)
                     {
                         // The edge is culled.  If the edge is exactly on the
                         // clip plane, it is possible that a visible triangle
@@ -2364,9 +2361,25 @@ private:
                         continue;
                     }
 
-                    if (d0 >= (Real)0 && d1 >= (Real)0)
+                    if (d0 > (Real)0 && d1 > (Real)0)
                     {
-                        // Face retains the edge.
+                        // The edge is culled.  If the edge is exactly on the
+                        // clip plane, it is possible that a visible triangle
+                        // shares it.  The edge will be re-added during the
+                        // face loop.
+                        face0.edges.erase(e);
+                        if (face0.edges.empty())
+                        {
+                            face0.visible = false;
+                        }
+
+                        face1.edges.erase(e);
+                        if (face1.edges.empty())
+                        {
+                            face1.visible = false;
+                        }
+
+                        edge.visible = false;
                         continue;
                     }
 
@@ -3311,12 +3324,105 @@ struct Wrapper
         return os;
     }
 
+    gte::ConvexMesh3<float> convert(){
+        gte::ConvexMesh3<float> mesh;
+        mesh.vertices = vertices;
+        auto numTriangles = indices.size()/3;
+        mesh.triangles.resize(numTriangles);
+        for (int32_t i = 0; i < numTriangles; ++i){
+            std::array<int,3> triangle;
+            for (int32_t j = 0; j < 3; ++j)
+                triangle[i] = indices[3 * i + j];
+             mesh.triangles[i] = triangle;
+        }
+        return mesh;
+    }
+
     std::vector<gte::Vector3<float>> vertices;
     std::vector<int32_t> indices;
 };
 
+#include <Mathematics/IntrConvexMesh3Plane3.h>
+
+int inner_main_dual(){
+    using Query = gte::FIQuery<float, gte::ConvexMesh3<float>, gte::Plane3<float>>;
+    ConvexPolyhedron<float> mPoly0;
+    ConvexPolyhedron<float>::CreateEggShape(gte::Vector3<float>::Zero(),
+                                            1.0f, 1.0f, 2.0f, 2.0f, 4.0f, 4.0f, 0, mPoly0);
+    Wrapper second_poly_header{mPoly0, "original"};
+    gte::ConvexMesh3<float> mPolyhedron = second_poly_header.convert();
+    gte::Plane3<float> mPlane;
+    Query quarey; 
+    auto mResult = quarey(mPolyhedron, mPlane, Query::REQ_ALL);
+
+    auto const& polyVertices = mResult.intersectionPolygon;
+    size_t const numPolyVertices = polyVertices.size();
+    bool mValidPolygonCurve = (numPolyVertices > 0);
+    if (mValidPolygonCurve)
+    {
+        auto const& vbuffer = mPolygonCurve->GetVertexBuffer();
+        auto vertices = vbuffer->Get<Vector3<float>>();
+        for (size_t i = 0; i < numPolyVertices; ++i)
+        {
+            for (int32_t j = 0; j < 3; ++j)
+            {
+                vertices[i][j] = polyVertices[i][j];
+            }
+        }
+        for (int32_t j = 0; j < 3; ++j)
+        {
+            vertices[numPolyVertices][j] = polyVertices[0][j];
+        }
+
+        uint32_t const numVertices = static_cast<uint32_t>(numPolyVertices + 1);
+        vbuffer->SetNumActiveElements(numVertices);
+        mEngine->Update(vbuffer);
+    }
+
+    auto const& imesh = mResult.intersectionMesh;
+    bool mValidPolygonMesh = (imesh.vertices.size() > 0);
+    if (mValidPolygonMesh)
+    {
+        auto const& vbuffer = mPolygonMesh->GetVertexBuffer();
+        auto vertices = vbuffer->Get<Vector3<float>>();
+        for (size_t i = 0; i < imesh.vertices.size(); ++i)
+        {
+            for (int32_t j = 0; j < 3; ++j)
+            {
+                vertices[i][j] = imesh.vertices[i][j];
+            }
+        }
+        uint32_t const numVertices = static_cast<uint32_t>(imesh.vertices.size());
+        vbuffer->SetNumActiveElements(numVertices);
+        mEngine->Update(vbuffer);
+
+        auto const& ibuffer = mPolygonMesh->GetIndexBuffer();
+        auto indices = ibuffer->Get<int32_t>();
+        size_t const numBytes = imesh.triangles.size() * sizeof(std::array<int32_t, 3>);
+        std::memcpy(indices, imesh.triangles.data(), numBytes);
+        uint32_t const numTriangles = static_cast<uint32_t>(imesh.triangles.size());
+        ibuffer->SetNumActivePrimitives(numTriangles);
+        mEngine->Update(ibuffer);
+    }
+
+}
+
 int main()
 {
+    try{
+        inner_main_dual();
+    } catch(std::runtime_error& e){
+        std::cout << "exception: " << e.what() << std::endl;
+        return 1;
+    } catch(...){
+        std::cout << "unexpected exception" << std::endl;
+        return 1;
+    }
+
+    return 0;
+}
+
+/* int inner_main(){
     ConvexPolyhedron<float> mPoly0, mIntersectionPos,mIntersectionNeg;
 
     ConvexPolyhedron<float>::CreateEggShape(gte::Vector3<float>::Zero(),
@@ -3325,7 +3431,7 @@ int main()
     gte::Plane3<float> plane_pos{gte::Vector3<float>{0.0,0.0,1.0},gte::Vector3<float>{0.0,0.0,0.0}};
     gte::Plane3<float> plane_neg{gte::Vector3<float>{0.0,0.0,-1.0},gte::Vector3<float>{0.0,0.0,0.0}};
     
-    if (mPoly0.Clip(plane_pos, mIntersectionPos))
+    if (mPoly0.ClipOnlyPlane(plane_pos, mIntersectionPos))
         std::cout << "clip returned positive\n";
     else
     {
@@ -3333,19 +3439,9 @@ int main()
         return 1;
     }
 
-    if (mIntersectionPos.Clip(plane_neg, mIntersectionNeg))
-        std::cout << "clip returned positive\n";
-    else
-    {
-        std::cout << "clip returned negative\n";
-        return 1;
-    }
-
-    Wrapper fist_poly_header{mIntersectionNeg, "intersection"};
+    Wrapper fist_poly_header{mIntersectionPos, "intersection"};
     std::cout << fist_poly_header << std::endl;
 
-    Wrapper second_poly_header{mIntersectionPos, "original"};
+    Wrapper second_poly_header{mPoly0, "original"};
     std::cout << second_poly_header << std::endl;
-
-    return 0;
-}
+} */
