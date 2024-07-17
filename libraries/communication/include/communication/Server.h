@@ -12,7 +12,6 @@
 
 namespace curan {
 	namespace communication {
-
 		class Server : public std::enable_shared_from_this<Server> {
 		public:
 			struct Info {
