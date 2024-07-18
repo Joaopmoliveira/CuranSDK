@@ -6,6 +6,16 @@
 namespace curan{
 namespace geometry{
 
+struct PolyHeadra{
+    using Rational = gte::BSRational<gte::UIntegerAP32>;
+    gte::ConvexMesh3<Rational> geometry;
+
+    template<typename T>
+    PolyHeadra(T&& in_geometry) : geometry{in_geometry}{
+
+    }
+};
+
 struct Cube{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
@@ -74,26 +84,6 @@ struct Icosahedron{
     gte::ConvexMesh3<Rational> geometry;
 
     Icosahedron();
-};
-
-struct reference_helper_converter{
-    using Rational = gte::BSRational<gte::UIntegerAP32>;
-    gte::ConvexMesh3<Rational>& geometry;
-
-    template<typename T>
-    reference_helper_converter(T&& in) : geometry{in.geometry} {
-
-    }
-};
-
-struct reference_helper_mover{
-    using Rational = gte::BSRational<gte::UIntegerAP32>;
-    gte::ConvexMesh3<Rational> geometry;
-
-    template<typename T>
-    reference_helper_mover(T&& in) : geometry{std::move(in.geometry)} {
-
-    }
 };
 
 }

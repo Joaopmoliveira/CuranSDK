@@ -11,6 +11,11 @@ namespace ui {
 		update_volume(volume);
 	}
 
+
+	void VolumetricMask::draw_geometries(const Direction &direction, const size_t &along_dimension,SkCanvas *canvas, const SkMatrix &inverse_homogenenous_transformation, const SkMatrix &homogenenous_transformation, const SkPoint &point, bool is_highlighting, SkPaint &paint_stroke, SkPaint &paint_square, const SkFont &text_font, bool is_pressed){
+
+	}
+
 	void Mask::container_resized(const SkMatrix &inverse_homogenenous_transformation)
 	{
 		for (auto &stro : recorded_strokes)

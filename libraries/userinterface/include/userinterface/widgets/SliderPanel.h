@@ -15,6 +15,7 @@
 #include <vector>
 #include "utils/Overloading.h"
 #include "utils/SafeQueue.h"
+#include "geometry/Polyheadra.h"
 
 namespace curan
 {
@@ -90,18 +91,6 @@ namespace curan
 		class VolumetricMask;
 		using pressedhighlighted_event = std::function<void(VolumetricMask*, ConfigDraw*, const std::optional<directed_stroke>&)>;
 
-		/*
-		Geometric shapes are entities that live in 3D,
-		therefore they don't belong to any particular mask.
-		There are a couple of assumptions with this class. There
-		are not a lot of geometric shapes for a particular screen,
-		if violated the delay between user action and rendered actions
-		can increase up to the point where is deteriorates the quality
-		*/
-		class GeometricShapes{
-
-		};
-
 		class VolumetricMask
 		{
 
@@ -114,7 +103,7 @@ namespace curan
 			std::vector<Mask> masks_y;
 			std::vector<Mask> masks_z;
 
-			std::vector<GeometricShapes> three_dimensional_entities;
+			std::vector<curan::geometry::PolyHeadra> three_dimensional_entities;
 
 			ImageType::Pointer image;
 		public:
@@ -260,6 +249,13 @@ namespace curan
 					throw std::runtime_error("accessing direction with no meaning");
 				};
 			}
+
+			template<typename T>
+			void add_geometry(T&& geometry_to_add){
+				three_dimensional_entities.emplace_back(std::forward<T>(geometry_to_add));
+			}
+
+			void draw_geometries(const Direction &direction, const size_t &along_dimension,SkCanvas *canvas, const SkMatrix &inverse_homogenenous_transformation, const SkMatrix &homogenenous_transformation, const SkPoint &point, bool is_highlighting, SkPaint &paint_stroke, SkPaint &paint_square, const SkFont &text_font, bool is_pressed);
 
 			template <typename... T>
 			void for_each(const Direction &direction, T &&...u) const
