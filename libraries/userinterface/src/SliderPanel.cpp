@@ -1,6 +1,7 @@
 #include "userinterface/widgets/SliderPanel.h"
 #include "userinterface/widgets/ComputeImageBounds.h"
 #include "utils/Overloading.h"
+#include "geometry/Intersection.h"
 
 namespace curan {
 namespace ui {
@@ -9,11 +10,6 @@ namespace ui {
 
 	VolumetricMask::VolumetricMask(ImageType::Pointer volume) : image{volume}{
 		update_volume(volume);
-	}
-
-
-	void VolumetricMask::draw_geometries(const Direction &direction, const size_t &along_dimension,SkCanvas *canvas, const SkMatrix &inverse_homogenenous_transformation, const SkMatrix &homogenenous_transformation, const SkPoint &point, bool is_highlighting, SkPaint &paint_stroke, SkPaint &paint_square, const SkFont &text_font, bool is_pressed){
-
 	}
 
 	void Mask::container_resized(const SkMatrix &inverse_homogenenous_transformation)
@@ -320,9 +316,10 @@ namespace ui {
 
 		background_rect = curan::ui::compute_bounded_rectangle(reserved_drawing_space, width, height);
 		homogenenous_transformation = SkMatrix::MakeRectToRect(background_rect, SkRect::MakeWH(1.0, 1.0), SkMatrix::ScaleToFit::kFill_ScaleToFit);
-		homogenenous_transformation.invert(&inverse_homogenenous_transformation);
+		if(!homogenenous_transformation.invert(&inverse_homogenenous_transformation)){
+			throw std::runtime_error("failure to invert matrix");
+		}
 
-		
 		assert(volumetric_mask!=nullptr && "volumetric mask must be different from nullptr");
 		volumetric_mask->for_each(direction,[&](Mask& mask){
 			mask.container_resized(inverse_homogenenous_transformation);
@@ -354,6 +351,43 @@ namespace ui {
 					canvas->drawImageRect(image_display_surface, background_rect, opt);
 				
 			}
+
+			{
+				/*
+				The geometries are normalized in volume coordinates, thus we must 
+				convert them into world coordinates 
+				*/
+				std::lock_guard<std::mutex> g{get_mutex()};
+				for(const auto& cliped_path : volumetric_mask->geometries()){
+					SkPath path;
+					Eigen::Matrix<double,3,1> normal;
+					Eigen::Matrix<double,3,1> origin;
+					auto possible_cliped_polygon = curan::geometry::clip_with_plane(cliped_path,normal,origin);
+					if(!possible_cliped_polygon )
+						continue;
+
+					if(!(*possible_cliped_polygon).cols()==0)
+						continue;
+					
+					if((*possible_cliped_polygon).cols()<2){
+						path.moveTo((*possible_cliped_polygon).col(0)[0],(*possible_cliped_polygon).col(0)[1]);
+						path.lineTo((*possible_cliped_polygon).col(0)[0],(*possible_cliped_polygon).col(0)[1]);
+						//draw the path
+						continue;
+					}
+
+					if(possible_cliped_polygon){
+						path.moveTo((*possible_cliped_polygon).col(0)[0],(*possible_cliped_polygon).col(0)[1]);
+						for(const auto& cliped_polygon : (*possible_cliped_polygon).colwise())
+							path.lineTo(cliped_polygon[0],cliped_polygon[1]);
+						path.close();
+						//draw the path
+
+						continue;
+					}
+				}
+			}
+			
 
 			canvas->drawPoints(SkCanvas::PointMode::kPoints_PointMode, current_stroke.transformed_recorded_points.size(), current_stroke.transformed_recorded_points.data(), paint_stroke);
 			{

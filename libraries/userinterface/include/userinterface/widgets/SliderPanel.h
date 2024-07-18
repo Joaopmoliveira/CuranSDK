@@ -255,7 +255,9 @@ namespace curan
 				three_dimensional_entities.emplace_back(std::forward<T>(geometry_to_add));
 			}
 
-			void draw_geometries(const Direction &direction, const size_t &along_dimension,SkCanvas *canvas, const SkMatrix &inverse_homogenenous_transformation, const SkMatrix &homogenenous_transformation, const SkPoint &point, bool is_highlighting, SkPaint &paint_stroke, SkPaint &paint_square, const SkFont &text_font, bool is_pressed);
+			inline const std::vector<curan::geometry::PolyHeadra>& geometries() const{
+				return three_dimensional_entities;
+			}
 
 			template <typename... T>
 			void for_each(const Direction &direction, T &&...u) const
