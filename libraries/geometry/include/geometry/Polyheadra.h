@@ -6,77 +6,77 @@
 namespace curan{
 namespace geometry{
 
-class Cube{
+struct Cube{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     Cube(double xExtent, double yExtent, double zExtent);
 };
 
-class OpenCylinder{
+struct OpenCylinder{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     OpenCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height);
 };
 
-class ClosedCylinder{
+struct ClosedCylinder{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     ClosedCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height);
 };
 
-class Sphere{
+struct Sphere{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     Sphere(uint32_t numZSamples, uint32_t numRadialSamples, float radius);
 };
 
-class Torus{
+struct Torus{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     Torus(uint32_t numCircleSamples, uint32_t numRadialSamples, float outerRadius, float innerRadius);
 };
 
-class Tetrahedron{
+struct Tetrahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     Tetrahedron();
 };
 
-class Hexahedron{
+struct Hexahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     Hexahedron();
 };
 
-class Octahedron{
+struct Octahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     Octahedron();
 };
 
-class Dodecahedron{
+struct Dodecahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     Dodecahedron();
 };
 
-class Icosahedron{
+struct Icosahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
     Icosahedron();
 };
 
-class reference_helper_converter{
+struct reference_helper_converter{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational>& geometry;
 
@@ -86,7 +86,7 @@ class reference_helper_converter{
     }
 };
 
-class reference_helper_mover{
+struct reference_helper_mover{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 

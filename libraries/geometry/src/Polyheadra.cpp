@@ -1,7 +1,7 @@
 #include <Mathematics/Vector2.h>
 #include <Mathematics/IntrConvexMesh3Plane3.h>
 
-#include "geometry/Polyheader.h"
+#include "geometry/Polyheadra.h"
 
 namespace curan{
 namespace geometry{
@@ -64,7 +64,7 @@ struct Factory {
         }
 
         for (size_t i = 0; i < numVertices; ++i)
-            geometry.vertices[i] = {{Rational{vertices[i][0]}, Rational{vertices[i][1]}, Rational{vertices[i][2]}}};
+            geometry.vertices[i] = {{Numeric{vertices[i][0]}, Numeric{vertices[i][1]}, Numeric{vertices[i][2]}}};
 
         // Generate indices (outside view).
         geometry.triangles.resize(numTriangles);

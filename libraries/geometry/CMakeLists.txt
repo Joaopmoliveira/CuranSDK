@@ -1,12 +1,12 @@
-add_library(geometry INTERFACE
+add_library(geometry STATIC
 src/Polyheadra.cpp
 )
 
 target_include_directories(geometry
-INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include/
+PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 
-target_link_libraries(geometry INTERFACE
+target_link_libraries(geometry PUBLIC
 GeometricTools
-Eigen::Eigen3
+Eigen3::Eigen
 )
