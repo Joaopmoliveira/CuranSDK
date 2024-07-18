@@ -1,25 +1,12 @@
-#include <cstdint>
-#include <unordered_set>
-#include <stdexcept>
-#include <array>
-#include <vector>
-
-#include <map>
-
 #include <Mathematics/Vector2.h>
 #include <Mathematics/IntrConvexMesh3Plane3.h>
 
+#include "geometry/Polyheader.h"
 
-#include <iostream>
+namespace curan{
+namespace geometry{
 
-#include <fstream>
-
-
-using Rational = gte::BSRational<gte::UIntegerAP32>;
-
-struct Factory
-{
-
+struct Factory {
     bool mOutside = true;
 
     // The box has center (0,0,0); unit-length axes (1,0,0), (0,1,0), and
@@ -690,75 +677,55 @@ struct Factory
     }
 };
 
-int inner_main_dual()
-{
-    using Query = gte::FIQuery<Rational, gte::ConvexMesh3<Rational>, gte::Plane3<Rational>>;
+Cube::Cube(double xExtent, double yExtent, double zExtent){
     Factory factory;
-    gte::ConvexMesh3<Rational> mPolyhedron = factory.CreateBox<Rational>(1, 1, 1);
-    gte::ConvexMesh3<Rational> mPolyhedron2 = factory.CreateCylinderOpen<Rational>(100, 100, 1, 1);
-    gte::ConvexMesh3<Rational> mPolyhedron4 = factory.CreateSphere<Rational>(100, 100, 1);
-    gte::ConvexMesh3<Rational> mPolyhedron3 = factory.CreateCylinderClosed<Rational>(100, 100, 1, 1);
-    gte::ConvexMesh3<Rational> mPolyhedron5 = factory.CreateTorus<Rational>(100, 100, 1, 1);
-
-    gte::ConvexMesh3<Rational> mPolyhedron6 = factory.CreateTetrahedron<Rational>();
-    gte::ConvexMesh3<Rational> mPolyhedron7 = factory.CreateHexahedron<Rational>();
-    gte::ConvexMesh3<Rational> mPolyhedron8 = factory.CreateOctahedron<Rational>();
-    gte::ConvexMesh3<Rational> mPolyhedron9 = factory.CreateDodecahedron<Rational>();
-    gte::ConvexMesh3<Rational> mPolyhedron10 = factory.CreateIcosahedron<Rational>();
-          
-    gte::Plane3<Rational> mPlane;
-    Query quarey;
-    auto mResult = quarey(mPolyhedron, mPlane, Query::REQ_ALL);
-
-    auto const &polyVertices = mResult.intersectionPolygon;
-    size_t const numPolyVertices = polyVertices.size();
-    bool mValidPolygonCurve = (numPolyVertices > 0);
-    if (mValidPolygonCurve)
-    {
-        std::cout << "V_polygon = [" << std::endl;
-        for (auto &val : polyVertices)
-            std::cout << " " << (double)val[0] << " " << (double)val[1] << "  " << (double)val[2] << ";\n";
-        std::cout << "];\n";
-    }
-
-    auto const &imesh = mResult.intersectionMesh; 
-    bool mValidPolygonMesh = (imesh.vertices.size() > 0);
-    if (mValidPolygonMesh)
-    {
-        std::cout << "V_mesh_polygon = [" << std::endl;
-        for (auto &val : imesh.vertices)
-            std::cout << " " << (double)val[0] << " " << (double)val[1] << "  " << (double)val[2] << ";\n";
-        std::cout << "];\n";
-        uint32_t const numVertices = static_cast<uint32_t>(imesh.vertices.size());
-
-        std::vector<int32_t> indices;
-        indices.resize(mResult.intersectionMesh.triangles.size()*3);
-        size_t const numBytes = imesh.triangles.size() * sizeof(std::array<int32_t, 3>);
-        std::memcpy(indices.data(), imesh.triangles.data(), numBytes);
-
-        std::cout << "Ind_mesh_polygon=[";
-        for (auto &index : indices)
-            std::cout << " " << index << ";\n";
-        std::cout << "];\n";
-    }
+    geometry = factory.CreateBox<Rational>(xExtent,yExtent,zExtent);
 }
 
-int main()
-{
-    try
-    {
-        inner_main_dual();
-    }
-    catch (std::runtime_error &e)
-    {
-        std::cout << "exception: " << e.what() << std::endl;
-        return 1;
-    }
-    catch (...)
-    {
-        std::cout << "unexpected exception" << std::endl;
-        return 1;
-    }
+OpenCylinder::OpenCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height){
+    Factory factory;
+    geometry = factory.CreateCylinderOpen<Rational>(numAxisSamples,numRadialSamples,radius,height);
+}
 
-    return 0;
+ClosedCylinder::ClosedCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height){
+    Factory factory;
+    geometry = factory.CreateCylinderClosed<Rational>(numAxisSamples,numRadialSamples,radius,height);
+}
+
+Sphere::Sphere(uint32_t numZSamples, uint32_t numRadialSamples, float radius){
+    Factory factory;
+    geometry = factory.CreateSphere<Rational>(numZSamples,numRadialSamples,radius);
+}   
+
+Torus::Torus(uint32_t numCircleSamples, uint32_t numRadialSamples, float outerRadius, float innerRadius){
+    Factory factory;
+    geometry = factory.CreateTorus<Rational>(numCircleSamples,numRadialSamples,outerRadius,innerRadius);
+}
+
+Tetrahedron::Tetrahedron(){
+    Factory factory;
+    geometry = factory.CreateTetrahedron<Rational>();
+}
+
+Hexahedron::Hexahedron(){
+    Factory factory;
+    geometry = factory.CreateHexahedron<Rational>();
+}
+
+Octahedron::Octahedron(){
+    Factory factory;
+    geometry = factory.CreateOctahedron<Rational>();
+}
+
+Dodecahedron::Dodecahedron(){
+    Factory factory;
+    geometry = factory.CreateDodecahedron<Rational>();
+}
+
+Icosahedron::Icosahedron(){
+    Factory factory;
+    geometry = factory.CreateIcosahedron<Rational>();
+}
+
+}
 }
