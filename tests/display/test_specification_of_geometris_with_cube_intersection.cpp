@@ -116,7 +116,7 @@ int main()
 			return 1;
 
 		VolumetricMask mask{*volume};
-
+		mask.add_geometry(curan::geometry::Cube{1.0,1.0,1.0});
 		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
 		curan::ui::SlidingPanel *panel_pointer = image_display.get();
 

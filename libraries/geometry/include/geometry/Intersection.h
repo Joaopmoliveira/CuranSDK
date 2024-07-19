@@ -8,8 +8,7 @@
 namespace curan{
 namespace geometry{
 
-template<typename T>
-std::optional<Eigen::Matrix<double,3,Eigen::Dynamic>> clip_with_plane(const T& helper, Eigen::Matrix<double,3,1> inNormal, Eigen::Matrix<double,3,1> inOrigin){
+std::optional<Eigen::Matrix<double,3,Eigen::Dynamic>> clip_with_plane(const PolyHeadra& helper, Eigen::Matrix<double,3,1> inNormal, Eigen::Matrix<double,3,1> inOrigin){
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     using Query = gte::FIQuery<Rational, gte::ConvexMesh3<Rational>, gte::Plane3<Rational>>;
 

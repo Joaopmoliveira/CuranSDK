@@ -207,6 +207,8 @@ namespace ui {
 			break;
 		}
 
+		
+
 		return info;
 	}
 
@@ -324,6 +326,7 @@ namespace ui {
 		volumetric_mask->for_each(direction,[&](Mask& mask){
 			mask.container_resized(inverse_homogenenous_transformation);
 		});
+		
 		set_size(pos);
 		return;
 	}
@@ -358,16 +361,22 @@ namespace ui {
 				convert them into world coordinates 
 				*/
 				std::lock_guard<std::mutex> g{get_mutex()};
+
+				auto& val = volumetric_mask->geometries();
 				for(const auto& cliped_path : volumetric_mask->geometries()){
 					SkPath path;
-					Eigen::Matrix<double,3,1> normal;
-					Eigen::Matrix<double,3,1> origin;
+					Eigen::Matrix<double,3,1> normal{0.0,0.0,1.0};
+					Eigen::Matrix<double,3,1> origin{0.5,0.5,0.5};
 					auto possible_cliped_polygon = curan::geometry::clip_with_plane(cliped_path,normal,origin);
-					if(!possible_cliped_polygon )
+					if(!possible_cliped_polygon ){
+						std::cout << "no path\n";
 						continue;
+					}
 
-					if(!(*possible_cliped_polygon).cols()==0)
+					if((*possible_cliped_polygon).cols()==0){
+						std::cout << "no cols\n";
 						continue;
+					}
 					
 					if((*possible_cliped_polygon).cols()<2){
 						path.moveTo((*possible_cliped_polygon).col(0)[0],(*possible_cliped_polygon).col(0)[1]);
@@ -376,15 +385,15 @@ namespace ui {
 						continue;
 					}
 
-					if(possible_cliped_polygon){
-						path.moveTo((*possible_cliped_polygon).col(0)[0],(*possible_cliped_polygon).col(0)[1]);
-						for(const auto& cliped_polygon : (*possible_cliped_polygon).colwise())
-							path.lineTo(cliped_polygon[0],cliped_polygon[1]);
-						path.close();
-						//draw the path
-
-						continue;
-					}
+					SkPaint paint;
+    				paint.setAntiAlias(true);
+					paint.setColor(SK_ColorCYAN);
+					path.moveTo((*possible_cliped_polygon).col(0)[0],(*possible_cliped_polygon).col(0)[1]);
+					for(const auto& cliped_polygon : (*possible_cliped_polygon).colwise())
+						path.lineTo(cliped_polygon[0],cliped_polygon[1]);
+					path.close();
+					//draw the path
+					canvas->drawPath(path,paint);
 				}
 			}
 			

@@ -11,7 +11,7 @@ struct PolyHeadra{
     gte::ConvexMesh3<Rational> geometry;
 
     template<typename T>
-    PolyHeadra(T&& in_geometry) : geometry{in_geometry}{
+    PolyHeadra(T&& in_geometry) : geometry{in_geometry.geometry}{
 
     }
 };
