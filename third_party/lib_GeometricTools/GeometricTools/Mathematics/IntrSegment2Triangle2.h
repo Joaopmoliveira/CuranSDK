@@ -1,17 +1,19 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.06.17
+// Version: 6.0.2023.08.08
 
 #pragma once
+
+// The queries consider the triangle to be a solid.
 
 #include <Mathematics/IntrIntervals.h>
 #include <Mathematics/IntrLine2Triangle2.h>
 #include <Mathematics/Segment.h>
-
-// The queries consider the triangle to be a solid.
+#include <array>
+#include <cstddef>
 
 namespace gte
 {
@@ -34,7 +36,7 @@ namespace gte
         Result operator()(Segment2<Real> const& segment, Triangle2<Real> const& triangle)
         {
             Result result{};
-            FIQuery<Real, Segment2<Real>, Triangle2<Real>> stQuery;
+            FIQuery<Real, Segment2<Real>, Triangle2<Real>> stQuery{};
             result.intersect = stQuery(segment, triangle).intersect;
             return result;
         }
@@ -50,6 +52,12 @@ namespace gte
             :
             public FIQuery<Real, Line2<Real>, Triangle2<Real>>::Result
         {
+            Result()
+                :
+                FIQuery<Real, Line2<Real>, Triangle2<Real>>::Result{}
+            {
+            }
+
             // No additional information to compute.
         };
 
@@ -86,7 +94,7 @@ namespace gte
                 // the t-interval is [t0,t1]. The segment intersects the
                 // triangle as long as [t0,t1] overlaps the segment t-interval
                 // [0,1].
-                FIQuery<Real, std::array<Real, 2>, std::array<Real, 2>> iiQuery;
+                FIQuery<Real, std::array<Real, 2>, std::array<Real, 2>> iiQuery{};
                 std::array<Real, 2> segInterval{ static_cast<Real>(0), static_cast<Real>(1) };
                 auto iiResult = iiQuery(result.parameter, segInterval);
                 if (iiResult.intersect)

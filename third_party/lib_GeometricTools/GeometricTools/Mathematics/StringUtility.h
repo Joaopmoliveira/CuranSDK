@@ -1,14 +1,15 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.11.22
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -35,7 +36,7 @@ namespace gte
     {
         std::string output;
         std::transform(input.begin(), input.end(), std::back_inserter(output),
-            [](int c) { return static_cast<char>(::tolower(c)); });
+            [](int32_t c) { return static_cast<char>(std::tolower(c)); });
         return output;
     }
 
@@ -43,7 +44,7 @@ namespace gte
     {
         std::string output;
         std::transform(input.begin(), input.end(), std::back_inserter(output),
-            [](int c) { return static_cast<char>(::toupper(c)); });
+            [](int32_t c) { return static_cast<char>(std::toupper(c)); });
         return output;
     }
 
@@ -53,7 +54,7 @@ namespace gte
     // vertical tab (0x0B, '\v'). See
     // https://en.cppreference.com/w/cpp/string/byte/isspace
     // for a table of ASCII values and related is* and isw* functions (with
-    // 'int ch' input) that return 0 or !0.
+    // 'int32_t ch' input) that return 0 or !0.
     inline void GetTokens(std::string const& input, std::string const& whiteSpace,
         std::vector<std::string>& tokens)
     {
@@ -100,11 +101,11 @@ namespace gte
         static std::string const whiteSpace = []
         {
             std::string temp;
-            for (int i = 0; i <= 32; ++i)
+            for (int32_t i = 0; i <= 32; ++i)
             {
                 temp += char(i);
             }
-            for (int i = 127; i < 255; ++i)
+            for (int32_t i = 127; i < 255; ++i)
             {
                 temp += char(i);
             }
@@ -124,11 +125,11 @@ namespace gte
         static std::string const whiteSpace = []
         {
             std::string temp;
-            for (int i = 0; i <= 32; ++i)
+            for (int32_t i = 0; i <= 32; ++i)
             {
-                temp += char(i);
+                temp += static_cast<char>(i);
             }
-            temp += char(127);
+            temp += static_cast<char>(127);
             return temp;
         }
         ();

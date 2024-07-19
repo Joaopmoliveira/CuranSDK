@@ -1,24 +1,27 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2024.07.15
 
 #pragma once
 
-#include <Mathematics/Logger.h>
-#include <Mathematics/GTEMath.h>
-#include <Mathematics/Array3.h>
-#include <algorithm>
-#include <array>
-#include <cstring>
-
+// The Akima interpolation is described in
+// https://en.wikipedia.org/wiki/Akima_spline
 // The interpolator is for uniformly spaced(x,y z)-values.  The input samples
 // must be stored in lexicographical order to represent f(x,y,z); that is,
 // F[c + xBound*(r + yBound*s)] corresponds to f(x,y,z), where c is the index
 // corresponding to x, r is the index corresponding to y, and s is the index
 // corresponding to z.
+
+#include <Mathematics/Logger.h>
+#include <Mathematics/Array3.h>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 
 namespace gte
 {
@@ -27,7 +30,7 @@ namespace gte
     {
     public:
         // Construction and destruction.
-        IntpAkimaUniform3(int xBound, int yBound, int zBound, Real xMin,
+        IntpAkimaUniform3(int32_t xBound, int32_t yBound, int32_t zBound, Real xMin,
             Real xSpacing, Real yMin, Real ySpacing, Real zMin, Real zSpacing,
             Real const* F)
             :
@@ -42,16 +45,16 @@ namespace gte
             mZMin(zMin),
             mZSpacing(zSpacing),
             mF(F),
-            mPoly(xBound - 1, yBound - 1, zBound - 1)
+            mPoly(static_cast<size_t>(xBound) - 1, static_cast<size_t>(yBound) - 1, static_cast<size_t>(zBound) - 1)
         {
             // At least a 3x3x3 block of data points is needed to construct
             // the estimates of the boundary derivatives.
             LogAssert(mXBound >= 3 && mYBound >= 3 && mZBound >= 3 && mF != nullptr, "Invalid input.");
             LogAssert(mXSpacing > (Real)0 && mYSpacing > (Real)0 && mZSpacing > (Real)0, "Invalid input.");
 
-            mXMax = mXMin + mXSpacing * static_cast<Real>(mXBound - 1);
-            mYMax = mYMin + mYSpacing * static_cast<Real>(mYBound - 1);
-            mZMax = mZMin + mZSpacing * static_cast<Real>(mZBound - 1);
+            mXMax = mXMin + mXSpacing * (static_cast<Real>(mXBound) - static_cast<Real>(1));
+            mYMax = mYMin + mYSpacing * (static_cast<Real>(mYBound) - static_cast<Real>(1));
+            mZMax = mZMin + mZSpacing * (static_cast<Real>(mZBound) - static_cast<Real>(1));
 
             // Create a 3D wrapper for the 1D samples.
             Array3<Real> Fmap(mXBound, mYBound, mZBound, const_cast<Real*>(mF));
@@ -61,16 +64,16 @@ namespace gte
             Array3<Real> FY(mXBound, mYBound, mZBound);
             Array3<Real> FZ(mXBound, mYBound, mZBound);
             GetFX(Fmap, FX);
-            GetFX(Fmap, FY);
-            GetFX(Fmap, FZ);
+            GetFY(Fmap, FY);
+            GetFZ(Fmap, FZ);
 
             // Construct second-order derivatives.
             Array3<Real> FXY(mXBound, mYBound, mZBound);
             Array3<Real> FXZ(mXBound, mYBound, mZBound);
             Array3<Real> FYZ(mXBound, mYBound, mZBound);
-            GetFX(Fmap, FXY);
-            GetFX(Fmap, FXZ);
-            GetFX(Fmap, FYZ);
+            GetFXY(Fmap, FXY);
+            GetFXZ(Fmap, FXZ);
+            GetFYZ(Fmap, FYZ);
 
             // Construct third-order derivatives.
             Array3<Real> FXYZ(mXBound, mYBound, mZBound);
@@ -83,22 +86,22 @@ namespace gte
         ~IntpAkimaUniform3() = default;
 
         // Member access.
-        inline int GetXBound() const
+        inline int32_t GetXBound() const
         {
             return mXBound;
         }
 
-        inline int GetYBound() const
+        inline int32_t GetYBound() const
         {
             return mYBound;
         }
 
-        inline int GetZBound() const
+        inline int32_t GetZBound() const
         {
             return mZBound;
         }
 
-        inline int GetQuantity() const
+        inline int32_t GetQuantity() const
         {
             return mQuantity;
         }
@@ -166,7 +169,7 @@ namespace gte
             x = std::min(std::max(x, mXMin), mXMax);
             y = std::min(std::max(y, mYMin), mYMax);
             z = std::min(std::max(z, mZMin), mZMax);
-            int ix, iy, iz;
+            int32_t ix, iy, iz;
             Real dx, dy, dz;
             XLookup(x, ix, dx);
             YLookup(y, iy, dy);
@@ -174,12 +177,12 @@ namespace gte
             return mPoly[iz][iy][ix](dx, dy, dz);
         }
 
-        Real operator()(int xOrder, int yOrder, int zOrder, Real x, Real y, Real z) const
+        Real operator()(int32_t xOrder, int32_t yOrder, int32_t zOrder, Real x, Real y, Real z) const
         {
             x = std::min(std::max(x, mXMin), mXMax);
             y = std::min(std::max(y, mYMin), mYMax);
             z = std::min(std::max(z, mZMin), mZMax);
-            int ix, iy, iz;
+            int32_t ix, iy, iz;
             Real dx, dy, dz;
             XLookup(x, ix, dx);
             YLookup(y, iy, dy);
@@ -205,7 +208,7 @@ namespace gte
             // P(x,y,z) = sum_{i=0}^3 sum_{j=0}^3 sum_{k=0}^3 a_{ijk} x^i y^j z^k.
             // The tensor term A[ix][iy][iz] corresponds to the polynomial term
             // x^{ix} y^{iy} z^{iz}.
-            Real& A(int ix, int iy, int iz)
+            Real& A(int32_t ix, int32_t iy, int32_t iz)
             {
                 return mCoeff[ix][iy][iz];
             }
@@ -231,7 +234,7 @@ namespace gte
                 return p;
             }
 
-            Real operator()(int xOrder, int yOrder, int zOrder, Real x, Real y, Real z) const
+            Real operator()(int32_t xOrder, int32_t yOrder, int32_t zOrder, Real x, Real y, Real z) const
             {
                 std::array<Real, 4> xPow;
                 switch (xOrder)
@@ -349,9 +352,9 @@ namespace gte
         // Support for construction.
         void GetFX(Array3<Real> const& F, Array3<Real>& FX)
         {
-            Array3<Real> slope(mXBound + 3, mYBound, mZBound);
+            Array3<Real> slope(static_cast<size_t>(mXBound) + 3, mYBound, mZBound);
             Real invDX = (Real)1 / mXSpacing;
-            int ix, iy, iz;
+            int32_t ix, iy, iz;
             for (iz = 0; iz < mZBound; ++iz)
             {
                 for (iy = 0; iy < mYBound; ++iy)
@@ -363,8 +366,8 @@ namespace gte
 
                     slope[iz][iy][1] = (Real)2 * slope[iz][iy][2] - slope[iz][iy][3];
                     slope[iz][iy][0] = (Real)2 * slope[iz][iy][1] - slope[iz][iy][2];
-                    slope[iz][iy][mXBound + 1] = (Real)2 * slope[iz][iy][mXBound] - slope[iz][iy][mXBound - 1];
-                    slope[iz][iy][mXBound + 2] = (Real)2 * slope[iz][iy][mXBound + 1] - slope[iz][iy][mXBound];
+                    slope[iz][iy][static_cast<size_t>(mXBound) + 1] = (Real)2 * slope[iz][iy][mXBound] - slope[iz][iy][static_cast<size_t>(mXBound) - 1];
+                    slope[iz][iy][static_cast<size_t>(mXBound) + 2] = (Real)2 * slope[iz][iy][static_cast<size_t>(mXBound) + 1] - slope[iz][iy][mXBound];
                 }
             }
 
@@ -382,9 +385,9 @@ namespace gte
 
         void GetFY(Array3<Real> const& F, Array3<Real>& FY)
         {
-            Array3<Real> slope(mYBound + 3, mXBound, mZBound);
+            Array3<Real> slope(static_cast<size_t>(mYBound) + 3, mXBound, mZBound);
             Real invDY = (Real)1 / mYSpacing;
-            int ix, iy, iz;
+            int32_t ix, iy, iz;
             for (iz = 0; iz < mZBound; ++iz)
             {
                 for (ix = 0; ix < mXBound; ++ix)
@@ -396,8 +399,8 @@ namespace gte
 
                     slope[iz][ix][1] = (Real)2 * slope[iz][ix][2] - slope[iz][ix][3];
                     slope[iz][ix][0] = (Real)2 * slope[iz][ix][1] - slope[iz][ix][2];
-                    slope[iz][ix][mYBound + 1] = (Real)2 * slope[iz][ix][mYBound] - slope[iz][ix][mYBound - 1];
-                    slope[iz][ix][mYBound + 2] = (Real)2 * slope[iz][ix][mYBound + 1] - slope[iz][ix][mYBound];
+                    slope[iz][ix][static_cast<size_t>(mYBound) + 1] = (Real)2 * slope[iz][ix][mYBound] - slope[iz][ix][static_cast<size_t>(mYBound) - 1];
+                    slope[iz][ix][static_cast<size_t>(mYBound) + 2] = (Real)2 * slope[iz][ix][static_cast<size_t>(mYBound) + 1] - slope[iz][ix][mYBound];
                 }
             }
 
@@ -415,9 +418,9 @@ namespace gte
 
         void GetFZ(Array3<Real> const& F, Array3<Real>& FZ)
         {
-            Array3<Real> slope(mZBound + 3, mXBound, mYBound);
+            Array3<Real> slope(static_cast<size_t>(mZBound) + 3, mXBound, mYBound);
             Real invDZ = (Real)1 / mZSpacing;
-            int ix, iy, iz;
+            int32_t ix, iy, iz;
             for (iy = 0; iy < mYBound; ++iy)
             {
                 for (ix = 0; ix < mXBound; ++ix)
@@ -429,8 +432,8 @@ namespace gte
 
                     slope[iy][ix][1] = (Real)2 * slope[iy][ix][2] - slope[iy][ix][3];
                     slope[iy][ix][0] = (Real)2 * slope[iy][ix][1] - slope[iy][ix][2];
-                    slope[iy][ix][mZBound + 1] = (Real)2 * slope[iy][ix][mZBound] - slope[iy][ix][mZBound - 1];
-                    slope[iy][ix][mZBound + 2] = (Real)2 * slope[iy][ix][mZBound + 1] - slope[iy][ix][mZBound];
+                    slope[iy][ix][static_cast<size_t>(mZBound) + 1] = (Real)2 * slope[iy][ix][mZBound] - slope[iy][ix][static_cast<size_t>(mZBound) - 1];
+                    slope[iy][ix][static_cast<size_t>(mZBound) + 2] = (Real)2 * slope[iy][ix][static_cast<size_t>(mZBound) + 1] - slope[iy][ix][mZBound];
                 }
             }
 
@@ -448,11 +451,11 @@ namespace gte
 
         void GetFXY(Array3<Real> const& F, Array3<Real>& FXY)
         {
-            int xBoundM1 = mXBound - 1;
-            int yBoundM1 = mYBound - 1;
-            int ix0 = xBoundM1, ix1 = ix0 - 1, ix2 = ix1 - 1;
-            int iy0 = yBoundM1, iy1 = iy0 - 1, iy2 = iy1 - 1;
-            int ix, iy, iz;
+            int32_t xBoundM1 = mXBound - 1;
+            int32_t yBoundM1 = mYBound - 1;
+            int32_t ix0 = xBoundM1, ix1 = ix0 - 1, ix2 = ix1 - 1;
+            int32_t iy0 = yBoundM1, iy1 = iy0 - 1, iy2 = iy1 - 1;
+            int32_t ix, iy, iz;
 
             Real invDXDY = (Real)1 / (mXSpacing * mYSpacing);
             for (iz = 0; iz < mZBound; ++iz)
@@ -545,11 +548,11 @@ namespace gte
 
         void GetFXZ(Array3<Real> const& F, Array3<Real> & FXZ)
         {
-            int xBoundM1 = mXBound - 1;
-            int zBoundM1 = mZBound - 1;
-            int ix0 = xBoundM1, ix1 = ix0 - 1, ix2 = ix1 - 1;
-            int iz0 = zBoundM1, iz1 = iz0 - 1, iz2 = iz1 - 1;
-            int ix, iy, iz;
+            int32_t xBoundM1 = mXBound - 1;
+            int32_t zBoundM1 = mZBound - 1;
+            int32_t ix0 = xBoundM1, ix1 = ix0 - 1, ix2 = ix1 - 1;
+            int32_t iz0 = zBoundM1, iz1 = iz0 - 1, iz2 = iz1 - 1;
+            int32_t ix, iy, iz;
 
             Real invDXDZ = (Real)1 / (mXSpacing * mZSpacing);
             for (iy = 0; iy < mYBound; ++iy)
@@ -642,11 +645,11 @@ namespace gte
 
         void GetFYZ(Array3<Real> const& F, Array3<Real> & FYZ)
         {
-            int yBoundM1 = mYBound - 1;
-            int zBoundM1 = mZBound - 1;
-            int iy0 = yBoundM1, iy1 = iy0 - 1, iy2 = iy1 - 1;
-            int iz0 = zBoundM1, iz1 = iz0 - 1, iz2 = iz1 - 1;
-            int ix, iy, iz;
+            int32_t yBoundM1 = mYBound - 1;
+            int32_t zBoundM1 = mZBound - 1;
+            int32_t iy0 = yBoundM1, iy1 = iy0 - 1, iy2 = iy1 - 1;
+            int32_t iz0 = zBoundM1, iz1 = iz0 - 1, iz2 = iz1 - 1;
+            int32_t ix, iy, iz;
 
             Real invDYDZ = (Real)1 / (mYSpacing * mZSpacing);
             for (ix = 0; ix < mXBound; ++ix)
@@ -739,10 +742,10 @@ namespace gte
 
         void GetFXYZ(Array3<Real> const& F, Array3<Real> & FXYZ)
         {
-            int xBoundM1 = mXBound - 1;
-            int yBoundM1 = mYBound - 1;
-            int zBoundM1 = mZBound - 1;
-            int ix, iy, iz, ix0, iy0, iz0;
+            int32_t xBoundM1 = mXBound - 1;
+            int32_t yBoundM1 = mYBound - 1;
+            int32_t zBoundM1 = mZBound - 1;
+            int32_t ix, iy, iz, ix0, iy0, iz0;
 
             Real invDXDYDZ = ((Real)1) / (mXSpacing * mYSpacing * mZSpacing);
 
@@ -945,14 +948,14 @@ namespace gte
             Array3<Real> const& FY, Array3<Real> const& FZ, Array3<Real> const& FXY,
             Array3<Real> const& FXZ, Array3<Real> const& FYZ, Array3<Real> const& FXYZ)
         {
-            int xBoundM1 = mXBound - 1;
-            int yBoundM1 = mYBound - 1;
-            int zBoundM1 = mZBound - 1;
-            for (int iz = 0; iz < zBoundM1; ++iz)
+            int32_t xBoundM1 = mXBound - 1;
+            int32_t yBoundM1 = mYBound - 1;
+            int32_t zBoundM1 = mZBound - 1;
+            for (int32_t iz = 0; iz < zBoundM1; ++iz)
             {
-                for (int iy = 0; iy < yBoundM1; ++iy)
+                for (int32_t iy = 0; iy < yBoundM1; ++iy)
                 {
-                    for (int ix = 0; ix < xBoundM1; ++ix)
+                    for (int32_t ix = 0; ix < xBoundM1; ++ix)
                     {
                         // Note the 'transposing' of the 2x2x2 blocks (to match
                         // notation used in the polynomial definition).
@@ -1360,11 +1363,12 @@ namespace gte
                 invDX * invDY * invDZ;
         }
 
-        void XLookup(Real x, int& xIndex, Real& dx) const
+        void XLookup(Real x, int32_t& xIndex, Real& dx) const
         {
-            for (xIndex = 0; xIndex + 1 < mXBound; ++xIndex)
+            int32_t xIndexP1;
+            for (xIndex = 0, xIndexP1 = 1; xIndexP1 < mXBound; ++xIndex, ++xIndexP1)
             {
-                if (x < mXMin + mXSpacing * (xIndex + 1))
+                if (x < mXMin + mXSpacing * static_cast<Real>(xIndexP1))
                 {
                     dx = x - (mXMin + mXSpacing * xIndex);
                     return;
@@ -1375,11 +1379,12 @@ namespace gte
             dx = x - (mXMin + mXSpacing * xIndex);
         }
 
-        void YLookup(Real y, int& yIndex, Real & dy) const
+        void YLookup(Real y, int32_t& yIndex, Real & dy) const
         {
-            for (yIndex = 0; yIndex + 1 < mYBound; ++yIndex)
+            int32_t yIndexP1;
+            for (yIndex = 0, yIndexP1 = 1; yIndexP1 < mYBound; ++yIndex, ++yIndexP1)
             {
-                if (y < mYMin + mYSpacing * (yIndex + 1))
+                if (y < mYMin + mYSpacing * static_cast<Real>(yIndexP1))
                 {
                     dy = y - (mYMin + mYSpacing * yIndex);
                     return;
@@ -1390,11 +1395,12 @@ namespace gte
             dy = y - (mYMin + mYSpacing * yIndex);
         }
 
-        void ZLookup(Real z, int& zIndex, Real & dz) const
+        void ZLookup(Real z, int32_t& zIndex, Real & dz) const
         {
-            for (zIndex = 0; zIndex + 1 < mZBound; ++zIndex)
+            int32_t zIndexP1;
+            for (zIndex = 0, zIndexP1 = 1; zIndexP1 < mZBound; ++zIndex, ++zIndexP1)
             {
-                if (z < mZMin + mZSpacing * (zIndex + 1))
+                if (z < mZMin + mZSpacing * static_cast<Real>(zIndexP1))
                 {
                     dz = z - (mZMin + mZSpacing * zIndex);
                     return;
@@ -1405,7 +1411,7 @@ namespace gte
             dz = z - (mZMin + mZSpacing * zIndex);
         }
 
-        int mXBound, mYBound, mZBound, mQuantity;
+        int32_t mXBound, mYBound, mZBound, mQuantity;
         Real mXMin, mXMax, mXSpacing;
         Real mYMin, mYMax, mYSpacing;
         Real mZMin, mZMax, mZSpacing;

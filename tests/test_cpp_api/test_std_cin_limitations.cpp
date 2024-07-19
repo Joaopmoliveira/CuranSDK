@@ -366,9 +366,31 @@ class BadProtocolForLackOfSignature{
 	};
 };
 
-int main(){
-    Server<GoodProtocol> protocol;
+#include <array>
 
+std::array<double,3> arr;
+
+std::array<double,3> arr2;
+
+void incrementor(size_t adress){
+
+    std::cout << adress << std::endl;
+    arr2[adress] = 1;
+}
+
+int main(){
+    size_t t = 0;
+    arr[t++] = 1;
+    std::cout << t << std::endl;
+    for(const auto& v : arr)
+        std::cout << v << " ";
+    std::cout << std::endl;
+    t = 0;
+    incrementor(t++);
+    std::cout << t << std::endl;
+    for(const auto& v : arr2)
+        std::cout << v << " ";
+    std::cout << std::endl;
     //Server<PretendToBeGoodProtocol> protocol1;
 
     //Server<BadProtocol> protocol2;

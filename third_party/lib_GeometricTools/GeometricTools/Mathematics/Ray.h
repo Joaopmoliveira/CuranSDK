@@ -1,21 +1,22 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Vector.h>
 
 // The ray is represented as P+t*D, where P is the ray origin, D is a
 // unit-length direction vector, and t >= 0.  The user must ensure that D is
 // unit length.
 
+#include <Mathematics/Vector.h>
+#include <cstdint>
+
 namespace gte
 {
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class Ray
     {
     public:

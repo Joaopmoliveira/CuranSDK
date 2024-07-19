@@ -1,18 +1,22 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.1.2020.09.08
+// Version: 6.0.2023.08.08
 
 #pragma once
 
-#include <Mathematics/Logger.h>
-#include <Mathematics/ArbitraryPrecision.h>
-
 // The interval [e0,e1] must satisfy e0 <= e1. Expose this define to trap
 // invalid construction where e0 > e1.
-#define GTE_THROW_ON_INVALID_APINTERVAL
+//#define GTE_THROW_ON_INVALID_APINTERVAL
+
+#include <Mathematics/Logger.h>
+#include <Mathematics/ArbitraryPrecision.h>
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <type_traits>
 
 namespace gte
 {

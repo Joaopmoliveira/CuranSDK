@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <cmath>
-#include <functional>
 
 // This is an implementation of Brent's Method for computing a root of a
 // function on an interval [t0,t1] for which F(t0)*F(t1) < 0.  The method
@@ -38,6 +35,11 @@
 //       |tsub1 - tsub0| <= tolerance.  This parameter is that tolerance
 //       and should be nonnegative.
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <functional>
+
 namespace gte
 {
     template <typename Real>
@@ -51,7 +53,7 @@ namespace gte
         // cannot know that.  The function also returns 'false' if t0 >= t1.
 
         static bool Find(std::function<Real(Real)> const& F, Real t0, Real t1,
-            unsigned int maxIterations, Real negFTolerance, Real posFTolerance,
+            uint32_t maxIterations, Real negFTolerance, Real posFTolerance,
             Real stepTTolerance, Real convTTolerance, Real& root)
         {
             // Parameter validation.
@@ -103,7 +105,7 @@ namespace gte
             bool prevBisected = true;
 
             // The root search.
-            for (unsigned int i = 0; i < maxIterations; ++i)
+            for (uint32_t i = 0; i < maxIterations; ++i)
             {
                 Real fDiff01 = f0 - f1, fDiff02 = f0 - f2, fDiff12 = f1 - f2;
                 Real invFDiff01 = ((Real)1) / fDiff01;

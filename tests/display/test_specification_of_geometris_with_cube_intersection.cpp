@@ -116,7 +116,8 @@ int main()
 			return 1;
 
 		VolumetricMask mask{*volume};
-
+		curan::geometry::Icosahedron cube{curan::geometry::Alignemnt::CORNER_ALIGNED};
+		mask.add_geometry(cube);
 		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
 		curan::ui::SlidingPanel *panel_pointer = image_display.get();
 

@@ -1,19 +1,21 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.06.16
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DistRaySegment.h>
-#include <Mathematics/IntrIntervals.h>
-#include <Mathematics/IntrLine3Capsule3.h>
 
 // The queries consider the capsule to be a solid.
 //
 // The test-intersection queries are based on distance computations.
+
+#include <Mathematics/DistRaySegment.h>
+#include <Mathematics/IntrIntervals.h>
+#include <Mathematics/IntrLine3Capsule3.h>
+#include <array>
+#include <cstddef>
 
 namespace gte
 {
@@ -52,8 +54,13 @@ namespace gte
             :
             public FIQuery<T, Line3<T>, Capsule3<T>>::Result
         {
+            Result()
+                :
+                FIQuery<T, Line3<T>, Capsule3<T>>::Result{}
+            {
+            }
+
             // No additional information to compute.
-            Result() = default;
         };
 
         Result operator()(Ray3<T> const& ray, Capsule3<T> const& capsule)

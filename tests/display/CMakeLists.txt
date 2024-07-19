@@ -340,3 +340,16 @@ PUBLIC
 ${ITK_LIBRARIES}
 userinterface
 )
+
+
+# ----------------------------------------
+
+add_executable(test_memory_signal test_memory_signal.cpp)
+
+target_compile_definitions(test_memory_signal PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_memory_signal
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+)

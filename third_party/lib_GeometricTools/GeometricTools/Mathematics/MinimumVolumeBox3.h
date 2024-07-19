@@ -1,18 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.9.2021.04.22
+// Version: 6.0.2023.08.08
 
 #pragma once
-#include <Mathematics/Logger.h>
-#include <Mathematics/ConvexHull3.h>
-#include <Mathematics/MinimumAreaBox2.h>
-#include <Mathematics/VETManifoldMesh.h>
-#include <Mathematics/AlignedBox.h>
-#include <Mathematics/UniqueVerticesSimplices.h>
-#include <cstring>
 
 // Compute a minimum-volume oriented box containing the specified points. The
 // algorithm is really about computing the minimum-volume box containing the
@@ -33,27 +26,44 @@
 // to obtain the exact minimum-volume box, but you will obtain a good
 // approximation to it based on how many samples the minimizer uses in its
 // search. You can also derive from a class and override the virtual
-// functions that are used for minimization in order to provided your own
+// functions that are used for minimization in order to provide your own
 // minimizer algorithm.
+
+#include <Mathematics/Logger.h>
+#include <Mathematics/ConvexHull3.h>
+#include <Mathematics/MinimumAreaBox2.h>
+#include <Mathematics/VETManifoldMesh.h>
+#include <Mathematics/AlignedBox.h>
+#include <Mathematics/UniqueVerticesSimplices.h>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <map>
+#include <thread>
+#include <type_traits>
+#include <vector>
 
 namespace gte
 {
     // The InputType is 'float' or 'double'. The ComputeType is 'double' when
-    // computeDouble is 'true' or it is the appropriate fixed-precision
-    // BSNumber<> class when computeDouble is 'false'. If you use rational
+    // ComputeDouble is 'true' or it is the appropriate fixed-precision
+    // BSNumber<> class when ComputeDouble is 'false'. If you use rational
     // arithmetic for the computations, you must increase the default program
     // stack size significantly. In Microsoft Visual Studio, I set the Stack
     // Reserve Size to 1 GB (which is 1073741824 bytes and is probably much
     // more than required.).
-    template <typename InputType, bool computeDouble>
+    template <typename InputType, bool ComputeDouble>
     class MinimumVolumeBox3
     {
     public:
         // Supporting constants and types for numerical computing.
-        static int constexpr NumWords = std::is_same<InputType, float>::value ? 342 : 2561;
+        static int32_t constexpr NumWords = std::is_same<InputType, float>::value ? 342 : 2561;
         using UIntegerType = UIntegerFP32<NumWords>;
-        using ComputeType = typename std::conditional<computeDouble, double, BSNumber<UIntegerType>>::type;
-        using RationalType = typename std::conditional<computeDouble, double, BSRational<UIntegerType>>::type;
+        using ComputeType = typename std::conditional<ComputeDouble, double, BSNumber<UIntegerType>>::type;
+        using RationalType = typename std::conditional<ComputeDouble, double, BSRational<UIntegerType>>::type;
         using VCompute3 = Vector3<ComputeType>;
         using RVCompute3 = Vector3<RationalType>;
 
@@ -139,6 +149,7 @@ namespace gte
                 center(RVCompute3::Zero()),
                 axis{ RVCompute3::Zero(), RVCompute3::Zero(), RVCompute3::Zero() },
                 sqrLengthAxis(RVCompute3::Zero()),
+                scaledExtent(RVCompute3::Zero()),
                 volume(static_cast<RationalType>(0))
             {
             }
@@ -209,8 +220,8 @@ namespace gte
         // If the dimension is 0, 1 or 2, the objects returned by the
         // GetMinimumVolumeObject() and GetRationalBox() are invalid for this
         // operator()(*).
-        int operator()(
-            int numPoints,
+        int32_t operator()(
+            int32_t numPoints,
             Vector3<InputType> const* points,
             size_t lgMaxSample,
             OrientedBox3<InputType>& box,
@@ -223,10 +234,10 @@ namespace gte
             InputType const one = static_cast<InputType>(1);
             InputType const half = static_cast<InputType>(0.5);
 
-            ConvexHull3<InputType> ch3;
-            ch3(static_cast<size_t>(numPoints), points, 0);
-            size_t dimension = ch3.GetDimension();
-            auto const& hull = ch3.GetHull();
+           
+            mConvexHull3(static_cast<size_t>(numPoints), points, 0);
+            size_t dimension = mConvexHull3.GetDimension();
+            auto const& hull = mConvexHull3.GetHull();
 
             if (dimension == 0)
             {
@@ -277,7 +288,7 @@ namespace gte
 
                 // Project the input points onto the plane.
                 std::vector<Vector2<InputType>> projection(numPoints);
-                for (int i = 0; i < numPoints; ++i)
+                for (int32_t i = 0; i < numPoints; ++i)
                 {
                     Vector3<InputType> diff = points[i] - origin;
                     projection[i][0] = Dot(basis[1], diff);
@@ -304,22 +315,22 @@ namespace gte
             // polyhedron.
             std::vector<Vector3<InputType>> inVertices(numPoints);
             std::memcpy(inVertices.data(), points, inVertices.size() * sizeof(Vector3<InputType>));
-            auto const& triangles = ch3.GetHull();
-            std::vector<int> inIndices(triangles.size());
+            auto const& triangles = mConvexHull3.GetHull();
+            std::vector<int32_t> inIndices(triangles.size());
             size_t current = 0;
             for (auto index : triangles)
             {
-                inIndices[current++] = static_cast<int>(index);
+                inIndices[current++] = static_cast<int32_t>(index);
             }
 
-            UniqueVerticesSimplices<Vector3<InputType>, int, 3> uvt;
+            UniqueVerticesSimplices<Vector3<InputType>, int32_t, 3> uvt;
             std::vector<Vector3<InputType>> outVertices;
-            std::vector<int> outIndices;
+            std::vector<int32_t> outIndices;
             uvt.RemoveDuplicateAndUnusedVertices(inVertices, inIndices,
                 outVertices, outIndices);
 
-            operator()(static_cast<int>(outVertices.size()), outVertices.data(),
-                static_cast<int>(outIndices.size()), outIndices.data(),
+            operator()(static_cast<int32_t>(outVertices.size()), outVertices.data(),
+                static_cast<int32_t>(outIndices.size()), outIndices.data(),
                 lgMaxSample, box, volume);
 
             return 3;
@@ -337,10 +348,10 @@ namespace gte
         // functions to use your own minimization algorithm; see the comments
         // before MinimizerConstantT.
         void operator()(
-            int numVertices,
+            int32_t numVertices,
             Vector3<InputType> const* inVertices,
-            int numIndices,
-            int const* inIndices,
+            int32_t numIndices,
+            int32_t const* inIndices,
             size_t lgMaxSample,
             OrientedBox3<InputType>& box,
             InputType& volume)
@@ -350,18 +361,27 @@ namespace gte
                 numIndices > 0 && inIndices != nullptr &&
                 (numIndices % 3) == 0 && lgMaxSample >= 2,
                 "Invalid argument.");
-                for (int i = 0; i < numIndices; ++i)
+                for (int32_t i = 0; i < numIndices; ++i)
                 {
                     LogAssert(0 <= inIndices[i] && inIndices[i] < numVertices,
                         "Invalid index.");
                 }
 
+                // Reset old data
+                mAdjacentPool.clear();
+                mVertexAdjacent.clear();
+                mEdges.clear();
+                mTriangles.clear();
+                mEdgeIndices.clear();
+                mVertices.clear();
+                mNormals.clear();
+
                 std::vector<Vector3<InputType>> vertices(numVertices);
                 std::memcpy(vertices.data(), inVertices,
                     vertices.size() * sizeof(Vector3<InputType>));
-                std::vector<int> indices(numIndices);
+                std::vector<int32_t> indices(numIndices);
                 std::memcpy(indices.data(), inIndices,
-                    indices.size() * sizeof(int));
+                    indices.size() * sizeof(int32_t));
 
                 GenerateSubdivision(lgMaxSample);
                 CreateCompactMesh(vertices, indices);
@@ -384,6 +404,14 @@ namespace gte
         inline void GetRationalBox(RBox& rbox) const
         {
             rbox = mRBox;
+        }
+
+        // Returns the convex hull that was computed for computing the minimum-volume box.
+        // Note that convex hull is not computed when using operator()(...int32_t const* inIndices...)
+        // since that overload uses the provided convex hull.
+        inline ConvexHull3<InputType> const& GetConvexHull3() const
+        { 
+            return mConvexHull3; 
         }
 
     protected:
@@ -416,18 +444,18 @@ namespace gte
         // mAdjacentPool[mVertexAdjacent[v] + i] is a[i].
         void CreateCompactMesh(
             std::vector<Vector3<InputType>> const& vertices,
-            std::vector<int> const& indices)
+            std::vector<int32_t> const& indices)
         {
             mNumVertices = vertices.size();
             mNumTriangles = indices.size() / 3;
 
             VETManifoldMesh mesh;
-            int const* current = indices.data();
+            int32_t const* current = indices.data();
             for (size_t t = 0; t < mNumTriangles; ++t)
             {
-                int v0 = *current++;
-                int v1 = *current++;
-                int v2 = *current++;
+                int32_t v0 = *current++;
+                int32_t v1 = *current++;
+                int32_t v2 = *current++;
                 mesh.Insert(v0, v1, v2);
             }
 
@@ -442,7 +470,7 @@ namespace gte
             // is a std::unordered_map. The vertices must be sorted here to
             // satisfy condition2.
             auto const& vmap = mesh.GetVertices();
-            std::map<int, VETManifoldMesh::Vertex*> sortedVMap;
+            std::map<int32_t, VETManifoldMesh::Vertex*> sortedVMap;
             for (auto const& element : vmap)
             {
                 sortedVMap.emplace(element.first, element.second.get());
@@ -537,14 +565,14 @@ namespace gte
             }
         }
 
-        template <bool useDouble = computeDouble>
+        template <bool useDouble = ComputeDouble>
         typename std::enable_if<useDouble, void>::type
             ComputeNormal(VCompute3 const& edge0, VCompute3 const& edge1, VCompute3& normal)
         {
             normal = UnitCross(edge0, edge1);
         }
 
-        template <bool useDouble = computeDouble>
+        template <bool useDouble = ComputeDouble>
         typename std::enable_if<!useDouble, void>::type
             ComputeNormal(VCompute3 const& edge0, VCompute3 const& edge1, VCompute3& normal)
         {
@@ -841,6 +869,9 @@ namespace gte
         Candidate mMinimumVolumeObject;
         RBox mRBox;
 
+        // Convex Hull
+        ConvexHull3<InputType> mConvexHull3;
+
         // Each member function A00B10C01D11(*) corresponds to a bilinear
         // function on the domain [0,1]^2. Each corner of the domain has a
         // bilinear function value that is positive, negative or zero,
@@ -972,14 +1003,14 @@ namespace gte
         }
 
         // The subdivision-based sampling functions.
-        template <bool useDouble = computeDouble>
+        template <bool useDouble = ComputeDouble>
         typename std::enable_if<useDouble, void>::type
             Adjust(VCompute3& normal)
         {
             Normalize(normal);
         }
 
-        template <bool useDouble = computeDouble>
+        template <bool useDouble = ComputeDouble>
         typename std::enable_if<!useDouble, void>::type
             Adjust(VCompute3&)
         {

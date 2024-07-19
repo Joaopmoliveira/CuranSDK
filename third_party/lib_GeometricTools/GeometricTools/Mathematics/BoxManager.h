@@ -1,14 +1,17 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2024.07.14
 
 #pragma once
 
 #include <Mathematics/IntrAlignedBox3AlignedBox3.h>
 #include <Mathematics/EdgeKey.h>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <set>
 #include <vector>
 
@@ -40,11 +43,11 @@ namespace gte
         void Initialize()
         {
             // Get the box endpoints.
-            int intrSize = static_cast<int>(mBoxes.size()), endpSize = 2 * intrSize;
+            int32_t intrSize = static_cast<int32_t>(mBoxes.size()), endpSize = 2 * intrSize;
             mXEndpoints.resize(endpSize);
             mYEndpoints.resize(endpSize);
             mZEndpoints.resize(endpSize);
-            for (int i = 0, j = 0; i < intrSize; ++i)
+            for (int32_t i = 0, j = 0; i < intrSize; ++i)
             {
                 mXEndpoints[j].type = 0;
                 mXEndpoints[j].value = mBoxes[i].min[0];
@@ -69,7 +72,7 @@ namespace gte
                 ++j;
             }
 
-            // Sort the rectangle endpoints.
+            // Sort the box endpoints.
             std::sort(mXEndpoints.begin(), mXEndpoints.end());
             std::sort(mYEndpoints.begin(), mYEndpoints.end());
             std::sort(mZEndpoints.begin(), mZEndpoints.end());
@@ -78,26 +81,26 @@ namespace gte
             mXLookup.resize(endpSize);
             mYLookup.resize(endpSize);
             mZLookup.resize(endpSize);
-            for (int j = 0; j < endpSize; ++j)
+            for (int32_t j = 0; j < endpSize; ++j)
             {
-                mXLookup[2 * mXEndpoints[j].index + mXEndpoints[j].type] = j;
-                mYLookup[2 * mYEndpoints[j].index + mYEndpoints[j].type] = j;
-                mZLookup[2 * mZEndpoints[j].index + mZEndpoints[j].type] = j;
+                mXLookup[2 * static_cast<size_t>(mXEndpoints[j].index) + static_cast<size_t>(mXEndpoints[j].type)] = j;
+                mYLookup[2 * static_cast<size_t>(mYEndpoints[j].index) + static_cast<size_t>(mYEndpoints[j].type)] = j;
+                mZLookup[2 * static_cast<size_t>(mZEndpoints[j].index) + static_cast<size_t>(mZEndpoints[j].type)] = j;
             }
 
-            // Active set of rectangles (stored by index in array).
-            std::set<int> active;
+            // Active set of boxes (stored by index in array).
+            std::set<int32_t> active;
 
-            // Set of overlapping rectangles (stored by pairs of indices in
+            // Set of overlapping boxes (stored by pairs of indices in
             // array).
             mOverlap.clear();
 
             // Sweep through the endpoints to determine overlapping
             // x-intervals.
-            for (int i = 0; i < endpSize; ++i)
+            for (int32_t i = 0; i < endpSize; ++i)
             {
-                Endpoint& endpoint = mXEndpoints[i];
-                int index = endpoint.index;
+                Endpoint const& endpoint = mXEndpoints[i];
+                int32_t index = endpoint.index;
                 if (endpoint.type == 0)  // an interval 'begin' value
                 {
                     // In the 1D problem, the current interval overlaps with
@@ -135,20 +138,21 @@ namespace gte
         // After the system is initialized, you can move the boxes using this
         // function.  It is not enough to modify the input array of boxes
         // because the endpoint values stored internally by this class must
-        // also change.  You can also retrieve the current rectangles
+        // also change.  You can also retrieve the current boxes
         // information.
-        void SetBox(int i, AlignedBox3<Real> const& box)
+        void SetBox(int32_t i, AlignedBox3<Real> const& box)
         {
             mBoxes[i] = box;
-            mXEndpoints[mXLookup[2 * i]].value = box.min[0];
-            mXEndpoints[mXLookup[2 * i + 1]].value = box.max[0];
-            mYEndpoints[mYLookup[2 * i]].value = box.min[1];
-            mYEndpoints[mYLookup[2 * i + 1]].value = box.max[1];
-            mZEndpoints[mZLookup[2 * i]].value = box.min[2];
-            mZEndpoints[mZLookup[2 * i + 1]].value = box.max[2];
+            size_t twoI = 2 * static_cast<size_t>(i);
+            mXEndpoints[mXLookup[twoI]].value = box.min[0];
+            mXEndpoints[mXLookup[twoI + 1]].value = box.max[0];
+            mYEndpoints[mYLookup[twoI]].value = box.min[1];
+            mYEndpoints[mYLookup[twoI + 1]].value = box.max[1];
+            mZEndpoints[mZLookup[twoI]].value = box.min[2];
+            mZEndpoints[mZLookup[twoI + 1]].value = box.max[2];
         }
 
-        inline void GetBox(int i, AlignedBox3<Real>& box) const
+        inline void GetBox(int32_t i, AlignedBox3<Real>& box) const
         {
             box = mBoxes[i];
         }
@@ -164,7 +168,7 @@ namespace gte
         }
 
         // If (i,j) is in the overlap set, then box i and box j are
-        // overlapping.  The indices are those for the the input array.  The
+        // overlapping.  The indices are those for the input array.  The
         // set elements (i,j) are stored so that i < j.
         inline std::set<EdgeKey<false>> const& GetOverlap() const
         {
@@ -176,8 +180,8 @@ namespace gte
         {
         public:
             Real value; // endpoint value
-            int type;   // '0' if interval min, '1' if interval max.
-            int index;  // index of interval containing this endpoint
+            int32_t type;   // '0' if interval min, '1' if interval max.
+            int32_t index;  // index of interval containing this endpoint
 
             // Support for sorting of endpoints.
             bool operator<(Endpoint const& endpoint) const
@@ -194,23 +198,23 @@ namespace gte
             }
         };
 
-        void InsertionSort(std::vector<Endpoint>& endpoint, std::vector<int>& lookup)
+        void InsertionSort(std::vector<Endpoint>& endpoint, std::vector<int32_t>& lookup)
         {
             // Apply an insertion sort.  Under the assumption that the
-            // rectangles have not changed much since the last call, the
+            // boxes have not changed much since the last call, the
             // endpoints are nearly sorted.  The insertion sort should be very
             // fast in this case.
 
             TIQuery<Real, AlignedBox3<Real>, AlignedBox3<Real>> query;
-            int endpSize = static_cast<int>(endpoint.size());
-            for (int j = 1; j < endpSize; ++j)
+            int32_t endpSize = static_cast<int32_t>(endpoint.size());
+            for (int32_t j = 1; j < endpSize; ++j)
             {
                 Endpoint key = endpoint[j];
-                int i = j - 1;
+                int32_t i = j - 1;
                 while (i >= 0 && key < endpoint[i])
                 {
                     Endpoint e0 = endpoint[i];
-                    Endpoint e1 = endpoint[i + 1];
+                    Endpoint e1 = endpoint[static_cast<size_t>(i) + 1];
 
                     // Update the overlap status.
                     if (e0.type == 0)
@@ -250,13 +254,13 @@ namespace gte
 
                     // Reorder the items to maintain the sorted list.
                     endpoint[i] = e1;
-                    endpoint[i + 1] = e0;
-                    lookup[2 * e1.index + e1.type] = i;
-                    lookup[2 * e0.index + e0.type] = i + 1;
+                    endpoint[static_cast<size_t>(i) + 1] = e0;
+                    lookup[2 * static_cast<size_t>(e1.index) + static_cast<size_t>(e1.type)] = i;
+                    lookup[2 * static_cast<size_t>(e0.index) + static_cast<size_t>(e0.type)] = i + 1;
                     --i;
                 }
-                endpoint[i + 1] = key;
-                lookup[2 * key.index + key.type] = i + 1;
+                endpoint[static_cast<size_t>(i) + 1] = key;
+                lookup[2 * static_cast<size_t>(key.index) + static_cast<size_t>(key.type)] = i + 1;
             }
         }
 
@@ -274,6 +278,6 @@ namespace gte
         // entries.  The value mLookup[2*i] is the index of b[i] in the
         // endpoint array.  The value mLookup[2*i+1] is the index of e[i]
         // in the endpoint array.
-        std::vector<int> mXLookup, mYLookup, mZLookup;
+        std::vector<int32_t> mXLookup, mYLookup, mZLookup;
     };
 }

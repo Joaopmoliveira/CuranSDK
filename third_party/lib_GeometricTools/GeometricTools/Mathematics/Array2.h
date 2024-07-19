@@ -1,17 +1,19 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
-#include <cstddef>
-#include <vector>
-
 // The Array2 class represents a 2-dimensional array that minimizes the number
 // of new and delete calls.  The T objects are stored in a contiguous array.
+
+#include <cstddef>
+#include <cstdint>
+#include <utility>
+#include <vector>
 
 namespace gte
 {
@@ -98,12 +100,12 @@ namespace gte
             return mBound1;
         }
 
-        inline T const* operator[](int row) const
+        inline T const* operator[](int32_t row) const
         {
             return mIndirect1[row];
         }
 
-        inline T* operator[](int row)
+        inline T* operator[](int32_t row)
         {
             return mIndirect1[row];
         }

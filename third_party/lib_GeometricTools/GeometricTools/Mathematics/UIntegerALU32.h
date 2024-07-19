@@ -1,18 +1,19 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.02.21
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/BitHacks.h>
-#include <algorithm>
 
 // Support for unsigned integer arithmetic in BSNumber and BSRational.  The
 // Curiously Recurring Template Paradigm is used to allow the UInteger
 // types to share code without introducing virtual functions.
+
+#include <Mathematics/BitHacks.h>
+#include <algorithm>
+#include <cstdint>
 
 namespace gte
 {
@@ -70,12 +71,12 @@ namespace gte
                 // 'self < number' but 'numBits(1u) > numBits(1v)'.  Compare
                 // the bits one 32-bit block at a time.
                 auto const& bits = self.GetBits();
-                int bitIndex0 = numBits - 1;
-                int bitIndex1 = nNumBits - 1;
-                int block0 = bitIndex0 / 32;
-                int block1 = bitIndex1 / 32;
-                int numBlockBits0 = 1 + (bitIndex0 % 32);
-                int numBlockBits1 = 1 + (bitIndex1 % 32);
+                int32_t bitIndex0 = numBits - 1;
+                int32_t bitIndex1 = nNumBits - 1;
+                int32_t block0 = bitIndex0 / 32;
+                int32_t block1 = bitIndex1 / 32;
+                int32_t numBlockBits0 = 1 + (bitIndex0 % 32);
+                int32_t numBlockBits1 = 1 + (bitIndex1 % 32);
                 uint64_t n0shift = bits[block0];
                 uint64_t n1shift = nBits[block1];
                 while (block0 >= 0 && block1 >= 0)
@@ -142,7 +143,7 @@ namespace gte
 
             // Add the numbers considered as positive integers.  Set the last
             // block to zero in case no carry-out occurs.
-            int numBits = std::max(n0NumBits, n1NumBits) + 1;
+            int32_t numBits = std::max(n0NumBits, n1NumBits) + 1;
             self.SetNumBits(numBits);
             self.SetBack(0);
 
@@ -178,7 +179,13 @@ namespace gte
                 }
                 if (carry > 0)
                 {
+#if defined(GTE_USE_MSWINDOWS)
+#pragma warning(disable : 28020)
+#endif
                     bits[i] = (uint32_t)(carry & 0x00000000FFFFFFFFull);
+#if defined(GTE_USE_MSWINDOWS)
+#pragma warning(default : 28020)
+#endif
                 }
             }
             else
@@ -219,7 +226,7 @@ namespace gte
 
             // Create the two's-complement number n2.  We know
             // n2.GetNumElements() is the same as numElements0.
-            UInteger n2;
+            UInteger n2{};
             n2.SetNumBits(n0NumBits);
             auto& n2Bits = n2.GetBits();
             int32_t i;
@@ -280,8 +287,8 @@ namespace gte
                 // happened. Trap this problem and analyze the call stack and
                 // inputs that lead to this case if it happens again. The call
                 // stack is started by BSNumber::SubIgnoreSign(...).
-                LogWarning("The difference of the number is zero, which violates the precondition n0 > n1.");
                 self.SetNumBits(0);
+                LogError("The difference of the number is zero, which violates the precondition n0 > n1.");
             }
         }
 
@@ -294,12 +301,12 @@ namespace gte
             auto const& n1Bits = n1.GetBits();
 
             // The number of bits is at most this, possibly one bit smaller.
-            int numBits = n0NumBits + n1NumBits;
+            int32_t numBits = n0NumBits + n1NumBits;
             self.SetNumBits(numBits);
             auto& bits = self.GetBits();
 
             // Product of a single-block number with a multiple-block number.
-            UInteger product;
+            UInteger product{};
             product.SetNumBits(numBits);
             auto& pBits = product.GetBits();
 
@@ -411,7 +418,13 @@ namespace gte
                     // The leading 1-bit of the source is at a relative index
                     // such that when you add the shift amount, that bit
                     // occurs in a new block.
+#if defined(GTE_USE_MSWINDOWS)
+#pragma warning(disable : 28020)
+#endif
                     bits[i] = (prev >> rshift);
+#if defined(GTE_USE_MSWINDOWS)
+#pragma warning(default : 28020)
+#endif
                 }
             }
             else
@@ -494,7 +507,7 @@ namespace gte
         int32_t RoundUp()
         {
             UInteger const& self = *(UInteger const*)this;
-            UInteger rounded;
+            UInteger rounded{};
             rounded.Add(self, UInteger(1u));
             return ShiftRightToOdd(rounded);
         }
@@ -522,7 +535,8 @@ namespace gte
             // Shift the leading 1-bit to bit-63 of prefix.  We have consumed
             // numBlockBits, which might not be the entire budget.
             int32_t targetIndex = 63;
-            prefix <<= targetIndex - firstBitIndex;
+            int32_t shift = targetIndex - firstBitIndex;
+            prefix <<= static_cast<uint32_t>(shift);
             numRequested -= numBlockBits;
             targetIndex -= numBlockBits;
 
@@ -533,7 +547,8 @@ namespace gte
                 // will have consumed the entire budget.  For 'double', we
                 // might have to get bits from a third block.
                 uint64_t nextBlock = bits[blockIndex];
-                nextBlock <<= targetIndex - 31;  // Shift amount is positive.
+                shift = targetIndex - 31;  // Shift amount is positive.
+                nextBlock <<= static_cast<uint32_t>(shift);
                 prefix |= nextBlock;
                 numRequested -= 32;
                 targetIndex -= 32;
@@ -546,7 +561,8 @@ namespace gte
                     // and subtracted at least 32 from it.  Thus, the shift
                     // amount is positive.
                     nextBlock = bits[blockIndex];
-                    nextBlock >>= 31 - targetIndex;
+                    shift = 31 - targetIndex;
+                    nextBlock >>= static_cast<uint32_t>(shift);
                     prefix |= nextBlock;
                 }
             }

@@ -1,16 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/ApprQuery.h>
-#include <Mathematics/Array2.h>
-#include <Mathematics/GMatrix.h>
-#include <array>
 
 // The samples are (x[i],w[i]) for 0 <= i < S. Think of w as a function of
 // x, say w = f(x). The function fits the samples with a polynomial of
@@ -33,6 +28,17 @@
 // The original polynomial is evaluated as
 //   w = rng*sum_{i=0}^d c'[i]*((x-xcen)/rng)^i
 
+#include <Mathematics/ApprQuery.h>
+#include <Mathematics/Array2.h>
+#include <Mathematics/GMatrix.h>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <vector>
+
 namespace gte
 {
     template <typename Real>
@@ -40,7 +46,7 @@ namespace gte
     {
     public:
         // Initialize the model parameters to zero.
-        ApprPolynomial2(int degree)
+        ApprPolynomial2(int32_t degree)
             :
             mDegree(degree),
             mSize(degree + 1),
@@ -54,16 +60,16 @@ namespace gte
         // functions that you can call.
         virtual bool FitIndexed(
             size_t numObservations, std::array<Real, 2> const* observations,
-            size_t numIndices, int const* indices) override
+            size_t numIndices, int32_t const* indices) override
         {
             if (this->ValidIndices(numObservations, observations, numIndices, indices))
             {
-                int s, i0, i1;
+                int32_t s, i0, i1;
 
                 // Compute the powers of x.
-                int numSamples = static_cast<int>(numIndices);
-                int twoDegree = 2 * mDegree;
-                Array2<Real> xPower(twoDegree + 1, numSamples);
+                int32_t numSamples = static_cast<int32_t>(numIndices);
+                int32_t twoDegree = 2 * mDegree;
+                Array2<Real> xPower(static_cast<size_t>(twoDegree) + 1, numSamples);
                 for (s = 0; s < numSamples; ++s)
                 {
                     Real x = observations[indices[s]][0];
@@ -107,7 +113,7 @@ namespace gte
                 // Solve for the polynomial coefficients.
                 GVector<Real> coefficients = Inverse(A) * B;
                 bool hasNonzero = false;
-                for (int i = 0; i < mSize; ++i)
+                for (int32_t i = 0; i < mSize; ++i)
                 {
                     mParameters[i] = coefficients[i];
                     if (coefficients[i] != (Real)0)
@@ -161,7 +167,7 @@ namespace gte
 
         Real Evaluate(Real x) const
         {
-            int i = mDegree;
+            int32_t i = mDegree;
             Real w = mParameters[i];
             while (--i >= 0)
             {
@@ -171,7 +177,7 @@ namespace gte
         }
 
     private:
-        int mDegree, mSize;
+        int32_t mDegree, mSize;
         std::array<Real, 2> mXDomain;
         std::vector<Real> mParameters;
     };

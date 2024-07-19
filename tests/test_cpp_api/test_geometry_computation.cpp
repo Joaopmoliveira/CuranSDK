@@ -6,11 +6,7 @@
 
 #include <map>
 
-#include <Mathematics/DistPointHyperplane.h>
 #include <Mathematics/Vector2.h>
-#include <Mathematics/Logger.h>
-#include <Mathematics/EdgeKey.h>
-#include <Mathematics/TriangleKey.h>
 #include <Mathematics/IntrConvexMesh3Plane3.h>
 
 

@@ -1,21 +1,27 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/ApprQuery.h>
-#include <Mathematics/GMatrix.h>
-#include <array>
 
 // Fit the data with a polynomial of the form
 //     w = sum_{i=0}^{n-1} c[i]*x^{p[i]}
 // where p[i] are distinct nonnegative powers provided by the caller. A
 // least-squares fitting algorithm is used, but the input data is first
 // mapped to (x,w) in [-1,1]^2 for numerical robustness.
+
+#include <Mathematics/ApprQuery.h>
+#include <Mathematics/GMatrix.h>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <vector>
 
 namespace gte
 {
@@ -25,20 +31,18 @@ namespace gte
     public:
         // Initialize the model parameters to zero.  The degrees must be
         // nonnegative and strictly increasing.
-        ApprPolynomialSpecial2(std::vector<int> const& degrees)
+        ApprPolynomialSpecial2(std::vector<int32_t> const& degrees)
             :
             mDegrees(degrees),
             mParameters(degrees.size(), (Real)0)
         {
-#if !defined(GTE_NO_LOGGER)
             LogAssert(mDegrees.size() > 0, "The input array must have elements.");
-            int lastDegree = -1;
+            int32_t lastDegree = -1;
             for (auto degree : mDegrees)
             {
                 LogAssert(degree > lastDegree, "Degrees must be increasing.");
                 lastDegree = degree;
             }
-#endif
 
             mXDomain[0] = std::numeric_limits<Real>::max();
             mXDomain[1] = -mXDomain[0];
@@ -52,7 +56,7 @@ namespace gte
             // Powers of x are computed up to twice the powers when
             // constructing the fitted polynomial. Powers of x are computed
             // up to the powers for the evaluation of the fitted polynomial.
-            mXPowers.resize(2 * mDegrees.back() + 1);
+            mXPowers.resize(2 * static_cast<size_t>(mDegrees.back()) + 1);
             mXPowers[0] = (Real)1;
         }
 
@@ -60,7 +64,7 @@ namespace gte
         // functions that you can call.
         virtual bool FitIndexed(
             size_t numObservations, std::array<Real, 2> const* observations,
-            size_t numIndices, int const* indices) override
+            size_t numIndices, int32_t const* indices) override
         {
             if (this->ValidIndices(numObservations, observations, numIndices, indices))
             {
@@ -120,15 +124,15 @@ namespace gte
             x = (Real)-1 + (Real)2 * mScale[0] * (x - mXDomain[0]);
 
             // Compute relevant powers of x.
-            int jmax = mDegrees.back();
-            for (int j = 1; j <= jmax; ++j)
+            int32_t jmax = mDegrees.back();
+            for (int32_t j = 1, jm1 = 0; j <= jmax; ++j, ++jm1)
             {
-                mXPowers[j] = mXPowers[j - 1] * x;
+                mXPowers[j] = mXPowers[jm1] * x;
             }
 
             Real w = (Real)0;
-            int isup = static_cast<int>(mDegrees.size());
-            for (int i = 0; i < isup; ++i)
+            int32_t isup = static_cast<int32_t>(mDegrees.size());
+            for (int32_t i = 0; i < isup; ++i)
             {
                 Real xp = mXPowers[mDegrees[i]];
                 w += mParameters[i] * xp;
@@ -142,15 +146,15 @@ namespace gte
     private:
         // Transform the (x,w) values to (x',w') in [-1,1]^2.
         void Transform(std::array<Real, 2> const* observations, size_t numIndices,
-            int const* indices, std::vector<std::array<Real, 2>>& transformed)
+            int32_t const* indices, std::vector<std::array<Real, 2>>& transformed)
         {
-            int numSamples = static_cast<int>(numIndices);
+            int32_t numSamples = static_cast<int32_t>(numIndices);
             transformed.resize(numSamples);
 
             std::array<Real, 2> omin = observations[indices[0]];
             std::array<Real, 2> omax = omin;
             std::array<Real, 2> obs;
-            int s, i;
+            int32_t s, i;
             for (s = 1; s < numSamples; ++s)
             {
                 obs = observations[indices[s]];
@@ -192,23 +196,23 @@ namespace gte
         {
             // Set up a linear system A*X = B, where X are the polynomial
             // coefficients.
-            int size = static_cast<int>(mDegrees.size());
+            int32_t size = static_cast<int32_t>(mDegrees.size());
             GMatrix<Real> A(size, size);
             A.MakeZero();
             GVector<Real> B(size);
             B.MakeZero();
 
-            int numSamples = static_cast<int>(transformed.size());
-            int twoMaxXDegree = 2 * mDegrees.back();
-            int row, col;
-            for (int i = 0; i < numSamples; ++i)
+            int32_t numSamples = static_cast<int32_t>(transformed.size());
+            int32_t twoMaxXDegree = 2 * mDegrees.back();
+            int32_t row, col;
+            for (int32_t i = 0; i < numSamples; ++i)
             {
                 // Compute relevant powers of x.
                 Real x = transformed[i][0];
                 Real w = transformed[i][1];
-                for (int j = 0; j <= twoMaxXDegree; ++j)
+                for (int32_t j = 1, jm1 = 0; j <= twoMaxXDegree; ++j, ++jm1)
                 {
-                    mXPowers[j] = mXPowers[j - 1] * x;
+                    mXPowers[j] = mXPowers[jm1] * x;
                 }
 
                 for (row = 0; row < size; ++row)
@@ -217,7 +221,7 @@ namespace gte
                     // matrix.
                     for (col = row; col < size; ++col)
                     {
-                        A(row, col) += mXPowers[mDegrees[row] + mDegrees[col]];
+                        A(row, col) += mXPowers[static_cast<size_t>(mDegrees[row]) + static_cast<size_t>(mDegrees[col])];
                     }
 
                     // Update the right-hand side of the system.
@@ -243,7 +247,7 @@ namespace gte
             // Solve for the polynomial coefficients.
             GVector<Real> coefficients = Inverse(A) * B;
             bool hasNonzero = false;
-            for (int i = 0; i < size; ++i)
+            for (int32_t i = 0; i < size; ++i)
             {
                 mParameters[i] = coefficients[i];
                 if (coefficients[i] != (Real)0)
@@ -254,7 +258,7 @@ namespace gte
             return hasNonzero;
         }
 
-        std::vector<int> mDegrees;
+        std::vector<int32_t> mDegrees;
         std::vector<Real> mParameters;
 
         // Support for evaluation. The coefficients were generated for the

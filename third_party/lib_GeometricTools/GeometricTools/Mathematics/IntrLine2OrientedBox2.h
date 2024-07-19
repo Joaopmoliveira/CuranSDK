@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/IntrLine2AlignedBox2.h>
-#include <Mathematics/OrientedBox.h>
 
 // The queries consider the box to be a solid.
 //
@@ -16,6 +13,10 @@
 // https://www.geometrictools.com/Documentation/MethodOfSeparatingAxes.pdf
 // The find-intersection queries use parametric clipping against the four
 // edges of the box.
+
+#include <Mathematics/IntrLine2AlignedBox2.h>
+#include <Mathematics/OrientedBox.h>
+#include <cstdint>
 
 namespace gte
 {
@@ -29,6 +30,12 @@ namespace gte
             :
             public TIQuery<Real, Line2<Real>, AlignedBox2<Real>>::Result
         {
+            Result()
+                :
+                TIQuery<Real, Line2<Real>, AlignedBox2<Real>>::Result{}
+            {
+            }
+
             // No additional relevant information to compute.
         };
 
@@ -47,7 +54,7 @@ namespace gte
                 Dot(line.direction, box.axis[1])
             };
 
-            Result result;
+            Result result{};
             this->DoQuery(lineOrigin, lineDirection, box.extent, result);
             return result;
         }
@@ -63,6 +70,12 @@ namespace gte
             :
             public FIQuery<Real, Line2<Real>, AlignedBox2<Real>>::Result
         {
+            Result()
+                :
+                FIQuery<Real, Line2<Real>, AlignedBox2<Real>>::Result{}
+            {
+            }
+
             // No additional relevant information to compute.
         };
 
@@ -81,9 +94,9 @@ namespace gte
                 Dot(line.direction, box.axis[1])
             };
 
-            Result result;
+            Result result{};
             this->DoQuery(lineOrigin, lineDirection, box.extent, result);
-            for (int i = 0; i < result.numIntersections; ++i)
+            for (int32_t i = 0; i < result.numIntersections; ++i)
             {
                 result.point[i] = line.origin + result.parameter[i] * line.direction;
             }

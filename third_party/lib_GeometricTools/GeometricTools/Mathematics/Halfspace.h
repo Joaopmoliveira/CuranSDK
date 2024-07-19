@@ -1,21 +1,22 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Vector.h>
 
 // The halfspace is represented as Dot(N,X) >= c where N is a unit-length
 // normal vector, c is the plane constant, and X is any point in space.
 // The user must ensure that the normal vector is unit length.
 
+#include <Mathematics/Vector.h>
+#include <cstdint>
+
 namespace gte
 {
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class Halfspace
     {
     public:

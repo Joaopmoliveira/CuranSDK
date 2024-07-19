@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.06.17
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/IntrIntervals.h>
-#include <Mathematics/IntrLine3AlignedBox3.h>
-#include <Mathematics/Segment.h>
 
 // The test-intersection queries use the method of separating axes.
 // https://www.geometrictools.com/Documentation/MethodOfSeparatingAxes.pdf
@@ -18,6 +14,14 @@
 // clipping.  The queries consider the box to be a solid.  The algorithms
 // are described in
 // https://www.geometrictools.com/Documentation/IntersectionLineBox.pdf
+
+#include <Mathematics/IntrIntervals.h>
+#include <Mathematics/IntrLine3AlignedBox3.h>
+#include <Mathematics/Segment.h>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 
 namespace gte
 {
@@ -31,8 +35,13 @@ namespace gte
             :
             public TIQuery<T, Line3<T>, AlignedBox3<T>>::Result
         {
+            Result()
+                :
+                TIQuery<T, Line3<T>, AlignedBox3<T>>::Result{}
+            {
+            }
+
             // No additional information to compute.
-            Result() = default;
         };
 
         Result operator()(Segment3<T> const& segment, AlignedBox3<T> const& box)
@@ -60,7 +69,7 @@ namespace gte
         void DoQuery(Vector3<T> const& segOrigin, Vector3<T> const& segDirection,
             T segExtent, Vector3<T> const& boxExtent, Result& result)
         {
-            for (int i = 0; i < 3; ++i)
+            for (int32_t i = 0; i < 3; ++i)
             {
                 if (std::fabs(segOrigin[i]) > boxExtent[i] + segExtent * std::fabs(segDirection[i]))
                 {
@@ -84,8 +93,13 @@ namespace gte
             :
             public FIQuery<T, Line3<T>, AlignedBox3<T>>::Result
         {
+            Result()
+                :
+                FIQuery<T, Line3<T>, AlignedBox3<T>>::Result{}
+            {
+            }
+
             // No additional information to compute.
-            Result() = default;
         };
 
         Result operator()(Segment3<T> const& segment, AlignedBox3<T> const& box)

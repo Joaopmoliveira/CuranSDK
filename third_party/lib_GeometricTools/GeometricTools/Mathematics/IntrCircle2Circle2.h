@@ -1,9 +1,9 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
@@ -11,6 +11,10 @@
 #include <Mathematics/TIQuery.h>
 #include <Mathematics/Hypersphere.h>
 #include <Mathematics/Vector2.h>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <limits>
 
 namespace gte
 {
@@ -20,12 +24,18 @@ namespace gte
     public:
         struct Result
         {
+            Result()
+                :
+                intersect(false)
+            {
+            }
+
             bool intersect;
         };
 
         Result operator()(Circle2<Real> const& circle0, Circle2<Real> const& circle1)
         {
-            Result result;
+            Result result{};
             Vector2<Real> diff = circle0.center - circle1.center;
             result.intersect = (Length(diff) <= circle0.radius + circle1.radius);
             return result;
@@ -38,17 +48,26 @@ namespace gte
     public:
         struct Result
         {
+            Result()
+                :
+                intersect(false),
+                numIntersections(0),
+                point{ Vector2<Real>::Zero(), Vector2<Real>::Zero() },
+                circle(Vector2<Real>::Zero(), (Real)0)
+            {
+            }
+
             bool intersect;
 
             // The number of intersections is 0, 1, 2 or maxInt =
-            // std::numeric_limits<int>::max().  When 1, the circles are
+            // std::numeric_limits<int32_t>::max().  When 1, the circles are
             // tangent and intersect in a single point.  When 2, circles have
             // two transverse intersection points.  When maxInt, the circles
             // are the same.
-            int numIntersections;
+            int32_t numIntersections;
 
             // Valid only when numIntersections = 1 or 2.
-            Vector2<Real> point[2];
+            std::array<Vector2<Real>, 2> point;
 
             // Valid only when numIntersections = maxInt.
             Circle2<Real> circle;
@@ -79,7 +98,7 @@ namespace gte
             // just tangent.  If |R0-R1| < |U| < |R0+R1|, then the two circles
             // to intersect in two points.
 
-            Result result;
+            Result result{};
 
             Vector2<Real> U = circle1.center - circle0.center;
             Real USqrLen = Dot(U, U);
@@ -89,7 +108,7 @@ namespace gte
             {
                 // Circles are the same.
                 result.intersect = true;
-                result.numIntersections = std::numeric_limits<int>::max();
+                result.numIntersections = std::numeric_limits<int32_t>::max();
                 result.circle = circle0;
                 return result;
             }

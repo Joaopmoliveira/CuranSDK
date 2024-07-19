@@ -1,19 +1,24 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
+// Compute Boolean operations of disjoint sets of half-open rectangles of the
+// form [xmin,xmax)x[ymin,ymax) with xmin < xmax and ymin < ymax.
+
 #include <Mathematics/DisjointIntervals.h>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
+#include <utility>
+#include <vector>
 
 namespace gte
 {
-    // Compute Boolean operations of disjoint sets of half-open rectangles of
-    // the form [xmin,xmax)x[ymin,ymax) with xmin < xmax and ymin < ymax.
     template <typename Scalar>
     class DisjointRectangles
     {
@@ -60,12 +65,12 @@ namespace gte
         }
 
         // Move operations.
-        DisjointRectangles(DisjointRectangles&& other)
+        DisjointRectangles(DisjointRectangles&& other) noexcept
         {
             *this = std::move(other);
         }
 
-        DisjointRectangles& operator=(DisjointRectangles&& other)
+        DisjointRectangles& operator=(DisjointRectangles&& other) noexcept
         {
             mNumRectangles = other.mNumRectangles;
             mStrips = std::move(other.mStrips);
@@ -111,12 +116,12 @@ namespace gte
             }
 
             // Move operations.
-            Strip(Strip&& other)
+            Strip(Strip&& other) noexcept
             {
                 *this = std::move(other);
             }
 
-            Strip& operator=(Strip&& other)
+            Strip& operator=(Strip&& other) noexcept
             {
                 ymin = other.ymin;
                 ymax = other.ymax;
@@ -132,21 +137,21 @@ namespace gte
         };
 
         // The number of rectangles in the set.
-        inline int GetNumRectangles() const
+        inline int32_t GetNumRectangles() const
         {
             return mNumRectangles;
         }
 
         // The i-th rectangle is [xmin,xmax)x[ymin,ymax).  The values xmin,
         // xmax, ymin and ymax are valid when 0 <= i < GetNumRectangles().
-        bool GetRectangle(int i, Scalar& xmin, Scalar& xmax, Scalar& ymin, Scalar& ymax) const
+        bool GetRectangle(int32_t i, Scalar& xmin, Scalar& xmax, Scalar& ymin, Scalar& ymax) const
         {
-            int totalQuantity = 0;
+            int32_t totalQuantity = 0;
             for (auto const& strip : mStrips)
             {
                 ISet const& intervalSet = strip.intervalSet;
-                int xQuantity = intervalSet.GetNumIntervals();
-                int nextTotalQuantity = totalQuantity + xQuantity;
+                int32_t xQuantity = intervalSet.GetNumIntervals();
+                int32_t nextTotalQuantity = totalQuantity + xQuantity;
                 if (i < nextTotalQuantity)
                 {
                     i -= totalQuantity;
@@ -168,14 +173,14 @@ namespace gte
         }
 
         // The number of y-strips in the set.
-        inline int GetNumStrips() const
+        inline int32_t GetNumStrips() const
         {
-            return static_cast<int>(mStrips.size());
+            return static_cast<int32_t>(mStrips.size());
         }
 
         // The i-th strip.  The returned values are valid when
         // 0 <= i < GetStripQuantity().
-        bool GetStrip(int i, Scalar& ymin, Scalar& ymax, ISet& xIntervalSet) const
+        bool GetStrip(int32_t i, Scalar& ymin, Scalar& ymax, ISet& xIntervalSet) const
         {
             if (0 <= i && i < GetNumStrips())
             {
@@ -441,7 +446,7 @@ namespace gte
         }
 
         // The number of rectangles in the set.
-        int mNumRectangles;
+        int32_t mNumRectangles;
 
         // The y-strips of the set, each containing an x-interval set.
         std::vector<Strip> mStrips;

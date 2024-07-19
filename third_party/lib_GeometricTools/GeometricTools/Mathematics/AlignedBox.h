@@ -1,13 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Vector.h>
 
 // The box is aligned with the standard coordinate axes, which allows us to
 // represent it using minimum and maximum values along each axis.  Some
@@ -15,9 +13,13 @@
 // boxes.  The center is C and the extents are the half-lengths in each
 // coordinate-axis direction.
 
+#include <Mathematics/Vector.h>
+#include <array>
+#include <cstdint>
+
 namespace gte
 {
-    template <int N, typename T>
+    template <int32_t N, typename T>
     class AlignedBox
     {
     public:
@@ -57,7 +59,8 @@ namespace gte
 
         // Compute the vertices of the box. If index i has the bit pattern
         // i = b[N-1]...b[0], then the corner at index i is vertex[i], where
-        // vertex[i] = min[i] whern b[d] = 0 or max[i] when b[d] = 1.
+        // vertex[i][d] = min[d] whern b[d] = 0 or vertex[i][d = max[d] when
+        // b[d] = 1.
         void GetVertices(std::array<Vector<N, T>, (1 << N)>& vertex) const
         {
             int32_t const imax = (1 << N);

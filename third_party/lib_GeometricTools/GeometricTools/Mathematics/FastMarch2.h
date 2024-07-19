@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/FastMarch.h>
-#include <Mathematics/GTEMath.h>
 
 // The topic of fast marching methods are discussed in the book
 //   Level Set Methods and Fast Marching Methods:
@@ -16,6 +13,12 @@
 //     Computer Vision, and Materials Science
 //   J.A. Sethian,
 //   Cambridge University Press, 1999
+
+#include <Mathematics/FastMarch.h>
+#include <cmath>
+#include <cstddef>
+#include <limits>
+#include <vector>
 
 namespace gte
 {
@@ -107,8 +110,8 @@ namespace gte
         virtual void Iterate() override
         {
             // Remove the minimum trial value from the heap.
-            size_t i;
-            Real value;
+            size_t i = 0;
+            Real value{};
             this->mHeap.Remove(i, value);
 
             // Promote the trial value to a known value.  The value was

@@ -1,16 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.12.05
+// Version: 6.0.2023.11.20
 
 #pragma once
-
-#include <Mathematics/GTEMath.h>
-#include <algorithm>
-#include <map>
-#include <vector>
 
 // The Find functions return the number of roots, if any, and this number
 // of elements of the outputs are valid.  If the polynomial is identically
@@ -45,16 +40,28 @@
 // FOR INTERNAL USE ONLY (unit testing).  Do not define the symbol
 // GTE_ROOTS_LOW_DEGREE_UNIT_TEST in your own code.
 #if defined(GTE_ROOTS_LOW_DEGREE_UNIT_TEST)
-extern void RootsLowDegreeBlock(int);
+extern void RootsLowDegreeBlock(int32_t);
 #define GTE_ROOTS_LOW_DEGREE_BLOCK(block) RootsLowDegreeBlock(block)
 #else
 #define GTE_ROOTS_LOW_DEGREE_BLOCK(block)
 #endif
 
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <utility>
+#include <vector>
+
+// NOTE: RootsPolynomial is deprecated. For low-degree root finders, use
+// RootsLinear, RootsQuadratic, RootsCubic, and RootsQuartic. For general
+// degree, use RootsGeneralPolynomial.
+
 namespace gte
 {
     template <typename Real>
-    class RootsPolynomial
+    class RootsPolynomial // [deprecated("Use RootsGeneralPolynomial instead.")]
     {
     public:
         // Low-degree root finders.  These use exact rational arithmetic for
@@ -71,7 +78,7 @@ namespace gte
 
         template <typename Rational>
         static void SolveQuadratic(Rational const& p0, Rational const& p1,
-            Rational const& p2, std::map<Real, int>& rmMap)
+            Rational const& p2, std::map<Real, int32_t>& rmMap)
         {
             Rational const rat2 = 2;
             Rational q0 = p0 / p2;
@@ -79,7 +86,7 @@ namespace gte
             Rational q1half = q1 / rat2;
             Rational c0 = q0 - q1half * q1half;
 
-            std::map<Rational, int> rmLocalMap;
+            std::map<Rational, int32_t> rmLocalMap;
             SolveDepressedQuadratic(c0, rmLocalMap);
 
             rmMap.clear();
@@ -92,7 +99,7 @@ namespace gte
 
         template <typename Rational>
         static void SolveCubic(Rational const& p0, Rational const& p1,
-            Rational const& p2, Rational const& p3, std::map<Real, int>& rmMap)
+            Rational const& p2, Rational const& p3, std::map<Real, int32_t>& rmMap)
         {
             Rational const rat2 = 2, rat3 = 3;
             Rational q0 = p0 / p3;
@@ -102,7 +109,7 @@ namespace gte
             Rational c0 = q0 - q2third * (q1 - rat2 * q2third * q2third);
             Rational c1 = q1 - q2 * q2third;
 
-            std::map<Rational, int> rmLocalMap;
+            std::map<Rational, int32_t> rmLocalMap;
             SolveDepressedCubic(c0, c1, rmLocalMap);
 
             rmMap.clear();
@@ -116,7 +123,7 @@ namespace gte
         template <typename Rational>
         static void SolveQuartic(Rational const& p0, Rational const& p1,
             Rational const& p2, Rational const& p3, Rational const& p4,
-            std::map<Real, int>& rmMap)
+            std::map<Real, int32_t>& rmMap)
         {
             Rational const rat2 = 2, rat3 = 3, rat4 = 4, rat6 = 6;
             Rational q0 = p0 / p4;
@@ -129,7 +136,7 @@ namespace gte
             Rational c1 = q1 - rat2 * q3fourth * (q2 - rat4 * q3fourthSqr);
             Rational c2 = q2 - rat6 * q3fourthSqr;
 
-            std::map<Rational, int> rmLocalMap;
+            std::map<Rational, int32_t> rmLocalMap;
             SolveDepressedQuartic(c0, c1, c2, rmLocalMap);
 
             rmMap.clear();
@@ -145,7 +152,7 @@ namespace gte
         // and info[i] is the multiplicity of root corresponding to index i.
         template <typename Rational>
         static void GetRootInfoQuadratic(Rational const& p0, Rational const& p1,
-            Rational const& p2, std::vector<int>& info)
+            Rational const& p2, std::vector<int32_t>& info)
         {
             Rational const rat2 = 2;
             Rational q0 = p0 / p2;
@@ -160,7 +167,7 @@ namespace gte
 
         template <typename Rational>
         static void GetRootInfoCubic(Rational const& p0, Rational const& p1,
-            Rational const& p2, Rational const& p3, std::vector<int>& info)
+            Rational const& p2, Rational const& p3, std::vector<int32_t>& info)
         {
             Rational const rat2 = 2, rat3 = 3;
             Rational q0 = p0 / p3;
@@ -178,7 +185,7 @@ namespace gte
         template <typename Rational>
         static void GetRootInfoQuartic(Rational const& p0, Rational const& p1,
             Rational const& p2, Rational const& p3, Rational const& p4,
-            std::vector<int>& info)
+            std::vector<int32_t>& info)
         {
             Rational const rat2 = 2, rat3 = 3, rat4 = 4, rat6 = 6;
             Rational q0 = p0 / p4;
@@ -201,7 +208,7 @@ namespace gte
         // have at least d elements.
 
         // Find the roots on (-infinity,+infinity).
-        static int Find(int degree, Real const* c, unsigned int maxIterations, Real* roots)
+        static int32_t Find(int32_t degree, Real const* c, uint32_t maxIterations, Real* roots)
         {
             if (degree >= 0 && c)
             {
@@ -217,7 +224,7 @@ namespace gte
                     Real const one = (Real)1;
                     Real invLeading = one / c[degree];
                     Real maxValue = zero;
-                    for (int i = 0; i < degree; ++i)
+                    for (int32_t i = 0; i < degree; ++i)
                     {
                         Real value = std::fabs(c[i] * invLeading);
                         if (value > maxValue)
@@ -251,8 +258,8 @@ namespace gte
 
         // If you know that p(tmin) * p(tmax) <= 0, then there must be at
         // least one root in [tmin, tmax].  Compute it using bisection.
-        static bool Find(int degree, Real const* c, Real tmin, Real tmax,
-            unsigned int maxIterations, Real& root)
+        static bool Find(int32_t degree, Real const* c, Real tmin, Real tmax,
+            uint32_t maxIterations, Real& root)
         {
             Real const zero = (Real)0;
             Real pmin = Evaluate(degree, c, tmin);
@@ -280,7 +287,7 @@ namespace gte
                 return false;
             }
 
-            for (unsigned int i = 1; i <= maxIterations; ++i)
+            for (uint32_t i = 1; i <= maxIterations; ++i)
             {
                 root = ((Real)0.5) * (tmin + tmax);
 
@@ -316,7 +323,7 @@ namespace gte
         // Support for the Solve* functions.
         template <typename Rational>
         static void SolveDepressedQuadratic(Rational const& c0,
-            std::map<Rational, int>& rmMap)
+            std::map<Rational, int32_t>& rmMap)
         {
             Rational const zero = 0;
             if (c0 < zero)
@@ -345,7 +352,7 @@ namespace gte
 
         template <typename Rational>
         static void SolveDepressedCubic(Rational const& c0, Rational const& c1,
-            std::map<Rational, int>& rmMap)
+            std::map<Rational, int32_t>& rmMap)
         {
             // Handle the special case of c0 = 0, in which case the polynomial
             // reduces to a depressed quadratic.
@@ -469,7 +476,7 @@ namespace gte
 
         template <typename Rational>
         static void SolveDepressedQuartic(Rational const& c0, Rational const& c1,
-            Rational const& c2, std::map<Rational, int>& rmMap)
+            Rational const& c2, std::map<Rational, int32_t>& rmMap)
         {
             // Handle the special case of c0 = 0, in which case the polynomial
             // reduces to a depressed cubic.
@@ -521,11 +528,11 @@ namespace gte
                 if (c2 < zero && a1 < zero)
                 {
                     // Four simple real roots.
-                    std::map<Real, int> rmCubicMap;
+                    std::map<Real, int32_t> rmCubicMap;
                     SolveCubic(c1sqr - rat4 * c0 * c2, rat8 * c0, rat4 * c2, -rat8, rmCubicMap);
                     Rational t = (Rational)rmCubicMap.rbegin()->first;
                     Rational alphaSqr = rat2 * t - c2;
-                    Rational alpha = (Rational)std::sqrt((double)alphaSqr);
+                    Rational alpha = (Rational)std::sqrt(std::max((double)alphaSqr, 0.0));
                     double sgnC1;
                     if (c1 > zero)
                     {
@@ -566,7 +573,7 @@ namespace gte
             else if (delta < zero)
             {
                 // Two simple real roots, one complex-conjugate pair.
-                std::map<Real, int> rmCubicMap;
+                std::map<Real, int32_t> rmCubicMap;
                 SolveCubic(c1sqr - rat4 * c0 * c2, rat8 * c0, rat4 * c2, -rat8,
                     rmCubicMap);
                 Rational t = (Rational)rmCubicMap.rbegin()->first;
@@ -636,7 +643,7 @@ namespace gte
                         Rational alpha = rat2 * root0;
                         Rational beta = c2 + rat3 * root0 * root0;
                         Rational discr = alpha * alpha - rat4 * beta;
-                        Rational temp1 = (Rational)std::sqrt((double)discr);
+                        Rational temp1 = (Rational)std::sqrt(std::max((double)discr, 0.0));
                         Rational root1 = (-alpha - temp1) / rat2;
                         Rational root2 = (-alpha + temp1) / rat2;
                         rmMap.insert(std::make_pair(root0, 2));
@@ -659,91 +666,116 @@ namespace gte
 
         template <typename Rational>
         static void SolveBiquadratic(Rational const& c0, Rational const& c2,
-            std::map<Rational, int>& rmMap)
+            std::map<Rational, int32_t>& rmMap)
         {
-            // Solve 0 = x^4 + c2*x^2 + c0 = (x^2 + c2/2)^2 + a1, where
-            // a1 = c0 - c2^2/2.  We know that c0 != 0 at the time of the
-            // function call, so x = 0 is not a root.  The condition c1 = 0
-            // implies the quartic Delta = 256*c0*a1^2.
+            // Solve x^4 + c2*x^2 + c0 = 0. We know that c0 != 0 at the time
+            // of the SolveBiquadratic call, so x = 0 is not a root. Define
+            // u = -c2/2 and v = c2^2/4 - c0 = u^2 - c0. Using the quadratic
+            // formula,
+            //   x^2 is in { u-sqrt(v), u+sqrt(v) }
+            // Computing the square root,
+            //   x is in { -sqrt(u-sqrt(v)), sqrt(u-sqrt(v)),
+            //             -sqrt(u+sqrt(v)), sqrt(u+sqrt(v)) }
+            // Because we know c0 != 0, which implies 0 is not a root, it
+            // must be that u-sqrt(v) != 0 and u+sqrt(v) != 0.
+            // 
+            // Let z = a+b*i with b != 0. The square roots are +/- (c+d*i)
+            // where
+            //   c = sqrt((a+sqrt(a^2+b^2))/2)
+            //   d = sign(b) * sqrt((-a+sqrt(a^2+b^2))/2)
+            // 
+            // v > 0, u-sqrt(v) > 0 [implies u+sqrt(v) > 0]: (block 23)
+            //   Four real roots: r0, -r0, r1, -r1
+            //     r0 = sqrt(u-sqrt(v))
+            //     r1 = sqrt(u+sqrt(v))
+            // 
+            // v > 0, u+sqrt(v) < 0 [implies u-sqrt(v) < 0]: (block 24)
+            //   Two complex conjugate pairs: z0, conj(z0), -z1, -conj(z1)
+            //     z0 = sqrt(-u+sqrt(v)) * i
+            //     z1 = sqrt(-u-sqrt(v)) * i
+            // 
+            // v > 0, u-sqrt(v) < 0, u+sqrt(v) > 0: (block 25)
+            //   Two real roots, one complex conjugate pair: r0, -r0, z0, conj(z0)
+            //    r0 = sqrt(u+sqrt(v))
+            //    z0 = sqrt(-u+sqrt(v)) * i
+            //
+            // v < 0: (block 26)
+            //   Two complex conjugate pairs: z0, conj(z0), -z0, -conj(z0)
+            //     z0 = sqrt((u+sqrt(u^2-v))/2) - sqrt((-u+sqrt(u^2-v))/2) * i
+            //        = sqrt((-c2/2+sqrt(c0))/2) - sqrt((c2/2+sqrt(c0))/2) * i
+            // 
+            // v = 0, u > 0: (block 27)
+            //   Two real roots, each of multiplicity 2: r0, -r0
+            //     r0 = sqrt(u) = sqrt(-c2/2)
+            //
+            // v = 0, u < 0: (block 28)
+            //   Two complex conjugate pairs: z0, conj(z0), -z0, -conj(z0)
+            //     z0 = sqrt(-u) * i = sqrt(c2/2) * i
 
-            Rational const zero = 0, rat2 = 2, rat256 = 256;
-            Rational c2Half = c2 / rat2;
-            Rational a1 = c0 - c2Half * c2Half;
-            Rational delta = rat256 * c0 * a1 * a1;
-            if (delta > zero)
+            Rational const zero = static_cast<Rational>(0);
+            Rational u = c2 / static_cast<Rational>(-2);
+            Rational v = u * u - c0;
+            if (v > zero)
             {
-                if (c2 < zero)
+                Rational sqrtv = std::sqrt(v);
+                Rational upsqrtv = u + sqrtv;
+                // Compute u - sqrt(v) = c0 / (u + sqrt(v)) to avoid
+                // subtractive cancellation.
+                Rational umsqrtv = c0 / upsqrtv;
+                if (umsqrtv > zero)
                 {
-                    if (a1 < zero)
-                    {
-                        // Four simple roots.
-                        Rational temp0 = (Rational)std::sqrt(-(double)a1);
-                        Rational temp1 = -c2Half - temp0;
-                        Rational temp2 = -c2Half + temp0;
-                        Rational root1 = (Rational)std::sqrt((double)temp1);
-                        Rational root0 = -root1;
-                        Rational root2 = (Rational)std::sqrt((double)temp2);
-                        Rational root3 = -root2;
-                        rmMap.insert(std::make_pair(root0, 1));
-                        rmMap.insert(std::make_pair(root1, 1));
-                        rmMap.insert(std::make_pair(root2, 1));
-                        rmMap.insert(std::make_pair(root3, 1));
-                        GTE_ROOTS_LOW_DEGREE_BLOCK(23);
-                    }
-                    else  // a1 > 0
-                    {
-                        // Two simple complex conjugate pairs.
-                        // double thetaDiv2 = atan2(sqrt(a1), -c2/2) / 2.0;
-                        // double cs = cos(thetaDiv2), sn = sin(thetaDiv2);
-                        // double length = pow(c0, 0.25);
-                        // Complex z0 = length*(cs + i*sn);
-                        // Complex z0conj = length*(cs - i*sn);
-                        // Complex z1 = length*(-cs + i*sn);
-                        // Complex z1conj = length*(-cs - i*sn);
-                        GTE_ROOTS_LOW_DEGREE_BLOCK(24);
-                    }
+                    // Real roots: r0, -r0, r1, -r1
+                    // r0 = sqrt(u-sqrt(v))
+                    // r1 = sqrt(u+sqrt(v))
+                    Rational r0 = std::sqrt(umsqrtv);
+                    Rational r1 = std::sqrt(upsqrtv);
+                    rmMap.insert(std::make_pair(r0, 1));
+                    rmMap.insert(std::make_pair(-r0, 1));
+                    rmMap.insert(std::make_pair(r1, 1));
+                    rmMap.insert(std::make_pair(-r1, 1));
+                    GTE_ROOTS_LOW_DEGREE_BLOCK(23);
                 }
-                else  // c2 >= 0
+                else if (upsqrtv < zero)
                 {
-                    // Two simple complex conjugate pairs.
-                    // Complex z0 = -i*sqrt(c2/2 - sqrt(-a1));
-                    // Complex z0conj = +i*sqrt(c2/2 - sqrt(-a1));
-                    // Complex z1 = -i*sqrt(c2/2 + sqrt(-a1));
-                    // Complex z1conj = +i*sqrt(c2/2 + sqrt(-a1));
+                    // Complex roots: z0, conj(z0), -z1, -conj(z1)
+                    // z0 = sqrt(-u+sqrt(v)) * i
+                    // z1 = sqrt(-u-sqrt(v)) * i
+                    GTE_ROOTS_LOW_DEGREE_BLOCK(24);
+                }
+                else  // umsqrtv < 0 and upsqrtv > 0
+                {
+                    // Real roots: r0, -r0
+                    // Complex roots: z0, conj(z0)
+                    // r0 = sqrt(u+sqrt(v))
+                    // z0 = sqrt(-u+sqrt(v)) * i
+                    Rational r0 = std::sqrt(upsqrtv);
+                    rmMap.insert(std::make_pair(r0, 1));
+                    rmMap.insert(std::make_pair(-r0, 1));
                     GTE_ROOTS_LOW_DEGREE_BLOCK(25);
                 }
             }
-            else if (delta < zero)
+            else if (v < zero)
             {
-                // Two simple real roots.
-                Rational temp0 = (Rational)std::sqrt(-(double)a1);
-                Rational temp1 = -c2Half + temp0;
-                Rational root1 = (Rational)std::sqrt((double)temp1);
-                Rational root0 = -root1;
-                rmMap.insert(std::make_pair(root0, 1));
-                rmMap.insert(std::make_pair(root1, 1));
-
-                // One complex conjugate pair.
-                // Complex z0 = -i*sqrt(c2/2 + sqrt(-a1));
-                // Complex z0conj = +i*sqrt(c2/2 + sqrt(-a1));
+                // Complex roots: z0, conj(z0), -z0, -conj(z0)
+                // z0 = sqrt((u+sqrt(u^2-v))/2)
+                //      - sqrt((-u+sqrt(u^2-v))/2) * i
                 GTE_ROOTS_LOW_DEGREE_BLOCK(26);
             }
-            else  // delta = 0
+            else // v = 0
             {
-                if (c2 < zero)
+                if (u > zero)
                 {
-                    // Two double real roots.
-                    Rational root1 = (Rational)std::sqrt(-(double)c2Half);
-                    Rational root0 = -root1;
-                    rmMap.insert(std::make_pair(root0, 2));
-                    rmMap.insert(std::make_pair(root1, 2));
+                    // Real roots: r0, r0, -r0, -r0
+                    // r0 = sqrt(u)
+                    Rational r0 = std::sqrt(u);
+                    rmMap.insert(std::make_pair(r0, 2));
+                    rmMap.insert(std::make_pair(-r0, 2));
                     GTE_ROOTS_LOW_DEGREE_BLOCK(27);
                 }
-                else  // c2 > 0
+                else  // u < 0
                 {
-                    // Two double complex conjugate pairs.
-                    // Complex z0 = -i*sqrt(c2/2);  // multiplicity 2
-                    // Complex z0conj = +i*sqrt(c2/2);  // multiplicity 2
+                    // Complex roots: z0, conj(z0), z0, conj(z0)
+                    // z0 = sqrt(-u) * i
                     GTE_ROOTS_LOW_DEGREE_BLOCK(28);
                 }
             }
@@ -752,7 +784,7 @@ namespace gte
         // Support for the GetNumRoots* functions.
         template <typename Rational>
         static void GetRootInfoDepressedQuadratic(Rational const& c0,
-            std::vector<int>& info)
+            std::vector<int32_t>& info)
         {
             Rational const zero = 0;
             if (c0 < zero)
@@ -774,7 +806,7 @@ namespace gte
 
         template <typename Rational>
         static void GetRootInfoDepressedCubic(Rational const& c0,
-            Rational const& c1, std::vector<int>& info)
+            Rational const& c1, std::vector<int32_t>& info)
         {
             // Handle the special case of c0 = 0, in which case the polynomial
             // reduces to a depressed quadratic.
@@ -817,7 +849,7 @@ namespace gte
 
         template <typename Rational>
         static void GetRootInfoDepressedQuartic(Rational const& c0,
-            Rational const& c1, Rational const& c2, std::vector<int>& info)
+            Rational const& c1, Rational const& c2, std::vector<int32_t>& info)
         {
             // Handle the special case of c0 = 0, in which case the polynomial
             // reduces to a depressed cubic.
@@ -914,70 +946,64 @@ namespace gte
 
         template <typename Rational>
         static void GetRootInfoBiquadratic(Rational const& c0,
-            Rational const& c2, std::vector<int>& info)
+            Rational const& c2, std::vector<int32_t>& info)
         {
-            // Solve 0 = x^4 + c2*x^2 + c0 = (x^2 + c2/2)^2 + a1, where
-            // a1 = c0 - c2^2/2.  We know that c0 != 0 at the time of the
-            // function call, so x = 0 is not a root.  The condition c1 = 0
-            // implies the quartic Delta = 256*c0*a1^2.
-
-            Rational const zero = 0, rat2 = 2, rat256 = 256;
-            Rational c2Half = c2 / rat2;
-            Rational a1 = c0 - c2Half * c2Half;
-            Rational delta = rat256 * c0 * a1 * a1;
-            if (delta > zero)
+            Rational const zero = static_cast<Rational>(0);
+            Rational u = c2 / static_cast<Rational>(-2);
+            Rational v = u * u - c0;
+            if (v > zero)
             {
-                if (c2 < zero)
+                Rational sqrtv = std::sqrt(v);
+                Rational upsqrtv = u + sqrtv;
+                Rational umsqrtv = c0 / upsqrtv;
+                if (umsqrtv > zero)
                 {
-                    if (a1 < zero)
-                    {
-                        // Four simple roots.
-                        info.push_back(1);
-                        info.push_back(1);
-                        info.push_back(1);
-                        info.push_back(1);
-                    }
-                    else  // a1 > 0
-                    {
-                        // Two simple complex conjugate pairs.
-                    }
+                    // Four simple roots.
+                    info.push_back(1);
+                    info.push_back(1);
+                    info.push_back(1);
+                    info.push_back(1);
                 }
-                else  // c2 >= 0
+                else if (upsqrtv < zero)
                 {
                     // Two simple complex conjugate pairs.
                 }
+                else  // umsqrtv < 0 and upsqrtv > 0
+                {
+                    // Two simple real roots, one complex conjugate pair.
+                    info.push_back(1);
+                    info.push_back(1);
+                }
             }
-            else if (delta < zero)
+            else if (v < zero)
             {
-                // Two simple real roots, one complex conjugate pair.
-                info.push_back(1);
-                info.push_back(1);
+                // Two simple complex conjugate pairs.
             }
-            else  // delta = 0
+            else // v = 0
             {
-                if (c2 < zero)
+                if (u > zero)
                 {
                     // Two double real roots.
                     info.push_back(2);
                     info.push_back(2);
                 }
-                else  // c2 > 0
+                else  // u < 0
                 {
-                    // Two double complex conjugate pairs.
+                    // Double complex conjugate pairs.
                 }
             }
         }
 
         // Support for the Find functions.
-        static int FindRecursive(int degree, Real const* c, Real tmin, Real tmax,
-            unsigned int maxIterations, Real* roots)
+        static int32_t FindRecursive(int32_t degree, Real const* c, Real tmin, Real tmax,
+            uint32_t maxIterations, Real* roots)
         {
             // The base of the recursion.
             Real const zero = (Real)0;
             Real root = zero;
             if (degree == 1)
             {
-                int numRoots;
+                int32_t numRoots;
                 if (c[1] != zero)
                 {
                     root = -c[0] / c[1];
@@ -1007,17 +1033,17 @@ namespace gte
             // becomes (d!)*x through multiple differentiations.  With the
             // scaling we instead get x.  This leads to better numerical
             // behavior of the root finder.
-            int derivDegree = degree - 1;
-            std::vector<Real> derivCoeff(derivDegree + 1);
+            int32_t derivDegree = degree - 1;
+            std::vector<Real> derivCoeff(static_cast<size_t>(derivDegree) + 1);
             std::vector<Real> derivRoots(derivDegree);
-            for (int i = 0; i <= derivDegree; ++i)
+            for (int32_t i = 0, ip1 = 1; i <= derivDegree; ++i, ++ip1)
             {
-                derivCoeff[i] = c[i + 1] * (Real)(i + 1) / (Real)degree;
+                derivCoeff[i] = c[ip1] * (Real)(ip1) / (Real)degree;
             }
-            int numDerivRoots = FindRecursive(degree - 1, &derivCoeff[0], tmin, tmax,
+            int32_t numDerivRoots = FindRecursive(degree - 1, &derivCoeff[0], tmin, tmax,
                 maxIterations, &derivRoots[0]);
 
-            int numRoots = 0;
+            int32_t numRoots = 0;
             if (numDerivRoots > 0)
             {
                 // Find root on [tmin,derivRoots[0]].
@@ -1027,9 +1053,9 @@ namespace gte
                 }
 
                 // Find root on [derivRoots[i],derivRoots[i+1]].
-                for (int i = 0; i <= numDerivRoots - 2; ++i)
+                for (int32_t i = 0, ip1 = 1; i <= numDerivRoots - 2; ++i, ++ip1)
                 {
-                    if (Find(degree, c, derivRoots[i], derivRoots[i + 1],
+                    if (Find(degree, c, derivRoots[i], derivRoots[ip1],
                         maxIterations, root))
                     {
                         roots[numRoots++] = root;
@@ -1037,7 +1063,7 @@ namespace gte
                 }
 
                 // Find root on [derivRoots[numDerivRoots-1],tmax].
-                if (Find(degree, c, derivRoots[numDerivRoots - 1], tmax,
+                if (Find(degree, c, derivRoots[static_cast<size_t>(numDerivRoots) - 1], tmax,
                     maxIterations, root))
                 {
                     roots[numRoots++] = root;
@@ -1054,9 +1080,9 @@ namespace gte
             return numRoots;
         }
 
-        static Real Evaluate(int degree, Real const* c, Real t)
+        static Real Evaluate(int32_t degree, Real const* c, Real t)
         {
-            int i = degree;
+            int32_t i = degree;
             Real result = c[i];
             while (--i >= 0)
             {

@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Hyperplane.h>
-#include <Mathematics/Vector3.h>
 
 // The tetrahedron is represented as an array of four vertices, V[i] for
 // 0 <= i <= 3. The vertices are ordered so that the triangular faces are
@@ -17,6 +14,11 @@
 // face 2 = <V[0],V[3],V[2]> and face 3 = <V[1],V[2],V[3]>. The canonical
 // tetrahedron has V[0] = (0,0,0), V[1] = (1,0,0), V[2] = (0,1,0) and
 // V[3] = (0,0,1).
+
+#include <Mathematics/Hyperplane.h>
+#include <Mathematics/Vector3.h>
+#include <array>
+#include <cstddef>
 
 namespace gte
 {
@@ -46,35 +48,145 @@ namespace gte
         {
         }
 
-
         // Get the vertex indices for the specified face. The input 'face'
         // must be in {0,1,2,3}.
-        void GetFaceIndices(size_t face, std::array<int32_t, 3>& index) const
+        static inline std::array<size_t, 3> const& GetFaceIndices(size_t face)
         {
-            if (face == 0)
+            static std::array<std::array<size_t, 3>, 4> const sFaceIndices =
+            { {
+                { 0, 2, 1 },
+                { 0, 1, 3 },
+                { 0, 3, 2 },
+                { 1, 2, 3 }
+            } };
+            return sFaceIndices[face];
+        }
+
+        static inline std::array<size_t, 12> const& GetAllFaceIndices()
+        {
+            static std::array<size_t, 12> sAllFaceIndices =
             {
-                index[0] = 0;
-                index[1] = 2;
-                index[2] = 1;
-            }
-            else if (face == 1)
+                0, 2, 1,
+                0, 1, 3,
+                0, 3, 2,
+                1, 2, 3
+            };
+            return sAllFaceIndices;
+        }
+
+        // Get the vertex indices for the specified edge. The input 'edge'
+        // must be in {0,1,2,3,4,5}.
+        static inline std::array<size_t, 2> const& GetEdgeIndices(size_t edge)
+        {
+            static std::array<std::array<size_t, 2>, 6> sEdgeIndices =
+            { {
+                { 0, 1 },
+                { 0, 2 },
+                { 0, 3 },
+                { 1, 2 },
+                { 1, 3 },
+                { 2, 3 }
+            } };
+            return sEdgeIndices[edge];
+        }
+
+        static inline std::array<size_t, 12> const& GetAllEdgeIndices()
+        {
+            static std::array<size_t, 12> sAllEdgeIndices =
             {
-                index[0] = 0;
-                index[1] = 1;
-                index[2] = 3;
-            }
-            else if (face == 2)
-            {
-                index[0] = 0;
-                index[1] = 3;
-                index[2] = 2;
-            }
-            else  // face == 3 (no index validation is performed)
-            {
-                index[0] = 1;
-                index[1] = 2;
-                index[2] = 3;
-            }
+                0, 1, 0, 2, 0, 3, 1, 2, 1, 3, 2, 3
+            };
+            return sAllEdgeIndices;
+        }
+
+        // Get the vertex indices for the edges with the appropriately ordered
+        // adjacent indices. The input 'edge' must be in {0,1,2,3,4,5}. The
+        // output is {v0,v1,v2,v3} where the edge is {v0,v1}. The triangles
+        // sharing the edge are {v0,v2,v1} and {v0,v1,v3}.
+        static inline std::array<size_t, 4> const& GetEdgeAugmented(size_t edge)
+        {
+            static std::array<std::array<size_t, 4>, 6> sEdgeAugmented =
+            { {
+                { 0, 1, 2, 3 },
+                { 0, 2, 3, 1 },
+                { 0, 3, 1, 2 },
+                { 1, 2, 0, 3 },
+                { 1, 3, 2, 0 },
+                { 2, 3, 0, 1}
+            } };
+            return sEdgeAugmented[edge];
+        }
+
+        // Get the augmented indices for the vertices with the appropriately
+        // ordered adjacent indices. The input 'vertex' must be in {0,1,2,3}.
+        // The output is {v0,v1,v2,v3} where the vertex is v0. The triangles
+        // sharing the vertex are {v0,v1,v2}, {v0,v2,v3} and {v0,v3,v1}.
+        static inline std::array<size_t, 4> const& GetVertexAugmented(size_t vertex)
+        {
+            static std::array<std::array<size_t, 4>, 4> sVertexAugmented =
+            { {
+                { 0, 1, 3, 2 },
+                { 1, 3, 0, 2 },
+                { 2, 1, 0, 3 },
+                { 3, 2, 0, 1 },
+            } };
+            return sVertexAugmented[vertex];
+        }
+
+        // Compute a face normal. The input 'face' must be in {0,1,2,3}
+        // and correspond to faces {{0,2,1},{0,1,3},{0,3,2},{1,2,3}}.
+        Vector3<T> ComputeFaceNormal(size_t face) const
+        {
+            // Compute the normal for face <v0,v1,v2>.
+            auto const& indices = GetFaceIndices(face);
+            auto edge10 = v[indices[1]] - v[indices[0]];
+            auto edge20 = v[indices[2]] - v[indices[0]];
+            auto normal = UnitCross(edge10, edge20);
+            return normal;
+        }
+
+        // Compute an edge normal, an average of the normals of the 2 faces
+        // sharing the edge. The input 'edge' must be in {0,1,2,3,4,5} and
+        // correspond to edges {{0,1},{0,2},{0,3},{1,2},{1,3},{2,3}}.
+        Vector3<T> ComputeEdgeNormal(size_t edge) const
+        {
+            // Compute the weighted average of normals for faces <v0,a0,v1>
+            // and <v0,v1,a1> shared by edge <v0,v1>. In the comments,
+            // E10 = V[v1]-V[v0], E20 = V[v2]-V[v0], E30 = V[v3]-V[v0] and
+            // E23 = V[i2]-V[i3]. The unnormalized vector is
+            //   N = E20 x E10 + E10 x E30
+            //     = E20 x E10 - E30 x E10
+            //     = (E20 - E30) x E10
+            //     = E23 x E10
+            auto const& indices = GetEdgeAugmented(edge);
+            auto edge23 = v[indices[2]] - v[indices[3]];
+            auto edge10 = v[indices[1]] - v[indices[0]];
+            auto normal = UnitCross(edge23, edge10);
+            return normal;
+        }
+
+        // Compute a vertex normal, an average of the normals of the 3 faces
+        // sharing the vertex. The input 'vertex' must be in {0,1,2,3} and
+        // are the indices into the tetrahedron vertex array. The algebra
+        // shows that the vertex normal is the negative normal of the face
+        // opposite the vertex.
+        Vector3<T> ComputeVertexNormal(size_t vertex) const
+        {
+            // Compute the weighted average of normals for faces <v0,v1,v2>,
+            // <v0,v2,v3> and <v0,v3,v1>. In the comments, E10 = V[v1]-V[v0],
+            // E20 = V[v2]-V[v0, E30 = V[v3]-V[v0], E12 = V[v1]-V[v2],
+            // E21 = V[v2]-V[v1] and E31 = V[v3]-V[v1]. The unnormalized
+            // vector is
+            //   N = E10 x E20 + E20 x E30 + E30 x E10
+            //     = E10 x E20 - E30 x E20 + E30 x E10 - E10 x E10
+            //     = E13 x E20 + E31 x E10
+            //     = E13 x E20 - E13 x E10
+            //     = E13 x E21
+            auto const& indices = GetVertexAugmented(vertex);
+            auto edge13 = v[indices[1]] - v[indices[3]];
+            auto edge21 = v[indices[2]] - v[indices[1]];
+            auto normal = UnitCross(edge13, edge21);
+            return normal;
         }
 
         // Construct the planes of the faces. The planes have outer pointing
@@ -107,6 +219,11 @@ namespace gte
             {
                 plane[i].constant = Dot(v[i], plane[i].normal);
             }
+        }
+
+        Vector3<T> ComputeCentroid() const
+        {
+            return (v[0] + v[1] + v[2] + v[3]) * static_cast<T>(0.25);
         }
 
         // Public member access.

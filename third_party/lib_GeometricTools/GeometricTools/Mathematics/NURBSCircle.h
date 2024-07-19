@@ -1,13 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/NURBSCurve.h>
 
 // The algorithm for representing a circle as a NURBS curve or a sphere as a
 // NURBS surface is described in
@@ -17,6 +15,9 @@
 //   NURBSQuarterCircleDegree4 implements equation (10)
 //   NURBSHalfCircleDegree3 implements equation (12)
 //   NURBSFullCircleDegree3 implements Section 2.3
+
+#include <Mathematics/NURBSCurve.h>
+#include <cmath>
 
 namespace gte
 {

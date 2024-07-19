@@ -1,17 +1,21 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <Mathematics/ParticleSystem.h>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 namespace gte
 {
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class MassSpringSurface : public ParticleSystem<N, Real>
     {
     public:
@@ -27,15 +31,15 @@ namespace gte
         // other arrays are stored similarly.
         virtual ~MassSpringSurface() = default;
 
-        MassSpringSurface(int numRows, int numCols, Real step)
+        MassSpringSurface(int32_t numRows, int32_t numCols, Real step)
             :
             ParticleSystem<N, Real>(numRows* numCols, step),
             mNumRows(numRows),
             mNumCols(numCols),
-            mConstantR(numRows* numCols),
-            mLengthR(numRows* numCols),
-            mConstantC(numRows* numCols),
-            mLengthC(numRows* numCols)
+            mConstantR(static_cast<size_t>(numRows) * static_cast<size_t>(numCols)),
+            mLengthR(static_cast<size_t>(numRows)* static_cast<size_t>(numCols)),
+            mConstantC(static_cast<size_t>(numRows)* static_cast<size_t>(numCols)),
+            mLengthC(static_cast<size_t>(numRows)* static_cast<size_t>(numCols))
         {
             std::fill(mConstantR.begin(), mConstantR.end(), (Real)0);
             std::fill(mLengthR.begin(), mLengthR.end(), (Real)0);
@@ -44,42 +48,42 @@ namespace gte
         }
 
         // Member access.
-        inline int GetNumRows() const
+        inline int32_t GetNumRows() const
         {
             return mNumRows;
         }
 
-        inline int GetNumCols() const
+        inline int32_t GetNumCols() const
         {
             return mNumCols;
         }
 
-        inline void SetMass(int r, int c, Real mass)
+        inline void SetMass(int32_t r, int32_t c, Real mass)
         {
             ParticleSystem<N, Real>::SetMass(GetIndex(r, c), mass);
         }
 
-        inline void SetPosition(int r, int c, Vector<N, Real> const& position)
+        inline void SetPosition(int32_t r, int32_t c, Vector<N, Real> const& position)
         {
             ParticleSystem<N, Real>::SetPosition(GetIndex(r, c), position);
         }
 
-        inline void SetVelocity(int r, int c, Vector<N, Real> const& velocity)
+        inline void SetVelocity(int32_t r, int32_t c, Vector<N, Real> const& velocity)
         {
             ParticleSystem<N, Real>::SetVelocity(GetIndex(r, c), velocity);
         }
 
-        inline Real const& GetMass(int r, int c) const
+        inline Real const& GetMass(int32_t r, int32_t c) const
         {
             return ParticleSystem<N, Real>::GetMass(GetIndex(r, c));
         }
 
-        inline Vector<N, Real> const& GetPosition(int r, int c) const
+        inline Vector<N, Real> const& GetPosition(int32_t r, int32_t c) const
         {
             return ParticleSystem<N, Real>::GetPosition(GetIndex(r, c));
         }
 
-        inline Vector<N, Real> const& GetVelocity(int r, int c) const
+        inline Vector<N, Real> const& GetVelocity(int32_t r, int32_t c) const
         {
             return ParticleSystem<N, Real>::GetVelocity(GetIndex(r, c));
         }
@@ -92,45 +96,45 @@ namespace gte
         // is responsible for ensuring the validity of the (r,c) inputs.
 
         // to (r+1,c)
-        inline void SetConstantR(int r, int c, Real constant)
+        inline void SetConstantR(int32_t r, int32_t c, Real constant)
         {
             mConstantR[GetIndex(r, c)] = constant;
         }
 
         // to (r+1,c)
-        inline void SetLengthR(int r, int c, Real length)
+        inline void SetLengthR(int32_t r, int32_t c, Real length)
         {
             mLengthR[GetIndex(r, c)] = length;
         }
 
         // to (r,c+1)
-        inline void SetConstantC(int r, int c, Real constant)
+        inline void SetConstantC(int32_t r, int32_t c, Real constant)
         {
             mConstantC[GetIndex(r, c)] = constant;
         }
 
         // to (r,c+1)
-        inline void SetLengthC(int r, int c, Real length)
+        inline void SetLengthC(int32_t r, int32_t c, Real length)
         {
             mLengthC[GetIndex(r, c)] = length;
         }
 
-        inline Real const& GetConstantR(int r, int c) const
+        inline Real const& GetConstantR(int32_t r, int32_t c) const
         {
             return mConstantR[GetIndex(r, c)];
         }
 
-        inline Real const& GetLengthR(int r, int c) const
+        inline Real const& GetLengthR(int32_t r, int32_t c) const
         {
             return mLengthR[GetIndex(r, c)];
         }
 
-        inline Real const& GetConstantC(int r, int c) const
+        inline Real const& GetConstantC(int32_t r, int32_t c) const
         {
             return mConstantC[GetIndex(r, c)];
         }
 
-        inline Real const& GetLengthC(int r, int c) const
+        inline Real const& GetLengthC(int32_t r, int32_t c) const
         {
             return mLengthC[GetIndex(r, c)];
         }
@@ -139,7 +143,7 @@ namespace gte
         // to provide nonzero external forces such as gravity, wind, friction,
         // and so on.  This function is called by Acceleration(...) to compute
         // the impulse F/m generated by the external force F.
-        virtual Vector<N, Real> ExternalAcceleration(int, Real,
+        virtual Vector<N, Real> ExternalAcceleration(int32_t, Real,
             std::vector<Vector<N, Real>> const&,
             std::vector<Vector<N, Real>> const&)
         {
@@ -151,7 +155,7 @@ namespace gte
         // particle i.  The positions and velocities are not necessarily
         // mPosition and mVelocity, because the ODE solver evaluates the
         // impulse function at intermediate positions.
-        virtual Vector<N, Real> Acceleration(int i, Real time,
+        virtual Vector<N, Real> Acceleration(int32_t i, Real time,
             std::vector<Vector<N, Real>> const& position,
             std::vector<Vector<N, Real>> const& velocity)
         {
@@ -166,7 +170,7 @@ namespace gte
             Vector<N, Real> diff, force;
             Real ratio;
 
-            int r, c, prev, next;
+            int32_t r, c, prev, next;
             GetCoordinates(i, r, c);
 
             if (r > 0)
@@ -208,18 +212,18 @@ namespace gte
             return acceleration;
         }
 
-        inline int GetIndex(int r, int c) const
+        inline int32_t GetIndex(int32_t r, int32_t c) const
         {
             return c + mNumCols * r;
         }
 
-        void GetCoordinates(int i, int& r, int& c) const
+        void GetCoordinates(int32_t i, int32_t& r, int32_t& c) const
         {
             c = i % mNumCols;
             r = i / mNumCols;
         }
 
-        int mNumRows, mNumCols;
+        int32_t mNumRows, mNumCols;
         std::vector<Real> mConstantR, mLengthR;
         std::vector<Real> mConstantC, mLengthC;
     };

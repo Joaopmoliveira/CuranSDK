@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.11.16
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Delaunay2.h>
-#include <Mathematics/ContScribeCircle2.h>
-#include <Mathematics/DistPointAlignedBox.h>
 
 // Quadratic interpolation of a network of triangles whose vertices are of
 // the form (x,y,f(x,y)).  This code is an implementation of the algorithm
@@ -21,16 +17,25 @@
 //   pp. 8-16, 1987
 //
 // The TriangleMesh interface must support the following:
-//   int GetNumVertices() const;
-//   int GetNumTriangles() const;
+//   int32_t GetNumVertices() const;
+//   int32_t GetNumTriangles() const;
 //   Vector2<Real> const* GetVertices() const;
-//   int const* GetIndices() const;
-//   bool GetVertices(int, std::array<Vector2<Real>, 3>&) const;
-//   bool GetIndices(int, std::array<int, 3>&) const;
-//   bool GetAdjacencies(int, std::array<int, 3>&) const;
-//   bool GetBarycentrics(int, Vector2<Real> const&,
+//   int32_t const* GetIndices() const;
+//   bool GetVertices(int32_t, std::array<Vector2<Real>, 3>&) const;
+//   bool GetIndices(int32_t, std::array<int32_t, 3>&) const;
+//   bool GetAdjacencies(int32_t, std::array<int32_t, 3>&) const;
+//   bool GetBarycentrics(int32_t, Vector2<Real> const&,
 //      std::array<Real, 3>&) const;
-//   int GetContainingTriangle(Vector2<Real> const&) const;
+//   int32_t GetContainingTriangle(Vector2<Real> const&) const;
+
+#include <Mathematics/Delaunay2.h>
+#include <Mathematics/ContScribeCircle2.h>
+#include <Mathematics/DistPointAlignedBox.h>
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 namespace gte
 {
@@ -94,12 +99,12 @@ namespace gte
             Vector2<Real> sub1;
             Vector2<Real> sub2 = tData.intersect[2];
             Vector3<Real> bary;
-            int index;
+            int32_t index;
 
             Real const zero = (Real)0, one = (Real)1;
             AlignedBox3<Real> barybox({ zero, zero, zero }, { one, one, one });
             DCPQuery<Real, Vector3<Real>, AlignedBox3<Real>> pbQuery;
-            int minIndex = 0;
+            int32_t minIndex = 0;
             Real minDistance = (Real)-1;
             Vector3<Real> minBary{ (Real)0, (Real)0, (Real)0 };
             Vector2<Real> minSub0{ (Real)0, (Real)0 };
@@ -109,16 +114,23 @@ namespace gte
             for (index = 1; index <= 6; ++index)
             {
                 sub1 = sub2;
-                if (index % 2)
+                if ((index % 2) != 0) // index is odd
                 {
-                    sub2 = V[index / 2];
+                    size_t lookup = static_cast<size_t>(index) / 2;
+                    sub2 = V[lookup];
                 }
-                else
+                else // index is even
                 {
-                    sub2 = tData.intersect[index / 2 - 1];
+                    size_t lookup = (static_cast<size_t>(index) - 1) / 2;
+                    sub2 = tData.intersect[lookup];
                 }
 
-                bool valid = ComputeBarycentrics(P, sub0, sub1, sub2, &bary[0]);
+                std::array<Real, 3> localBary{};
+                bool valid = ComputeBarycentrics(P, sub0, sub1, sub2, localBary);
+                for (int32_t k = 0; k < 3; ++k)
+                {
+                    bary[k] = localBary[k];
+                }
                 if (valid
                     && zero <= bary[0] && bary[0] <= one
                     && zero <= bary[1] && bary[1] <= one
@@ -161,11 +173,11 @@ namespace gte
             Real bez[6] =
             {
                 tData.coeff[0],
-                tData.coeff[12 + index],
-                tData.coeff[13 + (index % 6)],
-                tData.coeff[index],
-                tData.coeff[6 + index],
-                tData.coeff[1 + (index % 6)]
+                tData.coeff[12 + static_cast<size_t>(index)],
+                tData.coeff[13 + (static_cast<size_t>(index) % 6)],
+                tData.coeff[static_cast<size_t>(index)],
+                tData.coeff[6 + static_cast<size_t>(index)],
+                tData.coeff[1 + (static_cast<size_t>(index) % 6)]
             };
 
             // Evaluate Bezier quadratic.
@@ -201,7 +213,7 @@ namespace gte
             auto numVertices = mMesh->GetNumVertices();
             Vector2<Real> const* vertices = mMesh->GetVertices();
             auto numTriangles = mMesh->GetNumTriangles();
-            int const* indices = mMesh->GetIndices();
+            int32_t const* indices = mMesh->GetIndices();
 
             mFXStorage.resize(numVertices);
             mFYStorage.resize(numVertices);
@@ -217,9 +229,9 @@ namespace gte
             for (auto t = 0; t < numTriangles; ++t)
             {
                 // Get three vertices of triangle.
-                int v0 = *indices++;
-                int v1 = *indices++;
-                int v2 = *indices++;
+                int32_t v0 = *indices++;
+                int32_t v1 = *indices++;
+                int32_t v2 = *indices++;
 
                 // Compute normal vector of triangle (with positive
                 // z-component).
@@ -270,13 +282,13 @@ namespace gte
             // Compute centers of inscribed circles for triangles.
             Vector2<Real> const* vertices = mMesh->GetVertices();
             auto numTriangles = mMesh->GetNumTriangles();
-            int const* indices = mMesh->GetIndices();
+            int32_t const* indices = mMesh->GetIndices();
             mTData.resize(numTriangles);
             for (auto t = 0; t < numTriangles; ++t)
             {
-                int v0 = *indices++;
-                int v1 = *indices++;
-                int v2 = *indices++;
+                int32_t v0 = *indices++;
+                int32_t v1 = *indices++;
+                int32_t v2 = *indices++;
                 Circle2<Real> circle;
                 Inscribe(vertices[v0], vertices[v1], vertices[v2], circle);
                 mTData[t].center = circle.center;
@@ -295,7 +307,7 @@ namespace gte
             }
         }
 
-        void ComputeCrossEdgeIntersections(int t)
+        void ComputeCrossEdgeIntersections(int32_t t)
         {
             // Get the vertices of the triangle.
             std::array<Vector2<Real>, 3> V;
@@ -303,11 +315,11 @@ namespace gte
 
             // Get the centers of adjacent triangles.
             TriangleData& tData = mTData[t];
-            std::array<int, 3> adjacencies = { 0, 0, 0 };
+            std::array<int32_t, 3> adjacencies = { 0, 0, 0 };
             mMesh->GetAdjacencies(t, adjacencies);
-            for (int j0 = 2, j1 = 0; j1 < 3; j0 = j1++)
+            for (int32_t j0 = 2, j1 = 0; j1 < 3; j0 = j1++)
             {
-                int a = adjacencies[j0];
+                int32_t a = adjacencies[j0];
                 if (a >= 0)
                 {
                     // Get center of adjacent triangle's inscribing circle.
@@ -330,7 +342,7 @@ namespace gte
             }
         }
 
-        void ComputeCoefficients(int t)
+        void ComputeCoefficients(int32_t t)
         {
             // Get the vertices of the triangle.
             std::array<Vector2<Real>, 3> V;
@@ -340,24 +352,24 @@ namespace gte
             TriangleData& tData = mTData[t];
 
             // Get the sample data at main triangle vertices.
-            std::array<int, 3> indices = { 0, 0, 0 };
+            std::array<int32_t, 3> indices = { 0, 0, 0 };
             mMesh->GetIndices(t, indices);
             std::array<Jet, 3> jet;
-            for (int j = 0; j < 3; ++j)
+            for (int32_t j = 0; j < 3; ++j)
             {
-                int k = indices[j];
+                int32_t k = indices[j];
                 jet[j].F = mF[k];
                 jet[j].FX = mFX[k];
                 jet[j].FY = mFY[k];
             }
 
             // Get centers of adjacent triangles.
-            std::array<int, 3> adjacencies = { 0, 0, 0 };
+            std::array<int32_t, 3> adjacencies = { 0, 0, 0 };
             mMesh->GetAdjacencies(t, adjacencies);
             Vector2<Real> U[3];
-            for (int j0 = 2, j1 = 0; j1 < 3; j0 = j1++)
+            for (int32_t j0 = 2, j1 = 0; j1 < 3; j0 = j1++)
             {
-                int a = adjacencies[j0];
+                int32_t a = adjacencies[j0];
                 if (a >= 0)
                 {
                     // Get center of adjacent triangle's circumscribing 

@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DistPointHyperplane.h>
-#include <Mathematics/EdgeKey.h>
-#include <map>
 
 // The algorithm for splitting a mesh by a plane is described in
 // https://www.geometrictools.com/Documentation/ClipMesh.pdf
@@ -17,6 +13,14 @@
 // mesh (from the "positive" and "zero" vertices) by attaching
 // triangulated faces to the mesh, where the those faces live in
 // the splitting plane.  (TODO: Add this code.)
+
+#include <Mathematics/DistPointHyperplane.h>
+#include <Mathematics/EdgeKey.h>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <utility>
+#include <vector>
 
 namespace gte
 {
@@ -32,11 +36,11 @@ namespace gte
         // 'negIndices' and 'posIndices' are formatted similarly.
         void operator()(
             std::vector<Vector3<Real>> const& vertices,
-            std::vector<int> const& indices,
+            std::vector<int32_t> const& indices,
             Plane3<Real> const& plane,
             std::vector<Vector3<Real>>& clipVertices,
-            std::vector<int>& negIndices,
-            std::vector<int>& posIndices)
+            std::vector<int32_t>& negIndices,
+            std::vector<int32_t>& posIndices)
         {
             mSignedDistances.resize(vertices.size());
             mEMap.clear();
@@ -63,15 +67,16 @@ namespace gte
         }
 
         void ClassifyEdges(std::vector<Vector3<Real>>& clipVertices,
-            std::vector<int> const& indices)
+            std::vector<int32_t> const& indices)
         {
-            int const numTriangles = static_cast<int>(indices.size() / 3);
-            int nextIndex = static_cast<int>(clipVertices.size());
-            for (int i = 0; i < numTriangles; ++i)
+            size_t const numTriangles = indices.size() / 3;
+            int32_t nextIndex = static_cast<int32_t>(clipVertices.size());
+            for (size_t i = 0; i < numTriangles; ++i)
             {
-                int v0 = indices[3 * i + 0];
-                int v1 = indices[3 * i + 1];
-                int v2 = indices[3 * i + 2];
+                size_t threeI = 3 * static_cast<size_t>(i);
+                int32_t v0 = indices[threeI + 0];
+                int32_t v1 = indices[threeI + 1];
+                int32_t v2 = indices[threeI + 2];
                 Real sDist0 = mSignedDistances[v0];
                 Real sDist1 = mSignedDistances[v1];
                 Real sDist2 = mSignedDistances[v2];
@@ -135,15 +140,16 @@ namespace gte
             }
         }
 
-        void ClassifyTriangles(std::vector<int> const& indices,
-            std::vector<int>& negIndices, std::vector<int>& posIndices)
+        void ClassifyTriangles(std::vector<int32_t> const& indices,
+            std::vector<int32_t>& negIndices, std::vector<int32_t>& posIndices)
         {
-            int const numTriangles = static_cast<int>(indices.size() / 3);
-            for (int i = 0; i < numTriangles; ++i)
+            size_t const numTriangles = static_cast<int32_t>(indices.size() / 3);
+            for (size_t i = 0; i < numTriangles; ++i)
             {
-                int v0 = indices[3 * i + 0];
-                int v1 = indices[3 * i + 1];
-                int v2 = indices[3 * i + 2];
+                size_t threeI = 3 * static_cast<size_t>(i);
+                int32_t v0 = indices[threeI + 0];
+                int32_t v1 = indices[threeI + 1];
+                int32_t v2 = indices[threeI + 2];
                 Real sDist0 = mSignedDistances[v0];
                 Real sDist1 = mSignedDistances[v1];
                 Real sDist2 = mSignedDistances[v2];
@@ -321,18 +327,18 @@ namespace gte
             }
         }
 
-        void AppendTriangle(std::vector<int>& indices, int v0, int v1, int v2)
+        void AppendTriangle(std::vector<int32_t>& indices, int32_t v0, int32_t v1, int32_t v2)
         {
             indices.push_back(v0);
             indices.push_back(v1);
             indices.push_back(v2);
         }
 
-        void SplitTrianglePPM(std::vector<int>& negIndices,
-            std::vector<int>& posIndices, int v0, int v1, int v2)
+        void SplitTrianglePPM(std::vector<int32_t>& negIndices,
+            std::vector<int32_t>& posIndices, int32_t v0, int32_t v1, int32_t v2)
         {
-            int v12 = mEMap[EdgeKey<false>(v1, v2)].second;
-            int v20 = mEMap[EdgeKey<false>(v2, v0)].second;
+            int32_t v12 = mEMap[EdgeKey<false>(v1, v2)].second;
+            int32_t v20 = mEMap[EdgeKey<false>(v2, v0)].second;
             posIndices.push_back(v0);
             posIndices.push_back(v1);
             posIndices.push_back(v12);
@@ -344,11 +350,11 @@ namespace gte
             negIndices.push_back(v12);
         }
 
-        void SplitTriangleMMP(std::vector<int>& negIndices,
-            std::vector<int>& posIndices, int v0, int v1, int v2)
+        void SplitTriangleMMP(std::vector<int32_t>& negIndices,
+            std::vector<int32_t>& posIndices, int32_t v0, int32_t v1, int32_t v2)
         {
-            int v12 = mEMap[EdgeKey<false>(v1, v2)].second;
-            int v20 = mEMap[EdgeKey<false>(v2, v0)].second;
+            int32_t v12 = mEMap[EdgeKey<false>(v1, v2)].second;
+            int32_t v20 = mEMap[EdgeKey<false>(v2, v0)].second;
             negIndices.push_back(v0);
             negIndices.push_back(v1);
             negIndices.push_back(v12);
@@ -360,10 +366,10 @@ namespace gte
             posIndices.push_back(v12);
         }
 
-        void SplitTrianglePMZ(std::vector<int>& negIndices,
-            std::vector<int>& posIndices, int v0, int v1, int v2)
+        void SplitTrianglePMZ(std::vector<int32_t>& negIndices,
+            std::vector<int32_t>& posIndices, int32_t v0, int32_t v1, int32_t v2)
         {
-            int v01 = mEMap[EdgeKey<false>(v0, v1)].second;
+            int32_t v01 = mEMap[EdgeKey<false>(v0, v1)].second;
             posIndices.push_back(v2);
             posIndices.push_back(v0);
             posIndices.push_back(v01);
@@ -372,10 +378,10 @@ namespace gte
             negIndices.push_back(v1);
         }
 
-        void SplitTriangleMPZ(std::vector<int>& negIndices,
-            std::vector<int>& posIndices, int v0, int v1, int v2)
+        void SplitTriangleMPZ(std::vector<int32_t>& negIndices,
+            std::vector<int32_t>& posIndices, int32_t v0, int32_t v1, int32_t v2)
         {
-            int v01 = mEMap[EdgeKey<false>(v0, v1)].second;
+            int32_t v01 = mEMap[EdgeKey<false>(v0, v1)].second;
             negIndices.push_back(v2);
             negIndices.push_back(v0);
             negIndices.push_back(v01);
@@ -392,6 +398,6 @@ namespace gte
         // The value is the point of intersection of the edge with the
         // plane and an index into m_kVertices (the index is larger or
         // equal to the number of vertices of incoming rkVertices).
-        std::map<EdgeKey<false>, std::pair<Vector3<Real>, int>> mEMap;
+        std::map<EdgeKey<false>, std::pair<Vector3<Real>, int32_t>> mEMap;
     };
 }

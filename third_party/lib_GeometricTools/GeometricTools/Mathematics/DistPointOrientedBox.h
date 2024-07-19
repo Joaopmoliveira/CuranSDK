@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DistPointCanonicalBox.h>
-#include <Mathematics/OrientedBox.h>
 
 // Compute the distance from a point to a solid oriented box in nD.
 // 
@@ -19,9 +16,13 @@
 // The input point is stored in closest[0]. The closest point on the box
 // point is stored in closest[1].
 
+#include <Mathematics/DistPointCanonicalBox.h>
+#include <Mathematics/OrientedBox.h>
+#include <cstdint>
+
 namespace gte
 {
-    template <int N, typename T>
+    template <int32_t N, typename T>
     class DCPQuery<T, Vector<N, T>, OrientedBox<N, T>>
     {
     public:
@@ -64,7 +65,7 @@ namespace gte
     };
 
     // Template aliases for convenience.
-    template <int N, typename T>
+    template <int32_t N, typename T>
     using DCPPointOrientedBox = DCPQuery<T, Vector<N, T>, OrientedBox<N, T>>;
 
     template <typename T>

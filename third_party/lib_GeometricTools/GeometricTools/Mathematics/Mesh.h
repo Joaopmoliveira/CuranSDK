@@ -1,18 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Logger.h>
-#include <Mathematics/Matrix.h>
-#include <Mathematics/IndexAttribute.h>
-#include <Mathematics/VertexAttribute.h>
-#include <Mathematics/Vector2.h>
-#include <Mathematics/Vector3.h>
 
 // The Mesh class is designed to support triangulations of surfaces of a small
 // number of topologies. See the documents
@@ -48,6 +41,17 @@
 // For each provided vertex attribute, a derived class can initialize
 // that attribute by overriding one of the Initialize*() functions whose
 // stubs are defined in this class.
+
+#include <Mathematics/Logger.h>
+#include <Mathematics/Matrix.h>
+#include <Mathematics/IndexAttribute.h>
+#include <Mathematics/VertexAttribute.h>
+#include <Mathematics/Vector2.h>
+#include <Mathematics/Vector3.h>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 namespace gte
 {
@@ -99,10 +103,19 @@ namespace gte
         MeshDescription(MeshTopology inTopology, uint32_t inNumRows, uint32_t inNumCols)
             :
             topology(inTopology),
+            numVertices(0),
+            numTriangles(0),
+            vertexAttributes{},
+            indexAttribute{},
             wantDynamicTangentSpaceUpdate(false),
             wantCCW(true),
             hasTangentSpaceVectors(false),
             allowUpdateFrame(false),
+            numRows(0),
+            numCols(0),
+            rMax(0),
+            cMax(0),
+            rIncrement(0),
             constructed(false)
         {
             switch (topology)
@@ -426,7 +439,7 @@ namespace gte
             if (mDescription.topology == MeshTopology::DISK)
             {
                 uint32_t v0 = 0, v1 = 1, v2 = mDescription.numVertices - 1;
-                for (unsigned int c = 0; c < mDescription.numCols; ++c, ++v0, ++v1)
+                for (uint32_t c = 0; c < mDescription.numCols; ++c, ++v0, ++v1)
                 {
                     if (mDescription.wantCCW)
                     {

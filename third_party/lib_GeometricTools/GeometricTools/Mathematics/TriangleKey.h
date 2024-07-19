@@ -1,13 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/FeatureKey.h>
 
 // An ordered triangle has V[0] = min(v0, v1, v2).  Choose
 // (V[0], V[1], V[2]) to be a permutation of (v0, v1, v2) so that the final
@@ -21,6 +19,11 @@
 // An unordered triangle stores a permutation of (v0, v1, v2) so that
 // V[0] < V[1] < V[2].
 
+#include <Mathematics/FeatureKey.h>
+#include <algorithm>
+#include <cstdint>
+#include <type_traits>
+
 namespace gte
 {
     template <bool Ordered>
@@ -33,7 +36,7 @@ namespace gte
         }
 
         // This constructor is specialized based on Ordered.
-        explicit TriangleKey(int v0, int v1, int v2)
+        explicit TriangleKey(int32_t v0, int32_t v1, int32_t v2)
         {
             Initialize(v0, v1, v2);
         }
@@ -41,7 +44,7 @@ namespace gte
     private:
         template <bool Dummy = Ordered>
         typename std::enable_if<Dummy, void>::type
-        Initialize(int v0, int v1, int v2)
+        Initialize(int32_t v0, int32_t v1, int32_t v2)
         {
             if (v0 < v1)
             {
@@ -81,7 +84,7 @@ namespace gte
 
         template <bool Dummy = Ordered>
         typename std::enable_if<!Dummy, void>::type
-        Initialize(int v0, int v1, int v2)
+        Initialize(int32_t v0, int32_t v1, int32_t v2)
         {
             if (v0 < v1)
             {

@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/ContScribeCircle2.h>
-#include <vector>
 
 // The ellipse is (x/a)^2 + (y/b)^2 = 1, but only the portion in the first
 // quadrant (x >= 0 and y >= 0) is approximated.  Generate numArcs >= 2 arcs
@@ -20,6 +17,12 @@
 // is described in
 //   https://www.geometrictools.com/Documentation/ApproximateEllipse.pdf
 
+#include <Mathematics/ContScribeCircle2.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
+
 namespace gte
 {
     // The function returns 'true' when the approximation succeeded, in which
@@ -28,7 +31,7 @@ namespace gte
     // returns 'false'.
 
     template <typename Real>
-    bool ApproximateEllipseByArcs(Real a, Real b, int numArcs,
+    bool ApproximateEllipseByArcs(Real a, Real b, int32_t numArcs,
         std::vector<Vector2<Real>>& points, std::vector<Vector2<Real>>& centers,
         std::vector<Real>& radii)
     {
@@ -42,7 +45,7 @@ namespace gte
             return false;
         }
 
-        points.resize(numArcs + 1);
+        points.resize(static_cast<size_t>(numArcs) + 1);
         centers.resize(numArcs);
         radii.resize(numArcs);
 
@@ -62,7 +65,7 @@ namespace gte
 
         // Select the ellipse points based on curvature properties.
         Real invNumArcs = (Real)1 / numArcs;
-        for (int i = 1; i < numArcs; ++i)
+        for (int32_t i = 1; i < numArcs; ++i)
         {
             // The curvature at a new point is a weighted average of curvature
             // at the endpoints.
@@ -92,7 +95,7 @@ namespace gte
         radii[0] = circle.radius;
 
         // Compute arc at (0,b).
-        int last = numArcs - 1;
+        int32_t last = numArcs - 1;
         Vector2<Real> const& pNm1 = points[last];
         Vector2<Real> const& pN = points[numArcs];
         if (!Circumscribe(Vector2<Real>{ -pNm1[0], pNm1[1] }, pN, pNm1, circle))
@@ -108,7 +111,7 @@ namespace gte
         radii[last] = circle.radius;
 
         // Compute arcs at intermediate points between (a,0) and (0,b).
-        for (int iM = 0, i = 1, iP = 2; i < last; ++iM, ++i, ++iP)
+        for (int32_t iM = 0, i = 1, iP = 2; i < last; ++iM, ++i, ++iP)
         {
             Circumscribe(points[iM], points[i], points[iP], circle);
             centers[i] = circle.center;

@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DCPQuery.h>
-#include <Mathematics/Line.h>
 
 // Compute the distance between two lines in nD.
 // 
@@ -19,9 +16,16 @@
 // storing s[i]. When there are infinitely many choices for the pair of
 // closest points, only one of them is returned.
 
+#include <Mathematics/DCPQuery.h>
+#include <Mathematics/Line.h>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
+
 namespace gte
 {
-    template <int N, typename T>
+    template <int32_t N, typename T>
     class DCPQuery<T, Line<N, T>, Line<N, T>>
     {
     public:
@@ -81,7 +85,7 @@ namespace gte
     };
 
     // Template aliases for convenience.
-    template <int N, typename T>
+    template <int32_t N, typename T>
     using DCPLineLine = DCPQuery<T, Line<N, T>, Line<N, T>>;
 
     template <typename T>

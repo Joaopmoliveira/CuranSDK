@@ -1,17 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/FIQuery.h>
-#include <Mathematics/TIQuery.h>
-#include <Mathematics/AlignedBox.h>
-#include <Mathematics/OrientedBox.h>
-#include <Mathematics/Vector2.h>
 
 // The queries consider the box to be a solid.
 //
@@ -24,36 +18,53 @@
 // 1 when box0.axis[1] separates, 2 when box1.axis[0] separates, or 3 when
 // box1.axis[1] separates.
 
+#include <Mathematics/FIQuery.h>
+#include <Mathematics/TIQuery.h>
+#include <Mathematics/AlignedBox.h>
+#include <Mathematics/OrientedBox.h>
+#include <Mathematics/Vector2.h>
+#include <array>
+#include <cmath>
+#include <cstdint>
+
 namespace gte
 {
-    template <typename Real>
-    class TIQuery<Real, AlignedBox2<Real>, OrientedBox2<Real>>
+    template <typename T>
+    class TIQuery<T, AlignedBox2<T>, OrientedBox2<T>>
     {
     public:
         struct Result
         {
+            Result()
+                :
+                intersect(false),
+                separating(0)
+            {
+            }
+
             bool intersect;
-            int separating;
+            int32_t separating;
         };
 
-        Result operator()(AlignedBox2<Real> const& box0, OrientedBox2<Real> const& box1)
+        Result operator()(AlignedBox2<T> const& box0, OrientedBox2<T> const& box1)
         {
-            Result result;
+            Result result{};
 
             // Get the centered form of the aligned box.  The axes are
             // implicitly A0[0] = (1,0) and A0[1] = (0,1).
-            Vector2<Real> C0, E0;
+            Vector2<T> C0, E0;
             box0.GetCenteredForm(C0, E0);
 
             // Convenience variables.
-            Vector2<Real> const& C1 = box1.center;
-            Vector2<Real> const* A1 = &box1.axis[0];
-            Vector2<Real> const& E1 = box1.extent;
+            Vector2<T> const& C1 = box1.center;
+            Vector2<T> const* A1 = &box1.axis[0];
+            Vector2<T> const& E1 = box1.extent;
 
             // Compute difference of box centers.
-            Vector2<Real> D = C1 - C0;
+            Vector2<T> D = C1 - C0;
 
-            Real absDot01[2][2], rSum;
+            std::array<std::array<T, 2>, 2> absDot01{};
+            T rSum{};
 
             // Test box0.axis[0] = (1,0).
             absDot01[0][0] = std::fabs(A1[0][0]);

@@ -15,6 +15,7 @@
 #include <vector>
 #include "utils/Overloading.h"
 #include "utils/SafeQueue.h"
+#include "geometry/Polyheadra.h"
 
 namespace curan
 {
@@ -90,18 +91,6 @@ namespace curan
 		class VolumetricMask;
 		using pressedhighlighted_event = std::function<void(VolumetricMask*, ConfigDraw*, const std::optional<directed_stroke>&)>;
 
-		/*
-		Geometric shapes are entities that live in 3D,
-		therefore they don't belong to any particular mask.
-		There are a couple of assumptions with this class. There
-		are not a lot of geometric shapes for a particular screen,
-		if violated the delay between user action and rendered actions
-		can increase up to the point where is deteriorates the quality
-		*/
-		class GeometricShapes{
-
-		};
-
 		class VolumetricMask
 		{
 
@@ -114,7 +103,7 @@ namespace curan
 			std::vector<Mask> masks_y;
 			std::vector<Mask> masks_z;
 
-			std::vector<GeometricShapes> three_dimensional_entities;
+			std::vector<curan::geometry::PolyHeadra> three_dimensional_entities;
 
 			ImageType::Pointer image;
 		public:
@@ -236,6 +225,7 @@ namespace curan
 				image = in_volume;
 				if(!filled())
 					return;
+				three_dimensional_entities = std::vector<curan::geometry::PolyHeadra>{};
 				ImageType::RegionType inputRegion = image->GetBufferedRegion();
 				masks_x = std::vector<Mask>(inputRegion.GetSize()[Direction::X]);
 				masks_y = std::vector<Mask>(inputRegion.GetSize()[Direction::Y]);
@@ -259,6 +249,15 @@ namespace curan
 				default:
 					throw std::runtime_error("accessing direction with no meaning");
 				};
+			}
+
+			template<typename T>
+			void add_geometry(T&& geometry_to_add){
+				three_dimensional_entities.emplace_back(std::forward<T>(geometry_to_add));
+			}
+
+			inline const std::vector<curan::geometry::PolyHeadra>& geometries() const{
+				return three_dimensional_entities;
 			}
 
 			template <typename... T>
@@ -352,6 +351,7 @@ namespace curan
 			SkPaint highlighted_panel;
 
 			VolumetricMask *volumetric_mask = nullptr;
+			std::vector<std::tuple<std::vector<SkPoint>,SkPath>> cached_polyheader_intersections;
 			curan::ui::PointCollection current_stroke;
 
 			SkRect background_rect;

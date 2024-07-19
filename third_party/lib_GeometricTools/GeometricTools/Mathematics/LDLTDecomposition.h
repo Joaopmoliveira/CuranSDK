@@ -1,18 +1,22 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 5.9.2021.05.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Matrix.h>
-#include <Mathematics/GMatrix.h>
 
 // Factor a positive symmetric matrix A = L * D * L^T, where L is a lower
 // triangular matrix with diagonal entries all 1 (L is lower unit triangular)
 // and where D is a diagonal matrix with diagonal entries all positive.
+
+#include <Mathematics/Matrix.h>
+#include <Mathematics/GMatrix.h>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 namespace gte
 {
@@ -481,7 +485,7 @@ namespace gte
             if (verifySize)
             {
                 LogAssert(
-                    M.size() == NumBlocks * NumBlocks,
+                    M.size() == static_cast<size_t>(NumBlocks) * static_cast<size_t>(NumBlocks),
                     "Invalid size.");
             }
 
@@ -507,7 +511,7 @@ namespace gte
             if (verifySize)
             {
                 LogAssert(
-                    M.size() == NumBlocks * NumBlocks,
+                    M.size() == static_cast<size_t>(NumBlocks) * static_cast<size_t>(NumBlocks),
                     "Invalid size.");
             }
 
@@ -586,7 +590,7 @@ namespace gte
             if (verifySize)
             {
                 LogAssert(
-                    MBlock.size() == NumBlocks * NumBlocks,
+                    MBlock.size() == static_cast<size_t>(NumBlocks) * static_cast<size_t>(NumBlocks),
                     "Invalid size.");
 
                 for (auto const& current : MBlock)
@@ -810,7 +814,7 @@ namespace gte
         // 2-dimensional BlockMatrix object.
         inline size_t GetIndex(int32_t row, int32_t col) const
         {
-            return static_cast<size_t>(col + row * NumBlocks);
+            return static_cast<size_t>(col + row * static_cast<size_t>(NumBlocks));
         }
     };
 }

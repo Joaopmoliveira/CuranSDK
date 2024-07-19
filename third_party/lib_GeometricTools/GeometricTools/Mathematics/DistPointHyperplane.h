@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DCPQuery.h>
-#include <Mathematics/Hyperplane.h>
 
 // Compute the distance between a point and a line (N = 2), between a point
 // and a plane (N = 3) or generally between a point and a hyperplane (N >= 2).
@@ -18,9 +15,15 @@
 //
 // TODO: Modify to support non-unit-length N.
 
+#include <Mathematics/DCPQuery.h>
+#include <Mathematics/Hyperplane.h>
+#include <array>
+#include <cmath>
+#include <cstdint>
+
 namespace gte
 {
-    template <int N, typename T>
+    template <int32_t N, typename T>
     class DCPQuery<T, Vector<N, T>, Hyperplane<N, T>>
     {
     public:

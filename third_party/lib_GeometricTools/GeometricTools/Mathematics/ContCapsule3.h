@@ -1,9 +1,9 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
@@ -12,6 +12,10 @@
 #include <Mathematics/DistPointLine.h>
 #include <Mathematics/DistPointSegment.h>
 #include <Mathematics/Hypersphere.h>
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <limits>
 
 namespace gte
 {
@@ -19,7 +23,7 @@ namespace gte
     // The radius is the maximum distance from the points to the axis.
     // Hemispherical caps are chosen as close together as possible.
     template <typename Real>
-    bool GetContainer(int numPoints, Vector3<Real> const* points, Capsule3<Real>& capsule)
+    bool GetContainer(int32_t numPoints, Vector3<Real> const* points, Capsule3<Real>& capsule)
     {
         ApprOrthogonalLine3<Real> fitter;
         fitter.Fit(numPoints, points);
@@ -27,7 +31,7 @@ namespace gte
 
         DCPQuery<Real, Vector3<Real>, Line3<Real>> plQuery;
         Real maxRadiusSqr = (Real)0;
-        for (int i = 0; i < numPoints; ++i)
+        for (int32_t i = 0; i < numPoints; ++i)
         {
             auto result = plQuery(points[i], line);
             if (result.sqrDistance > maxRadiusSqr)
@@ -42,7 +46,7 @@ namespace gte
 
         Real minValue = std::numeric_limits<Real>::max();
         Real maxValue = -std::numeric_limits<Real>::max();
-        for (int i = 0; i < numPoints; ++i)
+        for (int32_t i = 0; i < numPoints; ++i)
         {
             Vector3<Real> diff = points[i] - line.origin;
             Real uDotDiff = Dot(diff, basis[1]);
