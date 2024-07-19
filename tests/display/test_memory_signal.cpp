@@ -56,6 +56,7 @@ int main(){
     SkRect rectangle_inside = SkRect::MakeXYWH(75,75,25,25);
     SignalInterpreter interpreter{[&](double x, double y){ return rectangle_outside.contains(x,y); },[&](double x, double y){ return rectangle_inside.contains(x,y);}};
 
-    interpreter.status() & (MOUSE_CLICKED_LEFT_EVENT | INSIDE_ALLOCATED_AREA );
+    
+
     return 0;
 };

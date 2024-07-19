@@ -76,17 +76,6 @@ void test_tethrahedron_intersection(){
     }
 }
 
-void test_hexahedron_intersection(){
-    std::cout << "test_hexahedron_intersection:\n";
-    curan::geometry::Hexahedron geom{};
-    auto value = curan::geometry::clip_with_plane(geom,{0.0,0.0,1.0},{0.0,0.0,0.0});
-    if(value){
-        std::cout << "polygon is: \n" << *value << std::endl;
-    } else {
-        std::cout << "no polygon found\n";
-    }
-}
-
 void test_octaheadron_intersection(){
     std::cout << "test_octaheadron_intersection:\n";
     curan::geometry::Octahedron geom{};
@@ -127,7 +116,6 @@ int main(){
     //test_shpere_intersection();
     //test_torus_intersection();
     test_tethrahedron_intersection();
-    test_hexahedron_intersection();
     test_octaheadron_intersection();
     test_docaheadron_intersection();
     test_icosaheadron_intersection();
