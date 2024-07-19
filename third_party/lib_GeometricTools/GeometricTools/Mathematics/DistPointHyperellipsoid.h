@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DCPQuery.h>
-#include <Mathematics/Hyperellipsoid.h>
-#include <Mathematics/Vector.h>
 
 // Compute the distance from a point to a hyperellipsoid in nD. The
 // hyperellipsoid is considered to be a closed surface, not a solid. In 2D,
@@ -38,9 +34,17 @@
 // The input point is stored in closest[0]. The closest point on the
 // hyperellipsoid is stored in closest[1].
 
+#include <Mathematics/DCPQuery.h>
+#include <Mathematics/Hyperellipsoid.h>
+#include <Mathematics/Vector.h>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <utility>
+
 namespace gte
 {
-    template <int N, typename T>
+    template <int32_t N, typename T>
     class DCPQuery<T, Vector<N, T>, Hyperellipsoid<N, T>>
     {
     public:
@@ -318,7 +322,7 @@ namespace gte
             // The use of 'double' is intentional in case T is a BSNumber
             // or BSRational type. We want the bisections to terminate in a
             // reasonable amount of time.
-            uint32_t const jmax = GTE_C_MAX_BISECTIONS_GENERIC;
+            uint32_t const jmax = 2048u;
             for (uint32_t j = 0; j < jmax; ++j)
             {
                 s = half * (smin + smax);
@@ -360,7 +364,7 @@ namespace gte
     };
 
     // Template aliases for convenience.
-    template <int N, typename T>
+    template <int32_t N, typename T>
     using DCPPointHyperellipsoid = DCPQuery<T, Vector<N, T>, Hyperellipsoid<N, T>>;
 
     template <typename T>

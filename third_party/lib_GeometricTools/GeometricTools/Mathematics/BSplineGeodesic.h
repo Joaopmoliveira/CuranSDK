@@ -1,14 +1,21 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
+// Computing geodesics on a surface is a differential geometric topic that
+// involves Riemannian geometry.  The algorithm for constructing geodesics
+// that is implemented here uses a multiresolution approach.  A description
+// of the algorithm is in the document
+// https://www.geometrictools.com/Documentation/RiemannianGeodesics.pdf
+
 #include <Mathematics/RiemannianGeodesic.h>
 #include <Mathematics/BSplineSurface.h>
+#include <array>
 
 namespace gte
 {
@@ -19,7 +26,8 @@ namespace gte
         BSplineGeodesic(BSplineSurface<3, Real> const& spline)
             :
             RiemannianGeodesic<Real>(2),
-            mSpline(&spline)
+            mSpline(&spline),
+            mJet{}
         {
         }
 
@@ -30,7 +38,7 @@ namespace gte
     private:
         virtual void ComputeMetric(const GVector<Real>& point) override
         {
-            mSpline->Evaluate(point[0], point[1], 2, mJet);
+            mSpline->Evaluate(point[0], point[1], 2, mJet.data());
             Vector<3, Real> const& der0 = mJet[1];
             Vector<3, Real> const& der1 = mJet[2];
 
@@ -65,6 +73,6 @@ namespace gte
         // before ComputeChristoffel1.  Thus, we can compute the B-spline
         // first- and second-order derivatives in ComputeMetric and cache
         // the results for use in ComputeChristoffel1.
-        Vector<3, Real> mJet[6];
+        std::array<Vector<3, Real>, 6> mJet;
     };
 }

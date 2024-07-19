@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.06.16
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/IntrLine3AlignedBox3.h>
-#include <Mathematics/OrientedBox.h>
 
 // The test-intersection queries use the method of separating axes.
 // https://www.geometrictools.com/Documentation/MethodOfSeparatingAxes.pdf
@@ -17,6 +14,10 @@
 // clipping.  The queries consider the box to be a solid. The algorithms
 // are described in
 // https://www.geometrictools.com/Documentation/IntersectionLineBox.pdf
+
+#include <Mathematics/IntrLine3AlignedBox3.h>
+#include <Mathematics/OrientedBox.h>
+#include <cstddef>
 
 namespace gte
 {

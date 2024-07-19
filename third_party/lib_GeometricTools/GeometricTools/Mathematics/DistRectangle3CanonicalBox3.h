@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 5.12.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DistPlane3CanonicalBox3.h>
-#include <Mathematics/DistSegment3CanonicalBox3.h>
-#include <Mathematics/Rectangle.h>
 
 // Compute the distance between a rectangle and a solid canonical box in 3D.
 // 
@@ -27,6 +23,14 @@
 // points, only one of them is returned.
 //
 // TODO: Modify to support non-unit-length W[].
+
+#include <Mathematics/DistPlane3CanonicalBox3.h>
+#include <Mathematics/DistSegment3CanonicalBox3.h>
+#include <Mathematics/Rectangle.h>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 
 namespace gte
 {

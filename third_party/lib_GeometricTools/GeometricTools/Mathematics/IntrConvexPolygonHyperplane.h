@@ -1,25 +1,29 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
+
+// The intersection queries are based on the document
+// https://www.geometrictools.com/Documentation/ClipConvexPolygonByHyperplane.pdf
 
 #include <Mathematics/TIQuery.h>
 #include <Mathematics/FIQuery.h>
 #include <Mathematics/Hyperplane.h>
 #include <Mathematics/Vector.h>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <list>
 #include <vector>
 
-// The intersection queries are based on the document
-// https://www.geometrictools.com/Documentation/ClipConvexPolygonByHyperplane.pdf
-
 namespace gte
 {
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class TIQuery<Real, std::vector<Vector<N, Real>>, Hyperplane<N, Real>>
     {
     public:
@@ -38,13 +42,20 @@ namespace gte
 
         struct Result
         {
+            Result()
+                :
+                intersect(false),
+                configuration(Configuration::INVALID_POLYGON)
+            {
+            }
+
             bool intersect;
             Configuration configuration;
         };
 
         Result operator()(std::vector<Vector<N, Real>> const& polygon, Hyperplane<N, Real> const& hyperplane)
         {
-            Result result;
+            Result result{};
 
             size_t const numVertices = polygon.size();
             if (numVertices < 3)
@@ -126,7 +137,7 @@ namespace gte
         }
     };
 
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class FIQuery<Real, std::vector<Vector<N, Real>>, Hyperplane<N, Real>>
     {
     public:
@@ -145,6 +156,15 @@ namespace gte
 
         struct Result
         {
+            Result()
+                :
+                configuration(Configuration::INVALID_POLYGON),
+                intersection{},
+                positivePolygon{},
+                negativePolygon{}
+            {
+            }
+
             // The intersection is either empty, a single vertex, a single
             // edge or the polygon is contained by the hyperplane.
             Configuration configuration;
@@ -163,7 +183,7 @@ namespace gte
 
         Result operator()(std::vector<Vector<N, Real>> const& polygon, Hyperplane<N, Real> const& hyperplane)
         {
-            Result result;
+            Result result{};
 
             size_t const numVertices = polygon.size();
             if (numVertices < 3)

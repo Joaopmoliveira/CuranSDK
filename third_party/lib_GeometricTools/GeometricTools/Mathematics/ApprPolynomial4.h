@@ -1,16 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.12.05
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/ApprQuery.h>
-#include <Mathematics/Array2.h>
-#include <Mathematics/GMatrix.h>
-#include <array>
 
 // The samples are (x[i],y[i],z[i],w[i]) for 0 <= i < S. Think of w as a
 // function of x, y, and z, say w = f(x,y,z). The function fits the samples
@@ -40,6 +35,17 @@
 //   w = rng * sum_{i=0}^{d0} sum_{j=0}^{d1} sum_{k=0}^{d2} c'[i][j][k] *
 //       ((x-xcen)/rng)^i * ((y-ycen)/rng)^j * ((z-zcen)/rng)^k
 
+#include <Mathematics/ApprQuery.h>
+#include <Mathematics/Array2.h>
+#include <Mathematics/GMatrix.h>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <vector>
+
 namespace gte
 {
     template <typename Real>
@@ -47,7 +53,7 @@ namespace gte
     {
     public:
         // Initialize the model parameters to zero.
-        ApprPolynomial4(int xDegree, int yDegree, int zDegree)
+        ApprPolynomial4(int32_t xDegree, int32_t yDegree, int32_t zDegree)
             :
             mXDegree(xDegree),
             mYDegree(yDegree),
@@ -57,7 +63,7 @@ namespace gte
             mZDegreeP1(zDegree + 1),
             mSize(mXDegreeP1* mYDegreeP1* mZDegreeP1),
             mParameters(mSize, (Real)0),
-            mYZCoefficient(mYDegreeP1 * mZDegreeP1, (Real)0),
+            mYZCoefficient(static_cast<size_t>(mYDegreeP1) * static_cast<size_t>(mZDegreeP1), (Real)0),
             mZCoefficient(mZDegreeP1, (Real)0)
         {
             mXDomain[0] = std::numeric_limits<Real>::max();
@@ -72,20 +78,20 @@ namespace gte
         // functions that you can call.
         virtual bool FitIndexed(
             size_t numObservations, std::array<Real, 4> const* observations,
-            size_t numIndices, int const* indices) override
+            size_t numIndices, int32_t const* indices) override
         {
             if (this->ValidIndices(numObservations, observations, numIndices, indices))
             {
-                int s, i0, j0, k0, n0, i1, j1, k1, n1;
+                int32_t s, i0, j0, k0, n0, i1, j1, k1, n1;
 
                 // Compute the powers of x, y, and z.
-                int numSamples = static_cast<int>(numIndices);
-                int twoXDegree = 2 * mXDegree;
-                int twoYDegree = 2 * mYDegree;
-                int twoZDegree = 2 * mZDegree;
-                Array2<Real> xPower(twoXDegree + 1, numSamples);
-                Array2<Real> yPower(twoYDegree + 1, numSamples);
-                Array2<Real> zPower(twoZDegree + 1, numSamples);
+                int32_t numSamples = static_cast<int32_t>(numIndices);
+                int32_t twoXDegree = 2 * mXDegree;
+                int32_t twoYDegree = 2 * mYDegree;
+                int32_t twoZDegree = 2 * mZDegree;
+                Array2<Real> xPower(static_cast<size_t>(twoXDegree) + 1, numSamples);
+                Array2<Real> yPower(static_cast<size_t>(twoYDegree) + 1, numSamples);
+                Array2<Real> zPower(static_cast<size_t>(twoZDegree) + 1, numSamples);
                 for (s = 0; s < numSamples; ++s)
                 {
                     Real x = observations[indices[s]][0];
@@ -161,7 +167,7 @@ namespace gte
                 // Solve for the polynomial coefficients.
                 GVector<Real> coefficients = Inverse(A) * B;
                 bool hasNonzero = false;
-                for (int i = 0; i < mSize; ++i)
+                for (int32_t i = 0; i < mSize; ++i)
                 {
                     mParameters[i] = coefficients[i];
                     if (coefficients[i] != (Real)0)
@@ -227,7 +233,7 @@ namespace gte
 
         Real Evaluate(Real x, Real y, Real z) const
         {
-            int i0, i1, i2;
+            int32_t i0, i1, i2;
             Real w;
 
             for (i2 = 0; i2 <= mZDegree; ++i2)
@@ -235,22 +241,22 @@ namespace gte
                 for (i1 = 0; i1 <= mYDegree; ++i1)
                 {
                     i0 = mXDegree;
-                    w = mParameters[i0 + mXDegreeP1 * (i1 + mYDegreeP1 * i2)];
+                    w = mParameters[i0 + static_cast<size_t>(mXDegreeP1) * (i1 + static_cast<size_t>(mYDegreeP1) * i2)];
                     while (--i0 >= 0)
                     {
-                        w = mParameters[i0 + mXDegreeP1 * (i1 + mYDegreeP1 * i2)] + w * x;
+                        w = mParameters[i0 + static_cast<size_t>(mXDegreeP1) * (i1 + static_cast<size_t>(mYDegreeP1) * i2)] + w * x;
                     }
-                    mYZCoefficient[i1 + mYDegree * i2] = w;
+                    mYZCoefficient[i1 + static_cast<size_t>(mYDegree) * i2] = w;
                 }
             }
 
             for (i2 = 0; i2 <= mZDegree; ++i2)
             {
                 i1 = mYDegree;
-                w = mYZCoefficient[i1 + mYDegreeP1 * i2];
+                w = mYZCoefficient[i1 + static_cast<size_t>(mYDegreeP1) * i2];
                 while (--i1 >= 0)
                 {
-                    w = mParameters[i1 + mYDegreeP1 * i2] + w * y;
+                    w = mParameters[i1 + static_cast<size_t>(mYDegreeP1) * i2] + w * y;
                 }
                 mZCoefficient[i2] = w;
             }
@@ -266,8 +272,8 @@ namespace gte
         }
 
     private:
-        int mXDegree, mYDegree, mZDegree;
-        int mXDegreeP1, mYDegreeP1, mZDegreeP1, mSize;
+        int32_t mXDegree, mYDegree, mZDegree;
+        int32_t mXDegreeP1, mYDegreeP1, mZDegreeP1, mSize;
         std::array<Real, 2> mXDomain, mYDomain, mZDomain;
         std::vector<Real> mParameters;
 

@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.27
 
 #pragma once
-
-#include <Mathematics/DCPQuery.h>
-#include <Mathematics/Ray.h>
 
 // Compute the distance between a point and a ray in nD.
 // 
@@ -17,9 +14,15 @@
 // The input point is stored in closest[0]. The closest point on the ray is
 // stored in closest[1].
 
+#include <Mathematics/DCPQuery.h>
+#include <Mathematics/Ray.h>
+#include <array>
+#include <cmath>
+#include <cstdint>
+
 namespace gte
 {
-    template <int N, typename T>
+    template <int32_t N, typename T>
     class DCPQuery<T, Vector<N, T>, Ray<N, T>>
     {
     public:
@@ -45,7 +48,7 @@ namespace gte
 
             T const zero = static_cast<T>(0);
             Vector<N, T> diff = point - ray.origin;
-            result.parameter = Dot(ray.direction, diff);
+            result.parameter = Dot(ray.direction, diff) / Dot(ray.direction, ray.direction);
             result.closest[0] = point;
             if (result.parameter > zero)
             {
@@ -65,7 +68,7 @@ namespace gte
     };
 
     // Template aliases for convenience.
-    template <int N, typename T>
+    template <int32_t N, typename T>
     using DCPPointRay = DCPQuery<T, Vector<N, T>, Ray<N, T>>;
 
     template <typename T>

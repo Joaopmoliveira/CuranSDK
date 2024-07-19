@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Logger.h>
-#include <array>
 
 // The interpolator is for uniformly spaced (x,y)-values.  The input samples
 // F must be stored in row-major order to represent f(x,y); that is,
@@ -18,6 +15,10 @@
 // blending matrix.  If a smooth interpolation is desired, set catmullRom to
 // 'false' to obtain B-spline blending.
 
+#include <Mathematics/Logger.h>
+#include <array>
+#include <cstdint>
+
 namespace gte
 {
     template <typename Real>
@@ -25,7 +26,7 @@ namespace gte
     {
     public:
         // Construction.
-        IntpBicubic2(int xBound, int yBound, Real xMin, Real xSpacing,
+        IntpBicubic2(int32_t xBound, int32_t yBound, Real xMin, Real xSpacing,
             Real yMin, Real ySpacing, Real const* F, bool catmullRom)
             :
             mXBound(xBound),
@@ -42,9 +43,9 @@ namespace gte
             LogAssert(mXBound >= 3 && mYBound >= 3 && mF != nullptr, "Invalid input.");
             LogAssert(mXSpacing > (Real)0 && mYSpacing > (Real)0, "Invalid input.");
 
-            mXMax = mXMin + mXSpacing * static_cast<Real>(mXBound - 1);
+            mXMax = mXMin + mXSpacing * static_cast<Real>(mXBound) - static_cast<Real>(1);
             mInvXSpacing = (Real)1 / mXSpacing;
-            mYMax = mYMin + mYSpacing * static_cast<Real>(mYBound - 1);
+            mYMax = mYMin + mYSpacing * static_cast<Real>(mYBound) - static_cast<Real>(1);
             mInvYSpacing = (Real)1 / mYSpacing;
 
             if (catmullRom)
@@ -88,17 +89,17 @@ namespace gte
         }
 
         // Member access.
-        inline int GetXBound() const
+        inline int32_t GetXBound() const
         {
             return mXBound;
         }
 
-        inline int GetYBound() const
+        inline int32_t GetYBound() const
         {
             return mYBound;
         }
 
-        inline int GetQuantity() const
+        inline int32_t GetQuantity() const
         {
             return mQuantity;
         }
@@ -149,7 +150,7 @@ namespace gte
         {
             // Compute x-index and clamp to image.
             Real xIndex = (x - mXMin) * mInvXSpacing;
-            int ix = static_cast<int>(xIndex);
+            int32_t ix = static_cast<int32_t>(xIndex);
             if (ix < 0)
             {
                 ix = 0;
@@ -161,7 +162,7 @@ namespace gte
 
             // Compute y-index and clamp to image.
             Real yIndex = (y - mYMin) * mInvYSpacing;
-            int iy = static_cast<int>(yIndex);
+            int32_t iy = static_cast<int32_t>(yIndex);
             if (iy < 0)
             {
                 iy = 0;
@@ -185,11 +186,11 @@ namespace gte
 
             // Compute P = M*U and Q = M*V.
             std::array<Real, 4> P, Q;
-            for (int row = 0; row < 4; ++row)
+            for (int32_t row = 0; row < 4; ++row)
             {
                 P[row] = (Real)0;
                 Q[row] = (Real)0;
-                for (int col = 0; col < 4; ++col)
+                for (int32_t col = 0; col < 4; ++col)
                 {
                     P[row] += mBlend[row][col] * U[col];
                     Q[row] += mBlend[row][col] * V[col];
@@ -201,9 +202,9 @@ namespace gte
             --ix;
             --iy;
             Real result = (Real)0;
-            for (int row = 0; row < 4; ++row)
+            for (int32_t row = 0; row < 4; ++row)
             {
-                int yClamp = iy + row;
+                int32_t yClamp = iy + row;
                 if (yClamp < 0)
                 {
                     yClamp = 0;
@@ -213,9 +214,9 @@ namespace gte
                     yClamp = mYBound - 1;
                 }
 
-                for (int col = 0; col < 4; ++col)
+                for (int32_t col = 0; col < 4; ++col)
                 {
-                    int xClamp = ix + col;
+                    int32_t xClamp = ix + col;
                     if (xClamp < 0)
                     {
                         xClamp = 0;
@@ -232,11 +233,11 @@ namespace gte
             return result;
         }
 
-        Real operator()(int xOrder, int yOrder, Real x, Real y) const
+        Real operator()(int32_t xOrder, int32_t yOrder, Real x, Real y) const
         {
             // Compute x-index and clamp to image.
             Real xIndex = (x - mXMin) * mInvXSpacing;
-            int ix = static_cast<int>(xIndex);
+            int32_t ix = static_cast<int32_t>(xIndex);
             if (ix < 0)
             {
                 ix = 0;
@@ -248,7 +249,7 @@ namespace gte
 
             // Compute y-index and clamp to image.
             Real yIndex = (y - mYMin) * mInvYSpacing;
-            int iy = static_cast<int>(yIndex);
+            int32_t iy = static_cast<int32_t>(yIndex);
             if (iy < 0)
             {
                 iy = 0;
@@ -338,11 +339,11 @@ namespace gte
 
             // Compute P = M*U and Q = M*V.
             std::array<Real, 4> P, Q;
-            for (int row = 0; row < 4; ++row)
+            for (int32_t row = 0; row < 4; ++row)
             {
                 P[row] = (Real)0;
                 Q[row] = (Real)0;
-                for (int col = 0; col < 4; ++col)
+                for (int32_t col = 0; col < 4; ++col)
                 {
                     P[row] += mBlend[row][col] * U[col];
                     Q[row] += mBlend[row][col] * V[col];
@@ -353,9 +354,9 @@ namespace gte
             --ix;
             --iy;
             Real result = (Real)0;
-            for (int row = 0; row < 4; ++row)
+            for (int32_t row = 0; row < 4; ++row)
             {
-                int yClamp = iy + row;
+                int32_t yClamp = iy + row;
                 if (yClamp < 0)
                 {
                     yClamp = 0;
@@ -365,9 +366,9 @@ namespace gte
                     yClamp = mYBound - 1;
                 }
 
-                for (int col = 0; col < 4; ++col)
+                for (int32_t col = 0; col < 4; ++col)
                 {
-                    int xClamp = ix + col;
+                    int32_t xClamp = ix + col;
                     if (xClamp < 0)
                     {
                         xClamp = 0;
@@ -386,7 +387,7 @@ namespace gte
         }
 
     private:
-        int mXBound, mYBound, mQuantity;
+        int32_t mXBound, mYBound, mQuantity;
         Real mXMin, mXMax, mXSpacing, mInvXSpacing;
         Real mYMin, mYMax, mYSpacing, mInvYSpacing;
         Real const* mF;

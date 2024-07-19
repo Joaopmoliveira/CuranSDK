@@ -1,15 +1,22 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
+#include <Mathematics/Constants.h>
 #include <Mathematics/Mesh.h>
 #include <Mathematics/ParametricCurve.h>
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
 #include <memory>
+#include <vector>
 
 namespace gte
 {
@@ -53,10 +60,10 @@ namespace gte
 
             // The four supported topologies all wrap around in the column
             // direction.
-            mCosAngle.resize(this->mDescription.numCols + 1);
-            mSinAngle.resize(this->mDescription.numCols + 1);
+            mCosAngle.resize(static_cast<size_t>(this->mDescription.numCols) + 1);
+            mSinAngle.resize(static_cast<size_t>(this->mDescription.numCols) + 1);
             Real invRadialSamples = (Real)1 / (Real)this->mDescription.numCols;
-            for (unsigned int c = 0; c < this->mDescription.numCols; ++c)
+            for (uint32_t c = 0; c < this->mDescription.numCols; ++c)
             {
                 Real angle = c * invRadialSamples * (Real)GTE_C_TWO_PI;
                 mCosAngle[c] = std::cos(angle);
@@ -118,22 +125,22 @@ namespace gte
             if (this->mDescription.topology == MeshTopology::CYLINDER
                 || this->mDescription.topology == MeshTopology::TORUS)
             {
-                mSamples.resize(this->mDescription.rMax + 1);
+                mSamples.resize(static_cast<size_t>(this->mDescription.rMax) + 1);
             }
             else if (this->mDescription.topology == MeshTopology::DISK)
             {
-                mSamples.resize(this->mDescription.rMax + 2);
+                mSamples.resize(static_cast<size_t>(this->mDescription.rMax) + 2);
             }
             else if (this->mDescription.topology == MeshTopology::SPHERE)
             {
-                mSamples.resize(this->mDescription.rMax + 3);
+                mSamples.resize(static_cast<size_t>(this->mDescription.rMax) + 3);
             }
 
-            Real invDenom = ((Real)1) / (Real)(mSamples.size() - 1);
+            Real invDenom = (Real)1 / ((Real)mSamples.size() - (Real)1);
             if (mSampleByArcLength)
             {
                 Real factor = mCurve->GetTotalLength() * invDenom;
-                mTSampler = [this, factor](unsigned int i)
+                mTSampler = [this, factor](uint32_t i)
                 {
                     return mCurve->GetTime(i * factor);
                 };
@@ -141,7 +148,7 @@ namespace gte
             else
             {
                 Real factor = (mCurve->GetTMax() - mCurve->GetTMin()) * invDenom;
-                mTSampler = [this, factor](unsigned int i)
+                mTSampler = [this, factor](uint32_t i)
                 {
                     return mCurve->GetTMin() + i * factor;
                 };
@@ -156,10 +163,10 @@ namespace gte
             {
             case MeshTopology::CYLINDER:
             {
-                for (unsigned int r = 0, i = 0; r < this->mDescription.numRows; ++r)
+                for (uint32_t r = 0, i = 0; r < this->mDescription.numRows; ++r)
                 {
                     tcoord[1] = (Real)r / (Real)(this->mDescription.numRows - 1);
-                    for (unsigned int c = 0; c <= this->mDescription.numCols; ++c, ++i)
+                    for (uint32_t c = 0; c <= this->mDescription.numCols; ++c, ++i)
                     {
                         tcoord[0] = (Real)c / (Real)this->mDescription.numCols;
                         this->TCoord(i) = tcoord;
@@ -169,10 +176,10 @@ namespace gte
             }
             case MeshTopology::TORUS:
             {
-                for (unsigned int r = 0, i = 0; r <= this->mDescription.numRows; ++r)
+                for (uint32_t r = 0, i = 0; r <= this->mDescription.numRows; ++r)
                 {
                     tcoord[1] = (Real)r / (Real)this->mDescription.numRows;
-                    for (unsigned int c = 0; c <= this->mDescription.numCols; ++c, ++i)
+                    for (uint32_t c = 0; c <= this->mDescription.numCols; ++c, ++i)
                     {
                         tcoord[0] = (Real)c / (Real)this->mDescription.numCols;
                         this->TCoord(i) = tcoord;
@@ -183,12 +190,12 @@ namespace gte
             case MeshTopology::DISK:
             {
                 Vector2<Real> origin{ (Real)0.5, (Real)0.5 };
-                unsigned int i = 0;
-                for (unsigned int r = 0; r < this->mDescription.numRows; ++r)
+                uint32_t i = 0;
+                for (uint32_t r = 0; r < this->mDescription.numRows; ++r)
                 {
-                    Real radius = (Real)(r + 1) / (Real)(2 * this->mDescription.numRows);
+                    Real radius = ((Real)r + (Real)1) / ((Real)2 * (Real)this->mDescription.numRows);
                     radius = std::min(radius, (Real)0.5);
-                    for (unsigned int c = 0; c <= this->mDescription.numCols; ++c, ++i)
+                    for (uint32_t c = 0; c <= this->mDescription.numCols; ++c, ++i)
                     {
                         Real angle = (Real)GTE_C_TWO_PI * (Real)c / (Real)this->mDescription.numCols;
                         this->TCoord(i) = { radius * std::cos(angle), radius * std::sin(angle) };
@@ -199,11 +206,11 @@ namespace gte
             }
             case MeshTopology::SPHERE:
             {
-                unsigned int i = 0;
-                for (unsigned int r = 0; r < this->mDescription.numRows; ++r)
+                uint32_t i = 0;
+                for (uint32_t r = 0; r < this->mDescription.numRows; ++r)
                 {
                     tcoord[1] = (Real)r / (Real)(this->mDescription.numRows - 1);
-                    for (unsigned int c = 0; c <= this->mDescription.numCols; ++c, ++i)
+                    for (uint32_t c = 0; c <= this->mDescription.numCols; ++c, ++i)
                     {
                         tcoord[0] = (Real)c / (Real)this->mDescription.numCols;
                         this->TCoord(i) = tcoord;
@@ -222,8 +229,8 @@ namespace gte
 
         virtual void UpdatePositions() override
         {
-            unsigned int const numSamples = static_cast<unsigned int>(mSamples.size());
-            for (unsigned int i = 0; i < numSamples; ++i)
+            uint32_t const numSamples = static_cast<uint32_t>(mSamples.size());
+            for (uint32_t i = 0; i < numSamples; ++i)
             {
                 Real t = mTSampler(i);
                 Vector2<Real> position = mCurve->GetPosition(t);
@@ -253,10 +260,10 @@ namespace gte
 
         void UpdateCylinderPositions()
         {
-            for (unsigned int r = 0, i = 0; r <= this->mDescription.rMax; ++r)
+            for (uint32_t r = 0, i = 0; r <= this->mDescription.rMax; ++r)
             {
                 Real radius = mSamples[r][0];
-                for (unsigned int c = 0; c <= this->mDescription.cMax; ++c, ++i)
+                for (uint32_t c = 0; c <= this->mDescription.cMax; ++c, ++i)
                 {
                     this->Position(i) = { radius * mCosAngle[c], radius * mSinAngle[c], mSamples[r][2] };
                 }
@@ -265,10 +272,10 @@ namespace gte
 
         void UpdateTorusPositions()
         {
-            for (unsigned int r = 0, i = 0; r <= this->mDescription.rMax; ++r)
+            for (uint32_t r = 0, i = 0; r <= this->mDescription.rMax; ++r)
             {
                 Real radius = mSamples[r][0];
-                for (unsigned int c = 0; c <= this->mDescription.cMax; ++c, ++i)
+                for (uint32_t c = 0; c <= this->mDescription.cMax; ++c, ++i)
                 {
                     this->Position(i) = { radius * mCosAngle[c], radius * mSinAngle[c], mSamples[r][2] };
                 }
@@ -277,10 +284,10 @@ namespace gte
 
         void UpdateDiskPositions()
         {
-            for (unsigned int r = 0, rp1 = 1, i = 0; r <= this->mDescription.rMax; ++r, ++rp1)
+            for (uint32_t r = 0, rp1 = 1, i = 0; r <= this->mDescription.rMax; ++r, ++rp1)
             {
                 Real radius = mSamples[rp1][0];
-                for (unsigned int c = 0; c <= this->mDescription.cMax; ++c, ++i)
+                for (uint32_t c = 0; c <= this->mDescription.cMax; ++c, ++i)
                 {
                     this->Position(i) = { radius * mCosAngle[c], radius * mSinAngle[c], mSamples[rp1][2] };
                 }
@@ -291,10 +298,10 @@ namespace gte
 
         void UpdateSpherePositions()
         {
-            for (unsigned int r = 0, rp1 = 1, i = 0; r <= this->mDescription.rMax; ++r, ++rp1)
+            for (uint32_t r = 0, rp1 = 1, i = 0; r <= this->mDescription.rMax; ++r, ++rp1)
             {
                 Real radius = mSamples[rp1][0];
-                for (unsigned int c = 0; c <= this->mDescription.cMax; ++c, ++i)
+                for (uint32_t c = 0; c <= this->mDescription.cMax; ++c, ++i)
                 {
                     this->Position(i) = { radius * mCosAngle[c], radius * mSinAngle[c], mSamples[rp1][2] };
                 }
@@ -307,7 +314,7 @@ namespace gte
         std::shared_ptr<ParametricCurve<2, Real>> mCurve;
         bool mSampleByArcLength;
         std::vector<Real> mCosAngle, mSinAngle;
-        std::function<Real(unsigned int)> mTSampler;
+        std::function<Real(uint32_t)> mTSampler;
         std::vector<Vector3<Real>> mSamples;
 
         // If the client does not request texture coordinates, they will be

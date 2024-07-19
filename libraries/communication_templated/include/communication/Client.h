@@ -18,6 +18,7 @@ namespace curan {
 		be associated with a protocol at compile time. When forwarding this
 		protocol, the arguments are prespecified. More on other examples.
 		*/
+		template<typename protocol>
 		class Client : public std::enable_shared_from_this<Client> {
 		public:
 			struct Info {
@@ -50,7 +51,9 @@ namespace curan {
 				socket{ _cxt,info.endpoints,info.connection_type,deadline,connection_callback },
 				connection_type{ info.connection_type } {};
 
-			Client(ServerInfo& info);
+			Client(asio::io_context& io_context,asio::ip::tcp::socket socket){
+
+			}
 
 		public:
 
@@ -82,9 +85,13 @@ namespace curan {
 				return shared_from_this();
 			}
 
-			void connect(callable c);
+			void connect(callable c){
 
-			void write(std::shared_ptr<curan::utilities::MemoryBuffer> buffer);
+			}
+
+			void write(std::shared_ptr<curan::utilities::MemoryBuffer> buffer){
+
+			}
 
 			inline curan::communication::Socket& get_socket() {
 				return socket;

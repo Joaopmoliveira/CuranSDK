@@ -21,6 +21,14 @@ struct Cube{
     gte::ConvexMesh3<Rational> geometry;
 
     Cube(double xExtent, double yExtent, double zExtent);
+
+    friend std::ostream& operator<< (std::ostream& os, const Cube& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 struct OpenCylinder{
@@ -28,6 +36,14 @@ struct OpenCylinder{
     gte::ConvexMesh3<Rational> geometry;
 
     OpenCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height);
+
+    friend std::ostream& operator<< (std::ostream& os, const OpenCylinder& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 struct ClosedCylinder{
@@ -35,6 +51,14 @@ struct ClosedCylinder{
     gte::ConvexMesh3<Rational> geometry;
 
     ClosedCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height);
+
+    friend std::ostream& operator<< (std::ostream& os, const ClosedCylinder& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 struct Sphere{
@@ -42,6 +66,14 @@ struct Sphere{
     gte::ConvexMesh3<Rational> geometry;
 
     Sphere(uint32_t numZSamples, uint32_t numRadialSamples, float radius);
+
+    friend std::ostream& operator<< (std::ostream& os, const Sphere& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 struct Torus{
@@ -49,6 +81,14 @@ struct Torus{
     gte::ConvexMesh3<Rational> geometry;
 
     Torus(uint32_t numCircleSamples, uint32_t numRadialSamples, float outerRadius, float innerRadius);
+
+    friend std::ostream& operator<< (std::ostream& os, const Torus& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 struct Tetrahedron{
@@ -56,6 +96,14 @@ struct Tetrahedron{
     gte::ConvexMesh3<Rational> geometry;
 
     Tetrahedron();
+
+    friend std::ostream& operator<< (std::ostream& os, const Tetrahedron& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 struct Hexahedron{
@@ -63,6 +111,14 @@ struct Hexahedron{
     gte::ConvexMesh3<Rational> geometry;
 
     Hexahedron();
+
+    friend std::ostream& operator<< (std::ostream& os, const Hexahedron& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 struct Octahedron{
@@ -70,6 +126,14 @@ struct Octahedron{
     gte::ConvexMesh3<Rational> geometry;
 
     Octahedron();
+
+    friend std::ostream& operator<< (std::ostream& os, const Octahedron& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 struct Dodecahedron{
@@ -77,6 +141,14 @@ struct Dodecahedron{
     gte::ConvexMesh3<Rational> geometry;
 
     Dodecahedron();
+
+    friend std::ostream& operator<< (std::ostream& os, const Dodecahedron& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 struct Icosahedron{
@@ -84,6 +156,14 @@ struct Icosahedron{
     gte::ConvexMesh3<Rational> geometry;
 
     Icosahedron();
+
+    friend std::ostream& operator<< (std::ostream& os, const Icosahedron& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
 };
 
 }

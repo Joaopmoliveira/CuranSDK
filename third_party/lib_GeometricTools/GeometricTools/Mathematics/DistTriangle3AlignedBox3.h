@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DistTriangle3CanonicalBox3.h>
-#include <Mathematics/DistSegment3CanonicalBox3.h>
-#include <Mathematics/AlignedBox.h>
 
 // Compute the distance between a solid triangle and a solid aligned box
 // in 3D.
@@ -25,6 +21,10 @@
 // barycentric coordinates (b[0],b[1],b[2). The closest point on the box is
 // stored in closest[1]. When there are infinitely many choices for the pair
 // of closest points, only one of them is returned.
+
+#include <Mathematics/DistTriangle3CanonicalBox3.h>
+#include <Mathematics/DistSegment3CanonicalBox3.h>
+#include <Mathematics/AlignedBox.h>
 
 namespace gte
 {

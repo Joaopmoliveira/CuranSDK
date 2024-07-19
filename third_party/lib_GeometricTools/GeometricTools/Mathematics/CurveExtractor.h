@@ -1,17 +1,19 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <Mathematics/Logger.h>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace gte
@@ -107,7 +109,7 @@ namespace gte
         {
             Edge() = default;
 
-            Edge(int v0, int v1)
+            Edge(int32_t v0, int32_t v1)
             {
                 if (v0 < v1)
                 {
@@ -128,7 +130,7 @@ namespace gte
 
             bool operator<(Edge const& other) const
             {
-                for (int i = 0; i < 2; ++i)
+                for (int32_t i = 0; i < 2; ++i)
                 {
                     if (v[i] < other.v[i])
                     {
@@ -142,7 +144,7 @@ namespace gte
                 return false;
             }
 
-            std::array<int, 2> v;
+            std::array<int32_t, 2> v;
         };
 
         // Extract level curves and return rational vertices.
@@ -174,8 +176,8 @@ namespace gte
 
             // Compute the map of unique vertices and assign to them new and
             // unique indices.
-            std::map<Vertex, int> vmap;
-            int nextVertex = 0;
+            std::map<Vertex, int32_t> vmap;
+            int32_t nextVertex = 0;
             for (size_t v = 0; v < numVertices; ++v)
             {
                 // Keep only unique vertices.
@@ -188,13 +190,13 @@ namespace gte
 
             // Compute the map of unique edges and assign to them new and
             // unique indices.
-            std::map<Edge, int> emap;
-            int nextEdge = 0;
+            std::map<Edge, int32_t> emap;
+            int32_t nextEdge = 0;
             for (size_t e = 0; e < numEdges; ++e)
             {
                 // Replace old vertex indices by new vertex indices.
                 Edge& edge = edges[e];
-                for (int i = 0; i < 2; ++i)
+                for (int32_t i = 0; i < 2; ++i)
                 {
                     auto iter = vmap.find(vertices[edge.v[i]]);
                     LogAssert(iter != vmap.end(), "Expecting the vertex to be in the vmap.");
@@ -246,16 +248,17 @@ namespace gte
         // each be 2 or larger so that there is at least one image square to
         // process.  The inputPixels must be nonnull and point to contiguous
         // storage that contains at least xBound * yBound elements.
-        CurveExtractor(int xBound, int yBound, T const* inputPixels)
+        CurveExtractor(int32_t xBound, int32_t yBound, T const* inputPixels)
             :
             mXBound(xBound),
             mYBound(yBound),
-            mInputPixels(inputPixels)
+            mInputPixels(inputPixels),
+            mPixels{}
         {
             static_assert(std::is_integral<T>::value && sizeof(T) <= 4,
-                "Type T must be int{8,16,32}_t or uint{8,16,32}_t.");
+                "Type T must be int32_t{8,16,32}_t or uint{8,16,32}_t.");
             LogAssert(mXBound > 1 && mYBound > 1 && mInputPixels != nullptr, "Invalid input.");
-            mPixels.resize(static_cast<size_t>(mXBound * mYBound));
+            mPixels.resize(static_cast<size_t>(static_cast<size_t>(mXBound) * static_cast<size_t>(mYBound)));
         }
 
         void AddVertex(std::vector<Vertex>& vertices,
@@ -268,14 +271,14 @@ namespace gte
             int64_t xNumer0, int64_t xDenom0, int64_t yNumer0, int64_t yDenom0,
             int64_t xNumer1, int64_t xDenom1, int64_t yNumer1, int64_t yDenom1)
         {
-            int v0 = static_cast<int>(vertices.size());
-            int v1 = v0 + 1;
+            int32_t v0 = static_cast<int32_t>(vertices.size());
+            int32_t v1 = v0 + 1;
             edges.push_back(Edge(v0, v1));
             vertices.push_back(Vertex(xNumer0, xDenom0, yNumer0, yDenom0));
             vertices.push_back(Vertex(xNumer1, xDenom1, yNumer1, yDenom1));
         }
 
-        int mXBound, mYBound;
+        int32_t mXBound, mYBound;
         T const* mInputPixels;
         std::vector<int64_t> mPixels;
     };

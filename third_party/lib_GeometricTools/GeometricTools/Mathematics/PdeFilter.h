@@ -1,11 +1,13 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
+
+#include <cstdint>
 
 namespace gte
 {
@@ -13,22 +15,22 @@ namespace gte
     class PdeFilter
     {
     public:
-        enum ScaleType
+        enum class ScaleType
         {
             // The data is processed as is.
-            ST_NONE,
+            NONE,
 
             // The data range is d in [min,max].  The scaled values are d'.
 
             // d' = (d-min)/(max-min) in [0,1]
-            ST_UNIT,
+            UNIT,
 
             // d' = -1 + 2*(d-min)/(max-min) in [-1,1]
-            ST_SYMMETRIC,
+            SYMMETRIC,
 
             // max > -min:  d' = d/max in [min/max,1]
             // max < -min:  d' = -d/min in [-1,-max/min]
-            ST_PRESERVE_ZERO
+            PRESERVE_ZERO
         };
 
         // The abstract base class for all PDE-based filters.
@@ -37,7 +39,7 @@ namespace gte
         }
 
         // Member access.
-        inline int GetQuantity() const
+        inline int32_t GetQuantity() const
         {
             return mQuantity;
         }
@@ -73,16 +75,19 @@ namespace gte
         }
 
     protected:
-        PdeFilter(int quantity, Real const* data, Real borderValue, ScaleType scaleType)
+        PdeFilter(int32_t quantity, Real const* data, Real borderValue, ScaleType scaleType)
             :
             mQuantity(quantity),
             mBorderValue(borderValue),
             mScaleType(scaleType),
-            mTimeStep(0)
+            mMin((Real)0),
+            mOffset((Real)0),
+            mScale((Real)0),
+            mTimeStep((Real)0)
         {
             Real maxValue = data[0];
             mMin = maxValue;
-            for (int i = 1; i < mQuantity; i++)
+            for (int32_t i = 1; i < mQuantity; i++)
             {
                 Real value = data[i];
                 if (value < mMin)
@@ -99,19 +104,19 @@ namespace gte
             {
                 switch (mScaleType)
                 {
-                case ST_NONE:
+                case ScaleType::NONE:
                     mOffset = (Real)0;
                     mScale = (Real)1;
                     break;
-                case ST_UNIT:
+                case ScaleType::UNIT:
                     mOffset = (Real)0;
                     mScale = (Real)1 / (maxValue - mMin);
                     break;
-                case ST_SYMMETRIC:
+                case ScaleType::SYMMETRIC:
                     mOffset = (Real)-1;
                     mScale = (Real)2 / (maxValue - mMin);
                     break;
-                case ST_PRESERVE_ZERO:
+                case ScaleType::PRESERVE_ZERO:
                     mOffset = (Real)0;
                     mScale = (maxValue >= -mMin ? (Real)1 / maxValue : (Real)-1 / mMin);
                     mMin = (Real)0;
@@ -143,7 +148,7 @@ namespace gte
         virtual void OnPostUpdate() = 0;
 
         // The number of image elements.
-        int mQuantity;
+        int32_t mQuantity;
 
         // When set to std::numeric_limits<Real>::max(), Neumann conditions
         // are in use (zero-valued derivatives on the image border).

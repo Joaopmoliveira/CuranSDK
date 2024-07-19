@@ -34,6 +34,9 @@ struct Factory {
         // Choose vertex normals in the diagonal directions.
         gte::Vector3<double> diag{xExtent, yExtent, zExtent};
         Normalize(diag);
+        if(!mOutside)
+            diag = -diag;
+        
 
         for (uint32_t z = 0, v = 0; z < 2; ++z)
         {
@@ -121,7 +124,7 @@ struct Factory {
         std::vector<float> sn(static_cast<size_t>(numRadialSamples) + 1);
         for (uint32_t r = 0; r < numRadialSamples; ++r)
         {
-            float angle = invRS * r * static_cast<float>(GTE_C_TWO_PI);
+            float angle = invRS * r * GTE_C_TWO_PI;
             cs[r] = std::cos(angle);
             sn[r] = std::sin(angle);
         }
@@ -131,7 +134,7 @@ struct Factory {
         // Generate the cylinder itself.
         for (uint32_t a = 0, i = 0; a < numAxisSamples; ++a)
         {
-            float axisFraction = a * invASm1; // in [0,1]
+            float axisFraction = a * invASm1;  // in [0,1]
             float z = -halfHeight + height * axisFraction;
 
             // Compute center of slice.
@@ -140,8 +143,8 @@ struct Factory {
             // Compute slice vertices with duplication at endpoint.
             for (uint32_t r = 0; r <= numRadialSamples; ++r, ++i)
             {
-                float radialFraction = r * invRS; // in [0,1)
-                nor = {cs[r], sn[r], 0.0f};
+                float radialFraction = r * invRS;  // in [0,1)
+                nor = { cs[r], sn[r], 0.0f };
                 pos = sliceCenter + radius * nor;
                 if (!mOutside)
                 {

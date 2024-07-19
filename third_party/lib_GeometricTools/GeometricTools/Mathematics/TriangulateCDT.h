@@ -1,16 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.04.22
+// Version: 6.0.2023.11.20
 
 #pragma once
-
-#include <Mathematics/Logger.h>
-#include <Mathematics/PolygonTree.h>
-#include <Mathematics/ConstrainedDelaunay2.h>
-#include <numeric>
 
 // The fundamental problem is to compute the triangulation of a polygon tree.
 // The outer polygons have counterclockwise ordered vertices. The inner
@@ -54,6 +49,20 @@
 //    double     | BSNumber     |  525
 //    float      | BSRational   |  573
 //    double     | BSRational   | 4329
+
+#include <Mathematics/Logger.h>
+#include <Mathematics/PolygonTree.h>
+#include <Mathematics/ConstrainedDelaunay2.h>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <map>
+#include <memory>
+#include <numeric>
+#include <queue>
+#include <set>
+#include <utility>
+#include <vector>
 
 namespace gte
 {
@@ -105,11 +114,11 @@ namespace gte
             std::shared_ptr<PolygonTree> const& inputTree,
             PolygonTreeEx& outputTree)
         {
-            operator()(static_cast<int>(inputPoints.size()), inputPoints.data(),
+            operator()(static_cast<int32_t>(inputPoints.size()), inputPoints.data(),
                 inputTree, outputTree);
         }
 
-        void operator()(int numInputPoints, Vector2<InputType> const* inputPoints,
+        void operator()(int32_t numInputPoints, Vector2<InputType> const* inputPoints,
             std::shared_ptr<PolygonTree> const& inputTree,
             PolygonTreeEx& outputTree)
         {
@@ -179,7 +188,7 @@ namespace gte
             }
         }
 
-        void Triangulate(int numInputPoints, Vector2<InputType> const* inputPoints,
+        void Triangulate(int32_t numInputPoints, Vector2<InputType> const* inputPoints,
             PolygonTreeEx& tree)
         {
             // The constrained Delaunay triangulator will be given the unique
@@ -189,7 +198,7 @@ namespace gte
             // triangulation is complete, the indices are restored to those
             // relative to inputPoints[].
             std::vector<Vector2<InputType>> points;
-            std::vector<int> remapping;
+            std::vector<int32_t> remapping;
             RemapPolygonTree(numInputPoints, inputPoints, tree, points, remapping);
             LogAssert(points.size() >= 3, "Invalid polygon tree.");
 
@@ -208,15 +217,15 @@ namespace gte
         // after the triangulation is computed. The 'edges' stores all the
         // polygon edges that must be in the triangulation.
         void RemapPolygonTree(
-            int numInputPoints,
+            int32_t numInputPoints,
             Vector2<InputType> const* inputPoints,
             PolygonTreeEx& tree,
             std::vector<Vector2<InputType>>& points,
-            std::vector<int>& remapping)
+            std::vector<int32_t>& remapping)
         {
-            std::map<Vector2<InputType>, int> pointMap;
+            std::map<Vector2<InputType>, int32_t> pointMap;
             points.reserve(numInputPoints);
-            int currentIndex = 0;
+            int32_t currentIndex = 0;
 
             // The remapping is initially the identity, remapping[j] = j.
             remapping.resize(numInputPoints);
@@ -260,7 +269,7 @@ namespace gte
             }
         }
 
-        void RestorePolygonTree(PolygonTreeEx& tree, std::vector<int> const& remapping)
+        void RestorePolygonTree(PolygonTreeEx& tree, std::vector<int32_t> const& remapping)
         {
             std::queue<size_t> queue;
             queue.push(0);
@@ -336,9 +345,9 @@ namespace gte
         {
             // Use constrained Delaunay triangulation.
             ConstrainedDelaunay2<InputType, ComputeType> cdt;
-            int const numPoints = static_cast<int>(points.size());
+            int32_t const numPoints = static_cast<int32_t>(points.size());
             cdt(numPoints, points.data(), static_cast<InputType>(0));
-            std::vector<int> outEdge;
+            std::vector<int32_t> outEdge;
 
             std::queue<size_t> queue;
             queue.push(0);
@@ -347,13 +356,13 @@ namespace gte
                 auto& node = tree.nodes[queue.front()];
                 queue.pop();
 
-                std::vector<int> replacement;
+                std::vector<int32_t> replacement;
                 size_t numIndices = node.polygon.size();
                 for (size_t i0 = numIndices - 1, i1 = 0; i1 < numIndices; i0 = i1++)
                 {
                     // Insert the polygon edge into the constrained Delaunay
                     // triangulation.
-                    std::array<int, 2> edge = { node.polygon[i0], node.polygon[i1] };
+                    std::array<int32_t, 2> edge = { node.polygon[i0], node.polygon[i1] };
                     outEdge.clear();
                     (void)cdt.Insert(edge, outEdge);
                     if (outEdge.size() > 2)
@@ -396,14 +405,14 @@ namespace gte
 
             // Store the triangles in allTriangles for potential use by the
             // caller.
-            int const numTriangles = cdt.GetNumTriangles();
-            int const* indices = cdt.GetIndices().data();
+            int32_t const numTriangles = cdt.GetNumTriangles();
+            int32_t const* indices = cdt.GetIndices().data();
             tree.allTriangles.resize(numTriangles);
-            for (int t = 0; t < numTriangles; ++t)
+            for (int32_t t = 0; t < numTriangles; ++t)
             {
-                int v0 = *indices++;
-                int v1 = *indices++;
-                int v2 = *indices++;
+                int32_t v0 = *indices++;
+                int32_t v1 = *indices++;
+                int32_t v2 = *indices++;
                 graph.Insert(v0, v1, v2);
                 tree.allTriangles[t] = { v0, v1, v2 };
             }
@@ -432,8 +441,8 @@ namespace gte
             size_t const numIndices = node.polygon.size();
             for (size_t i0 = numIndices - 1, i1 = 0; i1 < numIndices; i0 = i1++)
             {
-                int v0 = node.polygon[i0];
-                int v1 = node.polygon[i1];
+                int32_t v0 = node.polygon[i0];
+                int32_t v1 = node.polygon[i1];
                 EdgeKey<false> ekey(v0, v1);
                 auto eiter = emap.find(ekey);
                 LogAssert(eiter != emap.end(), "Unexpected condition.");
@@ -479,7 +488,7 @@ namespace gte
             auto const& tmap = graph.GetTriangles();
             while (regionQueue.size() > 0)
             {
-                auto const& tkey = regionQueue.front();
+                TriangleKey<true> tkey = regionQueue.front();
                 regionQueue.pop();
                 auto titer = tmap.find(tkey);
                 LogAssert(titer != tmap.end(), "Unexpected condition.");
@@ -845,8 +854,6 @@ namespace gte
             ConstrainedDelaunay2<T> cdt;
             cdt(points);
 
-            size_t counter = 0;
-
             std::vector<int32_t> outEdge;
             std::queue<size_t> queue;
             queue.push(0);
@@ -864,7 +871,6 @@ namespace gte
                     std::array<int32_t, 2> edge = { node.polygon[i0], node.polygon[i1] };
                     outEdge.clear();
                     (void)cdt.Insert(edge, outEdge);
-                    ++counter;
                     if (outEdge.size() > 2)
                     {
                         // The polygon edge intersects additional vertices in
@@ -988,7 +994,7 @@ namespace gte
             auto const& tmap = graph.GetTriangles();
             while (regionQueue.size() > 0)
             {
-                auto const& tkey = regionQueue.front();
+                TriangleKey<true> tkey = regionQueue.front();
                 regionQueue.pop();
                 auto titer = tmap.find(tkey);
                 LogAssert(titer != tmap.end(), "Unexpected condition.");

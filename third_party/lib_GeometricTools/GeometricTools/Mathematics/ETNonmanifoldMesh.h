@@ -1,9 +1,9 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
@@ -11,7 +11,12 @@
 #include <Mathematics/WeakPtrCompare.h>
 #include <Mathematics/EdgeKey.h>
 #include <Mathematics/TriangleKey.h>
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <map>
+#include <memory>
+#include <set>
 #include <vector>
 
 namespace gte
@@ -21,12 +26,12 @@ namespace gte
     public:
         // Edge data types.
         class Edge;
-        typedef std::shared_ptr<Edge>(*ECreator)(int, int);
+        typedef std::shared_ptr<Edge>(*ECreator)(int32_t, int32_t);
         typedef std::map<EdgeKey<false>, std::shared_ptr<Edge>> EMap;
 
         // Triangle data types.
         class Triangle;
-        typedef std::shared_ptr<Triangle>(*TCreator)(int, int, int);
+        typedef std::shared_ptr<Triangle>(*TCreator)(int32_t, int32_t, int32_t);
         typedef std::map<TriangleKey<true>, std::shared_ptr<Triangle>> TMap;
 
         // Edge object.
@@ -35,7 +40,7 @@ namespace gte
         public:
             virtual ~Edge() = default;
 
-            Edge(int v0, int v1)
+            Edge(int32_t v0, int32_t v1)
                 :
                 V{ v0, v1 }
             {
@@ -47,7 +52,7 @@ namespace gte
             }
 
             // Vertices of the edge.
-            std::array<int, 2> V;
+            std::array<int32_t, 2> V;
 
             // Triangles sharing the edge.
             std::set<std::weak_ptr<Triangle>, WeakPtrLT<Triangle>> T;
@@ -59,7 +64,7 @@ namespace gte
         public:
             virtual ~Triangle() = default;
 
-            Triangle(int v0, int v1, int v2)
+            Triangle(int32_t v0, int32_t v1, int32_t v2)
                 :
                 V{ v0, v1, v2 }
             {
@@ -71,7 +76,7 @@ namespace gte
             }
 
             // Vertices listed in counterclockwise order (V[0],V[1],V[2]).
-            std::array<int, 3> V;
+            std::array<int32_t, 3> V;
 
             // Adjacent edges.  E[i] points to edge (V[i],V[(i+1)%3]).
             std::array<std::weak_ptr<Edge>, 3> E;
@@ -126,7 +131,7 @@ namespace gte
         // If <v0,v1,v2> is not in the mesh, a Triangle object is created and
         // returned; otherwise, <v0,v1,v2> is in the mesh and nullptr is
         // returned.
-        virtual std::shared_ptr<Triangle> Insert(int v0, int v1, int v2)
+        virtual std::shared_ptr<Triangle> Insert(int32_t v0, int32_t v1, int32_t v2)
         {
             TriangleKey<true> tkey(v0, v1, v2);
             if (mTMap.find(tkey) != mTMap.end())
@@ -143,7 +148,7 @@ namespace gte
             std::shared_ptr<Triangle> tri = mTCreator(v0, v1, v2);
 
             // Add the edges to the mesh if they do not already exist.
-            for (int i0 = 2, i1 = 0; i1 < 3; i0 = i1++)
+            for (int32_t i0 = 2, i1 = 0; i1 < 3; i0 = i1++)
             {
                 EdgeKey<false> ekey(tri->V[i0], tri->V[i1]);
                 std::shared_ptr<Edge> edge;
@@ -174,7 +179,7 @@ namespace gte
 
         // If <v0,v1,v2> is in the mesh, it is removed and 'true' is returned;
         // otherwise, <v0,v1,v2> is not in the mesh and 'false' is returned.
-        virtual bool Remove(int v0, int v1, int v2)
+        virtual bool Remove(int32_t v0, int32_t v1, int32_t v2)
         {
             TriangleKey<true> tkey(v0, v1, v2);
             auto titer = mTMap.find(tkey);
@@ -188,7 +193,7 @@ namespace gte
             std::shared_ptr<Triangle> tri = titer->second;
 
             // Remove the edges and update adjacent triangles if necessary.
-            for (int i = 0; i < 3; ++i)
+            for (int32_t i = 0; i < 3; ++i)
             {
                 // Inform the edges the triangle is being deleted.
                 auto edge = tri->E[i].lock();
@@ -261,7 +266,7 @@ namespace gte
         void GetComponents(std::vector<std::vector<std::shared_ptr<Triangle>>>& components) const
         {
             // visited: 0 (unvisited), 1 (discovered), 2 (finished)
-            std::map<std::shared_ptr<Triangle>, int> visited;
+            std::map<std::shared_ptr<Triangle>, int32_t> visited;
             for (auto const& element : mTMap)
             {
                 visited.insert(std::make_pair(element.second, 0));
@@ -282,7 +287,7 @@ namespace gte
         void GetComponents(std::vector<std::vector<TriangleKey<true>>>& components) const
         {
             // visited: 0 (unvisited), 1 (discovered), 2 (finished)
-            std::map<std::shared_ptr<Triangle>, int> visited;
+            std::map<std::shared_ptr<Triangle>, int32_t> visited;
             for (auto const& element : mTMap)
             {
                 visited.insert(std::make_pair(element.second, 0));
@@ -309,7 +314,7 @@ namespace gte
 
     protected:
         // The edge data and default edge creation.
-        static std::shared_ptr<Edge> CreateEdge(int v0, int v1)
+        static std::shared_ptr<Edge> CreateEdge(int32_t v0, int32_t v1)
         {
             return std::make_shared<Edge>(v0, v1);
         }
@@ -318,7 +323,7 @@ namespace gte
         EMap mEMap;
 
         // The triangle data and default triangle creation.
-        static std::shared_ptr<Triangle> CreateTriangle(int v0, int v1, int v2)
+        static std::shared_ptr<Triangle> CreateTriangle(int32_t v0, int32_t v1, int32_t v2)
         {
             return std::make_shared<Triangle>(v0, v1, v2);
         }
@@ -331,20 +336,20 @@ namespace gte
         // preallocated stack rather than a recursive function that could
         // possibly overflow the call stack.
         void DepthFirstSearch(std::shared_ptr<Triangle> const& tInitial,
-            std::map<std::shared_ptr<Triangle>, int>& visited,
+            std::map<std::shared_ptr<Triangle>, int32_t>& visited,
             std::vector<std::shared_ptr<Triangle>>& component) const
         {
             // Allocate the maximum-size stack that can occur in the
             // depth-first search.  The stack is empty when the index top
             // is -1.
             std::vector<std::shared_ptr<Triangle>> tStack(mTMap.size());
-            int top = -1;
+            int32_t top = -1;
             tStack[++top] = tInitial;
             while (top >= 0)
             {
                 std::shared_ptr<Triangle> tri = tStack[top];
                 visited[tri] = 1;
-                int i;
+                int32_t i;
                 for (i = 0; i < 3; ++i)
                 {
                     auto edge = tri->E[i].lock();

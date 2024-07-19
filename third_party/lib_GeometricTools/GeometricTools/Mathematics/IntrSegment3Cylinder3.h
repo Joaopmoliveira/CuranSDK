@@ -1,17 +1,19 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.06.17
+// Version: 6.0.2023.08.08
 
 #pragma once
+
+// The queries consider the cylinder to be a solid.
 
 #include <Mathematics/IntrIntervals.h>
 #include <Mathematics/IntrLine3Cylinder3.h>
 #include <Mathematics/Segment.h>
-
-// The queries consider the cylinder to be a solid.
+#include <array>
+#include <cstddef>
 
 namespace gte
 {
@@ -25,15 +27,19 @@ namespace gte
             :
             public FIQuery<T, Line3<T>, Cylinder3<T>>::Result
         {
+            Result()
+                :
+                FIQuery<T, Line3<T>, Cylinder3<T>>::Result{}
+            {
+            }
+
             // No additional information to compute.
-            Result() = default;
         };
 
         Result operator()(Segment3<T> const& segment, Cylinder3<T> const& cylinder)
         {
-            Vector3<T> segOrigin{};     // P
-            Vector3<T> segDirection{};  // D
-            T segExtent{};              // e
+            Vector3<T> segOrigin{}, segDirection{};
+            T segExtent{};
             segment.GetCenteredForm(segOrigin, segDirection, segExtent);
 
             Result result{};

@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/IntrRay2AlignedBox2.h>
-#include <Mathematics/OrientedBox.h>
 
 // The queries consider the box to be a solid.
 //
@@ -17,73 +14,89 @@
 // The find-intersection queries use parametric clipping against the four
 // edges of the box.
 
+#include <Mathematics/IntrRay2AlignedBox2.h>
+#include <Mathematics/OrientedBox.h>
+#include <cstdint>
+
 namespace gte
 {
-    template <typename Real>
-    class TIQuery<Real, Ray2<Real>, OrientedBox2<Real>>
+    template <typename T>
+    class TIQuery<T, Ray2<T>, OrientedBox2<T>>
         :
-        public TIQuery<Real, Ray2<Real>, AlignedBox2<Real>>
+        public TIQuery<T, Ray2<T>, AlignedBox2<T>>
     {
     public:
         struct Result
             :
-            public TIQuery<Real, Ray2<Real>, AlignedBox2<Real>>::Result
+            public TIQuery<T, Ray2<T>, AlignedBox2<T>>::Result
         {
+            Result()
+                :
+                TIQuery<T, Ray2<T>, AlignedBox2<T>>::Result{}
+            {
+            }
+
             // No additional information to compute.
         };
 
-        Result operator()(Ray2<Real> const& ray, OrientedBox2<Real> const& box)
+        Result operator()(Ray2<T> const& ray, OrientedBox2<T> const& box)
         {
             // Transform the ray to the oriented-box coordinate system.
-            Vector2<Real> diff = ray.origin - box.center;
-            Vector2<Real> rayOrigin
+            Vector2<T> diff = ray.origin - box.center;
+            Vector2<T> rayOrigin
             {
                 Dot(diff, box.axis[0]),
                 Dot(diff, box.axis[1])
             };
-            Vector2<Real> rayDirection = Vector2<Real>
+            Vector2<T> rayDirection = Vector2<T>
             {
                 Dot(ray.direction, box.axis[0]),
                 Dot(ray.direction, box.axis[1])
             };
 
-            Result result;
+            Result result{};
             this->DoQuery(rayOrigin, rayDirection, box.extent, result);
             return result;
         }
     };
 
-    template <typename Real>
-    class FIQuery<Real, Ray2<Real>, OrientedBox2<Real>>
+    template <typename T>
+    class FIQuery<T, Ray2<T>, OrientedBox2<T>>
         :
-        public FIQuery<Real, Ray2<Real>, AlignedBox2<Real>>
+        public FIQuery<T, Ray2<T>, AlignedBox2<T>>
     {
     public:
         struct Result
             :
-            public FIQuery<Real, Ray2<Real>, AlignedBox2<Real>>::Result
+            public FIQuery<T, Ray2<T>, AlignedBox2<T>>::Result
         {
+            Result()
+                :
+                FIQuery<T, Ray2<T>, AlignedBox2<T>>::Result{}
+            {
+            }
+
             // No additional information to compute.
         };
 
-        Result operator()(Ray2<Real> const& ray, OrientedBox2<Real> const& box)
+        Result operator()(Ray2<T> const& ray, OrientedBox2<T> const& box)
         {
             // Transform the ray to the oriented-box coordinate system.
-            Vector2<Real> diff = ray.origin - box.center;
-            Vector2<Real> rayOrigin
+            Vector2<T> diff = ray.origin - box.center;
+            Vector2<T> rayOrigin
             {
                 Dot(diff, box.axis[0]),
                 Dot(diff, box.axis[1])
             };
-            Vector2<Real> rayDirection = Vector2<Real>
+            Vector2<T> rayDirection = Vector2<T>
             {
                 Dot(ray.direction, box.axis[0]),
-                    Dot(ray.direction, box.axis[1])
+                Dot(ray.direction, box.axis[1])
             };
 
-            Result result;
+            Result result{};
             this->DoQuery(rayOrigin, rayDirection, box.extent, result);
-            for (int i = 0; i < result.numIntersections; ++i)
+            for (int32_t i = 0; i < result.numIntersections; ++i)
             {
                 result.point[i] = ray.origin + result.parameter[i] * ray.direction;
             }

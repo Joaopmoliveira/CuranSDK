@@ -1,20 +1,23 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.11.16
+// Version: 6.0.2024.03.12
 
 #pragma once
-
-#include <Mathematics/Delaunay2Mesh.h>
-#include <Mathematics/IntpQuadraticNonuniform2.h>
-#include <memory>
 
 // Interpolation of a scalar-valued function defined on a sphere.  Although
 // the sphere lives in 3D, the interpolation is a 2D method whose input
 // points are angles (theta,phi) from spherical coordinates.  The domains of
 // the angles are -pi <= theta <= pi and 0 <= phi <= pi.
+
+#include <Mathematics/Delaunay2Mesh.h>
+#include <Mathematics/IntpQuadraticNonuniform2.h>
+#include <cmath>
+#include <cstdint>
+#include <memory>
+#include <vector>
 
 namespace gte
 {
@@ -30,7 +33,7 @@ namespace gte
     // BSRational<*>.
 
     template <typename InputType, typename ComputeType, typename RationalType>
-    class // [[deprecated("Use IntpSphere2<InputType> instead.")]]
+    class // [[deprecated("Use IntpSphere2<T> instead.")]]
         IntpSphere2<InputType, ComputeType, RationalType>
     {
     public:
@@ -40,16 +43,19 @@ namespace gte
         // sphere poles x = 0, y = 0, and |z| = 1.
         ~IntpSphere2() = default;
 
-        IntpSphere2(int numPoints, InputType const* theta, InputType const* phi, InputType const* F)
+        IntpSphere2(int32_t numPoints, InputType const* theta, InputType const* phi, InputType const* F)
             :
             mMesh(mDelaunay)
         {
+            static_assert(std::is_floating_point<InputType>::value,
+                "The input type must be 'float' or 'double'.");
+
             // Copy the input data.  The larger arrays are used to support
             // wrap-around in the Delaunay triangulation for the interpolator.
-            int totalPoints = 3 * numPoints;
+            int32_t totalPoints = 3 * numPoints;
             mWrapAngles.resize(totalPoints);
             mWrapF.resize(totalPoints);
-            for (int i = 0; i < numPoints; ++i)
+            for (int32_t i = 0; i < numPoints; ++i)
             {
                 mWrapAngles[i][0] = theta[i];
                 mWrapAngles[i][1] = phi[i];
@@ -58,7 +64,7 @@ namespace gte
 
             // Use periodicity to get wrap-around in the Delaunay
             // triangulation.
-            int i0 = 0, i1 = numPoints, i2 = 2 * numPoints;
+            int32_t i0 = 0, i1 = numPoints, i2 = 2 * numPoints;
             for (/**/; i0 < numPoints; ++i0, ++i1, ++i2)
             {
                 mWrapAngles[i1][0] = mWrapAngles[i0][0] + (InputType)GTE_C_TWO_PI;
@@ -142,16 +148,19 @@ namespace gte
         // sphere poles x = 0, y = 0, and |z| = 1.
         ~IntpSphere2() = default;
 
-        IntpSphere2(int numPoints, T const* theta, T const* phi, T const* F)
+        IntpSphere2(int32_t numPoints, T const* theta, T const* phi, T const* F)
             :
             mMesh(mDelaunay)
         {
+            static_assert(std::is_floating_point<T>::value,
+                "The input type must be 'float' or 'double'.");
+
             // Copy the input data.  The larger arrays are used to support
             // wrap-around in the Delaunay triangulation for the interpolator.
-            int totalPoints = 3 * numPoints;
+            int32_t totalPoints = 3 * numPoints;
             mWrapAngles.resize(totalPoints);
             mWrapF.resize(totalPoints);
-            for (int i = 0; i < numPoints; ++i)
+            for (int32_t i = 0; i < numPoints; ++i)
             {
                 mWrapAngles[i][0] = theta[i];
                 mWrapAngles[i][1] = phi[i];
@@ -160,7 +169,7 @@ namespace gte
 
             // Use periodicity to get wrap-around in the Delaunay
             // triangulation.
-            int i0 = 0, i1 = numPoints, i2 = 2 * numPoints;
+            int32_t i0 = 0, i1 = numPoints, i2 = 2 * numPoints;
             for (/**/; i0 < numPoints; ++i0, ++i1, ++i2)
             {
                 mWrapAngles[i1][0] = mWrapAngles[i0][0] + static_cast<T>(GTE_C_TWO_PI);

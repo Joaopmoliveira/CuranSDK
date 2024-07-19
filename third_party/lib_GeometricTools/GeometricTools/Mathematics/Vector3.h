@@ -1,13 +1,16 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.01.10
+// Version: 6.0.2023.11.26
 
 #pragma once
 
 #include <Mathematics/Vector.h>
+#include <array>
+#include <cmath>
+#include <cstdint>
 
 namespace gte
 {
@@ -25,7 +28,7 @@ namespace gte
     //         = (x1*y2-x2*y1, x2*y0-x0*y2, x0*y1-x1*y0)
     // where e0 = (1,0,0), e1 = (0,1,0), e2 = (0,0,1), v0 = (x0,x1,x2), and
     // v1 = (y0,y1,y2).
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     Vector<N, Real> Cross(Vector<N, Real> const& v0, Vector<N, Real> const& v1)
     {
         static_assert(N == 3 || N == 4, "Dimension must be 3 or 4.");
@@ -39,7 +42,7 @@ namespace gte
     }
 
     // Compute the normalized cross product.
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     Vector<N, Real> UnitCross(Vector<N, Real> const& v0, Vector<N, Real> const& v1, bool robust = false)
     {
         static_assert(N == 3 || N == 4, "Dimension must be 3 or 4.");
@@ -51,7 +54,7 @@ namespace gte
     // Compute Dot((x0,x1,x2),Cross((y0,y1,y2),(z0,z1,z2)), the triple scalar
     // product of three vectors, where v0 = (x0,x1,x2), v1 = (y0,y1,y2), and
     // v2 is (z0,z1,z2).
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     Real DotCross(Vector<N, Real> const& v0, Vector<N, Real> const& v1,
         Vector<N, Real> const& v2)
     {
@@ -67,7 +70,7 @@ namespace gte
     // 2 and v[0] through v[numInputs-1] must be initialized.  On output, the
     // vectors v[0] through v[2] form an orthonormal set.
     template <typename Real>
-    Real ComputeOrthogonalComplement(int numInputs, Vector3<Real>* v, bool robust = false)
+    Real ComputeOrthogonalComplement(int32_t numInputs, Vector3<Real>* v, bool robust = false)
     {
         if (numInputs == 1)
         {
@@ -91,6 +94,34 @@ namespace gte
         return (Real)0;
     }
 
+    // Compute a right-handed orthonormal basis {v0,v1,v2} for the orthogonal
+    // complement of a unit-length vector v2. See
+    // https://www.geometrictools.com/Documentation/FastOrthogonalComplement.pdf
+    //
+    template <typename Real>
+    void FastComputeOrthogonalComplement(Vector3<Real> const& v2, Vector3<Real>& v0, Vector3<Real>& v1)
+    {
+        Real const zero = static_cast<Real>(0);
+        Real const one = static_cast<Real>(1);
+        Real temp0{}, temp1{}, temp2{};
+        if (v2[2] >= zero)
+        {
+            temp0 = one + v2[2];
+            temp1 = -v2[0] * v2[1] / temp0;
+            temp2 = v2[1] * v2[1] / temp0;
+            v0 = { v2[2] + temp2, temp1, -v2[0] };
+            v1 = { temp1, one - temp2, -v2[1] };
+        }
+        else
+        {
+            temp0 = one - v2[2];
+            temp1 = v2[0] * v2[1] / temp0;
+            temp2 = v2[1] * v2[1] / temp0;
+            v0 = { -v2[2] + temp2, -temp1, v2[0] };
+            v1 = { temp1, -one + temp2, -v2[1] };
+        }
+    }
+
     // Compute the barycentric coordinates of the point P with respect to the
     // tetrahedron <V0,V1,V2,V3>, P = b0*V0 + b1*V1 + b2*V2 + b3*V3, where
     // b0 + b1 + b2 + b3 = 1.  The return value is 'true' iff {V0,V1,V2,V3} is
@@ -101,26 +132,22 @@ namespace gte
     template <typename Real>
     bool ComputeBarycentrics(Vector3<Real> const& p, Vector3<Real> const& v0,
         Vector3<Real> const& v1, Vector3<Real> const& v2, Vector3<Real> const& v3,
-        Real bary[4], Real epsilon = (Real)0)
+        std::array<Real, 4>& bary, Real epsilon = static_cast<Real>(0))
     {
         // Compute the vectors relative to V3 of the tetrahedron.
-        Vector3<Real> diff[4] = { v0 - v3, v1 - v3, v2 - v3, p - v3 };
+        std::array<Vector3<Real>, 4> diff = { v0 - v3, v1 - v3, v2 - v3, p - v3 };
 
         Real det = DotCross(diff[0], diff[1], diff[2]);
         if (det < -epsilon || det > epsilon)
         {
-            Real invDet = ((Real)1) / det;
-            bary[0] = DotCross(diff[3], diff[1], diff[2]) * invDet;
-            bary[1] = DotCross(diff[3], diff[2], diff[0]) * invDet;
-            bary[2] = DotCross(diff[3], diff[0], diff[1]) * invDet;
-            bary[3] = (Real)1 - bary[0] - bary[1] - bary[2];
+            bary[0] = DotCross(diff[3], diff[1], diff[2]) / det;
+            bary[1] = DotCross(diff[3], diff[2], diff[0]) / det;
+            bary[2] = DotCross(diff[3], diff[0], diff[1]) / det;
+            bary[3] = static_cast<Real>(1) - bary[0] - bary[1] - bary[2];
             return true;
         }
 
-        for (int i = 0; i < 4; ++i)
-        {
-            bary[i] = (Real)0;
-        }
+        bary.fill(static_cast<Real>(0));
         return false;
     }
 
@@ -132,7 +159,7 @@ namespace gte
     {
     public:
         // The constructor sets the class members based on the input set.
-        IntrinsicsVector3(int numVectors, Vector3<Real> const* v, Real inEpsilon)
+        IntrinsicsVector3(int32_t numVectors, Vector3<Real> const* v, Real inEpsilon)
             :
             epsilon(inEpsilon),
             dimension(0),
@@ -143,6 +170,9 @@ namespace gte
             min[0] = (Real)0;
             min[1] = (Real)0;
             min[2] = (Real)0;
+            max[0] = (Real)0;
+            max[1] = (Real)0;
+            max[2] = (Real)0;
             direction[0] = { (Real)0, (Real)0, (Real)0 };
             direction[1] = { (Real)0, (Real)0, (Real)0 };
             direction[2] = { (Real)0, (Real)0, (Real)0 };
@@ -156,7 +186,8 @@ namespace gte
                 // Compute the axis-aligned bounding box for the input vectors.
                 // Keep track of the indices into 'vectors' for the current
                 // min and max.
-                int j, indexMin[3], indexMax[3];
+                int32_t j{};
+                std::array<int32_t, 3> indexMin{}, indexMax{};
                 for (j = 0; j < 3; ++j)
                 {
                     min[j] = v[0][j];
@@ -165,7 +196,7 @@ namespace gte
                     indexMax[j] = 0;
                 }
 
-                int i;
+                int32_t i;
                 for (i = 1; i < numVectors; ++i)
                 {
                     for (j = 0; j < 3; ++j)
@@ -321,7 +352,7 @@ namespace gte
 
         // The intrinsic dimension of the input set, computed based on the
         // nonnegative tolerance mEpsilon.
-        int dimension;
+        int32_t dimension;
 
         // Axis-aligned bounding box of the input set.  The maximum range is
         // the larger of max[0]-min[0], max[1]-min[1], and max[2]-min[2].
@@ -352,7 +383,7 @@ namespace gte
         // points V[extreme[0]], V[extreme[1]], V[extreme[2]], and
         // V[extreme[3]] is clockwise or counterclockwise, the condition
         // stored in extremeCCW.
-        int extreme[4];
+        int32_t extreme[4];
         bool extremeCCW;
     };
 }

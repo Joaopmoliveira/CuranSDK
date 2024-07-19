@@ -1,11 +1,16 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
+
+// The test-intersection query is based on the document
+// https://www.geometrictools.com/Documentation/MethodOfSeparatingAxes.pdf
+// The find-intersection query clips the triangle against the faces of
+// the oriented box.
 
 #include <Mathematics/FIQuery.h>
 #include <Mathematics/TIQuery.h>
@@ -13,11 +18,9 @@
 #include <Mathematics/Triangle.h>
 #include <Mathematics/OrientedBox.h>
 #include <Mathematics/Vector3.h>
-
-// The test-intersection query is based on the document
-// https://www.geometrictools.com/Documentation/MethodOfSeparatingAxes.pdf
-// The find-intersection query clips the triangle against the faces of
-// the oriented box.
+#include <cmath>
+#include <cstdint>
+#include <vector>
 
 namespace gte
 {
@@ -27,14 +30,20 @@ namespace gte
     public:
         struct Result
         {
+            Result()
+                :
+                intersect(false)
+            {
+            }
+
             bool intersect;
         };
 
         Result operator()(Triangle3<Real> const& triangle, OrientedBox3<Real> const& box)
         {
-            Result result;
+            Result result{};
 
-            Real min0, max0, min1, max1;
+            Real min0 = (Real)0, max0 = (Real)0, min1 = (Real)0, max1 = (Real)0;
             Vector3<Real> D, edge[3];
 
             // Test direction of triangle normal.
@@ -51,7 +60,7 @@ namespace gte
             }
 
             // Test direction of box faces.
-            for (int i = 0; i < 3; ++i)
+            for (int32_t i = 0; i < 3; ++i)
             {
                 D = box.axis[i];
                 GetProjection(D, triangle, min0, max0);
@@ -67,9 +76,9 @@ namespace gte
 
             // Test direction of triangle-box edge cross products.
             edge[2] = edge[1] - edge[0];
-            for (int i0 = 0; i0 < 3; ++i0)
+            for (int32_t i0 = 0; i0 < 3; ++i0)
             {
-                for (int i1 = 0; i1 < 3; ++i1)
+                for (int32_t i1 = 0; i1 < 3; ++i1)
                 {
                     D = Cross(edge[i0], box.axis[i1]);
                     GetProjection(D, triangle, min0, max0);
@@ -137,31 +146,38 @@ namespace gte
     public:
         struct Result
         {
+            Result()
+                :
+                insidePolygon{},
+                outsidePolygons{}
+            {
+            }
+
             std::vector<Vector3<Real>> insidePolygon;
             std::vector<std::vector<Vector3<Real>>> outsidePolygons;
         };
 
         Result operator()(Triangle3<Real> const& triangle, OrientedBox3<Real> const& box)
         {
-            Result result;
+            Result result{};
 
             // Start with the triangle and clip it against each face of the
             // box.  The largest number of vertices for the polygon of
             // intersection is 7.
             result.insidePolygon.resize(3);
-            for (int i = 0; i < 3; ++i)
+            for (int32_t i = 0; i < 3; ++i)
             {
                 result.insidePolygon[i] = triangle.v[i];
             }
 
             typedef FIQuery<Real, std::vector<Vector<3, Real>>, Hyperplane<3, Real>> PPQuery;
 
-            Plane3<Real> plane;
-            PPQuery ppQuery;
-            typename PPQuery::Result ppResult;
-            for (int dir = -1; dir <= 1; dir += 2)
+            Plane3<Real> plane{};
+            PPQuery ppQuery{};
+            typename PPQuery::Result ppResult{};
+            for (int32_t dir = -1; dir <= 1; dir += 2)
             {
-                for (int side = 0; side < 3; ++side)
+                for (int32_t side = 0; side < 3; ++side)
                 {
                     // Create a plane for the box face that points inside the box.
                     plane.normal = ((Real)dir) * box.axis[side];

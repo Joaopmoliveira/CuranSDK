@@ -17,6 +17,7 @@ void test_cube_intersection(){
 void test_open_cylinder_intersection(){
     std::cout << "test_open_cylinder_intersection:\n";
     curan::geometry::OpenCylinder geom{10,10,1.0,1.0};
+    std::cout << "geom:\n" << geom << std::endl;
     auto value = curan::geometry::clip_with_plane(geom,{0.0,0.0,1.0},{0.0,0.0,0.0});
     if(value){
         std::cout << "polygon is: \n" << *value << std::endl;
@@ -116,7 +117,7 @@ void test_icosaheadron_intersection(){
 
 int main(){
     test_cube_intersection();
-    //test_open_cylinder_intersection();
+    test_open_cylinder_intersection();
     //test_closed_cylinder_intersection();
     //test_shpere_intersection();
     //test_torus_intersection();

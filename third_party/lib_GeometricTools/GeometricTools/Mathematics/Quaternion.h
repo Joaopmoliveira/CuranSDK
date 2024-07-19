@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.04.23
+// Version: 6.0.2023.11.20
 
 #pragma once
-
-#include <Mathematics/Vector.h>
-#include <Mathematics/Matrix.h>
-#include <Mathematics/ChebyshevRatio.h>
 
 // A quaternion is of the form
 //   q = x * i + y * j + z * k + w * 1 = x * i + y * j + z * k + w
@@ -20,6 +16,22 @@
 // I assume that you are familiar with the arithmetic and algebraic properties
 // of quaternions.  See
 // https://www.geometrictools.com/Documentation/Quaternions.pdf
+//
+// The Rotate(...) functions require fewer arithmetic operations than those
+// of the original implementations using rotatedU = q * (0,u) * Conjugate(q)
+// (for GTE_USE_MAT_VEC) and rotatedU = Conjugate(q) * (0, u) * q (for
+// GTE_USE_VEC_MAT). The new implementations are based on Robert Eisele's
+// the derivation at
+// https://raw.org/proof/vector-rotation-using-quaternions/
+
+#include <Mathematics/Vector.h>
+#include <Mathematics/Vector3.h>
+#include <Mathematics/Matrix.h>
+#include <Mathematics/ChebyshevRatio.h>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 
 namespace gte
 {
@@ -32,23 +44,25 @@ namespace gte
 
         // Construction.  The default constructor does not initialize the
         // members.
-        Quaternion() = default;
+        Quaternion()
+            :
+            mTuple{ (Real)0, (Real)0, (Real)0, (Real)0 }
+        {
+        }
 
         Quaternion(Real x, Real y, Real z, Real w)
+            :
+            mTuple{ x, y, z, w }
         {
-            mTuple[0] = x;
-            mTuple[1] = y;
-            mTuple[2] = z;
-            mTuple[3] = w;
         }
 
         // Member access.
-        inline Real const& operator[](int i) const
+        inline Real const& operator[](int32_t i) const
         {
             return mTuple[i];
         }
 
-        inline Real& operator[](int i)
+        inline Real& operator[](int32_t i)
         {
             return mTuple[i];
         }
@@ -131,7 +145,7 @@ namespace gte
     Quaternion<Real> operator-(Quaternion<Real> const& q)
     {
         Quaternion<Real> result;
-        for (int i = 0; i < 4; ++i)
+        for (int32_t i = 0; i < 4; ++i)
         {
             result[i] = -q[i];
         }
@@ -177,7 +191,7 @@ namespace gte
     template <typename Real>
     Quaternion<Real>& operator+=(Quaternion<Real>& q0, Quaternion<Real> const& q1)
     {
-        for (int i = 0; i < 4; ++i)
+        for (int32_t i = 0; i < 4; ++i)
         {
             q0[i] += q1[i];
         }
@@ -187,7 +201,7 @@ namespace gte
     template <typename Real>
     Quaternion<Real>& operator-=(Quaternion<Real>& q0, Quaternion<Real> const& q1)
     {
-        for (int i = 0; i < 4; ++i)
+        for (int32_t i = 0; i < 4; ++i)
         {
             q0[i] -= q1[i];
         }
@@ -197,7 +211,7 @@ namespace gte
     template <typename Real>
     Quaternion<Real>& operator*=(Quaternion<Real>& q, Real scalar)
     {
-        for (int i = 0; i < 4; ++i)
+        for (int32_t i = 0; i < 4; ++i)
         {
             q[i] *= scalar;
         }
@@ -209,14 +223,14 @@ namespace gte
     {
         if (scalar != (Real)0)
         {
-            for (int i = 0; i < 4; ++i)
+            for (int32_t i = 0; i < 4; ++i)
             {
                 q[i] /= scalar;
             }
         }
         else
         {
-            for (int i = 0; i < 4; ++i)
+            for (int32_t i = 0; i < 4; ++i)
             {
                 q[i] = (Real)0;
             }
@@ -229,7 +243,7 @@ namespace gte
     Real Dot(Quaternion<Real> const& q0, Quaternion<Real> const& q1)
     {
         Real dot = q0[0] * q1[0];
-        for (int i = 1; i < 4; ++i)
+        for (int32_t i = 1; i < 4; ++i)
         {
             dot += q0[i] * q1[i];
         }
@@ -252,7 +266,7 @@ namespace gte
         }
         else
         {
-            for (int i = 0; i < 4; ++i)
+            for (int32_t i = 0; i < 4; ++i)
             {
                 q[i] = (Real)0;
             }
@@ -312,41 +326,41 @@ namespace gte
         return Quaternion<Real>(-q[0], -q[1], -q[2], +q[3]);
     }
 
-    // Rotate a 3D vector v = (v0,v1,v2) using quaternion multiplication. The
+    // Rotate a 3D vector u = (u0,u1,u2) using quaternion multiplication. The
     // input quaternion must be unit length. If R is the rotation matrix
-    // corresponding to the quaternion q, the rotated vector u corresponding
-    // to v is u = R*v when GTE_USE_MAT_VEC is defined (the default for
-    // projects) or u = v*R when GTE_USE_MAT_VEC is not defined.
+    // corresponding to the quaternion q, the rotated vector v corresponding
+    // to u is v = R*u when GTE_USE_MAT_VEC is defined (the default for
+    // projects) or v = u*R when GTE_USE_MAT_VEC is not defined.
     template <typename Real>
-    Vector<3, Real> Rotate(Quaternion<Real> const& q, Vector<3, Real> const& v)
+    Vector<3, Real> Rotate(Quaternion<Real> const& q, Vector<3, Real> const& u)
     {
-        Quaternion<Real> input(v[0], v[1], v[2], (Real)0);
 #if defined(GTE_USE_MAT_VEC)
-        Quaternion<Real> output = q * input * Conjugate(q);
+        Vector<3, Real> v{ q[0], q[1], q[2] };
 #else
-        Quaternion<Real> output = Conjugate(q) * input * q;
+        Vector<3, Real> v{ -q[0], -q[1], -q[2] };
 #endif
-        Vector<3, Real> u{ output[0], output[1], output[2] };
-        return u;
+        Vector<3, Real> t = static_cast<Real>(2) * Cross(v, u);
+        Vector<3, Real> rotatedU = u + q[3] * t + Cross(v, t);
+        return rotatedU;
     }
 
     // Rotate a 3D vector, represented as a homogeneous 4D vector
-    // v = (v0,v1,v2,0), using quaternion multiplication. The input quaternion
+    // u = (u0,u1,u2,0), using quaternion multiplication. The input quaternion
     // must be unit length. If R is the rotation matrix corresponding to the
-    // quaternion q, the rotated vector u corresponding to v is u = R*v when
-    // GTE_USE_MAT_VEC is defined (the default for projects) or u = v*R when
+    // quaternion q, the rotated vector v corresponding to u is v = R*u when
+    // GTE_USE_MAT_VEC is defined (the default for projects) or v = u*R when
     // GTE_USE_MAT_VEC is not defined.
     template <typename Real>
-    Vector<4, Real> Rotate(Quaternion<Real> const& q, Vector<4, Real> const& v)
+    Vector<4, Real> Rotate(Quaternion<Real> const& q, Vector<4, Real> const& u)
     {
-        Quaternion<Real> input(v[0], v[1], v[2], (Real)0);
 #if defined(GTE_USE_MAT_VEC)
-        Quaternion<Real> output = q * input * Conjugate(q);
+        Vector<4, Real> v{ q[0], q[1], q[2], static_cast<Real>(0) };
 #else
-        Quaternion<Real> output = Conjugate(q) * input * q;
+        Vector<4, Real> v{ -q[0], -q[1], -q[2], static_cast<Real>(0) };
 #endif
-        Vector<4, Real> u{ output[0], output[1], output[2], (Real)0 };
-        return u;
+        Vector<4, Real> t = static_cast<Real>(2) * Cross(v, u);
+        Vector<4, Real> rotatedU = u + q[3] * t + Cross(v, t);
+        return rotatedU;
     }
 
     // The spherical linear interpolation (slerp) of unit-length quaternions
@@ -363,7 +377,7 @@ namespace gte
     // ones form an acute angle A in [0,pi/2].  Other preprocessing can help
     // with performance.  See the function comments below.
     //
-    // See GteSlerpEstimate.{h,inl} for various approximations, including
+    // See SlerpEstimate.{h,inl} for various approximations, including
     // SLERP<Real>::EstimateRPH that gives good performance and accurate
     // results for preprocessed quaternions.
 
@@ -384,9 +398,8 @@ namespace gte
             sign = (Real)-1;
         }
 
-        Real f0, f1;
-        ChebyshevRatio<Real>::Get(t, cosA, f0, f1);
-        return q0 * f0 + q1 * (sign * f1);
+        std::array<Real, 2> f = ChebyshevRatiosUsingCosAngle(t, cosA);
+        return q0 * f[0] + q1 * (sign * f[1]);
     }
 
     // The angle between q0 and q1 must be in [0,pi/2].  The suffix R is for
@@ -403,9 +416,8 @@ namespace gte
     template <typename Real>
     Quaternion<Real> SlerpR(Real t, Quaternion<Real> const& q0, Quaternion<Real> const& q1)
     {
-        Real f0, f1;
-        ChebyshevRatio<Real>::Get(t, Dot(q0, q1), f0, f1);
-        return q0 * f0 + q1 * f1;
+        std::array<Real, 2> f = ChebyshevRatiosUsingCosAngle(t, Dot(q0, q1));
+        return q0 * f[0] + q1 * f[1];
     }
 
     // The angle between q0 and q1 must be in [0,pi/2].  The suffix R is for
@@ -431,9 +443,8 @@ namespace gte
     template <typename Real>
     Quaternion<Real> SlerpRP(Real t, Quaternion<Real> const& q0, Quaternion<Real> const& q1, Real cosA)
     {
-        Real f0, f1;
-        ChebyshevRatio<Real>::Get(t, cosA, f0, f1);
-        return q0 * f0 + q1 * f1;
+        std::array<Real, 2> f = ChebyshevRatiosUsingCosAngle(t, cosA);
+        return q0 * f[0] + q1 * f[1];
     }
 
     // The angle between q0 and q1 is A and must be in [0,pi/2].  The suffix R
@@ -465,17 +476,16 @@ namespace gte
     Quaternion<Real> SlerpRPH(Real t, Quaternion<Real> const& q0, Quaternion<Real> const& q1,
         Quaternion<Real> const& qh, Real cosAH)
     {
-        Real f0, f1;
         Real twoT = static_cast<Real>(2) * t;
         if (twoT <= static_cast<Real>(1))
         {
-            ChebyshevRatio<Real>::Get(twoT, cosAH, f0, f1);
-            return q0 * f0 + qh * f1;
+            std::array<Real, 2> f = ChebyshevRatiosUsingCosAngle(twoT, cosAH);
+            return q0 * f[0] + qh * f[1];
         }
         else
         {
-            ChebyshevRatio<Real>::Get(twoT - static_cast<Real>(1), cosAH, f0, f1);
-            return qh * f0 + q1 * f1;
+            std::array<Real, 2> f = ChebyshevRatiosUsingCosAngle(twoT - static_cast<Real>(1), cosAH);
+            return qh * f[0] + q1 * f[1];
         }
     }
 }

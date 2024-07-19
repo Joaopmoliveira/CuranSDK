@@ -1,18 +1,27 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.07.21
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/BSNumber.h>
 
 // See the comments in BSNumber.h about the UInteger requirements. The
 // denominator of a BSRational is chosen to be positive, which allows some
 // simplification of comparisons. Also see the comments about exposing the
 // GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE conditional define.
+
+#include <Mathematics/BSNumber.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <istream>
+#include <limits>
+#include <ostream>
+#include <type_traits>
+#include <utility>
 
 namespace gte
 {
@@ -234,7 +243,7 @@ namespace gte
 
             // Get the leading '+' or '-' if it exists.
             std::string fpNumber;
-            int sign;
+            int32_t sign;
             if (number[0] == '+')
             {
                 fpNumber = number.substr(1);
@@ -304,14 +313,14 @@ namespace gte
         // round-to-nearest-ties-to-even.
         operator float() const
         {
-            float output;
+            float output{};
             Convert(*this, FE_TONEAREST, output);
             return output;
         }
 
         operator double() const
         {
-            double output;
+            double output{};
             Convert(*this, FE_TONEAREST, output);
             return output;
         }
@@ -344,18 +353,26 @@ namespace gte
         }
 
         // Member access.
-        inline void SetSign(int sign)
+        inline void SetSign(int32_t sign)
         {
             mNumerator.SetSign(sign);
             mDenominator.SetSign(1);
-#if defined(GTL_BINARY_SCIENTIFIC_SHOW_DOUBLE)
+#if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
             mValue = sign * std::fabs(mValue);
 #endif
         }
 
-        inline int GetSign() const
+        inline int32_t GetSign() const
         {
             return mNumerator.GetSign() * mDenominator.GetSign();
+        }
+
+        inline void Negate()
+        {
+            mNumerator.Negate();
+#if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
+            mValue = (double)*this;
+#endif
         }
 
         inline BSNumber<UInteger> const& GetNumerator() const
@@ -573,7 +590,7 @@ namespace gte
             BSRational y(0), ten(10), pow10(10);
             for (size_t i = 0; i < number.size(); ++i)
             {
-                int digit = static_cast<int>(number[i]) - static_cast<int>('0');
+                int32_t digit = static_cast<int32_t>(number[i]) - static_cast<int32_t>('0');
                 if (digit > 0)
                 {
                      y += BSRational(digit) / pow10;
@@ -661,7 +678,7 @@ namespace gte
         auto& bits = w.GetBits();
         int32_t current = size - 1;
         int32_t lastBit = -1;
-        for (int i = precisionM1; i >= 0; --i)
+        for (int32_t i = precisionM1; i >= 0; --i)
         {
             if (n < d)
             {
@@ -878,7 +895,7 @@ namespace std
     }
 
     template <typename UInteger>
-    inline gte::BSRational<UInteger> frexp(gte::BSRational<UInteger> const& x, int* exponent)
+    inline gte::BSRational<UInteger> frexp(gte::BSRational<UInteger> const& x, int32_t* exponent)
     {
         gte::BSRational<UInteger> result = x;
         auto& numer = result.GetNumerator();
@@ -895,16 +912,22 @@ namespace std
         }
         numer.SetSign(saveSign);
         *exponent = e;
+#if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
+        result.mValue = (double)result;
+#endif
         return result;
     }
 
     template <typename UInteger>
-    inline gte::BSRational<UInteger> ldexp(gte::BSRational<UInteger> const& x, int exponent)
+    inline gte::BSRational<UInteger> ldexp(gte::BSRational<UInteger> const& x, int32_t exponent)
     {
         gte::BSRational<UInteger> result = x;
-        int biasedExponent = result.GetNumerator().GetBiasedExponent();
+        int32_t biasedExponent = result.GetNumerator().GetBiasedExponent();
         biasedExponent += exponent;
         result.GetNumerator().SetBiasedExponent(biasedExponent);
+#if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
+        result.mValue = (double)result;
+#endif
         return result;
     }
 
@@ -930,6 +953,15 @@ namespace std
     inline gte::BSRational<UInteger> pow(gte::BSRational<UInteger> const& x, gte::BSRational<UInteger> const& y)
     {
         return (gte::BSRational<UInteger>)std::pow((double)x, (double)y);
+    }
+
+    template <typename UInteger>
+    inline gte::BSRational<UInteger> remainder(gte::BSRational<UInteger> const& x, gte::BSRational<UInteger> const& y)
+    {
+        double dx = static_cast<double>(x);
+        double dy = static_cast<double>(y);
+        double result = std::remainder(dx, dy);
+        return static_cast<gte::BSRational<UInteger>>(result);
     }
 
     template <typename UInteger>
@@ -1006,7 +1038,7 @@ namespace gte
     }
 
     template <typename UInteger>
-    inline int isign(BSRational<UInteger> const& x)
+    inline int32_t isign(BSRational<UInteger> const& x)
     {
         return isign((double)x);
     }
@@ -1035,11 +1067,43 @@ namespace gte
         return (BSRational<UInteger>)sqr((double)x);
     }
 
-    // See the comments in Math.h about traits is_arbitrary_precision
+    // Compute u * v + w.
+    template <typename UInteger>
+    inline BSRational<UInteger> FMA(
+        BSRational<UInteger> const& u,
+        BSRational<UInteger> const& v,
+        BSRational<UInteger> const& w)
+    {
+        return u * v + w;
+    }
+
+    // Sum of products (SOP) u*v+w*z.
+    template <typename UInteger>
+    inline BSRational<UInteger> RobustSOP(
+        BSRational<UInteger> const& u,
+        BSRational<UInteger> const& v,
+        BSRational<UInteger> const& w,
+        BSRational<UInteger> const& z)
+    {
+        return u * v + w * z;
+    }
+
+    // Difference of products (DOP) u*v-w*z.
+    template <typename UInteger>
+    inline BSRational<UInteger> RobustDOP(
+        BSRational<UInteger> const& u,
+        BSRational<UInteger> const& v,
+        BSRational<UInteger> const& w,
+        BSRational<UInteger> const& z)
+    {
+        return u * v - w * z;
+    }
+
+    // See the comments in TypeTraits.h about traits is_arbitrary_precision
     // and has_division_operator.
     template <typename UInteger>
-    struct is_arbitrary_precision_internal<BSRational<UInteger>> : std::true_type {};
+    struct _is_arbitrary_precision_internal<BSRational<UInteger>> : std::true_type {};
 
     template <typename UInteger>
-    struct has_division_operator_internal<BSRational<UInteger>> : std::true_type {};
+    struct _has_division_operator_internal<BSRational<UInteger>> : std::true_type {};
 }

@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/MinHeap.h>
-#include <limits>
 
 // The topic of fast marching methods are discussed in the book
 //   Level Set Methods and Fast Marching Methods:
@@ -16,6 +13,12 @@
 //     Computer Vision, and Materials Science
 //   J.A. Sethian,
 //   Cambridge University Press, 1999
+
+#include <Mathematics/MinHeap.h>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <vector>
 
 namespace gte
 {
@@ -51,7 +54,7 @@ namespace gte
             mQuantity(quantity),
             mTimes(quantity, std::numeric_limits<Real>::max()),
             mInvSpeeds(quantity),
-            mHeap(static_cast<int>(quantity)),
+            mHeap(static_cast<int32_t>(quantity)),
             mTrials(quantity, nullptr)
         {
             for (auto seed : seeds)
@@ -78,7 +81,7 @@ namespace gte
             mQuantity(quantity),
             mTimes(quantity, std::numeric_limits<Real>::max()),
             mInvSpeeds(quantity, (Real)1 / speed),
-            mHeap(static_cast<int>(quantity)),
+            mHeap(static_cast<int32_t>(quantity)),
             mTrials(quantity, nullptr)
         {
             for (auto seed : seeds)

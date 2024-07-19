@@ -1,16 +1,30 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
+// Create a mesh (x(u,v),y(u,v),z(u,v)) defined by the specified medial curve
+// and radial function. The mesh has torus topology when 'closed' is true and
+// has cylinder topology when 'closed' is/ false. The client is responsible
+// for setting the topology correctly in the 'description' input. The rows
+// correspond to medial samples and the columns correspond to radial samples.
+// The medial curve is sampled according to its natural t-parameter when
+// 'sampleByArcLength' is false; otherwise, it is sampled uniformly in
+// arclength. TODO: Allow TORUS and remove the 'closed' input.
+
+#include <Mathematics/Constants.h>
 #include <Mathematics/Mesh.h>
 #include <Mathematics/FrenetFrame.h>
+#include <array>
+#include <cmath>
+#include <cstdint>
 #include <functional>
 #include <memory>
+#include <vector>
 
 namespace gte
 {
@@ -18,15 +32,6 @@ namespace gte
     class TubeMesh : public Mesh<Real>
     {
     public:
-        // Create a mesh (x(u,v),y(u,v),z(u,v)) defined by the specified
-        // medial curve and radial function.  The mesh has torus topology
-        // when 'closed' is true and has cylinder topology when 'closed' is
-        // false.  The client is responsible for setting the topology
-        // correctly in the 'description' input.  The rows correspond to
-        // medial samples and the columns correspond to radial samples.  The
-        // medial curve is sampled according to its natural t-parameter when
-        // 'sampleByArcLength' is false; otherwise, it is sampled uniformly
-        // in arclength.  TODO: Allow TORUS and remove the 'closed' input
         TubeMesh(MeshDescription const& description,
             std::shared_ptr<ParametricCurve<3, Real>> const& medial,
             std::function<Real(Real)> const& radial, bool closed,
@@ -52,7 +57,7 @@ namespace gte
             mCosAngle.resize(this->mDescription.numCols);
             mSinAngle.resize(this->mDescription.numCols);
             Real invRadialSamples = (Real)1 / (Real)(this->mDescription.numCols - 1);
-            for (unsigned int i = 0; i < this->mDescription.numCols - 1; ++i)
+            for (uint32_t i = 0; i < this->mDescription.numCols - 1; ++i)
             {
                 Real angle = i * invRadialSamples * (Real)GTE_C_TWO_PI;
                 mCosAngle[i] = std::cos(angle);
@@ -75,7 +80,7 @@ namespace gte
             if (mSampleByArcLength)
             {
                 factor = mMedial->GetTotalLength() * invDenom;
-                mTSampler = [this, factor](unsigned int row)
+                mTSampler = [this, factor](uint32_t row)
                 {
                     return mMedial->GetTime(row * factor);
                 };
@@ -83,7 +88,7 @@ namespace gte
             else
             {
                 factor = (mMedial->GetTMax() - mMedial->GetTMin()) * invDenom;
-                mTSampler = [this, factor](unsigned int row)
+                mTSampler = [this, factor](uint32_t row)
                 {
                     return mMedial->GetTMin() + row * factor;
                 };
@@ -176,10 +181,10 @@ namespace gte
         void InitializeTCoords()
         {
             Vector2<Real>tcoord;
-            for (unsigned int r = 0, i = 0; r < this->mDescription.numRows; ++r)
+            for (uint32_t r = 0, i = 0; r < this->mDescription.numRows; ++r)
             {
                 tcoord[1] = (Real)r / (Real)this->mDescription.rMax;
-                for (unsigned int c = 0; c <= this->mDescription.numCols; ++c, ++i)
+                for (uint32_t c = 0; c <= this->mDescription.numCols; ++c, ++i)
                 {
                     tcoord[0] = (Real)c / (Real)this->mDescription.numCols;
                     this->TCoord(i) = tcoord;
@@ -220,7 +225,7 @@ namespace gte
         bool mClosed, mSampleByArcLength;
         Vector3<Real> mUpVector;
         std::vector<Real> mCosAngle, mSinAngle;
-        std::function<Real(unsigned int)> mTSampler;
+        std::function<Real(uint32_t)> mTSampler;
         std::function<std::array<Vector3<Real>, 4>(Real)> mFSampler;
         std::unique_ptr<FrenetFrame3<Real>> mFrenet;
 

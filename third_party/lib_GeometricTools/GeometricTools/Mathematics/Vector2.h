@@ -1,13 +1,16 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.01.10
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <Mathematics/Vector.h>
+#include <array>
+#include <cmath>
+#include <cstdint>
 
 namespace gte
 {
@@ -49,7 +52,7 @@ namespace gte
     // v[0] must be initialized.  On output, the vectors v[0] and v[1] form an
     // orthonormal set.
     template <typename Real>
-    Real ComputeOrthogonalComplement(int numInputs, Vector2<Real>* v, bool robust = false)
+    Real ComputeOrthogonalComplement(int32_t numInputs, Vector2<Real>* v, bool robust = false)
     {
         if (numInputs == 1)
         {
@@ -68,26 +71,22 @@ namespace gte
     // zero when the return value is 'false'.
     template <typename Real>
     bool ComputeBarycentrics(Vector2<Real> const& p, Vector2<Real> const& v0,
-        Vector2<Real> const& v1, Vector2<Real> const& v2, Real bary[3],
-        Real epsilon = (Real)0)
+        Vector2<Real> const& v1, Vector2<Real> const& v2,
+        std::array<Real, 3>& bary, Real epsilon = static_cast<Real>(0))
     {
         // Compute the vectors relative to V2 of the triangle.
-        Vector2<Real> diff[3] = { v0 - v2, v1 - v2, p - v2 };
+        std::array<Vector2<Real>, 3> diff = { v0 - v2, v1 - v2, p - v2 };
 
         Real det = DotPerp(diff[0], diff[1]);
         if (det < -epsilon || det > epsilon)
         {
-            Real invDet = (Real)1 / det;
-            bary[0] = DotPerp(diff[2], diff[1]) * invDet;
-            bary[1] = DotPerp(diff[0], diff[2]) * invDet;
-            bary[2] = (Real)1 - bary[0] - bary[1];
+            bary[0] = DotPerp(diff[2], diff[1]) / det;
+            bary[1] = DotPerp(diff[0], diff[2]) / det;
+            bary[2] = static_cast<Real>(1) - bary[0] - bary[1];
             return true;
         }
 
-        for (int i = 0; i < 3; ++i)
-        {
-            bary[i] = (Real)0;
-        }
+        bary.fill(static_cast<Real>(0));
         return false;
     }
 
@@ -99,7 +98,7 @@ namespace gte
     {
     public:
         // The constructor sets the class members based on the input set.
-        IntrinsicsVector2(int numVectors, Vector2<Real> const* v, Real inEpsilon)
+        IntrinsicsVector2(int32_t numVectors, Vector2<Real> const* v, Real inEpsilon)
             :
             epsilon(inEpsilon),
             dimension(0),
@@ -109,6 +108,8 @@ namespace gte
         {
             min[0] = (Real)0;
             min[1] = (Real)0;
+            max[0] = (Real)0;
+            max[1] = (Real)0;
             direction[0] = { (Real)0, (Real)0 };
             direction[1] = { (Real)0, (Real)0 };
             extreme[0] = 0;
@@ -120,7 +121,8 @@ namespace gte
                 // Compute the axis-aligned bounding box for the input
                 // vectors.  Keep track of the indices into 'vectors' for the
                 // current min and max.
-                int j, indexMin[2], indexMax[2];
+                int32_t j{};
+                std::array<int32_t, 2> indexMin{}, indexMax{};
                 for (j = 0; j < 2; ++j)
                 {
                     min[j] = v[0][j];
@@ -129,7 +131,7 @@ namespace gte
                     indexMax[j] = 0;
                 }
 
-                int i;
+                int32_t i;
                 for (i = 1; i < numVectors; ++i)
                 {
                     for (j = 0; j < 2; ++j)
@@ -222,7 +224,7 @@ namespace gte
 
         // The intrinsic dimension of the input set, computed based on the
         // nonnegative tolerance mEpsilon.
-        int dimension;
+        int32_t dimension;
 
         // Axis-aligned bounding box of the input set.  The maximum range is
         // the larger of max[0]-min[0] and max[1]-min[1].
@@ -248,7 +250,7 @@ namespace gte
         // extreme[0] and extreme[1].  The triangle formed by the points
         // V[extreme[0]], V[extreme[1]], and V[extreme[2]] is clockwise or
         // counterclockwise, the condition stored in extremeCCW.
-        int extreme[3];
+        int32_t extreme[3];
         bool extremeCCW;
     };
 }

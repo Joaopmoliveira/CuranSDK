@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/NURBSSurface.h>
-#include <Mathematics/Vector3.h>
-#include <functional>
 
 // The algorithm for representing a circle as a NURBS curve or a sphere as a
 // NURBS surface is described in
@@ -22,6 +18,12 @@
 // Once support is added for triangular domains, make that new class a
 // base class of the sphere-representing NURBS.  This will allow sharing
 // of the NURBS basis functions and evaluation framework.
+
+#include <Mathematics/NURBSSurface.h>
+#include <Mathematics/Vector3.h>
+#include <cmath>
+#include <cstdint>
+#include <functional>
 
 namespace gte
 {
@@ -111,7 +113,7 @@ namespace gte
         // and so on.  The output 'values' are ordered as: position X;
         // first-order derivatives dX/du, dX/dv; second-order derivatives
         // d2X/du2, d2X/dudv, d2X/dv2.
-        void Evaluate(Real u, Real v, unsigned int maxOrder, Vector<3, Real> values[6]) const
+        void Evaluate(Real u, Real v, uint32_t maxOrder, Vector<3, Real> values[6]) const
         {
             // TODO: Some of the polynomials are used in other polynomials.
             // Optimize the code by eliminating the redundant computations.
@@ -142,9 +144,9 @@ namespace gte
             // Compute the NURBS position.
             Vector<3, Real> N{ (Real)0, (Real)0, (Real)0 };
             Real D(0);
-            for (int j1 = 0; j1 <= 4; ++j1)
+            for (int32_t j1 = 0; j1 <= 4; ++j1)
             {
-                for (int j0 = 0; j0 <= 4 - j1; ++j0)
+                for (int32_t j0 = 0; j0 <= 4 - j1; ++j0)
                 {
                     Real product = mWeights[j1][j0] * B[j1][j0];
                     N += product * mControls[j1][j0];
@@ -207,9 +209,9 @@ namespace gte
                 Vector<3, Real> Nu{ (Real)0, (Real)0, (Real)0 };
                 Vector<3, Real> Nv{ (Real)0, (Real)0, (Real)0 };
                 Real Du(0), Dv(0);
-                for (int j1 = 0; j1 <= 4; ++j1)
+                for (int32_t j1 = 0; j1 <= 4; ++j1)
                 {
-                    for (int j0 = 0; j0 <= 4 - j1; ++j0)
+                    for (int32_t j0 = 0; j0 <= 4 - j1; ++j0)
                     {
                         Real product = mWeights[j1][j0] * Bu[j1][j0];
                         Nu += product * mControls[j1][j0];
@@ -286,9 +288,9 @@ namespace gte
                     Vector<3, Real> Nuv{ (Real)0, (Real)0, (Real)0 };
                     Vector<3, Real> Nvv{ (Real)0, (Real)0, (Real)0 };
                     Real Duu(0), Duv(0), Dvv(0);
-                    for (int j1 = 0; j1 <= 4; ++j1)
+                    for (int32_t j1 = 0; j1 <= 4; ++j1)
                     {
-                        for (int j0 = 0; j0 <= 4 - j1; ++j0)
+                        for (int32_t j0 = 0; j0 <= 4 - j1; ++j0)
                         {
                             Real product = mWeights[j1][j0] * Buu[j1][j0];
                             Nuu += product * mControls[j1][j0];

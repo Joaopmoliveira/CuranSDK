@@ -1,13 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Vector3.h>
 
 // Orthogonal frustum.  Let E be the origin, D be the direction vector, U be
 // the up vector, and R be the right vector.  Let u > 0 and r > 0 be the
@@ -16,6 +14,10 @@
 // in the near plane are E + n*D + s0*u*U + s1*r*R where |s0| = |s1| = 1 (four
 // choices).  The four corners of the frustum in the far plane are
 // E + f*D + (f/n)*(s0*u*U + s1*r*R) where |s0| = |s1| = 1 (four choices).
+
+#include <Mathematics/Vector3.h>
+#include <array>
+#include <cstdint>
 
 namespace gte
 {
@@ -94,7 +96,7 @@ namespace gte
             vertex[2] = dScaled + uScaled + rScaled;
             vertex[3] = dScaled + uScaled - rScaled;
 
-            for (int i = 0, ip = 4; i < 4; ++i, ++ip)
+            for (int32_t i = 0, ip = 4; i < 4; ++i, ++ip)
             {
                 vertex[ip] = origin + mDRatio * vertex[i];
                 vertex[i] += origin;

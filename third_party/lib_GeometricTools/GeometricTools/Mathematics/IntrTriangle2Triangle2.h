@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/IntrConvexPolygonHyperplane.h>
-#include <Mathematics/Triangle.h>
-#include <Mathematics/Vector2.h>
 
 // The test-intersection queries are based on the document
 // https://www.geometrictools.com/Documentation/MethodOfSeparatingAxes.pdf
@@ -19,26 +15,39 @@
 // based on the previously mentioned document about the method of separating
 // axes.
 
+#include <Mathematics/IntrConvexPolygonHyperplane.h>
+#include <Mathematics/Triangle.h>
+#include <Mathematics/Vector2.h>
+#include <cstdint>
+#include <utility>
+#include <vector>
+
 namespace gte
 {
     // Test whether two triangles intersect using the method of separating
     // axes.  The set of intersection, if it exists, is not computed.  The
     // input triangles' vertices must be counterclockwise ordered.
-    template <typename Real>
-    class TIQuery<Real, Triangle2<Real>, Triangle2<Real>>
+    template <typename T>
+    class TIQuery<T, Triangle2<T>, Triangle2<T>>
     {
     public:
         struct Result
         {
+            Result()
+                :
+                intersect(false)
+            {
+            }
+
             bool intersect;
         };
 
-        Result operator()(Triangle2<Real> const& triangle0, Triangle2<Real> const& triangle1)
+        Result operator()(Triangle2<T> const& triangle0, Triangle2<T> const& triangle1)
         {
-            Result result =
-            {
-                !Separated(triangle0, triangle1) && !Separated(triangle1, triangle0)
-            };
+            Result result{};
+            result.intersect =
+                !Separated(triangle0, triangle1) &&
+                !Separated(triangle1, triangle0);
             return result;
         }
 
@@ -48,17 +57,17 @@ namespace gte
         // return value is +1 if all t >= 0, -1 if all t <= 0, but 0 otherwise
         // in which case the line splits the triangle into two subtriangles,
         // each of positive area.
-        int WhichSide(Triangle2<Real> const& triangle, Vector2<Real> const& P, Vector2<Real> const& D) const
+        int32_t WhichSide(Triangle2<T> const& triangle, Vector2<T> const& P, Vector2<T> const& D) const
         {
-            int positive = 0, negative = 0;
-            for (int i = 0; i < 3; ++i)
+            int32_t positive = 0, negative = 0;
+            for (int32_t i = 0; i < 3; ++i)
             {
-                Real t = Dot(D, triangle.v[i] - P);
-                if (t > (Real)0)
+                T t = Dot(D, triangle.v[i] - P);
+                if (t > (T)0)
                 {
                     ++positive;
                 }
-                else if (t < (Real)0)
+                else if (t < (T)0)
                 {
                     --negative;
                 }
@@ -76,18 +85,18 @@ namespace gte
             return (positive > 0 ? +1 : -1);
         }
 
-        bool Separated(Triangle2<Real> const& triangle0, Triangle2<Real> const& triangle1) const
+        bool Separated(Triangle2<T> const& triangle0, Triangle2<T> const& triangle1) const
         {
             // Test edges of triangle0 for separation.  Because of the
             // counterclockwise ordering, the projection interval for
             // triangle0 is [T,0] for some T < 0.  Determine whether
             // triangle1 is on the positive side of the line; if it is,
             // the triangles are separated.
-            for (int i0 = 2, i1 = 0; i1 < 3; i0 = i1++)
+            for (int32_t i0 = 2, i1 = 0; i1 < 3; i0 = i1++)
             {
                 // The potential separating axis is P+t*D.
-                Vector2<Real> P = triangle0.v[i0];
-                Vector2<Real> D = Perp(triangle0.v[i1] - triangle0.v[i0]);
+                Vector2<T> P = triangle0.v[i0];
+                Vector2<T> D = Perp(triangle0.v[i1] - triangle0.v[i0]);
                 if (WhichSide(triangle1, P, D) > 0)
                 {
                     // The triangle1 projection interval is [a,b] where a > 0,
@@ -102,36 +111,42 @@ namespace gte
     // Find the convex polygon, segment or point of intersection of two
     // triangles.  The input triangles' vertices must be counterclockwise
     // ordered.
-    template <typename Real>
-    class FIQuery<Real, Triangle2<Real>, Triangle2<Real>>
+    template <typename T>
+    class FIQuery<T, Triangle2<T>, Triangle2<T>>
     {
     public:
         struct Result
         {
+            Result()
+                :
+                intersection{}
+            {
+            }
+
             // An intersection exists iff intersection.size() > 0.
-            std::vector<Vector2<Real>> intersection;
+            std::vector<Vector2<T>> intersection;
         };
 
-        Result operator()(Triangle2<Real> const& triangle0, Triangle2<Real> const& triangle1)
+        Result operator()(Triangle2<T> const& triangle0, Triangle2<T> const& triangle1)
         {
-            Result result;
+            Result result{};
 
             // Start with triangle1 and clip against the edges of triangle0.
-            std::vector<Vector2<Real>> polygon =
+            std::vector<Vector2<T>> polygon =
             {
                 triangle1.v[0], triangle1.v[1], triangle1.v[2]
             };
 
-            typedef FIQuery<Real, std::vector<Vector<2, Real>>, Hyperplane<2, Real>> PPQuery;
+            typedef FIQuery<T, std::vector<Vector<2, T>>, Hyperplane<2, T>> PPQuery;
             PPQuery ppQuery;
 
-            for (int i1 = 2, i0 = 0; i0 < 3; i1 = i0++)
+            for (int32_t i1 = 2, i0 = 0; i0 < 3; i1 = i0++)
             {
                 // Create the clipping line for the current edge.  The edge
                 // normal N points inside the triangle.
-                Vector2<Real> P = triangle0.v[i0];
-                Vector2<Real> N = Perp(triangle0.v[i1] - triangle0.v[i0]);
-                Hyperplane<2, Real> clippingLine(N, Dot(N, P));
+                Vector2<T> P = triangle0.v[i0];
+                Vector2<T> N = Perp(triangle0.v[i1] - triangle0.v[i0]);
+                Hyperplane<2, T> clippingLine(N, Dot(N, P));
 
                 // Do the clipping operation.
                 auto ppResult = ppQuery(polygon, clippingLine);

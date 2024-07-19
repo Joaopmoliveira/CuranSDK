@@ -1,20 +1,24 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.01.14
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/ConvexHull3.h>
-#include <Mathematics/Hyperplane.h>
 
 // Separate two point sets, if possible, by computing a plane for which the
 // point sets lie on opposite sides.  The algorithm computes the convex hull
 // of the point sets, then uses the method of separating axes to determine
 // whether the two convex polyhedra are disjoint.
 // https://www.geometrictools.com/Documentation/MethodOfSeparatingAxes.pdf
+
+#include <Mathematics/ConvexHull3.h>
+#include <Mathematics/Hyperplane.h>
+#include <cstddef>
+#include <cstdint>
+#include <set>
+#include <utility>
 
 namespace gte
 {
@@ -48,11 +52,11 @@ namespace gte
             auto const& hull0 = ch0.GetHull();
             auto const& hull1 = ch1.GetHull();
             size_t numTriangles0 = hull0.size() / 3;
-            size_t numTriangles1 = hull1.size();
+            size_t numTriangles1 = hull1.size() / 3;
 
             // Test faces of hull 0 for possible separation of points.
             size_t i, i0, i1, i2;
-            int side0, side1;
+            int32_t side0, side1;
             Vector3<Real> diff0, diff1;
             for (i = 0; i < numTriangles0; ++i)
             {
@@ -160,7 +164,7 @@ namespace gte
         }
 
     private:
-        int OnSameSide(Plane3<Real> const& plane, size_t numTriangles,
+        int32_t OnSameSide(Plane3<Real> const& plane, size_t numTriangles,
             size_t const* indices, Vector3<Real> const* points) const
         {
             // Test whether all points on same side of plane Dot(N,X) = c.
@@ -192,7 +196,7 @@ namespace gte
             return (posSide ? +1 : -1);
         }
 
-        int WhichSide(Plane3<Real> const& plane, size_t numTriangles,
+        int32_t WhichSide(Plane3<Real> const& plane, size_t numTriangles,
             size_t const* indices, Vector3<Real> const* points) const
         {
             // Establish which side of plane hull is on.

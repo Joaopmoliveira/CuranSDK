@@ -1,17 +1,31 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
+// The TSManifoldMesh class represents a triangle-tetrahedron mesh. The 'T'
+// stands for triangle (face) and the 'S' stands for simplex (tetrahedron).
+// It is general purpose, allowing insertion and removal of tetrahedra at any
+// time. However, the performance is limited because of the use of C++
+// container classes (unordered sets and maps). If your application requires
+// a triangle-tetrahedron manifold mesh for which no tetrahedra will be
+// removed, a better choice is StaticVTSManifoldMesh.
+
 #include <Mathematics/Logger.h>
+#include <Mathematics/HashCombine.h>
 #include <Mathematics/TetrahedronKey.h>
 #include <Mathematics/TriangleKey.h>
+#include <algorithm>
+#include <array>
+#include <cstdint>
 #include <map>
 #include <memory>
+#include <unordered_map>
+#include <utility>
 
 namespace gte
 {
@@ -20,13 +34,15 @@ namespace gte
     public:
         // Triangle data types.
         class Triangle;
-        typedef std::shared_ptr<Triangle>(*TCreator)(int, int, int);
-        typedef std::map<TriangleKey<false>, std::shared_ptr<Triangle>> TMap;
+        using TCreator = std::unique_ptr<Triangle>(*)(int32_t, int32_t, int32_t);
+        using TMap = std::unordered_map<TriangleKey<false>, std::unique_ptr<Triangle>,
+            TriangleKey<false>, TriangleKey<false>>;
 
         // Tetrahedron data types.
         class Tetrahedron;
-        typedef std::shared_ptr<Tetrahedron>(*SCreator)(int, int, int, int);
-        typedef std::map<TetrahedronKey<true>, std::shared_ptr<Tetrahedron>> SMap;
+        using SCreator = std::unique_ptr<Tetrahedron>(*)(int32_t, int32_t, int32_t, int32_t);
+        using SMap = std::unordered_map<TetrahedronKey<true>, std::unique_ptr<Tetrahedron>,
+            TetrahedronKey<true>, TetrahedronKey<true>>;
 
         // Triangle object.
         class Triangle
@@ -34,17 +50,18 @@ namespace gte
         public:
             virtual ~Triangle() = default;
 
-            Triangle(int v0, int v1, int v2)
+            Triangle(int32_t v0, int32_t v1, int32_t v2)
                 :
-                V{ v0, v1, v2 }
+                V{ v0, v1, v2 },
+                S{ nullptr, nullptr }
             {
             }
 
             // Vertices of the face.
-            std::array<int, 3> V;
+            std::array<int32_t, 3> V;
 
             // Tetrahedra sharing the face.
-            std::array<std::weak_ptr<Tetrahedron>, 2> T;
+            std::array<Tetrahedron*, 2> S;
         };
 
         // Tetrahedron object.
@@ -53,28 +70,30 @@ namespace gte
         public:
             virtual ~Tetrahedron() = default;
 
-            Tetrahedron(int v0, int v1, int v2, int v3)
+            Tetrahedron(int32_t v0, int32_t v1, int32_t v2, int32_t v3)
                 :
-                V{ v0, v1, v2, v3 }
+                V{ v0, v1, v2, v3 },
+                T{ nullptr, nullptr, nullptr, nullptr },
+                S{ nullptr, nullptr, nullptr, nullptr }
             {
             }
 
             // Vertices, listed in an order so that each face vertices in
             // counterclockwise order when viewed from outside the
             // tetrahedron.
-            std::array<int, 4> V;
+            std::array<int32_t, 4> V;
 
-            // Adjacent faces.  T[i] points to the triangle face
+            // Adjacent faces. T[i] points to the triangle face
             // opposite V[i].
             //   T[0] points to face (V[1],V[2],V[3])
             //   T[1] points to face (V[0],V[3],V[2])
             //   T[2] points to face (V[0],V[1],V[3])
             //   T[3] points to face (V[0],V[2],V[1])
-            std::array<std::weak_ptr<Triangle>, 4> T;
+            std::array<Triangle*, 4> T;
 
             // Adjacent tetrahedra.  S[i] points to the adjacent tetrahedron
             // sharing face T[i].
-            std::array<std::weak_ptr<Tetrahedron>, 4> S;
+            std::array<Tetrahedron*, 4> S;
         };
 
 
@@ -84,17 +103,21 @@ namespace gte
         TSManifoldMesh(TCreator tCreator = nullptr, SCreator sCreator = nullptr)
             :
             mTCreator(tCreator ? tCreator : CreateTriangle),
+            mTMap{},
             mSCreator(sCreator ? sCreator : CreateTetrahedron),
+            mSMap{},
             mThrowOnNonmanifoldInsertion(true)
         {
         }
 
-        // Support for a deep copy of the mesh.  The mTMap and mSMap objects
-        // have dynamically allocated memory for triangles and tetrahedra.  A
+        // Support for a deep copy of the mesh. The mTMap and mSMap objects
+        // have dynamically allocated memory for triangles and tetrahedra. A
         // shallow/ copy of the pointers to this memory is problematic.
         // Allowing sharing, say, via std::shared_ptr, is an option but not
         // really the intent of copying the mesh graph.
         TSManifoldMesh(TSManifoldMesh const& mesh)
+            :
+            TSManifoldMesh()
         {
             *this = mesh;
         }
@@ -108,7 +131,10 @@ namespace gte
             mThrowOnNonmanifoldInsertion = mesh.mThrowOnNonmanifoldInsertion;
             for (auto const& element : mesh.mSMap)
             {
-                Insert(element.first.V[0], element.first.V[1], element.first.V[2], element.first.V[3]);
+                // The typecast avoids warnings about not storing the return
+                // value in a named variable. The return value is discarded.
+                (void)Insert(element.first.V[0], element.first.V[1],
+                    element.first.V[2], element.first.V[3]);
             }
 
             return *this;
@@ -129,54 +155,57 @@ namespace gte
         // become nonmanifold, the default behavior is to throw an exception.
         // You can disable this behavior and continue gracefully without an
         // exception.
-        void ThrowOnNonmanifoldInsertion(bool doException)
+        bool ThrowOnNonmanifoldInsertion(bool doException)
         {
-            mThrowOnNonmanifoldInsertion = doException;
+            std::swap(doException, mThrowOnNonmanifoldInsertion);
+            return doException;  // return the previous state
         }
 
         // If <v0,v1,v2,v3> is not in the mesh, a Tetrahedron object is
         // created and returned; otherwise, <v0,v1,v2,v3> is in the mesh and
-        // nullptr is returned.  If the insertion leads to a nonmanifold mesh,
+        // nullptr is returned. If the insertion leads to a nonmanifold mesh,
         // the call fails with a nullptr returned.
-        std::shared_ptr<Tetrahedron> Insert(int v0, int v1, int v2, int v3)
+        virtual Tetrahedron* Insert(int32_t v0, int32_t v1, int32_t v2, int32_t v3)
         {
             TetrahedronKey<true> skey(v0, v1, v2, v3);
             if (mSMap.find(skey) != mSMap.end())
             {
-                // The tetrahedron already exists.  Return a null pointer as
+                // The tetrahedron already exists. Return a null pointer as
                 // a signal to the caller that the insertion failed.
                 return nullptr;
             }
 
             // Add the new tetrahedron.
-            std::shared_ptr<Tetrahedron> tetra = mSCreator(v0, v1, v2, v3);
-            mSMap[skey] = tetra;
+            std::unique_ptr<Tetrahedron> newTetra = mSCreator(v0, v1, v2, v3);
+            Tetrahedron* tetra = newTetra.get();
 
             // Add the faces to the mesh if they do not already exist.
-            for (int i = 0; i < 4; ++i)
+            for (int32_t i = 0; i < 4; ++i)
             {
-                auto opposite = TetrahedronKey<true>::GetOppositeFace()[i];
+                auto const& opposite = TetrahedronKey<true>::GetOppositeFace()[i];
                 TriangleKey<false> tkey(tetra->V[opposite[0]], tetra->V[opposite[1]], tetra->V[opposite[2]]);
-                std::shared_ptr<Triangle> face;
+                Triangle* face = nullptr;
                 auto titer = mTMap.find(tkey);
                 if (titer == mTMap.end())
                 {
                     // This is the first time the face is encountered.
-                    face = mTCreator(tetra->V[opposite[0]], tetra->V[opposite[1]], tetra->V[opposite[2]]);
-                    mTMap[tkey] = face;
+                    std::unique_ptr<Triangle> newFace = mTCreator(tetra->V[opposite[0]],
+                        tetra->V[opposite[1]], tetra->V[opposite[2]]);
+                    face = newFace.get();
+                    mTMap[tkey] = std::move(newFace);
 
                     // Update the face and tetrahedron.
-                    face->T[0] = tetra;
+                    face->S[0] = tetra;
                     tetra->T[i] = face;
                 }
                 else
                 {
                     // This is the second time the face is encountered.
-                    face = titer->second;
+                    face = titer->second.get();
                     LogAssert(face != nullptr, "Unexpected condition.");
 
                     // Update the face.
-                    if (face->T[1].lock())
+                    if (face->S[1])
                     {
                         if (mThrowOnNonmanifoldInsertion)
                         {
@@ -187,14 +216,14 @@ namespace gte
                             return nullptr;
                         }
                     }
-                    face->T[1] = tetra;
+                    face->S[1] = tetra;
 
                     // Update the adjacent tetrahedra.
-                    auto adjacent = face->T[0].lock();
+                    auto adjacent = face->S[0];
                     LogAssert(adjacent != nullptr, "Unexpected condition.");
-                    for (int j = 0; j < 4; ++j)
+                    for (int32_t j = 0; j < 4; ++j)
                     {
-                        if (adjacent->T[j].lock() == face)
+                        if (adjacent->T[j] == face)
                         {
                             adjacent->S[j] = tetra;
                             break;
@@ -207,13 +236,14 @@ namespace gte
                 }
             }
 
+            mSMap[skey] = std::move(newTetra);
             return tetra;
         }
 
         // If <v0,v1,v2,v3> is in the mesh, it is removed and 'true' is
         // returned; otherwise, <v0,v1,v2,v3> is not in the mesh and 'false'
         // is returned.
-        bool Remove(int v0, int v1, int v2, int v3)
+        virtual bool Remove(int32_t v0, int32_t v1, int32_t v2, int32_t v3)
         {
             TetrahedronKey<true> skey(v0, v1, v2, v3);
             auto siter = mSMap.find(skey);
@@ -224,25 +254,25 @@ namespace gte
             }
 
             // Get the tetrahedron.
-            std::shared_ptr<Tetrahedron> tetra = siter->second;
+            Tetrahedron* tetra = siter->second.get();
 
             // Remove the faces and update adjacent tetrahedra if necessary.
-            for (int i = 0; i < 4; ++i)
+            for (int32_t i = 0; i < 4; ++i)
             {
                 // Inform the faces the tetrahedron is being deleted.
-                auto face = tetra->T[i].lock();
+                auto face = tetra->T[i];
                 LogAssert(face != nullptr, "Unexpected condition.");
 
-                if (face->T[0].lock() == tetra)
+                if (face->S[0] == tetra)
                 {
                     // One-tetrahedron faces always have pointer at index
                     // zero.
-                    face->T[0] = face->T[1];
-                    face->T[1].reset();
+                    face->S[0] = face->S[1];
+                    face->S[1] = nullptr;
                 }
-                else if (face->T[1].lock() == tetra)
+                else if (face->S[1] == tetra)
                 {
-                    face->T[1].reset();
+                    face->S[1] = nullptr;
                 }
                 else
                 {
@@ -250,7 +280,7 @@ namespace gte
                 }
 
                 // Remove the face if you have the last reference to it.
-                if (!face->T[0].lock() && !face->T[1].lock())
+                if (!face->S[0] && !face->S[1])
                 {
                     TriangleKey<false> tkey(face->V[0], face->V[1], face->V[2]);
                     mTMap.erase(tkey);
@@ -258,14 +288,14 @@ namespace gte
 
                 // Inform adjacent tetrahedra the tetrahedron is being
                 // deleted.
-                auto adjacent = tetra->S[i].lock();
+                auto adjacent = tetra->S[i];
                 if (adjacent)
                 {
-                    for (int j = 0; j < 4; ++j)
+                    for (int32_t j = 0; j < 4; ++j)
                     {
-                        if (adjacent->S[j].lock() == tetra)
+                        if (adjacent->S[j] == tetra)
                         {
-                            adjacent->S[j].reset();
+                            adjacent->S[j] = nullptr;
                             break;
                         }
                     }
@@ -286,10 +316,10 @@ namespace gte
         // A manifold mesh is closed if each face is shared twice.
         bool IsClosed() const
         {
-            for (auto const& element : mSMap)
+            for (auto const& element : mTMap)
             {
-                auto tri = element.second;
-                if (!tri->S[0].lock() || !tri->S[1].lock())
+                Triangle* tri = element.second.get();
+                if (!tri->S[0] || !tri->S[1])
                 {
                     return false;
                 }
@@ -299,22 +329,21 @@ namespace gte
 
     protected:
         // The triangle data and default triangle creation.
-        static std::shared_ptr<Triangle> CreateTriangle(int v0, int v1, int v2)
+        static std::unique_ptr<Triangle> CreateTriangle(int32_t v0, int32_t v1, int32_t v2)
         {
-            return std::make_shared<Triangle>(v0, v1, v2);
+            return std::make_unique<Triangle>(v0, v1, v2);
+        }
+
+        // The tetrahedron data and default tetrahedron creation.
+        static std::unique_ptr<Tetrahedron> CreateTetrahedron(int32_t v0, int32_t v1, int32_t v2, int32_t v3)
+        {
+            return std::make_unique<Tetrahedron>(v0, v1, v2, v3);
         }
 
         TCreator mTCreator;
         TMap mTMap;
-
-        // The tetrahedron data and default tetrahedron creation.
-        static std::shared_ptr<Tetrahedron> CreateTetrahedron(int v0, int v1, int v2, int v3)
-        {
-            return std::make_shared<Tetrahedron>(v0, v1, v2, v3);
-        }
-
         SCreator mSCreator;
         SMap mSMap;
-        bool mThrowOnNonmanifoldInsertion;  // default: true
+        bool mThrowOnNonmanifoldInsertion;
     };
 }

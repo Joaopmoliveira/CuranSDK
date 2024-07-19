@@ -1,16 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.01.10
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Logger.h>
-#include <Mathematics/Matrix3x3.h>
-#include <Mathematics/Matrix4x4.h>
-#include <Mathematics/Rotation.h>
 
 // Transforms when GTE_USE_MAT_VEC is defined in the preprocessor symbols.
 //
@@ -53,6 +48,13 @@
 // as S^{-1} * R^t = R' * S'.  You would need to SetMatrix using S^{-1}*R^t
 // as the input.
 
+#include <Mathematics/Logger.h>
+#include <Mathematics/Matrix3x3.h>
+#include <Mathematics/Matrix4x4.h>
+#include <Mathematics/Rotation.h>
+#include <cmath>
+#include <cstdint>
+
 namespace gte
 {
     template <typename Real>
@@ -64,6 +66,9 @@ namespace gte
         // the compiler.
         Transform()
             :
+            mHMatrix{},
+            mInvHMatrix{},
+            mMatrix{},
             mTranslate{ (Real)0, (Real)0, (Real)0, (Real)1 },
             mScale{ (Real)1, (Real)1, (Real)1, (Real)1 },
             mIsIdentity(true),
@@ -261,9 +266,9 @@ namespace gte
         void SetRotation(Matrix3x3<Real> const& rotate)
         {
             mMatrix.MakeIdentity();
-            for (int r = 0; r < 3; ++r)
+            for (int32_t r = 0; r < 3; ++r)
             {
-                for (int c = 0; c < 3; ++c)
+                for (int32_t c = 0; c < 3; ++c)
                 {
                     mMatrix(r, c) = rotate(r, c);
                 }
@@ -277,9 +282,9 @@ namespace gte
         void GetRotation(Matrix3x3<Real>& rotate) const
         {
             LogAssert(mIsRSMatrix, "Transform is not rotation-scale.");
-            for (int r = 0; r < 3; ++r)
+            for (int32_t r = 0; r < 3; ++r)
             {
-                for (int c = 0; c < 3; ++c)
+                for (int32_t c = 0; c < 3; ++c)
                 {
                     rotate(r, c) = mMatrix(r, c);
                 }
@@ -475,7 +480,7 @@ namespace gte
                     }
                     else
                     {
-                        Invert3x3(mHMatrix, mInvHMatrix);
+                        mInvHMatrix = gte::Inverse(mHMatrix);
                     }
 
 #if defined(GTE_USE_MAT_VEC)
@@ -538,30 +543,28 @@ namespace gte
         // set accordingly.
         Transform Inverse() const
         {
-            Transform inverse;
+            Transform inverse{};  // = the identity
 
-            if (mIsIdentity)
-            {
-                inverse.MakeIdentity();
-            }
-            else
+            if (!mIsIdentity)
             {
                 if (mIsRSMatrix && mIsUniformScale)
                 {
-                    inverse.SetRotation(Transpose(GetRotation()));
-                    inverse.SetUniformScale(1.0f / GetUniformScale());
+                    Matrix4x4<Real> invRotate = Transpose(GetRotation());
+                    Real invScale = static_cast<Real>(1) / GetUniformScale();
+                    Vector4<Real> invTranslate = -invScale * (invRotate * GetTranslationW1());
+                    inverse.SetRotation(invRotate);
+                    inverse.SetUniformScale(invScale);
+                    inverse.SetTranslation(invTranslate);
                 }
                 else
                 {
-                    Matrix4x4<Real> invUpper;
-                    Invert3x3(GetMatrix(), invUpper);
-                    inverse.SetMatrix(invUpper);
+                    Matrix4x4<Real> invMatrix = gte::Inverse(GetHMatrix());
+                    Vector4<Real> invTranslate = invMatrix.GetCol(3);
+                    inverse.SetMatrix(invMatrix);
+                    inverse.SetTranslation(invTranslate);
                 }
-                Vector4<Real> trn = -GetTranslationW0();
-                inverse.SetTranslation(inverse.GetMatrix() * trn);
             }
 
-            mInverseNeedsUpdate = true;
             return inverse;
         }
 

@@ -1,15 +1,19 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <Mathematics/GVector.h>
 #include <Mathematics/GaussianElimination.h>
 #include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 namespace gte
 {
@@ -21,13 +25,18 @@ namespace gte
         GMatrix()
             :
             mNumRows(0),
-            mNumCols(0)
+            mNumCols(0),
+            mElements{}
         {
         }
 
         // The table is length numRows*numCols and the elements are
         // initialized to zero.
-        GMatrix(int numRows, int numCols)
+        GMatrix(int32_t numRows, int32_t numCols)
+            :
+            mNumRows(0),
+            mNumCols(0),
+            mElements{}
         {
             SetSize(numRows, numCols);
             std::fill(mElements.begin(), mElements.end(), (Real)0);
@@ -36,9 +45,13 @@ namespace gte
         // For 0 <= r < numRows and 0 <= c < numCols, element (r,c) is 1 and
         // all others are 0.  If either of r or c is invalid, the zero matrix
         // is created.  This is a convenience for creating the standard
-        // Euclidean basis matrices; see also MakeUnit(int,int) and
-        // Unit(int,int).
-        GMatrix(int numRows, int numCols, int r, int c)
+        // Euclidean basis matrices; see also MakeUnit(int32_t,int32_t) and
+        // Unit(int32_t,int32_t).
+        GMatrix(int32_t numRows, int32_t numCols, int32_t r, int32_t c)
+            :
+            mNumRows(0),
+            mNumCols(0),
+            mElements{}
         {
             SetSize(numRows, numCols);
             MakeUnit(r, c);
@@ -52,13 +65,13 @@ namespace gte
         // operator() returns a const reference rather than a Real value.
         // This supports writing via standard file operations that require a
         // const pointer to data.
-        void SetSize(int numRows, int numCols)
+        void SetSize(int32_t numRows, int32_t numCols)
         {
             if (numRows > 0 && numCols > 0)
             {
                 mNumRows = numRows;
                 mNumCols = numCols;
-                mElements.resize(mNumRows * mNumCols);
+                mElements.resize(static_cast<size_t>(mNumRows) * static_cast<size_t>(mNumCols));
             }
             else
             {
@@ -68,48 +81,48 @@ namespace gte
             }
         }
 
-        inline void GetSize(int& numRows, int& numCols) const
+        inline void GetSize(int32_t& numRows, int32_t& numCols) const
         {
             numRows = mNumRows;
             numCols = mNumCols;
         }
 
-        inline int GetNumRows() const
+        inline int32_t GetNumRows() const
         {
             return mNumRows;
         }
 
-        inline int GetNumCols() const
+        inline int32_t GetNumCols() const
         {
             return mNumCols;
         }
 
-        inline int GetNumElements() const
+        inline int32_t GetNumElements() const
         {
-            return static_cast<int>(mElements.size());
+            return static_cast<int32_t>(mElements.size());
         }
 
-        inline Real const& operator()(int r, int c) const
+        inline Real const& operator()(int32_t r, int32_t c) const
         {
             if (0 <= r && r < GetNumRows() && 0 <= c && c < GetNumCols())
             {
 #if defined(GTE_USE_ROW_MAJOR)
-                return mElements[c + mNumCols * r];
+                return mElements[c + static_cast<size_t>(mNumCols) * r];
 #else
-                return mElements[r + mNumRows * c];
+                return mElements[r + static_cast<size_t>(mNumRows) * c];
 #endif
             }
             LogError("Invalid index.");
         }
 
-        inline Real& operator()(int r, int c)
+        inline Real& operator()(int32_t r, int32_t c)
         {
             if (0 <= r && r < GetNumRows() && 0 <= c && c < GetNumCols())
             {
 #if defined(GTE_USE_ROW_MAJOR)
-                return mElements[c + mNumCols * r];
+                return mElements[c + static_cast<size_t>(mNumCols) * r];
 #else
-                return mElements[r + mNumRows * c];
+                return mElements[r + static_cast<size_t>(mNumRows) * c];
 #endif
             }
             LogError("Invalid index.");
@@ -117,29 +130,30 @@ namespace gte
 
         // Member access by rows or by columns.  The input vectors must have
         // the correct number of elements for the matrix size.
-        void SetRow(int r, GVector<Real> const& vec)
+        void SetRow(int32_t r, GVector<Real> const& vec)
         {
             if (0 <= r && r < mNumRows)
             {
                 if (vec.GetSize() == GetNumCols())
                 {
-                    for (int c = 0; c < mNumCols; ++c)
+                    for (int32_t c = 0; c < mNumCols; ++c)
                     {
                         operator()(r, c) = vec[c];
                     }
+                    return;
                 }
                 LogError("Mismatched sizes.");
             }
             LogError("Invalid index.");
         }
 
-        void SetCol(int c, GVector<Real> const& vec)
+        void SetCol(int32_t c, GVector<Real> const& vec)
         {
             if (0 <= c && c < mNumCols)
             {
                 if (vec.GetSize() == GetNumRows())
                 {
-                    for (int r = 0; r < mNumRows; ++r)
+                    for (int32_t r = 0; r < mNumRows; ++r)
                     {
                         operator()(r, c) = vec[r];
                     }
@@ -150,12 +164,12 @@ namespace gte
             LogError("Invalid index.");
         }
 
-        GVector<Real> GetRow(int r) const
+        GVector<Real> GetRow(int32_t r) const
         {
             if (0 <= r && r < mNumRows)
             {
                 GVector<Real> vec(mNumCols);
-                for (int c = 0; c < mNumCols; ++c)
+                for (int32_t c = 0; c < mNumCols; ++c)
                 {
                     vec[c] = operator()(r, c);
                 }
@@ -164,12 +178,12 @@ namespace gte
             LogError("Invalid index.");
         }
 
-        GVector<Real> GetCol(int c) const
+        GVector<Real> GetCol(int32_t c) const
         {
             if (0 <= c && c < mNumCols)
             {
                 GVector<Real> vec(mNumRows);
-                for (int r = 0; r < mNumRows; ++r)
+                for (int32_t r = 0; r < mNumRows; ++r)
                 {
                     vec[r] = operator()(r, c);
                 }
@@ -183,12 +197,12 @@ namespace gte
         // matter whether storage is row-major or column-major.  Do not use
         // constructs such as M[c+NumCols*r] or M[r+NumRows*c] that expose the
         // storage convention.
-        inline Real const& operator[](int i) const
+        inline Real const& operator[](int32_t i) const
         {
             return mElements[i];
         }
 
-        inline Real& operator[](int i)
+        inline Real& operator[](int32_t i)
         {
             return mElements[i];
         }
@@ -239,7 +253,7 @@ namespace gte
         }
 
         // Component (r,c) is 1, all others zero.
-        void MakeUnit(int r, int c)
+        void MakeUnit(int32_t r, int32_t c)
         {
             if (0 <= r && r < mNumRows && 0 <= c && c < mNumCols)
             {
@@ -254,28 +268,28 @@ namespace gte
         void MakeIdentity()
         {
             MakeZero();
-            int const numDiagonal = (mNumRows <= mNumCols ? mNumRows : mNumCols);
-            for (int i = 0; i < numDiagonal; ++i)
+            int32_t const numDiagonal = (mNumRows <= mNumCols ? mNumRows : mNumCols);
+            for (int32_t i = 0; i < numDiagonal; ++i)
             {
                 operator()(i, i) = (Real)1;
             }
         }
 
-        static GMatrix Zero(int numRows, int numCols)
+        static GMatrix Zero(int32_t numRows, int32_t numCols)
         {
             GMatrix<Real> M(numRows, numCols);
             M.MakeZero();
             return M;
         }
 
-        static GMatrix Unit(int numRows, int numCols, int r, int c)
+        static GMatrix Unit(int32_t numRows, int32_t numCols, int32_t r, int32_t c)
         {
             GMatrix<Real> M(numRows, numCols);
             M.MakeUnit(r, c);
             return M;
         }
 
-        static GMatrix Identity(int numRows, int numCols)
+        static GMatrix Identity(int32_t numRows, int32_t numCols)
         {
             GMatrix<Real> M(numRows, numCols);
             M.MakeIdentity();
@@ -285,7 +299,7 @@ namespace gte
     protected:
         // The matrix is stored as a 1-dimensional array.  The convention of
         // row-major or column-major is your choice.
-        int mNumRows, mNumCols;
+        int32_t mNumRows, mNumCols;
         std::vector<Real> mElements;
     };
 
@@ -300,7 +314,7 @@ namespace gte
     GMatrix<Real> operator-(GMatrix<Real> const& M)
     {
         GMatrix<Real> result(M.GetNumRows(), M.GetNumCols());
-        for (int i = 0; i < M.GetNumElements(); ++i)
+        for (int32_t i = 0; i < M.GetNumElements(); ++i)
         {
             result[i] = -M[i];
         }
@@ -348,7 +362,7 @@ namespace gte
     {
         if (M0.GetNumRows() == M1.GetNumRows() && M0.GetNumCols() == M1.GetNumCols())
         {
-            for (int i = 0; i < M0.GetNumElements(); ++i)
+            for (int32_t i = 0; i < M0.GetNumElements(); ++i)
             {
                 M0[i] += M1[i];
             }
@@ -362,7 +376,7 @@ namespace gte
     {
         if (M0.GetNumRows() == M1.GetNumRows() && M0.GetNumCols() == M1.GetNumCols())
         {
-            for (int i = 0; i < M0.GetNumElements(); ++i)
+            for (int32_t i = 0; i < M0.GetNumElements(); ++i)
             {
                 M0[i] -= M1[i];
             }
@@ -374,7 +388,7 @@ namespace gte
     template <typename Real>
     GMatrix<Real>& operator*=(GMatrix<Real>& M, Real scalar)
     {
-        for (int i = 0; i < M.GetNumElements(); ++i)
+        for (int32_t i = 0; i < M.GetNumElements(); ++i)
         {
             M[i] *= scalar;
         }
@@ -387,7 +401,7 @@ namespace gte
         if (scalar != (Real)0)
         {
             Real invScalar = ((Real)1) / scalar;
-            for (int i = 0; i < M.GetNumElements(); ++i)
+            for (int32_t i = 0; i < M.GetNumElements(); ++i)
             {
                 M[i] *= invScalar;
             }
@@ -401,7 +415,7 @@ namespace gte
     Real L1Norm(GMatrix<Real> const& M)
     {
         Real sum(0);
-        for (int i = 0; i < M.GetNumElements(); ++i)
+        for (int32_t i = 0; i < M.GetNumElements(); ++i)
         {
             sum += std::fabs(M[i]);
         }
@@ -412,7 +426,7 @@ namespace gte
     Real L2Norm(GMatrix<Real> const& M)
     {
         Real sum(0);
-        for (int i = 0; i < M.GetNumElements(); ++i)
+        for (int32_t i = 0; i < M.GetNumElements(); ++i)
         {
             sum += M[i] * M[i];
         }
@@ -423,7 +437,7 @@ namespace gte
     Real LInfinityNorm(GMatrix<Real> const& M)
     {
         Real maxAbsElement(0);
-        for (int i = 0; i < M.GetNumElements(); ++i)
+        for (int32_t i = 0; i < M.GetNumElements(); ++i)
         {
             Real absElement = std::fabs(M[i]);
             if (absElement > maxAbsElement)
@@ -440,7 +454,7 @@ namespace gte
         if (M.GetNumRows() == M.GetNumCols())
         {
             GMatrix<Real> invM(M.GetNumRows(), M.GetNumCols());
-            Real determinant;
+            Real determinant{};
             bool invertible = GaussianElimination<Real>()(M.GetNumRows(), &M[0],
                 &invM[0], determinant, nullptr, nullptr, nullptr, 0, nullptr);
             if (reportInvertibility)
@@ -457,7 +471,7 @@ namespace gte
     {
         if (M.GetNumRows() == M.GetNumCols())
         {
-            Real determinant;
+            Real determinant{};
             GaussianElimination<Real>()(M.GetNumRows(), &M[0], nullptr,
                 determinant, nullptr, nullptr, nullptr, 0, nullptr);
             return determinant;
@@ -470,9 +484,9 @@ namespace gte
     GMatrix<Real> Transpose(GMatrix<Real> const& M)
     {
         GMatrix<Real> result(M.GetNumCols(), M.GetNumRows());
-        for (int r = 0; r < M.GetNumRows(); ++r)
+        for (int32_t r = 0; r < M.GetNumRows(); ++r)
         {
-            for (int c = 0; c < M.GetNumCols(); ++c)
+            for (int32_t c = 0; c < M.GetNumCols(); ++c)
             {
                 result(c, r) = M(r, c);
             }
@@ -487,10 +501,10 @@ namespace gte
         if (V.GetSize() == M.GetNumCols())
         {
             GVector<Real> result(M.GetNumRows());
-            for (int r = 0; r < M.GetNumRows(); ++r)
+            for (int32_t r = 0; r < M.GetNumRows(); ++r)
             {
                 result[r] = (Real)0;
-                for (int c = 0; c < M.GetNumCols(); ++c)
+                for (int32_t c = 0; c < M.GetNumCols(); ++c)
                 {
                     result[r] += M(r, c) * V[c];
                 }
@@ -507,10 +521,10 @@ namespace gte
         if (V.GetSize() == M.GetNumRows())
         {
             GVector<Real> result(M.GetNumCols());
-            for (int c = 0; c < M.GetNumCols(); ++c)
+            for (int32_t c = 0; c < M.GetNumCols(); ++c)
             {
                 result[c] = (Real)0;
-                for (int r = 0; r < M.GetNumRows(); ++r)
+                for (int32_t r = 0; r < M.GetNumRows(); ++r)
                 {
                     result[c] += V[r] * M(r, c);
                 }
@@ -533,13 +547,13 @@ namespace gte
         if (A.GetNumCols() == B.GetNumRows())
         {
             GMatrix<Real> result(A.GetNumRows(), B.GetNumCols());
-            int const numCommon = A.GetNumCols();
-            for (int r = 0; r < result.GetNumRows(); ++r)
+            int32_t const numCommon = A.GetNumCols();
+            for (int32_t r = 0; r < result.GetNumRows(); ++r)
             {
-                for (int c = 0; c < result.GetNumCols(); ++c)
+                for (int32_t c = 0; c < result.GetNumCols(); ++c)
                 {
                     result(r, c) = (Real)0;
-                    for (int i = 0; i < numCommon; ++i)
+                    for (int32_t i = 0; i < numCommon; ++i)
                     {
                         result(r, c) += A(r, i) * B(i, c);
                     }
@@ -557,13 +571,13 @@ namespace gte
         if (A.GetNumCols() == B.GetNumCols())
         {
             GMatrix<Real> result(A.GetNumRows(), B.GetNumRows());
-            int const numCommon = A.GetNumCols();
-            for (int r = 0; r < result.GetNumRows(); ++r)
+            int32_t const numCommon = A.GetNumCols();
+            for (int32_t r = 0; r < result.GetNumRows(); ++r)
             {
-                for (int c = 0; c < result.GetNumCols(); ++c)
+                for (int32_t c = 0; c < result.GetNumCols(); ++c)
                 {
                     result(r, c) = (Real)0;
-                    for (int i = 0; i < numCommon; ++i)
+                    for (int32_t i = 0; i < numCommon; ++i)
                     {
                         result(r, c) += A(r, i) * B(c, i);
                     }
@@ -581,13 +595,13 @@ namespace gte
         if (A.GetNumRows() == B.GetNumRows())
         {
             GMatrix<Real> result(A.GetNumCols(), B.GetNumCols());
-            int const numCommon = A.GetNumRows();
-            for (int r = 0; r < result.GetNumRows(); ++r)
+            int32_t const numCommon = A.GetNumRows();
+            for (int32_t r = 0; r < result.GetNumRows(); ++r)
             {
-                for (int c = 0; c < result.GetNumCols(); ++c)
+                for (int32_t c = 0; c < result.GetNumCols(); ++c)
                 {
                     result(r, c) = (Real)0;
-                    for (int i = 0; i < numCommon; ++i)
+                    for (int32_t i = 0; i < numCommon; ++i)
                     {
                         result(r, c) += A(i, r) * B(i, c);
                     }
@@ -605,13 +619,13 @@ namespace gte
         if (A.GetNumRows() == B.GetNumCols())
         {
             GMatrix<Real> result(A.GetNumCols(), B.GetNumRows());
-            int const numCommon = A.GetNumRows();
-            for (int r = 0; r < result.GetNumRows(); ++r)
+            int32_t const numCommon = A.GetNumRows();
+            for (int32_t r = 0; r < result.GetNumRows(); ++r)
             {
-                for (int c = 0; c < result.GetNumCols(); ++c)
+                for (int32_t c = 0; c < result.GetNumCols(); ++c)
                 {
                     result(r, c) = (Real)0;
-                    for (int i = 0; i < numCommon; ++i)
+                    for (int32_t i = 0; i < numCommon; ++i)
                     {
                         result(r, c) += A(i, r) * B(c, i);
                     }
@@ -629,9 +643,9 @@ namespace gte
         if (D.GetSize() == M.GetNumCols())
         {
             GMatrix<Real> result(M.GetNumRows(), M.GetNumCols());
-            for (int r = 0; r < result.GetNumRows(); ++r)
+            for (int32_t r = 0; r < result.GetNumRows(); ++r)
             {
-                for (int c = 0; c < result.GetNumCols(); ++c)
+                for (int32_t c = 0; c < result.GetNumCols(); ++c)
                 {
                     result(r, c) = M(r, c) * D[c];
                 }
@@ -648,9 +662,9 @@ namespace gte
         if (D.GetSize() == M.GetNumRows())
         {
             GMatrix<Real> result(M.GetNumRows(), M.GetNumCols());
-            for (int r = 0; r < result.GetNumRows(); ++r)
+            for (int32_t r = 0; r < result.GetNumRows(); ++r)
             {
-                for (int c = 0; c < result.GetNumCols(); ++c)
+                for (int32_t c = 0; c < result.GetNumCols(); ++c)
                 {
                     result(r, c) = D[r] * M(r, c);
                 }
@@ -665,9 +679,9 @@ namespace gte
     GMatrix<Real> OuterProduct(GVector<Real> const& U, GVector<Real> const& V)
     {
         GMatrix<Real> result(U.GetSize(), V.GetSize());
-        for (int r = 0; r < result.GetNumRows(); ++r)
+        for (int32_t r = 0; r < result.GetNumRows(); ++r)
         {
-            for (int c = 0; c < result.GetNumCols(); ++c)
+            for (int32_t c = 0; c < result.GetNumCols(); ++c)
             {
                 result(r, c) = U[r] * V[c];
             }
@@ -680,11 +694,11 @@ namespace gte
     template <typename Real>
     void MakeDiagonal(GVector<Real> const& D, GMatrix<Real>& M)
     {
-        int const numRows = M.GetNumRows();
-        int const numCols = M.GetNumCols();
-        int const numDiagonal = (numRows <= numCols ? numRows : numCols);
+        int32_t const numRows = M.GetNumRows();
+        int32_t const numCols = M.GetNumCols();
+        int32_t const numDiagonal = (numRows <= numCols ? numRows : numCols);
         M.MakeZero();
-        for (int i = 0; i < numDiagonal; ++i)
+        for (int32_t i = 0; i < numDiagonal; ++i)
         {
             M(i, i) = D[i];
         }
