@@ -225,6 +225,7 @@ namespace curan
 				image = in_volume;
 				if(!filled())
 					return;
+				three_dimensional_entities = std::vector<curan::geometry::PolyHeadra>{};
 				ImageType::RegionType inputRegion = image->GetBufferedRegion();
 				masks_x = std::vector<Mask>(inputRegion.GetSize()[Direction::X]);
 				masks_y = std::vector<Mask>(inputRegion.GetSize()[Direction::Y]);

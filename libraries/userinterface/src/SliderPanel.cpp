@@ -51,8 +51,7 @@ namespace curan
 															}},
 							   begin->second);
 
-					if (minimum > local)
-					{
+					if (minimum > local){
 						minimum = local;
 						minimum_index = begin;
 					}

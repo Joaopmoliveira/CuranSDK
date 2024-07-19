@@ -17,11 +17,16 @@ struct PolyHeadra{
     }
 };
 
+enum Alignemnt{
+    CENTROID_ALIGNED,
+    CORNER_ALIGNED
+};
+
 struct Cube{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
-    Cube(double xExtent, double yExtent, double zExtent);
+    Cube(double xExtent, double yExtent, double zExtent, Alignemnt align = CENTROID_ALIGNED);
 
     friend std::ostream& operator<< (std::ostream& os, const Cube& cube){
         os << "V = [";
@@ -41,7 +46,7 @@ struct OpenCylinder{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
-    OpenCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height);
+    OpenCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height, Alignemnt align = CENTROID_ALIGNED);
 
     friend std::ostream& operator<< (std::ostream& os, const OpenCylinder& cube){
         os << "V = [";
@@ -55,6 +60,8 @@ struct OpenCylinder{
         os << "];";
         return os;
     }
+
+    void transform(const Eigen::Matrix<double,4,4>& transf);
 };
 
 /*
@@ -110,26 +117,9 @@ struct Tetrahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
-    Tetrahedron();
+    Tetrahedron(Alignemnt align = CENTROID_ALIGNED);
 
     friend std::ostream& operator<< (std::ostream& os, const Tetrahedron& cube){
-        os << "V = [";
-        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
-            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
-        os << "];";
-        return os;
-    }
-
-    void transform(const Eigen::Matrix<double,4,4>& transf);
-};
-
-struct Hexahedron{
-    using Rational = gte::BSRational<gte::UIntegerAP32>;
-    gte::ConvexMesh3<Rational> geometry;
-
-    Hexahedron();
-
-    friend std::ostream& operator<< (std::ostream& os, const Hexahedron& cube){
         os << "V = [";
         for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
             os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
@@ -144,7 +134,7 @@ struct Octahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
-    Octahedron();
+    Octahedron(Alignemnt align = CENTROID_ALIGNED);
 
     friend std::ostream& operator<< (std::ostream& os, const Octahedron& cube){
         os << "V = [";
@@ -161,7 +151,7 @@ struct Dodecahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
-    Dodecahedron();
+    Dodecahedron(Alignemnt align = CENTROID_ALIGNED);
 
     friend std::ostream& operator<< (std::ostream& os, const Dodecahedron& cube){
         os << "V = [";
@@ -178,7 +168,7 @@ struct Icosahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
 
-    Icosahedron();
+    Icosahedron(Alignemnt align = CENTROID_ALIGNED);
 
     friend std::ostream& operator<< (std::ostream& os, const Icosahedron& cube){
         os << "V = [";
