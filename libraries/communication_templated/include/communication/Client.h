@@ -57,7 +57,9 @@ namespace curan {
 
 		public:
 
-			~Client();
+			~Client(){
+				
+			}
 
 			static inline std::shared_ptr<Client> make(Info& info) {
 				// this is a bad practice, in effect we have a multistage contructor of the socket client

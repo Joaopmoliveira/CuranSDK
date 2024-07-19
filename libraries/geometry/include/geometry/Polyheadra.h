@@ -2,6 +2,7 @@
 #define POLYHEADER_HEADER_H
 
 #include <Mathematics/IntrConvexMesh3Plane3.h>
+#include <Eigen/Dense>
 
 namespace curan{
 namespace geometry{
@@ -29,7 +30,12 @@ struct Cube{
         os << "];";
         return os;
     }
+
+    void transform(const Eigen::Matrix<double,4,4>& transf);
 };
+
+
+
 
 struct OpenCylinder{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
@@ -42,9 +48,16 @@ struct OpenCylinder{
         for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
             os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
         os << "];";
+
+        os << "I = [";
+        for(size_t i = 0; i< cube.geometry.triangles.size(); ++i)
+            os << (double)cube.geometry.triangles[i][0] << " " <<  (double)cube.geometry.triangles[i][1] << " " << (double)cube.geometry.triangles[i][2] << ";\n";
+        os << "];";
         return os;
     }
 };
+
+/*
 
 struct ClosedCylinder{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
@@ -91,6 +104,8 @@ struct Torus{
     }
 };
 
+*/
+
 struct Tetrahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;
@@ -104,6 +119,8 @@ struct Tetrahedron{
         os << "];";
         return os;
     }
+
+    void transform(const Eigen::Matrix<double,4,4>& transf);
 };
 
 struct Hexahedron{
@@ -119,6 +136,8 @@ struct Hexahedron{
         os << "];";
         return os;
     }
+
+    void transform(const Eigen::Matrix<double,4,4>& transf);
 };
 
 struct Octahedron{
@@ -134,6 +153,8 @@ struct Octahedron{
         os << "];";
         return os;
     }
+
+    void transform(const Eigen::Matrix<double,4,4>& transf);
 };
 
 struct Dodecahedron{
@@ -149,6 +170,8 @@ struct Dodecahedron{
         os << "];";
         return os;
     }
+
+    void transform(const Eigen::Matrix<double,4,4>& transf);
 };
 
 struct Icosahedron{
@@ -164,6 +187,8 @@ struct Icosahedron{
         os << "];";
         return os;
     }
+
+    void transform(const Eigen::Matrix<double,4,4>& transf);
 };
 
 }

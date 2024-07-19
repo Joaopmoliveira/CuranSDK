@@ -14,9 +14,11 @@ void test_cube_intersection(){
     }
 }
 
+
+
 void test_open_cylinder_intersection(){
     std::cout << "test_open_cylinder_intersection:\n";
-    curan::geometry::OpenCylinder geom{10,10,1.0,1.0};
+    curan::geometry::OpenCylinder geom{2,4,1.0,1.0};
     std::cout << "geom:\n" << geom << std::endl;
     auto value = curan::geometry::clip_with_plane(geom,{0.0,0.0,1.0},{0.0,0.0,0.0});
     if(value){
@@ -26,10 +28,11 @@ void test_open_cylinder_intersection(){
     }
 }
 
+/*
 
 void test_closed_cylinder_intersection(){
     std::cout << "test_closed_cylinder_intersection:\n";
-    curan::geometry::ClosedCylinder geom{10,10,1.0,1.0};
+    curan::geometry::ClosedCylinder geom{2,3,1.0,1.0};
     auto value = curan::geometry::clip_with_plane(geom,{0.0,0.0,1.0},{0.0,0.0,0.0});
     if(value){
         std::cout << "polygon is: \n" << *value << std::endl;
@@ -40,7 +43,7 @@ void test_closed_cylinder_intersection(){
 
 void test_shpere_intersection(){
     std::cout << "test_shpere_intersection:\n";
-    curan::geometry::Sphere geom{10,10,1.0};
+    curan::geometry::Sphere geom{3,3,1.0};
     auto value = curan::geometry::clip_with_plane(geom,{0.0,0.0,1.0},{0.0,0.0,0.0});
     if(value){
         std::cout << "polygon is: \n" << *value << std::endl;
@@ -51,7 +54,7 @@ void test_shpere_intersection(){
 
 void test_torus_intersection(){
     std::cout << "test_torus_intersection:\n";
-    curan::geometry::Torus geom{10,10,2.0,1.0};
+    curan::geometry::Torus geom{3,3,2.0,1.0};
     auto value = curan::geometry::clip_with_plane(geom,{0.0,0.0,1.0},{0.0,0.0,0.0});
     if(value){
         std::cout << "polygon is: \n" << *value << std::endl;
@@ -59,6 +62,8 @@ void test_torus_intersection(){
         std::cout << "no polygon found\n";
     }
 }
+
+*/
 
 void test_tethrahedron_intersection(){
     std::cout << "test_tethrahedron_intersection:\n";

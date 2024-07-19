@@ -102,7 +102,7 @@ struct Factory {
         gte::ConvexMesh3<Numeric> geometry;
 
         // Quantities derived from inputs.
-        uint32_t numVertices = numAxisSamples * (numRadialSamples + 1);
+        uint32_t numVertices = numAxisSamples * (numRadialSamples);
         uint32_t numTriangles = 2 * (numAxisSamples - 1) * numRadialSamples;
         float invRS = 1.0f / static_cast<float>(numRadialSamples);
         float invASm1 = 1.0f / static_cast<float>(numAxisSamples - 1);
@@ -120,16 +120,16 @@ struct Factory {
 
         // Generate points on the unit circle to be used in computing the mesh
         // points on a cylinder slice.
-        std::vector<float> cs(static_cast<size_t>(numRadialSamples) + 1);
-        std::vector<float> sn(static_cast<size_t>(numRadialSamples) + 1);
+        std::vector<float> cs(static_cast<size_t>(numRadialSamples));
+        std::vector<float> sn(static_cast<size_t>(numRadialSamples));
         for (uint32_t r = 0; r < numRadialSamples; ++r)
         {
             float angle = invRS * r * GTE_C_TWO_PI;
             cs[r] = std::cos(angle);
             sn[r] = std::sin(angle);
         }
-        cs[numRadialSamples] = cs[0];
-        sn[numRadialSamples] = sn[0];
+        cs[numRadialSamples-1] = cs[0];
+        sn[numRadialSamples-1] = sn[0];
 
         // Generate the cylinder itself.
         for (uint32_t a = 0, i = 0; a < numAxisSamples; ++a)
@@ -141,7 +141,7 @@ struct Factory {
             gte::Vector3<float> sliceCenter{0.0f, 0.0f, z};
 
             // Compute slice vertices with duplication at endpoint.
-            for (uint32_t r = 0; r <= numRadialSamples; ++r, ++i)
+            for (uint32_t r = 0; r <= numRadialSamples-1; ++r, ++i)
             {
                 float radialFraction = r * invRS;  // in [0,1)
                 nor = { cs[r], sn[r], 0.0f };
@@ -162,6 +162,21 @@ struct Factory {
             geometry.vertices[i] = {{Numeric{vertices[i][0]}, Numeric{vertices[i][1]}, Numeric{vertices[i][2]}}};
 
         geometry.triangles.resize(numTriangles);
+
+        for (uint32_t i = 0 ,t = 0, id1 = 0,id2 = 1, id3 = id1+numRadialSamples; i<numAxisSamples-1 ; ++i )
+        {
+            for(uint32_t j = 0 ; j<numRadialSamples ; ++j){
+                geometry.triangles[t++] = {(int32_t)id1, (int32_t)id2, (int32_t)id3};
+                geometry.triangles[t++] = {(int32_t)(i*numRadialSamples+((id1+1)%numRadialSamples)), (int32_t)(id2+numRadialSamples), (int32_t)id3};
+                id1++;
+                id2++;
+                id2 %= numRadialSamples;
+                id3++;
+            }
+        }
+/*
+
+
         for (uint32_t a = 0, aStart = 0, t = 0; a < numAxisSamples - 1; ++a)
         {
             uint32_t i0 = aStart;
@@ -175,8 +190,11 @@ struct Factory {
                 geometry.triangles[t++] = {(int32_t)i1, (int32_t)i3, (int32_t)i2};
             }
         }
+*/
         return geometry;
     }
+
+/*
 
     template <typename Numeric>
     gte::ConvexMesh3<Numeric> CreateCylinderClosed(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height)
@@ -445,6 +463,9 @@ struct Factory {
         return geometry;
     }
 
+*/
+
+
     // Platonic solids, all inscribed in a unit sphere centered at
     // (0,0,0).
     template <typename Numeric>
@@ -680,15 +701,27 @@ struct Factory {
     }
 };
 
+
 Cube::Cube(double xExtent, double yExtent, double zExtent){
     Factory factory;
     geometry = factory.CreateBox<Rational>(xExtent,yExtent,zExtent);
 }
 
+void Cube::transform(const Eigen::Matrix<double,4,4>& transf){
+    for(auto& geom : geometry.vertices){
+        Eigen::Matrix<double,4,1> vertex;
+        vertex << geom[0] , geom[1] , geom[2] , 1.0;
+        auto res = transf * vertex;
+        geom = {res[0],res[1],res[2]};
+    }
+}
+
+
 OpenCylinder::OpenCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height){
     Factory factory;
     geometry = factory.CreateCylinderOpen<Rational>(numAxisSamples,numRadialSamples,radius,height);
 }
+/*
 
 ClosedCylinder::ClosedCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height){
     Factory factory;
@@ -705,9 +738,20 @@ Torus::Torus(uint32_t numCircleSamples, uint32_t numRadialSamples, float outerRa
     geometry = factory.CreateTorus<Rational>(numCircleSamples,numRadialSamples,outerRadius,innerRadius);
 }
 
+*/
+
 Tetrahedron::Tetrahedron(){
     Factory factory;
     geometry = factory.CreateTetrahedron<Rational>();
+}
+
+void Tetrahedron::transform(const Eigen::Matrix<double,4,4>& transf){
+    for(auto& geom : geometry.vertices){
+        Eigen::Matrix<double,4,1> vertex;
+        vertex << geom[0] , geom[1] , geom[2] , 1.0;
+        auto res = transf * vertex;
+        geom = {res[0],res[1],res[2]};
+    }
 }
 
 Hexahedron::Hexahedron(){
@@ -715,9 +759,27 @@ Hexahedron::Hexahedron(){
     geometry = factory.CreateHexahedron<Rational>();
 }
 
+void Hexahedron::transform(const Eigen::Matrix<double,4,4>& transf){
+    for(auto& geom : geometry.vertices){
+        Eigen::Matrix<double,4,1> vertex;
+        vertex << geom[0] , geom[1] , geom[2] , 1.0;
+        auto res = transf * vertex;
+        geom = {res[0],res[1],res[2]};
+    }
+}
+
 Octahedron::Octahedron(){
     Factory factory;
     geometry = factory.CreateOctahedron<Rational>();
+}
+
+void Octahedron::transform(const Eigen::Matrix<double,4,4>& transf){
+    for(auto& geom : geometry.vertices){
+        Eigen::Matrix<double,4,1> vertex;
+        vertex << geom[0] , geom[1] , geom[2] , 1.0;
+        auto res = transf * vertex;
+        geom = {res[0],res[1],res[2]};
+    }
 }
 
 Dodecahedron::Dodecahedron(){
@@ -725,9 +787,27 @@ Dodecahedron::Dodecahedron(){
     geometry = factory.CreateDodecahedron<Rational>();
 }
 
+void Dodecahedron::transform(const Eigen::Matrix<double,4,4>& transf){
+    for(auto& geom : geometry.vertices){
+        Eigen::Matrix<double,4,1> vertex;
+        vertex << geom[0] , geom[1] , geom[2] , 1.0;
+        auto res = transf * vertex;
+        geom = {res[0],res[1],res[2]};
+    }
+}
+
 Icosahedron::Icosahedron(){
     Factory factory;
     geometry = factory.CreateIcosahedron<Rational>();
+}
+
+void Icosahedron::transform(const Eigen::Matrix<double,4,4>& transf){
+    for(auto& geom : geometry.vertices){
+        Eigen::Matrix<double,4,1> vertex;
+        vertex << geom[0] , geom[1] , geom[2] , 1.0;
+        auto res = transf * vertex;
+        geom = {res[0],res[1],res[2]};
+    }
 }
 
 }

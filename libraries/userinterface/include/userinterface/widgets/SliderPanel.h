@@ -350,7 +350,7 @@ namespace curan
 			SkPaint highlighted_panel;
 
 			VolumetricMask *volumetric_mask = nullptr;
-			std::vector<SkPath> cached_polyheader_intersections;
+			std::vector<std::tuple<std::vector<SkPoint>,SkPath>> cached_polyheader_intersections;
 			curan::ui::PointCollection current_stroke;
 
 			SkRect background_rect;
