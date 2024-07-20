@@ -73,11 +73,11 @@ private:
             {
                 current_status |= ENTERED_ALLOCATED_AREA_EVENT;
             }
-            current_status |= INSIDE_ALLOCATED_AREA;
+            current_status |= INSIDE_ALLOCATED_AREA & ~OUTSIDE_ALLOCATED_AREA;
         }
         else if (current_status & INSIDE_ALLOCATED_AREA)
         {
-            current_status |= LEFT_ALLOCATED_AREA_EVENT;
+            current_status |= LEFT_ALLOCATED_AREA_EVENT & ~INSIDE_ALLOCATED_AREA & OUTSIDE_ALLOCATED_AREA;
         }
     }
 
@@ -263,6 +263,9 @@ int main()
     interpreter.set_format(true);
     std::cout << interpreter << std::endl;
     curan::ui::Move arg{1,1};
+    interpreter.process(arg);
+    std::cout << interpreter << std::endl;
+    arg=curan::ui::Move{54,54};
     interpreter.process(arg);
     std::cout << interpreter << std::endl;
     return 0;
