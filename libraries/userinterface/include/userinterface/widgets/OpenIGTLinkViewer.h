@@ -59,7 +59,7 @@ namespace curan {
 			float debug_mode_radius = 10.0f;
 			sk_sp<SkTextBlob> debug_glyph;
 			bool compiled = false;
-
+			SignalInterpreter interpreter;
 			OpenIGTLinkViewer();
 
 		public:
