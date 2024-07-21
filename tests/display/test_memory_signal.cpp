@@ -39,6 +39,12 @@ class SignalInterpreter
     std::function<bool(const double,const double)> size_area;
     bool long_format = false;
 
+    double x_last_move = 0.0;
+    double y_last_move = 0.0;
+
+    double x_last_press = 0.0;
+    double y_last_press = 0.0;
+
 public:
     SignalInterpreter(std::function<bool(double, double)> in_allocated_area, std::function<bool(double, double)> in_size_area) : allocated_area{in_allocated_area}, size_area{in_size_area}
     {
@@ -69,15 +75,17 @@ private:
     {
         if (allocated_area(x, y)) // if inside allocated area
         {
-            if (current_status & ~INSIDE_ALLOCATED_AREA)
+            if (current_status & OUTSIDE_ALLOCATED_AREA)
             {
                 current_status |= ENTERED_ALLOCATED_AREA_EVENT;
             }
-            current_status |= INSIDE_ALLOCATED_AREA & ~OUTSIDE_ALLOCATED_AREA;
+            current_status &= ~OUTSIDE_ALLOCATED_AREA;
+            current_status |= INSIDE_ALLOCATED_AREA; 
         }
         else if (current_status & INSIDE_ALLOCATED_AREA)
         {
-            current_status |= LEFT_ALLOCATED_AREA_EVENT & ~INSIDE_ALLOCATED_AREA & OUTSIDE_ALLOCATED_AREA;
+            current_status &= ~INSIDE_ALLOCATED_AREA;
+            current_status |= LEFT_ALLOCATED_AREA_EVENT | OUTSIDE_ALLOCATED_AREA;
         }
     }
 
@@ -85,15 +93,17 @@ private:
     {
         if (size_area(x, y)) // if inside allocated area
         {
-            if (current_status & ~INSIDE_FIXED_AREA)
+            if (current_status & OUTSIDE_FIXED_AREA)
             {
                 current_status |= ENTERED_FIXED_AREA_EVENT;
             }
-            current_status |= INSIDE_FIXED_AREA;
+            current_status &= ~OUTSIDE_FIXED_AREA;
+            current_status |= INSIDE_FIXED_AREA; 
         }
         else if (current_status & INSIDE_FIXED_AREA)
         {
-            current_status |= LEFT_FIXED_AREA_EVENT;
+            current_status &= ~INSIDE_FIXED_AREA;
+            current_status |= LEFT_FIXED_AREA_EVENT | OUTSIDE_FIXED_AREA;
         }
     }
 public:
@@ -103,7 +113,7 @@ public:
         std::visit(curan::utilities::overloaded{[this](curan::ui::Empty arg)
                                                 {
                                                     current_status |= HEART_BEAT;
-                                                    std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
+                                                    //std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
                                                 },
                                                 [this](curan::ui::Move arg)
                                                 {
@@ -111,19 +121,22 @@ public:
                                                     allocated_area_logic(arg.xpos,arg.ypos);
                                                     fixed_area_logic(arg.xpos,arg.ypos);
                                                     current_status |= MOUSE_MOVE_EVENT;
-                                                    std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
+                                                    x_last_move = arg.xpos;
+                                                    y_last_move = arg.ypos;
+                                                    //std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
                                                 },
                                                 [this](curan::ui::Press arg)
                                                 {
                                                     shutoff_oneoff_events();
                                                     allocated_area_logic(arg.xpos,arg.ypos);
                                                     fixed_area_logic(arg.xpos,arg.ypos);
-                                                    if (current_status & ~MOUSE_CLICKED_LEFT && current_status & ~MOUSE_CLICKED_RIGHT)
+                                                    if (!(current_status & MOUSE_CLICKED_LEFT))
                                                     {
                                                         current_status |= MOUSE_CLICKED_LEFT_EVENT | MOUSE_CLICKED_LEFT;
-                                                        current_status |= MOUSE_CLICKED_RIGHT_EVENT | MOUSE_CLICKED_RIGHT;
                                                     }
-                                                    std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
+                                                    x_last_press = arg.xpos;
+                                                    y_last_press = arg.ypos;
+                                                    //std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
                                                 },
                                                 [this](curan::ui::Scroll arg)
                                                 {
@@ -131,27 +144,30 @@ public:
                                                     allocated_area_logic(arg.xpos,arg.ypos);
                                                     fixed_area_logic(arg.xpos,arg.ypos);
                                                     current_status |= SCROLL_EVENT;
-                                                    std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
+                                                    //std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
                                                 },
                                                 [this](curan::ui::Unpress arg)
                                                 {
                                                     shutoff_oneoff_events();
                                                     allocated_area_logic(arg.xpos,arg.ypos);
                                                     fixed_area_logic(arg.xpos,arg.ypos);
-                                                    current_status |= MOUSE_UNCLICK_LEFT_EVENT | MOUSE_UNCLICK_RIGHT_EVENT | (~MOUSE_CLICKED_LEFT & ~MOUSE_CLICKED_RIGHT);
-                                                    std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
+                                                    if ((current_status & MOUSE_CLICKED_LEFT)){
+                                                        current_status |= MOUSE_UNCLICK_LEFT_EVENT;
+                                                        current_status &= ~MOUSE_CLICKED_LEFT;      
+                                                    }
+                                                    //std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
                                                 },
                                                 [this](curan::ui::Key arg)
                                                 {
                                                     shutoff_oneoff_events();
                                                     current_status |= KEY_EVENT;
-                                                    std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
+                                                    //std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
                                                 },
                                                 [this](curan::ui::ItemDropped arg)
                                                 {
                                                     shutoff_oneoff_events();
                                                     current_status |= ITEM_DROPPED_EVENT;
-                                                    std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
+                                                    //std::cout << std::bitset<sizeof(size_t) * 8>{current_status} << std::endl;
                                                 }},
                    current_signal);
     };
@@ -163,6 +179,14 @@ public:
 
     void set_format(bool val){
         long_format = val;
+    }
+
+    std::pair<double,double> last_press() const {
+        return std::make_pair(x_last_press,y_last_press);
+    }
+
+    std::pair<double,double> last_move() const {
+        return std::make_pair(x_last_move,y_last_move);
     }
 
     friend std::ostream &operator<<(std::ostream &o, const SignalInterpreter &val)
@@ -262,11 +286,32 @@ int main()
 
     interpreter.set_format(true);
     std::cout << interpreter << std::endl;
-    curan::ui::Move arg{1,1};
-    interpreter.process(arg);
+    interpreter.process(curan::ui::Move{1,1});
     std::cout << interpreter << std::endl;
-    arg=curan::ui::Move{54,54};
-    interpreter.process(arg);
+    interpreter.process(curan::ui::Move{54,54});
     std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Move{54,54});
+    std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Move{77,77});
+    std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Move{77,77});
+    std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Press{77,77});
+    std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Press{77,77});
+    std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Move{77,77});
+    std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Unpress{77,77});
+    std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Unpress{77,77});
+    std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Move{54,54});
+    std::cout << interpreter << std::endl;
+    interpreter.process(curan::ui::Move{1,1});
+    std::cout << interpreter << std::endl;
+
+    std::cout << "size of signal interpreter = " << sizeof(SignalInterpreter) << std::endl;
+
     return 0;
 };
