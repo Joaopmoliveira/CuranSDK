@@ -1,6 +1,9 @@
 #include "userinterface/widgets/Button.h"
 #include "utils/Overloading.h"
 #include "userinterface/widgets/definitions/Interactive.h"
+
+#include <iostream>
+
 namespace curan {
 namespace ui {
 
@@ -108,7 +111,39 @@ callablefunction Button::call(){
 if(!compiled)
 	throw std::runtime_error("must compile the button before drawing operations");
 auto lamb = [this](Signal sig, ConfigDraw* config) {
-		bool interacted = false;
+		auto check_inside_fixed_area = [this](double x,double y){ 
+			auto widget_rect = get_position();
+			auto size = get_size();
+			SkRect drawable = size;
+			drawable.offsetTo(widget_rect.centerX()- drawable.width()/2.0f, widget_rect.centerY()- drawable.height() / 2.0f);
+			return drawable.contains(x,y); 
+		};
+		interpreter.process(check_inside_fixed_area,check_inside_fixed_area,sig);
+		
+		if(interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT_EVENT)){
+			set_current_state(ButtonStates::PRESSED);
+			for(const auto& localcall : callbacks_press)
+            	localcall(this,std::get<curan::ui::Press>(sig),config);		
+			return true;
+		}
+		
+		if(interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT)){
+			set_current_state(ButtonStates::PRESSED);
+			return true;
+		}
+		
+		if(interpreter.check(INSIDE_FIXED_AREA)){
+			set_current_state(ButtonStates::HOVER);
+			return true;
+		}
+		
+		if(interpreter.check(OUTSIDE_FIXED_AREA)){
+			set_current_state(ButtonStates::WAITING);
+			return true;
+		}
+
+		return false;
+		/*
 		std::visit(utilities::overloaded{
 			[this,config](Empty arg) {
 
@@ -162,8 +197,9 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 
 			}},
 			sig);
-			return interacted;
+			*/
 		};
+		
 	return lamb;
 }
 

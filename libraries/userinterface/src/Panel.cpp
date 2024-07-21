@@ -56,7 +56,8 @@ namespace ui{
 		auto pos = get_position();
 		background_rect = (background) ? curan::ui::compute_bounded_rectangle(pos,(*background).image->width(),(*background).image->height()) : pos;
 		homogenenous_transformation = SkMatrix::MakeRectToRect(background_rect,SkRect::MakeWH(1.0,1.0),SkMatrix::ScaleToFit::kFill_ScaleToFit);
-		homogenenous_transformation.invert(&inverse_homogenenous_transformation);
+		if(!homogenenous_transformation.invert(&inverse_homogenenous_transformation))
+			throw std::runtime_error("failure to invert matrix");
 
     	for(auto & stro : strokes)
 			std::visit(curan::utilities::overloaded{
@@ -197,6 +198,17 @@ namespace ui{
 	{
 		auto lamb = [this](curan::ui::Signal sig, curan::ui::ConfigDraw *config){
 			bool interacted = false;
+
+				auto check_inside_fixed_area = [this](double x, double y)
+				{
+					auto widget_rect = get_position();
+					auto size = get_size();
+					SkRect drawable = size;
+					drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
+					return drawable.contains(x, y);
+				};
+				interpreter.process(check_inside_fixed_area, check_inside_fixed_area, sig);
+
 			std::visit(curan::utilities::overloaded{
 				[](curan::ui::Empty arg) {
 

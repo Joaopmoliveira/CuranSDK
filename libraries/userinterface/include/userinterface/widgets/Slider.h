@@ -37,6 +37,7 @@ namespace curan {
 			float current_value = 0.5;
 			float value_pressed = 0.5;
 			float dragable_percent_size = 0.1f;
+			SignalInterpreter interpreter;
 
 			Slider(const std::array<float,2>& in_limits);
 

@@ -46,6 +46,7 @@ private:
 	SkSamplingOptions options;
 	sk_sp<SkImageFilter> imgfilter;
 
+	SignalInterpreter interpreter;
 
 	Panel(curan::ui::IconResources& other,std::optional<curan::ui::ImageWrapper> image_wrapper);
 

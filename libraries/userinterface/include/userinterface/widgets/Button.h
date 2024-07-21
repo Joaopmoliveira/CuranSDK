@@ -159,6 +159,7 @@ private:
 	ButtonStates current_state = ButtonStates::WAITING;
 	IconResources& system_icons;
 	bool compiled = false;
+	SignalInterpreter interpreter;
 };
 
 }

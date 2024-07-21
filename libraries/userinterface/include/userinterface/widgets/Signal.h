@@ -266,6 +266,10 @@ namespace curan
 			{
 			}
 
+			inline bool check(size_t mask){
+				return (current_status & mask ) == mask;
+			}
+
 		private:
 			inline void shutoff_oneoff_events()
 			{
@@ -284,7 +288,7 @@ namespace curan
 				current_status &= ~MOUSE_MOVE_EVENT;
 				current_status &= ~MOUSE_UNCLICK_RIGHT_EVENT;
 				current_status &= ~MOUSE_UNCLICK_LEFT_EVENT;
-				current_status &= ~KEY_EVENT;
+				current_status &= ~KEYBOARD_EVENT;
 			}
 
 			template <typename allocated>
@@ -375,7 +379,7 @@ namespace curan
 														[&](curan::ui::Key arg)
 														{
 															shutoff_oneoff_events();
-															current_status |= KEY_EVENT;
+															current_status |= KEYBOARD_EVENT;
 														},
 														[&](curan::ui::ItemDropped arg)
 														{
@@ -498,9 +502,9 @@ namespace curan
 					o << "ITEM_DROPPED_EVENT\n";
 				}
 
-				if (val.current_status & KEY_EVENT)
+				if (val.current_status & KEYBOARD_EVENT)
 				{
-					o << "KEY_EVENT\n";
+					o << "KEYBOARD_EVENT\n";
 				}
 
 				if (val.current_status & HEART_BEAT)
@@ -522,5 +526,7 @@ namespace curan
 		void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 	}
 }
+
+
 
 #endif
