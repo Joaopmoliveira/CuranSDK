@@ -134,12 +134,12 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 		
 		if(interpreter.check(INSIDE_FIXED_AREA)){
 			set_current_state(ButtonStates::HOVER);
-			return true;
+			return false;
 		}
 		
 		if(interpreter.check(OUTSIDE_FIXED_AREA)){
 			set_current_state(ButtonStates::WAITING);
-			return true;
+			return false;
 		}
 
 		return false;

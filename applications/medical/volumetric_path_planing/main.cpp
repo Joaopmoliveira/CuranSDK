@@ -54,9 +54,8 @@ int main()
                 viewer->update_processed();
             }
             page.draw(canvas);
-            auto signals = viewer->process_pending_signals();
-            if (!signals.empty())
-                page.propagate_signal(signals.back(), &config);
+            for(auto&& signal : viewer->process_pending_signals())
+                page.propagate_signal(signal, &config);
             glfwPollEvents();
 
             bool val = viewer->swapBuffers();
