@@ -1,13 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Vector.h>
 
 // The segment is represented by (1-t)*P0 + t*P1, where P0 and P1 are the
 // endpoints of the segment and 0 <= t <= 1.  Some algorithms prefer a
@@ -17,9 +15,13 @@
 // vector for the segment, and |t| <= e.  The value e = |P1 - P0|/2 is the
 // extent (or radius or half-length) of the segment.
 
+#include <Mathematics/Vector.h>
+#include <array>
+#include <cstdint>
+
 namespace gte
 {
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class Segment
     {
     public:

@@ -134,7 +134,6 @@ int main()
                                                         Eigen::Matrix<double,6,1> desired_velocity = Eigen::Matrix<double,6,1>::Zero();
                                                         desired_velocity.block<2, 1>(0, 0) = 2*model.likeliest(iiwa.translation().block<2,1>(0,0));
                                                         desired_velocity[2] = desired_translation[2]-iiwa.translation()[2];
-                                                        std::cout << desired_velocity.transpose() << std::endl;
                                                         Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * desired_rotation);
                                                         desired_velocity.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
                                                         return desired_velocity;

@@ -1,17 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.03.08
+// Version: 6.0.2024.07.17
 
 #pragma once
-
-#include <Mathematics/BitHacks.h>
-#include <Mathematics/GTEMath.h>
-#include <Mathematics/IEEEBinary.h>
-#include <istream>
-#include <ostream>
 
 // The class BSNumber (binary scientific number) is designed to provide exact
 // arithmetic for robust algorithms, typically those for which we need to know
@@ -30,37 +24,51 @@
 //          UInteger& operator=(UInteger const& number);
 //          UInteger(UInteger&& number);
 //          UInteger& operator=(UInteger&& number);
-//          void SetNumBits(int numBits);
+//          void SetNumBits(int32_t numBits);
 //          int32_t GetNumBits() const;
 //          bool operator==(UInteger const& number) const;
 //          bool operator< (UInteger const& number) const;
 //          void Add(UInteger const& n0, UInteger const& n1);
 //          void Sub(UInteger const& n0, UInteger const& n1);
 //          void Mul(UInteger const& n0, UInteger const& n1);
-//          void ShiftLeft(UInteger const& number, int shift);
+//          void ShiftLeft(UInteger const& number, int32_t shift);
 //          int32_t ShiftRightToOdd(UInteger const& number);
 //          int32_t RoundUp();
-//          uint64_t GetPrefix(int numRequested) const;
+//          uint64_t GetPrefix(int32_t numRequested) const;
 //          bool Write(std::ofstream& output) const;
 //          bool Read(std::ifstream& input);
 //      };
 //
-// GTEngine currently has 32-bits-per-word storage for UInteger. See the
-// classes UIntegerAP32 (arbitrary precision), UIntegerFP32<N> (fixed
-// precision), and UIntegerALU32 (arithmetic logic unit shared by the previous
-// two classes). The document at the following link describes the design,
+// GTE currently has 32-bits-per-word storage for UInteger. See the classes
+// UIntegerAP32 (arbitrary precision), UIntegerFP32<N> (fixed precision),
+// and UIntegerALU32 (arithmetic logic unit shared by the previous two
+// classes). The document at the following link describes the design,
 // implementation, and use of BSNumber and BSRational.
 //   https://www.geometrictools.com/Documentation/ArbitraryPrecision.pdf
+
+#include <Mathematics/BitHacks.h>
+#include <Mathematics/Functions.h>
+#include <Mathematics/IEEEBinary.h>
+#include <Mathematics/TypeTraits.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cfenv>
+#include <istream>
+#include <ostream>
+#include <string>
+#include <type_traits>
+#include <utility>
 
 // Support for unit testing algorithm correctness. The invariant for a
 // nonzero BSNumber is that the UInteger part is a positive odd number.
 // Expose this define to allow validation of the invariant.
-#define GTE_VALIDATE_BSNUMBER
+//#define GTE_VALIDATE_BSNUMBER
 
 // Enable this to throw exceptions in ConvertFrom when infinities or NaNs
 // are the floating-point inputs. BSNumber does not have representations
 // for these numbers.
-#define GTE_THROW_ON_CONVERT_FROM_INFINITY_OR_NAN
+//#define GTE_THROW_ON_CONVERT_FROM_INFINITY_OR_NAN
 
 // Support for debugging algorithms that use exact rational arithmetic. Each
 // BSNumber and BSRational has a double-precision member that is exposed when
@@ -226,7 +234,7 @@ namespace gte
 
             // Get the leading '+' or '-' if it exists.
             std::string intNumber;
-            int sign;
+            int32_t sign;
             if (number[0] == '+')
             {
                 intNumber = number.substr(1);
@@ -313,12 +321,44 @@ namespace gte
         }
 
         // Member access.
+
+        // A block of calls involving SetSign, SetBiasedExponent, and
+        // GetUInteger().CopyFrom imply a deferred creation of a rational
+        // number. When GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE is enabled, the
+        // update of mValue can fail if it were attempted in each set/copy
+        // call. The update of mValue must itself be deferred until the
+        // end of the block, as illustrated next.
+        //   target.SetSign(source.GetSign());
+        //   target.SetBiasedExponent(source.GetBiasedExponent());
+        //   target.GetUInteger().CopyFrom(source.GetUInteger());
+        //   #if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
+        //   target.mValue = static_cast<double>(target);
+        //   #endif
+        // The macro call is a no-op if GTL_BINARY_SCIENTIFIC_SHOW_DOUBLE is
+        // disabled, in which case mValue does not exist.
+        //
+        // If you are negating the sign of a rational number, use Negate()
+        // which can update mValue successfully. Alternatively, if r is a
+        // rational number, you can use "r = -r;" which is inefficient
+        // because all member data is copied, whereas Negate() just modifies
+        // mSign.
         inline void SetSign(int32_t sign)
         {
+            // WARNING: It is possible that SetSign produces an invalid
+            // rational representation.
+            //   (sign == mSign), SetSign is a no-op which is valid
+            //   (sign != 0 && sign = -mSign), the sign change is valid
+            //   ((sign == 0 && mSign != 0) || (sign != 0 && mSign == 0),
+            //     which are invalid
+            // Because of the need to create rational numbers sequentially
+            // using SetSign, SetBiasedExponent, and copy of integer bits,
+            // the invalid representation is temporary but should become
+            // valid at the end of the block of calls. Therefore, no
+            // exceptions are thrown by this function. At the end of the
+            // block of calls, if the representation is invalid, an
+            // exception most likely will occur in UIntegerALU32::GetPrefix.
+
             mSign = sign;
-#if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
-            mValue = (double)*this;
-#endif
         }
 
         inline int32_t GetSign() const
@@ -326,12 +366,17 @@ namespace gte
             return mSign;
         }
 
-        inline void SetBiasedExponent(int32_t biasedExponent)
+        inline void Negate()
         {
-            mBiasedExponent = biasedExponent;
+            mSign = -mSign;
 #if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
             mValue = (double)*this;
 #endif
+        }
+
+        inline void SetBiasedExponent(int32_t biasedExponent)
+        {
+            mBiasedExponent = biasedExponent;
         }
 
         inline int32_t GetBiasedExponent() const
@@ -342,9 +387,6 @@ namespace gte
         inline void SetExponent(int32_t exponent)
         {
             mBiasedExponent = exponent - mUInteger.GetNumBits() + 1;
-#if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
-            mValue = (double)*this;
-#endif
         }
 
         inline int32_t GetExponent() const
@@ -572,7 +614,7 @@ namespace gte
         BSNumber operator*(BSNumber const& number) const
         {
             BSNumber result;  // = 0
-            int sign = mSign * number.mSign;
+            int32_t sign = mSign * number.mSign;
             if (sign != 0)
             {
                 result.mSign = sign;
@@ -665,7 +707,7 @@ namespace gte
         // valid for a nonnegative integer without a leading '+' sign.
         static BSNumber ConvertToInteger(std::string const& number)
         {
-            int digit = static_cast<int>(number.back()) - static_cast<int>('0');
+            int32_t digit = static_cast<int32_t>(number.back()) - static_cast<int32_t>('0');
             BSNumber x(digit);
             if (number.size() > 1)
             {
@@ -674,7 +716,7 @@ namespace gte
                 BSNumber ten(10), pow10(10);
                 for (size_t i = 1, j = number.size() - 2; i < number.size(); ++i, --j)
                 {
-                    digit = static_cast<int>(number[j]) - static_cast<int>('0');
+                    digit = static_cast<int32_t>(number[j]) - static_cast<int32_t>('0');
                     if (digit > 0)
                     {
                         x += BSNumber(digit) * pow10;
@@ -903,7 +945,7 @@ namespace gte
                 }
                 else if (exponent <= IEEE::EXPONENT_BIAS)
                 {
-                    e = static_cast<uint32_t>(exponent + IEEE::EXPONENT_BIAS);
+                    e = static_cast<uint32_t>(static_cast<typename IEEE::UIntType>(exponent) + IEEE::EXPONENT_BIAS);
                     t = GetTrailing<IEEE>(1, 0);
                     if (t & (IEEE::SUP_TRAILING << 1))
                     {
@@ -1071,7 +1113,7 @@ namespace gte
         int32_t inCurrent = inSize - 1;
 
         int32_t lastBit = -1;
-        for (int i = precisionM1; i >= 0; --i)
+        for (int32_t i = precisionM1; i >= 0; --i)
         {
             if (inBits[inCurrent] & inMask)
             {
@@ -1109,6 +1151,19 @@ namespace gte
         int32_t outExponent = input.GetExponent();
         if (roundingMode == FE_TONEAREST)
         {
+#if defined(GTE_USE_MSWINDOWS)
+#pragma warning(disable : 28020)
+            // After refactoring headers, tHe code analysis tool complained:
+            // warning C28020: The expression '0<=_Param_(1)&&_Param_(1)<=4-1'
+            // is not true at this call.: Lines: 1041, 1046, 1047, 1048, 1053,
+            // 1062, 1063, 1072, 1073, 1074, 1075, 1076, 1077, 1078, 1079,
+            // 1080, 1082, 1083, 1084, 1085, 1086, 1087, 1089, 1090, 1092,
+            // 1099, 1102, 1109, 1112, 1119, 1090, 1092, 1099, 1102, 1109,
+            // 1112, 1119, 1090, 1124, 1125, 1126, 1129.
+            // I do not understand the warning. What is _Param(1)? And why
+            // is it being tested for containment in {0,1,2,3}? Before the
+            // refactoring there was no complaint.
+#endif
             // Determine whether u_{n-p} is positive.
             uint32_t positive = (inBits[inCurrent] & inMask) != 0u;
             if (positive && (np1mp > 1 || lastBit == 1))
@@ -1117,6 +1172,9 @@ namespace gte
                 outExponent += outW.RoundUp();
             }
             // else round down, equivalent to truncating the r bits
+#if defined(GTE_USE_MSWINDOWS)
+#pragma warning(default : 28020)
+#endif
         }
         else if (roundingMode == FE_UPWARD)
         {
@@ -1268,7 +1326,7 @@ namespace std
     }
 
     template <typename UInteger>
-    inline gte::BSNumber<UInteger> frexp(gte::BSNumber<UInteger> const& x, int* exponent)
+    inline gte::BSNumber<UInteger> frexp(gte::BSNumber<UInteger> const& x, int32_t* exponent)
     {
         if (x.GetSign() != 0)
         {
@@ -1285,7 +1343,7 @@ namespace std
     }
 
     template <typename UInteger>
-    inline gte::BSNumber<UInteger> ldexp(gte::BSNumber<UInteger> const& x, int exponent)
+    inline gte::BSNumber<UInteger> ldexp(gte::BSNumber<UInteger> const& x, int32_t exponent)
     {
         gte::BSNumber<UInteger> result = x;
         result.SetBiasedExponent(result.GetBiasedExponent() + exponent);
@@ -1314,6 +1372,15 @@ namespace std
     inline gte::BSNumber<UInteger> pow(gte::BSNumber<UInteger> const& x, gte::BSNumber<UInteger> const& y)
     {
         return (gte::BSNumber<UInteger>)std::pow((double)x, (double)y);
+    }
+
+    template <typename UInteger>
+    inline gte::BSNumber<UInteger> remainder(gte::BSNumber<UInteger> const& x, gte::BSNumber<UInteger> const& y)
+    {
+        double dx = static_cast<double>(x);
+        double dy = static_cast<double>(y);
+        double result = std::remainder(dx, dy);
+        return static_cast<gte::BSNumber<UInteger>>(result);
     }
 
     template <typename UInteger>
@@ -1390,7 +1457,7 @@ namespace gte
     }
 
     template <typename UInteger>
-    inline int isign(BSNumber<UInteger> const& x)
+    inline int32_t isign(BSNumber<UInteger> const& x)
     {
         return isign((double)x);
     }
@@ -1419,7 +1486,39 @@ namespace gte
         return (BSNumber<UInteger>)sqr((double)x);
     }
 
-    // See the comments in GteMath.h about trait is_arbitrary_precision.
+    // Compute u * v + w.
     template <typename UInteger>
-    struct is_arbitrary_precision_internal<BSNumber<UInteger>> : std::true_type {};
+    inline BSNumber<UInteger> FMA(
+        BSNumber<UInteger> const& u,
+        BSNumber<UInteger> const& v,
+        BSNumber<UInteger> const& w)
+    {
+        return u * v + w;
+    }
+
+    // Sum of products (SOP) u * v + w * z.
+    template <typename UInteger>
+    inline BSNumber<UInteger> RobustSOP(
+        BSNumber<UInteger> const& u,
+        BSNumber<UInteger> const& v,
+        BSNumber<UInteger> const& w,
+        BSNumber<UInteger> const& z)
+    {
+        return u * v + w * z;
+    }
+
+    // Difference of products (DOP) u * v - w * z.
+    template <typename UInteger>
+    inline BSNumber<UInteger> RobustDOP(
+        BSNumber<UInteger> const& u,
+        BSNumber<UInteger> const& v,
+        BSNumber<UInteger> const& w,
+        BSNumber<UInteger> const& z)
+    {
+        return u * v - w * z;
+    }
+
+    // See the comments in TypeTraits.h about trait is_arbitrary_precision.
+    template <typename UInteger>
+    struct _is_arbitrary_precision_internal<BSNumber<UInteger>> : std::true_type {};
 }

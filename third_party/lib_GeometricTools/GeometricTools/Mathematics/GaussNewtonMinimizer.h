@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.01.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/CholeskyDecomposition.h>
-#include <functional>
 
 // Let F(p) = (F_{0}(p), F_{1}(p), ..., F_{n-1}(p)) be a vector-valued
 // function of the parameters p = (p_{0}, p_{1}, ..., p_{m-1}).  The
@@ -50,25 +47,32 @@
 // vectors that can be manipulated using an already existing mathematics
 // library.  The implementation here supports both approaches.
 
+#include <Mathematics/CholeskyDecomposition.h>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <functional>
+
 namespace gte
 {
-    template <typename Real>
+    template <typename T>
     class GaussNewtonMinimizer
     {
     public:
         // Convenient types for the domain vectors, the range vectors, the
         // function F and the Jacobian J.
-        typedef GVector<Real> DVector;  // numPDimensions
-        typedef GVector<Real> RVector;  // numFDimensions
-        typedef GMatrix<Real> JMatrix;  // numFDimensions-by-numPDimensions
-        typedef GMatrix<Real> JTJMatrix;  // numPDimensions-by-numPDimensions
-        typedef GVector<Real> JTFVector;  // numPDimensions
+        typedef GVector<T> DVector;  // numPDimensions
+        typedef GVector<T> RVector;  // numFDimensions
+        typedef GMatrix<T> JMatrix;  // numFDimensions-by-numPDimensions
+        typedef GMatrix<T> JTJMatrix;  // numPDimensions-by-numPDimensions
+        typedef GVector<T> JTFVector;  // numPDimensions
         typedef std::function<void(DVector const&, RVector&)> FFunction;
         typedef std::function<void(DVector const&, JMatrix&)> JFunction;
         typedef std::function<void(DVector const&, JTJMatrix&, JTFVector&)> JPlusFunction;
 
         // Create the minimizer that computes F(p) and J(p) directly.
-        GaussNewtonMinimizer(int numPDimensions, int numFDimensions,
+        GaussNewtonMinimizer(int32_t numPDimensions, int32_t numFDimensions,
             FFunction const& inFFunction, JFunction const& inJFunction)
             :
             mNumPDimensions(numPDimensions),
@@ -86,7 +90,7 @@ namespace gte
         }
 
         // Create the minimizer that computes J^T(p)*J(p) and -J(p)*F(p).
-        GaussNewtonMinimizer(int numPDimensions, int numFDimensions,
+        GaussNewtonMinimizer(int32_t numPDimensions, int32_t numFDimensions,
             FFunction const& inFFunction, JPlusFunction const& inJPlusFunction)
             :
             mNumPDimensions(numPDimensions),
@@ -109,40 +113,52 @@ namespace gte
         GaussNewtonMinimizer(GaussNewtonMinimizer&&) = delete;
         GaussNewtonMinimizer& operator=(GaussNewtonMinimizer&&) = delete;
 
-        inline int GetNumPDimensions() const
+        inline int32_t GetNumPDimensions() const
         {
             return mNumPDimensions;
         }
 
-        inline int GetNumFDimensions() const
+        inline int32_t GetNumFDimensions() const
         {
             return mNumFDimensions;
         }
 
         struct Result
         {
+            Result()
+                :
+                minLocation{},
+                minError(static_cast<T>(0)),
+                minErrorDifference(static_cast<T>(0)),
+                minUpdateLength(static_cast<T>(0)),
+                numIterations(0),
+                converged(false)
+            {
+                minLocation.MakeZero();
+            }
+
             DVector minLocation;
-            Real minError;
-            Real minErrorDifference;
-            Real minUpdateLength;
+            T minError;
+            T minErrorDifference;
+            T minUpdateLength;
             size_t numIterations;
             bool converged;
         };
 
         Result operator()(DVector const& p0, size_t maxIterations,
-            Real updateLengthTolerance, Real errorDifferenceTolerance)
+            T updateLengthTolerance, T errorDifferenceTolerance)
         {
-            Result result;
+            Result result{};
             result.minLocation = p0;
-            result.minError = std::numeric_limits<Real>::max();
-            result.minErrorDifference = std::numeric_limits<Real>::max();
-            result.minUpdateLength = (Real)0;
+            result.minError = std::numeric_limits<T>::max();
+            result.minErrorDifference = std::numeric_limits<T>::max();
+            result.minUpdateLength = (T)0;
             result.numIterations = 0;
             result.converged = false;
 
             // As a simple precaution, ensure the tolerances are nonnegative.
-            updateLengthTolerance = std::max(updateLengthTolerance, (Real)0);
-            errorDifferenceTolerance = std::max(errorDifferenceTolerance, (Real)0);
+            updateLengthTolerance = std::max(updateLengthTolerance, (T)0);
+            errorDifferenceTolerance = std::max(errorDifferenceTolerance, (T)0);
 
             // Compute the initial error.
             mFFunction(p0, mF);
@@ -166,7 +182,7 @@ namespace gte
 
                 auto pNext = pCurrent + mNegJTF;
                 mFFunction(pNext, mF);
-                Real error = Dot(mF, mF);
+                T error = Dot(mF, mF);
                 if (error < result.minError)
                 {
                     result.minErrorDifference = result.minError - error;
@@ -202,7 +218,7 @@ namespace gte
             }
         }
 
-        int mNumPDimensions, mNumFDimensions;
+        int32_t mNumPDimensions, mNumFDimensions;
         FFunction mFFunction;
         JFunction mJFunction;
         JPlusFunction mJPlusFunction;
@@ -213,7 +229,7 @@ namespace gte
         JTJMatrix mJTJ;
         JTFVector mNegJTF;
 
-        CholeskyDecomposition<Real> mDecomposer;
+        CholeskyDecomposition<T> mDecomposer;
 
         bool mUseJFunction;
     };

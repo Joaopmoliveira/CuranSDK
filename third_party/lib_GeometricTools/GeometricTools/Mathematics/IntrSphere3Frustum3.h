@@ -1,9 +1,9 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2022.01.06
 
 #pragma once
 
@@ -19,12 +19,18 @@ namespace gte
     public:
         struct Result
         {
+            Result()
+                :
+                intersect(false)
+            {
+            }
+
             bool intersect;
         };
 
         Result operator()(Sphere3<Real> const& sphere, Frustum3<Real> const& frustum)
         {
-            Result result;
+            Result result{};
             DCPQuery<Real, Vector3<Real>, Frustum3<Real>> vfQuery;
             Real distance = vfQuery(sphere.center, frustum).distance;
             result.intersect = (distance <= sphere.radius);

@@ -1,34 +1,38 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
+// Abstract base class for a parameterized surface X(u,v).  The
+// parametric domain is either rectangular or triangular.  Valid
+// (u,v) values for a rectangular domain satisfy
+//   umin <= u <= umax,  vmin <= v <= vmax
+// and valid (u,v) values for a triangular domain satisfy
+//   umin <= u <= umax,  vmin <= v <= vmax,
+//   (vmax-vmin)*(u-umin)+(umax-umin)*(v-vmax) <= 0
+
 #include <Mathematics/Vector.h>
+#include <array>
+#include <cstdint>
 
 namespace gte
 {
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class ParametricSurface
     {
     protected:
-        // Abstract base class for a parameterized surface X(u,v).  The
-        // parametric domain is either rectangular or triangular.  Valid
-        // (u,v) values for a rectangular domain satisfy
-        //   umin <= u <= umax,  vmin <= v <= vmax
-        // and valid (u,v) values for a triangular domain satisfy
-        //   umin <= u <= umax,  vmin <= v <= vmax,
-        //   (vmax-vmin)*(u-umin)+(umax-umin)*(v-vmax) <= 0
         ParametricSurface(Real umin, Real umax, Real vmin, Real vmax, bool rectangular)
             :
             mUMin(umin),
             mUMax(umax),
             mVMin(vmin),
             mVMax(vmax),
-            mRectangular(rectangular)
+            mRectangular(rectangular),
+            mConstructed(false)
         {
         }
 
@@ -80,19 +84,19 @@ namespace gte
         // derivatives dX/du, dX/dv; second-order derivatives d2X/du2,
         // d2X/dudv, d2X/dv2.
         enum { SUP_ORDER = 6 };
-        virtual void Evaluate(Real u, Real v, unsigned int order, Vector<N, Real>* jet) const = 0;
+        virtual void Evaluate(Real u, Real v, uint32_t order, Vector<N, Real>* jet) const = 0;
 
         // Differential geometric quantities.
         Vector<N, Real> GetPosition(Real u, Real v) const
         {
-            Vector<N, Real> position;
-            Evaluate(u, v, 0, &position);
-            return position;
+            std::array<Vector<N, Real>, SUP_ORDER> jet{};
+            Evaluate(u, v, 0, jet.data());
+            return jet[0];
         }
 
         Vector<N, Real> GetUTangent(Real u, Real v) const
         {
-            std::array<Vector<N, Real>, 3> jet;
+            std::array<Vector<N, Real>, SUP_ORDER> jet{};
             Evaluate(u, v, 1, jet.data());
             Normalize(jet[1]);
             return jet[1];
@@ -100,7 +104,7 @@ namespace gte
 
         Vector<N, Real> GetVTangent(Real u, Real v) const
         {
-            std::array<Vector<N, Real>, 3> jet;
+            std::array<Vector<N, Real>, SUP_ORDER> jet{};
             Evaluate(u, v, 1, jet.data());
             Normalize(jet[2]);
             return jet[2];

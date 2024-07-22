@@ -1,15 +1,17 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.02.12
+// Version: 6.0.2023.11.20
 
 #pragma once
 
 #include <Mathematics/BitHacks.h>
-#include <Mathematics/GTEMath.h>
 #include <Mathematics/IEEEBinary.h>
+#include <Mathematics/Functions.h>
+#include <cmath>
+#include <cstdint>
 
 namespace gte
 {
@@ -49,8 +51,7 @@ namespace gte
             :
             IEEEBinary<int16_t, uint16_t, 16, 11>()
         {
-            union { float n; uint32_t e; } temp;
-            temp.n = static_cast<float>(inNumber);
+            union { float n; uint32_t e; } temp = { static_cast<float>(inNumber) };
             encoding = Convert32To16(temp.e);
         }
 
@@ -561,12 +562,12 @@ namespace std
         return static_cast<gte::IEEEBinary16>(std::fmod(static_cast<float>(x), static_cast<float>(y)));
     }
 
-    inline gte::IEEEBinary16 frexp(gte::IEEEBinary16 x, int* exponent)
+    inline gte::IEEEBinary16 frexp(gte::IEEEBinary16 x, int32_t* exponent)
     {
         return static_cast<gte::IEEEBinary16>(std::frexp(static_cast<float>(x), exponent));
     }
 
-    inline gte::IEEEBinary16 ldexp(gte::IEEEBinary16 x, int exponent)
+    inline gte::IEEEBinary16 ldexp(gte::IEEEBinary16 x, int32_t exponent)
     {
         return static_cast<gte::IEEEBinary16>(std::ldexp(static_cast<float>(x), exponent));
     }
@@ -649,7 +650,7 @@ namespace gte
         return static_cast<IEEEBinary16>(invsqrt(static_cast<float>(x)));
     }
 
-    inline int isign(IEEEBinary16 x)
+    inline int32_t isign(IEEEBinary16 x)
     {
         return isign(static_cast<float>(x));
     }

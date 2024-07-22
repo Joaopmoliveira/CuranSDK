@@ -1,16 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.06.16
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/IntrIntervals.h>
-#include <Mathematics/IntrLine3Ellipsoid3.h>
-#include <Mathematics/Ray.h>
-#include <Mathematics/Matrix3x3.h>
 
 // The queries consider the ellipsoid to be a solid.
 //
@@ -19,6 +14,13 @@
 // quadratic equation Q(t) = a2*t^2 + 2*a1*t + a0 = 0, where a2 = D^T*M*D,
 // a1 = D^T*M*(P-C) and a0 = (P-C)^T*M*(P-C)-1. The algorithm involves an
 // analysis of the real-valued roots of Q(t) for t >= 0.
+
+#include <Mathematics/IntrIntervals.h>
+#include <Mathematics/IntrLine3Ellipsoid3.h>
+#include <Mathematics/Ray.h>
+#include <Mathematics/Matrix3x3.h>
+#include <array>
+#include <cstddef>
 
 namespace gte
 {
@@ -41,7 +43,7 @@ namespace gte
         {
             Result result{};
 
-            Matrix3x3<T> M;
+            Matrix3x3<T> M{};
             ellipsoid.GetM(M);
             T const zero = static_cast<T>(0);
             Vector3<T> diff = ray.origin - ellipsoid.center;
@@ -85,8 +87,13 @@ namespace gte
             :
             public FIQuery<T, Line3<T>, Ellipsoid3<T>>::Result
         {
+            Result()
+                :
+                FIQuery<T, Line3<T>, Ellipsoid3<T>>::Result{}
+            {
+            }
+
             // No additional information to compute.
-            Result() = default;
         };
 
         Result operator()(Ray3<T> const& ray, Ellipsoid3<T> const& ellipsoid)
@@ -119,7 +126,7 @@ namespace gte
                 // The line containing the ray intersects the ellipsoid; the
                 // t-interval is [t0,t1]. The ray intersects the capsule as
                 // long as [t0,t1] overlaps the ray t-interval [0,+infinity).
-                FIQuery<T, std::array<T, 2>, std::array<T, 2>> iiQuery;
+                FIQuery<T, std::array<T, 2>, std::array<T, 2>> iiQuery{};
                 auto iiResult = iiQuery(result.parameter, static_cast<T>(0), true);
                 if (iiResult.intersect)
                 {

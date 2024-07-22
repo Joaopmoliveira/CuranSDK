@@ -161,3 +161,13 @@ utils
 ${ITK_LIBRARIES}
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+add_executable(test_icp_mi_registration icp_mi_registration.cpp)
+
+target_compile_definitions(test_icp_mi_registration PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_icp_mi_registration
+PUBLIC
+utils
+${ITK_LIBRARIES}
+${OPERATING_SYSTEM_REQUIRMENTS}
+)

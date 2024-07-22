@@ -1,13 +1,20 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
+// Computing geodesics on a surface is a differential geometric topic that
+// involves Riemannian geometry.  The algorithm for constructing geodesics
+// that is implemented here uses a multiresolution approach.  A description
+// of the algorithm is in the document
+// https://www.geometrictools.com/Documentation/RiemannianGeodesics.pdf
+
 #include <Mathematics/RiemannianGeodesic.h>
+#include <cmath>
 
 namespace gte
 {
@@ -35,7 +42,13 @@ namespace gte
             RiemannianGeodesic<Real>(2),
             mXExtent(xExtent),
             mYExtent(yExtent),
-            mZExtent(zExtent)
+            mZExtent(zExtent),
+            mCos0((Real)0),
+            mSin0((Real)0),
+            mCos1((Real)0),
+            mSin1((Real)0),
+            mDer0(Vector3<Real>::Zero()),
+            mDer1(Vector3<Real>::Zero())
         {
         }
 
@@ -69,7 +82,7 @@ namespace gte
         // param1[0] = u1;
         // param1[1] = v1;
         //
-        // int quantity;
+        // int32_t quantity;
         // std:vector<GVector<float>> path;
         // EG.ComputeGeodesic(param0, param1, quantity, path);
 

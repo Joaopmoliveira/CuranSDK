@@ -1,19 +1,21 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.11.16
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <Mathematics/HashCombine.h>
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 
 namespace gte
 {
-    template <int N, bool Ordered>
+    template <int32_t N, bool Ordered>
     class FeatureKey
     {
     protected:
@@ -85,9 +87,9 @@ namespace gte
         // Support for hashing in std::unordered*<T> container classes. The
         // first operator() is the hash function. The second operator() is
         // the equality comparison used for elements in the same bucket.
-        std::size_t operator()(FeatureKey const& key) const
+        size_t operator()(FeatureKey const& key) const
         {
-            std::size_t seed = 0;
+            size_t seed = 0;
             for (auto value : key.V)
             {
                 HashCombine(seed, value);
@@ -100,6 +102,6 @@ namespace gte
             return v0 == v1;
         }
 
-        std::array<int, N> V;
+        std::array<int32_t, N> V;
     };
 }

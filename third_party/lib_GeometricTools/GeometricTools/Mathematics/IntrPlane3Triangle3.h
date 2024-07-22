@@ -1,9 +1,9 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
@@ -12,6 +12,8 @@
 #include <Mathematics/Hyperplane.h>
 #include <Mathematics/Triangle.h>
 #include <Mathematics/Vector3.h>
+#include <array>
+#include <cstdint>
 
 namespace gte
 {
@@ -21,6 +23,14 @@ namespace gte
     public:
         struct Result
         {
+            Result()
+                :
+                intersect(false),
+                numIntersections(0),
+                isInterior(false)
+            {
+            }
+
             bool intersect;
 
             // The number is 0 (no intersection), 1 (plane and triangle
@@ -29,13 +39,13 @@ namespace gte
             // When the number is 2, the segment is either interior to the
             // triangle or is an edge of the triangle, the distinction stored
             // in 'isInterior'.
-            int numIntersections;
+            int32_t numIntersections;
             bool isInterior;
         };
 
         Result operator()(Plane3<Real> const& plane, Triangle3<Real> const& triangle)
         {
-            Result result;
+            Result result{};
 
             // Determine on which side of the plane the vertices lie.  The
             // table of possibilities is listed next with n = numNegative,
@@ -54,9 +64,9 @@ namespace gte
             //   2 0 1  vertex
             //   3 0 0  none
 
-            Real s[3];
-            int numPositive = 0, numNegative = 0, numZero = 0;
-            for (int i = 0; i < 3; ++i)
+            std::array<Real, 3> s{ (Real)0, (Real)0, (Real)0 };
+            int32_t numPositive = 0, numNegative = 0, numZero = 0;
+            for (int32_t i = 0; i < 3; ++i)
             {
                 s[i] = Dot(plane.normal, triangle.v[i]) - plane.constant;
                 if (s[i] > (Real)0)
@@ -84,7 +94,7 @@ namespace gte
             if (numZero == 1)
             {
                 result.intersect = true;
-                for (int i = 0; i < 3; ++i)
+                for (int32_t i = 0; i < 3; ++i)
                 {
                     if (s[i] == (Real)0)
                     {
@@ -132,6 +142,15 @@ namespace gte
     public:
         struct Result
         {
+            Result()
+                :
+                intersect(false),
+                numIntersections(0),
+                isInterior(false),
+                point{ Vector3<Real>::Zero(), Vector3<Real>::Zero(), Vector3<Real>::Zero() }
+            {
+            }
+
             bool intersect;
 
             // The number is 0 (no intersection), 1 (plane and triangle
@@ -140,14 +159,14 @@ namespace gte
             // When the number is 2, the segment is either interior to the
             // triangle or is an edge of the triangle, the distinction stored
             // in 'isInterior'.
-            int numIntersections;
+            int32_t numIntersections;
             bool isInterior;
-            Vector3<Real> point[3];
+            std::array<Vector3<Real>, 3> point;
         };
 
         Result operator()(Plane3<Real> const& plane, Triangle3<Real> const& triangle)
         {
-            Result result;
+            Result result{};
 
             // Determine on which side of the plane the vertices lie.  The
             // table of possibilities is listed next with n = numNegative,
@@ -167,8 +186,8 @@ namespace gte
             //   3 0 0  none
 
             Real s[3];
-            int numPositive = 0, numNegative = 0, numZero = 0;
-            for (int i = 0; i < 3; ++i)
+            int32_t numPositive = 0, numNegative = 0, numZero = 0;
+            for (int32_t i = 0; i < 3; ++i)
             {
                 s[i] = Dot(plane.normal, triangle.v[i]) - plane.constant;
                 if (s[i] > (Real)0)
@@ -191,11 +210,11 @@ namespace gte
                 result.numIntersections = 2;
                 result.isInterior = true;
                 Real sign = (Real)3 - numPositive * (Real)2;
-                for (int i0 = 0; i0 < 3; ++i0)
+                for (int32_t i0 = 0; i0 < 3; ++i0)
                 {
                     if (sign * s[i0] > (Real)0)
                     {
-                        int i1 = (i0 + 1) % 3, i2 = (i0 + 2) % 3;
+                        int32_t i1 = (i0 + 1) % 3, i2 = (i0 + 2) % 3;
                         Real t1 = s[i1] / (s[i1] - s[i0]);
                         Real t2 = s[i2] / (s[i2] - s[i0]);
                         result.point[0] = triangle.v[i1] + t1 *
@@ -211,11 +230,11 @@ namespace gte
             if (numZero == 1)
             {
                 result.intersect = true;
-                for (int i0 = 0; i0 < 3; ++i0)
+                for (int32_t i0 = 0; i0 < 3; ++i0)
                 {
                     if (s[i0] == (Real)0)
                     {
-                        int i1 = (i0 + 1) % 3, i2 = (i0 + 2) % 3;
+                        int32_t i1 = (i0 + 1) % 3, i2 = (i0 + 2) % 3;
                         result.point[0] = triangle.v[i0];
                         if (numPositive == 2 || numNegative == 2)
                         {
@@ -240,11 +259,11 @@ namespace gte
                 result.intersect = true;
                 result.numIntersections = 2;
                 result.isInterior = false;
-                for (int i0 = 0; i0 < 3; ++i0)
+                for (int32_t i0 = 0; i0 < 3; ++i0)
                 {
                     if (s[i0] != (Real)0)
                     {
-                        int i1 = (i0 + 1) % 3, i2 = (i0 + 2) % 3;
+                        int32_t i1 = (i0 + 1) % 3, i2 = (i0 + 2) % 3;
                         result.point[0] = triangle.v[i1];
                         result.point[1] = triangle.v[i2];
                         break;

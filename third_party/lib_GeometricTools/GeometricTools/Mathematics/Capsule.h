@@ -1,20 +1,21 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Segment.h>
 
 // A capsule is the set of points that are equidistant from a segment, the
 // common distance called the radius.
 
+#include <Mathematics/Segment.h>
+#include <cstdint>
+
 namespace gte
 {
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class Capsule
     {
     public:

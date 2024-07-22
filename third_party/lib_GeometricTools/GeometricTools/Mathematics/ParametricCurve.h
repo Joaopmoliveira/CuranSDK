@@ -1,26 +1,33 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.03.08
+// Version: 6.0.2023.08.08
 
 #pragma once
+
+// Abstract base class for a parameterized curve X(t), where t is the
+// parameter in [tmin,tmax] and X is an N-tuple position.  The first
+// constructor is for single-segment curves. The second constructor is
+// for multiple-segment curves. The times must be strictly increasing.
 
 #include <Mathematics/Integration.h>
 #include <Mathematics/RootsBisection.h>
 #include <Mathematics/Vector.h>
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <vector>
 
 namespace gte
 {
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class ParametricCurve
     {
     protected:
-        // Abstract base class for a parameterized curve X(t), where t is the
-        // parameter in [tmin,tmax] and X is an N-tuple position.  The first
-        // constructor is for single-segment curves. The second constructor is
-        // for multiple-segment curves. The times must be strictly increasing.
         ParametricCurve(Real tmin, Real tmax)
             :
             mTime(2),
@@ -34,9 +41,9 @@ namespace gte
             mTime[1] = tmax;
         }
 
-        ParametricCurve(int numSegments, Real const* times)
+        ParametricCurve(int32_t numSegments, Real const* times)
             :
-            mTime(numSegments + 1),
+            mTime(static_cast<size_t>(numSegments) + 1),
             mSegmentLength(numSegments, (Real)0),
             mAccumulatedLength(numSegments, (Real)0),
             mRombergOrder(DEFAULT_ROMBERG_ORDER),
@@ -70,9 +77,9 @@ namespace gte
             return mTime.back();
         }
 
-        inline int GetNumSegments() const
+        inline int32_t GetNumSegments() const
         {
-            return static_cast<int>(mSegmentLength.size());
+            return static_cast<int32_t>(mSegmentLength.size());
         }
 
         inline Real const* GetTimes() const
@@ -95,13 +102,13 @@ namespace gte
         // GetTime(...).
 
         // The default value is 8.
-        inline void SetRombergOrder(int order)
+        inline void SetRombergOrder(int32_t order)
         {
             mRombergOrder = std::max(order, 1);
         }
 
         // The default value is 1024.
-        inline void SetMaxBisections(unsigned int maxBisections)
+        inline void SetMaxBisections(uint32_t maxBisections)
         {
             mMaxBisections = std::max(maxBisections, 1u);
         }
@@ -114,9 +121,9 @@ namespace gte
         // order.  The values are ordered as: position, first derivative,
         // second derivative, third derivative.
         enum { SUP_ORDER = 4 };
-        virtual void Evaluate(Real t, unsigned int order, Vector<N, Real>* jet) const = 0;
+        virtual void Evaluate(Real t, uint32_t order, Vector<N, Real>* jet) const = 0;
 
-        void Evaluate(Real t, unsigned int order, Real* values) const
+        void Evaluate(Real t, uint32_t order, Real* values) const
         {
             Evaluate(t, order, reinterpret_cast<Vector<N, Real>*>(values));
         }
@@ -124,14 +131,14 @@ namespace gte
         // Differential geometric quantities.
         Vector<N, Real> GetPosition(Real t) const
         {
-            Vector<N, Real> position;
-            Evaluate(t, 0, &position);
-            return position;
+            std::array<Vector<N, Real>, SUP_ORDER> jet{};
+            Evaluate(t, 0, jet.data());
+            return jet[0];
         }
 
         Vector<N, Real> GetTangent(Real t) const
         {
-            std::array<Vector<N, Real>, 2> jet;  // (position, tangent)
+            std::array<Vector<N, Real>, SUP_ORDER> jet{};
             Evaluate(t, 1, jet.data());
             Normalize(jet[1]);
             return jet[1];
@@ -139,7 +146,7 @@ namespace gte
 
         Real GetSpeed(Real t) const
         {
-            std::array<Vector<N, Real>, 2> jet;  // (position, tangent)
+            std::array<Vector<N, Real>, SUP_ORDER> jet{};
             Evaluate(t, 1, jet.data());
             return Length(jet[1]);
         }
@@ -154,12 +161,12 @@ namespace gte
             if (mSegmentLength[0] == (Real)0)
             {
                 // Lazy initialization of lengths of segments.
-                int const numSegments = static_cast<int>(mSegmentLength.size());
+                int32_t const numSegments = static_cast<int32_t>(mSegmentLength.size());
                 Real accumulated = (Real)0;
-                for (int i = 0; i < numSegments; ++i)
+                for (int32_t i = 0, ip1 = 1; i < numSegments; ++i, ++ip1)
                 {
                     mSegmentLength[i] = Integration<Real>::Romberg(mRombergOrder,
-                        mTime[i], mTime[i + 1], speed);
+                        mTime[i], mTime[ip1], speed);
                     accumulated += mSegmentLength[i];
                     mAccumulatedLength[i] = accumulated;
                 }
@@ -168,9 +175,9 @@ namespace gte
             t0 = std::max(t0, GetTMin());
             t1 = std::min(t1, GetTMax());
             auto iter0 = std::lower_bound(mTime.begin(), mTime.end(), t0);
-            int index0 = static_cast<int>(iter0 - mTime.begin());
+            int32_t index0 = static_cast<int32_t>(iter0 - mTime.begin());
             auto iter1 = std::lower_bound(mTime.begin(), mTime.end(), t1);
-            int index1 = static_cast<int>(iter1 - mTime.begin());
+            int32_t index1 = static_cast<int32_t>(iter1 - mTime.begin());
 
             Real length;
             if (index0 < index1)
@@ -182,18 +189,18 @@ namespace gte
                         mTime[index0], speed);
                 }
 
-                int isup;
+                int32_t isup;
                 if (t1 < *iter1)
                 {
                     length += Integration<Real>::Romberg(mRombergOrder,
-                        mTime[index1 - 1], t1, speed);
+                        mTime[static_cast<size_t>(index1) - 1], t1, speed);
                     isup = index1 - 1;
                 }
                 else
                 {
                     isup = index1;
                 }
-                for (int i = index0; i < isup; ++i)
+                for (int32_t i = index0; i < isup; ++i)
                 {
                     length += mSegmentLength[i];
                 }
@@ -270,20 +277,20 @@ namespace gte
 
         // Compute a subset of curve points according to the specified attribute.
         // The input 'numPoints' must be two or larger.
-        void SubdivideByTime(int numPoints, Vector<N, Real>* points) const
+        void SubdivideByTime(int32_t numPoints, Vector<N, Real>* points) const
         {
             Real delta = (mTime.back() - mTime.front()) / (Real)(numPoints - 1);
-            for (int i = 0; i < numPoints; ++i)
+            for (int32_t i = 0; i < numPoints; ++i)
             {
                 Real t = mTime.front() + delta * i;
                 points[i] = GetPosition(t);
             }
         }
 
-        void SubdivideByLength(int numPoints, Vector<N, Real>* points) const
+        void SubdivideByLength(int32_t numPoints, Vector<N, Real>* points) const
         {
             Real delta = GetTotalLength() / (Real)(numPoints - 1);
-            for (int i = 0; i < numPoints; ++i)
+            for (int32_t i = 0; i < numPoints; ++i)
             {
                 Real length = delta * i;
                 Real t = GetTime(length);
@@ -301,8 +308,8 @@ namespace gte
         std::vector<Real> mTime;
         mutable std::vector<Real> mSegmentLength;
         mutable std::vector<Real> mAccumulatedLength;
-        int mRombergOrder;
-        unsigned int mMaxBisections;
+        int32_t mRombergOrder;
+        uint32_t mMaxBisections;
         bool mConstructed;
     };
 }

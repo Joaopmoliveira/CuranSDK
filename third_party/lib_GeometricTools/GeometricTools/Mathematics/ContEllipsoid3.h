@@ -1,9 +1,9 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
@@ -12,6 +12,8 @@
 #include <Mathematics/Matrix3x3.h>
 #include <Mathematics/Projection.h>
 #include <Mathematics/Rotation.h>
+#include <cmath>
+#include <cstdint>
 
 namespace gte
 {
@@ -23,7 +25,7 @@ namespace gte
     // if the points are (nearly) collinear or (nearly) planar.  In this case
     // M has a (nearly) zero eigenvalue, so inverting M is problematic.
     template <typename Real>
-    bool GetContainer(int numPoints, Vector3<Real> const* points, Ellipsoid3<Real>& ellipsoid)
+    bool GetContainer(int32_t numPoints, Vector3<Real> const* points, Ellipsoid3<Real>& ellipsoid)
     {
         // Fit the points with a Gaussian distribution.  The covariance
         // matrix is M = sum_j D[j]*U[j]*U[j]^T, where D[j] are the
@@ -35,7 +37,7 @@ namespace gte
 
             // If either eigenvalue is nonpositive, adjust the D[] values so
             // that we actually build an ellipsoid.
-            for (int j = 0; j < 3; ++j)
+            for (int32_t j = 0; j < 3; ++j)
             {
                 if (box.extent[j] < (Real)0)
                 {
@@ -54,7 +56,7 @@ namespace gte
             // for all i.
 
             Real maxValue = (Real)0;
-            for (int i = 0; i < numPoints; ++i)
+            for (int32_t i = 0; i < numPoints; ++i)
             {
                 Vector3<Real> diff = points[i] - box.center;
                 Real dot[3] =
@@ -77,7 +79,7 @@ namespace gte
 
             // Arrange for the quadratic to satisfy Q(X) <= 1.
             ellipsoid.center = box.center;
-            for (int j = 0; j < 3; ++j)
+            for (int32_t j = 0; j < 3; ++j)
             {
                 ellipsoid.axis[j] = box.axis[j];
                 ellipsoid.extent[j] = std::sqrt(maxValue / box.extent[j]);
@@ -128,7 +130,7 @@ namespace gte
         Quaternion<Real> q = q0 + q1;
         Normalize(q);
         Matrix3x3<Real> rot = Rotation<3, Real>(q);
-        for (int j = 0; j < 3; ++j)
+        for (int32_t j = 0; j < 3; ++j)
         {
             merge.axis[j] = rot.GetCol(j);
         }
@@ -136,13 +138,13 @@ namespace gte
         // Project the input ellipsoids onto the axes obtained by the average
         // of the orientations and that go through the center obtained by the
         // average of the centers.
-        for (int i = 0; i < 3; ++i)
+        for (int32_t i = 0; i < 3; ++i)
         {
             // Projection axis.
             Line3<Real> line(merge.center, merge.axis[i]);
 
             // Project ellipsoids onto the axis.
-            Real min0, max0, min1, max1;
+            Real min0{}, max0{}, min1{}, max1{};
             Project(ellipsoid0, line, min0, max0);
             Project(ellipsoid1, line, min1, max1);
 

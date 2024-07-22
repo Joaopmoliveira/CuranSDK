@@ -1,13 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DistSegment3Triangle3.h>
 
 // Compute the distance between two solid triangles in 3D.
 // 
@@ -16,10 +14,14 @@
 // sum_{i=0}^2 b[i] = 1.
 // 
 // The closest point on triangle0 is stored in closest[0] with barycentric
-// coordinates (b[0],b[1],b[2]) relative to its vertices. The closest point on
-// triangle1 is stored in closest[1] with barycentric coordinates relative to
-// its vertices. When there are infinitely many choices for the pair of closest
-// points, only one of them is returned.
+// coordinates relative to its vertices. The closest point on triangle1 is
+// stored in closest[1] with barycentric coordinates relative to its vertices.
+// When there are infinitely many choices for the pair of closest points, only
+// one pair is returned.
+
+#include <Mathematics/DistSegment3Triangle3.h>
+#include <array>
+#include <cstddef>
 
 namespace gte
 {

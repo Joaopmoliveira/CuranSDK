@@ -1,17 +1,22 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <Mathematics/Logger.h>
-#include <Mathematics/GTEMath.h>
 #include <Mathematics/Array2.h>
+#include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
+#include <cmath>
 #include <cstring>
+#include <utility>
+#include <vector>
 
 namespace gte
 {
@@ -19,7 +24,7 @@ namespace gte
     struct UniqueKnot
     {
         Real t;
-        int multiplicity;
+        int32_t multiplicity;
     };
 
     template <typename Real>
@@ -27,11 +32,18 @@ namespace gte
     {
         // The members are uninitialized.
         BasisFunctionInput()
+            :
+            numControls(0),
+            degree(0),
+            uniform(false),
+            periodic(false),
+            numUniqueKnots(0),
+            uniqueKnots{}
         {
         }
 
         // Construct an open uniform curve with t in [0,1].
-        BasisFunctionInput(int inNumControls, int inDegree)
+        BasisFunctionInput(int32_t inNumControls, int32_t inDegree)
             :
             numControls(inNumControls),
             degree(inDegree),
@@ -42,7 +54,7 @@ namespace gte
         {
             uniqueKnots.front().t = (Real)0;
             uniqueKnots.front().multiplicity = degree + 1;
-            for (int i = 1; i <= numUniqueKnots - 2; ++i)
+            for (int32_t i = 1; i <= numUniqueKnots - 2; ++i)
             {
                 uniqueKnots[i].t = i / (numUniqueKnots - (Real)1);
                 uniqueKnots[i].multiplicity = 1;
@@ -51,11 +63,11 @@ namespace gte
             uniqueKnots.back().multiplicity = degree + 1;
         }
 
-        int numControls;
-        int degree;
+        int32_t numControls;
+        int32_t degree;
         bool uniform;
         bool periodic;
-        int numUniqueKnots;
+        int32_t numUniqueKnots;
         std::vector<UniqueKnot<Real>> uniqueKnots;
     };
 
@@ -166,7 +178,7 @@ namespace gte
             mOpen = false;
             mUniform = input.uniform;
             mPeriodic = input.periodic;
-            for (int i = 0; i < 4; ++i)
+            for (int32_t i = 0; i < 4; ++i)
             {
                 mJet[i] = Array2<Real>();
             }
@@ -177,35 +189,35 @@ namespace gte
                 mUniqueKnots.begin());
 
             Real u = mUniqueKnots.front().t;
-            for (int i = 1; i < input.numUniqueKnots - 1; ++i)
+            for (int32_t i = 1; i < input.numUniqueKnots - 1; ++i)
             {
                 Real uNext = mUniqueKnots[i].t;
                 LogAssert(u < uNext, "Unique knots are not strictly increasing.");
                 u = uNext;
             }
 
-            int mult0 = mUniqueKnots.front().multiplicity;
+            int32_t mult0 = mUniqueKnots.front().multiplicity;
             LogAssert(mult0 >= 1 && mult0 <= mDegree + 1, "Invalid first multiplicity.");
 
-            int mult1 = mUniqueKnots.back().multiplicity;
+            int32_t mult1 = mUniqueKnots.back().multiplicity;
             LogAssert(mult1 >= 1 && mult1 <= mDegree + 1, "Invalid last multiplicity.");
 
-            for (int i = 1; i <= input.numUniqueKnots - 2; ++i)
+            for (int32_t i = 1; i <= input.numUniqueKnots - 2; ++i)
             {
-                int mult = mUniqueKnots[i].multiplicity;
+                int32_t mult = mUniqueKnots[i].multiplicity;
                 LogAssert(mult >= 1 && mult <= mDegree + 1, "Invalid interior multiplicity.");
             }
 
             mOpen = (mult0 == mult1 && mult0 == mDegree + 1);
 
-            mKnots.resize(mNumControls + mDegree + 1);
+            mKnots.resize(static_cast<size_t>(mNumControls) + static_cast<size_t>(mDegree) + 1);
             mKeys.resize(input.numUniqueKnots);
-            int sum = 0;
-            for (int i = 0, j = 0; i < input.numUniqueKnots; ++i)
+            int32_t sum = 0;
+            for (int32_t i = 0, j = 0; i < input.numUniqueKnots; ++i)
             {
                 Real tCommon = mUniqueKnots[i].t;
-                int mult = mUniqueKnots[i].multiplicity;
-                for (int k = 0; k < mult; ++k, ++j)
+                int32_t mult = mUniqueKnots[i].multiplicity;
+                for (int32_t k = 0; k < mult; ++k, ++j)
                 {
                     mKnots[j] = tCommon;
                 }
@@ -219,10 +231,10 @@ namespace gte
             mTMax = mKnots[mNumControls];
             mTLength = mTMax - mTMin;
 
-            size_t numRows = mDegree + 1;
-            size_t numCols = mNumControls + mDegree;
+            size_t numRows = static_cast<size_t>(mDegree) + 1;
+            size_t numCols = static_cast<size_t>(mNumControls) + static_cast<size_t>(mDegree);
             size_t numBytes = numRows * numCols * sizeof(Real);
-            for (int i = 0; i < 4; ++i)
+            for (int32_t i = 0; i < 4; ++i)
             {
                 mJet[i] = Array2<Real>(numCols, numRows);
                 std::memset(mJet[i][0], 0, numBytes);
@@ -230,24 +242,24 @@ namespace gte
         }
 
         // Member access.
-        inline int GetNumControls() const
+        inline int32_t GetNumControls() const
         {
             return mNumControls;
         }
 
-        inline int GetDegree() const
+        inline int32_t GetDegree() const
         {
             return mDegree;
         }
 
-        inline int GetNumUniqueKnots() const
+        inline int32_t GetNumUniqueKnots() const
         {
-            return static_cast<int>(mUniqueKnots.size());
+            return static_cast<int32_t>(mUniqueKnots.size());
         }
 
-        inline int GetNumKnots() const
+        inline int32_t GetNumKnots() const
         {
-            return static_cast<int>(mKnots.size());
+            return static_cast<int32_t>(mKnots.size());
         }
 
         inline Real GetMinDomain() const
@@ -288,11 +300,11 @@ namespace gte
         // Evaluation of the basis function and its derivatives through 
         // order 3.  For the function value only, pass order 0.  For the
         // function and first derivative, pass order 1, and so on.
-        void Evaluate(Real t, unsigned int order, int& minIndex, int& maxIndex) const
+        void Evaluate(Real t, uint32_t order, int32_t& minIndex, int32_t& maxIndex) const
         {
             LogAssert(order <= 3, "Invalid order.");
 
-            int i = GetIndex(t);
+            int32_t i = GetIndex(t);
             mJet[0][0][i] = (Real)1;
 
             if (order >= 1)
@@ -308,13 +320,13 @@ namespace gte
                 }
             }
 
-            Real n0 = t - mKnots[i], n1 = mKnots[i + 1] - t;
+            Real n0 = t - mKnots[i], n1 = mKnots[static_cast<size_t>(i) + 1] - t;
             Real e0, e1, d0, d1, invD0, invD1;
-            int j;
+            int32_t j;
             for (j = 1; j <= mDegree; j++)
             {
-                d0 = mKnots[i + j] - mKnots[i];
-                d1 = mKnots[i + 1] - mKnots[i - j + 1];
+                d0 = mKnots[static_cast<size_t>(i) + static_cast<size_t>(j)] - mKnots[i];
+                d1 = mKnots[static_cast<size_t>(i) + 1] - mKnots[static_cast<size_t>(i) - static_cast<size_t>(j) + 1];
                 invD0 = (d0 > (Real)0 ? (Real)1 / d0 : (Real)0);
                 invD1 = (d1 > (Real)0 ? (Real)1 / d1 : (Real)0);
 
@@ -350,12 +362,12 @@ namespace gte
 
             for (j = 2; j <= mDegree; ++j)
             {
-                for (int k = i - j + 1; k < i; ++k)
+                for (int32_t k = i - j + 1; k < i; ++k)
                 {
                     n0 = t - mKnots[k];
-                    n1 = mKnots[k + j + 1] - t;
-                    d0 = mKnots[k + j] - mKnots[k];
-                    d1 = mKnots[k + j + 1] - mKnots[k + 1];
+                    n1 = mKnots[static_cast<size_t>(k) + static_cast<size_t>(j) + 1] - t;
+                    d0 = mKnots[static_cast<size_t>(k) + static_cast<size_t>(j)] - mKnots[k];
+                    d1 = mKnots[static_cast<size_t>(k) + static_cast<size_t>(j) + 1] - mKnots[static_cast<size_t>(k) + 1];
                     invD0 = (d0 > (Real)0 ? (Real)1 / d0 : (Real)0);
                     invD1 = (d1 > (Real)0 ? (Real)1 / d1 : (Real)0);
 
@@ -395,7 +407,7 @@ namespace gte
         // returns zero.  The separation of evaluation and access is based on
         // local control of the basis function; that is, only the accessible
         // values are (potentially) not zero.
-        Real GetValue(unsigned int order, int i) const
+        Real GetValue(uint32_t order, int32_t i) const
         {
             if (order < 4)
             {
@@ -412,7 +424,7 @@ namespace gte
         // Determine the index i for which knot[i] <= t < knot[i+1].  The
         // t-value is modified (wrapped for periodic splines, clamped for
         // nonperiodic splines).
-        int GetIndex(Real& t) const
+        int32_t GetIndex(Real& t) const
         {
             // Find the index i for which knot[i] <= t < knot[i+1].
             if (mPeriodic)
@@ -453,8 +465,8 @@ namespace gte
         }
 
         // Constructor inputs and values derived from them.
-        int mNumControls;
-        int mDegree;
+        int32_t mNumControls;
+        int32_t mDegree;
         Real mTMin, mTMax, mTLength;
         bool mOpen;
         bool mUniform;
@@ -465,7 +477,7 @@ namespace gte
         // Lookup information for the GetIndex() function.  The first element
         // of the pair is a unique knot value.  The second element is the
         // index in mKnots[] for the last occurrence of that knot value.
-        std::vector<std::pair<Real, int>> mKeys;
+        std::vector<std::pair<Real, int32_t>> mKeys;
 
         // Storage for the basis functions and their first three derivatives;
         // mJet[i] is array[d+1][n+d].

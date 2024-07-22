@@ -1,9 +1,9 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.10.10
+// Version: 6.0.2023.08.08
 
 #pragma once
 
@@ -41,6 +41,12 @@
 #include <Mathematics/ContOrientedBox3.h>
 #include <Mathematics/Hyperellipsoid.h>
 #include <Mathematics/RootsPolynomial.h>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <vector>
 
 namespace gte
 {
@@ -64,7 +70,7 @@ namespace gte
             if (useEllipsoidForInitialGuess)
             {
                 C = ellipsoid.center;
-                for (int i = 0; i < 3; ++i)
+                for (int32_t i = 0; i < 3; ++i)
                 {
                     auto product = OuterProduct(ellipsoid.axis[i], ellipsoid.axis[i]);
                     M += product / (ellipsoid.extent[i] * ellipsoid.extent[i]);
@@ -73,9 +79,9 @@ namespace gte
             else
             {
                 OrientedBox3<Real> box;
-                GetContainer(static_cast<int>(points.size()), points.data(), box);
+                GetContainer(static_cast<int32_t>(points.size()), points.data(), box);
                 C = box.center;
-                for (int i = 0; i < 3; ++i)
+                for (int32_t i = 0; i < 3; ++i)
                 {
                     auto product = OuterProduct(box.axis[i], box.axis[i]);
                     M += product / (box.extent[i] * box.extent[i]);
@@ -98,7 +104,7 @@ namespace gte
 
             Real const one = static_cast<Real>(1);
             ellipsoid.center = C;
-            for (int i = 0; i < 3; ++i)
+            for (int32_t i = 0; i < 3; ++i)
             {
                 ellipsoid.axis[i] = { evec[i][0], evec[i][1], evec[i][2] };
                 ellipsoid.extent[i] = one / std::sqrt(eval[i]);
@@ -170,7 +176,7 @@ namespace gte
             dq[3] = four * q[4];
 
             // Compute the roots of q'(t).
-            std::map<Real, int> rmMap;
+            std::map<Real, int32_t> rmMap;
             RootsPolynomial<Real>::SolveCubic(dq[0], dq[1], dq[2], dq[3], rmMap);
 
             // Choose the root that leads to the minimum along the gradient

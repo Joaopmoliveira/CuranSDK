@@ -195,3 +195,13 @@ robotutils
 renderable
 gaussianmixture
 )
+
+add_executable(test_validation_matlab_cpp_interop test_validation_matlab_cpp_interop.cpp)
+
+target_compile_definitions(test_validation_matlab_cpp_interop PRIVATE NOMINMAX)
+target_compile_definitions(test_validation_matlab_cpp_interop PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_validation_matlab_cpp_interop PUBLIC
+utils
+robotutils
+)

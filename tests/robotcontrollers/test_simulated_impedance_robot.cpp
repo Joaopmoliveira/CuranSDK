@@ -75,12 +75,18 @@ int main()
                                                time += std::chrono::duration<double>(sample_time).count();
                                            }
                                        }});
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::list<curan::robotic::State> list_of_robot_states;
     while (window.run_once())
     {
         auto current_state = atomic_state.load();
+        list_of_robot_states.push_back(current_state);
         for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
             robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, current_state.q[joint_index]);
     }
     keep_running = false;
+
+
     return 0;
 }

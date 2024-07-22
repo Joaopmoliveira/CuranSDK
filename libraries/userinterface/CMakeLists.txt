@@ -48,5 +48,6 @@ unofficial::skia::skia
 glfw 
 Vulkan::Vulkan 
 skplaintexteditor
+geometry
 )
 

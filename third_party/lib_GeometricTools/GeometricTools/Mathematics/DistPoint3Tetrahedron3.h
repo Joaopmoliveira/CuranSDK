@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.08.01
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/DistPointTriangle.h>
-#include <Mathematics/Tetrahedron3.h>
 
 // Compute the distance between a point and a solid tetrahedron in 3D.
 // 
@@ -23,6 +20,12 @@
 // 
 // The input P is stored in closest[0]. The closest point on the tetrahedron
 // is stored in closest[1] with barycentric coordinates (b[0],b[1],b[2],b[3]).
+
+#include <Mathematics/DistPointTriangle.h>
+#include <Mathematics/Tetrahedron3.h>
+#include <array>
+#include <cmath>
+#include <cstddef>
 
 namespace gte
 {
@@ -69,8 +72,7 @@ namespace gte
             {
                 if (Dot(planes[i].normal, point) >= planes[i].constant)
                 {
-                    std::array<int32_t, 3> indices{ 0, 0, 0 };
-                    tetrahedron.GetFaceIndices(i, indices);
+                    auto const& indices = tetrahedron.GetFaceIndices(i);
                     Triangle3<T> triangle(
                         tetrahedron.v[indices[0]],
                         tetrahedron.v[indices[1]],
@@ -98,17 +100,10 @@ namespace gte
             }
             result.distance = std::sqrt(result.sqrDistance);
 
-            // GTL has a new interface for ComputeBarycentrics that takes a
-            // barycentric argument of type std::array<T, 4>. This avoids the
-            // unnecessary copy here.
-            T barycentric[4] = { zero, zero, zero, zero };
-            ComputeBarycentrics(result.closest[1], tetrahedron.v[0],
+            std::array<T, 4> barycentric{};
+            (void)ComputeBarycentrics(result.closest[1], tetrahedron.v[0],
                 tetrahedron.v[1], tetrahedron.v[2], tetrahedron.v[3],
-                barycentric, zero);
-            for (size_t i = 0; i < 4; ++i)
-            {
-                result.barycentric[i] = barycentric[i];
-            }
+                barycentric);
 
             return result;
         }

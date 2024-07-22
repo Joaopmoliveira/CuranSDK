@@ -1,13 +1,19 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
+// The Akima interpolation is described in
+// https://en.wikipedia.org/wiki/Akima_spline
+
 #include <Mathematics/IntpAkima1.h>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 namespace gte
 {
@@ -18,20 +24,20 @@ namespace gte
         // Construction.  The interpolator is for arbitrarily spaced x-values.
         // The input arrays must have 'quantity' elements and the X[] array
         // must store increasing values:  X[i + 1] > X[i] for all i.
-        IntpAkimaNonuniform1(int quantity, Real const* X, Real const* F)
+        IntpAkimaNonuniform1(int32_t quantity, Real const* X, Real const* F)
             :
             IntpAkima1<Real>(quantity, F),
             mX(X)
         {
             LogAssert(X != nullptr, "Invalid input.");
-            for (int j0 = 0, j1 = 1; j1 < quantity; ++j0, ++j1)
+            for (int32_t j0 = 0, j1 = 1; j1 < quantity; ++j0, ++j1)
             {
                 LogAssert(X[j1] > X[j0], "Invalid input.");
             }
 
             // Compute slopes.
-            std::vector<Real> slope(quantity + 3);
-            int i, ip1, ip2;
+            std::vector<Real> slope(static_cast<size_t>(quantity) + 3);
+            int32_t i, ip1, ip2;
             for (i = 0, ip1 = 1, ip2 = 2; i < quantity - 1; ++i, ++ip1, ++ip2)
             {
                 Real dx = X[ip1] - X[i];
@@ -41,8 +47,8 @@ namespace gte
 
             slope[1] = (Real)2 * slope[2] - slope[3];
             slope[0] = (Real)2 * slope[1] - slope[2];
-            slope[quantity + 1] = (Real)2 * slope[quantity] - slope[quantity - 1];
-            slope[quantity + 2] = (Real)2 * slope[quantity + 1] - slope[quantity];
+            slope[static_cast<size_t>(quantity) + 1] = (Real)2 * slope[quantity] - slope[static_cast<size_t>(quantity) - 1];
+            slope[static_cast<size_t>(quantity) + 2] = (Real)2 * slope[static_cast<size_t>(quantity) + 1] - slope[quantity];
 
             // Construct derivatives.
             std::vector<Real> FDer(quantity);
@@ -91,7 +97,7 @@ namespace gte
         }
 
     protected:
-        virtual void Lookup(Real x, int& index, Real& dx) const override
+        virtual void Lookup(Real x, int32_t& index, Real& dx) const override
         {
             // The caller has ensured that mXMin <= x <= mXMax.
             for (index = 0; index + 1 < this->mQuantity; ++index)

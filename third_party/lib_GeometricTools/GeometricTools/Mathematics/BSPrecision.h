@@ -1,25 +1,24 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.08.22
+// Version: 6.0.2023.08.08
 
 #pragma once
 
-#include <algorithm>
-#include <cstdint>
-#include <limits>
-
 // Support for determining the number of bits of precision required to compute
 // an expression using BSNumber or BSRational.
+
+#include <algorithm>
+#include <cstdint>
 
 namespace gte
 {
     class BSPrecision
     {
     public:
-        enum Type
+        enum class Type
         {
             IS_FLOAT,
             IS_DOUBLE,
@@ -40,7 +39,7 @@ namespace gte
             {
             }
 
-            Parameters(int inMinExponent, int inMaxExponent, int inMaxBits)
+            Parameters(int32_t inMinExponent, int32_t inMaxExponent, int32_t inMaxBits)
                 :
                 minExponent(inMinExponent),
                 maxExponent(inMaxExponent),
@@ -49,12 +48,12 @@ namespace gte
             {
             }
 
-            inline int GetMaxWords() const
+            inline int32_t GetMaxWords() const
             {
                 return maxBits / 32 + ((maxBits % 32) > 0 ? 1 : 0);
             }
 
-            int minExponent, maxExponent, maxBits, maxWords;
+            int32_t minExponent, maxExponent, maxBits, maxWords;
         };
 
         Parameters bsn, bsr;
@@ -62,32 +61,35 @@ namespace gte
         BSPrecision() = default;
 
         BSPrecision(Type type)
+            :
+            bsn{},
+            bsr{}
         {
             switch (type)
             {
-            case IS_FLOAT:
+            case Type::IS_FLOAT:
                 bsn = Parameters(-149, 127, 24);
                 break;
-            case IS_DOUBLE:
+            case Type::IS_DOUBLE:
                 bsn = Parameters(-1074, 1023, 53);
                 break;
-            case IS_INT32:
+            case Type::IS_INT32:
                 bsn = Parameters(0, 30, 31);
                 break;
-            case IS_INT64:
+            case Type::IS_INT64:
                 bsn = Parameters(0, 62, 63);
                 break;
-            case IS_UINT32:
+            case Type::IS_UINT32:
                 bsn = Parameters(0, 31, 32);
                 break;
-            case IS_UINT64:
+            case Type::IS_UINT64:
                 bsn = Parameters(0, 63, 64);
                 break;
             }
             bsr = bsn;
         }
 
-        BSPrecision(int minExponent, int maxExponent, int maxBits)
+        BSPrecision(int32_t minExponent, int32_t maxExponent, int32_t maxBits)
             :
             bsn(minExponent, maxExponent, maxBits),
             bsr(minExponent, maxExponent, maxBits)
@@ -97,7 +99,7 @@ namespace gte
 
     inline BSPrecision operator+(BSPrecision const& bsp0, BSPrecision const& bsp1)
     {
-        BSPrecision result;
+        BSPrecision result{};
 
         result.bsn.minExponent = std::min(bsp0.bsn.minExponent, bsp1.bsn.minExponent);
         if (bsp0.bsn.maxExponent >= bsp1.bsn.maxExponent)
@@ -136,9 +138,9 @@ namespace gte
         // parameter computations.
 
         // Compute the parameters for the multiplication.
-        int mulMinExponent = bsp0.bsr.minExponent + bsp1.bsr.minExponent;
-        int mulMaxExponent = bsp0.bsr.maxExponent + bsp1.bsr.maxExponent + 1;
-        int mulMaxBits = bsp0.bsr.maxBits + bsp1.bsr.maxBits;
+        int32_t mulMinExponent = bsp0.bsr.minExponent + bsp1.bsr.minExponent;
+        int32_t mulMaxExponent = bsp0.bsr.maxExponent + bsp1.bsr.maxExponent + 1;
+        int32_t mulMaxBits = bsp0.bsr.maxBits + bsp1.bsr.maxBits;
 
         // Compute the parameters for the addition. The number n0*d1 and n1*d0
         // are in the same arbitrary-precision set.
@@ -161,7 +163,7 @@ namespace gte
 
     inline BSPrecision operator*(BSPrecision const& bsp0, BSPrecision const& bsp1)
     {
-        BSPrecision result;
+        BSPrecision result{};
 
         result.bsn.minExponent = bsp0.bsn.minExponent + bsp1.bsn.minExponent;
         result.bsn.maxExponent = bsp0.bsn.maxExponent + bsp1.bsn.maxExponent + 1;
@@ -180,7 +182,7 @@ namespace gte
 
     inline BSPrecision operator/(BSPrecision const& bsp0, BSPrecision const& bsp1)
     {
-        BSPrecision result;
+        BSPrecision result{};
 
         // BSNumber does not support division, so result.bsr has all members
         // set to zero.
@@ -200,7 +202,7 @@ namespace gte
     // involve multiplications of numerators and denominators.
     inline BSPrecision operator==(BSPrecision const& bsp0, BSPrecision const& bsp1)
     {
-        BSPrecision result;
+        BSPrecision result{};
 
         result.bsn.minExponent = std::min(bsp0.bsn.minExponent, bsp1.bsn.minExponent);
         result.bsn.maxExponent = std::max(bsp0.bsn.maxExponent, bsp1.bsn.maxExponent);

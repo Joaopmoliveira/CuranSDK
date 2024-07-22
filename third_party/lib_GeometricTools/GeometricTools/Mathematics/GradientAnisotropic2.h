@@ -1,14 +1,15 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.01.11
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <Mathematics/PdeFilter2.h>
-#include <Mathematics/GTEMath.h>
+#include <cmath>
+#include <cstdint>
 
 namespace gte
 {
@@ -16,8 +17,8 @@ namespace gte
     class GradientAnisotropic2 : public PdeFilter2<Real>
     {
     public:
-        GradientAnisotropic2(int xBound, int yBound, Real xSpacing, Real ySpacing,
-            Real const* data, bool const* mask, Real borderValue,
+        GradientAnisotropic2(int32_t xBound, int32_t yBound, Real xSpacing, Real ySpacing,
+            Real const* data, int32_t const* mask, Real borderValue,
             typename PdeFilter<Real>::ScaleType scaleType, Real K)
             :
             PdeFilter2<Real>(xBound, yBound, xSpacing, ySpacing, data, mask,
@@ -35,9 +36,9 @@ namespace gte
         void ComputeParameter()
         {
             Real gradMagSqr = (Real)0;
-            for (int y = 1; y <= this->mYBound; ++y)
+            for (int32_t y = 1; y <= this->mYBound; ++y)
             {
-                for (int x = 1; x <= this->mXBound; ++x)
+                for (int32_t x = 1; x <= this->mXBound; ++x)
                 {
                     Real ux = this->GetUx(x, y);
                     Real uy = this->GetUy(x, y);
@@ -55,7 +56,7 @@ namespace gte
             ComputeParameter();
         }
 
-        virtual void OnUpdateSingle(int x, int y) override
+        virtual void OnUpdateSingle(int32_t x, int32_t y) override
         {
             this->LookUp9(x, y);
 

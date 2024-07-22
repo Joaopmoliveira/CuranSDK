@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.06.16
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/IntrIntervals.h>
-#include <Mathematics/IntrLine3Sphere3.h>
-#include <Mathematics/Ray.h>
 
 // The queries consider the sphere to be a solid.
 //
@@ -18,6 +14,12 @@
 // equation Q(t) = t^2 + 2*a1*t + a0 = 0, where a1 = D^T*(P-C) and
 // a0 = (P-C)^T*(P-C)-r^2. The algorithm involves an analysis of the
 // real-valued roots of Q(t) for t >= 0.
+
+#include <Mathematics/IntrIntervals.h>
+#include <Mathematics/IntrLine3Sphere3.h>
+#include <Mathematics/Ray.h>
+#include <array>
+#include <cstddef>
 
 namespace gte
 {
@@ -75,8 +77,13 @@ namespace gte
             :
             public FIQuery<T, Line3<T>, Sphere3<T>>::Result
         {
+            Result()
+                :
+                FIQuery<T, Line3<T>, Sphere3<T>>::Result{}
+            {
+            }
+
             // No additional information to compute.
-            Result() = default;
         };
 
         Result operator()(Ray3<T> const& ray, Sphere3<T> const& sphere)
@@ -109,7 +116,7 @@ namespace gte
                 // The line containing the ray intersects the sphere; the
                 // t-interval is [t0,t1]. The ray intersects the sphere as
                 // long as [t0,t1] overlaps the ray t-interval [0,+infinity).
-                FIQuery<T, std::array<T, 2>, std::array<T, 2>> iiQuery;
+                FIQuery<T, std::array<T, 2>, std::array<T, 2>> iiQuery{};
                 auto iiResult = iiQuery(result.parameter, static_cast<T>(0), true);
                 if (iiResult.intersect)
                 {

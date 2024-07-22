@@ -1,18 +1,21 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <Mathematics/Vector.h>
+#include <algorithm>
+#include <cstdint>
+#include <limits>
 #include <vector>
 
 namespace gte
 {
-    template <int N, typename Real>
+    template <int32_t N, typename Real>
     class ParticleSystem
     {
     public:
@@ -20,7 +23,7 @@ namespace gte
         // set its mass to std::numeric_limits<Real>::max().
         virtual ~ParticleSystem() = default;
 
-        ParticleSystem(int numParticles, Real step)
+        ParticleSystem(int32_t numParticles, Real step)
             :
             mNumParticles(numParticles),
             mMass(numParticles),
@@ -42,12 +45,12 @@ namespace gte
         }
 
         // Member access.
-        inline int GetNumParticles() const
+        inline int32_t GetNumParticles() const
         {
             return mNumParticles;
         }
 
-        void SetMass(int i, Real mass)
+        void SetMass(int32_t i, Real mass)
         {
             if ((Real)0 < mass && mass < std::numeric_limits<Real>::max())
             {
@@ -61,12 +64,12 @@ namespace gte
             }
         }
 
-        inline void SetPosition(int i, Vector<N, Real> const& position)
+        inline void SetPosition(int32_t i, Vector<N, Real> const& position)
         {
             mPosition[i] = position;
         }
 
-        inline void SetVelocity(int i, Vector<N, Real> const& velocity)
+        inline void SetVelocity(int32_t i, Vector<N, Real> const& velocity)
         {
             mVelocity[i] = velocity;
         }
@@ -78,17 +81,17 @@ namespace gte
             mSixthStep = mStep / (Real)6;
         }
 
-        inline Real const& GetMass(int i) const
+        inline Real const& GetMass(int32_t i) const
         {
             return mMass[i];
         }
 
-        inline Vector<N, Real> const& GetPosition(int i) const
+        inline Vector<N, Real> const& GetPosition(int32_t i) const
         {
             return mPosition[i];
         }
 
-        inline Vector<N, Real> const& GetVelocity(int i) const
+        inline Vector<N, Real> const& GetVelocity(int32_t i) const
         {
             return mVelocity[i];
         }
@@ -109,7 +112,7 @@ namespace gte
             Real fullTime = time + mStep;
 
             // Compute the first step.
-            int i;
+            int32_t i;
             for (i = 0; i < mNumParticles; ++i)
             {
                 if (mInvMass[i] > (Real)0)
@@ -205,11 +208,11 @@ namespace gte
         // particle i.  The positions and velocities are not necessarily
         // mPosition and mVelocity, because the ODE solver evaluates the
         // impulse function at intermediate positions.
-        virtual Vector<N, Real> Acceleration(int i, Real time,
+        virtual Vector<N, Real> Acceleration(int32_t i, Real time,
             std::vector<Vector<N, Real>> const& position,
             std::vector<Vector<N, Real>> const& velocity) = 0;
 
-        int mNumParticles;
+        int32_t mNumParticles;
         std::vector<Real> mMass, mInvMass;
         std::vector<Vector<N, Real>> mPosition, mVelocity;
         Real mStep, mHalfStep, mSixthStep;

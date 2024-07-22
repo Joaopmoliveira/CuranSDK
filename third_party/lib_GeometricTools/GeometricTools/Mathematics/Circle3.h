@@ -1,17 +1,17 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Vector3.h>
 
 // The circle is the intersection of the sphere |X-C|^2 = r^2 and the
 // plane Dot(N,X-C) = 0, where C is the circle center, r is the radius,
 // and N is a unit-length plane normal.
+
+#include <Mathematics/Vector3.h>
 
 namespace gte
 {

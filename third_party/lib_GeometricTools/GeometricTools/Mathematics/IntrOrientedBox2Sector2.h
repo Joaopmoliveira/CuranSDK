@@ -1,19 +1,23 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
+
+// The OrientedBox2 object is considered to be a solid.
 
 #include <Mathematics/TIQuery.h>
 #include <Mathematics/OrientedBox.h>
 #include <Mathematics/DistPointSegment.h>
 #include <Mathematics/IntrHalfspace2Polygon2.h>
 #include <Mathematics/Sector2.h>
-
-// The OrientedBox2 object is considered to be a solid.
+#include <cmath>
+#include <cstdint>
+#include <utility>
+#include <vector>
 
 namespace gte
 {
@@ -23,12 +27,18 @@ namespace gte
     public:
         struct Result
         {
+            Result()
+                :
+                intersect(false)
+            {
+            }
+
             bool intersect;
         };
 
         Result operator()(OrientedBox2<Real> const& box, Sector2<Real> const& sector)
         {
-            Result result;
+            Result result{};
 
             // Determine whether the vertex is inside the box.
             Vector2<Real> CmV = box.center - sector.vertex;
@@ -108,10 +118,10 @@ namespace gte
 
             DCPQuery<Real, Vector2<Real>, Segment2<Real>> psQuery;
             typename DCPQuery<Real, Vector2<Real>, Segment2<Real>>::Result psResult;
-            int const numVertices = static_cast<int>(polygon.size());
+            int32_t const numVertices = static_cast<int32_t>(polygon.size());
             if (numVertices >= 2)
             {
-                for (int i0 = numVertices - 1, i1 = 0; i1 < numVertices; i0 = i1++)
+                for (int32_t i0 = numVertices - 1, i1 = 0; i1 < numVertices; i0 = i1++)
                 {
                     Segment2<Real> segment(polygon[i0], polygon[i1]);
                     psResult = psQuery(sector.vertex, segment);

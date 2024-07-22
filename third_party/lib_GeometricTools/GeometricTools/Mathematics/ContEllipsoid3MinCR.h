@@ -1,14 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Matrix3x3.h>
-#include <random>
 
 // Compute the minimum-volume ellipsoid, (X-C)^T R D R^T (X-C) = 1, given the
 // center C and orientation matrix R.  The columns of R are the axes of the
@@ -21,19 +18,27 @@
 //   A[0]*D[0] + A[1]*D[1] + A[2]*D[2] <= 1
 // where A[0] >= 0, A[1] >= 0, and A[2] >= 0.
 
+#include <Mathematics/Matrix3x3.h>
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <limits>
+#include <random>
+#include <vector>
+
 namespace gte
 {
     template <typename Real>
     class ContEllipsoid3MinCR
     {
     public:
-        void operator()(int numPoints, Vector3<Real> const* points,
+        void operator()(int32_t numPoints, Vector3<Real> const* points,
             Vector3<Real> const& C, Matrix3x3<Real> const& R, Real D[3]) const
         {
             // Compute the constraint coefficients, of the form (A[0],A[1])
             // for each i.
             std::vector<Vector3<Real>> A(numPoints);
-            for (int i = 0; i < numPoints; ++i)
+            for (int32_t i = 0; i < numPoints; ++i)
             {
                 Vector3<Real> diff = points[i] - C;  // P[i] - C
                 Vector3<Real> prod = diff * R;  // R^T*(P[i] - C) = (u,v,w)
@@ -48,7 +53,7 @@ namespace gte
         }
 
     private:
-        void FindEdgeMax(std::vector<Vector3<Real>>& A, int& plane0, int& plane1, Real D[3]) const
+        void FindEdgeMax(std::vector<Vector3<Real>>& A, int32_t& plane0, int32_t& plane1, Real D[3]) const
         {
             // Compute direction to local maximum point on line of
             // intersection.
@@ -100,9 +105,9 @@ namespace gte
             // Sort remaining planes along line from current point to local
             // maximum.
             Real tMax = tFinal;
-            int plane2 = -1;
-            int numPoints = static_cast<int>(A.size());
-            for (int i = 0; i < numPoints; ++i)
+            int32_t plane2 = -1;
+            int32_t numPoints = static_cast<int32_t>(A.size());
+            for (int32_t i = 0; i < numPoints; ++i)
             {
                 if (i == plane0 || i == plane1)
                 {
@@ -150,7 +155,7 @@ namespace gte
             // tmax == 0, so return with D[0], D[1], and D[2] unchanged.
         }
 
-        void FindFacetMax(std::vector<Vector3<Real>>& A, int& plane0, Real D[3]) const
+        void FindFacetMax(std::vector<Vector3<Real>>& A, int32_t& plane0, Real D[3]) const
         {
             Real tFinal, xDir, yDir, zDir;
 
@@ -204,9 +209,9 @@ namespace gte
 
             // Sort remaining planes along line from current point.
             Real tMax = tFinal;
-            int plane1 = -1;
-            int numPoints = static_cast<int>(A.size());
-            for (int i = 0; i < numPoints; ++i)
+            int32_t plane1 = -1;
+            int32_t numPoints = static_cast<int32_t>(A.size());
+            for (int32_t i = 0; i < numPoints; ++i)
             {
                 if (i == plane0)
                 {
@@ -266,8 +271,8 @@ namespace gte
             std::mt19937 mte;
             std::uniform_real_distribution<Real> rnd((Real)0, (Real)1);
             Real maxJitter = (Real)1e-12;
-            int numPoints = static_cast<int>(A.size());
-            int i;
+            int32_t numPoints = static_cast<int32_t>(A.size());
+            int32_t i;
             for (i = 0; i < numPoints; ++i)
             {
                 A[i][0] += maxJitter * rnd(mte);
@@ -276,7 +281,7 @@ namespace gte
             }
 
             // Sort lines along the z-axis (x = 0 and y = 0).
-            int plane = -1;
+            int32_t plane = -1;
             Real zmax = (Real)0;
             for (i = 0; i < numPoints; ++i)
             {

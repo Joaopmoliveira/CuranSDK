@@ -328,3 +328,28 @@ target_link_libraries(test_sequencial_activation
 PUBLIC
 userinterface
 )
+
+# ----------------------------------------
+
+add_executable(test_specification_of_geometris_with_cube_intersection test_specification_of_geometris_with_cube_intersection.cpp)
+
+target_compile_definitions(test_specification_of_geometris_with_cube_intersection PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_specification_of_geometris_with_cube_intersection
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+)
+
+
+# ----------------------------------------
+
+add_executable(test_memory_signal test_memory_signal.cpp)
+
+target_compile_definitions(test_memory_signal PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_memory_signal
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+)

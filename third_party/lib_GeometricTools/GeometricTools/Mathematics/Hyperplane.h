@@ -1,15 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.07.29
+// Version: 6.0.2023.09.25
 
 #pragma once
-
-#include <Mathematics/Matrix.h>
-#include <Mathematics/SingularValueDecomposition.h>
-#include <Mathematics/Vector3.h>
 
 // The hyperplane is represented as Dot(U, X - P) = 0 where U is a unit-length
 // normal vector, P is the hyperplane origin, and X is any point on the
@@ -17,10 +13,33 @@
 // hyperplane constant is c = Dot(U, P) so that Dot(U, X) = c. If P is not
 // specified when constructing a hyperplane, it is chosen to be the point on
 // the plane closest to the origin, P = c * U.
+//
+// NOTE: You cannot set 'origin' and 'constant' independently. Use the
+// constructors instead.
+//
+// // Construct from normal N and constant c.
+// Plane3<T> plane(N, c);  // plane.origin = c * N
+// 
+// // Construct from normal N and origin P.
+// Plane3<T> plane(N, P);  // plane.constant = Dot(N, P)
+//
+// Plane3<T> plane{};  // N = (0,0,0), P = (0,0,0), c = 0 [invalid]
+// plane.normal = (0,0,1);
+// plane.constant = 3;
+// // If you consume plane now, the origin and constant are inconsistent
+// // because P = (0,0,0) but Dot(N,P) = 0 != 3 = c. Instead use
+// plane = Plane3<T>({ 0, 0, 1 }, 3);
+
+#include <Mathematics/Matrix.h>
+#include <Mathematics/SingularValueDecomposition.h>
+#include <Mathematics/Vector3.h>
+#include <array>
+#include <cstdint>
+#include <type_traits>
 
 namespace gte
 {
-    template <int N, typename T>
+    template <int32_t N, typename T>
     class Hyperplane
     {
     public:
@@ -86,7 +105,7 @@ namespace gte
                 return true;
             }
 
-            if (origin > hyperplane.origin)
+            if (normal > hyperplane.normal)
             {
                 return false;
             }
@@ -121,12 +140,12 @@ namespace gte
 
     private:
         // For use in the Hyperplane(std::array<*>) constructor when N > 3.
-        template <int Dimension = N>
+        template <int32_t Dimension = N>
         typename std::enable_if<Dimension != 3, void>::type
         ComputeFromPoints(std::array<Vector<Dimension, T>, Dimension> const& p)
         {
             Matrix<Dimension, Dimension - 1, T> edge{};
-            for (int i0 = 0, i1 = 1; i1 < Dimension; i0 = i1++)
+            for (int32_t i0 = 0, i1 = 1; i1 < Dimension; i0 = i1++)
             {
                 edge.SetCol(i0, p[i1] - p[0]);
             }
@@ -142,7 +161,7 @@ namespace gte
         }
 
         // For use in the Hyperplane(std::array<*>) constructor when N == 3.
-        template <int Dimension = N>
+        template <int32_t Dimension = N>
         typename std::enable_if<Dimension == 3, void>::type
         ComputeFromPoints(std::array<Vector<Dimension, T>, Dimension> const& p)
         {

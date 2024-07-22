@@ -1,25 +1,26 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/GTEMath.h>
-#include <algorithm>
-#include <array>
-#include <cstdint>
-#include <cstring>
-#include <functional>
-#include <vector>
 
 // An implementation of the QR algorithm described in "Matrix Computations,
 // 2nd edition" by G. H. Golub and C. F. Van Loan, The Johns Hopkins
 // University Press, Baltimore MD, Fourth Printing 1993.  In particular,
 // the implementation is based on Chapter 7 (The Unsymmetric Eigenvalue
 // Problem), Section 7.5 (The Practical QR Algorithm).
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <functional>
+#include <vector>
 
 namespace gte
 {
@@ -39,19 +40,27 @@ namespace gte
             mSize(0),
             mSizeM1(0),
             mMaxIterations(0),
-            mNumEigenvalues(0)
+            mMatrix{},
+            mX{},
+            mV{},
+            mScaledV{},
+            mW{},
+            mFlagStorage{},
+            mSubdiagonalFlag(nullptr),
+            mNumEigenvalues(0),
+            mEigenvalues{}
         {
             if (size >= 3 && maxIterations > 0)
             {
                 mSize = size;
                 mSizeM1 = size - 1;
                 mMaxIterations = maxIterations;
-                mMatrix.resize(size * size);
+                mMatrix.resize(static_cast<size_t>(size) * static_cast<size_t>(size));
                 mX.resize(size);
                 mV.resize(size);
                 mScaledV.resize(size);
                 mW.resize(size);
-                mFlagStorage.resize(size + 1);
+                mFlagStorage.resize(static_cast<size_t>(size) + 1);
                 std::fill(mFlagStorage.begin(), mFlagStorage.end(), 0);
                 mSubdiagonalFlag = &mFlagStorage[1];
                 mEigenvalues.resize(mSize);
@@ -68,10 +77,10 @@ namespace gte
         {
             if (mSize > 0)
             {
-                std::copy(input, input + mSize * mSize, mMatrix.begin());
+                std::copy(input, input + static_cast<size_t>(mSize) * static_cast<size_t>(mSize), mMatrix.begin());
                 ReduceToUpperHessenberg();
 
-                std::array<int, 2> block;
+                std::array<int32_t, 2> block;
                 bool found = GetBlock(block);
                 uint32_t numIterations;
                 for (numIterations = 0; numIterations < mMaxIterations; ++numIterations)
@@ -95,7 +104,7 @@ namespace gte
                 // quasi-triangular".
                 mNumEigenvalues = 0;
                 std::fill(mEigenvalues.begin(), mEigenvalues.end(), (Real)0);
-                for (int i = 0; i < mSizeM1; ++i)
+                for (int32_t i = 0; i < mSizeM1; ++i)
                 {
                     if (mSubdiagonalFlag[i] == 0)
                     {
@@ -173,14 +182,14 @@ namespace gte
 
     private:
         // 2D accessors to elements of mMatrix[].
-        inline Real const& A(int r, int c) const
+        inline Real const& A(int32_t r, int32_t c) const
         {
-            return mMatrix[c + r * mSize];
+            return mMatrix[c + r * static_cast<size_t>(mSize)];
         }
 
-        inline Real& A(int r, int c)
+        inline Real& A(int32_t r, int32_t c)
         {
-            return mMatrix[c + r * mSize];
+            return mMatrix[c + r * static_cast<size_t>(mSize)];
         }
 
         // Compute the Householder vector for (X[rmin],...,x[rmax]).  The
@@ -188,10 +197,10 @@ namespace gte
         // output vector V is stored in mV in the index range [rmin,rmax].
         // The scaled vector is S = (-2/Dot(V,V))*V and is stored in mScaledV
         // in the index range [rmin,rmax].
-        void House(int rmin, int rmax)
+        void House(int32_t rmin, int32_t rmax)
         {
             Real length = (Real)0;
-            for (int r = rmin; r <= rmax; ++r)
+            for (int32_t r = rmin; r <= rmax; ++r)
             {
                 length += mX[r] * mX[r];
             }
@@ -200,7 +209,7 @@ namespace gte
             {
                 Real sign = (mX[rmin] >= (Real)0 ? (Real)1 : (Real)-1);
                 Real invDenom = (Real)1 / (mX[rmin] + sign * length);
-                for (int r = rmin + 1; r <= rmax; ++r)
+                for (int32_t r = rmin + 1; r <= rmax; ++r)
                 {
                     mV[r] = mX[r] * invDenom;
                 }
@@ -208,12 +217,12 @@ namespace gte
             mV[rmin] = (Real)1;
 
             Real dot = (Real)1;
-            for (int r = rmin + 1; r <= rmax; ++r)
+            for (int32_t r = rmin + 1; r <= rmax; ++r)
             {
                 dot += mV[r] * mV[r];
             }
             Real scale = (Real)-2 / dot;
-            for (int r = rmin; r <= rmax; ++r)
+            for (int32_t r = rmin; r <= rmax; ++r)
             {
                 mScaledV[r] = scale * mV[r];
             }
@@ -221,40 +230,40 @@ namespace gte
 
         // Support for replacing matrix A by P^T*A*P, where P is a Householder
         // reflection computed using House(...).
-        void RowHouse(int rmin, int rmax, int cmin, int cmax)
+        void RowHouse(int32_t rmin, int32_t rmax, int32_t cmin, int32_t cmax)
         {
-            for (int c = cmin; c <= cmax; ++c)
+            for (int32_t c = cmin; c <= cmax; ++c)
             {
                 mW[c] = (Real)0;
-                for (int r = rmin; r <= rmax; ++r)
+                for (int32_t r = rmin; r <= rmax; ++r)
                 {
                     mW[c] += mScaledV[r] * A(r, c);
                 }
             }
 
-            for (int r = rmin; r <= rmax; ++r)
+            for (int32_t r = rmin; r <= rmax; ++r)
             {
-                for (int c = cmin; c <= cmax; ++c)
+                for (int32_t c = cmin; c <= cmax; ++c)
                 {
                     A(r, c) += mV[r] * mW[c];
                 }
             }
         }
 
-        void ColHouse(int rmin, int rmax, int cmin, int cmax)
+        void ColHouse(int32_t rmin, int32_t rmax, int32_t cmin, int32_t cmax)
         {
-            for (int r = rmin; r <= rmax; ++r)
+            for (int32_t r = rmin; r <= rmax; ++r)
             {
                 mW[r] = (Real)0;
-                for (int c = cmin; c <= cmax; ++c)
+                for (int32_t c = cmin; c <= cmax; ++c)
                 {
                     mW[r] += mScaledV[c] * A(r, c);
                 }
             }
 
-            for (int r = rmin; r <= rmax; ++r)
+            for (int32_t r = rmin; r <= rmax; ++r)
             {
-                for (int c = cmin; c <= cmax; ++c)
+                for (int32_t c = cmin; c <= cmax; ++c)
                 {
                     A(r, c) += mW[r] * mV[c];
                 }
@@ -263,9 +272,9 @@ namespace gte
 
         void ReduceToUpperHessenberg()
         {
-            for (int c = 0, cp1 = 1; c <= mSize - 3; ++c, ++cp1)
+            for (int32_t c = 0, cp1 = 1; c <= mSize - 3; ++c, ++cp1)
             {
-                for (int r = cp1; r <= mSizeM1; ++r)
+                for (int32_t r = cp1; r <= mSizeM1; ++r)
                 {
                     mX[r] = A(r, c);
                 }
@@ -276,10 +285,10 @@ namespace gte
             }
         }
 
-        void FrancisQRStep(int rmin, int rmax)
+        void FrancisQRStep(int32_t rmin, int32_t rmax)
         {
             // Apply the double implicit shift step.
-            int const i0 = rmax - 1, i1 = rmax;
+            int32_t const i0 = rmax - 1, i1 = rmax;
             Real a00 = A(i0, i0);
             Real a01 = A(i0, i1);
             Real a10 = A(i1, i0);
@@ -287,15 +296,15 @@ namespace gte
             Real tr = a00 + a11;
             Real det = a00 * a11 - a01 * a10;
 
-            int const j0 = rmin, j1 = j0 + 1, j2 = j1 + 1;
+            int32_t const j0 = rmin, j1 = j0 + 1, j2 = j1 + 1;
             Real b00 = A(j0, j0);
             Real b01 = A(j0, j1);
             Real b10 = A(j1, j0);
             Real b11 = A(j1, j1);
             Real b21 = A(j2, j1);
             mX[rmin] = b00 * (b00 - tr) + b01 * b10 + det;
-            mX[rmin + 1] = b10 * (b00 + b11 - tr);
-            mX[rmin + 2] = b10 * b21;
+            mX[static_cast<size_t>(rmin) + 1] = b10 * (b00 + b11 - tr);
+            mX[static_cast<size_t>(rmin) + 2] = b10 * b21;
 
             House(rmin, rmin + 2);
             RowHouse(rmin, rmin + 2, rmin, rmax);
@@ -303,10 +312,10 @@ namespace gte
 
             // Apply Householder reflections to restore the matrix to upper
             // Hessenberg form.
-            for (int c = 0, cp1 = 1; c <= mSize - 3; ++c, ++cp1)
+            for (int32_t c = 0, cp1 = 1; c <= mSize - 3; ++c, ++cp1)
             {
-                int kmax = std::min(cp1 + 2, mSizeM1);
-                for (int r = cp1; r <= kmax; ++r)
+                int32_t kmax = std::min(cp1 + 2, mSizeM1);
+                for (int32_t r = cp1; r <= kmax; ++r)
                 {
                     mX[r] = A(r, c);
                 }
@@ -317,9 +326,9 @@ namespace gte
             }
         }
 
-        bool GetBlock(std::array<int, 2>& block)
+        bool GetBlock(std::array<int32_t, 2>& block)
         {
-            for (int i = 0; i < mSizeM1; ++i)
+            for (int32_t i = 0; i < mSizeM1; ++i)
             {
                 Real a00 = A(i, i);
                 Real a11 = A(i + 1, i + 1);
@@ -329,7 +338,7 @@ namespace gte
                 mSubdiagonalFlag[i] = (sum1 != sum0 ? 1 : 0);
             }
 
-            for (int i = 0; i < mSizeM1; ++i)
+            for (int32_t i = 0; i < mSizeM1; ++i)
             {
                 if (mSubdiagonalFlag[i] == 1)
                 {
@@ -365,10 +374,10 @@ namespace gte
         // corresponding subproblems.  The storage is padded on both ends with
         // zeros to avoid additional code logic when packing the eigenvalues
         // for access by the caller.
-        std::vector<int> mFlagStorage;
-        int* mSubdiagonalFlag;
+        std::vector<int32_t> mFlagStorage;
+        int32_t* mSubdiagonalFlag;
 
-        int mNumEigenvalues;
+        int32_t mNumEigenvalues;
         std::vector<Real> mEigenvalues;
     };
 }

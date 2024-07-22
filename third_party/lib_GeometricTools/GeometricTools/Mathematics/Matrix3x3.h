@@ -1,14 +1,15 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
 #include <Mathematics/Matrix.h>
 #include <Mathematics/Vector3.h>
+#include <cstdint>
 
 namespace gte
 {
@@ -93,7 +94,7 @@ namespace gte
     // Multiply M and V according to the user-selected convention.  If it is
     // GTE_USE_MAT_VEC, the function returns M*V.  If it is GTE_USE_VEC_MAT,
     // the function returns V*M.  This function is provided to hide the
-    // preprocessor symbols in the GTEngine sample applications.
+    // preprocessor symbols in the GTE sample applications.
     template <typename Real>
     Vector3<Real> DoTransform(Matrix3x3<Real> const& M, Vector3<Real> const& V)
     {
@@ -121,7 +122,7 @@ namespace gte
     // responsible for ensuring that the matrix is invertible (although the
     // inverse is not calculated by these functions).
     template <typename Real>
-    void SetBasis(Matrix3x3<Real>& M, int i, Vector3<Real> const& V)
+    void SetBasis(Matrix3x3<Real>& M, int32_t i, Vector3<Real> const& V)
     {
 #if defined(GTE_USE_MAT_VEC)
         return M.SetCol(i, V);
@@ -131,7 +132,7 @@ namespace gte
     }
 
     template <typename Real>
-    Vector3<Real> GetBasis(Matrix3x3<Real> const& M, int i)
+    Vector3<Real> GetBasis(Matrix3x3<Real> const& M, int32_t i)
     {
 #if defined(GTE_USE_MAT_VEC)
         return M.GetCol(i);

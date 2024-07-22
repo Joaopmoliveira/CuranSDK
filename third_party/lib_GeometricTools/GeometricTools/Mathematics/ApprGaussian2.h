@@ -1,22 +1,26 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/ApprQuery.h>
-#include <Mathematics/OrientedBox.h>
-#include <Mathematics/SymmetricEigensolver2x2.h>
-#include <Mathematics/Vector2.h>
 
 // Fit points with a Gaussian distribution. The center is the mean of the
 // points, the axes are the eigenvectors of the covariance matrix and the
 // extents are the eigenvalues of the covariance matrix and are returned in
 // increasing order. An oriented box is used to store the mean, axes and
 // extents.
+
+#include <Mathematics/ApprQuery.h>
+#include <Mathematics/OrientedBox.h>
+#include <Mathematics/SymmetricEigensolver2x2.h>
+#include <Mathematics/Vector2.h>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 
 namespace gte
 {
@@ -37,13 +41,13 @@ namespace gte
         // functions that you can call.
         virtual bool FitIndexed(
             size_t numPoints, Vector2<Real> const* points,
-            size_t numIndices, int const* indices) override
+            size_t numIndices, int32_t const* indices) override
         {
             if (this->ValidIndices(numPoints, points, numIndices, indices))
             {
                 // Compute the mean of the points.
                 Vector2<Real> mean = Vector2<Real>::Zero();
-                int const* currentIndex = indices;
+                int32_t const* currentIndex = indices;
                 for (size_t i = 0; i < numIndices; ++i)
                 {
                     mean += points[*currentIndex++];
@@ -102,7 +106,7 @@ namespace gte
         {
             Vector2<Real> diff = point - mParameters.center;
             Real error = (Real)0;
-            for (int i = 0; i < 2; ++i)
+            for (int32_t i = 0; i < 2; ++i)
             {
                 if (mParameters.extent[i] > (Real)0)
                 {

@@ -1,13 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Vector3.h>
 
 // A torus with origin (0,0,0), outer radius r0 and inner radius r1 (with
 // (r0 >= r1) is defined implicitly as follows.  The point P0 = (x,y,z) is on
@@ -42,6 +40,10 @@
 //
 // In the class Torus3, the members are 'center' C, 'direction0' D0,
 // 'direction1' D1, 'normal' N, 'radius0' r0 and 'radius1' r1.
+
+#include <Mathematics/Vector3.h>
+#include <cmath>
+#include <cstdint>
 
 namespace gte
 {
@@ -84,7 +86,7 @@ namespace gte
         // first-order derivatives dX/du, dX/dv; second-order derivatives
         // d2X/du2, d2X/dudv, d2X/dv2.  The input array 'jet' must have enough
         // storage for the specified order.
-        void Evaluate(Real u, Real v, unsigned int maxOrder, Vector3<Real>* jet) const
+        void Evaluate(Real u, Real v, uint32_t maxOrder, Vector3<Real>* jet) const
         {
             // Compute position.
             Real csu = std::cos(u);

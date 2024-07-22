@@ -1,19 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Logger.h>
-#include <array>
-#include <cstdint>
-#include <map>
-#include <memory>
-#include <ostream>
-#include <vector>
 
 // Extract level surfaces using an adaptive approach to reduce the triangle
 // count.  The implementation is for the algorithm described in the paper
@@ -22,6 +14,17 @@
 //   Computer Graphics forum, volume 17, issue 3, September 1998
 //   pages 137-147
 // https://onlinelibrary.wiley.com/doi/abs/10.1111/1467-8659.00261
+
+#include <Mathematics/Logger.h>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <ostream>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace gte
 {
@@ -36,7 +39,7 @@ namespace gte
         // Construction and destruction.  The input image is assumed to
         // contain (2^N+1)-by-(2^N+1) elements where N >= 0.  The organization
         // is row-major order for (x,y).
-        AdaptiveSkeletonClimbing2(int N, T const* inputPixels)
+        AdaptiveSkeletonClimbing2(int32_t N, T const* inputPixels)
             :
             mTwoPowerN(1 << N),
             mSize(mTwoPowerN + 1),
@@ -51,7 +54,7 @@ namespace gte
                 LogError("Invalid input.");
             }
 
-            for (int i = 0; i < mSize; ++i)
+            for (int32_t i = 0; i < mSize; ++i)
             {
                 mXMerge[i] = std::make_shared<LinearMergeTree>(N);
                 mYMerge[i] = std::make_shared<LinearMergeTree>(N);
@@ -62,9 +65,9 @@ namespace gte
 
         // TODO: Refactor this class to have base class CurveExtractor.
         typedef std::array<Real, 2> Vertex;
-        typedef std::array<int, 2> Edge;
+        typedef std::array<int32_t, 2> Edge;
 
-        void Extract(Real level, int depth,
+        void Extract(Real level, int32_t depth,
             std::vector<Vertex>& vertices, std::vector<Edge>& edges)
         {
             std::vector<Rectangle> rectangles;
@@ -96,8 +99,8 @@ namespace gte
 
             // Compute the map of unique vertices and assign to them new and
             // unique indices.
-            std::map<Vertex, int> vmap;
-            int nextVertex = 0;
+            std::map<Vertex, int32_t> vmap;
+            int32_t nextVertex = 0;
             for (size_t v = 0; v < numVertices; ++v)
             {
                 // Keep only unique vertices.
@@ -110,13 +113,13 @@ namespace gte
 
             // Compute the map of unique edges and assign to them new and
             // unique indices.
-            std::map<Edge, int> emap;
-            int nextEdge = 0;
+            std::map<Edge, int32_t> emap;
+            int32_t nextEdge = 0;
             for (size_t e = 0; e < numEdges; ++e)
             {
                 // Replace old vertex indices by new vertex indices.
                 Edge& edge = edges[e];
-                for (int i = 0; i < 2; ++i)
+                for (int32_t i = 0; i < 2; ++i)
                 {
                     auto iter = vmap.find(vertices[edge[i]]);
                     LogAssert(iter != vmap.end(), "Expecting the vertex to be in the vmap.");
@@ -160,12 +163,12 @@ namespace gte
             {
             }
 
-            QuadRectangle(int inXOrigin, int inYOrigin, int inXStride, int inYStride)
+            QuadRectangle(int32_t inXOrigin, int32_t inYOrigin, int32_t inXStride, int32_t inYStride)
             {
                 Initialize(inXOrigin, inYOrigin, inXStride, inYStride);
             }
 
-            void Initialize(int inXOrigin, int inYOrigin, int inXStride, int inYStride)
+            void Initialize(int32_t inXOrigin, int32_t inYOrigin, int32_t inXStride, int32_t inYStride)
             {
                 xOrigin = inXOrigin;
                 yOrigin = inYOrigin;
@@ -174,7 +177,7 @@ namespace gte
                 valid = true;
             }
 
-            int xOrigin, yOrigin, xStride, yStride;
+            int32_t xOrigin, yOrigin, xStride, yStride;
             bool valid;
         };
 
@@ -185,7 +188,7 @@ namespace gte
                 // The members are uninitialized.
             }
 
-            QuadNode(int xOrigin, int yOrigin, int xNext, int yNext, int stride)
+            QuadNode(int32_t xOrigin, int32_t yOrigin, int32_t xNext, int32_t yNext, int32_t stride)
                 :
                 r00(xOrigin, yOrigin, stride, stride),
                 r10(xNext, yOrigin, stride, stride),
@@ -195,7 +198,7 @@ namespace gte
 
             }
 
-            void Initialize(int xOrigin, int yOrigin, int xNext, int yNext, int stride)
+            void Initialize(int32_t xOrigin, int32_t yOrigin, int32_t xNext, int32_t yNext, int32_t stride)
             {
                 r00.Initialize(xOrigin, yOrigin, stride, stride);
                 r10.Initialize(xNext, yOrigin, stride, stride);
@@ -208,9 +211,9 @@ namespace gte
                 return !r10.valid && !r01.valid && !r11.valid;
             }
 
-            int GetQuantity() const
+            int32_t GetQuantity() const
             {
-                int quantity = 0;
+                int32_t quantity = 0;
 
                 if (r00.valid)
                 {
@@ -241,10 +244,10 @@ namespace gte
         class LinearMergeTree
         {
         public:
-            LinearMergeTree(int N)
+            LinearMergeTree(int32_t N)
                 :
                 mTwoPowerN(1 << N),
-                mNodes(2 * mTwoPowerN - 1)
+                mNodes(2 * static_cast<size_t>(mTwoPowerN) - 1)
             {
             }
 
@@ -257,22 +260,22 @@ namespace gte
             };
 
             // Member access.
-            int GetQuantity() const
+            int32_t GetQuantity() const
             {
                 return 2 * mTwoPowerN - 1;
             }
 
-            int GetNode(int i) const
+            int32_t GetNode(int32_t i) const
             {
                 return mNodes[i];
             }
 
-            int GetEdge(int i) const
+            int32_t GetEdge(int32_t i) const
             {
                 // assert: mNodes[i] == CFG_INCR || mNodes[i] == CFG_DECR
 
                 // Traverse binary tree looking for incr or decr leaf node.
-                int const firstLeaf = mTwoPowerN - 1;
+                int32_t const firstLeaf = mTwoPowerN - 1;
                 while (i < firstLeaf)
                 {
                     i = 2 * i + 1;
@@ -285,7 +288,7 @@ namespace gte
                 return i - firstLeaf;
             }
 
-            void SetLevel(Real level, T const* data, int offset, int stride)
+            void SetLevel(Real level, T const* data, int32_t offset, int32_t stride)
             {
                 // Assert:  The 'level' is not an image value.  Because T is
                 // an integer type, choose 'level' to be a Real-valued number
@@ -293,10 +296,10 @@ namespace gte
 
                 // Determine the sign changes between pairs of consecutive
                 // samples.
-                int const firstLeaf = mTwoPowerN - 1;
-                for (int i = 0, leaf = firstLeaf; i < mTwoPowerN; ++i, ++leaf)
+                int32_t const firstLeaf = mTwoPowerN - 1;
+                for (int32_t i = 0, leaf = firstLeaf; i < mTwoPowerN; ++i, ++leaf)
                 {
-                    int base = offset + stride * i;
+                    int32_t base = offset + stride * i;
                     Real value0 = static_cast<Real>(data[base]);
                     Real value1 = static_cast<Real>(data[base + stride]);
 
@@ -325,23 +328,23 @@ namespace gte
                 }
 
                 // Propagate the sign change information up the binary tree.
-                for (int i = firstLeaf - 1; i >= 0; --i)
+                for (int32_t i = firstLeaf - 1; i >= 0; --i)
                 {
-                    int twoIp1 = 2 * i + 1;
-                    int child0 = mNodes[twoIp1];
-                    int child1 = mNodes[twoIp1 + 1];
+                    int32_t twoIp1 = 2 * i + 1;
+                    int32_t child0 = mNodes[twoIp1];
+                    int32_t child1 = mNodes[static_cast<size_t>(twoIp1) + 1];
                     mNodes[i] = (child0 | child1);
                 }
             }
 
         private:
-            int mTwoPowerN;
-            std::vector<int> mNodes;
+            int32_t mTwoPowerN;
+            std::vector<int32_t> mNodes;
         };
 
         struct Rectangle
         {
-            Rectangle(int inXOrigin, int inYOrigin, int inXStride, int inYStride)
+            Rectangle(int32_t inXOrigin, int32_t inYOrigin, int32_t inXStride, int32_t inYStride)
                 :
                 xOrigin(inXOrigin),
                 yOrigin(inYOrigin),
@@ -356,8 +359,8 @@ namespace gte
 
             }
 
-            int xOrigin, yOrigin, xStride, yStride;
-            int yOfXMin, yOfXMax, xOfYMin, xOfYMax;
+            int32_t xOrigin, yOrigin, xStride, yStride;
+            int32_t yOfXMin, yOfXMax, xOfYMin, xOfYMax;
 
             // A 4-bit flag for how the level set intersects the rectangle
             // boundary.
@@ -369,47 +372,47 @@ namespace gte
             // level set.  This information is known from the CFG flags for
             // LinearMergeTree.  Intersection occurs whenever the flag is
             // CFG_INCR or CFG_DECR.
-            unsigned int type;
+            uint32_t type;
         };
 
         class AreaMergeTree
         {
         public:
-            AreaMergeTree(int N,
+            AreaMergeTree(int32_t N,
                 std::vector<std::shared_ptr<LinearMergeTree>> const& xMerge,
                 std::vector<std::shared_ptr<LinearMergeTree>> const& yMerge)
                 :
                 mXMerge(xMerge),
                 mYMerge(yMerge),
-                mNodes(((1 << 2 * (N + 1)) - 1) / 3)
+                mNodes(((static_cast<size_t>(1) << 2 * (N + 1)) - 1) / 3)
             {
             }
 
-            void ConstructMono(int A, int LX, int LY, int xOrigin, int yOrigin,
-                int stride, int depth)
+            void ConstructMono(int32_t A, int32_t LX, int32_t LY, int32_t xOrigin, int32_t yOrigin,
+                int32_t stride, int32_t depth)
             {
                 if (stride > 1)  // internal nodes
                 {
-                    int hStride = stride / 2;
+                    int32_t hStride = stride / 2;
 
-                    int ABase = 4 * A;
-                    int A00 = ++ABase;
-                    int A10 = ++ABase;
-                    int A01 = ++ABase;
-                    int A11 = ++ABase;
+                    int32_t ABase = 4 * A;
+                    int32_t A00 = ++ABase;
+                    int32_t A10 = ++ABase;
+                    int32_t A01 = ++ABase;
+                    int32_t A11 = ++ABase;
 
-                    int LXBase = 2 * LX;
-                    int LX0 = ++LXBase;
-                    int LX1 = ++LXBase;
+                    int32_t LXBase = 2 * LX;
+                    int32_t LX0 = ++LXBase;
+                    int32_t LX1 = ++LXBase;
 
-                    int LYBase = 2 * LY;
-                    int LY0 = ++LYBase;
-                    int LY1 = ++LYBase;
+                    int32_t LYBase = 2 * LY;
+                    int32_t LY0 = ++LYBase;
+                    int32_t LY1 = ++LYBase;
 
-                    int xNext = xOrigin + hStride;
-                    int yNext = yOrigin + hStride;
+                    int32_t xNext = xOrigin + hStride;
+                    int32_t yNext = yOrigin + hStride;
 
-                    int depthM1 = depth - 1;
+                    int32_t depthM1 = depth - 1;
                     ConstructMono(A00, LX0, LY0, xOrigin, yOrigin, hStride, depthM1);
                     ConstructMono(A10, LX1, LY0, xNext, yOrigin, hStride, depthM1);
                     ConstructMono(A01, LX0, LY1, xOrigin, yNext, hStride, depthM1);
@@ -486,23 +489,23 @@ namespace gte
                 }
             }
 
-            void GetRectangles(int A, int LX, int LY, int xOrigin, int yOrigin,
-                int stride, std::vector<Rectangle>& rectangles)
+            void GetRectangles(int32_t A, int32_t LX, int32_t LY, int32_t xOrigin, int32_t yOrigin,
+                int32_t stride, std::vector<Rectangle>& rectangles)
             {
-                int hStride = stride / 2;
-                int ABase = 4 * A;
-                int A00 = ++ABase;
-                int A10 = ++ABase;
-                int A01 = ++ABase;
-                int A11 = ++ABase;
-                int LXBase = 2 * LX;
-                int LX0 = ++LXBase;
-                int LX1 = ++LXBase;
-                int LYBase = 2 * LY;
-                int LY0 = ++LYBase;
-                int LY1 = ++LYBase;
-                int xNext = xOrigin + hStride;
-                int yNext = yOrigin + hStride;
+                int32_t hStride = stride / 2;
+                int32_t ABase = 4 * A;
+                int32_t A00 = ++ABase;
+                int32_t A10 = ++ABase;
+                int32_t A01 = ++ABase;
+                int32_t A11 = ++ABase;
+                int32_t LXBase = 2 * LX;
+                int32_t LX0 = ++LXBase;
+                int32_t LX1 = ++LXBase;
+                int32_t LYBase = 2 * LY;
+                int32_t LY0 = ++LYBase;
+                int32_t LY1 = ++LYBase;
+                int32_t xNext = xOrigin + hStride;
+                int32_t yNext = yOrigin + hStride;
 
                 QuadRectangle const& r00 = mNodes[A].r00;
                 if (r00.valid)
@@ -565,15 +568,15 @@ namespace gte
             }
 
         private:
-            void DoXMerge(QuadRectangle& r0, QuadRectangle& r1, int LX, int yOrigin)
+            void DoXMerge(QuadRectangle& r0, QuadRectangle& r1, int32_t LX, int32_t yOrigin)
             {
                 if (r0.valid && r1.valid && r0.yStride == r1.yStride)
                 {
                     // Rectangles are x-mergeable.
-                    int incr = 0, decr = 0;
-                    for (int y = 0; y <= r0.yStride; ++y)
+                    int32_t incr = 0, decr = 0;
+                    for (int32_t y = 0; y <= r0.yStride; ++y)
                     {
-                        switch (mXMerge[yOrigin + y]->GetNode(LX))
+                        switch (mXMerge[static_cast<size_t>(yOrigin) + static_cast<size_t>(y)]->GetNode(LX))
                         {
                         case LinearMergeTree::CFG_MULT:
                             return;
@@ -595,15 +598,15 @@ namespace gte
                 }
             }
 
-            void DoYMerge(QuadRectangle& r0, QuadRectangle& r1, int xOrigin, int LY)
+            void DoYMerge(QuadRectangle& r0, QuadRectangle& r1, int32_t xOrigin, int32_t LY)
             {
                 if (r0.valid && r1.valid && r0.xStride == r1.xStride)
                 {
                     // Rectangles are y-mergeable.
-                    int incr = 0, decr = 0;
-                    for (int x = 0; x <= r0.xStride; ++x)
+                    int32_t incr = 0, decr = 0;
+                    for (int32_t x = 0; x <= r0.xStride; ++x)
                     {
-                        switch (mYMerge[xOrigin + x]->GetNode(LY))
+                        switch (mYMerge[static_cast<size_t>(xOrigin) + static_cast<size_t>(x)]->GetNode(LY))
                         {
                         case LinearMergeTree::CFG_MULT:
                             return;
@@ -625,7 +628,7 @@ namespace gte
                 }
             }
 
-            Rectangle GetRectangle(QuadRectangle const& qrect, int LX, int LY)
+            Rectangle GetRectangle(QuadRectangle const& qrect, int32_t LX, int32_t LY)
             {
                 Rectangle rect(qrect.xOrigin, qrect.yOrigin, qrect.xStride, qrect.yStride);
 
@@ -641,7 +644,7 @@ namespace gte
                 }
 
                 // xmax edge
-                merge = mYMerge[qrect.xOrigin + qrect.xStride];
+                merge = mYMerge[static_cast<size_t>(qrect.xOrigin) + static_cast<size_t>(qrect.xStride)];
                 if (merge->GetNode(LY) != LinearMergeTree::CFG_NONE)
                 {
                     rect.yOfXMax = merge->GetEdge(LY);
@@ -663,7 +666,7 @@ namespace gte
                 }
 
                 // ymax edge
-                merge = mXMerge[qrect.yOrigin + qrect.yStride];
+                merge = mXMerge[static_cast<size_t>(qrect.yOrigin) + static_cast<size_t>(qrect.yStride)];
                 if (merge->GetNode(LX) != LinearMergeTree::CFG_NONE)
                 {
                     rect.xOfYMax = merge->GetEdge(LX);
@@ -683,7 +686,7 @@ namespace gte
 
     private:
         // Support for extraction of level sets.
-        Real GetInterp(Real level, int base, int index, int increment)
+        Real GetInterp(Real level, int32_t base, int32_t index, int32_t increment)
         {
             Real f0 = static_cast<Real>(mInputPixels[index]);
             index += increment;
@@ -701,8 +704,8 @@ namespace gte
         void AddEdge(std::vector<Vertex>& vertices,
             std::vector<Edge>& edges, Real x0, Real y0, Real x1, Real y1)
         {
-            int v0 = static_cast<int>(vertices.size());
-            int v1 = v0 + 1;
+            int32_t v0 = static_cast<int32_t>(vertices.size());
+            int32_t v1 = v0 + 1;
             Edge edge = { v0, v1 };
             edges.push_back(edge);
             Vertex vertex0 = { x0, y0 };
@@ -711,18 +714,18 @@ namespace gte
             vertices.push_back(vertex1);
         }
 
-        void SetLevel(Real level, int depth)
+        void SetLevel(Real level, int32_t depth)
         {
-            int offset, stride;
+            int32_t offset, stride;
 
-            for (int y = 0; y < mSize; ++y)
+            for (int32_t y = 0; y < mSize; ++y)
             {
                 offset = mSize * y;
                 stride = 1;
                 mXMerge[y]->SetLevel(level, mInputPixels, offset, stride);
             }
 
-            for (int x = 0; x < mSize; ++x)
+            for (int32_t x = 0; x < mSize; ++x)
             {
                 offset = x;
                 stride = mSize;
@@ -740,7 +743,7 @@ namespace gte
         void GetComponents(Real level, Rectangle const& rectangle,
             std::vector<Vertex>& vertices, std::vector<Edge>& edges)
         {
-            int x, y;
+            int32_t x, y;
             Real x0, y0, x1, y1;
 
             switch (rectangle.type)
@@ -864,7 +867,7 @@ namespace gte
                 Real fx3 = GetInterp(level, x, x + mSize * y, 1);
                 Real fy3 = static_cast<Real>(y);
 
-                int index = rectangle.xOrigin + mSize * rectangle.yOrigin;
+                int32_t index = rectangle.xOrigin + mSize * rectangle.yOrigin;
                 int64_t i00 = static_cast<int64_t>(mInputPixels[index]);
                 ++index;
                 int64_t i10 = static_cast<int64_t>(mInputPixels[index]);
@@ -924,7 +927,7 @@ namespace gte
         }
 
         // Storage of image data.
-        int mTwoPowerN, mSize;
+        int32_t mTwoPowerN, mSize;
         T const* mInputPixels;
 
         // Trees for linear merging.

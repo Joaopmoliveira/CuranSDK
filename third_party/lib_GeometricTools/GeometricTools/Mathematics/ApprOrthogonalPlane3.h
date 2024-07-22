@@ -1,21 +1,26 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/ApprQuery.h>
-#include <Mathematics/SymmetricEigensolver3x3.h>
-#include <Mathematics/Vector3.h>
 
 // Least-squares fit of a plane to (x,y,z) data by using distance measurements
 // orthogonal to the proposed plane. The return value is 'true' if and only if
 // the fit is unique (always successful, 'true' when a minimum eigenvalue is
-// unique). The mParameters value is (P,N) = (origin,normal).  The error for
-// S = (x0,y0,z0) is (S-P)^T*(I - N*N^T)*(S-P).
+// unique). The mParameters value is (P,N) = (origin,normal). The error for
+// S = (x0,y0,z0) is |Dot(N,S-P)|.
+
+#include <Mathematics/ApprQuery.h>
+#include <Mathematics/SymmetricEigensolver3x3.h>
+#include <Mathematics/Vector3.h>
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 
 namespace gte
 {
@@ -34,13 +39,13 @@ namespace gte
         // functions that you can call.
         virtual bool FitIndexed(
             size_t numPoints, Vector3<Real> const* points,
-            size_t numIndices, int const* indices) override
+            size_t numIndices, int32_t const* indices) override
         {
             if (this->ValidIndices(numPoints, points, numIndices, indices))
             {
                 // Compute the mean of the points.
                 Vector3<Real> mean = Vector3<Real>::Zero();
-                int const* currentIndex = indices;
+                int32_t const* currentIndex = indices;
                 for (size_t i = 0; i < numIndices; ++i)
                 {
                     mean += points[*currentIndex++];
@@ -48,7 +53,9 @@ namespace gte
                 Real invSize = (Real)1 / (Real)numIndices;
                 mean *= invSize;
 
-                if (std::isfinite(mean[0]) && std::isfinite(mean[1]))
+                if (std::isfinite(mean[0]) &&
+                    std::isfinite(mean[1]) &&
+                    std::isfinite(mean[2]))
                 {
                     // Compute the covariance matrix of the points.
                     Real covar00 = (Real)0, covar01 = (Real)0, covar02 = (Real)0;
@@ -107,11 +114,7 @@ namespace gte
 
         virtual Real Error(Vector3<Real> const& point) const override
         {
-            Vector3<Real> diff = point - mParameters.first;
-            Real sqrlen = Dot(diff, diff);
-            Real dot = Dot(diff, mParameters.second);
-            Real error = std::fabs(sqrlen - dot * dot);
-            return error;
+            return std::fabs(Dot(mParameters.second, point - mParameters.first));
         }
 
         virtual void CopyParameters(ApprQuery<Real, Vector3<Real>> const* input) override

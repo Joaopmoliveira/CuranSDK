@@ -1,16 +1,21 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2019.08.13
+// Version: 6.0.2023.08.08
 
 #pragma once
 
+// The Akima interpolation is described in
+// https://en.wikipedia.org/wiki/Akima_spline
+
 #include <Mathematics/Logger.h>
-#include <Mathematics/GTEMath.h>
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace gte
@@ -20,7 +25,7 @@ namespace gte
     {
     protected:
         // Construction (abstract base class).
-        IntpAkima1(int quantity, Real const* F)
+        IntpAkima1(int32_t quantity, Real const* F)
             :
             mQuantity(quantity),
             mF(F)
@@ -29,7 +34,7 @@ namespace gte
             // estimates of the boundary derivatives.
             LogAssert(mQuantity >= 3, "Invalid input to IntpAkima1 constructor.");
 
-            mPoly.resize(mQuantity - 1);
+            mPoly.resize(static_cast<size_t>(mQuantity) - 1);
         }
 
     public:
@@ -37,7 +42,7 @@ namespace gte
         virtual ~IntpAkima1() = default;
 
         // Member access.
-        inline int GetQuantity() const
+        inline int32_t GetQuantity() const
         {
             return mQuantity;
         }
@@ -59,16 +64,16 @@ namespace gte
         Real operator()(Real x) const
         {
             x = std::min(std::max(x, GetXMin()), GetXMax());
-            int index;
+            int32_t index;
             Real dx;
             Lookup(x, index, dx);
             return mPoly[index](dx);
         }
 
-        Real operator()(int order, Real x) const
+        Real operator()(int32_t order, Real x) const
         {
             x = std::min(std::max(x, GetXMin()), GetXMax());
-            int index;
+            int32_t index;
             Real dx;
             Lookup(x, index, dx);
             return mPoly[index](order, dx);
@@ -79,7 +84,7 @@ namespace gte
         {
         public:
             // P(x) = c[0] + c[1]*x + c[2]*x^2 + c[3]*x^3
-            inline Real& operator[](int i)
+            inline Real& operator[](int32_t i)
             {
                 return mCoeff[i];
             }
@@ -89,7 +94,7 @@ namespace gte
                 return mCoeff[0] + x * (mCoeff[1] + x * (mCoeff[2] + x * mCoeff[3]));
             }
 
-            Real operator()(int order, Real x) const
+            Real operator()(int32_t order, Real x) const
             {
                 switch (order)
                 {
@@ -145,9 +150,9 @@ namespace gte
             }
         }
 
-        virtual void Lookup(Real x, int& index, Real& dx) const = 0;
+        virtual void Lookup(Real x, int32_t& index, Real& dx) const = 0;
 
-        int mQuantity;
+        int32_t mQuantity;
         Real const* mF;
         std::vector<Polynomial> mPoly;
     };

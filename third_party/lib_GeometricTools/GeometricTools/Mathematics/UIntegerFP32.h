@@ -1,17 +1,11 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2020.11.16
+// Version: 6.0.2023.08.08
 
 #pragma once
-
-#include <Mathematics/Logger.h>
-#include <Mathematics/UIntegerALU32.h>
-#include <array>
-#include <istream>
-#include <ostream>
 
 // Class UIntegerFP32 is designed to support fixed precision arithmetic
 // using BSNumber and BSRational.  It is not a general-purpose class for
@@ -32,9 +26,19 @@ namespace gte
 }
 #endif
 
+#include <Mathematics/Logger.h>
+#include <Mathematics/UIntegerALU32.h>
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <istream>
+#include <ostream>
+#include <utility>
+
 namespace gte
 {
-    template <int N>
+    template <int32_t N>
     class UIntegerFP32 : public UIntegerALU32<UIntegerFP32<N>>
     {
     public:
@@ -42,12 +46,17 @@ namespace gte
         UIntegerFP32()
             :
             mNumBits(0),
-            mSize(0)
+            mSize(0),
+            mBits{}
         {
             static_assert(N >= 1, "Invalid size N.");
         }
 
         UIntegerFP32(UIntegerFP32 const& number)
+            :
+            mNumBits(0),
+            mSize(0),
+            mBits{}
         {
             static_assert(N >= 1, "Invalid size N.");
 
@@ -55,6 +64,10 @@ namespace gte
         }
 
         UIntegerFP32(uint32_t number)
+            :
+            mNumBits(0),
+            mSize(0),
+            mBits{}
         {
             static_assert(N >= 1, "Invalid size N.");
 
@@ -78,6 +91,10 @@ namespace gte
         }
 
         UIntegerFP32(uint64_t number)
+            :
+            mNumBits(0),
+            mSize(0),
+            mBits{}
         {
             static_assert(N >= 2, "N not large enough to store 64-bit integers.");
 
@@ -180,12 +197,12 @@ namespace gte
 
         inline void SetBack(uint32_t value)
         {
-            mBits[mSize - 1] = value;
+            mBits[static_cast<size_t>(mSize) - 1] = value;
         }
 
         inline uint32_t GetBack() const
         {
-            return mBits[mSize - 1];
+            return mBits[static_cast<size_t>(mSize) - 1];
         }
 
         inline int32_t GetSize() const
@@ -205,7 +222,7 @@ namespace gte
 
         // Copy from UIntegerFP32<NSource> to UIntegerFP32<N> as long as
         // NSource <= N.
-        template <int NSource>
+        template <int32_t NSource>
         void CopyFrom(UIntegerFP32<NSource> const& source)
         {
             static_assert(NSource <= N,

@@ -1,17 +1,19 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 4.0.2021.06.21
+// Version: 6.0.2023.08.08
 
 #pragma once
+
+// The queries consider the triangle to be a solid.
 
 #include <Mathematics/IntrIntervals.h>
 #include <Mathematics/IntrLine2Triangle2.h>
 #include <Mathematics/Ray.h>
-
-// The queries consider the triangle to be a solid.
+#include <array>
+#include <cstddef>
 
 namespace gte
 {
@@ -53,6 +55,12 @@ namespace gte
             :
             public FIQuery<Real, Line2<Real>, Triangle2<Real>>::Result
         {
+            Result()
+                :
+                FIQuery<Real, Line2<Real>, Triangle2<Real>>::Result{}
+            {
+            }
+
             // No additional information to compute.
         };
 
@@ -88,7 +96,7 @@ namespace gte
                 // The line containing the ray intersects the triangle; the
                 // t-interval is [t0,t1]. The ray intersects the triangle as
                 // long as [t0,t1] overlaps the ray t-interval [0,+infinity).
-                FIQuery<Real, std::array<Real, 2>, std::array<Real, 2>> iiQuery;
+                FIQuery<Real, std::array<Real, 2>, std::array<Real, 2>> iiQuery{};
                 auto iiResult = iiQuery(result.parameter, static_cast<Real>(0), true);
                 if (iiResult.intersect)
                 {

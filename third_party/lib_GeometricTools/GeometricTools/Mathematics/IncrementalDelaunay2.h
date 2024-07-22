@@ -1,9 +1,9 @@
 // David Eberly, Geometric Tools, Redmond WA 98052
-// Copyright (c) 1998-2021
+// Copyright (c) 1998-2024
 // Distributed under the Boost Software License, Version 1.0.
 // https://www.boost.org/LICENSE_1_0.txt
 // https://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
-// Version: 5.8.2021.05.23
+// Version: 6.0.2024.07.17
 
 #pragma once
 
@@ -57,9 +57,18 @@
 #include <Mathematics/SWInterval.h>
 #include <Mathematics/Vector2.h>
 #include <Mathematics/VETManifoldMesh.h>
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <map>
 #include <set>
+#include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 namespace gte
     // The input type must be 'float' or 'double'. The compute type is defined
@@ -901,6 +910,9 @@ namespace gte
             target.SetSign(source.GetSign());
             target.SetBiasedExponent(source.GetBiasedExponent());
             target.GetUInteger().CopyFrom(source.GetUInteger());
+#if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
+            target.mValue = (double)target;
+#endif
             return target;
         }
 
@@ -1429,6 +1441,10 @@ namespace gte
                 weight.numerator.SetSign(-weight.numerator.GetSign());
                 weight.denominator.SetSign(1);
             }
+#if defined(GTE_BINARY_SCIENTIFIC_SHOW_DOUBLE)
+            weight.numerator.mValue = (double)weight.numerator;
+            weight.denominator.mValue = (double)weight.denominator;
+#endif
             return weight;
         }
 
