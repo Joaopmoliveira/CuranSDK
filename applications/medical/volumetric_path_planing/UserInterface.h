@@ -21,7 +21,8 @@ enum PanelType
 
 struct Application
 {
-    bool is_acpc_being_defined = false;
+    bool are_points_being_defined = false;
+    bool is_roi_being_specified = false;
     std::string path;
     std::vector<std::tuple<ImageType::Pointer,std::string>> loaded;
     std::array<curan::ui::VolumetricMask, PanelType::NUMBER_OF_VOLUMES> map;
@@ -61,6 +62,8 @@ struct Application
     void view_image_simple();
 
     void view_image_with_point_selection();
+
+    void view_roi_selection();
 
     void point_selection();
 

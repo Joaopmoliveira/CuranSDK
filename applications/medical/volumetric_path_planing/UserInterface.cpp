@@ -124,7 +124,7 @@ constexpr bool use_dicom_compliance = false;
         switch (current_volume){
         case PanelType::ORIGINAL_VOLUME:
             button2 = Button::make("Resample AC-PC", resources);
-            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((are_points_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
             button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                                     {
             if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
@@ -132,12 +132,12 @@ constexpr bool use_dicom_compliance = false;
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
-		    is_acpc_being_defined = !is_acpc_being_defined;
+		    are_points_being_defined = !are_points_being_defined;
 		    point_selection(); });
             break;
         case PanelType::RESAMPLED_VOLUME:
             button2 = Button::make("Define Trajectory", resources);
-            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((are_points_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
             button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                                     {
             if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
@@ -145,7 +145,7 @@ constexpr bool use_dicom_compliance = false;
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
-		    is_acpc_being_defined = !is_acpc_being_defined;
+		    are_points_being_defined = !are_points_being_defined;
 		    point_selection(); });
             break;
         default:
@@ -171,6 +171,11 @@ constexpr bool use_dicom_compliance = false;
 
         auto button6 = Button::make("Registration ROI", resources);
         button6->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button2->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+            is_roi_being_specified = true;
+            are_points_being_defined = true;
+		    point_selection(); 
+        });
 
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
         if(button2.get()!=nullptr)
@@ -235,6 +240,307 @@ constexpr bool use_dicom_compliance = false;
         minipage->construct(std::move(container), SK_ColorBLACK);
     }
 
+    void Application::view_roi_selection(){
+        using namespace curan::ui;
+        auto button = Button::make("Layout", resources);
+        button->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+                               {
+		if(config->stack_page!=nullptr){
+			config->stack_page->stack(layout_overlay());
+		} });
+
+        std::unique_ptr<Button> button2 = Button::make("Stop Selection", resources);
+        button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((are_points_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button2->add_press_call([this](Button *button, Press press, ConfigDraw *config){
+            is_roi_being_specified = !is_roi_being_specified;
+            are_points_being_defined = !are_points_being_defined;
+		    point_selection();
+        });
+        auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+        *viwers_container << std::move(button) << std::move(button2);
+
+        viwers_container->set_color(SK_ColorTRANSPARENT);
+        
+        auto image_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+
+        switch (current_panel_arragement)
+        {
+        case Panels::ONE_PANEL:
+        {
+            std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            if(use_dicom_compliance){
+                image_display->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            }
+            *image_container << std::move(image_display);
+        }
+        break;
+        case Panels::TWO_PANELS:
+        {
+            std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
+            if(use_dicom_compliance){
+                image_display_x->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+                image_display_y->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            }
+            *image_container << std::move(image_display_x) << std::move(image_display_y);
+        }
+        break;
+        case Panels::THREE_PANELS:
+        {
+            std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &map[current_volume], Direction::Y);
+            std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &map[current_volume], Direction::Z);
+            if(use_dicom_compliance){
+                image_display_x->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+                image_display_y->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+                image_display_z->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            }
+            *image_container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
+        }
+        break;
+        default:
+        {
+            std::unique_ptr<SlidingPanel> image_display = SlidingPanel::make(resources, &map[current_volume], Direction::X);
+            if(use_dicom_compliance){
+                image_display->set_color_filter(SkColorFilters::Table(dicom_compliant_conversion));
+            }
+            *image_container << std::move(image_display);
+        }
+        break;
+        }
+        auto text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+        auto button_ac_point = Button::make("path 1", "", resources);
+        button_ac_point->set_click_color(SK_ColorGRAY)
+            .set_hover_color(SK_ColorLTGRAY)
+            .set_waiting_color(SK_ColorDKGRAY)
+            .set_size(SkRect::MakeWH(200, 200));
+        auto button_pc_point = Button::make("path 2", "", resources);
+        button_pc_point->set_click_color(SK_ColorGRAY)
+            .set_hover_color(SK_ColorLTGRAY)
+            .set_waiting_color(SK_ColorDKGRAY)
+            .set_size(SkRect::MakeWH(200, 200));
+
+        ptr_button_ac_point = button_ac_point.get();
+        ptr_button_pc_point = button_pc_point.get();
+
+        button_ac_point->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+        { 
+            is_first_point_being_defined=!is_first_point_being_defined;
+            if(is_first_point_being_defined){
+                    button->set_waiting_color(SK_ColorGRAY).set_click_color(SK_ColorCYAN); 
+                    is_second_point_being_defined =false;
+                    is_third_point_being_defined =false;
+                    if(ptr_button_pc_point && !second_point) 
+                        ptr_button_pc_point->set_waiting_color(SK_ColorDKGRAY)
+                            .set_click_color(SK_ColorGRAY);
+                    if(ptr_button_midpoint && !third_point) 
+                        ptr_button_midpoint->set_waiting_color(SK_ColorDKGRAY)
+                            .set_click_color(SK_ColorGRAY);
+            } else {
+                button->set_click_color(SK_ColorGRAY)
+                    .set_hover_color(SK_ColorLTGRAY)
+                    .set_waiting_color(SK_ColorDKGRAY);
+            } 
+        });
+        
+        button_pc_point->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+        { 
+            is_second_point_being_defined=!is_second_point_being_defined;
+            if(is_second_point_being_defined){
+                button->set_waiting_color(SK_ColorGRAY).set_click_color(SK_ColorCYAN); 
+                is_first_point_being_defined =false;
+                is_third_point_being_defined =false;
+                if(ptr_button_ac_point && !first_point) 
+                    ptr_button_ac_point->set_waiting_color(SK_ColorDKGRAY)
+                        .set_click_color(SK_ColorGRAY);
+                if(ptr_button_midpoint && !third_point) 
+                    ptr_button_midpoint->set_waiting_color(SK_ColorDKGRAY)
+                        .set_click_color(SK_ColorGRAY);
+            } else {
+                button->set_click_color(SK_ColorGRAY)
+                    .set_hover_color(SK_ColorLTGRAY)
+                    .set_waiting_color(SK_ColorDKGRAY);
+            }
+        });
+        
+        auto create_geometry = Button::make("Push Mask", "", resources);
+        create_geometry->set_hover_color(SK_ColorDKGRAY)
+            .set_waiting_color(SK_ColorBLACK)
+            .set_size(SkRect::MakeWH(200, 80));
+        create_geometry->add_press_call([this](Button *button, Press press, ConfigDraw *config)
+        {
+            if (config->stack_page != nullptr) config->stack_page->stack(success_overlay("generating geometry..."));
+            curan::utilities::Job job{"resampling volume", [this, config]()
+            {
+                if (!first_point || !second_point || !third_point)
+                {
+                    std::string s = !first_point ? "1 " : (!second_point ? "2 " : ((!third_point) ? "3 " : " "));
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("points :"+s+" problematic"));
+                    first_point = std::nullopt;
+                    second_point = std::nullopt;
+                    third_point = std::nullopt;
+                    return;
+                }
+
+                Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *second_point - *first_point;
+                if (orient_along_ac_pc.norm() < 1e-7)
+                {
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-2) vector, try different points"));
+                    first_point = std::nullopt;
+                    second_point = std::nullopt;
+                    third_point = std::nullopt;
+                    return;
+                }
+                
+                orient_along_ac_pc.normalize();
+                Eigen::Matrix<double, 3, 1> orient_along_ac_midpoint = *third_point - *first_point;
+                
+                if (orient_along_ac_midpoint.norm() < 1e-7)
+                {
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-3) vector, try different points"));
+                    first_point = std::nullopt;
+                    second_point = std::nullopt;
+                    third_point = std::nullopt;
+                    return;
+                }
+                orient_along_ac_midpoint.normalize();
+                Eigen::Matrix<double, 3, 1> orient_perpendic_to_ac_pc_ac_midline = orient_along_ac_pc.cross(orient_along_ac_midpoint);
+
+                if (orient_perpendic_to_ac_pc_ac_midline.norm() < 1e-7)
+                {
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("cross singular vector, try different points"));                         
+                    first_point = std::nullopt;
+                    second_point = std::nullopt;
+                    third_point = std::nullopt;
+                    return;
+                }
+
+                orient_perpendic_to_ac_pc_ac_midline.normalize();
+
+                orient_along_ac_midpoint = orient_perpendic_to_ac_pc_ac_midline.cross(orient_along_ac_pc);
+
+                orient_along_ac_midpoint.normalize();
+
+                // we always use the original volume instead of the current volume,
+                // or else the reconstructed volume will always increase in size
+                auto input = map[PanelType::ORIGINAL_VOLUME].get_volume();
+
+                itk::Matrix<double, 3, 3> rotation_matrix;
+                rotation_matrix(0, 0) = orient_perpendic_to_ac_pc_ac_midline[0];
+                rotation_matrix(1, 0) = orient_perpendic_to_ac_pc_ac_midline[1];
+                rotation_matrix(2, 0) = orient_perpendic_to_ac_pc_ac_midline[2];
+
+                rotation_matrix(0, 1) = orient_along_ac_pc[0];
+                rotation_matrix(1, 1) = orient_along_ac_pc[1];
+                rotation_matrix(2, 1) = orient_along_ac_pc[2];
+
+                rotation_matrix(0, 2) = orient_along_ac_midpoint[0];
+                rotation_matrix(1, 2) = orient_along_ac_midpoint[1];
+                rotation_matrix(2, 2) = orient_along_ac_midpoint[2];
+
+                Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
+                Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
+                auto direction = input->GetDirection();
+                for (size_t col = 0; col < 3; ++col)
+                    for (size_t row = 0; row < 3; ++row)
+                    {
+                        original_eigen_rotation_matrix(row, col) = direction(row, col);
+                        eigen_rotation_matrix(row, col) = rotation_matrix(row, col);
+                    }
+
+                Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
+                ImageType::PointType itk_along_dimension_x;
+                ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
+                input->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
+                Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
+                ImageType::PointType itk_along_dimension_y;
+                ImageType::IndexType index_along_y{{0, (long long)input->GetLargestPossibleRegion().GetSize()[1], 0}};
+                input->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
+                Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
+                ImageType::PointType itk_along_dimension_z;
+                ImageType::IndexType index_along_z{{0, 0, (long long)input->GetLargestPossibleRegion().GetSize()[2]}};
+                input->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
+                Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
+                Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
+
+                BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
+                auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
+                using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+                auto filter = FilterType::New();
+
+                using TransformType = itk::IdentityTransform<double, 3>;
+                auto transform = TransformType::New();
+
+                using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
+                auto interpolator = InterpolatorType::New();
+                filter->SetInterpolator(interpolator);
+                filter->SetDefaultPixelValue(100);
+                filter->SetTransform(transform);
+
+                filter->SetInput(input);
+                filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
+                filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
+                filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
+
+                for (size_t col = 0; col < 3; ++col)
+                    for (size_t row = 0; row < 3; ++row)
+                        rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
+
+                filter->SetOutputDirection(rotation_matrix);
+
+                try{
+                    filter->Update();
+                    auto output = filter->GetOutput();
+                    switch (current_volume)
+                    {
+                    case PanelType::ORIGINAL_VOLUME:
+                        map[PanelType::RESAMPLED_VOLUME].update_volume(output);
+                    break;
+                    case PanelType::RESAMPLED_VOLUME:
+                        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(output);
+                    break;
+                    case PanelType::TRAJECTORY_ORIENTED_VOLUME:
+                        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(output);
+                    break;
+                    default:
+                        if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failure to process volume"));
+                    break;
+                    }
+                    if (config->stack_page != nullptr) {
+                        config->stack_page->replace_last(success_overlay("generating geometry!"));
+                        are_points_being_defined = false;
+                        point_selection();
+                        if(current_volume==PanelType::RESAMPLED_VOLUME){
+                            final_first_point = first_point;
+                            final_second_point = second_point;
+                            final_third_point = third_point;
+                        }
+                    }
+                }
+                catch (...){
+                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC"));
+                }
+
+                first_point = std::nullopt;
+                second_point = std::nullopt;
+                third_point = std::nullopt;
+            }};
+            pool->submit(job);
+        });
+
+        *text_container << std::move(button_ac_point) << std::move(button_pc_point) << std::move(create_geometry);
+
+        auto image_and_text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+        *image_and_text_container << std::move(text_container) << std::move(image_container);
+        image_and_text_container->set_divisions({0.0, 0.1, 1.0});
+
+        auto total_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+        *total_container << std::move(viwers_container) << std::move(image_and_text_container);
+        total_container->set_divisions({0.0, 0.1, 1.0});
+        minipage->construct(std::move(total_container), SK_ColorBLACK);
+    }
+
     void Application::view_image_with_point_selection(){
 
         using namespace curan::ui;
@@ -251,7 +557,7 @@ constexpr bool use_dicom_compliance = false;
         switch (current_volume){
         case PanelType::ORIGINAL_VOLUME:
             button2 = Button::make("Resample AC-PC", resources);
-            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((are_points_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
             button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                                     {
             if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
@@ -259,12 +565,12 @@ constexpr bool use_dicom_compliance = false;
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
-		    is_acpc_being_defined = !is_acpc_being_defined;
+		    are_points_being_defined = !are_points_being_defined;
 		    point_selection(); });
             break;
         case PanelType::RESAMPLED_VOLUME:
             button2 = Button::make("Define Trajectory", resources);
-            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((are_points_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
             button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                                     {
             if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
@@ -272,7 +578,7 @@ constexpr bool use_dicom_compliance = false;
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
-		    is_acpc_being_defined = !is_acpc_being_defined;
+		    are_points_being_defined = !are_points_being_defined;
 		    point_selection(); });
             break;
         default:
@@ -586,7 +892,7 @@ constexpr bool use_dicom_compliance = false;
                     }
                     if (config->stack_page != nullptr) {
                         config->stack_page->replace_last(success_overlay("resampled volume!"));
-                        is_acpc_being_defined = false;
+                        are_points_being_defined = false;
                         point_selection();
                         if(current_volume==PanelType::RESAMPLED_VOLUME){
                             final_first_point = first_point;
@@ -622,10 +928,19 @@ constexpr bool use_dicom_compliance = false;
         ptr_button_ac_point = nullptr;
         ptr_button_pc_point = nullptr;
         ptr_button_midpoint = nullptr;
-        if(is_acpc_being_defined)
-            view_image_with_point_selection();
-        else
+
+
+        if(are_points_being_defined){
+            std::cout << "points being defined";
+            if(is_roi_being_specified)
+                view_roi_selection();
+            else 
+                view_image_with_point_selection();
+        } 
+        else{
+            std::cout << "points not being defined";
             view_image_simple();
+        }
     }
 
     std::unique_ptr<curan::ui::Overlay> Application::create_volume_explorer_page()
@@ -798,7 +1113,7 @@ constexpr bool use_dicom_compliance = false;
         switch (current_volume){
         case PanelType::ORIGINAL_VOLUME:
             button2 = Button::make("Resample AC-PC", resources);
-            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((are_points_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
             button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                                     {
             if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
@@ -806,12 +1121,12 @@ constexpr bool use_dicom_compliance = false;
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
-		    is_acpc_being_defined = !is_acpc_being_defined;
+		    are_points_being_defined = !are_points_being_defined;
 		    point_selection(); });
             break;
         case PanelType::RESAMPLED_VOLUME:
             button2 = Button::make("Define Trajectory", resources);
-            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((is_acpc_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+            button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((are_points_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
             button2->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                                     {
             if(current_volume==PanelType::TRAJECTORY_ORIENTED_VOLUME){
@@ -819,7 +1134,7 @@ constexpr bool use_dicom_compliance = false;
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
-		    is_acpc_being_defined = !is_acpc_being_defined;
+		    are_points_being_defined = !are_points_being_defined;
 		    point_selection(); });
             break;
         default:
@@ -857,15 +1172,6 @@ constexpr bool use_dicom_compliance = false;
 
         std::unique_ptr<MiniPage> lminipage = MiniPage::make(std::move(container), SK_ColorBLACK);
         minipage = lminipage.get();
-        /*
-        lminipage->add_key_call([this](MiniPage *minipage, Key arg, ConfigDraw *draw)
-                                {
-			if (arg.key == GLFW_KEY_H && arg.action == GLFW_PRESS){
-				if(draw->stack_page!=nullptr){
-					draw->stack_page->stack(option_overlay());
-				}
-			} });
-        */
         auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
         *minimage_container << std::move(lminipage);
         return minimage_container;
