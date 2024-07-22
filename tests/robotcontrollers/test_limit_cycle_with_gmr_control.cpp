@@ -116,22 +116,23 @@ int main()
     window << robot;
 
     curan::gaussian::GMR<2,2> model;
-    std::fstream gmr_model_file{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/model2.json"};
+    std::fstream gmr_model_file{CURAN_COPIED_RESOURCE_PATH"/gaussianmixtures_testing/model.txt"};
     gmr_model_file >> model;
-    
+
     std::atomic<bool> keep_running = true;
     auto pool = curan::utilities::ThreadPool::create(1);
     pool->submit(curan::utilities::Job{"value", [&]()
                                        {
-                                                                                   Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
-                                           desired_translation << -0.66809, -0.00112052, 0.443678;
+                                            Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
+                                           desired_translation << -0.632239 , 0.0123415 , 0.337702;
                                           Eigen::Matrix<double, 3, 3> desired_rotation = Eigen::Matrix<double, 3, 3>::Identity();
-                                           desired_rotation << -0.718163, -0.00186162, -0.695873,
-                                                                -0.00329559, 0.999994, 0.000725931,
-                                                                0.695868, 0.00281465, -0.718165;
+                                           desired_rotation <<   -0.998815  ,  0.0486651 ,-0.000655218,
+   																0.0486561   ,  0.998765   , 0.0100775,
+  																0.00114483  ,  0.0100337  ,  -0.999949 ;
+
                                            std::unique_ptr<CartersianVelocityController> handguinding_controller = std::make_unique<CartersianVelocityController>([&](const RobotModel<number_of_joints>& iiwa){
                                                         Eigen::Matrix<double,6,1> desired_velocity = Eigen::Matrix<double,6,1>::Zero();
-                                                        desired_velocity.block<2, 1>(0, 0) = model.likeliest(iiwa.translation().block<2,1>(0,0));
+                                                        desired_velocity.block<2, 1>(0, 0) = 2*model.likeliest(iiwa.translation().block<2,1>(0,0));
                                                         desired_velocity[2] = desired_translation[2]-iiwa.translation()[2];
                                                         std::cout << desired_velocity.transpose() << std::endl;
                                                         Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * desired_rotation);

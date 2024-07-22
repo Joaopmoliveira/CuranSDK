@@ -183,3 +183,15 @@ robotutils
 renderable
 gaussianmixture
 )
+
+add_executable(test_limit_cycle_controller_real test_limit_cycle_controller_real.cpp)
+
+target_compile_definitions(test_limit_cycle_controller_real PRIVATE NOMINMAX)
+target_compile_definitions(test_limit_cycle_controller_real PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_limit_cycle_controller_real PUBLIC
+utils
+robotutils
+renderable
+gaussianmixture
+)
