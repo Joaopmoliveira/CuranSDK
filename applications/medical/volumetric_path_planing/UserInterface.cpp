@@ -2,23 +2,41 @@
 #include "BoundingBox.h"
 #include "utils/Overloading.h"
 #include "LoadVolume.h"
+#include "utils/Overloading.h"
 
 uint_least8_t dicom_compliant_conversion[256] = {0 ,30 ,33 ,35 ,37 ,39 ,40 ,41 ,43 ,44 ,45 ,46 ,47 ,48 ,48 ,49 ,50 ,51 ,51 ,52 ,53 ,54 ,55 ,55 ,56 ,57 ,57 ,58 ,59 ,60 ,60 ,61 ,62 ,62 ,63 ,64 ,64 ,65 ,65 ,66 ,67 ,67 ,68 ,69 ,69 ,70 ,71 ,71 ,72 ,73 ,73 ,74 ,75 ,76 ,76 ,77 ,77 ,78 ,79 ,80 ,80 ,80 ,81 ,82 ,83 ,83 ,84 ,84 ,85 ,86 ,86 ,87 ,88 ,88 ,89 ,90 ,90 ,91 ,92 ,93 ,93 ,94 ,95 ,95 ,96 ,96 ,97 ,98 ,98 ,99 ,100 ,101 ,101 ,102 ,103 ,103 ,104 ,105 ,106 ,106 ,107 ,108 ,109 ,109 ,110 ,111 ,111 ,112 ,113 ,113 ,114 ,115 ,116 ,116 ,117 ,118 ,119 ,119 ,120 ,121 ,122 ,123 ,123 ,124 ,125 ,126 ,126 ,127 ,128 ,128 ,129 ,130 ,131 ,132 ,132 ,133 ,134 ,135 ,136 ,136 ,137 ,138 ,139 ,140 ,141 ,141 ,142 ,143 ,144 ,145 ,145 ,146 ,147 ,148 ,149 ,150 ,151 ,151 ,152 ,153 ,154 ,155 ,156 ,157 ,158 ,158 ,159 ,160 ,161 ,162 ,163 ,164 ,164 ,166 ,167 ,167 ,169 ,170 ,170 ,171 ,172 ,173 ,174 ,175 ,176 ,176 ,178 ,178 ,180 ,181 ,182 ,183 ,184 ,184 ,186 ,186 ,188 ,188 ,189 ,191 ,191 ,192 ,194 ,194 ,196 ,197 ,197 ,199 ,200 ,201 ,202 ,203 ,204 ,205 ,207 ,207 ,208 ,209 ,210 ,212 ,213 ,214 ,215 ,216 ,217 ,218 ,220 ,221 ,222 ,223 ,224 ,225 ,226 ,228 ,229 ,230 ,231 ,233 ,234 ,235 ,236 ,238 ,239 ,240 ,241 ,242 ,244 ,245 ,246 ,248 ,249 ,250 ,251 ,253 ,254 ,255};
 constexpr bool use_dicom_compliance = false;
 
-    void Application::compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
-        std::optional<Eigen::Matrix<double, 3, 1>> possible_point;
-        if(dir_stroke.point){
-            Eigen::Matrix<double,3,1> point = Eigen::Matrix<double,3,1>::Zero();
-            point[0] = (*dir_stroke.point)[0];
-            point[1] = (*dir_stroke.point)[1];
-            point[2] = (*dir_stroke.point)[2];
-            possible_point = point;
+    void Application::compute_point(curan::ui::VolumetricMask* vol_mas,const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config){
+        
+        // now we need to convert between itk coordinates and real world coordinates
+        if(!(dir_stroke.point_in_image_coordinates.cols()>0))
+            throw std::runtime_error("the collumns of the highlighted path must be at least 1");
+
+        if(ptr_config && ptr_config->stack_page && dir_stroke.point_in_image_coordinates.cols()>1 && !is_roi_being_specified){
+            ptr_config->stack_page->stack(warning_overlay("must select a single point, not a path"));
+            return ;
         }
-        if(!dir_stroke.point && config->stack_page!=nullptr)
-			config->stack_page->stack(warning_overlay("failed to find point, please insert new point"));
+
+        auto point_in_world_coordinates = dir_stroke.point_in_image_coordinates;
+
+        ImageType::IndexType local_index;
+        ImageType::PointType itk_point_in_world_coordinates;
+        for(size_t col = 0; col < point_in_world_coordinates.cols() ; ++col){
+            local_index[0] = dir_stroke.point_in_image_coordinates(0,col);
+            local_index[1] = dir_stroke.point_in_image_coordinates(1,col);
+            local_index[2] = dir_stroke.point_in_image_coordinates(2,col);
+            vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+            point_in_world_coordinates(0,col) = itk_point_in_world_coordinates[0];
+            point_in_world_coordinates(1,col) = itk_point_in_world_coordinates[1];
+            point_in_world_coordinates(2,col) = itk_point_in_world_coordinates[2];
+        }
+
         if(is_first_point_being_defined){
-            first_point = possible_point;
+            if(is_roi_being_specified)
+                first_path = point_in_world_coordinates;
+            else
+                first_point = point_in_world_coordinates.col(0);
             if(ptr_button_ac_point) 
                 ptr_button_ac_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -26,7 +44,10 @@ constexpr bool use_dicom_compliance = false;
                     .set_size(SkRect::MakeWH(200, 200));
         }
         else if(is_second_point_being_defined){
-            second_point = possible_point;
+            if(is_roi_being_specified)
+                second_path = point_in_world_coordinates;
+            else
+                second_point = point_in_world_coordinates.col(0);
             if(ptr_button_pc_point) 
                 ptr_button_pc_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -34,7 +55,7 @@ constexpr bool use_dicom_compliance = false;
                     .set_size(SkRect::MakeWH(200, 200));
         }
         else if(is_third_point_being_defined){
-            third_point = possible_point;
+            third_point = point_in_world_coordinates.col(0);
             if(ptr_button_midpoint) 
                 ptr_button_midpoint->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -51,16 +72,16 @@ constexpr bool use_dicom_compliance = false;
     {
         using namespace curan::ui;
         map[PanelType::ORIGINAL_VOLUME].add_pressedhighlighted_call(
-            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::optional<directed_stroke>& strokes){
-                if(strokes) compute_point(*strokes,config_draw);
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const directed_stroke& strokes){
+                compute_point(vol_mas,strokes,config_draw);
         });
         map[PanelType::RESAMPLED_VOLUME].add_pressedhighlighted_call(
-            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const std::optional<directed_stroke>& strokes){
-                if(strokes) compute_point(*strokes,config_draw);
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw, const directed_stroke& strokes){
+                compute_point(vol_mas,strokes,config_draw);
         });
         map[PanelType::TRAJECTORY_ORIENTED_VOLUME].add_pressedhighlighted_call(
-            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const std::optional<directed_stroke>& strokes){
-                if(strokes) compute_point(*strokes,config_draw);
+            [this](VolumetricMask* vol_mas, ConfigDraw* config_draw , const directed_stroke& strokes){
+                compute_point(vol_mas,strokes,config_draw);
         });
     }
 
@@ -132,7 +153,9 @@ constexpr bool use_dicom_compliance = false;
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
+            std::cout << "----are_points_being_defined : " << ( are_points_being_defined? "true\n" : "false\n");
 		    are_points_being_defined = !are_points_being_defined;
+            std::cout << "----are_points_being_defined : " << ( are_points_being_defined? "true\n" : "false\n");
 		    point_selection(); });
             break;
         case PanelType::RESAMPLED_VOLUME:
@@ -171,10 +194,10 @@ constexpr bool use_dicom_compliance = false;
 
         auto button6 = Button::make("Registration ROI", resources);
         button6->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-        button2->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-            is_roi_being_specified = true;
-            are_points_being_defined = true;
-		    point_selection(); 
+        button6->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+            are_points_being_defined = !are_points_being_defined;
+            is_roi_being_specified = !is_roi_being_specified;
+		    point_selection();
         });
 
         auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -250,7 +273,7 @@ constexpr bool use_dicom_compliance = false;
 			config->stack_page->stack(layout_overlay());
 		} });
 
-        std::unique_ptr<Button> button2 = Button::make("Stop Selection", resources);
+        std::unique_ptr<Button> button2 = Button::make("Registration ROI", resources);
         button2->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color((are_points_being_defined) ? SkColorSetARGB(125, 0x00, 0xFF, 0xFF) : SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
         button2->add_press_call([this](Button *button, Press press, ConfigDraw *config){
             is_roi_being_specified = !is_roi_being_specified;
@@ -377,9 +400,7 @@ constexpr bool use_dicom_compliance = false;
                 {
                     std::string s = !first_point ? "1 " : (!second_point ? "2 " : ((!third_point) ? "3 " : " "));
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("points :"+s+" problematic"));
-                    first_point = std::nullopt;
-                    second_point = std::nullopt;
-                    third_point = std::nullopt;
+                    clear_all_paths_and_points();
                     return;
                 }
 
@@ -387,9 +408,7 @@ constexpr bool use_dicom_compliance = false;
                 if (orient_along_ac_pc.norm() < 1e-7)
                 {
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-2) vector, try different points"));
-                    first_point = std::nullopt;
-                    second_point = std::nullopt;
-                    third_point = std::nullopt;
+                    clear_all_paths_and_points();
                     return;
                 }
                 
@@ -399,9 +418,7 @@ constexpr bool use_dicom_compliance = false;
                 if (orient_along_ac_midpoint.norm() < 1e-7)
                 {
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-3) vector, try different points"));
-                    first_point = std::nullopt;
-                    second_point = std::nullopt;
-                    third_point = std::nullopt;
+                    clear_all_paths_and_points();
                     return;
                 }
                 orient_along_ac_midpoint.normalize();
@@ -410,9 +427,7 @@ constexpr bool use_dicom_compliance = false;
                 if (orient_perpendic_to_ac_pc_ac_midline.norm() < 1e-7)
                 {
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("cross singular vector, try different points"));                         
-                    first_point = std::nullopt;
-                    second_point = std::nullopt;
-                    third_point = std::nullopt;
+                    clear_all_paths_and_points();
                     return;
                 }
 
@@ -522,9 +537,7 @@ constexpr bool use_dicom_compliance = false;
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC"));
                 }
 
-                first_point = std::nullopt;
-                second_point = std::nullopt;
-                third_point = std::nullopt;
+                clear_all_paths_and_points();
             }};
             pool->submit(job);
         });
@@ -565,6 +578,7 @@ constexpr bool use_dicom_compliance = false;
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
+            std::cout << "are_points_being_defined : " << ( are_points_being_defined? "true\n" : "false\n");
 		    are_points_being_defined = !are_points_being_defined;
 		    point_selection(); });
             break;
@@ -760,9 +774,7 @@ constexpr bool use_dicom_compliance = false;
                 {
                     std::string s = !first_point ? "1 " : (!second_point ? "2 " : ((!third_point) ? "3 " : " "));
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("points :"+s+" problematic"));
-                    first_point = std::nullopt;
-                    second_point = std::nullopt;
-                    third_point = std::nullopt;
+                    clear_all_paths_and_points();
                     return;
                 }
 
@@ -770,9 +782,7 @@ constexpr bool use_dicom_compliance = false;
                 if (orient_along_ac_pc.norm() < 1e-7)
                 {
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-2) vector, try different points"));
-                    first_point = std::nullopt;
-                    second_point = std::nullopt;
-                    third_point = std::nullopt;
+                    clear_all_paths_and_points();
                     return;
                 }
                 
@@ -782,9 +792,7 @@ constexpr bool use_dicom_compliance = false;
                 if (orient_along_ac_midpoint.norm() < 1e-7)
                 {
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-3) vector, try different points"));
-                    first_point = std::nullopt;
-                    second_point = std::nullopt;
-                    third_point = std::nullopt;
+                    clear_all_paths_and_points();
                     return;
                 }
                 orient_along_ac_midpoint.normalize();
@@ -793,9 +801,7 @@ constexpr bool use_dicom_compliance = false;
                 if (orient_perpendic_to_ac_pc_ac_midline.norm() < 1e-7)
                 {
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("cross singular vector, try different points"));                         
-                    first_point = std::nullopt;
-                    second_point = std::nullopt;
-                    third_point = std::nullopt;
+                    clear_all_paths_and_points();
                     return;
                 }
 
@@ -905,9 +911,7 @@ constexpr bool use_dicom_compliance = false;
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC"));
                 }
 
-                first_point = std::nullopt;
-                second_point = std::nullopt;
-                third_point = std::nullopt;
+                clear_all_paths_and_points();
             }};
             pool->submit(job);
         });
@@ -929,16 +933,12 @@ constexpr bool use_dicom_compliance = false;
         ptr_button_pc_point = nullptr;
         ptr_button_midpoint = nullptr;
 
-
         if(are_points_being_defined){
-            std::cout << "points being defined";
             if(is_roi_being_specified)
                 view_roi_selection();
-            else 
+            else
                 view_image_with_point_selection();
-        } 
-        else{
-            std::cout << "points not being defined";
+        } else{
             view_image_simple();
         }
     }
@@ -1121,7 +1121,9 @@ constexpr bool use_dicom_compliance = false;
                     config->stack_page->stack(warning_overlay("cannot resample processed volume"));
                 return;
             }
+            std::cout << "are_points_being_defined : " << ( are_points_being_defined? "true\n" : "false\n");
 		    are_points_being_defined = !are_points_being_defined;
+            std::cout << "are_points_being_defined : " << ( are_points_being_defined? "true\n" : "false\n");
 		    point_selection(); });
             break;
         case PanelType::RESAMPLED_VOLUME:

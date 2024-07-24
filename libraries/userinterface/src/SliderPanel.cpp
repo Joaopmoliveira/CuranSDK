@@ -51,7 +51,8 @@ namespace curan
 															}},
 							   begin->second);
 
-					if (minimum > local){
+					if (minimum > local)
+					{
 						minimum = local;
 						minimum_index = begin;
 					}
@@ -224,10 +225,11 @@ namespace curan
 			The geometries are normalized in volume coordinates, thus we must
 			convert them into world coordinates
 			*/
-			cached_polyheader_intersections = std::vector<std::tuple<std::vector<SkPoint>,SkPath>>{};
-			for (const auto &cliped_path : volumetric_mask->geometries()){
+			cached_polyheader_intersections = std::vector<std::tuple<std::vector<SkPoint>, SkPath>>{};
+			for (const auto &cliped_path : volumetric_mask->geometries())
+			{
 				std::vector<SkPoint> points_in_path;
-				
+
 				Eigen::Matrix<double, 3, 1> normal{0.0, 0.0, 0.0};
 				Eigen::Matrix<double, 3, 1> origin{0.5, 0.5, 0.5};
 				origin[direction] = current_value;
@@ -245,60 +247,63 @@ namespace curan
 				}
 
 				if ((*possible_cliped_polygon).cols() < 2)
-				{	
+				{
 
-					switch(direction){
+					switch (direction)
+					{
 					case Direction::X:
 						points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[1], (*possible_cliped_polygon).col(0)[2]));
-					break;
+						break;
 					case Direction::Y:
 						points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[2]));
-					break;
+						break;
 					case Direction::Z:
 						points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[1]));
-					break;
+						break;
 					}
-					
+
 					continue;
 				}
 
-
-				switch(direction){
-					case Direction::X:
-						points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[1], (*possible_cliped_polygon).col(0)[2]));
+				switch (direction)
+				{
+				case Direction::X:
+					points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[1], (*possible_cliped_polygon).col(0)[2]));
 					break;
-					case Direction::Y:
-						points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[2]));
+				case Direction::Y:
+					points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[2]));
 					break;
-					case Direction::Z:
-						points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[1]));
+				case Direction::Z:
+					points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[1]));
 					break;
 				}
-				
-				for (const auto &cliped_polygon : (*possible_cliped_polygon).colwise()){
-					switch(direction){
+
+				for (const auto &cliped_polygon : (*possible_cliped_polygon).colwise())
+				{
+					switch (direction)
+					{
 					case Direction::X:
 						points_in_path.push_back(SkPoint::Make(cliped_polygon[1], cliped_polygon[2]));
-					break;
+						break;
 					case Direction::Y:
 						points_in_path.push_back(SkPoint::Make(cliped_polygon[0], cliped_polygon[2]));
-					break;
+						break;
 					case Direction::Z:
 						points_in_path.push_back(SkPoint::Make(cliped_polygon[0], cliped_polygon[1]));
-					break;
+						break;
+					}
 				}
-				}
-				
+
 				std::vector<SkPoint> transformed_points = points_in_path;
-				
-				inverse_homogenenous_transformation.mapPoints(transformed_points.data(),transformed_points.size());
+
+				inverse_homogenenous_transformation.mapPoints(transformed_points.data(), transformed_points.size());
 				SkPath polygon_intersection;
 				polygon_intersection.moveTo(transformed_points.front());
 				for (const auto &point : transformed_points)
 					polygon_intersection.lineTo(point);
 				polygon_intersection.close();
 
-				cached_polyheader_intersections.push_back(std::make_tuple(points_in_path,polygon_intersection));
+				cached_polyheader_intersections.push_back(std::make_tuple(points_in_path, polygon_intersection));
 			}
 
 			return info;
@@ -396,10 +401,13 @@ namespace curan
 
 			assert(background.image && "failed to assert that the optional is filled");
 
-			if (background.width_spacing * (*background.image).image->width() > background.height_spacing * (*background.image).image->height()){
+			if (background.width_spacing * (*background.image).image->width() > background.height_spacing * (*background.image).image->height())
+			{
 				height = (*background.image).image->height() * background.height_spacing / background.width_spacing;
 				width = (*background.image).image->width();
-			}else{
+			}
+			else
+			{
 				height = (*background.image).image->height();
 				width = (*background.image).image->width() * background.width_spacing / background.height_spacing;
 			}
@@ -415,15 +423,15 @@ namespace curan
 			volumetric_mask->for_each(direction, [&](Mask &mask)
 									  { mask.container_resized(inverse_homogenenous_transformation); });
 
-			
-			for(auto& [normalized_path,cached_path] : cached_polyheader_intersections){
+			for (auto &[normalized_path, cached_path] : cached_polyheader_intersections)
+			{
 				std::vector<SkPoint> transformed_points = normalized_path;
-				inverse_homogenenous_transformation.mapPoints(transformed_points.data(),transformed_points.size());
+				inverse_homogenenous_transformation.mapPoints(transformed_points.data(), transformed_points.size());
 				cached_path.reset();
 				cached_path.moveTo(transformed_points.front());
 				for (const auto &point : transformed_points)
 					cached_path.lineTo(point);
-				cached_path.close();	
+				cached_path.close();
 			}
 
 			set_size(pos);
@@ -457,83 +465,80 @@ namespace curan
 				{
 					bool is_panel_selected = get_hightlight_color() == SkColorSetARGB(255, 125, 0, 0);
 					SkPaint paint_cached_paths;
-    				paint_cached_paths.setAntiAlias(true);
+					paint_cached_paths.setAntiAlias(true);
 					paint_cached_paths.setStyle(SkPaint::kStrokeAndFill_Style);
-    				paint_cached_paths.setColor(SkColorSetARGB(100, 0xFF, 0x00, 0x00));
+					paint_cached_paths.setColor(SkColorSetARGB(100, 0xFF, 0x00, 0x00));
 					auto paint_cached_paths_outline = paint_cached_paths;
 					paint_cached_paths_outline.setColor(SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));
 					paint_cached_paths_outline.setStyle(SkPaint::kStroke_Style);
 					std::lock_guard<std::mutex> g{get_mutex()};
-			
-					for(const auto& [normalized_path, cached_path] : cached_polyheader_intersections){
-						canvas->drawPath(cached_path,paint_cached_paths);
-						canvas->drawPath(cached_path,paint_cached_paths_outline);
+
+					for (const auto &[normalized_path, cached_path] : cached_polyheader_intersections)
+					{
+						canvas->drawPath(cached_path, paint_cached_paths);
+						canvas->drawPath(cached_path, paint_cached_paths_outline);
 					}
-					
+
 					assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
 					std::optional<curan::ui::Stroke> highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction, _current_index).draw(canvas, inverse_homogenenous_transformation, homogenenous_transformation, zoom_in.get_coordinates(), is_highlighting && is_panel_selected, paint_stroke, paint_square, text_font, is_pressed);
 					if (highlighted_and_pressed_stroke)
 					{
-						std::optional<std::array<double, 3>> potential_point_in_world_coordinates;
+						is_pressed = false;
+						Eigen::Matrix<double, 3,Eigen::Dynamic> point_in_itk_coordinates;
 						std::visit(curan::utilities::overloaded{[&](const curan::ui::Path &path) {
-
+																	point_in_itk_coordinates = Eigen::Matrix<double, 3,Eigen::Dynamic>::Zero(3,path.normalized_recorded_points.size());
+																	switch (direction)
+																	{
+																	case Direction::X:
+																		for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
+																			point_in_itk_coordinates(0,col) =  _current_index;
+																			point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::Y) - 1));
+																			point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Z) - 1));
+																		}
+																	break;
+																	case Direction::Y:
+																		for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
+																			point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::X) - 1));
+																			point_in_itk_coordinates(1,col) =  _current_index;
+																			point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Z) - 1));
+																		}
+																	break;
+																	case Direction::Z:
+																		for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
+																			point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::X) - 1));
+																			point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Y) - 1));
+																			point_in_itk_coordinates(2,col) = _current_index;
+																		}
+																	break;
+																	}
 																},
 																[&](const curan::ui::Point &point)
 																{
+																	point_in_itk_coordinates = Eigen::Matrix<double, 3,Eigen::Dynamic>::Zero(3,1);
 																	switch (direction)
 																	{
 																	case Direction::X:
 																	{
-																		std::array<double, 3> point_in_stl_format;
-																		ImageType::IndexType local_index;
-																		local_index[0] = _current_index;
-																		local_index[1] = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::Y) - 1));
-																		local_index[2] = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
-																		ImageType::PointType point_in_world_coordinates;
-																		volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(local_index, point_in_world_coordinates);
-																		point_in_stl_format[0] = point_in_world_coordinates[0];
-																		point_in_stl_format[1] = point_in_world_coordinates[1];
-																		point_in_stl_format[2] = point_in_world_coordinates[2];
-																		potential_point_in_world_coordinates = point_in_stl_format;
+																		point_in_itk_coordinates(0,0) = _current_index;
+																		point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::Y) - 1));
+																		point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
 																	}
 																	break;
 																	case Direction::Y:
-																	{
-																		std::array<double, 3> point_in_stl_format;
-																		ImageType::IndexType local_index;
-																		local_index[0] = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
-																		local_index[1] = _current_index;
-																		local_index[2] = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
-																		ImageType::PointType point_in_world_coordinates;
-																		volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(local_index, point_in_world_coordinates);
-																		point_in_stl_format[0] = point_in_world_coordinates[0];
-																		point_in_stl_format[1] = point_in_world_coordinates[1];
-																		point_in_stl_format[2] = point_in_world_coordinates[2];
-																		potential_point_in_world_coordinates = point_in_stl_format;
-																	}
+																		point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
+																		point_in_itk_coordinates(1,0) = _current_index;
+																		point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
 																	break;
 																	case Direction::Z:
-																	{
-																		std::array<double, 3> point_in_stl_format;
-																		ImageType::IndexType local_index;
-																		local_index[0] = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
-																		local_index[1] = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Y) - 1));
-																		local_index[2] = _current_index;
-																		ImageType::PointType point_in_world_coordinates;
-																		volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(local_index, point_in_world_coordinates);
-																		point_in_stl_format[0] = point_in_world_coordinates[0];
-																		point_in_stl_format[1] = point_in_world_coordinates[1];
-																		point_in_stl_format[2] = point_in_world_coordinates[2];
-																		potential_point_in_world_coordinates = point_in_stl_format;
-																	}
+																		point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
+																		point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Y) - 1));
+																		point_in_itk_coordinates(2,0) = _current_index;
 																	break;
 																	}
 																}},
 								   *highlighted_and_pressed_stroke);
-
-						directed_stroke strk{potential_point_in_world_coordinates, *highlighted_and_pressed_stroke, direction};
-						for (auto &pending : volumetric_mask->callbacks_pressedhighlighted)
-							pending(volumetric_mask, nullptr, strk);
+						if (pending_strokes_to_process.size() < 10)
+							pending_strokes_to_process.emplace_back(point_in_itk_coordinates, *highlighted_and_pressed_stroke, direction);
 					}
 				}
 
@@ -582,201 +587,128 @@ namespace curan
 		{
 			auto lamb = [this](curan::ui::Signal sig, curan::ui::ConfigDraw *config)
 			{
-				bool interacted = false;
+				for (const auto &highlighted_stroke : pending_strokes_to_process)
+					for (auto &pending : volumetric_mask->callbacks_pressedhighlighted)
+						pending(volumetric_mask, config, highlighted_stroke);
 
-				std::visit(curan::utilities::overloaded{[](curan::ui::Empty arg) {
+				pending_strokes_to_process.clear();
 
-														},
-														[&](curan::ui::Move arg)
-														{
-															// quick reject in case of outside the panel area
-															if (!get_position().contains(arg.xpos, arg.ypos))
-															{
-																set_current_state(SliderStates::WAITING);
-																if (!current_stroke.empty())
-																{
-																	insert_in_map(current_stroke);
-																	current_stroke.clear();
-																}
-																set_hightlight_color(SK_ColorDKGRAY);
-																is_pressed = false;
-																return;
-															}
-															set_hightlight_color(SkColorSetARGB(255, 125, 0, 0));
+				auto check_inside_fixed_area = [this](double x, double y)
+				{
+					return reserved_slider_space.contains(x, y);
+				};
+				auto check_inside_allocated_area = [this](double x, double y)
+				{
+					return get_position().contains(x, y);
+				};
+				interpreter.process(check_inside_allocated_area, check_inside_fixed_area, sig);
 
-															static curan::ui::Move previous_arg = arg;
-															auto previous_state = get_current_state();
-															auto current_state_local = get_current_state();
-															zoom_in.store_position(SkPoint::Make((float)arg.xpos, (float)arg.ypos), get_size());
-															if (reserved_drawing_space.contains(arg.xpos, arg.ypos) && current_state_local != SliderStates::PRESSED)
-															{
-																if (!is_highlighting)
-																{
-																	if (is_pressed)
-																	{
-																		interacted = true;
-																		current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)arg.xpos, (float)arg.ypos));
-																	}
-																	else if (!current_stroke.empty())
-																	{
-																		insert_in_map(current_stroke);
-																		current_stroke.clear();
-																	}
-																}
-																current_state_local = SliderStates::WAITING;
-															}
-															else if (get_position().contains(arg.xpos, arg.ypos) && current_state_local == SliderStates::PRESSED)
-															{
-																auto offset_x = ((float)arg.xpos - reserved_slider_space.x()) / reserved_slider_space.width();
-																auto current_val = get_current_value();
-																current_val += offset_x - read_trigger();
-																trigger(offset_x);
-																set_current_value(current_val);
-																interacted = true;
-															}
-															else
-																current_state_local = SliderStates::WAITING;
+				is_pressed = false;
+				std::cout << "signal received!\n";
+				if (interpreter.check(OUTSIDE_ALLOCATED_AREA))
+				{
+					std::cout << "outside everything\n";
+					set_current_state(SliderStates::WAITING);
+					if (!current_stroke.empty())
+					{
+						insert_in_map(current_stroke);
+						current_stroke.clear();
+					}
+					set_hightlight_color(SK_ColorDKGRAY);
+					return false;
+				}
+				auto [xpos, ypos] = interpreter.last_move();
+				zoom_in.store_position(SkPoint::Make((float)xpos, (float)ypos), get_size());
+				set_hightlight_color(SkColorSetARGB(255, 125, 0, 0));
 
-															if (previous_state != current_state_local)
-																interacted = true;
-															previous_arg = arg;
-															set_current_state(current_state_local);
-														},
-														[&](curan::ui::Press arg)
-														{
-															// quick reject in case of outside the panel area
-															if (!get_position().contains(arg.xpos, arg.ypos))
-															{
-																set_current_state(SliderStates::WAITING);
-																if (!current_stroke.empty())
-																{
-																	insert_in_map(current_stroke);
-																	current_stroke.clear();
-																}
-																is_pressed = false;
-																set_hightlight_color(SK_ColorDKGRAY);
-																return;
-															}
-															set_hightlight_color(SkColorSetARGB(255, 125, 0, 0));
-															auto previous_state = get_current_state();
-															auto current_state_local = get_current_state();
-															if (reserved_drawing_space.contains(arg.xpos, arg.ypos))
-															{
-																if (!is_highlighting)
-																{
-																	if (current_stroke.normalized_recorded_points.size() == 1)
-																	{
-																		insert_in_map(current_stroke);
-																		current_stroke.clear();
-																	}
-																	current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)arg.xpos, (float)arg.ypos));
-																	is_pressed = true;
-																	interacted = true;
-																}
-																else
-																{
-																	is_pressed = true;
-																	interacted = true;
-																}
-															}
-															else if (reserved_slider_space.contains(arg.xpos, arg.ypos))
-															{
-																trigger((arg.xpos - reserved_slider_space.x()) / reserved_slider_space.width());
-																current_state_local = SliderStates::PRESSED;
-																interacted = true;
-															}
-															else
-																current_state_local = SliderStates::WAITING;
-															if (previous_state != current_state_local)
-																interacted = true;
-															set_current_state(current_state_local);
-														},
-														[&](curan::ui::Scroll arg)
-														{
-															// quick reject in case of outside the panel area
-															if (!get_position().contains(arg.xpos, arg.ypos))
-															{
-																set_current_state(SliderStates::WAITING);
-																if (!current_stroke.empty())
-																{
-																	insert_in_map(current_stroke);
-																	current_stroke.clear();
-																}
-																is_pressed = false;
-																set_hightlight_color(SK_ColorDKGRAY);
-																return;
-															}
-															set_hightlight_color(SkColorSetARGB(255, 125, 0, 0));
-															auto previous_state = get_current_state();
-															auto current_state_local = previous_state;
+				if (interpreter.check(MOUSE_UNCLICK_LEFT_EVENT) && !current_stroke.empty())
+				{
+					std::cout << "unclickk\n";
+					insert_in_map(current_stroke);
+					current_stroke.clear();
+					return false;
+				}
 
-															auto offsetx = (float)arg.xoffset / reserved_slider_space.width();
-															auto offsety = (float)arg.yoffset / reserved_slider_space.width();
-															auto current_val = get_current_value();
-															current_val += (std::abs(offsetx) > std::abs(offsety)) ? offsetx : offsety;
-															set_current_value(current_val);
-															current_state_local = SliderStates::SCROLL;
-															if (previous_state != current_state_local)
-																interacted = true;
-															set_current_state(current_state_local);
-														},
-														[&](curan::ui::Unpress arg)
-														{
-															is_pressed = false;
-															// quick reject in case of outside the panel area
-															if (!get_position().contains(arg.xpos, arg.ypos))
-															{
-																set_current_state(SliderStates::WAITING);
-																if (!current_stroke.empty())
-																{
-																	insert_in_map(current_stroke);
-																	current_stroke.clear();
-																}
-																set_hightlight_color(SK_ColorDKGRAY);
-																return;
-															}
-															set_hightlight_color(SkColorSetARGB(255, 125, 0, 0));
-															if (!current_stroke.empty())
-															{
-																insert_in_map(current_stroke);
-																current_stroke.clear();
-															}
-															auto previous_state = get_current_state();
-															auto current_state_local = get_current_state();
-															if (reserved_slider_space.contains(arg.xpos, arg.ypos))
-																current_state_local = SliderStates::HOVER;
-															else
-																current_state_local = SliderStates::WAITING;
-															if (previous_state != current_state_local)
-																interacted = true;
-															set_current_state(current_state_local);
-														},
-														[&](curan::ui::Key arg)
-														{
-															if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
-															{
-																if (zoom_in)
-																	zoom_in.deactivate();
-																else
-																	zoom_in.activate();
-																return;
-															}
+				if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_CLICKED_LEFT))
+					is_pressed = true;
+				else
+					is_pressed = false;
 
-															if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS)
-															{
-																is_highlighting = !is_highlighting;
-																if (!current_stroke.empty())
-																{
-																	insert_in_map(current_stroke);
-																	current_stroke.clear();
-																}
-															}
-														},
-														[](curan::ui::ItemDropped arg) {
+				if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT | MOUSE_CLICKED_LEFT))
+				{
+					set_current_state(SliderStates::HOVER);
+					if (!is_highlighting)
+						current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
+					return true;
+				}
+				else if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT) && !current_stroke.empty())
+				{
+					insert_in_map(current_stroke);
+					current_stroke.clear();
+					return false;
+				}
 
-														}},
-						   sig);
-				return interacted;
+				if (interpreter.check(INSIDE_FIXED_AREA | MOUSE_MOVE_EVENT | MOUSE_CLICKED_LEFT))
+				{
+					set_current_state(SliderStates::PRESSED);
+					auto offset_x = ((float)xpos - reserved_slider_space.x()) / reserved_slider_space.width();
+					auto current_val = get_current_value();
+					current_val += offset_x - read_trigger();
+					trigger(offset_x);
+					set_current_value(current_val);
+				}
+
+				if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_CLICKED_LEFT_EVENT))
+				{
+					if (!is_highlighting)
+					{
+						if (current_stroke.normalized_recorded_points.size() == 1)
+						{
+							insert_in_map(current_stroke);
+							current_stroke.clear();
+						}
+						auto [xpos, ypos] = interpreter.last_press();
+						current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
+					}
+				}
+
+				if (interpreter.check(SCROLL_EVENT))
+				{
+					auto arg = std::get<curan::ui::Scroll>(sig);
+					auto offsetx = (float)arg.xoffset / reserved_slider_space.width();
+					auto offsety = (float)arg.yoffset / reserved_slider_space.width();
+					auto current_val = get_current_value();
+					current_val += (std::abs(offsetx) > std::abs(offsety)) ? offsetx : offsety;
+					set_current_value(current_val);
+					set_current_state(SliderStates::SCROLL);
+				}
+
+				if (interpreter.check(KEYBOARD_EVENT))
+				{
+					auto arg = std::get<curan::ui::Key>(sig);
+					if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
+					{
+						if (zoom_in)
+							zoom_in.deactivate();
+						else
+							zoom_in.activate();
+						return true;
+					}
+
+					if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS)
+					{
+						is_highlighting = !is_highlighting;
+						if (!current_stroke.empty())
+						{
+							insert_in_map(current_stroke);
+							current_stroke.clear();
+						}
+						return true;
+					}
+					return false;
+				}
+
+				return false;
 			};
 			return lamb;
 		};

@@ -143,61 +143,6 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 		}
 
 		return false;
-		/*
-		std::visit(utilities::overloaded{
-			[this,config](Empty arg) {
-
-			},
-			[this,&interacted,config](Move arg) {
-				auto previous_state = get_current_state();
-				auto current_state_local = get_current_state();
-				if (interacts(arg.xpos, arg.ypos)) {
-					if(previous_state != ButtonStates::PRESSED)
-						current_state_local = ButtonStates::HOVER;
-				}
-				else {
-					current_state_local = ButtonStates::WAITING;
-				}
-				if (previous_state != current_state_local)
-					interacted = true;
-				set_current_state(current_state_local);
-			},
-			[this,&interacted,config](Press arg) {
-				auto previous_state = get_current_state();
-				auto current_state_local = get_current_state();
-				if (interacts(arg.xpos,arg.ypos)) {
-					current_state_local = ButtonStates::PRESSED;	
-					for(const auto& localcall : callbacks_press)
-                		localcall(this,arg,config);				
-				}
-				else
-					current_state_local = ButtonStates::WAITING;
-				if (previous_state != current_state_local)
-					interacted = true;
-				set_current_state(current_state_local);
-			},
-			[this,config](Scroll arg) {;
-
-			},
-			[this,&interacted,config](Unpress arg) {
-				auto previous_state = get_current_state();
-				auto current_state_local = get_current_state();
-				if (interacts(arg.xpos, arg.ypos))
-					current_state_local = ButtonStates::HOVER;
-				else
-					current_state_local = ButtonStates::WAITING;
-				if (previous_state != current_state_local)
-					interacted = true;
-				set_current_state(current_state_local);
-			},
-			[this](Key arg) {
-
-			},
-			[this](ItemDropped arg) {;
-
-			}},
-			sig);
-			*/
 		};
 		
 	return lamb;

@@ -36,6 +36,8 @@ int main()
 
         ConfigDraw config{&page};
 
+        data_application.ptr_config = &config;
+
         std::atomic<bool> function_value = false;
 
         curan::utilities::Job job{"load files in backend",[&](){

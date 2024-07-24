@@ -35,8 +35,10 @@ struct Application
 
     bool is_first_point_being_defined = false;
     std::optional<Eigen::Matrix<double, 3, 1>> first_point;
+    std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> first_path;
     bool is_second_point_being_defined = false;
     std::optional<Eigen::Matrix<double, 3, 1>> second_point;
+    std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> second_path;
     bool is_third_point_being_defined = false;
     std::optional<Eigen::Matrix<double, 3, 1>> third_point;
 
@@ -49,9 +51,20 @@ struct Application
     std::optional<Eigen::Matrix<double, 3, 1>> final_first_point;
     std::optional<Eigen::Matrix<double, 3, 1>> final_second_point;
     std::optional<Eigen::Matrix<double, 3, 1>> final_third_point;
+
     std::mutex& mut;
 
-    void compute_point(const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config);
+    curan::ui::ConfigDraw* ptr_config = nullptr;
+
+    inline void clear_all_paths_and_points(){
+        first_point = std::nullopt;
+        first_path = std::nullopt;
+        second_point = std::nullopt;
+        second_path  = std::nullopt;
+        third_point = std::nullopt;
+    }
+
+    void compute_point(curan::ui::VolumetricMask* vol_mas,const curan::ui::directed_stroke& dir_stroke, curan::ui::ConfigDraw* config);
 
     Application(curan::ui::IconResources &in_resources, std::string path_to_load,std::mutex& mut);
 
