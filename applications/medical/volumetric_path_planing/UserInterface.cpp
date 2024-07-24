@@ -156,6 +156,7 @@ void Application::view_image_simple()
 		} });
 
     std::unique_ptr<Button> button2;
+    std::unique_ptr<Button> button6;
 
     switch (current_volume)
     {
@@ -173,6 +174,15 @@ void Application::view_image_simple()
 		    are_points_being_defined = !are_points_being_defined;
             std::cout << "----are_points_being_defined : " << ( are_points_being_defined? "true\n" : "false\n");
 		    point_selection(); });
+
+        button6 = Button::make("Registration ROI", resources);
+        button6->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+        button6->add_press_call([&](Button *button, Press press, ConfigDraw *config)
+                            {
+            are_points_being_defined = !are_points_being_defined;
+            is_roi_being_specified = !is_roi_being_specified;
+		    point_selection(); });
+
         break;
     case PanelType::RESAMPLED_VOLUME:
         button2 = Button::make("Define Trajectory", resources);
@@ -208,19 +218,13 @@ void Application::view_image_simple()
 			    config->stack_page->stack(create_volume_loader_page());
 		    } });
 
-    auto button6 = Button::make("Registration ROI", resources);
-    button6->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-    button6->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-                            {
-            are_points_being_defined = !are_points_being_defined;
-            is_roi_being_specified = !is_roi_being_specified;
-		    point_selection(); });
-
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    if (button2.get() != nullptr)
+    if (button2 && button6)
         *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5) << std::move(button6);
+    else if(button2)
+        *viwers_container << std::move(button) << std::move(button2) << std::move(button4) << std::move(button5);
     else
-        *viwers_container << std::move(button) << std::move(button4) << std::move(button5) << std::move(button6);
+        *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
 
     viwers_container->set_color(SK_ColorTRANSPARENT);
 
