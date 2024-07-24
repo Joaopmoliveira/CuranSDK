@@ -182,6 +182,22 @@ int main()
                 outputIt.Set(0);
         }
 
+        using WriterType = itk::ImageFileWriter<ImageType>;
+
+        {
+            auto writer = WriterType::New();
+            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/original_volume.mha");
+            writer->SetInput(data_application.map[ORIGINAL_VOLUME].get_volume());
+            writer->Update();
+        }
+
+        {
+            auto writer = WriterType::New();
+            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/masked_volume.mha");
+            writer->SetInput(masked_output_image);
+            writer->Update();
+        }
+
         return 0;
     }
     catch (const std::exception &e)
