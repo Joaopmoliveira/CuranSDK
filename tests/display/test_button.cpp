@@ -19,6 +19,7 @@ int main() {
 		};
 
 		auto button = Button::make("Touch!",resources);
+		button->set_click_color(SK_ColorCYAN);
 		SkRect rect = SkRect::MakeXYWH(50, 100, 300, 200);
 		button->set_position(rect);
 		button->compile();
@@ -36,9 +37,9 @@ int main() {
 			canvas->drawColor(SK_ColorWHITE);
 			caldraw(canvas);
 			glfwPollEvents();
-			auto signals = viewer->process_pending_signals();
-			if (!signals.empty())
-				calsignal(signals.back(),&config_draw);
+			//auto signals = viewer->process_pending_signals();
+			for(auto&& sig : viewer->process_pending_signals())
+				calsignal(sig,&config_draw);
 			bool val = viewer->swapBuffers();
 			if (!val)
 				std::cout << "failed to swap buffers\n";

@@ -1,6 +1,9 @@
 #include "userinterface/widgets/Button.h"
 #include "utils/Overloading.h"
 #include "userinterface/widgets/definitions/Interactive.h"
+
+#include <iostream>
+
 namespace curan {
 namespace ui {
 
@@ -108,62 +111,40 @@ callablefunction Button::call(){
 if(!compiled)
 	throw std::runtime_error("must compile the button before drawing operations");
 auto lamb = [this](Signal sig, ConfigDraw* config) {
-		bool interacted = false;
-		std::visit(utilities::overloaded{
-			[this,config](Empty arg) {
-
-			},
-			[this,&interacted,config](Move arg) {
-				auto previous_state = get_current_state();
-				auto current_state_local = get_current_state();
-				if (interacts(arg.xpos, arg.ypos)) {
-					if(previous_state != ButtonStates::PRESSED)
-						current_state_local = ButtonStates::HOVER;
-				}
-				else {
-					current_state_local = ButtonStates::WAITING;
-				}
-				if (previous_state != current_state_local)
-					interacted = true;
-				set_current_state(current_state_local);
-			},
-			[this,&interacted,config](Press arg) {
-				auto previous_state = get_current_state();
-				auto current_state_local = get_current_state();
-				if (interacts(arg.xpos,arg.ypos)) {
-					current_state_local = ButtonStates::PRESSED;	
-					for(const auto& localcall : callbacks_press)
-                		localcall(this,arg,config);				
-				}
-				else
-					current_state_local = ButtonStates::WAITING;
-				if (previous_state != current_state_local)
-					interacted = true;
-				set_current_state(current_state_local);
-			},
-			[this,config](Scroll arg) {;
-
-			},
-			[this,&interacted,config](Unpress arg) {
-				auto previous_state = get_current_state();
-				auto current_state_local = get_current_state();
-				if (interacts(arg.xpos, arg.ypos))
-					current_state_local = ButtonStates::HOVER;
-				else
-					current_state_local = ButtonStates::WAITING;
-				if (previous_state != current_state_local)
-					interacted = true;
-				set_current_state(current_state_local);
-			},
-			[this](Key arg) {
-
-			},
-			[this](ItemDropped arg) {;
-
-			}},
-			sig);
-			return interacted;
+		auto check_inside_fixed_area = [this](double x,double y){ 
+			auto widget_rect = get_position();
+			auto size = get_size();
+			SkRect drawable = size;
+			drawable.offsetTo(widget_rect.centerX()- drawable.width()/2.0f, widget_rect.centerY()- drawable.height() / 2.0f);
+			return drawable.contains(x,y); 
 		};
+		interpreter.process(check_inside_fixed_area,check_inside_fixed_area,sig);
+		
+		if(interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT_EVENT)){
+			set_current_state(ButtonStates::PRESSED);
+			for(const auto& localcall : callbacks_press)
+            	localcall(this,std::get<curan::ui::Press>(sig),config);		
+			return true;
+		}
+		
+		if(interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT)){
+			set_current_state(ButtonStates::PRESSED);
+			return true;
+		}
+		
+		if(interpreter.check(INSIDE_FIXED_AREA)){
+			set_current_state(ButtonStates::HOVER);
+			return false;
+		}
+		
+		if(interpreter.check(OUTSIDE_FIXED_AREA)){
+			set_current_state(ButtonStates::WAITING);
+			return false;
+		}
+
+		return false;
+		};
+		
 	return lamb;
 }
 

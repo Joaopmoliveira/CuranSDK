@@ -741,6 +741,7 @@ int inner_main_dual()
             std::cout << " " << index << ";\n";
         std::cout << "];\n";
     }
+    return 0;
 }
 
 int main()

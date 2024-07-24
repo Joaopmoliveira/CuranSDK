@@ -55,31 +55,7 @@ callablefunction TextBlob::call() {
 	if(!compiled)
 		throw std::runtime_error("must compile the button before drawing operations");
 	auto lamb = [this](Signal sig, ConfigDraw* config) {
-		bool interacted = false;
-		std::visit(utilities::overloaded{
-			[this](Empty arg) {
-
-			},
-			[this,&interacted](Move arg) {
-
-			},
-			[this,&interacted](Press arg) {
-
-			},
-			[this](Scroll arg) {;
-
-			},
-			[this,&interacted](Unpress arg) {
-
-			},
-			[this](Key arg) {
-
-			},
-			[this](ItemDropped arg) {;
-
-			} },
-			sig);
-		return interacted;
+		return false;
 	};
 	return lamb;
 }

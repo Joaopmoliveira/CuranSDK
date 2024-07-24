@@ -82,14 +82,22 @@ namespace curan
 		constexpr unsigned int Dimension = 3;
 
 		struct directed_stroke
-		{
+		{	
+			Eigen::Matrix<double,3,Eigen::Dynamic> point_in_image_coordinates;
 			std::optional<std::array<double,3>> point; 
 			Stroke stroke;
 			Direction direction;
+
+			directed_stroke(const Eigen::Matrix<double,3,Eigen::Dynamic>& in_points_in_image_coordinates, 
+							Stroke in_stroke , 
+							Direction in_direction) :  point_in_image_coordinates{in_points_in_image_coordinates},
+														stroke{in_stroke},
+														direction{in_direction}
+			{}
 		};
 
 		class VolumetricMask;
-		using pressedhighlighted_event = std::function<void(VolumetricMask*, ConfigDraw*, const std::optional<directed_stroke>&)>;
+		using pressedhighlighted_event = std::function<void(VolumetricMask*, ConfigDraw*, const directed_stroke&)>;
 
 		class VolumetricMask
 		{
@@ -352,6 +360,7 @@ namespace curan
 
 			VolumetricMask *volumetric_mask = nullptr;
 			std::vector<std::tuple<std::vector<SkPoint>,SkPath>> cached_polyheader_intersections;
+			std::vector<directed_stroke> pending_strokes_to_process;
 			curan::ui::PointCollection current_stroke;
 
 			SkRect background_rect;
@@ -384,6 +393,8 @@ namespace curan
 			SliderStates current_state = SliderStates::WAITING;
 			Direction direction = Direction::X;
 			SkPaint slider_paint;
+
+			SignalInterpreter interpreter;
 
 			void query_if_required(bool force_update);
 

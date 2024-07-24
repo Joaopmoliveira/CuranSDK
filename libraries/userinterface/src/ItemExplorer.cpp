@@ -173,6 +173,7 @@ callablefunction ItemExplorer::call(){
 	    throw std::runtime_error("must compile the button before drawing operations");
     auto lamb = [this](Signal sig, ConfigDraw* config) {
 		bool interacted = false;
+		
 		std::visit(utilities::overloaded{
 			[this,config](Empty arg) {
 

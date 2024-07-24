@@ -78,9 +78,7 @@ project has the following dependencies
 }
 ```
 
-Note that the rendering dependencies are still missing, this is because vcpkg still has a tiny bug 
-which is currently being solved in a commit from the team. (To solve this problem we use a super
-build arquitecture to achieve our goals)
+Now we could just go to the command line and install the dependencies as in
 
 ```sh
 ~path/development >> cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="~path/development/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>
@@ -88,19 +86,19 @@ build arquitecture to achieve our goals)
 ```
 
 And the project should just compile out of the box (this will take a LOOOOONG TIME to compile 
-because ITK and SKIA are huge). Reserve atleast 30Gb of memory for vcpkg to compile all the dependencies.
+because ITK and SKIA are huge). Reserve at least 30Gb of memory for vcpkg to compile all the dependencies.
 
 
 # Supported operating systems
 
-Althought the software was developed based on either opensource solutions which are compatible accross multiple operating systems, the build system, aka VCPKG, might only provide experimental support for obscure platforms. If you face any problem with vcpkg try to search online for custom solutions for your particular system. The officially supported operating systems are :
+Althought the software was developed based on open source solutions which are compatible accross multiple operating systems, the build system, aka VCPKG, might only provide experimental support for obscure platforms. If you face any problem with vcpkg try to search online for custom solutions for your particular system. The officially supported operating systems are :
 
 1. Windows 
 2. Ubuntu - Linux
 
 ## Integration with a proper IDE 
 
-Usualy my IDE of choice is either vscode or visual studio. I will prove the instructions for vscode.
+Usualy our IDE of choice is either vscode or visual studio. We prove the instructions for vscode.
 Follow the following steps 
 
 1. First install Git in your system it you do not have it installed yet.

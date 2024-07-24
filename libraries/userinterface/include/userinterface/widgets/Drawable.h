@@ -45,16 +45,6 @@ public:
 		size = insize;
 	}
 
-	inline bool interacts(double x, double y) {
-		SkRect drawable;
-		if (size.width() < 0.01f || size.height() < 0.01f)
-			drawable = widget_rect;
-		else
-			drawable = size;
-		drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
-		return (drawable.fLeft < x && drawable.fRight > x && drawable.fTop < y && drawable.fBottom > y) ? true : false;
-	}
-
 	virtual void framebuffer_resize(const SkRect& new_page_size);
 	virtual bool is_leaf();
 	virtual void compile() = 0;
