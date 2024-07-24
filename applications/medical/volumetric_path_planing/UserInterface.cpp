@@ -3,6 +3,7 @@
 #include "utils/Overloading.h"
 #include "LoadVolume.h"
 #include "utils/Overloading.h"
+#include "geometry/Polyheadra.h"
 
 uint_least8_t dicom_compliant_conversion[256] = {0 ,30 ,33 ,35 ,37 ,39 ,40 ,41 ,43 ,44 ,45 ,46 ,47 ,48 ,48 ,49 ,50 ,51 ,51 ,52 ,53 ,54 ,55 ,55 ,56 ,57 ,57 ,58 ,59 ,60 ,60 ,61 ,62 ,62 ,63 ,64 ,64 ,65 ,65 ,66 ,67 ,67 ,68 ,69 ,69 ,70 ,71 ,71 ,72 ,73 ,73 ,74 ,75 ,76 ,76 ,77 ,77 ,78 ,79 ,80 ,80 ,80 ,81 ,82 ,83 ,83 ,84 ,84 ,85 ,86 ,86 ,87 ,88 ,88 ,89 ,90 ,90 ,91 ,92 ,93 ,93 ,94 ,95 ,95 ,96 ,96 ,97 ,98 ,98 ,99 ,100 ,101 ,101 ,102 ,103 ,103 ,104 ,105 ,106 ,106 ,107 ,108 ,109 ,109 ,110 ,111 ,111 ,112 ,113 ,113 ,114 ,115 ,116 ,116 ,117 ,118 ,119 ,119 ,120 ,121 ,122 ,123 ,123 ,124 ,125 ,126 ,126 ,127 ,128 ,128 ,129 ,130 ,131 ,132 ,132 ,133 ,134 ,135 ,136 ,136 ,137 ,138 ,139 ,140 ,141 ,141 ,142 ,143 ,144 ,145 ,145 ,146 ,147 ,148 ,149 ,150 ,151 ,151 ,152 ,153 ,154 ,155 ,156 ,157 ,158 ,158 ,159 ,160 ,161 ,162 ,163 ,164 ,164 ,166 ,167 ,167 ,169 ,170 ,170 ,171 ,172 ,173 ,174 ,175 ,176 ,176 ,178 ,178 ,180 ,181 ,182 ,183 ,184 ,184 ,186 ,186 ,188 ,188 ,189 ,191 ,191 ,192 ,194 ,194 ,196 ,197 ,197 ,199 ,200 ,201 ,202 ,203 ,204 ,205 ,207 ,207 ,208 ,209 ,210 ,212 ,213 ,214 ,215 ,216 ,217 ,218 ,220 ,221 ,222 ,223 ,224 ,225 ,226 ,228 ,229 ,230 ,231 ,233 ,234 ,235 ,236 ,238 ,239 ,240 ,241 ,242 ,244 ,245 ,246 ,248 ,249 ,250 ,251 ,253 ,254 ,255};
 constexpr bool use_dicom_compliance = false;
@@ -17,26 +18,30 @@ constexpr bool use_dicom_compliance = false;
             ptr_config->stack_page->stack(warning_overlay("must select a single point, not a path"));
             return ;
         }
-
-        auto point_in_world_coordinates = dir_stroke.point_in_image_coordinates;
-
+        
         ImageType::IndexType local_index;
         ImageType::PointType itk_point_in_world_coordinates;
-        for(size_t col = 0; col < point_in_world_coordinates.cols() ; ++col){
-            local_index[0] = dir_stroke.point_in_image_coordinates(0,col);
-            local_index[1] = dir_stroke.point_in_image_coordinates(1,col);
-            local_index[2] = dir_stroke.point_in_image_coordinates(2,col);
+        Eigen::Matrix<double,3,2> min_max_coefficients = Eigen::Matrix<double,3,2>::Zero();
+        if(is_roi_being_specified){
+            min_max_coefficients.col(0) = dir_stroke.point_in_image_coordinates.colwise().minCoeff();
+            min_max_coefficients.col(1) = dir_stroke.point_in_image_coordinates.colwise().minCoeff();
+        }
+        else{
+            local_index[0] = dir_stroke.point_in_image_coordinates(0,0);
+            local_index[1] = dir_stroke.point_in_image_coordinates(1,0);
+            local_index[2] = dir_stroke.point_in_image_coordinates(2,0);
             vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
-            point_in_world_coordinates(0,col) = itk_point_in_world_coordinates[0];
-            point_in_world_coordinates(1,col) = itk_point_in_world_coordinates[1];
-            point_in_world_coordinates(2,col) = itk_point_in_world_coordinates[2];
+
+            min_max_coefficients(0,0) = itk_point_in_world_coordinates[0];
+            min_max_coefficients(1,0) = itk_point_in_world_coordinates[1];
+            min_max_coefficients(2,0) = itk_point_in_world_coordinates[2];
         }
 
         if(is_first_point_being_defined){
             if(is_roi_being_specified)
-                first_path = point_in_world_coordinates;
+                first_path = min_max_coefficients;
             else
-                first_point = point_in_world_coordinates.col(0);
+                first_point = min_max_coefficients.col(0);
             if(ptr_button_ac_point) 
                 ptr_button_ac_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -45,9 +50,9 @@ constexpr bool use_dicom_compliance = false;
         }
         else if(is_second_point_being_defined){
             if(is_roi_being_specified)
-                second_path = point_in_world_coordinates;
+                second_path = min_max_coefficients;
             else
-                second_point = point_in_world_coordinates.col(0);
+                second_point = min_max_coefficients.col(0);
             if(ptr_button_pc_point) 
                 ptr_button_pc_point->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -55,7 +60,7 @@ constexpr bool use_dicom_compliance = false;
                     .set_size(SkRect::MakeWH(200, 200));
         }
         else if(is_third_point_being_defined){
-            third_point = point_in_world_coordinates.col(0);
+            third_point = min_max_coefficients.col(0);
             if(ptr_button_midpoint) 
                 ptr_button_midpoint->set_click_color(SK_ColorGRAY)
                     .set_hover_color(SK_ColorCYAN)
@@ -396,147 +401,47 @@ constexpr bool use_dicom_compliance = false;
             if (config->stack_page != nullptr) config->stack_page->stack(success_overlay("generating geometry..."));
             curan::utilities::Job job{"resampling volume", [this, config]()
             {
-                if (!first_point || !second_point || !third_point)
+                if (!first_path || !second_path)
                 {
-                    std::string s = !first_point ? "1 " : (!second_point ? "2 " : ((!third_point) ? "3 " : " "));
+                    std::string s = !first_path ? "1 " : "2 ";
                     if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("points :"+s+" problematic"));
                     clear_all_paths_and_points();
                     return;
                 }
 
-                Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *second_point - *first_point;
-                if (orient_along_ac_pc.norm() < 1e-7)
-                {
-                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-2) vector, try different points"));
-                    clear_all_paths_and_points();
-                    return;
-                }
+                Eigen::Matrix<double,3,4> min_and_max_both_paths = Eigen::Matrix<double,3,4>::Zero();
+                min_and_max_both_paths.col(0) = (*first_path).col(0);
+                min_and_max_both_paths.col(1) = (*first_path).col(1);
+                min_and_max_both_paths.col(2) = (*second_path).col(0);
+                min_and_max_both_paths.col(3) = (*second_path).col(1);
+
+                Eigen::Matrix<double,3,1> min_coeff_all = min_and_max_both_paths.colwise().minCoeff();
+                Eigen::Matrix<double,3,1> max_coeff_all = min_and_max_both_paths.colwise().maxCoeff();
+
                 
-                orient_along_ac_pc.normalize();
-                Eigen::Matrix<double, 3, 1> orient_along_ac_midpoint = *third_point - *first_point;
-                
-                if (orient_along_ac_midpoint.norm() < 1e-7)
-                {
-                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("singular (1-3) vector, try different points"));
-                    clear_all_paths_and_points();
-                    return;
+
+                Eigen::Matrix<double,3,1> length = max_coeff_all - min_coeff_all;
+                length[0] /= map[current_volume].get_volume()->GetLargestPossibleRegion().GetSize()[0];
+                length[1] /= map[current_volume].get_volume()->GetLargestPossibleRegion().GetSize()[1];
+                length[2] /= map[current_volume].get_volume()->GetLargestPossibleRegion().GetSize()[2];
+                Eigen::Matrix<double,3,1> origin = min_coeff_all;
+                origin[0] /= map[current_volume].get_volume()->GetLargestPossibleRegion().GetSize()[0];
+                origin[1] /= map[current_volume].get_volume()->GetLargestPossibleRegion().GetSize()[1];
+                origin[2] /= map[current_volume].get_volume()->GetLargestPossibleRegion().GetSize()[2];
+
+                Eigen::Matrix<double,4,4> rotation_and_scalling_matrix = Eigen::Matrix<double,4,4>::Identity();
+                rotation_and_scalling_matrix(0,0) = length[0];
+                rotation_and_scalling_matrix(0,0) = length[0];
+                rotation_and_scalling_matrix(0,0) = length[0];
+                curan::geometry::Cube geom{1,1,1};
+                geom.transform(rotation_and_scalling_matrix);
+                map[current_volume].add_geometry(geom);
+                if (config->stack_page != nullptr) {
+                    config->stack_page->replace_last(success_overlay("generated geometry!"));
+                    are_points_being_defined = !are_points_being_defined;
+                    is_roi_being_specified = !is_roi_being_specified;
+                    point_selection();
                 }
-                orient_along_ac_midpoint.normalize();
-                Eigen::Matrix<double, 3, 1> orient_perpendic_to_ac_pc_ac_midline = orient_along_ac_pc.cross(orient_along_ac_midpoint);
-
-                if (orient_perpendic_to_ac_pc_ac_midline.norm() < 1e-7)
-                {
-                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("cross singular vector, try different points"));                         
-                    clear_all_paths_and_points();
-                    return;
-                }
-
-                orient_perpendic_to_ac_pc_ac_midline.normalize();
-
-                orient_along_ac_midpoint = orient_perpendic_to_ac_pc_ac_midline.cross(orient_along_ac_pc);
-
-                orient_along_ac_midpoint.normalize();
-
-                // we always use the original volume instead of the current volume,
-                // or else the reconstructed volume will always increase in size
-                auto input = map[PanelType::ORIGINAL_VOLUME].get_volume();
-
-                itk::Matrix<double, 3, 3> rotation_matrix;
-                rotation_matrix(0, 0) = orient_perpendic_to_ac_pc_ac_midline[0];
-                rotation_matrix(1, 0) = orient_perpendic_to_ac_pc_ac_midline[1];
-                rotation_matrix(2, 0) = orient_perpendic_to_ac_pc_ac_midline[2];
-
-                rotation_matrix(0, 1) = orient_along_ac_pc[0];
-                rotation_matrix(1, 1) = orient_along_ac_pc[1];
-                rotation_matrix(2, 1) = orient_along_ac_pc[2];
-
-                rotation_matrix(0, 2) = orient_along_ac_midpoint[0];
-                rotation_matrix(1, 2) = orient_along_ac_midpoint[1];
-                rotation_matrix(2, 2) = orient_along_ac_midpoint[2];
-
-                Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
-                Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
-                auto direction = input->GetDirection();
-                for (size_t col = 0; col < 3; ++col)
-                    for (size_t row = 0; row < 3; ++row)
-                    {
-                        original_eigen_rotation_matrix(row, col) = direction(row, col);
-                        eigen_rotation_matrix(row, col) = rotation_matrix(row, col);
-                    }
-
-                Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
-                ImageType::PointType itk_along_dimension_x;
-                ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
-                input->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
-                Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
-                ImageType::PointType itk_along_dimension_y;
-                ImageType::IndexType index_along_y{{0, (long long)input->GetLargestPossibleRegion().GetSize()[1], 0}};
-                input->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
-                Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
-                ImageType::PointType itk_along_dimension_z;
-                ImageType::IndexType index_along_z{{0, 0, (long long)input->GetLargestPossibleRegion().GetSize()[2]}};
-                input->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
-                Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
-                Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
-
-                BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
-                auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
-                using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
-                auto filter = FilterType::New();
-
-                using TransformType = itk::IdentityTransform<double, 3>;
-                auto transform = TransformType::New();
-
-                using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
-                auto interpolator = InterpolatorType::New();
-                filter->SetInterpolator(interpolator);
-                filter->SetDefaultPixelValue(100);
-                filter->SetTransform(transform);
-
-                filter->SetInput(input);
-                filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
-                filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
-                filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
-
-                for (size_t col = 0; col < 3; ++col)
-                    for (size_t row = 0; row < 3; ++row)
-                        rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
-
-                filter->SetOutputDirection(rotation_matrix);
-
-                try{
-                    filter->Update();
-                    auto output = filter->GetOutput();
-                    switch (current_volume)
-                    {
-                    case PanelType::ORIGINAL_VOLUME:
-                        map[PanelType::RESAMPLED_VOLUME].update_volume(output);
-                    break;
-                    case PanelType::RESAMPLED_VOLUME:
-                        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(output);
-                    break;
-                    case PanelType::TRAJECTORY_ORIENTED_VOLUME:
-                        map[PanelType::TRAJECTORY_ORIENTED_VOLUME].update_volume(output);
-                    break;
-                    default:
-                        if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failure to process volume"));
-                    break;
-                    }
-                    if (config->stack_page != nullptr) {
-                        config->stack_page->replace_last(success_overlay("generating geometry!"));
-                        are_points_being_defined = false;
-                        point_selection();
-                        if(current_volume==PanelType::RESAMPLED_VOLUME){
-                            final_first_point = first_point;
-                            final_second_point = second_point;
-                            final_third_point = third_point;
-                        }
-                    }
-                }
-                catch (...){
-                    if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC"));
-                }
-
                 clear_all_paths_and_points();
             }};
             pool->submit(job);

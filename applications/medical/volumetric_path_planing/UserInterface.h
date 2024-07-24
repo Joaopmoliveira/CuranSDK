@@ -35,10 +35,10 @@ struct Application
 
     bool is_first_point_being_defined = false;
     std::optional<Eigen::Matrix<double, 3, 1>> first_point;
-    std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> first_path;
+    std::optional<Eigen::Matrix<double, 3, 2>> first_path;
     bool is_second_point_being_defined = false;
     std::optional<Eigen::Matrix<double, 3, 1>> second_point;
-    std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> second_path;
+    std::optional<Eigen::Matrix<double, 3, 2>> second_path;
     bool is_third_point_being_defined = false;
     std::optional<Eigen::Matrix<double, 3, 1>> third_point;
 
