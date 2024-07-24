@@ -604,10 +604,9 @@ namespace curan
 				interpreter.process(check_inside_allocated_area, check_inside_fixed_area, sig);
 
 				is_pressed = false;
-				std::cout << "signal received!\n";
+
 				if (interpreter.check(OUTSIDE_ALLOCATED_AREA))
 				{
-					std::cout << "outside everything\n";
 					set_current_state(SliderStates::WAITING);
 					if (!current_stroke.empty())
 					{
@@ -623,7 +622,7 @@ namespace curan
 
 				if (interpreter.check(MOUSE_UNCLICK_LEFT_EVENT) && !current_stroke.empty())
 				{
-					std::cout << "unclickk\n";
+					set_current_state(SliderStates::WAITING);
 					insert_in_map(current_stroke);
 					current_stroke.clear();
 					return false;
@@ -634,23 +633,32 @@ namespace curan
 				else
 					is_pressed = false;
 
-				if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT | MOUSE_CLICKED_LEFT))
+				if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT | MOUSE_CLICKED_LEFT) && interpreter.check(OUTSIDE_FIXED_AREA) && get_current_state()!=SliderStates::SCROLL)
 				{
-					set_current_state(SliderStates::HOVER);
+					set_current_state(SliderStates::PRESSED);
 					if (!is_highlighting)
 						current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
 					return true;
 				}
-				else if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT) && !current_stroke.empty())
+				else if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT) && !current_stroke.empty() && interpreter.check(OUTSIDE_FIXED_AREA) && get_current_state()!=SliderStates::SCROLL)
 				{
+					set_current_state(SliderStates::WAITING);
 					insert_in_map(current_stroke);
 					current_stroke.clear();
 					return false;
+				} else if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT) && !current_stroke.empty() && interpreter.check(OUTSIDE_FIXED_AREA) && get_current_state()==SliderStates::SCROLL){
+					set_current_state(SliderStates::SCROLL);
+					auto offset_x = ((float)xpos - reserved_slider_space.x()) / reserved_slider_space.width();
+					auto current_val = get_current_value();
+					current_val += offset_x - read_trigger();
+					trigger(offset_x);
+					set_current_value(current_val);
+					return true;
 				}
 
 				if (interpreter.check(INSIDE_FIXED_AREA | MOUSE_MOVE_EVENT | MOUSE_CLICKED_LEFT))
 				{
-					set_current_state(SliderStates::PRESSED);
+					set_current_state(SliderStates::SCROLL);
 					auto offset_x = ((float)xpos - reserved_slider_space.x()) / reserved_slider_space.width();
 					auto current_val = get_current_value();
 					current_val += offset_x - read_trigger();
@@ -658,7 +666,7 @@ namespace curan
 					set_current_value(current_val);
 				}
 
-				if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_CLICKED_LEFT_EVENT))
+				if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_CLICKED_LEFT_EVENT) && interpreter.check(OUTSIDE_FIXED_AREA))
 				{
 					if (!is_highlighting)
 					{
@@ -669,6 +677,7 @@ namespace curan
 						}
 						auto [xpos, ypos] = interpreter.last_press();
 						current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
+						set_current_state(SliderStates::PRESSED);
 					}
 				}
 
@@ -685,6 +694,7 @@ namespace curan
 
 				if (interpreter.check(KEYBOARD_EVENT))
 				{
+					set_current_state(SliderStates::WAITING);
 					auto arg = std::get<curan::ui::Key>(sig);
 					if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
 					{
