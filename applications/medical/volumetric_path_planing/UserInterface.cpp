@@ -812,7 +812,7 @@ void Application::view_image_with_point_selection()
                 using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
                 auto interpolator = InterpolatorType::New();
                 filter->SetInterpolator(interpolator);
-                filter->SetDefaultPixelValue(100);
+                filter->SetDefaultPixelValue(0);
                 filter->SetTransform(transform);
 
                 filter->SetInput(input);
