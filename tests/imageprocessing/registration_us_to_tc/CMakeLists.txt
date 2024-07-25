@@ -171,3 +171,13 @@ utils
 ${ITK_LIBRARIES}
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
+
+add_executable(test_icp_mi_registration_forehead icp_mi_registration_forehead.cpp)
+
+target_compile_definitions(test_icp_mi_registration_forehead PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_icp_mi_registration_forehead
+PUBLIC
+utils
+${ITK_LIBRARIES}
+${OPERATING_SYSTEM_REQUIRMENTS}
+)
