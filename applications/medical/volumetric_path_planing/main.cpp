@@ -25,8 +25,9 @@ void load_all_files_in_directory(Application &app_data, curan::ui::ConfigDraw *d
 };
 
 template <typename TImage,typename InclusionPolicy>
-typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& policy,typename TImage::Pointer input)
+typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
 {
+    std::cout << "copying image\n";
     typename TImage::Pointer output = TImage::New();
     output->SetRegions(input->GetLargestPossibleRegion());
     output->SetDirection(input->GetDirection());
@@ -37,9 +38,10 @@ typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& policy,ty
     itk::ImageRegionIteratorWithIndex<TImage> outputIterator(output, output->GetLargestPossibleRegion());
 
     while (!inputIterator.IsAtEnd()){
-        if(policy(outputIt.GetIndex()[0],outputIt.GetIndex()[1],outputIt.GetIndex()[2]))
+        if(inclusion_policy((double)outputIterator.GetIndex()[0],(double)outputIterator.GetIndex()[1],(double)outputIterator.GetIndex()[2])){
             outputIterator.Set(inputIterator.Get());
-        else
+            std::cout << ".\n";
+        }else
             outputIterator.Set(0);
         ++inputIterator;
         ++outputIterator;
@@ -175,7 +177,9 @@ int main()
         auto evaluate_if_pixel_inside_mask = [&](double in_x, double in_y, double in_z)
         {
             for (const auto &boundary : internals)
-                if ((in_x > boundary[0] && in_x < boundary[3]) && (in_y > boundary[1] && in_y < boundary[4]) && (in_z > boundary[2] && in_z < boundary[5]))
+                if ((in_x > boundary[0] && in_x < boundary[3]) && 
+                    (in_y > boundary[1] && in_y < boundary[4]) &&
+                    (in_z > boundary[2] && in_z < boundary[5]))
                     return true;
             return false;
         };
