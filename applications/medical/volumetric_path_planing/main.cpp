@@ -27,7 +27,6 @@ void load_all_files_in_directory(Application &app_data, curan::ui::ConfigDraw *d
 template <typename TImage,typename InclusionPolicy>
 typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
 {
-    std::cout << "copying image\n";
     typename TImage::Pointer output = TImage::New();
     output->SetRegions(input->GetLargestPossibleRegion());
     output->SetDirection(input->GetDirection());
@@ -35,12 +34,11 @@ typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion
     output->Allocate();
 
     itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
-    itk::ImageRegionIteratorWithIndex<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
 
     while (!inputIterator.IsAtEnd()){
-        if(inclusion_policy((double)outputIterator.GetIndex()[0],(double)outputIterator.GetIndex()[1],(double)outputIterator.GetIndex()[2])){
+        if(inclusion_policy((double)(inputIterator.GetIndex()[0]),(double)(inputIterator.GetIndex()[1]),(double)(inputIterator.GetIndex()[2]))){
             outputIterator.Set(inputIterator.Get());
-            std::cout << ".\n";
         }else
             outputIterator.Set(0);
         ++inputIterator;
@@ -100,6 +98,8 @@ int main()
             auto end = std::chrono::high_resolution_clock::now();
             std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
         }
+
+        function_value = true;
 
         auto return_current_time_and_date = []()
         {
@@ -165,27 +165,30 @@ int main()
                 boundaries[4] = std::max((double)vert[1], boundaries[4]); //
                 boundaries[5] = std::max((double)vert[2], boundaries[5]);
             }
-            boundaries[0] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[0];
-            boundaries[1] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[1]; //
-            boundaries[2] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[2];
-            boundaries[3] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[0];
-            boundaries[4] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[1]; //
-            boundaries[5] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[2];
+            boundaries[0] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetLargestPossibleRegion().GetSize()[0];
+            boundaries[1] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetLargestPossibleRegion().GetSize()[1]; //
+            boundaries[2] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetLargestPossibleRegion().GetSize()[2];
+            boundaries[3] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetLargestPossibleRegion().GetSize()[0];
+            boundaries[4] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetLargestPossibleRegion().GetSize()[1]; //
+            boundaries[5] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetLargestPossibleRegion().GetSize()[2];
             internals.push_back(boundaries);
         }
 
+
         auto evaluate_if_pixel_inside_mask = [&](double in_x, double in_y, double in_z)
         {
-            for (const auto &boundary : internals)
+            for (const auto &boundary : internals){
                 if ((in_x > boundary[0] && in_x < boundary[3]) && 
                     (in_y > boundary[1] && in_y < boundary[4]) &&
-                    (in_z > boundary[2] && in_z < boundary[5]))
-                    return true;
+                    (in_z > boundary[2] && in_z < boundary[5])){
+                        return true;
+                    }
+                    
+            }
             return false;
         };
 
         ImageType::Pointer masked_output_image = DeepCopyWithInclusionPolicy<ImageType>(evaluate_if_pixel_inside_mask,data_application.map[ORIGINAL_VOLUME].get_volume());
-
         using WriterType = itk::ImageFileWriter<ImageType>;
 
         {
