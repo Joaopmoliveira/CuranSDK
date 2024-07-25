@@ -30,6 +30,7 @@ typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion
     typename TImage::Pointer output = TImage::New();
     output->SetRegions(input->GetLargestPossibleRegion());
     output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
     output->SetOrigin(input->GetOrigin());
     output->Allocate();
 
