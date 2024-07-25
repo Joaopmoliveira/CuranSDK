@@ -3,6 +3,7 @@
 #include "LoadVolume.h"
 #include <nlohmann/json.hpp>
 #include <time.h>
+#include "itkImageDuplicator.h"
 
 void load_all_files_in_directory(Application &app_data, curan::ui::ConfigDraw *drawing_data, std::atomic<bool> &stop_value, std::mutex &mut)
 {
@@ -23,21 +24,28 @@ void load_all_files_in_directory(Application &app_data, curan::ui::ConfigDraw *d
     }
 };
 
-template <typename TImage>
-void DeepCopy(typename TImage::Pointer input, typename TImage::Pointer output)
+template <typename TImage,typename InclusionPolicy>
+typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& policy,typename TImage::Pointer input)
 {
+    typename TImage::Pointer output = TImage::New();
     output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetOrigin(input->GetOrigin());
     output->Allocate();
 
-    itk::ImageRegionConstIterator<TImage> inputIterator(input, input->GetLargestPossibleRegion());
-    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+    itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIteratorWithIndex<TImage> outputIterator(output, output->GetLargestPossibleRegion());
 
-    while (!inputIterator.IsAtEnd())
-    {
-        outputIterator.Set(inputIterator.Get());
+    while (!inputIterator.IsAtEnd()){
+        if(policy(outputIt.GetIndex()[0],outputIt.GetIndex()[1],outputIt.GetIndex()[2]))
+            outputIterator.Set(inputIterator.Get());
+        else
+            outputIterator.Set(0);
         ++inputIterator;
         ++outputIterator;
     }
+
+    return  output;
 }
 
 int main()
@@ -125,7 +133,6 @@ int main()
         else
         {
             std::cout << "the points required to specify the trajectory \nwere not specified, please specify them" << std::endl;
-            return 1;
         }
 
         if (data_application.map[ORIGINAL_VOLUME].get_volume().IsNull())
@@ -136,9 +143,6 @@ int main()
 
         auto geometries = data_application.map[ORIGINAL_VOLUME].geometries();
 
-        ImageType::Pointer masked_output_image = ImageType::New();
-        DeepCopy<ImageType>(data_application.map[ORIGINAL_VOLUME].get_volume(), masked_output_image);
-
         // we are going to print the itk image whole and the masked image
         std::vector<std::array<double, 6>> internals;
         internals.reserve(geometries.size());
@@ -148,52 +152,48 @@ int main()
             boundaries[0] = std::numeric_limits<double>::max();  // min x - 0
             boundaries[1] = std::numeric_limits<double>::max();  // min y - 1
             boundaries[2] = std::numeric_limits<double>::max();  // min z - 2
-            boundaries[3] = -std::numeric_limits<double>::max(); // max x - 3 
+            boundaries[3] = -std::numeric_limits<double>::max(); // max x - 3
             boundaries[4] = -std::numeric_limits<double>::max(); // max y - 4
-            boundaries[5] = -std::numeric_limits<double>::max(); // max z - 5 
-            for (const auto &vert : geom.geometry.vertices)
-            {
+            boundaries[5] = -std::numeric_limits<double>::max(); // max z - 5
+            for (const auto &vert : geom.geometry.vertices){
                 boundaries[0] = std::min((double)vert[0], boundaries[0]);
-                boundaries[1] = std::min((double)vert[1], boundaries[1]);
+                boundaries[1] = std::min((double)vert[1], boundaries[1]); //
                 boundaries[2] = std::min((double)vert[2], boundaries[2]);
-                boundaries[0] = std::max((double)vert[0], boundaries[3]);
-                boundaries[1] = std::max((double)vert[1], boundaries[4]);
-                boundaries[2] = std::max((double)vert[2], boundaries[5]);
+                boundaries[3] = std::max((double)vert[0], boundaries[3]);
+                boundaries[4] = std::max((double)vert[1], boundaries[4]); //
+                boundaries[5] = std::max((double)vert[2], boundaries[5]);
             }
+            boundaries[0] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[0];
+            boundaries[1] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[1]; //
+            boundaries[2] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[2];
+            boundaries[3] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[0];
+            boundaries[4] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[1]; //
+            boundaries[5] *= data_application.map[ORIGINAL_VOLUME].get_volume()->GetRequestedRegion().GetSize()[2];
             internals.push_back(boundaries);
         }
 
-        auto evaluate_if_pixel_inside_mask = [&](double in_x, double in_y, double in_z){
-            for(const auto& boundary : internals){
-                if(in_x > boundary[0] && in_x < boundary[3] && in_y > boundary[1] && in_y < boundary[4] && in_z > boundary[2] && in_z < boundary[5])
+        auto evaluate_if_pixel_inside_mask = [&](double in_x, double in_y, double in_z)
+        {
+            for (const auto &boundary : internals)
+                if ((in_x > boundary[0] && in_x < boundary[3]) && (in_y > boundary[1] && in_y < boundary[4]) && (in_z > boundary[2] && in_z < boundary[5]))
                     return true;
-            }
             return false;
         };
 
-        using IteratorType = itk::ImageRegionIteratorWithIndex<ImageType>;
-        IteratorType outputIt( masked_output_image, masked_output_image->GetRequestedRegion() );
-
-        for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt){
-            ImageType::IndexType idx = outputIt.GetIndex();
-            if(!evaluate_if_pixel_inside_mask(idx[0]/masked_output_image->GetRequestedRegion().GetSize()[0],
-                                              idx[1]/masked_output_image->GetRequestedRegion().GetSize()[1],
-                                              idx[2]/masked_output_image->GetRequestedRegion().GetSize()[2]))
-                outputIt.Set(0);
-        }
+        ImageType::Pointer masked_output_image = DeepCopyWithInclusionPolicy<ImageType>(evaluate_if_pixel_inside_mask,data_application.map[ORIGINAL_VOLUME].get_volume());
 
         using WriterType = itk::ImageFileWriter<ImageType>;
 
         {
             auto writer = WriterType::New();
-            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/original_volume.mha");
+            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/original_volume.mha");
             writer->SetInput(data_application.map[ORIGINAL_VOLUME].get_volume());
             writer->Update();
         }
 
         {
             auto writer = WriterType::New();
-            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/masked_volume.mha");
+            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/masked_volume.mha");
             writer->SetInput(masked_output_image);
             writer->Update();
         }
