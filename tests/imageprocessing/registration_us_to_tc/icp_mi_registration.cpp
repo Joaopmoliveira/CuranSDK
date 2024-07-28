@@ -745,6 +745,9 @@ int main(int argc, char **argv)
     //Pointcloud downsampling percentage
     float downsampling_percentage = 0.01;
 
+    //Rotation threashold between icp and mi solution. This value is the angle of the rotation matrix between the 2 solutions in axis angle representation
+    const double rotation_threshold = 10.0; //in degrees
+
     using PixelType = float;
     using RegistrationPixelType = PixelType;
     constexpr unsigned int Dimension = 3;
@@ -1297,54 +1300,98 @@ int main(int argc, char **argv)
                                         full_runs.insert(std::end(full_runs),std::begin(paralel_solutions),std::end(paralel_solutions));          
                                     } 
 
-    size_t minimum_index = 0;
-    size_t current_index = 0;
-    double minimum_val = std::numeric_limits<double>::max();
-    for (const auto &possible_best_solution : full_runs){
-        if (minimum_val > std::get<0>(possible_best_solution)){
-            minimum_index = current_index;
-            minimum_val = std::get<0>(possible_best_solution);
+
+    //Sort MI solutions by optimizer value from lower (better) to higher
+    std::sort(full_runs.begin(), full_runs.end(),
+              [](const std::tuple<double, Eigen::Matrix4d, Eigen::Matrix4d> &a, const std::tuple<double, Eigen::Matrix4d, Eigen::Matrix4d> &b) {
+                  return std::get<0>(a) < std::get<0>(b);
+              });
+
+    //Lambda to extract rotation between the result from the icp and from the mi. Returns the angle of this rotatiton using angle axis representation
+    auto calc_rotation_difference = [](const Eigen::Matrix4d &mat1, const Eigen::Matrix4d &mat2) {
+        Eigen::Matrix3d rot1 = mat1.block<3, 3>(0, 0);
+        Eigen::Matrix3d rot2 = mat2.block<3, 3>(0, 0);
+        Eigen::Matrix3d R = (rot1.transpose() * rot2);
+        Eigen::AngleAxisd angleAxisDiff(R);
+        
+        //Tried to use euler angles but this causes problems, for example, dependeing on the direction cases were an angle of 5º between axis is returned with 175º ot -175º 
+        //or something like that so it is more convenient tu use angle axis representation for the rotation matrix for this use case
+        /*
+        double beta = (-std::asin(R(2, 0)))* 180.0 / pi;
+        double alpha = (std::atan2(R(2, 1) / std::cos(beta), R(2, 2) / std::cos(beta)))* 180.0 / pi;
+        double gamma = (std::atan2(R(1, 0) / std::cos(beta), R(0, 0) / std::cos(beta)))* 180.0 / pi;
+
+        std::cout << "Rotation about x-axis (alpha): " << alpha << " degrees\n";
+        std::cout << "Rotation about y-axis (beta): " << beta << " degrees\n";
+        std::cout << "Rotation about z-axis (gamma): " << gamma << " degrees\n";
+        */
+        return angleAxisDiff.angle() * 180.0 / pi;
+    };
+
+    //Iterate through the sorted solutions and find the best valid solution
+    Eigen::Matrix4d best_mi_matrix;
+    Eigen::Matrix4d best_starting_condition_matrix;
+    double best_optimizer_value = std::numeric_limits<double>::max();
+    bool valid_solution_found = false;
+    int count_discarded = 0;
+
+    for (const auto &possible_best_solution : full_runs) {
+        double optimizer_value = std::get<0>(possible_best_solution);
+        Eigen::Matrix4d mi_matrix = std::get<1>(possible_best_solution);
+        Eigen::Matrix4d starting_condition_matrix = std::get<2>(possible_best_solution);
+
+        double rotation_difference = calc_rotation_difference(best_transformation_icp*T_origin_moving.inverse()*Timage_origin_moving, mi_matrix*T_origin_moving.inverse()*Timage_origin_moving);
+
+        if (rotation_difference <= rotation_threshold) {
+            best_mi_matrix = mi_matrix;
+            best_optimizer_value = optimizer_value;
+            best_starting_condition_matrix = starting_condition_matrix;
+            valid_solution_found = true;
+            break;
         }
-        ++current_index;
+        ++count_discarded;
+        std::cout << count_discarded << " discarded solutions due to ICP-MI result disagreement. " << rotation_difference << " degrees is above the threashold setted at " << rotation_threshold << "." << std::endl;
     }
 
-    std::printf("Choosen cost: %.3f\n",minimum_val);
+    if (valid_solution_found) {
+        std::cout << "Best valid solution chosen with optimizer value: " << best_optimizer_value << std::endl;
+        std::cout << "Best estimated transform out of " << full_runs.size() << " is: \n" << best_mi_matrix << std::endl ;
+        auto finalTransform = best_mi_matrix;
+        std::cout << "Final transform (world frame): \n" << T_origin_fixed*finalTransform.inverse()*T_origin_moving.inverse() << std::endl;
+
+        //Write results
+        std::printf("\nWriting results...\n");
+        auto original_full_moving_transform = get_image_transform(pointer2fullmovingimage);
+        modify_image_with_transform(best_transformation_icp.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+        print_image_with_transform(pointer2movingimage,"moving_correct_icp.mha");
+
+        modify_image_with_transform(T_origin_fixed*best_transformation_icp.inverse()*T_origin_moving.inverse()*get_image_transform(pointer2fullmovingimage),pointer2fullmovingimage);
+        print_image_with_transform(pointer2fullmovingimage,"full_moving_correct_in_fixed_icp.mha");
+
+        modify_image_with_transform(finalTransform.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+        print_image_with_transform(pointer2movingimage,"moving_correct_mi.mha");
     
-    auto finalTransform = std::get<1>(full_runs[minimum_index]);
+        modify_image_with_transform(T_origin_fixed*finalTransform.inverse()*T_origin_moving.inverse()*original_full_moving_transform,pointer2fullmovingimage);
+        print_image_with_transform(pointer2fullmovingimage,"full_moving_correct_in_fixed_mi.mha");
 
-    std::cout << "Best estimated transform out of " << full_runs.size() << " is: \n" << std::get<1>(full_runs[minimum_index]) << std::endl ;
+        modify_image_with_transform(T_origin_fixed.inverse()*Timage_origin_fixed,pointer2fixedimage);
+        print_image_with_transform(pointer2fixedimage,"fixed_image_moved_to_origin.mha");
 
-    std::cout << "Final transform: \n" << T_origin_fixed*finalTransform.inverse()*T_origin_moving.inverse() << std::endl;
+        modify_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+        print_image_with_transform(pointer2movingimage,"moving_image_moved_to_origin.mha");
 
-    //Write results
-    std::printf("\nWriting results...\n");
-    auto original_full_moving_transform = get_image_transform(pointer2fullmovingimage);
-    modify_image_with_transform(best_transformation_icp.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct_icp.mha");
+        modify_image_with_transform(Timage_origin_fixed*Timage_origin_fixed.inverse()*T_origin_fixed* finalTransform.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+        print_image_with_transform(pointer2movingimage,"moving_correct_in_fixed_mi.mha");
 
-    modify_image_with_transform(T_origin_fixed*best_transformation_icp.inverse()*T_origin_moving.inverse()*get_image_transform(pointer2fullmovingimage),pointer2fullmovingimage);
-    print_image_with_transform(pointer2fullmovingimage,"full_moving_correct_in_fixed_icp.mha");
+        modify_image_with_transform(Timage_origin_fixed*Timage_origin_fixed.inverse()*T_origin_fixed* best_transformation_icp.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+        print_image_with_transform(pointer2movingimage,"moving_correct_in_fixed_icp.mha");
 
-    modify_image_with_transform(finalTransform.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct_mi.mha");
-   
-    modify_image_with_transform(T_origin_fixed*finalTransform.inverse()*T_origin_moving.inverse()*original_full_moving_transform,pointer2fullmovingimage);
-    print_image_with_transform(pointer2fullmovingimage,"full_moving_correct_in_fixed_mi.mha");
+        modify_image_with_transform(best_starting_condition_matrix.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
+        print_image_with_transform(pointer2movingimage,"moving_correct_initial_guess.mha");
 
-    modify_image_with_transform(T_origin_fixed.inverse()*Timage_origin_fixed,pointer2fixedimage);
-    print_image_with_transform(pointer2fixedimage,"fixed_image_moved_to_origin.mha");
-
-    modify_image_with_transform(T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_image_moved_to_origin.mha");
-
-    modify_image_with_transform(Timage_origin_fixed*Timage_origin_fixed.inverse()*T_origin_fixed* finalTransform.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct_in_fixed_mi.mha");
-
-    modify_image_with_transform(Timage_origin_fixed*Timage_origin_fixed.inverse()*T_origin_fixed* best_transformation_icp.inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct_in_fixed_icp.mha");
-
-    modify_image_with_transform(std::get<2>(full_runs[minimum_index]).inverse()*T_origin_moving.inverse()*Timage_origin_moving,pointer2movingimage);
-    print_image_with_transform(pointer2movingimage,"moving_correct_initial_guess.mha");
+    } else {
+        std::cout << "No solution satisfies the ICP-MI agreement threashold. Try chaning optimizer parameters or consider increasing the threashold." << std::endl;
+    }
 
     return 0;
 }

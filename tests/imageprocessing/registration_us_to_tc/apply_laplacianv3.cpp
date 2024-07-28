@@ -146,7 +146,7 @@ int main(int argc, char **argv)
         total_frequency += histogram->GetFrequency(i);
     }
 
-    auto target_frequency = 0.1 * total_frequency;
+    auto target_frequency = 0.15 * total_frequency;
 
     unsigned int cumulative_frequency = 0;
     unsigned int threshold_bin = 0;
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
     using ThresholdFilterType2 = itk::ThresholdImageFilter<LabelImageType>;
     ThresholdFilterType2::Pointer thresholdFilter2 = ThresholdFilterType2::New();
     thresholdFilter2->SetInput(relabelFilter->GetOutput());
-    thresholdFilter2->ThresholdOutside(1, 2); // Keep only the label 1 (largest component) for US and 5 for ultrasound
+    thresholdFilter2->ThresholdOutside(1, 1); // Keep only the label 1 (largest component) for US and 5 for ultrasound
     thresholdFilter2->SetOutsideValue(0);
     thresholdFilter2->Update();
 
