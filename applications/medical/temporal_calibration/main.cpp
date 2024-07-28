@@ -10,6 +10,21 @@
 
 #include <random>
 
+
+/*
+This executable requires:
+
+1. A file located at "CURAN_COPIED_RESOURCE_PATH"/plus_config/plus_spacial_calib_robot_xml/robot_image.xml"" 
+which is used to trigger the plus server
+
+And it generates:
+
+1. A modified file  "CURAN_COPIED_RESOURCE_PATH"/plus_config/plus_spacial_calib_robot_xml/robot_image.xml"
+with the new temporal calibration
+2. A file called temporal_calibration.json which contains information about the results of the executed temporal
+calibration 
+*/
+
 int main(int argc, char* argv[]) {
 	using namespace curan::ui;
 	

@@ -9,6 +9,18 @@
 
 #include <random>
 
+/*
+This executable requires:
+
+1. Temporal calibration has been performed on the robot
+which translates into a file called temporal calibration 
+with the date at which the calibration was performed
+
+And it generates a file called optimization_result 
+which contains the calibrated ultrasound pose with respect to the flange of the robot
+
+*/
+
 int main(int argc, char* argv[]) {
 	using namespace curan::ui;
 	auto shared_pool = curan::utilities::ThreadPool::create(4);
@@ -212,7 +224,7 @@ int main(int argc, char* argv[]) {
 	calibration_data["optimization_error"] = best_run.summary.final_cost;
 
 	// write prettified JSON to another file
-	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/optimization_result.json");
+	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/spatial_calibration.json");
 	o << calibration_data;
 	std::cout << calibration_data << std::endl;
 

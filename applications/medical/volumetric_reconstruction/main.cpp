@@ -27,6 +27,23 @@
 #include "imgui_stdlib.h"
 #include <map>
 
+/*
+This executable requires:
+
+1. Temporal calibration has been performed on the robot
+which translates into a file called temporal_calibration.json
+with the date at which the calibration was performed
+
+2. Spatial calibration has been performed on the robot
+which translates into a file called spatial_calibration.json
+with the date at which the calibration was performed
+
+And it outputs
+
+1. 
+
+*/
+
 using OutputPixelType = unsigned char;
 using OutputImageType = itk::Image<OutputPixelType, 3>;
 
@@ -799,7 +816,7 @@ int main(int argc, char **argv)
     app_pointer = &application_state;
     
     nlohmann::json calibration_data;
-    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/optimization_result.json");
+    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json");
 
     if(!in.is_open()){
         std::cout << "failure to open configuration file\n";

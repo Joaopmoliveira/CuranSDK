@@ -117,6 +117,7 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 	}
 #endif
 
+	
 	bool launch_all(const std::string &executable, bool all = true)
 	{
 		std::lock_guard<std::mutex> g{mut};
@@ -228,6 +229,7 @@ public:
 			.set_size(SkRect::MakeWH(300, 300));
 		button1->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
+			// 1 . check_if_pathplanning_arguments_are_valid();
 			if(!launch_all("VolumetricPathPlanning",false)){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
@@ -244,6 +246,7 @@ public:
 			.set_size(SkRect::MakeWH(300, 300));
 		button2->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
+			// 1 . check_if_temporalcalibration_arguments_are_valid();
 			if(!launch_all("TemporalCalibration")){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
@@ -260,6 +263,7 @@ public:
 			.set_size(SkRect::MakeWH(300, 300));
 		button3->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
+			// 1 . check_if_ultrasoundcalibration_arguments_are_valid();
 			if(!launch_all("Ultrasoundcalibration")){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
@@ -276,6 +280,7 @@ public:
 			.set_size(SkRect::MakeWH(300, 300));
 		button4->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
+			// 1 . check_if_realtimereconstructor_arguments_are_valid();
 			if(!launch_all("RealTimeReconstructor")){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
@@ -292,6 +297,7 @@ public:
 			.set_size(SkRect::MakeWH(300, 300));
 		button5->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
+			// 1 . check_if_intraoperative_arguments_are_valid();
 			if(!launch_all("InteroperativeNavigation")){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);

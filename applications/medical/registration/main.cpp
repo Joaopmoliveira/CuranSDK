@@ -110,7 +110,6 @@ public:
         auto optimizer = static_cast<OptimizerPointer>(object);
         TransformType::Pointer transform = TransformType::New();
         auto vals = optimizer->GetCurrentPosition();
-        // std::cout << vals << "\n";
         transform->SetParameters(optimizer->GetCurrentPosition());
         transform->SetFixedParameters(initialTransform->GetFixedParameters());
         TransformType::MatrixType matrix = transform->GetMatrix();
