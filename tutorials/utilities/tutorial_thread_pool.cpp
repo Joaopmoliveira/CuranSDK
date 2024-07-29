@@ -1,16 +1,11 @@
 /*
-Consider the following scenario, you have two threads, which both run simultaneously. You want to pass values from
-one thread to the other as fast as possible. First lets include the necessary header files for this experiment.
-
-Firt we include <iostream> to be able to print to the output stream
+Consider the following scenario, you want to parallelize a set of tasks. But because this parallelization 
+happens every so ofter, creating and destroyng a thread is an expensive task. Therefore we must preallocaate 
+all the threads we wish to use in the future, and then find a mecanism to post asyncrounously work into this 
+thread pool. 
 */
 
 #include <iostream>
-
-/*
-We include <thread> to be able to launch threads from our application
-*/
-#include <thread>
 
 /*
 We include <random> to be able to generate random numbers from our application
@@ -18,15 +13,20 @@ We include <random> to be able to generate random numbers from our application
 #include <random>
 
 /*
-Lastly we include the safequeue from curan
+Lastly we include the TheadPool from curan
 */
-#include "utils/SafeQueue.h"
+#include "utils/TheadPool.h"
 
 /*
-Now each thread will run one function called foo and bar. We pass the safe queue by reference to both functions 
+We have two functions in work work schedule.
+The first function is a reader that reads a large amount
+of values from somewhere and puts them inside a list.
+
+The second function takes a portion of this list and 
+performs some post-processing logic on it. 
 */
-int foo(curan::utilities::SafeQueue<double>& queue);
-int bar(curan::utilities::SafeQueue<double>& queue);
+int reader(curan::utilities::SafeQueue<double>& queue);
+int processor(curan::utilities::SafeQueue<double>& queue);
 
 /*
 we make this variable atomic to make sure that both threads manipulate the same variable in memory and not a cached value
@@ -38,7 +38,7 @@ Internally function bar will apply a filter to the passed type, in this case a d
 in this example will be simulated through a random number generator
 */
 
-int foo(curan::utilities::SafeQueue<double>& queue){
+int reader(curan::utilities::SafeQueue<double>& queue){
     
     std::random_device rd;  // Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()

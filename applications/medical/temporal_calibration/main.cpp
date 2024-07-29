@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 	if(processing->calibration_value){ // if the calibration was performed successefully then we can replace the temporal calibration in the xml file
 		const std::string device_id{"ROBOT"};
-    	switch(curan::utilities::modify_xml_field_in_place(CURAN_COPIED_RESOURCE_PATH"/plus_config/plus_spacial_calib_robot_xml/robot_image.xml","LocalTimeOffsetSec","Id",device_id,*processing->calibration_value,{"PlusConfiguration","DataCollection"})){
+    	switch(curan::utilities::modify_xml_field_in_place(CURAN_COPIED_RESOURCE_PATH"/plus_config/plus_spacial_calib_robot_xml/robot_image.xml","LocalTimeOffsetSec","Id",device_id,-(1e-3)*processing->calibration_value,{"PlusConfiguration","DataCollection"})){
         case curan::utilities::ErrorCode::SUCCESS:
 			return 0;
         break;
