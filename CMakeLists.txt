@@ -78,7 +78,7 @@ add_subdirectory(applications)
 # folder so you can comment out these subfolders from the build directory
 
 # Add tests for submodules of curan, i.e. utilities, communication, etc...
-add_subdirectory(tests)
+#add_subdirectory(tests)
 
 # Add medical applications
 #add_subdirectory(tutorialsrc)

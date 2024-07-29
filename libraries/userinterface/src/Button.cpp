@@ -123,7 +123,8 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 		if(interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT_EVENT)){
 			set_current_state(ButtonStates::PRESSED);
 			for(const auto& localcall : callbacks_press)
-            	localcall(this,std::get<curan::ui::Press>(sig),config);		
+				if(const auto& pval = std::get_if<curan::ui::Press>(&sig))
+            		localcall(this,*pval,config);		
 			return true;
 		}
 		

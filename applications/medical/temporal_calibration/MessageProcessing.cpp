@@ -672,7 +672,6 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	        plot_container->set_color(SK_ColorTRANSPARENT);
 	
             processor->config->stack_page->stack(Overlay::make(std::move(plot_container),SkColorSetARGB(10,125,125,125),false));
-            std::cout << "---------------------------------------" << std::endl;
             processor->calibration_finished.store(true);
     };
 

@@ -29,7 +29,6 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 {
 	static size_t identifier;
 	volatile bool in_use = false;
-	std::mutex mut;
 	boost::asio::io_context &asio_ctx;
 
 	std::unique_ptr<boost::process::child> child_process;
@@ -105,7 +104,7 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 	{
 		plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,
 															   std::string{"--config-file="} + std::string{CURAN_COPIED_RESOURCE_PATH "/plus_config/plus_spacial_calib_robot_xml/robot_image.xml"},
-															   "--verbose=1",
+															   "--verbose=4",
 															   boost::process::std_out > plus_out,
 															   plus_ec,
 															   asio_ctx,
@@ -120,7 +119,6 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 	
 	bool launch_all(const std::string &executable, bool all = true)
 	{
-		std::lock_guard<std::mutex> g{mut};
 		if (in_use)
 			return false;
 		in_use = true;
@@ -216,6 +214,7 @@ public:
 
 	~Application()
 	{
+		terminate_all();
 		asio_ctx.stop();
 	}
 
@@ -370,7 +369,6 @@ std::atomic<bool> signal_untriggered = true;
 
 void PendinAsyncData::terminate_all()
 {
-	std::lock_guard<std::mutex> g{mut};
 	if (!in_use)
 		return;
 	in_use = false;
