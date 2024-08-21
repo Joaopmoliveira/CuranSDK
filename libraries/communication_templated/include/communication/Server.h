@@ -15,12 +15,14 @@ namespace curan {
 
 		template<typename protocol>
 		class Server : public std::enable_shared_from_this<Server> {
+		    static_assert(std::is_invocable_v<decltype(protocol::start),std::shared_ptr<Client<protocol>>>, "the protocol must have a static start() function that receives a templated client");
+    		static_assert(is_type_complete_v<typename protocol::signature>, "the protocol must have signature type function that broadcasts the the protocol messages");
+
 		public:
 			struct Info {
 				asio::io_context& io_context;
-				callable connection_type;
 				unsigned short port;
-				Info(asio::io_context& io_context, callable connection_type, unsigned short port) :io_context{ io_context }, connection_type{ connection_type }, port{ port }, endpoint{ asio::ip::tcp::v4(),port } {
+				Info(asio::io_context& io_context, unsigned short port) :io_context{ io_context }, connection_type{ connection_type }, port{ port }, endpoint{ asio::ip::tcp::v4(),port } {
 
 				}
 
@@ -38,14 +40,13 @@ namespace curan {
 			std::list<std::shared_ptr<Client>> list_of_clients;
 
 			std::vector<callable> callables;
-			callable connection_type;
 
-			Server(asio::io_context& io_context,unsigned short port){
+			Server(Info& info) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), info.port) } {
 
 			}
 
-			Server(asio::io_context& io_context,unsigned short port, std::function<bool(std::error_code ec)> connection_callback){
-
+			Server(Info& info,std::function<bool(std::error_code ec)> connection_callback) : _cxt{ info.io_context }, acceptor_{ _cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), info.port) }  {
+	
 			}
 
 		public:
@@ -68,13 +69,20 @@ namespace curan {
 				return server;
 			}
 
-			~Server(){
+			~Server() {
+	acceptor_.close();
+}
 
-			}
+			void connect(callable c) {
+	if (connection_type.index() != c.index())
+		throw std::runtime_error("the supplied callback is not supported against the requested interface");
 
-			void connect(callable c){
-
-			}
+	std::lock_guard<std::mutex> g{mut};
+	callables.push_back(c);
+	for(auto & client : list_of_clients)
+		client->connect(c);
+	return;
+}
 
 			inline size_t number_of_clients(){
 				std::lock_guard<std::mutex> g{mut};
@@ -94,9 +102,18 @@ namespace curan {
 				acceptor_.cancel();
 			}
 
-			void write(std::shared_ptr<utilities::MemoryBuffer> buffer){
-
-			}
+			void write(std::shared_ptr<utilities::MemoryBuffer> buffer) {
+	std::lock_guard<std::mutex> g{mut};
+	if (list_of_clients.size()==0)
+		return;
+	list_of_clients.remove_if([buffer](std::shared_ptr<Client>& client){
+		if(!client->get_socket().sendable())
+			return true;
+		client->write(buffer);
+		return false;
+	}
+	);			
+}
 
 			inline asio::io_context& get_context(){
 				return _cxt;
@@ -104,13 +121,46 @@ namespace curan {
 
 		private:
 
-			void accept(){
+			void accept() {
+	acceptor_.async_accept(
+	[this,life_time_guaranteer = shared_from_this()](std::error_code ec, asio::ip::tcp::socket socket) {
+	if (!ec) {
+		utilities::cout << "Server received a client";
+		Client::ServerInfo info{ _cxt,connection_type,std::move(socket) };
+		auto client_ptr = Client::make(info);
+		std::lock_guard<std::mutex> g{mut};
+		for(auto & submitted_callables : callables)
+			client_ptr->connect(submitted_callables);
+		list_of_clients.push_back(client_ptr);
+		utilities::cout << "Server started listening for new client";
+	} else {
+		utilities::cout << "Server stopped listening for incoming connections\n";
+	}
+	accept();
+	});
+}
 
-			}
-
-			void accept(std::function<bool(std::error_code ec)> connection_callback){
-
-			}
+			void accept(std::function<bool(std::error_code ec)> connection_callback) {
+	acceptor_.async_accept(
+	[this,connection_callback, life_time_guaranteer = shared_from_this()](std::error_code ec, asio::ip::tcp::socket socket) {
+		if (!ec) {
+			Client::ServerInfo info{ _cxt,connection_type,std::move(socket) };
+			auto client_ptr = Client::make(info);
+			std::lock_guard<std::mutex> g{mut};
+			for(auto & submitted_callables : callables)
+				client_ptr->connect(submitted_callables);
+			bool all_ok = connection_callback(ec);
+			if (all_ok)
+				list_of_clients.push_back(client_ptr);
+			else
+				client_ptr->get_socket().close();
+		} else {
+			connection_callback(ec);
+		}
+		
+		accept(connection_callback);
+	});
+}
 		};
 	}
 }

@@ -68,9 +68,9 @@ Flag(const Flag&) = delete;
 Flag& operator=(const Flag&) = delete;
 
 
-inline void set(bool val){
+inline void trig(){
 	std::lock_guard g(mutex_);
-	flag_ = val;
+	flag_ = true;
 	cond_var_.notify_all();
 }
 
@@ -78,11 +78,7 @@ inline void set(bool val){
 inline void wait(){
 	std::unique_lock lock(mutex_);
 	cond_var_.wait(lock, [this]() { return flag_; });
-}
-
-inline bool value() {
-	std::lock_guard<std::mutex> g{mutex_};
-	return flag_;
+	flag_ = false;
 }
 
 private:

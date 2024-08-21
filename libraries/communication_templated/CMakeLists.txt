@@ -1,19 +1,12 @@
-add_library(communication STATIC
-src/Client.cpp 
-src/ProtoIGTL.cpp	
-src/ProtoFRI.cpp
-src/ProtoProcHandler.cpp
-src/Server.cpp	
-src/Socket.cpp	
-src/Protocols.cpp
+add_library(communicationtemplated STATIC
 src/SerialClient.cpp
 )
 
-target_include_directories(communication
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
+target_include_directories(communicationtemplated
+PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 
-target_link_libraries(communication PUBLIC
+target_link_libraries(communicationtemplated PUBLIC
 OpenIGTLink
 utils
 )

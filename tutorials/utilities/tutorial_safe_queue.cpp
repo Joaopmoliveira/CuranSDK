@@ -38,12 +38,15 @@ int foo(curan::utilities::SafeQueue<double>& queue){
     std::random_device rd;  // Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
     std::uniform_real_distribution<> dis(1.0, 2.0);
-
-    while(!queue.is_invalid()){ // we keep running while the queue is valid
+    size_t counter_until_invalidation = 0;
+    while(!queue.is_invalid() && counter_until_invalidation<5){ // we keep running while the queue is valid
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         double sensor_reading = dis(gen);
         queue.push(sensor_reading);  // this call internaly locks a mutex 
+        ++counter_until_invalidation;
     }
+    queue.invalidate();
+    return 0;
 }
 
 int bar(curan::utilities::SafeQueue<double>& queue){
@@ -57,7 +60,7 @@ in which case we can stop the application
 */
         auto value = queue.wait_and_pop();
         if(!value)
-            continue;
+            return 0;
         filter_value = 0.9*filter_value+0.1**value;
         std::printf("sensor: %.4f filtered: %.4f\n",*value,filter_value);
     }
@@ -77,5 +80,6 @@ int main(){
     queue.invalidate();
     bar_thread.join();
     foo_thread.join();
+    std::cout << "finishing threads\n";
     return 0;
 }

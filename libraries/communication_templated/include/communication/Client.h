@@ -11,26 +11,20 @@
 namespace curan {
 	namespace communication {
 		
-		/*
-		The client class has two constructors, one which is called
-		by the user, because its an handcrafted client and the other
-		is the constructor created by the server. Each client must
-		be associated with a protocol at compile time. When forwarding this
-		protocol, the arguments are prespecified. More on other examples.
-		*/
 		template<typename protocol>
 		class Client : public std::enable_shared_from_this<Client> {
+		    static_assert(std::is_invocable_v<decltype(protocol::start),std::shared_ptr<Client<protocol>>>, "the protocol must have a static start() function that receives a templated client");
+    		static_assert(is_type_complete_v<typename protocol::signature>, "the protocol must have signature type function that broadcasts the the protocol messages");
+
 		public:
 			struct Info {
 				asio::io_context& io_context;
-				callable connection_type;
 				asio::ip::tcp::resolver::results_type endpoints;
-				Info(asio::io_context& io_context, callable connection_type) :io_context{ io_context }, connection_type{ connection_type } {}
+				Info(asio::io_context& io_context) :io_context{ io_context }{}
 			};
 
 			struct ServerInfo {
 				asio::io_context& io_context;
-				callable connection_type;
 				asio::ip::tcp::socket socket;
 			};
 
@@ -39,11 +33,13 @@ namespace curan {
 			curan::communication::Socket socket;
 
 			std::vector<callable> callables;
-			callable connection_type;	
 
 			std::mutex mut;
 
-			Client(Info& info);
+			Client(Info& info) : _cxt{ info.io_context },
+socket{ _cxt,info.endpoints,info.connection_type},
+	connection_type{ info.connection_type } {
+};
 
 			template <class _Rep, class _Period>
 			Client(Info& info, const std::chrono::duration<_Rep, _Period>& deadline, std::function<void(std::error_code ec)> connection_callback) :
@@ -51,9 +47,10 @@ namespace curan {
 				socket{ _cxt,info.endpoints,info.connection_type,deadline,connection_callback },
 				connection_type{ info.connection_type } {};
 
-			Client(asio::io_context& io_context,asio::ip::tcp::socket socket){
-
-			}
+			Client(ServerInfo& info) : _cxt{ info.io_context },
+	socket{ _cxt,std::move(info.socket),info.connection_type },
+	connection_type{ info.connection_type } {
+};
 
 		public:
 
@@ -87,13 +84,18 @@ namespace curan {
 				return shared_from_this();
 			}
 
-			void connect(callable c){
+			void connect(callable c) {
+	if (connection_type.index() != c.index())
+		throw std::runtime_error("the connected interface does not match the client interface");
+	std::lock_guard<std::mutex> g{mut};
+	callables.push_back(std::move(c));
+	return;
+};
 
-			}
-
-			void write(std::shared_ptr<curan::utilities::MemoryBuffer> buffer){
-
-			}
+			void write(std::shared_ptr<utilities::MemoryBuffer> buffer) {
+	std::lock_guard<std::mutex> g{mut};
+	socket.post(std::move(buffer));
+};
 
 			inline curan::communication::Socket& get_socket() {
 				return socket;

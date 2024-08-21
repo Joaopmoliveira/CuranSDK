@@ -1,5 +1,6 @@
 add_subdirectory(utils)
 add_subdirectory(communication)
+add_subdirectory(communication_templated)
 add_subdirectory(userinterface)
 add_subdirectory(rendering)
 add_subdirectory(imageprocessing)

@@ -81,4 +81,4 @@ add_subdirectory(applications)
 #add_subdirectory(tests)
 
 # Add medical applications
-#add_subdirectory(tutorialsrc)
+add_subdirectory(tutorials)

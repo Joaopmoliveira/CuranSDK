@@ -18,15 +18,15 @@ We include <random> to be able to generate random numbers from our application
 #include <random>
 
 /*
-Lastly we include the safequeue from curan
+Lastly we include the Flag from curan
 */
-#include "utils/SafeQueue.h"
+#include "utils/Flag.h"
 
 /*
 Now each thread will run one function called foo and bar. We pass the safe queue by reference to both functions 
 */
-int foo(curan::utilities::SafeQueue<double>& queue);
-int bar(curan::utilities::SafeQueue<double>& queue);
+int foo(curan::utilities::Flag& queue);
+int bar(curan::utilities::Flag& queue);
 
 /*
 we make this variable atomic to make sure that both threads manipulate the same variable in memory and not a cached value
@@ -38,42 +38,37 @@ Internally function bar will apply a filter to the passed type, in this case a d
 in this example will be simulated through a random number generator
 */
 
-int foo(curan::utilities::SafeQueue<double>& queue){
-    
-    std::random_device rd;  // Will be used to obtain a seed for the random number engine
-    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-    std::uniform_real_distribution<> dis(1.0, 2.0);
-
-    while(variable_to_keep_threads_running){
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        queue.push(dis(gen));
+int foo(curan::utilities::Flag& to_tring_flag_bar,curan::utilities::Flag& to_wait_flag_foo){
+    for(size_t i = 0; i < 10 ; ++i){
+        to_tring_flag_bar.trig();
+        to_wait_flag_foo.wait();
+        std::cout << "push to screen" << std::endl;
     }
+    std::cout << "stopping foo" << std::endl;
+    return 0;
 }
 
-int bar(curan::utilities::SafeQueue<double>& queue){
-    double filter_value = 0.0;
-    while(variable_to_keep_threads_running){
-        auto value = queue.wait_and_pop();
-        if(!value)
-            continue;
-        filter_value = 0.9*filter_value+0.1**value;
-        std::printf("sensor: %.4f filtered: %.4f\n",*value,filter_value);
+int bar(curan::utilities::Flag& to_wait_flag_bar,curan::utilities::Flag& to_trig_flag_foo){
+    for(size_t i = 0; i < 10 ; ++i){
+        to_wait_flag_bar.wait();
+        std::cout << "priting to screen" << std::endl;
+        to_trig_flag_foo.trig();
     }
+    std::cout << "stopping bar" << std::endl;
+    return 0;
 }
 
-/*
-The safe queue guarantees that acess to the internal queue is always protected by a mutex, thus we cannot put a value and read it simultaneously. This would be undefined behavior
-*/
 
 int main(){
-    curan::utilities::SafeQueue<double> queue;
-
-    std::thread foo_thread{[&](){foo(queue);}};
-    std::thread bar_thread{[&](){bar(queue);}};
+    curan::utilities::Flag flag_bar;
+    curan::utilities::Flag flag_foo;
+    std::thread foo_thread{[&](){foo(flag_bar,flag_foo);}};
+    std::thread bar_thread{[&](){bar(flag_bar,flag_foo);}};
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
     variable_to_keep_threads_running = false;
     bar_thread.join();
     foo_thread.join();
-    
+    std::cout << "stopping threads" << std::endl;
+    return 0;
 }
