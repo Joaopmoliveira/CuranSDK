@@ -116,11 +116,7 @@ ImageTesting update_texture(ImageTesting image, float value){
 void foo(unsigned short port,asio::io_context& cxt) {
 	using namespace curan::communication;
 	try {
-        std::cout << "Server starting\n";
-		interface_igtl igtlink_interface;
-		Server::Info construction{ cxt,igtlink_interface ,port };
-
-		auto server = Server::make(construction);
+		auto server = Server<protocols::igtlink>::make(cxt,port);
 
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
