@@ -133,7 +133,7 @@ namespace curan
 						}
 						else
 						{
-							utilities::cout << "Server stopped listening for incoming connections\n";
+							throw std::runtime_error("cannot wait for client");
 						}
 						accept();
 					});

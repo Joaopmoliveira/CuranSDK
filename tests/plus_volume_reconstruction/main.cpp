@@ -136,7 +136,7 @@ void connect(curan::renderable::Window& window,asio::io_context& io_context,Shar
     try{
         unsigned short port = 18944;
 	    asio::ip::tcp::resolver resolver(io_context);
-	    auto client = curan::communication::Client<protocols::igtlink>::make( io_context , resolver.resolve("localhost", std::to_string(port)));
+	    auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make( io_context , resolver.resolve("localhost", std::to_string(port)));
         
 	    client->connect([&](size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val)
         {
