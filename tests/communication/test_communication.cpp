@@ -39,10 +39,7 @@ void GetRandomTestMatrix(igtl::Matrix4x4& matrix)
 void foo(asio::io_context& cxt, unsigned short port) {
 	using namespace curan::communication;
 	try {
-		interface_igtl igtlink_interface;
-		Server::Info construction{ cxt,igtlink_interface ,port };
-
-		auto server = Server::make(construction);
+		auto server = Server<protocols::igtlink>::make(cxt ,port );
 
 		igtl::TimeStamp::Pointer ts;
 		ts = igtl::TimeStamp::New();
@@ -115,12 +112,8 @@ int main() {
 			foo(io_context, port);
 		};
 		std::thread laucher(lauchfunctor);
-		interface_igtl igtlink_interface;
-		Client::Info construction{ io_context,igtlink_interface };
 		asio::ip::tcp::resolver resolver(io_context);
-		auto endpoints = resolver.resolve("localhost", std::to_string(port));
-		construction.endpoints = endpoints;
-		auto client = Client::make(construction);
+		auto client = Client<curan::communication::protocols::igtlink>::make(io_context,resolver.resolve("localhost", std::to_string(port)));
 		client->connect(bar);
 		io_context.run();
 		curan::utilities::cout << "stopped running";

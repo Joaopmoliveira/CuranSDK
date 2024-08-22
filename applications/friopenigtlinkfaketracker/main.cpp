@@ -50,7 +50,7 @@ void GetRobotConfiguration(const curan::robotic::WrappedState& wrapped,igtl::Mat
 	return;
 }
 
-void start_tracking(std::shared_ptr<curan::communication::Server> server, curan::utilities::Flag& flag, AtomicState& shared_state)
+void start_tracking(std::shared_ptr<curan::communication::Server<curan::communication::protocols::igtlink>> server, curan::utilities::Flag& flag, AtomicState& shared_state)
 {
 	try
 	{
@@ -121,7 +121,7 @@ void GetRobotConfiguration(std::shared_ptr<curan::communication::FRIMessage> &me
 	}
 }
 
-void start_joint_tracking(std::shared_ptr<curan::communication::Server> server, curan::utilities::Flag& flag, AtomicState& shared_state)
+void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::communication::protocols::fri>> server, curan::utilities::Flag& flag, AtomicState& shared_state)
 {
 	asio::io_context &in_context = server->get_context();
 	
@@ -177,12 +177,10 @@ int main(int argc, char *argv[])
 		specification.name = std::string(argv[1]);
 
 		unsigned short port = 50000;
-		curan::communication::interface_igtl igtlink_interface;
-		curan::communication::Server::Info construction{context, igtlink_interface, port};
-		auto server = curan::communication::Server::make(construction);
+		auto server = curan::communication::Server<curan::communication::protocols::igtlink>::make(context, port);
 		curan::utilities::Flag state_flag;
 		state_flag.set(false);
-		curan::communication::interface_igtl callme = [&](const size_t &custom, const std::error_code &err, igtl::MessageBase::Pointer pointer)
+		auto callme = [&](const size_t &custom, const std::error_code &err, igtl::MessageBase::Pointer pointer)
 		{
 			if (err)
 			{
@@ -245,9 +243,7 @@ int main(int argc, char *argv[])
 
 		unsigned short port_fri = 50010;
 
-		curan::communication::interface_fri fri_interface;
-		curan::communication::Server::Info construction_joints{context, fri_interface, port_fri};
-		auto server_joints = curan::communication::Server::make(construction_joints);
+		auto server_joints = curan::communication::Server<curan::communication::protocols::fri>::make(context, port_fri);
 
 		std::thread thred_joint{[&](){ start_joint_tracking(server_joints, state_flag, shared_state);}};
 

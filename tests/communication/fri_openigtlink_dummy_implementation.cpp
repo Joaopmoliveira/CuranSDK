@@ -16,9 +16,7 @@ void signal_handler(int signal){
 
 int server_function(){
     try{
-    curan::communication::interface_fri fri_interface;
-	curan::communication::Server::Info construction_joints{ io_context,fri_interface ,port };
-	auto server_joints = curan::communication::Server::make(construction_joints);
+	auto server_joints = curan::communication::Server<curan::communication::protocols::fri>::make( io_context ,port );
     double counter = 0.0;
     while(!io_context.stopped()){
         std::shared_ptr<curan::communication::FRIMessage> message = std::make_shared<curan::communication::FRIMessage>();
@@ -68,12 +66,8 @@ int main(){
     std::signal(SIGINT, signal_handler);
     std::thread server_thread{server_function};
     std::thread parser{utilities_parser};
-    curan::communication::interface_fri fri_interface;
-	curan::communication::Client::Info construction_joints{io_context,fri_interface};
     asio::ip::tcp::resolver resolver(io_context);
-	auto endpoints = resolver.resolve("localhost", std::to_string(port));
-	construction_joints.endpoints = endpoints;
-	auto client_joints = curan::communication::Client::make( construction_joints );
+	auto client_joints = curan::communication::Client<curan::communication::protocols::fri>::make( io_context ,resolver.resolve("localhost", std::to_string(port)));
     client_joints->connect(client_callback);
 
     std::shared_ptr<curan::communication::FRIMessage> message = std::make_shared<curan::communication::FRIMessage>();

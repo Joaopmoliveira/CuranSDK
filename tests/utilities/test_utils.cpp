@@ -1,4 +1,4 @@
-#include "utils/Flag.h"
+#include "utils/Semaphore.h"
 #include "utils/Job.h"
 #include "utils/Logger.h"
 #include "utils/TheadPool.h"
@@ -14,15 +14,13 @@ details!
 */
 
 int test_shared_flag(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) {
-	curan::utilities::Flag flag;
-	flag.set(false);
-
+	curan::utilities::Semaphore flag;
 	constexpr int number_of_min_miliseconds = 600;
 
 	auto function1 = [&flag, number_of_min_miliseconds]() {
 		auto duration = std::chrono::milliseconds(number_of_min_miliseconds);
 		std::this_thread::sleep_for(duration);
-		flag.set(true);
+		flag.trig();
 	};
 
 	auto function2 = [&flag]() {
@@ -49,10 +47,9 @@ int test_shared_flag(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) 
 
 int test_job_and_thread_pool(std::shared_ptr<curan::utilities::ThreadPool> shared_pool) {
 	using namespace curan::utilities;
-	curan::utilities::Flag flag1;
-	flag1.set(false);
-	curan::utilities::Flag flag2;
-	flag2.set(false);
+	curan::utilities::Semaphore flag1;
+
+	curan::utilities::Semaphore flag2;
 
 	curan::utilities::Job job1{"This is a test to make sure that the thread pool works",[&]() {
 		flag1.wait();
@@ -89,11 +86,11 @@ int test_job_and_thread_pool(std::shared_ptr<curan::utilities::ThreadPool> share
 	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected 4) \n";
 	std::cout << message;
-	flag1.set(true);
+	flag1.trig();
 	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4)\n ";
 	std::cout << message;
-	flag2.set(true);
+	flag2.trig();
 	shared_pool->get_number_tasks(number_of_tasks, number_of_tasks_in_queue);
 	message = "Number of tasks (pending + execution): (" + std::to_string(number_of_tasks) + " + " + std::to_string(number_of_tasks_in_queue) + ") (expected <4) \n";
 	std::cout << message;

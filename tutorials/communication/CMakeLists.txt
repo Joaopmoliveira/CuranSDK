@@ -1,5 +1,5 @@
 add_executable(test_communication_templated main.cpp)
 
 target_link_libraries(test_communication_templated PUBLIC
-communicationtemplated
+communication
 )

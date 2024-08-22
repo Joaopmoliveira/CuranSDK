@@ -55,22 +55,22 @@ int main(){
 
 */
 
-class Flag
+class Semaphore
 {
 public:
 
-Flag() : flag_{ false } {}
+Semaphore() : flag_{ false } {}
 
-Flag(bool var) : flag_{ var } {}
+Semaphore(bool var) : flag_{ var } {}
 
-Flag(const Flag&) = delete;
+Semaphore(const Semaphore&) = delete;
 
-Flag& operator=(const Flag&) = delete;
+Semaphore& operator=(const Semaphore&) = delete;
 
 
-inline void set(bool val){
+inline void trig(){
 	std::lock_guard g(mutex_);
-	flag_ = val;
+	flag_ = true;
 	cond_var_.notify_all();
 }
 
@@ -78,11 +78,7 @@ inline void set(bool val){
 inline void wait(){
 	std::unique_lock lock(mutex_);
 	cond_var_.wait(lock, [this]() { return flag_; });
-}
-
-inline bool value() {
-	std::lock_guard<std::mutex> g{mutex_};
-	return flag_;
+	flag_ = false;
 }
 
 private:

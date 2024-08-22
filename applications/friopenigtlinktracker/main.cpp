@@ -53,7 +53,7 @@ struct PlusSpecification
 	std::string name;
 } specification;
 
-void start_tracking(std::shared_ptr<curan::communication::Server> server,curan::robotic::RobotLBR& lbr,std::atomic<bool>& server_has_connections)
+void start_tracking(std::shared_ptr<curan::communication::Server<curan::communication::protocols::igtlink>> server,curan::robotic::RobotLBR& lbr,std::atomic<bool>& server_has_connections)
 {
 	try
 	{
@@ -114,7 +114,7 @@ void start_tracking(std::shared_ptr<curan::communication::Server> server,curan::
 	}
 }
 
-void start_joint_tracking(std::shared_ptr<curan::communication::Server> server,curan::robotic::RobotLBR& lbr)
+void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::communication::protocols::fri>> server,curan::robotic::RobotLBR& lbr)
 {
 	asio::io_context &in_context = server->get_context();
 
@@ -182,11 +182,9 @@ int main(int argc, char *argv[])
 		std::cout << "Outputing information with delay :" << specification.framerate << std::endl;
 
 		unsigned short port = 50000;
-		curan::communication::interface_igtl igtlink_interface;
-		curan::communication::Server::Info construction{context, igtlink_interface, port};
-		auto server = curan::communication::Server::make(construction);
+		auto server = curan::communication::Server<curan::communication::protocols::igtlink>::make(context, port);
 		std::atomic<bool> server_has_connections = false;
-		curan::communication::interface_igtl callme = [&](const size_t &custom, const std::error_code &err, igtl::MessageBase::Pointer pointer)
+		auto callme = [&](const size_t &custom, const std::error_code &err, igtl::MessageBase::Pointer pointer)
 		{
 			if (err)
 			{
@@ -239,9 +237,7 @@ int main(int argc, char *argv[])
 
 		unsigned short port_fri = 50010;
 
-		curan::communication::interface_fri fri_interface;
-		curan::communication::Server::Info construction_joints{context, fri_interface, port_fri};
-		auto server_joints = curan::communication::Server::make(construction_joints);
+		auto server_joints = curan::communication::Server<curan::communication::protocols::fri>::make(context, port);
  
 		std::thread thred_joint{[&]()
 		{

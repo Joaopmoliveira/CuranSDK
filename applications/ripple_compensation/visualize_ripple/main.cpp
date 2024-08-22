@@ -5,7 +5,6 @@
 #include <iostream>
 #include <thread>
 #include "utils/Logger.h"
-#include "utils/Flag.h"
 #include "utils/SafeQueue.h"
 
 #include "robotutils/LBRController.h"
@@ -103,7 +102,9 @@ void inter(curan::robotic::RobotLBR& client, vsg::CommandBuffer &cb)
 	ImGui::End();
 }
 
-void robot_control(curan::robotic::RobotLBR& client, curan::utilities::Flag &flag)
+using Flag = std::atomic<bool>;
+
+void robot_control(curan::robotic::RobotLBR& client, Flag &flag)
 {
 	try
 	{
@@ -112,7 +113,7 @@ void robot_control(curan::robotic::RobotLBR& client, curan::utilities::Flag &fla
 		KUKA::FRI::ClientApplication app(connection, client);
 		app.connect(DEFAULT_PORTID, NULL);
 		bool success = true;
-		while (success && flag.value())
+		while (success && flag)
 			success = app.step();
 		app.disconnect();
 		return;
@@ -130,8 +131,7 @@ int main(int argc, char *argv[])
 	// Install a signal handler
 	std::signal(SIGINT, signal_handler);
 
-	curan::utilities::Flag robot_flag;
-	robot_flag.set(true);
+	Flag robot_flag = true;
 	std::unique_ptr<curan::robotic::HandGuidance> handguinding_controller = std::make_unique<curan::robotic::HandGuidance>();
 	curan::robotic::RobotLBR client{handguinding_controller.get(),"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
 
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 
 	window.run();
 
-	robot_flag.set(false);
+	robot_flag = false;
 	thred_robot_control.join();
 	return 0;
 }

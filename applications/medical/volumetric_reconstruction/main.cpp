@@ -58,8 +58,7 @@ auto return_current_time_and_date = []()
     return ss.str();
 };
 
-class RobotState
-{
+class RobotState{
     std::atomic<bool> commit_senpuko = false;
     std::atomic<bool> f_record_frame = false;
     std::atomic<bool> f_regenerate_integrated_reconstructor_frame = false;
@@ -740,12 +739,8 @@ bool process_joint_message(RobotState &state, const size_t &protocol_defined_val
 
 int communication(RobotState &state, asio::io_context &context)
 {
-    curan::communication::interface_igtl igtlink_interface;
-    curan::communication::Client::Info construction{context, igtlink_interface};
     asio::ip::tcp::resolver resolver(context);
-    auto endpoints = resolver.resolve("localhost", std::to_string(18944));
-    construction.endpoints = endpoints;
-    auto client = curan::communication::Client::make(construction);
+    auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(context,resolver.resolve("localhost", std::to_string(18944)));
 
     auto lam = [&](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val)
     {
@@ -762,12 +757,8 @@ int communication(RobotState &state, asio::io_context &context)
     client->connect(lam);
     std::cout << "connecting to client\n";
     
-    curan::communication::interface_fri fri_interface;
-    curan::communication::Client::Info fri_construction{context, fri_interface};
     asio::ip::tcp::resolver fri_resolver(context);
-    auto fri_endpoints = fri_resolver.resolve("172.31.1.148", std::to_string(50010));
-    fri_construction.endpoints = fri_endpoints;
-    auto fri_client = curan::communication::Client::make(fri_construction);
+    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context,fri_resolver.resolve("172.31.1.148", std::to_string(50010)));
 
     auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
     {

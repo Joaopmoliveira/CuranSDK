@@ -5,14 +5,15 @@
 namespace curan {
 namespace communication {
 namespace protocols {
-namespace igtlink {
-namespace implementation {
+namespace igtlinkimplementation {
 
-IgtlinkClientConnection::IgtlinkClientConnection(std::shared_ptr<Client> supplied_owner) : owner{ supplied_owner }
+IgtlinkClientConnection::IgtlinkClientConnection(std::shared_ptr<Client<igtlink>> supplied_owner) : owner{ supplied_owner }
 {
 }
 
-void read_header_first_time(IgtlinkClientConnection val) {
+}
+
+void igtlink::read_header_first_time(igtlinkimplementation::IgtlinkClientConnection val) {
 	val.header_to_receive = igtl::MessageHeader::New();
 	val.header_to_receive->InitPack();
 	assert(val.header_to_receive->GetPackPointer()!=nullptr);
@@ -23,20 +24,20 @@ void read_header_first_time(IgtlinkClientConnection val) {
 		if (!ec) {
 			read_body(val, ec);
 		} else {
-			val.owner->transverse_callables<interface_igtl>(0, ec, val.message_to_receive);
+			val.owner->transverse_callables(0, ec, val.message_to_receive);
 			val.owner->get_socket().close();
 		}				
 		}
 	);
 }
 
-void read_header(IgtlinkClientConnection val, std::error_code ec) {
+void igtlink::read_header(igtlinkimplementation::IgtlinkClientConnection val, std::error_code ec) {
 	//we have a message fully unpacked in memory that we must broadcast to all
 	//listeners of the interface. We do this by calling the templated broadcast method
 	size_t temp = 0;
 	assert(val.message_to_receive.IsNotNull());
 
-	val.owner->transverse_callables<interface_igtl>(temp, ec, val.message_to_receive);
+	val.owner->transverse_callables(temp, ec, val.message_to_receive);
 
 	val.header_to_receive = igtl::MessageHeader::New();
 	val.header_to_receive->InitPack();
@@ -47,13 +48,13 @@ void read_header(IgtlinkClientConnection val, std::error_code ec) {
 		if (!ec) {
 			read_body(val, ec);
 		} else {
-			val.owner->transverse_callables<interface_igtl>(0, ec, val.message_to_receive);
+			val.owner->transverse_callables(0, ec, val.message_to_receive);
 			val.owner->get_socket().close();
 		}}
 	);
 }
 
-void read_body(IgtlinkClientConnection val, std::error_code ec) {
+void igtlink::read_body(igtlinkimplementation::IgtlinkClientConnection val, std::error_code ec) {
 	val.header_to_receive->Unpack();
 	val.message_to_receive = igtl::MessageBase::New();
 	val.message_to_receive->SetMessageHeader(val.header_to_receive);
@@ -65,19 +66,17 @@ void read_body(IgtlinkClientConnection val, std::error_code ec) {
 		if (!ec)
 			read_header(val, ec);
 		else {
-			val.owner->transverse_callables<interface_igtl>(0, ec, val.message_to_receive);
+			val.owner->transverse_callables(0, ec, val.message_to_receive);
 			val.owner->get_socket().close();
 		}}
 	);
 }
-}
 
-void start(std::shared_ptr<Client> client_pointer) {
-	implementation::read_header_first_time(implementation::IgtlinkClientConnection{client_pointer});	
+void igtlink::start(std::shared_ptr<Client<igtlink>> client_pointer) {
+	read_header_first_time(igtlinkimplementation::IgtlinkClientConnection{client_pointer});	
 }
 
 
 };
-}
 }
 }
