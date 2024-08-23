@@ -11,21 +11,29 @@ namespace communication{
 
     struct RobotCommand{
 
-        RobotCommand() : measured_torques{}, external_torques{}, angles{}, buffer{} {
+        enum ControlCommand : size_t{
+            FREEHAND,
+            FIX_CURRENT_POSITION,
+            NEEDLE_ALIGNED_CONFIGURATION
+        };
+
+        struct NeedleInformation{
+            std::array<double,9> needle_aligment;
+            std::array<double,3> needle_tip; 
+        };
+
+        RobotCommand() : needle_info{}, desired_command{FREEHAND}, buffer{} {
 
         }
 
         ~RobotCommand(){
 
         }
-
-        static constexpr size_t n_joints = 7;
         
-        std::array<double,n_joints> angles;
-        std::array<double,n_joints> external_torques;
-        std::array<double,n_joints> measured_torques;
+        NeedleInformation needle_info;
+        ControlCommand desired_command;
 
-        static constexpr size_t message_size = 3*n_joints*sizeof(double);
+        static constexpr size_t message_size = 9*sizeof(double)+3*sizeof(double)+sizeof(size_t);
 
         size_t body_size = message_size;
 
@@ -45,22 +53,22 @@ namespace communication{
 
         inline void deserialize(){
             size_t offset = sizeof(size_t);
-            std::memcpy(angles.data(),buffer.data()+offset,n_joints*sizeof(double));
-            offset += n_joints*sizeof(double);
-            std::memcpy(external_torques.data(),buffer.data()+offset,n_joints*sizeof(double));
-            offset += n_joints*sizeof(double);
-            std::memcpy(measured_torques.data(),buffer.data()+offset,n_joints*sizeof(double));
+            std::memcpy(needle_info.needle_aligment.data(),buffer.data()+offset,9*sizeof(double));
+            offset += 9*sizeof(double);
+            std::memcpy(needle_info.needle_tip.data(),buffer.data()+offset,3*sizeof(double));
+            offset += 3*sizeof(double);
+            std::memcpy(&desired_command,buffer.data()+offset,sizeof(size_t));
         }
 
         inline void serialize(){
             size_t offset = 0;
             std::memcpy(buffer.data()+offset,&body_size,sizeof(size_t));
             offset += sizeof(size_t);
-            std::memcpy(buffer.data()+offset,angles.data(),n_joints*sizeof(double));
-            offset += n_joints*sizeof(double);
-            std::memcpy(buffer.data()+offset,external_torques.data(),n_joints*sizeof(double));
-            offset += n_joints*sizeof(double);
-            std::memcpy(buffer.data()+offset,measured_torques.data(),n_joints*sizeof(double));
+            std::memcpy(buffer.data()+offset,needle_info.needle_aligment.data(),9*sizeof(double));
+            offset += 9*sizeof(double);
+            std::memcpy(buffer.data()+offset,needle_info.needle_tip.data(),3*sizeof(double));
+            offset += 3*sizeof(double);
+            std::memcpy(buffer.data()+offset,&desired_command,sizeof(size_t));
         }
 
         inline unsigned char* get_buffer(){
