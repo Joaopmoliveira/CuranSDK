@@ -155,15 +155,9 @@ bool position_hold_control(bool is_transitioning,const curan::robotic::RobotMode
 {
 	static double currentTime = 0.0;
 
+	state.cmd_q = iiwa.joints() + Eigen::Matrix<double,curan::robotic::number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
 	currentTime += iiwa.sample_time();
-}
-
-
-bool needle_placement_control(bool is_transitioning,const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
-{
-	static double currentTime = 0.0;
-
-	currentTime += iiwa.sample_time();
+	return false;
 }
 
 struct ControllerSwitcher : public curan::robotic::UserData
@@ -171,8 +165,7 @@ struct ControllerSwitcher : public curan::robotic::UserData
 
 	enum ControlModes{
 		POSITION_HOLD,
-		FREE_HAND,
-		NEEDLE_PLACEMENT
+		FREE_HAND
 	};
 
 	ControlModes current_mode = ControlModes::FREE_HAND;
@@ -209,17 +202,6 @@ struct ControllerSwitcher : public curan::robotic::UserData
 				transitioning = free_hand_control(transitioning, iiwa, state, composed_task_jacobians);
 			else
 				transitioning = free_hand_control(transitioning, iiwa, state, composed_task_jacobians);
-			break;
-		case NEEDLE_PLACEMENT:
-			if (previous_mode != current_mode)
-			{
-				transitioning = true;
-				transitioning = needle_placement_control(transitioning, iiwa, state, composed_task_jacobians);
-			}
-			else if (transitioning)
-				transitioning = needle_placement_control(transitioning, iiwa, state, composed_task_jacobians);
-			else
-				transitioning = needle_placement_control(transitioning, iiwa, state, composed_task_jacobians);
 			break;
 		default:
 			throw std::runtime_error("selected a control mode that is unavailable");
