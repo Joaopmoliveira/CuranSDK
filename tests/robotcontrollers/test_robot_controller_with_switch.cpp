@@ -42,10 +42,10 @@ struct ScrollingBuffer
 	}
 };
 
-void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
+void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
 {
-    static const auto& atomic_access = client.atomic_acess();
-    auto state = atomic_access.load(std::memory_order_relaxed);
+	static const auto &atomic_access = client.atomic_acess();
+	auto state = atomic_access.load(std::memory_order_relaxed);
 	ImGui::Begin("Control Torques"); // Create a window called "Hello, world!" and append into it.
 	static std::array<ScrollingBuffer, curan::robotic::number_of_joints> buffers;
 	static float t = 0;
@@ -73,9 +73,9 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
-    static std::array<ScrollingBuffer, curan::robotic::number_of_joints> dqref;
-    ImGui::Begin("Velocities"); // Create a window called "Hello, world!" and append into it.
-    if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
+	static std::array<ScrollingBuffer, curan::robotic::number_of_joints> dqref;
+	ImGui::Begin("Velocities"); // Create a window called "Hello, world!" and append into it.
+	if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
 	{
 		ImPlot::SetupAxes(NULL, NULL, flags, flags);
 		ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
@@ -89,24 +89,27 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 		}
 		ImPlot::EndPlot();
 	}
-    ImGui::End();
+	ImGui::End();
 }
 
-curan::robotic::RobotLBR* robot_pointer = nullptr;
+curan::robotic::RobotLBR *robot_pointer = nullptr;
 constexpr unsigned short DEFAULT_PORTID = 30200;
 
-void signal_handler(int signal){
-	if(robot_pointer)
-        robot_pointer->cancel();
+void signal_handler(int signal)
+{
+	if (robot_pointer)
+		robot_pointer->cancel();
 }
 
-void rendering(curan::robotic::RobotLBR& client){
+void rendering(curan::robotic::RobotLBR &client)
+{
 
-    auto interface_callable = [&](vsg::CommandBuffer &cb){
-        custom_interface(cb,client);
-    };
+	auto interface_callable = [&](vsg::CommandBuffer &cb)
+	{
+		custom_interface(cb, client);
+	};
 
-    curan::renderable::Window::Info info;
+	curan::renderable::Window::Info info;
 	curan::renderable::ImGUIInterface::Info info_gui{interface_callable};
 	auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
 	info.api_dump = false;
@@ -128,50 +131,129 @@ void rendering(curan::robotic::RobotLBR& client){
 	auto robot = curan::renderable::SequencialLinks::make(create_info);
 	window << robot;
 
-    const auto& atomic_state = client.atomic_acess();
+	const auto &atomic_state = client.atomic_acess();
 
-    while(client && window.run_once()){
-        auto state = atomic_state.load(std::memory_order_relaxed);
-        for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
+	while (client && window.run_once())
+	{
+		auto state = atomic_state.load(std::memory_order_relaxed);
+		for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
 			robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, state.q[joint_index]);
-    }
+	}
 
-    client.cancel();
+	client.cancel();
 }
 
-struct ControllerSwitcher : public curan::robotic::UserData{
+bool free_hand_control(bool is_transitioning,const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
+{	
+		static double currentTime = 0.0;
+        state.cmd_tau = -iiwa.mass() * iiwa.velocities();
+        state.cmd_q = iiwa.joints() + Eigen::Matrix<double,curan::robotic::number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
+		currentTime += iiwa.sample_time();
+		return false;
+}
 
-    ControllerSwitcher(){
+bool position_hold_control(bool is_transitioning,const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
+{
+	static double currentTime = 0.0;
 
-    }
-
-    curan::robotic::EigenState&& update(const curan::robotic::RobotModel<curan::robotic::number_of_joints>& iiwa, curan::robotic::EigenState&& state, Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& composed_task_jacobians) override{
-
-    }
+	currentTime += iiwa.sample_time();
+}
 
 
-    void async_control_switch(){
+bool needle_placement_control(bool is_transitioning,const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
+{
+	static double currentTime = 0.0;
 
-    }
+	currentTime += iiwa.sample_time();
+}
 
+struct ControllerSwitcher : public curan::robotic::UserData
+{
+
+	enum ControlModes{
+		POSITION_HOLD,
+		FREE_HAND,
+		NEEDLE_PLACEMENT
+	};
+
+	ControlModes current_mode = ControlModes::FREE_HAND;
+
+	ControllerSwitcher()
+	{
+	}
+
+	curan::robotic::EigenState &&update(const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &&state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians) override
+	{
+		static ControlModes previous_mode = current_mode;
+		static bool transitioning = false;
+
+		switch (current_mode)
+		{
+		case POSITION_HOLD:
+			if (previous_mode != current_mode)
+			{
+				transitioning = true;
+				transitioning = position_hold_control(transitioning,iiwa, state, composed_task_jacobians);
+			}
+			else if (transitioning)
+				transitioning = position_hold_control(transitioning, iiwa, state, composed_task_jacobians);
+			else
+				position_hold_control<false>(iiwa, state, composed_task_jacobians);
+			break;
+		case FREE_HAND:
+			if (previous_mode != current_mode)
+			{
+				transitioning = true;
+				transitioning = free_hand_control(transitioning, iiwa, state, composed_task_jacobians);
+			}
+			else if (transitioning)
+				transitioning = free_hand_control(transitioning, iiwa, state, composed_task_jacobians);
+			else
+				transitioning = free_hand_control(transitioning, iiwa, state, composed_task_jacobians);
+			break;
+		case NEEDLE_PLACEMENT:
+			if (previous_mode != current_mode)
+			{
+				transitioning = true;
+				transitioning = needle_placement_control(transitioning, iiwa, state, composed_task_jacobians);
+			}
+			else if (transitioning)
+				transitioning = needle_placement_control(transitioning, iiwa, state, composed_task_jacobians);
+			else
+				transitioning = needle_placement_control(transitioning, iiwa, state, composed_task_jacobians);
+			break;
+		default:
+			throw std::runtime_error("selected a control mode that is unavailable");
+			break;
+		}
+		
+		previous_mode = current_mode;
+	}
+
+	void async_control_switch(){
+
+	}
 };
 
-int main(){
-    std::unique_ptr<curan::robotic::JointVelocityController> handguinding_controller = std::make_unique<curan::robotic::JointVelocityController>();
-    curan::robotic::RobotLBR client{handguinding_controller.get(),CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_mass_data.json",CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_kinematic_limits.json"};
-    std::thread robot_renderer{[&](){rendering(client);}};
-    const auto& access_point = client.atomic_acess();
+int main()
+{
+	std::unique_ptr<ControllerSwitcher> handguinding_controller = std::make_unique<ControllerSwitcher>();
+	curan::robotic::RobotLBR client{handguinding_controller.get(), CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
+	std::thread robot_renderer{[&]()
+							   { rendering(client); }};
+	const auto &access_point = client.atomic_acess();
 	try
-	{		
+	{
 		KUKA::FRI::UdpConnection connection;
 		KUKA::FRI::ClientApplication app(connection, client);
 		bool success = app.connect(DEFAULT_PORTID, NULL);
 		success = app.step();
-		while (success && client){
+		while (success && client)
+		{
 			success = app.step();
-        }
+		}
 		app.disconnect();
-        robot_renderer.join();
+		robot_renderer.join();
 		return 0;
 	}
 	catch (...)
