@@ -50,6 +50,7 @@ struct ImpedanceController : public UserData{
         if(in_diagonal_damping.size()!=6)
             throw std::runtime_error("the dimensions of the diagonal matrix must be 6x6");
         stiffness = Eigen::Matrix<double,6,6>::Identity();
+        diagonal_damping = Eigen::Matrix<double,6,6>::Identity();
         auto stiffness_entry_value = stiffness_diagonal_gains.begin();
         auto damping_entry_value = in_diagonal_damping.begin();
         for(size_t entry = 0; entry< 6; ++entry,++stiffness_entry_value,++damping_entry_value){

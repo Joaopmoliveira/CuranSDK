@@ -24,6 +24,7 @@ namespace curan
             
             Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> jacobian;
             auto actuation = controller->update(model, curan::robotic::EigenState{}, jacobian);
+            //std::cout << "out torque: " << actuation.cmd_tau.transpose() << std::endl;
             next.convertFrom(actuation);
 
            auto forces_without_friction = external_torque + actuation.cmd_tau;
