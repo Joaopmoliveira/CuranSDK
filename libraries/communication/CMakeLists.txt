@@ -2,6 +2,7 @@ add_library(communication STATIC
 src/SerialClient.cpp
 src/ProtoFRI.cpp
 src/ProtoIGTL.cpp
+src/ProtoCommand.cpp
 )
 
 target_include_directories(communication
