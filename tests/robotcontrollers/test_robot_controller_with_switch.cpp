@@ -45,32 +45,63 @@ struct ScrollingBuffer
 void custom_interface(vsg::CommandBuffer &cb, std::atomic<curan::robotic::State> &atomic_access)
 {
     auto state = atomic_access.load(std::memory_order_relaxed);
-    ImGui::Begin("Cart error"); // Create a window called "Hello, world!" and append into it.
-    static std::array<ScrollingBuffer, 6> error_buffers;
-    static float t = 0;
-    t += ImGui::GetIO().DeltaTime;
-
-    static float history = 10.0f;
-    ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
-
-    static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
-
-    if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
     {
-        ImPlot::SetupAxes(NULL, NULL, flags, flags);
-        ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
-        ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
-        for (size_t index = 0; index < 6; ++index)
+        ImGui::Begin("Cart pos"); // Create a window called "Hello, world!" and append into it.
+        static std::array<ScrollingBuffer, 6> error_buffers;
+        static float t = 0;
+        t += ImGui::GetIO().DeltaTime;
+
+        static float history = 10.0f;
+        ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
+
+        static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
         {
-            std::string loc = "error" + std::to_string(index);
-            error_buffers[index].AddPoint(t, (float)state.user_defined[index]);
-            ImPlot::PlotLine(loc.data(), &error_buffers[index].Data[0].x, &error_buffers[index].Data[0].y, error_buffers[index].Data.size(), 0, error_buffers[index].Offset, 2 * sizeof(float));
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
+            ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
+            for (size_t index = 0; index < 6; ++index)
+            {
+                std::string loc = "error" + std::to_string(index);
+                error_buffers[index].AddPoint(t, (float)state.user_defined[index]);
+                ImPlot::PlotLine(loc.data(), &error_buffers[index].Data[0].x, &error_buffers[index].Data[0].y, error_buffers[index].Data.size(), 0, error_buffers[index].Offset, 2 * sizeof(float));
+            }
+            ImPlot::EndPlot();
         }
-        ImPlot::EndPlot();
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        ImGui::End();
     }
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    ImGui::End();
+
+    {
+        ImGui::Begin("Cart interpol"); // Create a window called "Hello, world!" and append into it.
+        static std::array<ScrollingBuffer, 6> error_buffers;
+        static float t = 0;
+        t += ImGui::GetIO().DeltaTime;
+
+        static float history = 10.0f;
+        ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
+
+        static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+
+        if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
+        {
+            ImPlot::SetupAxes(NULL, NULL, flags, flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1, t - history, t, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -30, 30);
+            ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL, 0.5f);
+            for (size_t index = 0; index < 6; ++index)
+            {
+                std::string loc = "error" + std::to_string(index);
+                error_buffers[index].AddPoint(t, (float)state.user_defined2[index]);
+                ImPlot::PlotLine(loc.data(), &error_buffers[index].Data[0].x, &error_buffers[index].Data[0].y, error_buffers[index].Data.size(), 0, error_buffers[index].Offset, 2 * sizeof(float));
+            }
+            ImPlot::EndPlot();
+        }
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        ImGui::End();
+    }
 }
 
 curan::robotic::RobotLBR *robot_pointer = nullptr;
@@ -84,14 +115,20 @@ void signal_handler(int signal)
 
 struct InterpolatedPose
 {
+    Eigen::Matrix<double, 4, 4> target_pose;
+    Eigen::Matrix<double, 4, 4> initial_pose;
+    Eigen::Matrix<double, 4, 4> current_pose;
+    double t;
+    double interpolation_velocity;
+
     InterpolatedPose(Eigen::Matrix<double, 4, 4> in_initial_pose,
                      Eigen::Matrix<double, 4, 4> in_target_pose,
                      double in_interpolation_velocity) : initial_pose{in_initial_pose},
                                                          target_pose{in_target_pose},
+                                                         current_pose{in_initial_pose},
                                                          t{0},
                                                          interpolation_velocity{in_interpolation_velocity}
     {
-        current_pose = Eigen::Matrix<double, 4, 4>::Identity();
     }
 
     InterpolatedPose(double in_interpolation_velocity) : t{0},
@@ -102,12 +139,6 @@ struct InterpolatedPose
         initial_pose = Eigen::Matrix<double, 4, 4>::Identity();
     }
 
-    Eigen::Matrix<double, 4, 4> target_pose;
-    Eigen::Matrix<double, 4, 4> initial_pose;
-    Eigen::Matrix<double, 4, 4> current_pose;
-    double t;
-    double interpolation_velocity;
-
     bool advance()
     {
         bool interpolating = false;
@@ -116,10 +147,12 @@ struct InterpolatedPose
             t = 1.0;
         else
             interpolating = true;
-        current_pose.block<3, 1>(0, 3) = t * target_pose.block<3, 1>(0, 3) + (1 - t) * initial_pose.block<3, 1>(0, 3);
+
+        double q = 3.0*t*t-2.0*t*t*t;
+        current_pose.block<3, 1>(0, 3) = q * target_pose.block<3, 1>(0, 3) + (1 - q) * initial_pose.block<3, 1>(0, 3);
         Eigen::Quaternion<double> quat1{initial_pose.block<3, 3>(0, 0)};
         Eigen::Quaternion<double> quat2{target_pose.block<3, 3>(0, 0)};
-        Eigen::Quaternion<double> qres = quat1.slerp(t, quat2);
+        Eigen::Quaternion<double> qres = quat1.slerp(q, quat2);
         if (qres.w() > 0.0)
             qres = Eigen::Quaternion<double>{-qres.w(), -qres.x(), -qres.y(), -qres.z()};
         current_pose.block<3, 3>(0, 0) = qres.toRotationMatrix();
@@ -152,6 +185,7 @@ struct ControllerSwitcher : public curan::robotic::UserData
         }
     }
 
+    std::mutex mut;
     Eigen::Matrix<double, 6, 6> stiffness;
     Eigen::Matrix<double, 6, 6> diagonal_damping;
 
@@ -166,7 +200,13 @@ struct ControllerSwitcher : public curan::robotic::UserData
     bool position_hold_control(bool is_transitioning, const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
     {
         using namespace curan::robotic;
-        is_transitioning = position_hold_interpolator.advance();
+        Eigen::Matrix<double, 4, 4> current_pose;
+        {
+            std::lock_guard<std::mutex> g{mut};
+            is_transitioning = position_hold_interpolator.advance();
+            current_pose = position_hold_interpolator.current_pose;
+        }
+
         Eigen::Matrix<double, 6, 6> Lambda;
         {
             Eigen::JacobiSVD<Eigen::Matrix<double, 6, 6>> svdofsitff{iiwa.jacobian() * iiwa.invmass() * iiwa.jacobian().transpose(), Eigen::ComputeFullU};
@@ -180,10 +220,21 @@ struct ControllerSwitcher : public curan::robotic::UserData
         Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints> nullspace_projector = Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity() - iiwa.jacobian().transpose() * (iiwa.invmass() * iiwa.jacobian().transpose() * Lambda).transpose();
         Eigen::Matrix<double, 6, 1> error = Eigen::Matrix<double, 6, 1>::Zero();
 
-        Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * position_hold_interpolator.current_pose.block<3, 3>(0, 0));
-        error.block<3, 1>(0, 0) = (position_hold_interpolator.current_pose.block<3, 1>(0, 3) - iiwa.translation());
+       
+
+        Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * current_pose.block<3, 3>(0, 0));
+        error.block<3, 1>(0, 0) = (current_pose.block<3, 1>(0, 3) - iiwa.translation());
         error.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
-        state.user_defined.block<6, 1>(0, 0) = error;
+
+        {
+            Eigen::AngleAxisd real_ori(iiwa.rotation());
+            Eigen::AngleAxisd interpolated_ori(current_pose.block<3, 3>(0, 0));
+            state.user_defined.block<3, 1>(3, 0) = real_ori.angle() * real_ori.axis();
+            state.user_defined2.block<3, 1>(3, 0) = interpolated_ori.angle() * interpolated_ori.axis();
+
+            state.user_defined.block<3, 1>(0, 0) = iiwa.translation();
+            state.user_defined2.block<3, 1>(0, 0) = current_pose.block<3, 1>(0, 3);
+        }
 
         Eigen::Matrix<double, number_of_joints, 1> error_in_nullspace = -iiwa.joints();
         /*
@@ -252,8 +303,8 @@ struct ControllerSwitcher : public curan::robotic::UserData
         auto properly_conditioned_matrix = (U * singular_values.asDiagonal() * U.transpose());
         auto inverse_jacobian = properly_conditioned_matrix.inverse() * iiwa.jacobian().transpose();
         // these values can becomes quite high with large accelerations
-        Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = inverse_jacobian.transpose() * iiwa.mass() * inverse_jacobian * jacobian_derivative * inverse_jacobian * iiwa.jacobian() * filtered_velocity;
-
+        // Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = inverse_jacobian.transpose() * iiwa.mass() * inverse_jacobian * jacobian_derivative * inverse_jacobian * iiwa.jacobian() * filtered_velocity;
+        Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = Eigen::Matrix<double, 6, 1>::Zero();
         // normalize the error to an upper bound
         state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity - forces_caused_by_coordinate_change) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
         // std::cout << "in torque: " << state.cmd_tau.transpose() << std::endl;
@@ -266,12 +317,19 @@ struct ControllerSwitcher : public curan::robotic::UserData
     };
 
     ControlModes current_mode = ControlModes::FREE_HAND;
-    bool transitioning = false;
+    std::atomic<bool> transitioning = false;
 
     curan::robotic::EigenState &&update(const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &&state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians) override
     {
+        ControlModes mode;
         static double currentTime = 0.0;
-        switch (current_mode)
+    
+        {
+            std::lock_guard<std::mutex> g{mut};
+            mode = current_mode;
+        }
+        
+        switch (mode)
         {
         case POSITION_HOLD:
             transitioning = position_hold_control(transitioning, iiwa, state, composed_task_jacobians);
@@ -290,18 +348,42 @@ struct ControllerSwitcher : public curan::robotic::UserData
 
     void async_hand_guidance()
     {
-        transitioning = true;
+        std::lock_guard<std::mutex> g{mut};
         current_mode = ControlModes::FREE_HAND;
     }
 
-    void async_position_hold(Eigen::Matrix<double, 4, 4> in_initial_pose,
-                             Eigen::Matrix<double, 4, 4> in_target_pose)
+    void async_position_hold(Eigen::Matrix<double, 4, 4> in_target_pose)
     {
-        transitioning = true;
+        std::lock_guard<std::mutex> g{mut};
         current_mode = ControlModes::POSITION_HOLD;
+        Eigen::Matrix<double, 4, 4> in_initial_pose = position_hold_interpolator.current_pose;
         position_hold_interpolator = InterpolatedPose{in_initial_pose, in_target_pose, position_hold_interpolator.interpolation_velocity};
     }
 };
+
+int foo(){
+    Eigen::Matrix<double, 4, 4> initial_pose = Eigen::Matrix<double, 4, 4>::Identity();
+    Eigen::Matrix<double, 4, 4> target_pose = Eigen::Matrix<double, 4, 4>::Identity();
+    initial_pose.block<3,3>(0,0) = Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();
+    target_pose.block<3,3>(0,0) = Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();
+
+    initial_pose.block<3,1>(0,3) = Eigen::Matrix<double, 3, 1>::Random();
+    target_pose.block<3,1>(0,3) = Eigen::Matrix<double, 3, 1>::Random();
+    InterpolatedPose position_hold_interpolator{initial_pose, target_pose, 0.0001};
+
+    std::cout << "initial_pose : \n" << initial_pose << std::endl;
+    std::cout << "target_pose : \n" << target_pose << std::endl;
+    std::cout <<  position_hold_interpolator.current_pose << std::endl;
+
+    for(size_t i = 0 ; i < 10 ; ++i){
+        position_hold_interpolator.advance();
+        std::cout << position_hold_interpolator.current_pose << std::endl;
+    }
+
+    std::cout << position_hold_interpolator.current_pose << std::endl;
+    
+    return 0;
+}
 
 int main()
 {
@@ -311,7 +393,7 @@ int main()
     auto initial_config = Eigen::Matrix<double, 7, 1>::Random();
     curan::robotic::State state;
     for (size_t i = 0; i < curan::robotic::number_of_joints; ++i)
-        state.q[i] = initial_config[i];
+        state.q[i] = initial_config[i] * 2;
     robot_model.update(state);
     atomic_state.store(state);
 
@@ -344,8 +426,8 @@ int main()
     window << robot;
 
     std::atomic<bool> keep_running = true;
-    std::unique_ptr<ControllerSwitcher> handguinding_controller = std::make_unique<ControllerSwitcher>(std::initializer_list<double>{500.0, 500.0, 500.0, 50.0, 50.0, 50.0}, std::initializer_list<double>{1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, 0.001);
-    std::list<curan::robotic::State> recording_of_states;
+    std::unique_ptr<ControllerSwitcher> handguinding_controller = std::make_unique<ControllerSwitcher>(std::initializer_list<double>{500.0, 500.0, 500.0, 50.0, 50.0, 50.0}, std::initializer_list<double>{1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, 0.0005);
+    // std::list<curan::robotic::State> recording_of_states;
     {
         auto pool = curan::utilities::ThreadPool::create(2);
         pool->submit(curan::utilities::Job{"value", [&]()
@@ -354,39 +436,34 @@ int main()
                                                Eigen::Matrix<double, 4, 4> target_pose = Eigen::Matrix<double, 4, 4>::Identity();
 
                                                Eigen::Matrix<double, 7, 1> external_torque = Eigen::Matrix<double, 7, 1>::Zero();
+                                               initial_pose.block<3, 1>(0, 3) = curan::robotic::convert(state.translation);
+                                               initial_pose.block<3, 3>(0, 0) = curan::robotic::convert(state.rotation).reshaped(3, 3);
+                                               target_pose.block<3, 1>(0, 3) = initial_pose.block<3, 1>(0, 3);
                                                double time = 0.0;
                                                while (keep_running.load())
                                                {
                                                    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-                                                   if (time > 10 && time < 15)
-                                                   {
+                                                   if (time < 5)
                                                        external_torque = Eigen::Matrix<double, 7, 1>::Zero();
-                                                       // external_torque[6] = 10;
-                                                   }
-                                                   else if (time > 15)
+                                                   else
                                                    {
-                                                       initial_pose.block<3, 1>(0, 3) = curan::robotic::convert(atomic_state.load().translation);
-                                                       initial_pose.block<3, 3>(0, 0) = curan::robotic::convert(atomic_state.load().rotation).reshaped(3, 3);
-                                                       target_pose.block<3, 1>(0, 3) = curan::robotic::convert(atomic_state.load().translation); //+Eigen::Matrix<double,3,1>::Random();
-                                                       target_pose.block<3, 3>(0, 0) = initial_pose.block<3, 3>(0, 0) * Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();
-                                                       handguinding_controller->async_position_hold(initial_pose, target_pose);
-                                                       std::cout << target_pose << std::endl;
+                                                       target_pose.block<3, 3>(0, 0) = initial_pose.block<3, 3>(0, 0) * Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();       
+                                                       handguinding_controller->async_position_hold(target_pose);
                                                        time = 0.0;
                                                        external_torque = Eigen::Matrix<double, 7, 1>::Zero();
                                                    }
-                                                   else
-                                                   {
-                                                       external_torque = Eigen::Matrix<double, 7, 1>::Zero();
-                                                   }
                                                    state = curan::robotic::simulate_next_timestamp(robot_model, handguinding_controller.get(), sample_time, state, external_torque);
-                                                   recording_of_states.push_back(state);
+                                                   // if(curan::robotic::convert(state.ddq).norm() > 1000.0) {
+                                                   //      keep_running = false;
+                                                   // }
+                                                   // recording_of_states.push_back(state);
                                                    atomic_state.store(state, std::memory_order_relaxed);
                                                    time += std::chrono::duration<double>(sample_time).count();
                                                }
                                            }});
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        while (window.run_once())
+        while (window.run_once() && keep_running)
         {
             auto current_state = atomic_state.load();
             for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
@@ -394,12 +471,13 @@ int main()
         }
         keep_running = false;
     }
-
-    auto now = std::chrono::system_clock::now();
-    auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-    std::string filename{CURAN_COPIED_RESOURCE_PATH "/controller" + std::to_string(UTC) + ".json"};
-    std::cout << "creating filename with measurments :" << filename << std::endl;
-    std::ofstream o(filename);
-    o << recording_of_states;
+    /*
+        auto now = std::chrono::system_clock::now();
+        auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+        std::string filename{CURAN_COPIED_RESOURCE_PATH "/controller" + std::to_string(UTC) + ".json"};
+        std::cout << "creating filename with measurments :" << filename << std::endl;
+        std::ofstream o(filename);
+        o << recording_of_states;
+    */
     return 0;
 }
