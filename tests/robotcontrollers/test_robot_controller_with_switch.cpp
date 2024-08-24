@@ -108,11 +108,14 @@ struct InterpolatedPose
     double t;
     double interpolation_velocity;
 
-    bool advance(){
+    bool advance()
+    {
         bool interpolating = false;
         t += interpolation_velocity;
-        if(t > 1.0) t = 1.0;
-        else interpolating = true;
+        if (t > 1.0)
+            t = 1.0;
+        else
+            interpolating = true;
         current_pose.block<3, 1>(0, 3) = t * target_pose.block<3, 1>(0, 3) + (1 - t) * initial_pose.block<3, 1>(0, 3);
         Eigen::Quaternion<double> quat1{initial_pose.block<3, 3>(0, 0)};
         Eigen::Quaternion<double> quat2{target_pose.block<3, 3>(0, 0)};
@@ -176,11 +179,11 @@ struct ControllerSwitcher : public curan::robotic::UserData
 
         Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints> nullspace_projector = Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity() - iiwa.jacobian().transpose() * (iiwa.invmass() * iiwa.jacobian().transpose() * Lambda).transpose();
         Eigen::Matrix<double, 6, 1> error = Eigen::Matrix<double, 6, 1>::Zero();
-        
-        Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * position_hold_interpolator.current_pose.block<3,3>(0,0));
-        error.block<3, 1>(0, 0) = (position_hold_interpolator.current_pose.block<3,1>(0,3) - iiwa.translation());
+
+        Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * position_hold_interpolator.current_pose.block<3, 3>(0, 0));
+        error.block<3, 1>(0, 0) = (position_hold_interpolator.current_pose.block<3, 1>(0, 3) - iiwa.translation());
         error.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
-        state.user_defined.block<6,1>(0,0) = error;
+        state.user_defined.block<6, 1>(0, 0) = error;
 
         Eigen::Matrix<double, number_of_joints, 1> error_in_nullspace = -iiwa.joints();
         /*
@@ -253,7 +256,7 @@ struct ControllerSwitcher : public curan::robotic::UserData
 
         // normalize the error to an upper bound
         state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity - forces_caused_by_coordinate_change) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
-        std::cout << "in torque: " << state.cmd_tau.transpose() << std::endl;
+        // std::cout << "in torque: " << state.cmd_tau.transpose() << std::endl;
         return is_transitioning;
     }
     enum ControlModes
@@ -303,8 +306,17 @@ struct ControllerSwitcher : public curan::robotic::UserData
 int main()
 {
     std::atomic<curan::robotic::State> atomic_state;
+    curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
+    constexpr auto sample_time = std::chrono::milliseconds(1);
+    auto initial_config = Eigen::Matrix<double, 7, 1>::Random();
+    curan::robotic::State state;
+    for (size_t i = 0; i < curan::robotic::number_of_joints; ++i)
+        state.q[i] = initial_config[i];
+    robot_model.update(state);
+    atomic_state.store(state);
+
     using namespace curan::robotic;
-        auto interface_callable = [&](vsg::CommandBuffer &cb)
+    auto interface_callable = [&](vsg::CommandBuffer &cb)
     {
         custom_interface(cb, atomic_state);
     };
@@ -331,62 +343,63 @@ int main()
     auto robot = curan::renderable::SequencialLinks::make(create_info);
     window << robot;
 
-
     std::atomic<bool> keep_running = true;
     std::unique_ptr<ControllerSwitcher> handguinding_controller = std::make_unique<ControllerSwitcher>(std::initializer_list<double>{500.0, 500.0, 500.0, 50.0, 50.0, 50.0}, std::initializer_list<double>{1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, 0.001);
-    auto pool = curan::utilities::ThreadPool::create(2);
-    pool->submit(curan::utilities::Job{"value", [&](){
-        Eigen::Matrix<double,4,4> initial_pose;
-        Eigen::Matrix<double,4,4> target_pose;
-        while(keep_running){
-            std::this_thread::sleep_for(std::chrono::seconds(5));
-            initial_pose.block<3,1>(0,3) = curan::robotic::convert(atomic_state.load().translation);
-            initial_pose.block<3,3>(0,0) = curan::robotic::convert(atomic_state.load().rotation).reshaped(3,3);
-            target_pose.block<3,1>(0,3) = curan::robotic::convert(atomic_state.load().translation)+Eigen::Matrix<double,3,1>::Random();
-            target_pose.block<3,3>(0,0) = initial_pose.block<3,3>(0,0)*curan::robotic::convert(atomic_state.load().rotation).reshaped(3,3);      
-            handguinding_controller->async_position_hold(initial_pose,target_pose);
-        } 
-    }});
-    pool->submit(curan::utilities::Job{"value", [&]()
-                                       {
-                                           
-
-                                           curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
-                                           constexpr auto sample_time = std::chrono::milliseconds(1);
-                                           curan::robotic::State state;
-                                           Eigen::Matrix<double, 7, 1> external_torque = Eigen::Matrix<double, 7, 1>::Zero();
-                                           double time = 0.0;
-                                           while (keep_running.load())
-                                           {
-                                               std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-                                               if (time > 10 && time < 15)
-                                               {
-                                                   external_torque = Eigen::Matrix<double, 7, 1>::Zero();
-                                                   // external_torque[6] = 10;
-                                               }
-                                               else if (time > 15)
-                                               {
-                                                   time = 0.0;
-                                                   external_torque = Eigen::Matrix<double, 7, 1>::Zero();
-                                               }
-                                               else
-                                               {
-                                                   external_torque = Eigen::Matrix<double, 7, 1>::Zero();
-                                               }
-                                               state = curan::robotic::simulate_next_timestamp(robot_model, handguinding_controller.get(), sample_time, state, external_torque);
-                                               atomic_state.store(state, std::memory_order_relaxed);
-                                               time += std::chrono::duration<double>(sample_time).count();
-                                           }
-                                       }});
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    std::list<curan::robotic::State> list_of_robot_states;
-    while (window.run_once())
+    std::list<curan::robotic::State> recording_of_states;
     {
-        auto current_state = atomic_state.load();
-        list_of_robot_states.push_back(current_state);
-        for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
-            robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, current_state.q[joint_index]);
+        auto pool = curan::utilities::ThreadPool::create(2);
+        pool->submit(curan::utilities::Job{"value", [&]()
+                                           {
+                                               Eigen::Matrix<double, 4, 4> initial_pose = Eigen::Matrix<double, 4, 4>::Identity();
+                                               Eigen::Matrix<double, 4, 4> target_pose = Eigen::Matrix<double, 4, 4>::Identity();
+
+                                               Eigen::Matrix<double, 7, 1> external_torque = Eigen::Matrix<double, 7, 1>::Zero();
+                                               double time = 0.0;
+                                               while (keep_running.load())
+                                               {
+                                                   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                                                   if (time > 10 && time < 15)
+                                                   {
+                                                       external_torque = Eigen::Matrix<double, 7, 1>::Zero();
+                                                       // external_torque[6] = 10;
+                                                   }
+                                                   else if (time > 15)
+                                                   {
+                                                       initial_pose.block<3, 1>(0, 3) = curan::robotic::convert(atomic_state.load().translation);
+                                                       initial_pose.block<3, 3>(0, 0) = curan::robotic::convert(atomic_state.load().rotation).reshaped(3, 3);
+                                                       target_pose.block<3, 1>(0, 3) = curan::robotic::convert(atomic_state.load().translation); //+Eigen::Matrix<double,3,1>::Random();
+                                                       target_pose.block<3, 3>(0, 0) = initial_pose.block<3, 3>(0, 0) * Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();
+                                                       handguinding_controller->async_position_hold(initial_pose, target_pose);
+                                                       std::cout << target_pose << std::endl;
+                                                       time = 0.0;
+                                                       external_torque = Eigen::Matrix<double, 7, 1>::Zero();
+                                                   }
+                                                   else
+                                                   {
+                                                       external_torque = Eigen::Matrix<double, 7, 1>::Zero();
+                                                   }
+                                                   state = curan::robotic::simulate_next_timestamp(robot_model, handguinding_controller.get(), sample_time, state, external_torque);
+                                                   recording_of_states.push_back(state);
+                                                   atomic_state.store(state, std::memory_order_relaxed);
+                                                   time += std::chrono::duration<double>(sample_time).count();
+                                               }
+                                           }});
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        while (window.run_once())
+        {
+            auto current_state = atomic_state.load();
+            for (size_t joint_index = 0; joint_index < curan::robotic::number_of_joints; ++joint_index)
+                robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, current_state.q[joint_index]);
+        }
+        keep_running = false;
     }
-    keep_running = false;
+
+    auto now = std::chrono::system_clock::now();
+    auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    std::string filename{CURAN_COPIED_RESOURCE_PATH "/controller" + std::to_string(UTC) + ".json"};
+    std::cout << "creating filename with measurments :" << filename << std::endl;
+    std::ofstream o(filename);
+    o << recording_of_states;
+    return 0;
 }
