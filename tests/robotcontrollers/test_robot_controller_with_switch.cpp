@@ -11,6 +11,8 @@
 #include <csignal>
 #include <Eigen/Geometry>
 
+#include <functional>
+
 struct ScrollingBuffer
 {
     int MaxSize;
@@ -115,53 +117,92 @@ void signal_handler(int signal)
 
 struct InterpolatedPose
 {
+    private:
     Eigen::Matrix<double, 4, 4> target_pose;
     Eigen::Matrix<double, 4, 4> initial_pose;
-    Eigen::Matrix<double, 4, 4> current_pose;
+    Eigen::Matrix<double, 4, 4> interpolated_pose;
     double t;
     double interpolation_velocity;
+    std::function<Eigen::Matrix<double, 4, 4>()> executed_once_interpolation_finished;
 
+    public:
     InterpolatedPose(Eigen::Matrix<double, 4, 4> in_initial_pose,
                      Eigen::Matrix<double, 4, 4> in_target_pose,
                      double in_interpolation_velocity) : initial_pose{in_initial_pose},
                                                          target_pose{in_target_pose},
-                                                         current_pose{in_initial_pose},
+                                                         interpolated_pose{in_initial_pose},
                                                          t{0},
                                                          interpolation_velocity{in_interpolation_velocity}
+    {
+    }
+
+    InterpolatedPose(Eigen::Matrix<double, 4, 4> in_initial_pose,
+                     Eigen::Matrix<double, 4, 4> in_target_pose,
+                     double in_interpolation_velocity,
+                     std::function<Eigen::Matrix<double, 4, 4>()> in_executed_once_interpolation_finished) : initial_pose{in_initial_pose},
+                                                         target_pose{in_target_pose},
+                                                         interpolated_pose{in_initial_pose},
+                                                         t{0},
+                                                         interpolation_velocity{in_interpolation_velocity},
+                                                         executed_once_interpolation_finished{in_executed_once_interpolation_finished}
     {
     }
 
     InterpolatedPose(double in_interpolation_velocity) : t{0},
                                                          interpolation_velocity{in_interpolation_velocity}
     {
-        current_pose = Eigen::Matrix<double, 4, 4>::Identity();
+        interpolated_pose = Eigen::Matrix<double, 4, 4>::Identity();
         target_pose = Eigen::Matrix<double, 4, 4>::Identity();
         initial_pose = Eigen::Matrix<double, 4, 4>::Identity();
     }
 
     bool advance()
     {
-        bool interpolating = false;
         t += interpolation_velocity;
-        if (t > 1.0)
+        if (t > 1.0){
+            interpolated_pose = (executed_once_interpolation_finished) ? executed_once_interpolation_finished() : target_pose;
             t = 1.0;
-        else
-            interpolating = true;
+            return false;
+        }
 
         double q = 3.0*t*t-2.0*t*t*t;
-        current_pose.block<3, 1>(0, 3) = q * target_pose.block<3, 1>(0, 3) + (1 - q) * initial_pose.block<3, 1>(0, 3);
+        interpolated_pose.block<3, 1>(0, 3) = q * target_pose.block<3, 1>(0, 3) + (1 - q) * initial_pose.block<3, 1>(0, 3);
         Eigen::Quaternion<double> quat1{initial_pose.block<3, 3>(0, 0)};
         Eigen::Quaternion<double> quat2{target_pose.block<3, 3>(0, 0)};
         Eigen::Quaternion<double> qres = quat1.slerp(q, quat2);
         if (qres.w() > 0.0)
             qres = Eigen::Quaternion<double>{-qres.w(), -qres.x(), -qres.y(), -qres.z()};
-        current_pose.block<3, 3>(0, 0) = qres.toRotationMatrix();
-        return interpolating;
+        interpolated_pose.block<3, 3>(0, 0) = qres.toRotationMatrix();
+        return true;
+    };
+
+    inline double step_size(){
+        return interpolation_velocity;
+    }
+
+    inline const Eigen::Matrix<double, 4, 4>& interpolated() const {
+        return interpolated_pose;
     };
 };
 
 struct ControllerSwitcher : public curan::robotic::UserData
 {
+    enum ControlModes
+    {
+        POSITION_HOLD,
+        NEEDLE_POSITIONING,
+        FREE_HAND
+    };
+
+    ControlModes current_mode = ControlModes::FREE_HAND;
+    std::atomic<bool> transitioning = false;
+
+    std::mutex mut;
+    Eigen::Matrix<double, 6, 6> stiffness;
+    Eigen::Matrix<double, 6, 6> diagonal_damping;
+
+    InterpolatedPose position_hold_interpolator;
+
     ControllerSwitcher(std::initializer_list<double> in_stiffness_diagonal_gains,
                        std::initializer_list<double> in_diagonal_damping,
                        double in_interpolation_velocity) : position_hold_interpolator{in_interpolation_velocity}
@@ -185,28 +226,23 @@ struct ControllerSwitcher : public curan::robotic::UserData
         }
     }
 
-    std::mutex mut;
-    Eigen::Matrix<double, 6, 6> stiffness;
-    Eigen::Matrix<double, 6, 6> diagonal_damping;
-
-    InterpolatedPose position_hold_interpolator;
-
-    bool free_hand_control(bool is_transitioning, const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
+    bool free_hand_control(const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
     {
         state.cmd_tau = -iiwa.mass() * iiwa.velocities();
         return false;
     }
-
-    bool position_hold_control(bool is_transitioning, const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
+    
+    bool position_hold_control(const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
     {
         using namespace curan::robotic;
+        state.cmd_tau = -iiwa.mass() * iiwa.velocities();
+        bool is_transitioning = false;
         Eigen::Matrix<double, 4, 4> current_pose;
         {
             std::lock_guard<std::mutex> g{mut};
             is_transitioning = position_hold_interpolator.advance();
-            current_pose = position_hold_interpolator.current_pose;
+            current_pose = position_hold_interpolator.interpolated();
         }
-
         Eigen::Matrix<double, 6, 6> Lambda;
         {
             Eigen::JacobiSVD<Eigen::Matrix<double, 6, 6>> svdofsitff{iiwa.jacobian() * iiwa.invmass() * iiwa.jacobian().transpose(), Eigen::ComputeFullU};
@@ -220,22 +256,22 @@ struct ControllerSwitcher : public curan::robotic::UserData
         Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints> nullspace_projector = Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity() - iiwa.jacobian().transpose() * (iiwa.invmass() * iiwa.jacobian().transpose() * Lambda).transpose();
         Eigen::Matrix<double, 6, 1> error = Eigen::Matrix<double, 6, 1>::Zero();
 
-       
-
         Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * current_pose.block<3, 3>(0, 0));
+
         error.block<3, 1>(0, 0) = (current_pose.block<3, 1>(0, 3) - iiwa.translation());
-        error.block<3, 1>(3, 0) = E_AxisAngle.angle() * iiwa.rotation() * E_AxisAngle.axis();
+        static auto previous_error = E_AxisAngle.axis();
+        previous_error = ((E_AxisAngle.axis()-previous_error).norm()>(-E_AxisAngle.axis()-previous_error).norm()) ? -E_AxisAngle.axis() : E_AxisAngle.axis();
+        double magnitude_of_error = ((E_AxisAngle.axis()-previous_error).norm()>(-E_AxisAngle.axis()-previous_error).norm()) ? -E_AxisAngle.angle() : E_AxisAngle.angle();
+        error.block<3, 1>(3, 0) = magnitude_of_error * iiwa.rotation() * previous_error;
 
         {
-            Eigen::AngleAxisd real_ori(iiwa.rotation());
             Eigen::AngleAxisd interpolated_ori(current_pose.block<3, 3>(0, 0));
-            state.user_defined.block<3, 1>(3, 0) = real_ori.angle() * real_ori.axis();
+            state.user_defined.block<3, 1>(3, 0) = error.block<3,1>(3,0);
             state.user_defined2.block<3, 1>(3, 0) = interpolated_ori.angle() * interpolated_ori.axis();
 
             state.user_defined.block<3, 1>(0, 0) = iiwa.translation();
             state.user_defined2.block<3, 1>(0, 0) = current_pose.block<3, 1>(0, 3);
         }
-
         Eigen::Matrix<double, number_of_joints, 1> error_in_nullspace = -iiwa.joints();
         /*
         We use the decomposition introduced in
@@ -248,7 +284,6 @@ struct ControllerSwitcher : public curan::robotic::UserData
         has a stiffness specified by the user, while the second impedance controller focuses on bringing all joints to their
         home configuration.
         */
-
         Eigen::Matrix<double, 6, 6> B0_cartesian;
         Eigen::Matrix<double, 6, 6> Q_cartesian;
         {
@@ -262,7 +297,7 @@ struct ControllerSwitcher : public curan::robotic::UserData
             Eigen::Matrix<double, 6, 6> Qinv = Q_cartesian.inverse();
             B0_cartesian = Qinv * stiffness * Qinv.transpose();
         }
-        Eigen::Matrix<double, number_of_joints, number_of_joints> nullspace_stiffness = 10.0 * Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity();
+        Eigen::Matrix<double, number_of_joints, number_of_joints> nullspace_stiffness = 3.0 * Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity();
         Eigen::Matrix<double, number_of_joints, number_of_joints> B0_nullspace;
         Eigen::Matrix<double, number_of_joints, number_of_joints> Q_nullspace;
         {
@@ -297,9 +332,8 @@ struct ControllerSwitcher : public curan::robotic::UserData
         auto U = svdjacobian.matrixU();
         auto singular_values = svdjacobian.singularValues();
         for (auto &diag : singular_values)
-        {
             diag = (diag < 0.02) ? 0.02 : diag;
-        }
+
         auto properly_conditioned_matrix = (U * singular_values.asDiagonal() * U.transpose());
         auto inverse_jacobian = properly_conditioned_matrix.inverse() * iiwa.jacobian().transpose();
         // these values can becomes quite high with large accelerations
@@ -307,17 +341,215 @@ struct ControllerSwitcher : public curan::robotic::UserData
         Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = Eigen::Matrix<double, 6, 1>::Zero();
         // normalize the error to an upper bound
         state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity - forces_caused_by_coordinate_change) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
-        // std::cout << "in torque: " << state.cmd_tau.transpose() << std::endl;
         return is_transitioning;
+        return false;
     }
-    enum ControlModes
-    {
-        POSITION_HOLD,
-        FREE_HAND
+
+    // [returns true if the barrier has been shut on and then off] 
+    bool barrier_function_for_needle_controller(const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa , Eigen::Matrix<double,7,1>& task_torque, Eigen::Matrix<double,4,4> target_pose){        
+        Eigen::Matrix<double,3,1> plane_point = target_pose.block<3,1>(0,3);
+        Eigen::Matrix<double,3,1> direction_along_valid_region = target_pose.block<3,1>(0,2);
+        double Dmax = -direction_along_valid_region.transpose()*plane_point;
+        double D = direction_along_valid_region.transpose()*iiwa.translation()+Dmax;
+        Dmax= 0;
+
+        constexpr double max_accel = 1;
+        constexpr double max_vel = 1;
+
+        Eigen::VectorXd vel = iiwa.jacobian()*iiwa.velocities();
+        Eigen::Vector3d vel_pos = vel.block(0,0,3,1);
+        double dotD = (direction_along_valid_region.transpose()*vel_pos)(0,0);
+
+        constexpr double scalling_factor = 15.0;
+        double dtvar = scalling_factor*iiwa.sample_time();
+        if(dtvar<0.001)
+            dtvar = scalling_factor*0.001;
+        double dt2 = dtvar;
+        double wallTopD = Dmax-D;
+
+        double lowestdtfactor = 10;
+
+        if(wallTopD<0.1){
+            if(wallTopD<0.0)
+                wallTopD = 0.0;
+            dt2 = (lowestdtfactor+sqrt(lowestdtfactor*wallTopD))*dtvar;
+            if(dt2< lowestdtfactor*dtvar)
+                dt2 = lowestdtfactor*dtvar;
+        }
+
+        double dotDMaxFromD = (Dmax-D)/dt2;
+        double dotDMaxFormdotdotD = ((Dmax-D)<0.0) ? 1000000.0 : sqrt(2*max_accel*(Dmax-D)); 
+
+        Eigen::Vector3d vMaxVector{{max_vel,dotDMaxFormdotdotD,dotDMaxFromD}};
+        double dotDMaxFinal = vMaxVector.minCoeff();
+
+        double aMaxDotD = (dotDMaxFinal-dotD) / dtvar;
+        double aMaxD = 2 * (Dmax-D - dotD * dt2) / (std::pow(dt2,2));
+
+        Eigen::Vector3d aMaxVector{{1000000,aMaxDotD,aMaxD}};
+        double dotdotDMaxFinal = aMaxVector.minCoeff();
+        
+        Eigen::Matrix<double,1,7> jacobianPos = direction_along_valid_region.transpose()*iiwa.jacobian().block(0,0,3,7);
+
+        double LambdaInvPos = (jacobianPos*iiwa.invmass()*jacobianPos.transpose())(0,0)+(std::pow(0.3,2));
+        double lambdaPos = 1/LambdaInvPos;
+        Eigen::Matrix<double,7,1> JsatBar = iiwa.invmass() * jacobianPos.transpose() * lambdaPos;
+
+        static bool CreateTaskSat = false;
+
+        Eigen::Matrix<double,7,7> Psat = Eigen::Matrix<double,7,7>::Identity();
+
+        Eigen::Matrix<double,6,1> linear_acceleration_cartesian = iiwa.jacobian()*iiwa.invmass()*task_torque;
+        Eigen::Matrix<double,3,1> translation_acceleration = linear_acceleration_cartesian.block(0,0,3,1);
+        double linear_acceleration = translation_acceleration.transpose()*direction_along_valid_region;
+
+        bool already_triggered_function_once = false;
+
+        if(dotdotDMaxFinal + 0.001 < linear_acceleration){
+            CreateTaskSat = true;
+        } else {
+            if(CreateTaskSat) already_triggered_function_once = true;
+            CreateTaskSat = false;
+        }            
+
+        Eigen::Matrix<double,7,1> tauS = Eigen::Matrix<double,7,1>::Zero();
+
+        if(CreateTaskSat){
+            Psat = Eigen::Matrix<double,7,7>::Identity()-jacobianPos.transpose()*JsatBar.transpose();
+            tauS = jacobianPos.transpose()*lambdaPos*dotdotDMaxFinal;
+        }
+        
+        auto projected_control = tauS+Psat*task_torque;
+        task_torque = projected_control;
+        return already_triggered_function_once;
     };
 
-    ControlModes current_mode = ControlModes::FREE_HAND;
-    std::atomic<bool> transitioning = false;
+    bool needle_control(const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians)
+    {
+        using namespace curan::robotic;
+        bool is_transitioning = false;
+        Eigen::Matrix<double, 4, 4> current_pose;
+        {
+            std::lock_guard<std::mutex> g{mut};
+            is_transitioning = position_hold_interpolator.advance();
+            current_pose = position_hold_interpolator.interpolated();
+        }
+
+        Eigen::Matrix<double, 6, 6> Lambda;
+        {
+            Eigen::JacobiSVD<Eigen::Matrix<double, 6, 6>> svdofsitff{iiwa.jacobian() * iiwa.invmass() * iiwa.jacobian().transpose(), Eigen::ComputeFullU};
+            Eigen::Matrix<double, 6, 6> P = svdofsitff.matrixU();
+            auto singular_values = svdofsitff.singularValues();
+            for (auto &diag : singular_values)
+                diag = (diag < 0.02) ? 0.02 : diag;
+            Lambda = (P * singular_values.asDiagonal() * P.transpose()).inverse();
+        }
+
+        Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints> nullspace_projector = Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity() - iiwa.jacobian().transpose() * (iiwa.invmass() * iiwa.jacobian().transpose() * Lambda).transpose();
+        Eigen::Matrix<double, 6, 1> error = Eigen::Matrix<double, 6, 1>::Zero();
+        Eigen::AngleAxisd E_AxisAngle(iiwa.rotation().transpose() * current_pose.block<3, 3>(0, 0));
+        auto translation_error = current_pose.block<3, 1>(0, 3) - iiwa.translation();
+
+        static auto previous_error = E_AxisAngle.axis();
+        previous_error = ((E_AxisAngle.axis()-previous_error).norm()>(-E_AxisAngle.axis()-previous_error).norm()) ? -E_AxisAngle.axis() : E_AxisAngle.axis();
+        double magnitude_of_error = ((E_AxisAngle.axis()-previous_error).norm()>(-E_AxisAngle.axis()-previous_error).norm()) ? -E_AxisAngle.angle() : E_AxisAngle.angle();
+        error.block<3, 1>(3, 0) = magnitude_of_error * iiwa.rotation() * previous_error;
+
+        {
+            Eigen::AngleAxisd interpolated_ori(current_pose.block<3, 3>(0, 0));
+            state.user_defined.block<3, 1>(3, 0) = error.block<3,1>(3,0);
+            state.user_defined2.block<3, 1>(3, 0) = interpolated_ori.angle() * interpolated_ori.axis();
+
+            state.user_defined.block<3, 1>(0, 0) = iiwa.translation();
+            state.user_defined2.block<3, 1>(0, 0) = current_pose.block<3, 1>(0, 3);
+        }
+        Eigen::Matrix<double, number_of_joints, 1> error_in_nullspace = -iiwa.joints();
+        /*
+        We use the decomposition introduced in
+        "Cartesian Impedance Control of Redundant and Flexible-Joint Robots" page 37
+        but we use the nomenclature of the book in "Matrix Algebra From a Statistician's Perspective"
+        */
+
+        /*
+        We have two controllers running simultaneously, the first controller, the so called cartersian impedance controller
+        has a stiffness specified by the user, while the second impedance controller focuses on bringing all joints to their
+        home configuration.
+        */
+        Eigen::Matrix<double, 6, 6> B0_cartesian;
+        Eigen::Matrix<double, 6, 6> Q_cartesian;
+        {
+            Eigen::LLT<Eigen::Matrix<double, 6, 6>> lltOfLambda(Lambda);
+            Eigen::Matrix<double, 6, 6> L = lltOfLambda.matrixL();
+            Eigen::Matrix<double, 6, 6> R = L.inverse();
+            Eigen::Matrix<double, 6, 6> C = R * stiffness * R.transpose();
+            Eigen::JacobiSVD<Eigen::Matrix<double, 6, 6>> svdofsitff{C, Eigen::ComputeFullU};
+            Eigen::Matrix<double, 6, 6> P = svdofsitff.matrixU();
+            Q_cartesian = R.inverse() * P;
+            Eigen::Matrix<double, 6, 6> Qinv = Q_cartesian.inverse();
+            B0_cartesian = Qinv * stiffness * Qinv.transpose();
+        }
+        Eigen::Matrix<double, number_of_joints, number_of_joints> nullspace_stiffness = 3.0 * Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity();
+        Eigen::Matrix<double, number_of_joints, number_of_joints> B0_nullspace;
+        Eigen::Matrix<double, number_of_joints, number_of_joints> Q_nullspace;
+        {
+            Eigen::LLT<Eigen::Matrix<double, number_of_joints, number_of_joints>> lltOfLambda(iiwa.mass());
+            Eigen::Matrix<double, number_of_joints, number_of_joints> L = lltOfLambda.matrixL();
+            Eigen::Matrix<double, number_of_joints, number_of_joints> R = L.inverse();
+            Eigen::Matrix<double, number_of_joints, number_of_joints> C = R * nullspace_stiffness * R.transpose();
+            Eigen::JacobiSVD<Eigen::Matrix<double, number_of_joints, number_of_joints>> svdofsitff{C, Eigen::ComputeFullU};
+            Eigen::Matrix<double, number_of_joints, number_of_joints> P = svdofsitff.matrixU();
+            Q_nullspace = R.inverse() * P;
+            Eigen::Matrix<double, number_of_joints, number_of_joints> Qinv = Q_nullspace.inverse();
+            B0_nullspace = Qinv * nullspace_stiffness * Qinv.transpose();
+        }
+
+        Eigen::Matrix<double, 6, 6> damping_cartesian = 2 * Q_cartesian * diagonal_damping * B0_cartesian.diagonal().array().sqrt().matrix().asDiagonal() * Q_cartesian.transpose();
+        // it is assumed that the nullspace has a diagonal damping ratio of 1.0.
+        Eigen::Matrix<double, number_of_joints, number_of_joints> damping_nullspace = 2 * Q_nullspace * B0_nullspace.diagonal().array().sqrt().matrix().asDiagonal() * Q_nullspace.transpose();
+
+        /*
+        We need to filer out the velocity because in steady stady state they can become problematic
+        */
+        static Eigen::Matrix<double, number_of_joints, 1> filtered_velocity = iiwa.velocities();
+        auto val = 0.8 * filtered_velocity + 0.2 * iiwa.velocities();
+        filtered_velocity = val;
+
+        static auto previous_jacobian = iiwa.jacobian();
+        static Eigen::Matrix<double, 6, curan::robotic::number_of_joints> jacobian_derivative = (iiwa.jacobian() - previous_jacobian) / iiwa.sample_time();
+        jacobian_derivative = (0.8 * jacobian_derivative + 0.2 * (iiwa.jacobian() - previous_jacobian) / iiwa.sample_time()).eval();
+        previous_jacobian = iiwa.jacobian();
+        auto conditioned_matrix = iiwa.jacobian().transpose() * iiwa.jacobian();
+        Eigen::JacobiSVD<Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints>> svdjacobian{conditioned_matrix, Eigen::ComputeFullU};
+        auto U = svdjacobian.matrixU();
+        auto singular_values = svdjacobian.singularValues();
+        for (auto &diag : singular_values)
+            diag = (diag < 0.02) ? 0.02 : diag;
+
+        auto properly_conditioned_matrix = (U * singular_values.asDiagonal() * U.transpose());
+        auto inverse_jacobian = properly_conditioned_matrix.inverse() * iiwa.jacobian().transpose();
+        // these values can becomes quite high with large accelerations
+        // Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = inverse_jacobian.transpose() * iiwa.mass() * inverse_jacobian * jacobian_derivative * inverse_jacobian * iiwa.jacobian() * filtered_velocity;
+        Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = Eigen::Matrix<double, 6, 1>::Zero();
+        // normalize the error to an upper bound
+        // now its the tricky part
+
+        static bool already_triggered_function_once = false;
+        if(is_transitioning || already_triggered_function_once) {// if we are transitioning, then we just need to follow the interpolated point using the full impedance controller
+            error.block<3, 1>(0, 0) = translation_error;
+            state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity - forces_caused_by_coordinate_change) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
+        } else {
+            double numerator = translation_error.transpose()*current_pose.block<3, 3>(0, 0).block<3,1>(0,2);
+            double denominator = current_pose.block<3, 3>(0, 0).block<3,1>(0,2).transpose()*current_pose.block<3, 3>(0, 0).block<3,1>(0,2);
+            double scaling_along_axis = numerator/scaling_along_axis;
+            error.block<3, 1>(0, 0) = scaling_along_axis*current_pose.block<3, 3>(0, 0).block<3,1>(0,2);
+            state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity - forces_caused_by_coordinate_change) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
+                already_triggered_function_once = barrier_function_for_needle_controller(iiwa,state.cmd_tau,current_pose);
+        }
+        return is_transitioning;
+    }
+
+
+
 
     curan::robotic::EigenState &&update(const curan::robotic::RobotModel<curan::robotic::number_of_joints> &iiwa, curan::robotic::EigenState &&state, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> &composed_task_jacobians) override
     {
@@ -332,10 +564,10 @@ struct ControllerSwitcher : public curan::robotic::UserData
         switch (mode)
         {
         case POSITION_HOLD:
-            transitioning = position_hold_control(transitioning, iiwa, state, composed_task_jacobians);
+            transitioning = position_hold_control(iiwa, state, composed_task_jacobians);
             break;
         case FREE_HAND:
-            transitioning = free_hand_control(transitioning, iiwa, state, composed_task_jacobians);
+            transitioning = free_hand_control(iiwa, state, composed_task_jacobians);
             break;
         default:
             throw std::runtime_error("selected a control mode that is unavailable");
@@ -356,9 +588,31 @@ struct ControllerSwitcher : public curan::robotic::UserData
     {
         std::lock_guard<std::mutex> g{mut};
         current_mode = ControlModes::POSITION_HOLD;
-        Eigen::Matrix<double, 4, 4> in_initial_pose = position_hold_interpolator.current_pose;
-        position_hold_interpolator = InterpolatedPose{in_initial_pose, in_target_pose, position_hold_interpolator.interpolation_velocity};
+        Eigen::Matrix<double, 4, 4> in_initial_pose = position_hold_interpolator.interpolated();
+        position_hold_interpolator = InterpolatedPose{in_initial_pose, in_target_pose, position_hold_interpolator.step_size()};
     }
+
+    /*
+    This is very special function. It assumes that we take the position of the target
+    From this position and with the minimum offset we compute the projection of the 
+    current interpolated position towards the new interpolated position which is at 
+    this minimum distance. 
+
+    
+
+    */
+    void async_needle(Eigen::Matrix<double, 4, 4> in_target_pose, double minimum_offset)
+    {
+        std::lock_guard<std::mutex> g{mut};
+        current_mode = ControlModes::NEEDLE_POSITIONING;
+        Eigen::Matrix<double, 4, 4> in_initial_pose = position_hold_interpolator.interpolated();
+        auto needle_direction = in_target_pose.block<3,1>(0,2);
+        auto intermediate_target_pose = in_target_pose;
+        double projection_of_flange_along_needle_line = (1/needle_direction.norm())*needle_direction.transpose()*(in_initial_pose.block<3,1>(0,3)-in_target_pose.block<3,1>(0,3));
+        intermediate_target_pose.block<3,1>(0,3) = projection_of_flange_along_needle_line*needle_direction+in_target_pose.block<3,1>(0,3);
+        position_hold_interpolator = InterpolatedPose{in_initial_pose, intermediate_target_pose, position_hold_interpolator.step_size(),[=](){return in_target_pose;}};
+    }
+
 };
 
 int foo(){
@@ -373,14 +627,14 @@ int foo(){
 
     std::cout << "initial_pose : \n" << initial_pose << std::endl;
     std::cout << "target_pose : \n" << target_pose << std::endl;
-    std::cout <<  position_hold_interpolator.current_pose << std::endl;
+    std::cout <<  position_hold_interpolator.interpolated() << std::endl;
 
     for(size_t i = 0 ; i < 10 ; ++i){
         position_hold_interpolator.advance();
-        std::cout << position_hold_interpolator.current_pose << std::endl;
+        std::cout << position_hold_interpolator.interpolated() << std::endl;
     }
 
-    std::cout << position_hold_interpolator.current_pose << std::endl;
+    std::cout << position_hold_interpolator.interpolated() << std::endl;
     
     return 0;
 }
@@ -427,7 +681,6 @@ int main()
 
     std::atomic<bool> keep_running = true;
     std::unique_ptr<ControllerSwitcher> handguinding_controller = std::make_unique<ControllerSwitcher>(std::initializer_list<double>{500.0, 500.0, 500.0, 50.0, 50.0, 50.0}, std::initializer_list<double>{1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, 0.0005);
-    // std::list<curan::robotic::State> recording_of_states;
     {
         auto pool = curan::utilities::ThreadPool::create(2);
         pool->submit(curan::utilities::Job{"value", [&]()
@@ -444,7 +697,7 @@ int main()
                                                {
                                                    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                                                    if (time < 5)
-                                                       external_torque = Eigen::Matrix<double, 7, 1>::Zero();
+                                                       external_torque = Eigen::Matrix<double, 7, 1>::Random()*0.1;
                                                    else
                                                    {
                                                        target_pose.block<3, 3>(0, 0) = initial_pose.block<3, 3>(0, 0) * Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();       
@@ -453,10 +706,6 @@ int main()
                                                        external_torque = Eigen::Matrix<double, 7, 1>::Zero();
                                                    }
                                                    state = curan::robotic::simulate_next_timestamp(robot_model, handguinding_controller.get(), sample_time, state, external_torque);
-                                                   // if(curan::robotic::convert(state.ddq).norm() > 1000.0) {
-                                                   //      keep_running = false;
-                                                   // }
-                                                   // recording_of_states.push_back(state);
                                                    atomic_state.store(state, std::memory_order_relaxed);
                                                    time += std::chrono::duration<double>(sample_time).count();
                                                }
