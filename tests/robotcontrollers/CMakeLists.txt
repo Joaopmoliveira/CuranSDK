@@ -218,3 +218,13 @@ robotutils
 renderable
 )
 
+add_executable(recorder_first_joint_only recorder_first_joint_only.cpp)
+
+target_compile_definitions(recorder_first_joint_only PRIVATE SK_VULKAN)
+target_compile_definitions(recorder_first_joint_only PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(recorder_first_joint_only PUBLIC
+utils
+robotutils
+renderable
+)

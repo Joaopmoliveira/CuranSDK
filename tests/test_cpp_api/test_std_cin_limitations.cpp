@@ -3,6 +3,7 @@
 #include <list>
 #include <mutex>
 #include <optional>
+#include <memory>
 
 /*
 enum ReadingStatus{

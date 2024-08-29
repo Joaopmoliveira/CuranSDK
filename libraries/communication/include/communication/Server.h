@@ -142,12 +142,11 @@ namespace curan
 			void accept(std::function<bool(std::error_code ec)> connection_callback)
 			{
 				acceptor_.async_accept(
-					[this, connection_callback, life_time_guaranteer = shared_from_this()](std::error_code ec, asio::ip::tcp::socket socket)
+					[this, connection_callback, life_time_guaranteer = copy()](std::error_code ec, asio::ip::tcp::socket socket)
 					{
 						if (!ec)
 						{
-							Client<protocol>::ServerInfo info{_cxt, std::move(socket)};
-							auto client_ptr = Client<protocol>::make(info);
+							auto client_ptr = Client<protocol>::make(_cxt, std::move(socket));
 							std::lock_guard<std::mutex> g{mut};
 							for (auto &submitted_callables : callables)
 								client_ptr->connect(submitted_callables);

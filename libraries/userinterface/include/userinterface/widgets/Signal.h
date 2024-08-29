@@ -8,6 +8,7 @@
 #include <functional>
 #include "definitions/UIdefinitions.h"
 #include <ostream>
+#include "utils/Overloading.h"
 
 namespace curan
 {

@@ -34,7 +34,7 @@ namespace curan
 
 			template <class _Rep, class _Period>
 			Client(asio::io_context &io_context,asio::ip::tcp::resolver::results_type endpoints, const std::chrono::duration<_Rep, _Period> &deadline, std::function<void(std::error_code ec)> connection_callback) : _cxt{io_context},
-																																					socket{io_context, endpoints, info.connection_type, deadline, connection_callback},
+																																					socket{io_context, endpoints, deadline, connection_callback}
 																																				{};
 
 			Client(asio::io_context &io_context,asio::ip::tcp::socket socket) : _cxt{io_context},
@@ -59,7 +59,7 @@ namespace curan
 			static inline std::shared_ptr<Client<protocol>> make(asio::io_context &io_context,asio::ip::tcp::resolver::results_type endpoints, const std::chrono::duration<_Rep, _Period> &deadline, std::function<void(std::error_code ec)> connection_callback)
 			{
 				// this is a bad practice, in effect we have a multistage contructor of the socket client
-				std::shared_ptr<Client<protocol>> client = std::shared_ptr<Client<protocol>>(new Client<protocol>{info, deadline, connection_callback});
+				std::shared_ptr<Client<protocol>> client = std::shared_ptr<Client<protocol>>(new Client<protocol>{io_context,endpoints, deadline, connection_callback});
 				client->socket.trigger_start(client->weak_from_this(), endpoints, deadline, connection_callback);
 				return client;
 			}
@@ -74,7 +74,7 @@ namespace curan
 
 			inline std::shared_ptr<Client<protocol>> copy()
 			{
-				return shared_from_this();
+				return this->shared_from_this();
 			}
 
 			void connect(typename protocol::signature c)
