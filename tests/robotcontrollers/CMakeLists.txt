@@ -228,3 +228,14 @@ utils
 robotutils
 renderable
 )
+
+add_executable(test_filtering_filter_joint test_filtering_filter_joint.cpp)
+
+target_compile_definitions(test_filtering_filter_joint PRIVATE SK_VULKAN)
+target_compile_definitions(test_filtering_filter_joint PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_filtering_filter_joint PUBLIC
+utils
+robotutils
+renderable
+)

@@ -162,9 +162,8 @@ int main()
                                                       }
                                                   }});
 
-        while(window.run_once() && client){
-
-        }
+        window.run();
+        client.cancel();
     }
     auto now = std::chrono::system_clock::now();
     auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
