@@ -351,6 +351,16 @@ namespace curan
                 return f_ptr_state;
             }
 
+            inline const vector_type& gravity() const
+            {
+                return f_gravity;
+            }
+
+            inline const vector_type& coriolis() const
+            {
+                return f_coriolis;
+            }
+
             inline const Eigen::Matrix<double, 6, model_joints> &jacobian() const
             {
                 return f_jacobian;

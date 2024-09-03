@@ -239,3 +239,25 @@ utils
 robotutils
 renderable
 )
+
+add_executable(test_filtering_all_joints test_filtering_all_joints.cpp)
+
+target_compile_definitions(test_filtering_all_joints PRIVATE SK_VULKAN)
+target_compile_definitions(test_filtering_all_joints PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_filtering_all_joints PUBLIC
+utils
+robotutils
+renderable
+)
+
+add_executable(test_simulation_filtering_all_joints test_simulation_filtering_all_joints.cpp)
+
+target_compile_definitions(test_simulation_filtering_all_joints PRIVATE SK_VULKAN)
+target_compile_definitions(test_simulation_filtering_all_joints PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_simulation_filtering_all_joints PUBLIC
+utils
+robotutils
+renderable
+)

@@ -119,6 +119,7 @@ namespace curan
 
         std::ostream &operator<<(std::ostream &os, const State &cont)
         {
+            os << "{";
             if(cont.print_state & PrintInfo::Q)
                 os << "q: " << convert<double, number_of_joints>(cont.q).transpose() << std::endl;
 
@@ -174,7 +175,7 @@ namespace curan
             if(cont.print_state & PrintInfo::ROTATION)
                 os << "rotation: \n"
                     << f_end_effector_rot << std::endl;
-
+            os << "}";
             return os;
         }
 
