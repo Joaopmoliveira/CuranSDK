@@ -113,6 +113,7 @@ struct HandGuidanceFirstJoint : public curan::robotic::UserData
 int main()
 {
     std::list<curan::robotic::State> recording_of_states;
+    std::mutex mut;
     std::signal(SIGINT, signal_handler);
     {
 
@@ -149,6 +150,7 @@ int main()
                                                           while (success && client)
                                                           {
                                                               success = app.step();
+                                                              std::lock_guard<std::mutex> g{mut};
                                                               recording_of_states.push_back(client.atomic_acess().load());
                                                           }
                                                           app.disconnect();
@@ -161,7 +163,6 @@ int main()
                                                           return 1;
                                                       }
                                                   }});
-
         window.run();
         client.cancel();
     }
