@@ -273,3 +273,25 @@ utils
 robotutils
 renderable
 )
+
+add_executable(test_inertia_increase test_inertia_increase.cpp)
+
+target_compile_definitions(test_inertia_increase PRIVATE SK_VULKAN)
+target_compile_definitions(test_inertia_increase PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_inertia_increase PUBLIC
+utils
+robotutils
+renderable
+)
+
+add_executable(test_comparison_two_and_three_harmonics test_comparison_two_and_three_harmonics.cpp)
+
+target_compile_definitions(test_comparison_two_and_three_harmonics PRIVATE SK_VULKAN)
+target_compile_definitions(test_comparison_two_and_three_harmonics PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_comparison_two_and_three_harmonics PUBLIC
+utils
+robotutils
+renderable
+)

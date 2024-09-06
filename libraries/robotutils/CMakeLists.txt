@@ -4,17 +4,13 @@ src/HandGuidance.cpp
 src/NeedleController.cpp
 src/WallAvoidanceData.cpp
 src/FilterRippleFirstHarmonic.cpp
-src/ExtractRipple.cpp
-src/CompensateRipple.cpp
 src/JointVelocityController.cpp
-src/ExtractRippleCrossMitigation.cpp
-src/ExtractSingleJoint.cpp
-src/CompensateRippleFreehand.cpp
 src/RippleReinjection.cpp
 src/RobotState.cpp
 src/ImpedanceController.cpp
 src/CartesianVelocityController.cpp
 src/InertiaReduction.cpp
+src/InertiaAugmentation.cpp
 )
 
 target_include_directories(robotutils
