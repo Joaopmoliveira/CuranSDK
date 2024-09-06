@@ -14,6 +14,7 @@ src/RippleReinjection.cpp
 src/RobotState.cpp
 src/ImpedanceController.cpp
 src/CartesianVelocityController.cpp
+src/InertiaReduction.cpp
 )
 
 target_include_directories(robotutils

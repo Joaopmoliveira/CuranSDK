@@ -261,3 +261,15 @@ utils
 robotutils
 renderable
 )
+
+
+add_executable(test_inertia_reduction test_inertia_reduction.cpp)
+
+target_compile_definitions(test_inertia_reduction PRIVATE SK_VULKAN)
+target_compile_definitions(test_inertia_reduction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_inertia_reduction PUBLIC
+utils
+robotutils
+renderable
+)
