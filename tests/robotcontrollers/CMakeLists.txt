@@ -295,3 +295,14 @@ utils
 robotutils
 renderable
 )
+
+add_executable(test_inertia_reduction_plus_stiffness test_inertia_reduction_plus_stiffness.cpp)
+
+target_compile_definitions(test_inertia_reduction_plus_stiffness PRIVATE SK_VULKAN)
+target_compile_definitions(test_inertia_reduction_plus_stiffness PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_inertia_reduction_plus_stiffness PUBLIC
+utils
+robotutils
+renderable
+)

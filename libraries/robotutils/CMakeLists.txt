@@ -11,6 +11,7 @@ src/ImpedanceController.cpp
 src/CartesianVelocityController.cpp
 src/InertiaReduction.cpp
 src/InertiaAugmentation.cpp
+src/EnhancedInertiaImpedanceController.cpp
 )
 
 target_include_directories(robotutils

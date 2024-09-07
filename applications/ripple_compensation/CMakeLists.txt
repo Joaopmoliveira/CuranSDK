@@ -1,2 +1,0 @@
-add_subdirectory(visualize_ripple)
-add_subdirectory(ripple_compensation)
