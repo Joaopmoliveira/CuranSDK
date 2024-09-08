@@ -20,37 +20,6 @@ void signal_handler(int signal)
 		robot_pointer->cancel();
 }
 
-struct ScrollingBuffer
-{
-	int MaxSize;
-	int Offset;
-	ImVector<ImVec2> Data;
-	ScrollingBuffer(int max_size = 2000)
-	{
-		MaxSize = max_size;
-		Offset = 0;
-		Data.reserve(MaxSize);
-	}
-	void AddPoint(float x, float y)
-	{
-		if (Data.size() < MaxSize)
-			Data.push_back(ImVec2(x, y));
-		else
-		{
-			Data[Offset] = ImVec2(x, y);
-			Offset = (Offset + 1) % MaxSize;
-		}
-	}
-	void Erase()
-	{
-		if (Data.size() > 0)
-		{
-			Data.shrink(0);
-			Offset = 0;
-		}
-	}
-};
-
 void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
 {
 	static size_t counter = 0;
@@ -62,7 +31,7 @@ void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
 	t += ImGui::GetIO().DeltaTime;
 	{
 		ImGui::Begin("Error"); // Create a window called "Hello, world!" and append into it.
-		static std::array<ScrollingBuffer, 6> buffers;
+		static std::array<curan::renderable::ScrollingBuffer, 6> buffers;
 
 		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
 
@@ -89,7 +58,7 @@ void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
 
 	{
 		ImGui::Begin("Actuation"); // Create a window called "Hello, world!" and append into it.
-		static std::array<ScrollingBuffer, 6> buffers;
+		static std::array<curan::renderable::ScrollingBuffer, 6> buffers;
 
 		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
 

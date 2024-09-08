@@ -20,37 +20,6 @@ void signal_handler(int signal)
 		robot_pointer->cancel();
 }
 
-struct ScrollingBuffer
-{
-	int MaxSize;
-	int Offset;
-	ImVector<ImVec2> Data;
-	ScrollingBuffer(int max_size = 2000)
-	{
-		MaxSize = max_size;
-		Offset = 0;
-		Data.reserve(MaxSize);
-	}
-	void AddPoint(float x, float y)
-	{
-		if (Data.size() < MaxSize)
-			Data.push_back(ImVec2(x, y));
-		else
-		{
-			Data[Offset] = ImVec2(x, y);
-			Offset = (Offset + 1) % MaxSize;
-		}
-	}
-	void Erase()
-	{
-		if (Data.size() > 0)
-		{
-			Data.shrink(0);
-			Offset = 0;
-		}
-	}
-};
-
 void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
 {
 	static size_t counter = 0;
@@ -61,7 +30,7 @@ void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
 	t += ImGui::GetIO().DeltaTime;
 	{
 		ImGui::Begin("Stiffness"); // Create a window called "Hello, world!" and append into it.
-		static std::array<ScrollingBuffer, curan::robotic::number_of_joints> buffers;
+		static std::array<curan::renderable::ScrollingBuffer, curan::robotic::number_of_joints> buffers;
 
 		ImGui::SliderFloat("History", &history, 1, 30, "%.1f s");
 
@@ -94,8 +63,8 @@ int main()
 	using namespace curan::robotic;
 	Eigen::Matrix<double, 3, 3> desired_rotation = Eigen::Matrix<double, 3, 3>::Identity();
 	desired_rotation << -0.718163, -0.00186162, -0.695873,
-		-0.00329559, 0.999994, 0.000725931,
-		0.695868, 0.00281465, -0.718165;
+						-0.00329559, 0.999994, 0.000725931,
+						 0.695868, 0.00281465, -0.718165;
 	Eigen::Matrix<double, 3, 1> desired_translation = Eigen::Matrix<double, 3, 1>::Zero();
 	desired_translation << -0.66809, -0.00112052, 0.443678;
 	Transformation equilibrium{desired_rotation, desired_translation};

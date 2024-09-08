@@ -6,39 +6,13 @@
 
 constexpr size_t n_joints = 7;
 
-// utility structure for realtime plot
-struct ScrollingBuffer {
-    int MaxSize;
-    int Offset;
-    ImVector<ImVec2> Data;
-    ScrollingBuffer(int max_size = 2000) {
-        MaxSize = max_size;
-        Offset  = 0;
-        Data.reserve(MaxSize);
-    }
-    void AddPoint(float x, float y) {
-        if (Data.size() < MaxSize)
-            Data.push_back(ImVec2(x,y));
-        else {
-            Data[Offset] = ImVec2(x,y);
-            Offset =  (Offset + 1) % MaxSize;
-        }
-    }
-    void Erase() {
-        if (Data.size() > 0) {
-            Data.shrink(0);
-            Offset  = 0;
-        }
-    }
-};
-
 std::atomic<std::array<double,n_joints>> robot_joint_config;
 
 void interface(vsg::CommandBuffer& cb){
     ImGui::Begin("Angle Display"); // Create a window called "Hello, world!" and append into it.
     ImGui::BulletText("Move your mouse to change the data!");
     ImGui::BulletText("This example assumes 60 FPS. Higher FPS requires larger buffer size.");
-	static std::array<ScrollingBuffer,n_joints> buffers;
+	static std::array<curan::renderable::ScrollingBuffer,n_joints> buffers;
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 	auto local_copy = robot_joint_config.load();
