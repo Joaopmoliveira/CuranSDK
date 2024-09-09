@@ -16,6 +16,16 @@ namespace curan {
 
         constexpr bool full_screen_mode = true;
 
+        struct ScrollingBuffer
+        {
+	        int MaxSize;
+	        int Offset;
+	        ImVector<ImVec2> Data;
+	        ScrollingBuffer(int max_size = 4000);
+	        void AddPoint(float x, float y);
+	        void Erase();
+        };
+
         struct Window {
             vsg::ref_ptr<vsg::Window> window;
             vsg::ref_ptr<vsg::WindowTraits> traits;

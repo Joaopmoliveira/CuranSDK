@@ -17,31 +17,6 @@
 #include "rendering/Mesh.h"
 #include "rendering/DynamicHeight.h"
 
-// utility structure for realtime plot
-struct ScrollingBuffer {
-    int MaxSize;
-    int Offset;
-    ImVector<ImVec2> Data;
-    ScrollingBuffer(int max_size = 2000) {
-        MaxSize = max_size;
-        Offset  = 0;
-        Data.reserve(MaxSize);
-    }
-    void AddPoint(float x, float y) {
-        if (Data.size() < MaxSize)
-            Data.push_back(ImVec2(x,y));
-        else {
-            Data[Offset] = ImVec2(x,y);
-            Offset =  (Offset + 1) % MaxSize;
-        }
-    }
-    void Erase() {
-        if (Data.size() > 0) {
-            Data.shrink(0);
-            Offset  = 0;
-        }
-    }
-};
 
 constexpr size_t number_of_display_variables = 3;
 
@@ -99,11 +74,11 @@ void interface(vsg::CommandBuffer& cb){
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
 
-	static std::array<ScrollingBuffer,number_of_display_variables> acceleration_buffers;
-    static std::array<ScrollingBuffer,number_of_display_variables> standard_deviation_buffers;
-    static std::array<ScrollingBuffer,number_of_display_variables> velocity_buffers;
-    static std::array<ScrollingBuffer,number_of_display_variables> orientation_buffers;
-    static std::array<ScrollingBuffer,number_of_display_variables> angular_velocity_buffers;
+	static std::array<curan::renderable::ScrollingBuffer,number_of_display_variables> acceleration_buffers;
+    static std::array<curan::renderable::ScrollingBuffer,number_of_display_variables> standard_deviation_buffers;
+    static std::array<curan::renderable::ScrollingBuffer,number_of_display_variables> velocity_buffers;
+    static std::array<curan::renderable::ScrollingBuffer,number_of_display_variables> orientation_buffers;
+    static std::array<curan::renderable::ScrollingBuffer,number_of_display_variables> angular_velocity_buffers;
 
 	for(size_t index = 0; index < number_of_display_variables ; ++index){
         acceleration_buffers[index].AddPoint(t,(float)gps_read.acceleration[index]);
@@ -129,9 +104,9 @@ void interface(vsg::CommandBuffer& cb){
         ImGui::End();
     }
 
-	static ScrollingBuffer longitude_buffer;
-    static ScrollingBuffer latitude_buffer;
-    static ScrollingBuffer height_buffer;
+	static curan::renderable::ScrollingBuffer longitude_buffer;
+    static curan::renderable::ScrollingBuffer latitude_buffer;
+    static curan::renderable::ScrollingBuffer height_buffer;
 
     longitude_buffer.AddPoint(t,(float)gps_read.longitude);
     latitude_buffer.AddPoint(t,(float)gps_read.latitude);
@@ -218,11 +193,11 @@ void interface(vsg::CommandBuffer& cb){
 
     if(parameters.showTiming){
         ImGui::Begin("Sample Times"); // Create a window called "Hello, world!" and append into it.
-	    static ScrollingBuffer sensors_receive_timestamp;
-        static ScrollingBuffer sensors_send_timestamp;
-        static ScrollingBuffer watchdog_sensor_receive_timestamp;
-        static ScrollingBuffer watchdog_client_reqst_timestamp;
-        static ScrollingBuffer client_receive_timestamp;
+	    static curan::renderable::ScrollingBuffer sensors_receive_timestamp;
+        static curan::renderable::ScrollingBuffer sensors_send_timestamp;
+        static curan::renderable::ScrollingBuffer watchdog_sensor_receive_timestamp;
+        static curan::renderable::ScrollingBuffer watchdog_client_reqst_timestamp;
+        static curan::renderable::ScrollingBuffer client_receive_timestamp;
 
         sensors_receive_timestamp.AddPoint(t,(double)1e-3*(global_message.sensors_receive_timestamp-global_message.watchdog_sensor_reqst_timestamp));
         sensors_send_timestamp.AddPoint(t,(double)1e-3*(global_message.sensors_send_timestamp-global_message.watchdog_sensor_reqst_timestamp));

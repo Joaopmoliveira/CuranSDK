@@ -11,39 +11,12 @@
 #include <chrono>
 #include <csignal>
 
-
-// utility structure for realtime plot
-struct ScrollingBuffer {
-    int MaxSize;
-    int Offset;
-    ImVector<ImVec2> Data;
-    ScrollingBuffer(int max_size = 2000) {
-        MaxSize = max_size;
-        Offset  = 0;
-        Data.reserve(MaxSize);
-    }
-    void AddPoint(float x, float y) {
-        if (Data.size() < MaxSize)
-            Data.push_back(ImVec2(x,y));
-        else {
-            Data[Offset] = ImVec2(x,y);
-            Offset =  (Offset + 1) % MaxSize;
-        }
-    }
-    void Erase() {
-        if (Data.size() > 0) {
-            Data.shrink(0);
-            Offset  = 0;
-        }
-    }
-};
-
 void display_interface(vsg::CommandBuffer& cb, curan::robotic::RobotLBR& client)
 {
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
     ImGui::Begin("Joint Angles"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer,3> buffers;
+	static std::array<curan::renderable::ScrollingBuffer,3> buffers;
     static float t = 0;
     t += ImGui::GetIO().DeltaTime;
 

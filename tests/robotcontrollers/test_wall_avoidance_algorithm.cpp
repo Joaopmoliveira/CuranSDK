@@ -10,43 +10,13 @@
 
 #include <csignal>
 
-struct ScrollingBuffer
-{
-	int MaxSize;
-	int Offset;
-	ImVector<ImVec2> Data;
-	ScrollingBuffer(int max_size = 2000)
-	{
-		MaxSize = max_size;
-		Offset = 0;
-		Data.reserve(MaxSize);
-	}
-	void AddPoint(float x, float y)
-	{
-		if (Data.size() < MaxSize)
-			Data.push_back(ImVec2(x, y));
-		else
-		{
-			Data[Offset] = ImVec2(x, y);
-			Offset = (Offset + 1) % MaxSize;
-		}
-	}
-	void Erase()
-	{
-		if (Data.size() > 0)
-		{
-			Data.shrink(0);
-			Offset = 0;
-		}
-	}
-};
 
 void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 {
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
 	ImGui::Begin("Control Torques"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, curan::robotic::number_of_joints> buffers;
+	static std::array<curan::renderable::ScrollingBuffer, curan::robotic::number_of_joints> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
 
@@ -74,7 +44,7 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 
     const std::array<std::string,3> names{{"D","dotD","dotdotDMaxFinal"}};
 
-    static std::array<ScrollingBuffer, 3> wall_avoindance_buffers;
+    static std::array<curan::renderable::ScrollingBuffer, 3> wall_avoindance_buffers;
     ImGui::Begin("Wall Avoindance Algorithm"); // Create a window called "Hello, world!" and append into it.
     if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
 	{

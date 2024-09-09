@@ -10,43 +10,12 @@
 
 #include <csignal>
 
-struct ScrollingBuffer
-{
-	int MaxSize;
-	int Offset;
-	ImVector<ImVec2> Data;
-	ScrollingBuffer(int max_size = 2000)
-	{
-		MaxSize = max_size;
-		Offset = 0;
-		Data.reserve(MaxSize);
-	}
-	void AddPoint(float x, float y)
-	{
-		if (Data.size() < MaxSize)
-			Data.push_back(ImVec2(x, y));
-		else
-		{
-			Data[Offset] = ImVec2(x, y);
-			Offset = (Offset + 1) % MaxSize;
-		}
-	}
-	void Erase()
-	{
-		if (Data.size() > 0)
-		{
-			Data.shrink(0);
-			Offset = 0;
-		}
-	}
-};
-
 void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 {
     static const auto& atomic_access = client.atomic_acess();
     auto state = atomic_access.load(std::memory_order_relaxed);
 	ImGui::Begin("Control Torques"); // Create a window called "Hello, world!" and append into it.
-	static std::array<ScrollingBuffer, curan::robotic::number_of_joints> buffers;
+	static std::array<curan::renderable::ScrollingBuffer, curan::robotic::number_of_joints> buffers;
 	static float t = 0;
 	t += ImGui::GetIO().DeltaTime;
 
@@ -72,7 +41,7 @@ void custom_interface(vsg::CommandBuffer &cb,curan::robotic::RobotLBR& client)
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
-    static std::array<ScrollingBuffer, curan::robotic::number_of_joints> dqref;
+    static std::array<curan::renderable::ScrollingBuffer, curan::robotic::number_of_joints> dqref;
     ImGui::Begin("Velocities"); // Create a window called "Hello, world!" and append into it.
     if (ImPlot::BeginPlot("##Scrolling", ImVec2(-1, -1)))
 	{
