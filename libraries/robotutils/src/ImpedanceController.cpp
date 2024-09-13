@@ -50,7 +50,7 @@ namespace curan
                 Eigen::Matrix<double, 6, 6> Qinv = Q_cartesian.inverse();
                 B0_cartesian = Qinv * stiffness * Qinv.transpose();
             }
-            Eigen::Matrix<double, number_of_joints, number_of_joints> nullspace_stiffness = 3.0*Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity();
+            Eigen::Matrix<double, number_of_joints, number_of_joints> nullspace_stiffness = 1.0*Eigen::Matrix<double, number_of_joints, number_of_joints>::Identity();
             Eigen::Matrix<double, number_of_joints, number_of_joints> B0_nullspace;
             Eigen::Matrix<double, number_of_joints, number_of_joints> Q_nullspace;
             {
