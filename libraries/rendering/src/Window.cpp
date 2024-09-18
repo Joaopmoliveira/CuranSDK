@@ -81,6 +81,7 @@ Window::Window(Info& info) : number_of_images{5} {
     // The commandGraph will contain a 2 stage renderGraph 1) 3D scene 2) ImGui (by default also includes clear depth buffers)
     commandGraph = vsg::CommandGraph::create(window);
     auto renderGraph = vsg::RenderGraph::create(window);
+    renderGraph->setClearValues({0.975,1.0,0.95,1.0});
     commandGraph->addChild(renderGraph);
 
     // create the normal 3D view of the scene

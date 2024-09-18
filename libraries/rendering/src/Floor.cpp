@@ -12,8 +12,9 @@ namespace curan{
 
             vsg::StateInfo stateInfo;
             stateInfo.wireframe = true;
+            
             vsg::GeometryInfo geomInfo;
-            geomInfo.color = vsg::vec4(1.0f,1.0f,1.0f,1.0f);
+            geomInfo.color = vsg::vec4(0.0f,0.0f,0.0f,1.0f);
 
             auto builder = vsg::Builder::create();
             auto scene = vsg::Group::create();
