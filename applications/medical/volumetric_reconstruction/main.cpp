@@ -26,7 +26,6 @@
 #include "itkImportImageFilter.h"
 #include "imgui_stdlib.h"
 #include <map>
-#include "Registration.h"
 
 /*
 This executable requires:

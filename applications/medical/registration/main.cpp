@@ -747,8 +747,12 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> sol
     return {optimizer->GetValue(), final_transformation, info_registration.initial_rotation};
 }
 
-int main(const std::string &cutted_us_fixed_volume, const std::string &cutted_mri_moving_volume)
+const std::string cutted_us_fixed_volume;
+const std::string cutted_mri_moving_volume;
+
+int main()
 {
+    
     // Segmentation parameters
     float fixed_sigma = 4;
     float moving_sigma = 4;

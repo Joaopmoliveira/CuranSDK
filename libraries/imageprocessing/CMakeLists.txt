@@ -10,9 +10,10 @@ src/IntegratedVolumeReconstructor.cpp
 src/SplicingTools.cpp
 src/igtl2itkConverter.cpp
 src/ImageProcessingDefinitions.cpp
+src/RegistrationUS_CT.cpp
 )
 
-find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)
+find_package(ITK CONFIG REQUIRED)
 
 target_include_directories(imageprocessing
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
