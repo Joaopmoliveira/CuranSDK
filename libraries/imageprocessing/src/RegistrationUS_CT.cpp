@@ -86,12 +86,6 @@
 All the functions are static because they are local, thus we don't want to have their signature leaking from this translation unit
 */
 
-const double pi = std::atan(1) * 4;
-using PixelType = float;
-using RegistrationPixelType = PixelType;
-constexpr unsigned int Dimension = 3;
-using ImageType = itk::Image<PixelType, Dimension>;
-
 /*Function to segment the region of interest of the input cutted image. Applies a gaussin gilter, then a laplacian. The histogram of the laplacian is used to create a region of interest using a threashold.
 The treashold is defined as the value of the bin in which all the bins at the left contain the target number of samples (this target number is a percentage of the total number of samples).
 A mask is created with this region of interest, and the original values of the input image inside the region of interest are returned in the smallest volume possible.*/
