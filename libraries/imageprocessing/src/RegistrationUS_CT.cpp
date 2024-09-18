@@ -82,6 +82,20 @@
 #include "itkPointSetToPointSetRegistrationMethod.h"
 #include <random>
 
+template<typename T>
+void update_ikt_filter(T& filter){
+    try{ filter->Update(); } 
+    catch( const itk::ExceptionObject & err ){ std::cout << "ExceptionObject caught !" << std::endl << err << std::endl; std::terminate();}
+    catch(...) { std::cout << "generic unknown exception" << std::endl; std::terminate();}
+}
+
+template<typename T>
+void compute_itk_filter(T& filter){
+    try{ filter->Compute(); } 
+    catch( const itk::ExceptionObject & err ){ std::cout << "ExceptionObject caught !" << std::endl << err << std::endl; std::terminate();}
+    catch(...) { std::cout << "generic unknown exception" << std::endl; std::terminate();}
+}
+
 /*
 All the functions are static because they are local, thus we don't want to have their signature leaking from this translation unit
 */
@@ -112,15 +126,7 @@ static itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Point
     rescale_filter->SetOutputMinimum(0.0);
     rescale_filter->SetOutputMaximum(1.0);
 
-    try
-    {
-        rescale_filter->Update();
-    }
-    catch (...)
-    {
-        std::cout << "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n";
-        //return 1;
-    }
+    update_ikt_filter(rescale_filter);
 
     ImageType::Pointer pointer2inputimage = rescale_filter->GetOutput();
 
@@ -135,16 +141,8 @@ static itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Point
         writer->SetInput(gaussianFilter->GetOutput());
         std::string output_name1 = "Gaussian_filtered_" + suffix + ".mha";
         writer->SetFileName(output_name1);
-        try
-        {
-            writer->Update();
-        }
-        catch (const itk::ExceptionObject & err)
-        {
-            std::cout << "ExceptionObject caught !" << std::endl;
-            std::cout << err << std::endl;
-            //return EXIT_FAILURE;
-        }
+
+        update_ikt_filter(writer);
     }
 
     //Apply laplacian filter to the output of the gaussian and write volume (optional)
@@ -158,16 +156,8 @@ static itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Point
         writer->SetInput(laplacian->GetOutput());
         std::string output_name2 = "Laplacian_" + suffix + ".mha";
         writer->SetFileName(output_name2);
-        try
-        {
-            writer->Update();
-        }
-        catch (const itk::ExceptionObject & err)
-        {
-            std::cout << "ExceptionObject caught !" << std::endl;
-            std::cout << err << std::endl;
-            //return EXIT_FAILURE;
-        }
+
+        update_ikt_filter(writer);
     }
 
     //Calculate minimum value of the laplacian
@@ -184,22 +174,13 @@ static itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Point
     histogramGenerator->SetInput(laplacian->GetOutput());
     histogramGenerator->SetNumberOfBins(500); 
 
-    try
-    {
-        histogramGenerator->Compute();
-    }
-    catch (itk::ExceptionObject & error)
-    {
-        std::cerr << "Error computing histogram: " << error << std::endl;
-        //return EXIT_FAILURE;
-    }
+    compute_itk_filter(histogramGenerator);
 
     const HistogramType * histogram = histogramGenerator->GetOutput();
 
     //Total number of samples
     int total_frequency = 0;
-    for (unsigned int i = 0; i < histogram->Size(); ++i)
-    {
+    for (unsigned int i = 0; i < histogram->Size(); ++i){
         total_frequency += histogram->GetFrequency(i);
     }
 
@@ -227,7 +208,6 @@ static itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Point
     thresholdFilter->ThresholdOutside(minValue, thresholdvalue); //0.02 para a precious
     //thresholdFilter->ThresholdOutside(minMaxCalculator->GetMinimum(), thresholdvalue);
     thresholdFilter->SetOutsideValue(0);
-    thresholdFilter->Update();
 
     //Calculate conected components from the laplacian
     using LabelType = unsigned short;
@@ -235,13 +215,11 @@ static itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Point
     using ConnectedComponentFilterType = itk::ConnectedComponentImageFilter<ImageType, LabelImageType>;
     ConnectedComponentFilterType::Pointer connectedComponentFilter = ConnectedComponentFilterType::New();
     connectedComponentFilter->SetInput(thresholdFilter->GetOutput());
-    connectedComponentFilter->Update();
 
     //Label the components from largest to smallest
     using RelabelFilterType = itk::RelabelComponentImageFilter<LabelImageType, LabelImageType>;
     RelabelFilterType::Pointer relabelFilter = RelabelFilterType::New();
     relabelFilter->SetInput(connectedComponentFilter->GetOutput());
-    relabelFilter->Update();
 
     //std::cout << "Relabeling completed. Number of objects: " << relabelFilter->GetNumberOfObjects() << std::endl;
 
@@ -251,7 +229,6 @@ static itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Point
     thresholdFilter2->SetInput(relabelFilter->GetOutput());
     thresholdFilter2->ThresholdOutside(1, 2); 
     thresholdFilter2->SetOutsideValue(0);
-    thresholdFilter2->Update();
 
     //Create mask from the largest components
     LabelImageType::Pointer largestComponentMask = thresholdFilter2->GetOutput();
@@ -261,7 +238,8 @@ static itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Point
     MaskFilterType::Pointer maskFilter = MaskFilterType::New();
     maskFilter->SetInput(pointer2inputimage);
     maskFilter->SetMaskImage(largestComponentMask);
-    maskFilter->Update();
+    
+    update_ikt_filter(maskFilter);
 
     //Create the smallest volume possible that contains all the required region
     using ConstIteratorType = itk::ImageRegionConstIterator<LabelImageType>;
@@ -313,21 +291,12 @@ static itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Point
     desiredRegion.SetIndex(start);
   
     filter->SetExtractionRegion(desiredRegion);
-    filter->Update();
+    
     if(write_images == true){
         writer->SetInput(filter->GetOutput());
         std::string output_name3 = "Segmented_volume_" + suffix + ".mha";
         writer->SetFileName(output_name3);
-        try
-        {
-            writer->Update();
-        }
-        catch (const itk::ExceptionObject & err)
-        {
-            std::cout << "ExceptionObject caught !" << std::endl;
-            std::cout << err << std::endl;
-            //return EXIT_FAILURE;
-        }
+        update_ikt_filter(writer);
     }
 
     ImageType::Pointer segmented_volume = filter->GetOutput();
@@ -361,13 +330,12 @@ static auto get_image_transform(ImageType::Pointer image){
     return transform;
 };
 
-static int print_image_with_transform(ImageType::Pointer image,std::string image_path){
+static void print_image_with_transform(ImageType::Pointer image,std::string image_path){
     using WriterType = itk::ImageFileWriter<ImageType>;
     auto writer = WriterType::New();
     writer->SetFileName(image_path);
     writer->SetInput(image);
     writer->Update();
-    return 1;
 };
 
 static inline double rad2deg(double in){
@@ -385,7 +353,6 @@ static void writePointCloudToFile(const std::string& filename, const Eigen::Matr
     for (int i = 0; i < points.rows(); ++i) {
         file << points(i, 0) << " " << points(i, 1) << " " << points(i, 2) << "\n";
     }
-    file.close();
 }
 
 Eigen::Matrix<double, Eigen::Dynamic, 3> downsample_points(const Eigen::Matrix<double, Eigen::Dynamic, 3>& points_in_matrix_form, double downsampling_percentage) {
@@ -393,9 +360,9 @@ Eigen::Matrix<double, Eigen::Dynamic, 3> downsample_points(const Eigen::Matrix<d
     size_t reduced_points = static_cast<size_t>(total_points * downsampling_percentage);
     
     std::vector<size_t> indices(total_points);
-    for (size_t i = 0; i < total_points; ++i) {
+    for (size_t i = 0; i < total_points; ++i) 
         indices[i] = i;
-    }
+
     
     std::random_device rd;
     std::mt19937 g(rd());
@@ -403,9 +370,9 @@ Eigen::Matrix<double, Eigen::Dynamic, 3> downsample_points(const Eigen::Matrix<d
     indices.resize(reduced_points);
     
     Eigen::Matrix<double, Eigen::Dynamic, 3> selected_points(reduced_points, 3);
-    for (size_t i = 0; i < reduced_points; ++i) {
+    for (size_t i = 0; i < reduced_points; ++i) 
         selected_points.row(i) = points_in_matrix_form.row(indices[i]);
-    }
+    
     
     return selected_points;
 }
@@ -880,7 +847,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage,ImageType::Point
 
     //Downsample and write pointcloud
     auto downsampled_moving_points = downsample_points(moving_points, downsampling_percentage);
-    writePointCloudToFile("moving_point_cloud.txt", downsampled_moving_points);
+        writePointCloudToFile("moving_point_cloud.txt", downsampled_moving_points);
     }
 
     //Execute paralelized icp registration for all the initial configs

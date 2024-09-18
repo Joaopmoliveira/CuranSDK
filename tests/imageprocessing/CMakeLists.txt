@@ -157,3 +157,15 @@ target_link_libraries(print_dicom_image_data
 PUBLIC
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_registration_framework test_registration_framework.cpp)
+
+target_compile_definitions(test_registration_framework PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_registration_framework PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_registration_framework
+PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
+
