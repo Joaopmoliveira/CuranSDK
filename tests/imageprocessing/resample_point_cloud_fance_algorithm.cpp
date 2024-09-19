@@ -393,7 +393,7 @@ void writePointCloudToFile(const std::string& filename, const Eigen::Matrix<doub
 }
 
 int main(int argc, char **argv){
-    std::string path_fixed{"C:/Dev/NeuroNavigation/volumes/Stitched_CT_2_sides.mha"};
+    std::string path_fixed{"C:/Dev/NeuroNavigation/volumes/Stitched_US_2_sides.mha"};
 
     std::printf("\nReading input volumes...\n");
     auto fixedImageReader = ImageReaderType::New();
@@ -416,7 +416,7 @@ int main(int argc, char **argv){
     float moving_sigma = 4;
     float fixed_histogram_percentage = 0.1;
     float moving_histogram_percentage = 0.1;
-    bool write_segmentation_volumes = false;
+    bool write_segmentation_volumes = true;
 
     using MaskPixelType = unsigned char;
     using MaskImageType = itk::Image<MaskPixelType, Dimension>;
@@ -431,7 +431,7 @@ int main(int argc, char **argv){
     //Preprocess the cutted volumes using laplacian and create pointers for them. These are the ones that will effectively be used with registration
     std::printf("\nPreprocessing input volumes...\n");
     auto pointer2fixedimage = apply_laplacian(pointer2inputfixedimage, fixed_sigma, fixed_histogram_percentage, "fixed", write_segmentation_volumes);
-
+    print_image_with_transform(pointer2inputfixedimage,"laplaced_image.mha");
     //Create matrix to store direction and origin that come from the results of the PCA
     Eigen::Matrix<double,4,4> T_origin_fixed = Eigen::Matrix<double,4,4>::Identity();
 
@@ -470,6 +470,7 @@ int main(int argc, char **argv){
     update_ikt_filter(meshSource);
 
     auto mesh = meshSource->GetOutput();
+    std::cout << "number of points: " << mesh->GetNumberOfPoints() << std::endl;
     Eigen::Matrix<double,Eigen::Dynamic,3> fixed_points = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh->GetNumberOfPoints(),3);
     using PointsIterator = MeshType::PointsContainer::Iterator;
     PointsIterator pointIterator_fixed = mesh->GetPoints()->Begin();
