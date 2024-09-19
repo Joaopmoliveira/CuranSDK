@@ -169,3 +169,15 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 
+add_executable(resample_point_cloud_fance_algorithm resample_point_cloud_fance_algorithm.cpp)
+
+target_compile_definitions(resample_point_cloud_fance_algorithm PRIVATE vsgXchange_FOUND)
+target_compile_definitions(resample_point_cloud_fance_algorithm PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(resample_point_cloud_fance_algorithm
+PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+

@@ -7,8 +7,8 @@
 using ImageReaderType = itk::ImageFileReader<ImageType>;
 
 int main(int argc, char **argv){
-    std::string path_fixed{CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"};
-    std::string path_moving{"C:/Dev/NeuroNavigation/volumes/reconstruction_results5.mha"};
+    std::string path_fixed{"C:/Dev/NeuroNavigation/volumes/Stitched_CT_2_sides.mha"};
+    std::string path_moving{"C:/Dev/NeuroNavigation/volumes/Stitched_US_2_sides.mha"};
 
     std::printf("\nReading input volumes...\n");
     auto fixedImageReader = ImageReaderType::New();
