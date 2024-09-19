@@ -448,83 +448,114 @@ void writePointCloudToFile(const std::string &filename, const Eigen::Matrix<doub
 
 using MeshType = itk::Mesh<double>;
 
-class CustomTriangleVisitor
+MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
 {
-public:
-    using identifier_in_original_mesh = size_t;
-    using identifier_in_post_processed_mesh = size_t;
-    MeshType::Pointer mesh;
-    using MeshSourceType = itk::AutomaticTopologyMeshSource<MeshType>;
-    MeshSourceType::Pointer mesh_source;
-    std::unordered_map<identifier_in_original_mesh, identifier_in_post_processed_mesh> identifiers;
-    Eigen::Matrix<double, 3, 1> centroid;
-
-    void set_required_data(MeshType::Pointer inmesh, Eigen::Matrix<double, 3, 1> incentroid)
+    class MeshSimplierVisitor
     {
-        mesh = inmesh;
-        mesh_source = MeshSourceType::New();
-        centroid = incentroid;
-    }
+    public:
+        using identifier_in_original_mesh = size_t;
+        using identifier_in_post_processed_mesh = size_t;
+        MeshType::Pointer mesh;
+        using MeshSourceType = itk::AutomaticTopologyMeshSource<MeshType>;
+        MeshSourceType::Pointer mesh_source;
+        std::unordered_map<identifier_in_original_mesh, identifier_in_post_processed_mesh> identifiers;
+        Eigen::Matrix<double, 3, 1> centroid;
 
-    using TriangleType = itk::TriangleCell<MeshType::CellType>;
-    void
-    Visit(unsigned long cellId, TriangleType *t)
-    {
-        TriangleType::PointIdIterator pit = t->PointIdsBegin();
-        TriangleType::PointIdIterator end = t->PointIdsEnd();
-        Eigen::Matrix<double, 3, 3> points_in_cell;
-        std::vector<identifier_in_original_mesh> identifiers_local;
-        size_t col = 0;
-        for (; pit != end; ++pit, ++col)
+        void set_required_data(MeshType::Pointer inmesh, Eigen::Matrix<double, 3, 1> incentroid)
         {
-            identifiers_local.emplace_back(*pit);
-            auto point = mesh->GetPoint(*pit);
-            points_in_cell(0, col) = point[0];
-            points_in_cell(1, col) = point[1];
-            points_in_cell(2, col) = point[2];
+            mesh = inmesh;
+            mesh_source = MeshSourceType::New();
+            centroid = incentroid;
         }
-        using IdentifierArrayType = MeshSourceType::IdentifierArrayType;
 
-        // check if cell is towards center
-        Eigen::Matrix<double,3,1> along_first_edge = points_in_cell.col(1) - points_in_cell.col(0);
-        Eigen::Matrix<double,3,1> along_second_edge = points_in_cell.col(2) - points_in_cell.col(0);
-        Eigen::Matrix<double,3,1> normal_to_cell = along_first_edge.cross(along_second_edge);
-
-        normal_to_cell.normalize();
-
-        Eigen::Matrix<double,3,1> center_of_face =points_in_cell.rowwise().mean();
-        Eigen::Matrix<double, 3, 1> centroid_to_face_normalized_vector = center_of_face-centroid;
-        centroid_to_face_normalized_vector.normalize();
-
-        if (centroid_to_face_normalized_vector.transpose() * normal_to_cell > -0.23)
-            return;
-            
-
-        MeshType::PointType p;
-        MeshSourceType::IdentifierArrayType idArray(3);
-        assert(identifiers_local.size() == points_in_cell.cols());
-        size_t collum = 0;
-        for (size_t collum = 0; collum < 3; ++collum)
+        using TriangleType = itk::TriangleCell<MeshType::CellType>;
+        void
+        Visit(unsigned long cellId, TriangleType *t)
         {
-            auto search = identifiers.find(identifiers_local[collum]);
-            if (search != identifiers.end()){
-                idArray[collum] = search->second;
-                std::cout << "\n";
-            } else {
-                p[0] = points_in_cell(0, collum);
-                p[1] = points_in_cell(1, collum);
-                p[2] = points_in_cell(2, collum);
-                idArray[collum] = mesh_source->AddPoint(p);
-                identifiers.emplace(identifiers_local[collum],idArray[collum]);
-                std::cout << ".";
+            TriangleType::PointIdIterator pit = t->PointIdsBegin();
+            TriangleType::PointIdIterator end = t->PointIdsEnd();
+            Eigen::Matrix<double, 3, 3> points_in_cell;
+            std::vector<identifier_in_original_mesh> identifiers_local;
+            size_t col = 0;
+            for (; pit != end; ++pit, ++col)
+            {
+                identifiers_local.emplace_back(*pit);
+                auto point = mesh->GetPoint(*pit);
+                points_in_cell(0, col) = point[0];
+                points_in_cell(1, col) = point[1];
+                points_in_cell(2, col) = point[2];
             }
-        }
-        mesh_source->AddTriangle(idArray[0],idArray[1],idArray[2]);
-    }
+            using IdentifierArrayType = MeshSourceType::IdentifierArrayType;
 
-    CustomTriangleVisitor() = default;
-    virtual ~CustomTriangleVisitor() = default;
-};
+            // check if cell is towards center
+            Eigen::Matrix<double, 3, 1> along_first_edge = points_in_cell.col(1) - points_in_cell.col(0);
+            Eigen::Matrix<double, 3, 1> along_second_edge = points_in_cell.col(2) - points_in_cell.col(0);
+            Eigen::Matrix<double, 3, 1> normal_to_cell = along_first_edge.cross(along_second_edge);
+
+            normal_to_cell.normalize();
+
+            Eigen::Matrix<double, 3, 1> center_of_face = points_in_cell.rowwise().mean();
+            Eigen::Matrix<double, 3, 1> centroid_to_face_normalized_vector = center_of_face - centroid;
+            centroid_to_face_normalized_vector.normalize();
+
+            if (centroid_to_face_normalized_vector.transpose() * normal_to_cell > -0.23)
+                return;
+
+            MeshType::PointType p;
+            MeshSourceType::IdentifierArrayType idArray(3);
+            assert(identifiers_local.size() == points_in_cell.cols());
+            size_t collum = 0;
+            for (size_t collum = 0; collum < 3; ++collum)
+            {
+                auto search = identifiers.find(identifiers_local[collum]);
+                if (search != identifiers.end())
+                {
+                    idArray[collum] = search->second;
+                }
+                else
+                {
+                    p[0] = points_in_cell(0, collum);
+                    p[1] = points_in_cell(1, collum);
+                    p[2] = points_in_cell(2, collum);
+                    idArray[collum] = mesh_source->AddPoint(p);
+                    identifiers.emplace(identifiers_local[collum], idArray[collum]);
+                }
+            }
+            mesh_source->AddTriangle(idArray[0], idArray[1], idArray[2]);
+        }
+
+        MeshSimplierVisitor() = default;
+        virtual ~MeshSimplierVisitor() = default;
+    };
+
+    Eigen::Matrix<double, 3, 1> centroid = Eigen::Matrix<double, 3, 1>::Zero();
+
+    using PointsIterator = MeshType::PointsContainer::Iterator;
+    for (PointsIterator pointIterator_fixed = input_mesh->GetPoints()->Begin(); pointIterator_fixed != input_mesh->GetPoints()->End(); ++pointIterator_fixed)
+    {
+        auto p = pointIterator_fixed->Value();
+        Eigen::Matrix<double, 3, 1> point;
+        point << p[0], p[1], p[2];
+        centroid += point * (1.0 / input_mesh->GetNumberOfPoints());
+    }
+    using TriangleType = itk::TriangleCell<MeshType::CellType>;
+
+    using TriangleVisitorInterfaceType =
+        itk::CellInterfaceVisitorImplementation<MeshType::PixelType,
+                                                MeshType::CellTraits,
+                                                TriangleType,
+                                                MeshSimplierVisitor>;
+    auto triangleVisitor = TriangleVisitorInterfaceType::New();
+
+    triangleVisitor->set_required_data(input_mesh, centroid);
+
+    using CellMultiVisitorType = MeshType::CellType::MultiVisitor;
+    auto multiVisitor = CellMultiVisitorType::New();
+    multiVisitor->AddVisitor(triangleVisitor);
+    input_mesh->Accept(multiVisitor);
+
+    return triangleVisitor->mesh_source->GetOutput();
+}
 
 int main(int argc, char **argv)
 {
@@ -595,8 +626,6 @@ int main(int argc, char **argv)
     filter_threshold->SetLowerThreshold(1);
     filter_threshold->SetUpperThreshold(255);
 
-    // Exctract a mesh from the region of interest
-
     using MeshSourceType = itk::BinaryMask3DMeshSource<MaskImageType, MeshType>;
     auto meshSource = MeshSourceType::New();
     meshSource->SetObjectValue(1); // 1 Because the region of interest has value 1.
@@ -604,40 +633,7 @@ int main(int argc, char **argv)
     update_ikt_filter(meshSource);
 
     MeshType::Pointer mesh = meshSource->GetOutput();
-    std::cout << "number of points: " << mesh->GetNumberOfPoints() << std::endl;
-    Eigen::Matrix<double, Eigen::Dynamic, 3> fixed_points = Eigen::Matrix<double, Eigen::Dynamic, 3>::Zero(mesh->GetNumberOfPoints(), 3);
-    using PointsIterator = MeshType::PointsContainer::Iterator;
-    PointsIterator pointIterator_fixed = mesh->GetPoints()->Begin();
-    PointsIterator end_fixed = mesh->GetPoints()->End();
-    size_t index = 0;
-    while (pointIterator_fixed != end_fixed)
-    {
-        auto p = pointIterator_fixed->Value();
-        fixed_points(index, 0) = p[0];
-        fixed_points(index, 1) = p[1];
-        fixed_points(index, 2) = p[2];
-        ++pointIterator_fixed;
-        ++index;
-    }
-    using TriangleType = itk::TriangleCell<MeshType::CellType>;
-
-    using TriangleVisitorInterfaceType =
-        itk::CellInterfaceVisitorImplementation<MeshType::PixelType,
-                                                MeshType::CellTraits,
-                                                TriangleType,
-                                                CustomTriangleVisitor>;
-    auto triangleVisitor = TriangleVisitorInterfaceType::New();
-    Eigen::Matrix<double, 3, 1> center_of_pointcloud = fixed_points.colwise().mean();
-
-    triangleVisitor->set_required_data(mesh, center_of_pointcloud);
-
-    using CellMultiVisitorType = MeshType::CellType::MultiVisitor;
-    auto multiVisitor = CellMultiVisitorType::New();
-    multiVisitor->AddVisitor(triangleVisitor);
-    mesh->Accept(multiVisitor);
-
-    std::cout << "writing point cloud ...\n";
-    writePointCloudToFile("fixed_point_cloud.txt", fixed_points);
+    MeshType::Pointer simplified_mesh = recompute_and_simplify_mesh(mesh);
 
     {
         using WriterType = itk::MeshFileWriter<MeshType>;
@@ -653,7 +649,7 @@ int main(int argc, char **argv)
         using WriterType = itk::MeshFileWriter<MeshType>;
         auto writer = WriterType::New();
         writer->SetFileName("fixed_point_cloud_removed_stuff.obj");
-        writer->SetInput(triangleVisitor->mesh_source->GetOutput());
+        writer->SetInput(simplified_mesh);
 
         std::cout << "writing mesh ...\n";
         update_ikt_filter(writer);
