@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 
+#include "itkAutomaticTopologyMeshSource.h"
 #include "imageprocessing/RegistrationUS_CT.h"
 #include "itkLaplacianImageFilter.h"
 #include "itkZeroCrossingBasedEdgeDetectionImageFilter.h"
@@ -84,20 +85,52 @@
 #include "itkLevenbergMarquardtOptimizer.h"
 #include "itkPointSetToPointSetRegistrationMethod.h"
 #include <random>
+#include "itkVector.h"
+#include "itkQuadEdgeMesh.h"
+#include "itkMeshFileReader.h"
+#include "itkQuadEdgeMeshExtendedTraits.h"
+#include "itkNormalQuadEdgeMeshFilter.h"
+
 using ImageReaderType = itk::ImageFileReader<ImageType>;
 
-template<typename T>
-void update_ikt_filter(T& filter){
-    try{ filter->Update(); } 
-    catch( const itk::ExceptionObject & err ){ std::cout << "ExceptionObject caught !" << std::endl << err << std::endl; std::terminate();}
-    catch(...) { std::cout << "generic unknown exception" << std::endl; std::terminate();}
+template <typename T>
+void update_ikt_filter(T &filter)
+{
+    try
+    {
+        filter->Update();
+    }
+    catch (const itk::ExceptionObject &err)
+    {
+        std::cout << "ExceptionObject caught !" << std::endl
+                  << err << std::endl;
+        std::terminate();
+    }
+    catch (...)
+    {
+        std::cout << "generic unknown exception" << std::endl;
+        std::terminate();
+    }
 }
 
-template<typename T>
-void compute_itk_filter(T& filter){
-    try{ filter->Compute(); } 
-    catch( const itk::ExceptionObject & err ){ std::cout << "ExceptionObject caught !" << std::endl << err << std::endl; std::terminate();}
-    catch(...) { std::cout << "generic unknown exception" << std::endl; std::terminate();}
+template <typename T>
+void compute_itk_filter(T &filter)
+{
+    try
+    {
+        filter->Compute();
+    }
+    catch (const itk::ExceptionObject &err)
+    {
+        std::cout << "ExceptionObject caught !" << std::endl
+                  << err << std::endl;
+        std::terminate();
+    }
+    catch (...)
+    {
+        std::cout << "generic unknown exception" << std::endl;
+        std::terminate();
+    }
 }
 
 const double pi = std::atan(1) * 4;
@@ -121,7 +154,7 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
     using HistogramGeneratorType = itk::Statistics::ScalarImageToHistogramGenerator<ImageType>;
     using HistogramType = HistogramGeneratorType::HistogramType;
 
-    //Rescale the input image between 0 and 1
+    // Rescale the input image between 0 and 1
     using RescaleFilterType = itk::RescaleIntensityImageFilter<ImageType, ImageType>;
     auto rescale_filter = RescaleFilterType::New();
     rescale_filter->SetInput(input_image);
@@ -135,19 +168,20 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
     catch (...)
     {
         std::cout << "Failed to read the Moving and Fixed images\nplease make sure that you have properly added them to the path:\n";
-        //return 1;
+        // return 1;
     }
 
     ImageType::Pointer pointer2inputimage = rescale_filter->GetOutput();
 
-    //Apply gaussian filter and write volume (optional)
+    // Apply gaussian filter and write volume (optional)
     auto gaussianFilter = GaussianFilterType::New();
     gaussianFilter->SetInput(pointer2inputimage);
     gaussianFilter->SetSigma(sigma);
     gaussianFilter->Update();
 
     auto writer = WriterType::New();
-    if(write_images == true){
+    if (write_images == true)
+    {
         writer->SetInput(gaussianFilter->GetOutput());
         std::string output_name1 = "Gaussian_filtered_" + suffix + ".mha";
         writer->SetFileName(output_name1);
@@ -155,22 +189,23 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
         {
             writer->Update();
         }
-        catch (const itk::ExceptionObject & err)
+        catch (const itk::ExceptionObject &err)
         {
             std::cout << "ExceptionObject caught !" << std::endl;
             std::cout << err << std::endl;
-            //return EXIT_FAILURE;
+            // return EXIT_FAILURE;
         }
     }
 
-    //Apply laplacian filter to the output of the gaussian and write volume (optional)
+    // Apply laplacian filter to the output of the gaussian and write volume (optional)
     using FilterType10 = itk::LaplacianRecursiveGaussianImageFilter<ImageType, ImageType>;
     auto laplacian = FilterType10::New();
     laplacian->SetNormalizeAcrossScale(true);
     laplacian->SetInput(gaussianFilter->GetOutput());
     laplacian->Update();
 
-    if(write_images == true){
+    if (write_images == true)
+    {
         writer->SetInput(laplacian->GetOutput());
         std::string output_name2 = "Laplacian_" + suffix + ".mha";
         writer->SetFileName(output_name2);
@@ -178,46 +213,46 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
         {
             writer->Update();
         }
-        catch (const itk::ExceptionObject & err)
+        catch (const itk::ExceptionObject &err)
         {
             std::cout << "ExceptionObject caught !" << std::endl;
             std::cout << err << std::endl;
-            //return EXIT_FAILURE;
+            // return EXIT_FAILURE;
         }
     }
 
-    //Calculate minimum value of the laplacian
+    // Calculate minimum value of the laplacian
     using MinMaxCalculatorType = itk::MinimumMaximumImageCalculator<ImageType>;
     auto minMaxCalculator = MinMaxCalculatorType::New();
     minMaxCalculator->SetImage(laplacian->GetOutput());
     minMaxCalculator->Compute();
     PixelType minValue = minMaxCalculator->GetMinimum();
 
-    //Construct histogram from the laplacian output
+    // Construct histogram from the laplacian output
     auto histogramGenerator = HistogramGeneratorType::New();
     histogramGenerator->SetInput(laplacian->GetOutput());
-    histogramGenerator->SetNumberOfBins(500); 
+    histogramGenerator->SetNumberOfBins(500);
 
     try
     {
         histogramGenerator->Compute();
     }
-    catch (itk::ExceptionObject & error)
+    catch (itk::ExceptionObject &error)
     {
         std::cerr << "Error computing histogram: " << error << std::endl;
-        //return EXIT_FAILURE;
+        // return EXIT_FAILURE;
     }
 
-    const HistogramType * histogram = histogramGenerator->GetOutput();
+    const HistogramType *histogram = histogramGenerator->GetOutput();
 
-    //Total number of samples
+    // Total number of samples
     int total_frequency = 0;
     for (unsigned int i = 0; i < histogram->Size(); ++i)
     {
         total_frequency += histogram->GetFrequency(i);
     }
 
-    //The treashold is defined as the value of the bin in which all the bins at the left contain the target number of samples (as a percentage of the total number)
+    // The treashold is defined as the value of the bin in which all the bins at the left contain the target number of samples (as a percentage of the total number)
     auto target_frequency = cuttoff_histogram_percentage * total_frequency;
 
     unsigned int cumulative_frequency = 0;
@@ -234,16 +269,16 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
 
     HistogramType::MeasurementType thresholdvalue = histogram->GetBinMin(0, threshold_bin);
 
-    //Threshold the laplacian volume so as to contain only the voxels inside the threshold, and set the others to 0
+    // Threshold the laplacian volume so as to contain only the voxels inside the threshold, and set the others to 0
     using ThresholdFilterType = itk::ThresholdImageFilter<ImageType>;
     ThresholdFilterType::Pointer thresholdFilter = ThresholdFilterType::New();
     thresholdFilter->SetInput(laplacian->GetOutput());
-    thresholdFilter->ThresholdOutside(minValue, thresholdvalue); //0.02 para a precious
-    //thresholdFilter->ThresholdOutside(minMaxCalculator->GetMinimum(), thresholdvalue);
+    thresholdFilter->ThresholdOutside(minValue, thresholdvalue); // 0.02 para a precious
+    // thresholdFilter->ThresholdOutside(minMaxCalculator->GetMinimum(), thresholdvalue);
     thresholdFilter->SetOutsideValue(0);
     thresholdFilter->Update();
 
-    //Calculate conected components from the laplacian
+    // Calculate conected components from the laplacian
     using LabelType = unsigned short;
     using LabelImageType = itk::Image<LabelType, 3>;
     using ConnectedComponentFilterType = itk::ConnectedComponentImageFilter<ImageType, LabelImageType>;
@@ -251,65 +286,72 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
     connectedComponentFilter->SetInput(thresholdFilter->GetOutput());
     connectedComponentFilter->Update();
 
-    //Label the components from largest to smallest
+    // Label the components from largest to smallest
     using RelabelFilterType = itk::RelabelComponentImageFilter<LabelImageType, LabelImageType>;
     RelabelFilterType::Pointer relabelFilter = RelabelFilterType::New();
     relabelFilter->SetInput(connectedComponentFilter->GetOutput());
     relabelFilter->Update();
 
-    //std::cout << "Relabeling completed. Number of objects: " << relabelFilter->GetNumberOfObjects() << std::endl;
+    // std::cout << "Relabeling completed. Number of objects: " << relabelFilter->GetNumberOfObjects() << std::endl;
 
-    //Threshold so as to keep only the 2 largest components 
+    // Threshold so as to keep only the 2 largest components
     using ThresholdFilterType2 = itk::ThresholdImageFilter<LabelImageType>;
     ThresholdFilterType2::Pointer thresholdFilter2 = ThresholdFilterType2::New();
     thresholdFilter2->SetInput(relabelFilter->GetOutput());
-    thresholdFilter2->ThresholdOutside(1, 2); 
+    thresholdFilter2->ThresholdOutside(1, 2);
     thresholdFilter2->SetOutsideValue(0);
     thresholdFilter2->Update();
 
-    //Create mask from the largest components
+    // Create mask from the largest components
     LabelImageType::Pointer largestComponentMask = thresholdFilter2->GetOutput();
 
-    //Use a mask filter to get the original image information but only in the region of interest
+    // Use a mask filter to get the original image information but only in the region of interest
     using MaskFilterType = itk::MaskImageFilter<ImageType, LabelImageType, ImageType>;
     MaskFilterType::Pointer maskFilter = MaskFilterType::New();
     maskFilter->SetInput(pointer2inputimage);
     maskFilter->SetMaskImage(largestComponentMask);
     maskFilter->Update();
 
-    //Create the smallest volume possible that contains all the required region
+    // Create the smallest volume possible that contains all the required region
     using ConstIteratorType = itk::ImageRegionConstIterator<LabelImageType>;
     ConstIteratorType inputIt(thresholdFilter2->GetOutput(), thresholdFilter2->GetOutput()->GetRequestedRegion());
-    
-    std::pair<size_t,size_t> xlimits = {std::numeric_limits<size_t>::max(),0}; 
-    std::pair<size_t,size_t> ylimits = {std::numeric_limits<size_t>::max(),0}; 
-    std::pair<size_t,size_t> zlimits = {std::numeric_limits<size_t>::max(),0}; 
+
+    std::pair<size_t, size_t> xlimits = {std::numeric_limits<size_t>::max(), 0};
+    std::pair<size_t, size_t> ylimits = {std::numeric_limits<size_t>::max(), 0};
+    std::pair<size_t, size_t> zlimits = {std::numeric_limits<size_t>::max(), 0};
     while (!inputIt.IsAtEnd())
     {
-        if(inputIt.Get()>0){
-            const auto& index = inputIt.GetIndex();
-            if(xlimits.first>index[0] ){
+        if (inputIt.Get() > 0)
+        {
+            const auto &index = inputIt.GetIndex();
+            if (xlimits.first > index[0])
+            {
                 xlimits.first = index[0];
             }
-            if(xlimits.second<index[0] ){
+            if (xlimits.second < index[0])
+            {
                 xlimits.second = index[0];
             }
-            if(ylimits.first>index[1] ){
+            if (ylimits.first > index[1])
+            {
                 ylimits.first = index[1];
             }
-            if(ylimits.second<index[1] ){
+            if (ylimits.second < index[1])
+            {
                 ylimits.second = index[1];
             }
-            if(zlimits.first>index[2] ){
+            if (zlimits.first > index[2])
+            {
                 zlimits.first = index[2];
             }
-            if(zlimits.second<index[2] ){
+            if (zlimits.second < index[2])
+            {
                 zlimits.second = index[2];
             }
         }
         ++inputIt;
     }
-    
+
     using FilterType = itk::ExtractImageFilter<ImageType, ImageType>;
     FilterType::Pointer filter = FilterType::New();
     filter->SetInput(maskFilter->GetOutput());
@@ -325,9 +367,10 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
     ImageType::RegionType desiredRegion;
     desiredRegion.SetSize(size);
     desiredRegion.SetIndex(start);
-  
+
     filter->SetExtractionRegion(desiredRegion);
-    if(write_images == true){
+    if (write_images == true)
+    {
         writer->SetInput(filter->GetOutput());
         std::string output_name3 = "Segmented_volume_" + suffix + ".mha";
         writer->SetFileName(output_name3);
@@ -338,61 +381,143 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
     return segmented_volume;
 }
 
-int modify_image_with_transform(Eigen::Matrix<double,4,4> transform,ImageType::Pointer image){
-    itk::Point<double,3> origin;
+int modify_image_with_transform(Eigen::Matrix<double, 4, 4> transform, ImageType::Pointer image)
+{
+    itk::Point<double, 3> origin;
     itk::Matrix<double> direction;
-    for(size_t row = 0; row < 3; ++row){
-        origin[row] = transform(row,3);
-        for(size_t col = 0; col < 3; ++col){
-            direction(row,col) = transform(row,col);
+    for (size_t row = 0; row < 3; ++row)
+    {
+        origin[row] = transform(row, 3);
+        for (size_t col = 0; col < 3; ++col)
+        {
+            direction(row, col) = transform(row, col);
         }
-     }
+    }
     image->SetOrigin(origin);
     image->SetDirection(direction);
     return 1;
 };
 
-auto get_image_transform(ImageType::Pointer image){
-    Eigen::Matrix<double,4,4> transform = Eigen::Matrix<double,4,4>::Identity();
-    itk::Point<double,3> origin = image->GetOrigin();
-    itk::Matrix<double> direction= image->GetDirection();
-    for(size_t row = 0; row < 3; ++row){
-        transform(row,3) = image->GetOrigin()[row];
-        for(size_t col = 0; col < 3; ++col){
-            transform(row,col) = direction(row,col);
+auto get_image_transform(ImageType::Pointer image)
+{
+    Eigen::Matrix<double, 4, 4> transform = Eigen::Matrix<double, 4, 4>::Identity();
+    itk::Point<double, 3> origin = image->GetOrigin();
+    itk::Matrix<double> direction = image->GetDirection();
+    for (size_t row = 0; row < 3; ++row)
+    {
+        transform(row, 3) = image->GetOrigin()[row];
+        for (size_t col = 0; col < 3; ++col)
+        {
+            transform(row, col) = direction(row, col);
         }
-     }
+    }
     return transform;
 };
 
-void print_image_with_transform(ImageType::Pointer image,std::string image_path){
+void print_image_with_transform(ImageType::Pointer image, std::string image_path)
+{
     using WriterType = itk::ImageFileWriter<ImageType>;
     auto writer = WriterType::New();
     writer->SetFileName(image_path);
     writer->SetInput(image);
     update_ikt_filter(writer);
-    return ;
+    return;
 };
 
-inline double rad2deg(double in){
+inline double rad2deg(double in)
+{
     constexpr double constant_convert_deg_two_radians = 0.0174532925;
-    return constant_convert_deg_two_radians*in;
+    return constant_convert_deg_two_radians * in;
 }
 
-void writePointCloudToFile(const std::string& filename, const Eigen::Matrix<double, Eigen::Dynamic, 3>& points) {
+void writePointCloudToFile(const std::string &filename, const Eigen::Matrix<double, Eigen::Dynamic, 3> &points)
+{
     std::ofstream file(filename);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         std::cerr << "Failed to open file: " << filename << std::endl;
         return;
     }
     file << std::fixed << std::setprecision(6);
-    for (int i = 0; i < points.rows(); ++i) {
+    for (int i = 0; i < points.rows(); ++i)
+    {
         file << points(i, 0) << " " << points(i, 1) << " " << points(i, 2) << "\n";
     }
     file.close();
 }
 
-int main(int argc, char **argv){
+using MeshType = itk::Mesh<double>;
+
+class CustomTriangleVisitor
+{
+public:
+    using identifier_in_original_mesh = size_t;
+    using identifier_in_post_processed_mesh = size_t;
+    MeshType::Pointer mesh;
+    using MeshSourceType = itk::AutomaticTopologyMeshSource<MeshType>;
+    MeshSourceType::Pointer mesh_source;
+    std::unordered_map<identifier_in_original_mesh,identifier_in_post_processed_mesh> identifiers;
+    Eigen::Matrix<double,3,1> centroid;
+
+    void set_required_data(MeshType::Pointer inmesh, Eigen::Matrix<double,3,1> incentroid){
+        mesh = inmesh;
+        mesh_source = MeshSourceType::New();
+        centroid = incentroid;
+    }
+
+  using TriangleType = itk::TriangleCell<MeshType::CellType>;
+  void
+  Visit(unsigned long cellId, TriangleType * t)
+  {
+    TriangleType::PointIdIterator pit = t->PointIdsBegin();
+    TriangleType::PointIdIterator end = t->PointIdsEnd();
+    Eigen::Matrix<double,3,3> points_in_cell;
+    std::vector<size_t> identifiers_local;
+    size_t col = 0;
+    for(; pit != end; ++pit,++col){
+        identifiers_local.emplace_back(*pit);
+        auto point = mesh->GetPoint(*pit);
+        points_in_cell(0,col) = point[0];
+        points_in_cell(1,col) = point[1];
+        points_in_cell(2,col) = point[2];
+    }
+    using IdentifierArrayType = MeshSourceType::IdentifierArrayType;
+
+    //check if cell is towards center
+    Eigen::Matrix<double,3,1> normal_to_cell = (points_in_cell.col(1)-points_in_cell.col(0)).cross3(points_in_cell.col(2)-points_in_cell.col(0));
+    Eigen::Matrix<double,3,1> centroid_to_face_normalized_vector = (points_in_cell.colwise().mean()-centroid).normalized();
+
+    double product = centroid_to_face_normalized_vector.transpose()*normal_to_cell;
+    if(product>-0.23)
+        return;
+
+
+    MeshType::PointType p;
+    MeshSourceType::IdentifierArrayType idArray(4);
+    assert(identifiers_local.size()==points_in_cell.cols());
+    size_t collum = 0;
+    for(size_t collum = 0; collum < 3; ++collum ){
+        if( std::find(identifiers.begin(),identifiers.end(),identifiers_local[collum])!= identifiers.end() ) {
+            idArray[collum] =;
+        }
+        else{
+            p[0] = points_in_cell(0,collum);
+            p[1] = points_in_cell(0,collum);
+            p[2] = points_in_cell(0,collum);
+            idArray[collum] = mesh_source->AddPoint(p);
+        }
+        mesh_source->AddTriangle(idArray);
+    }
+        
+    std::cout << std::endl;
+  }
+
+  CustomTriangleVisitor() = default;
+  virtual ~CustomTriangleVisitor() = default;
+};
+
+int main(int argc, char **argv)
+{
     std::string path_fixed{"C:/Dev/NeuroNavigation/volumes/Stitched_US_2_sides.mha"};
 
     std::printf("\nReading input volumes...\n");
@@ -402,16 +527,16 @@ int main(int argc, char **argv){
     {
         fixedImageReader->Update();
     }
-    catch(const itk::ExceptionObject &err){
+    catch (const itk::ExceptionObject &err)
+    {
         std::cout << "ExceptionObject caught !" << std::endl;
         std::cout << err.GetDescription() << std::endl;
         return 1;
     }
 
     ImageType::Pointer pointer2inputfixedimage = fixedImageReader->GetOutput();
-    
 
-    //Segmentation parameters
+    // Segmentation parameters
     float fixed_sigma = 4;
     float moving_sigma = 4;
     float fixed_histogram_percentage = 0.1;
@@ -422,28 +547,27 @@ int main(int argc, char **argv){
     using MaskImageType = itk::Image<MaskPixelType, Dimension>;
     using RescaleType = itk::RescaleIntensityImageFilter<ImageType, ImageType>;
 
-    //Pointcloud downsampling percentage
+    // Pointcloud downsampling percentage
     float downsampling_percentage = 0.01;
 
-    //Rotation threashold between icp and mi solution. This value is the angle of the rotation matrix between the 2 solutions in axis angle representation
-    const double rotation_threshold = 10.0; //in degrees
+    // Rotation threashold between icp and mi solution. This value is the angle of the rotation matrix between the 2 solutions in axis angle representation
+    const double rotation_threshold = 10.0; // in degrees
 
-    //Preprocess the cutted volumes using laplacian and create pointers for them. These are the ones that will effectively be used with registration
+    // Preprocess the cutted volumes using laplacian and create pointers for them. These are the ones that will effectively be used with registration
     std::printf("\nPreprocessing input volumes...\n");
     auto pointer2fixedimage = apply_laplacian(pointer2inputfixedimage, fixed_sigma, fixed_histogram_percentage, "fixed", write_segmentation_volumes);
-    print_image_with_transform(pointer2inputfixedimage,"laplaced_image.mha");
-    //Create matrix to store direction and origin that come from the results of the PCA
-    Eigen::Matrix<double,4,4> T_origin_fixed = Eigen::Matrix<double,4,4>::Identity();
-
+    print_image_with_transform(pointer2inputfixedimage, "laplaced_image.mha");
+    // Create matrix to store direction and origin that come from the results of the PCA
+    Eigen::Matrix<double, 4, 4> T_origin_fixed = Eigen::Matrix<double, 4, 4>::Identity();
 
     std::printf("\nExtracting fixed point cloud...\n");
-    //For the fixed image 
-    
+    // For the fixed image
+
     using MaskPixelType = unsigned char;
     using MaskImageType = itk::Image<MaskPixelType, Dimension>;
     using RescaleType = itk::RescaleIntensityImageFilter<ImageType, ImageType>;
 
-    //Rescale and cast the volume to use with the correct MaskPixelType (0-255)
+    // Rescale and cast the volume to use with the correct MaskPixelType (0-255)
     auto rescale = RescaleType::New();
     rescale->SetInput(pointer2fixedimage);
     rescale->SetOutputMinimum(0);
@@ -452,26 +576,26 @@ int main(int argc, char **argv){
     auto castfilter = CastFilterType::New();
     castfilter->SetInput(rescale->GetOutput());
 
-    //Create a binary threshold that sets all the non zero voxels to 1. This means that the region of interest will have value 1. 
-    using FilterTypeThreshold = itk::BinaryThresholdImageFilter<MaskImageType,MaskImageType>;
+    // Create a binary threshold that sets all the non zero voxels to 1. This means that the region of interest will have value 1.
+    using FilterTypeThreshold = itk::BinaryThresholdImageFilter<MaskImageType, MaskImageType>;
     FilterTypeThreshold::Pointer filter_threshold = FilterTypeThreshold::New();
     filter_threshold->SetInput(castfilter->GetOutput());
     filter_threshold->SetOutsideValue(0);
-    filter_threshold->SetInsideValue(1);   
+    filter_threshold->SetInsideValue(1);
     filter_threshold->SetLowerThreshold(1);
     filter_threshold->SetUpperThreshold(255);
 
-    //Exctract a mesh from the region of interest 
-    using MeshType =  itk::Mesh<double>;
+    // Exctract a mesh from the region of interest
+    
     using MeshSourceType = itk::BinaryMask3DMeshSource<MaskImageType, MeshType>;
     auto meshSource = MeshSourceType::New();
-    meshSource->SetObjectValue(1); //1 Because the region of interest has value 1. 
+    meshSource->SetObjectValue(1); // 1 Because the region of interest has value 1.
     meshSource->SetInput(filter_threshold->GetOutput());
     update_ikt_filter(meshSource);
 
-    auto mesh = meshSource->GetOutput();
+    MeshType::Pointer mesh = meshSource->GetOutput();
     std::cout << "number of points: " << mesh->GetNumberOfPoints() << std::endl;
-    Eigen::Matrix<double,Eigen::Dynamic,3> fixed_points = Eigen::Matrix<double,Eigen::Dynamic,3>::Zero(mesh->GetNumberOfPoints(),3);
+    Eigen::Matrix<double, Eigen::Dynamic, 3> fixed_points = Eigen::Matrix<double, Eigen::Dynamic, 3>::Zero(mesh->GetNumberOfPoints(), 3);
     using PointsIterator = MeshType::PointsContainer::Iterator;
     PointsIterator pointIterator_fixed = mesh->GetPoints()->Begin();
     PointsIterator end_fixed = mesh->GetPoints()->End();
@@ -479,29 +603,37 @@ int main(int argc, char **argv){
     while (pointIterator_fixed != end_fixed)
     {
         auto p = pointIterator_fixed->Value();
-        fixed_points(index,0) = p[0];
-        fixed_points(index,1) = p[1];
-        fixed_points(index,2) = p[2];
+        fixed_points(index, 0) = p[0];
+        fixed_points(index, 1) = p[1];
+        fixed_points(index, 2) = p[2];
         ++pointIterator_fixed;
         ++index;
     }
+    using TriangleType = itk::TriangleCell<MeshType::CellType>;
+
+      using TriangleVisitorInterfaceType =
+    itk::CellInterfaceVisitorImplementation<MeshType::PixelType,
+                                            MeshType::CellTraits,
+                                            TriangleType,
+                                            CustomTriangleVisitor>;
+    auto triangleVisitor = TriangleVisitorInterfaceType::New();
+    using CellMultiVisitorType = MeshType::CellType::MultiVisitor;
+    auto multiVisitor = CellMultiVisitorType::New();
+    multiVisitor->AddVisitor(triangleVisitor);
+    mesh->Accept(multiVisitor);
+
+    Eigen::Matrix<double, 3, 1> center_of_pointcloud = fixed_points.colwise().mean();
+
     std::cout << "writing point cloud ...\n";
     writePointCloudToFile("fixed_point_cloud.txt", fixed_points);
 
-  using WriterType = itk::MeshFileWriter<MeshType>;
-  auto writer = WriterType::New();
-  writer->SetFileName("fixed_point_cloud.obj");
-  writer->SetInput(mesh);
-  std::cout << "writing mesh ...\n";
-  try
-  {
-    writer->Update();
-  }
-  catch (const itk::ExceptionObject & error)
-  {
-    std::cerr << "Error: " << error << std::endl;
-    return EXIT_FAILURE;
-  }
+    using WriterType = itk::MeshFileWriter<MeshType>;
+    auto writer = WriterType::New();
+    writer->SetFileName("fixed_point_cloud.obj");
+    writer->SetInput(mesh);
+
+    std::cout << "writing mesh ...\n";
+    update_ikt_filter(writer);
 
     std::cout << "point cloud written\n";
     return 0;
