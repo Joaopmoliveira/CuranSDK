@@ -951,7 +951,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
     float moving_sigma = 4;
     float fixed_histogram_percentage = 0.1;
     float moving_histogram_percentage = 0.1;
-    bool write_segmentation_volumes = false;
+    bool write_segmentation_volumes = true;
 
     // Pointcloud downsampling percentage
     float downsampling_percentage = 0.01;
@@ -996,6 +996,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         filter_threshold->SetInsideValue(1);
         filter_threshold->SetLowerThreshold(1);
         filter_threshold->SetUpperThreshold(255);
+        update_ikt_filter(filter_threshold);
 
         // Exctract a mesh from the region of interest
         using MeshType = itk::Mesh<double>;
@@ -1004,7 +1005,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         meshSource->SetObjectValue(1); // 1 Because the region of interest has value 1.
         meshSource->SetInput(filter_threshold->GetOutput());
         update_ikt_filter(meshSource);
-
+        
         auto mesh = recompute_and_simplify_mesh(meshSource->GetOutput());
 
         // This pointer will be used later for registration
@@ -1064,6 +1065,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         filter_threshold->SetInsideValue(1);
         filter_threshold->SetLowerThreshold(1);
         filter_threshold->SetUpperThreshold(255);
+        update_ikt_filter(filter_threshold);
 
         // Exctract a mesh from the region of interest
         using MeshType = itk::Mesh<double>;

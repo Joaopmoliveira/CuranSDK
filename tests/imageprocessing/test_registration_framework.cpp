@@ -16,17 +16,14 @@ int main(int argc, char **argv){
 
     fixedImageReader->SetFileName(path_fixed);
     movingImageReader->SetFileName(path_moving);
-    try
-    {
+    try{
         fixedImageReader->Update();
         movingImageReader->Update();
-    }
-    catch(const itk::ExceptionObject &err){
+    } catch(const itk::ExceptionObject &err){
         std::cout << "ExceptionObject caught !" << std::endl;
         std::cout << err.GetDescription() << std::endl;
         return 1;
     }
-
     ImageType::Pointer pointer2inputfixedimage = fixedImageReader->GetOutput();
     ImageType::Pointer pointer2inputmovingimage = movingImageReader->GetOutput();
     register_volumes(pointer2inputfixedimage,pointer2inputmovingimage);
