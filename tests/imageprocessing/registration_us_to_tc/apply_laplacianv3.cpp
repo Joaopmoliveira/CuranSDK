@@ -29,6 +29,8 @@
 #include "itkLaplacianImageFilter.h"
 #include "itkStatisticsImageFilter.h"
 #include "itkScalarImageToHistogramGenerator.h"
+#include "itkInvertIntensityImageFilter.h"
+
 
 using PixelType = float;
 constexpr unsigned int Dimension = 3;
@@ -44,14 +46,17 @@ using GaussianFilterType = itk::SmoothingRecursiveGaussianImageFilter<ImageType,
 
 int main(int argc, char **argv)
 {
-    if(argc!=4){
+    if(argc!=5){
         std::cout << "To run the executable you must provide three arguments:\n "
                 << "first parameter - input volume\n"
                 << "second parameter - output volume \n"
-                << "third parameter - sigma \n";
+                << "third parameter - sigma \n"
+                << "forth parameter - histogram threashold\n";
         return 1;
     }
     
+
+    float threashold = std::atof(argv[4]); 
     auto fixedImageReader = FixedImageReaderType::New();
     float sigma = std::atof(argv[3]);
     std::string dirName{argv[1]};
@@ -92,6 +97,7 @@ int main(int argc, char **argv)
         std::cout << err << std::endl;
         return EXIT_FAILURE;
     }
+
 
     using FilterType10 = itk::LaplacianRecursiveGaussianImageFilter<ImageType, ImageType>;
     auto laplacian = FilterType10::New();
@@ -146,7 +152,7 @@ int main(int argc, char **argv)
         total_frequency += histogram->GetFrequency(i);
     }
 
-    auto target_frequency = 0.15 * total_frequency;
+    auto target_frequency = threashold * total_frequency;
 
     unsigned int cumulative_frequency = 0;
     unsigned int threshold_bin = 0;
@@ -171,6 +177,25 @@ int main(int argc, char **argv)
     thresholdFilter->SetOutsideValue(0);
     thresholdFilter->Update();
 
+    using FilterTypeinvert = itk::InvertIntensityImageFilter<ImageType>;
+    FilterTypeinvert::Pointer invertFilter = FilterTypeinvert::New();
+    invertFilter->SetInput(thresholdFilter->GetOutput());
+    invertFilter->SetMaximum(1);
+    invertFilter->Update();
+
+    writer->SetInput(invertFilter->GetOutput());
+    writer->SetFileName("post_laplacinan_threashold.mha");
+
+    try
+    {
+        writer->Update();
+    }
+    catch (const itk::ExceptionObject & err)
+    {
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err << std::endl;
+        return EXIT_FAILURE;
+    }
     std::cout << "Thresholding completed." << std::endl;
 
     using LabelType = unsigned short;
@@ -192,7 +217,7 @@ int main(int argc, char **argv)
     using ThresholdFilterType2 = itk::ThresholdImageFilter<LabelImageType>;
     ThresholdFilterType2::Pointer thresholdFilter2 = ThresholdFilterType2::New();
     thresholdFilter2->SetInput(relabelFilter->GetOutput());
-    thresholdFilter2->ThresholdOutside(1, 1); // Keep only the label 1 (largest component) for US and 5 for ultrasound
+    thresholdFilter2->ThresholdOutside(1, 2); // Keep only the label 1 (largest component) for US and 5 for ultrasound
     thresholdFilter2->SetOutsideValue(0);
     thresholdFilter2->Update();
 
@@ -265,6 +290,7 @@ int main(int argc, char **argv)
     std::string outputname{argv[2]};
     //auto writer = WriterType::New();
   filter->SetExtractionRegion(desiredRegion);
+  filter->Update();
   writer->SetInput(filter->GetOutput());
   writer->SetFileName(outputname);
   try
@@ -277,7 +303,6 @@ int main(int argc, char **argv)
     std::cout << err << std::endl;
     return EXIT_FAILURE;
   }
-
 
   return EXIT_SUCCESS;
 }

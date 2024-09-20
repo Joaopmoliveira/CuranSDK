@@ -743,7 +743,7 @@ int main(int argc, char **argv)
     bool write_segmentation_volumes = false;
 
     //Pointcloud downsampling percentage
-    float downsampling_percentage = 0.01;
+    float downsampling_percentage = 0.02;
 
     //Rotation threashold between icp and mi solution. This value is the angle of the rotation matrix between the 2 solutions in axis angle representation
     const double rotation_threshold = 10.0; //in degrees
@@ -870,6 +870,11 @@ int main(int argc, char **argv)
         ++index;
     }
 
+    //Downsample and write pointcloud
+    auto downsampled_fixed_points_original = downsample_points(points_in_matrix_form, downsampling_percentage);
+    writePointCloudToFile("fixed_point_cloud_original.txt", downsampled_fixed_points_original);
+
+
     //PCA 
     std::printf("\nPerforming PCA to fixed point cloud...\n");
     Eigen::Matrix<double,3,1> center_of_fixed_image = points_in_matrix_form.colwise().mean().transpose();
@@ -943,6 +948,11 @@ int main(int argc, char **argv)
         ++pointIterator;
         ++index;
     }
+
+    //Downsample and write pointcloud
+    auto downsampled_moving_points_original = downsample_points(points_in_matrix_form, downsampling_percentage);
+    writePointCloudToFile("moving_point_cloud_original.txt", downsampled_moving_points_original);
+
 
     //PCA
     std::printf("\nPerforming PCA to moving point cloud...\n");
@@ -1167,6 +1177,7 @@ int main(int argc, char **argv)
     }
     }
 
+
     //Execute paralelized icp registration for all the initial configs
     std::printf("\nPre-alignement using ICP...\n");
     auto run_parameterized_icp_optimization = [&](){
@@ -1190,6 +1201,7 @@ int main(int argc, char **argv)
         }
         return full_runs_inner;
     };
+
 
     //Vector with the solitions from icp
     auto paralel_solutions_icp = run_parameterized_icp_optimization();
@@ -1234,18 +1246,19 @@ int main(int argc, char **argv)
     std::vector<Eigen::Matrix<double,4,4>> initial_guesses_mi;
 
     //Currentely just rotation and translation on x are being applied (these were found to be the most critical)
-    for (double angle_x = -5; angle_x <= 5; angle_x += 1) {
-        for (double tx = -5; tx <= 5; tx += 5) {
-            double angle_y = 0;
-            double angle_z = 0;
-            double ty = 0;
-            double tz = 0;
-            Eigen::Matrix<double, 4, 4> rotation_x = transform_x(rad2deg(angle_x));
-            Eigen::Matrix<double, 4, 4> rotation_y = transform_y(rad2deg(angle_y));
-            Eigen::Matrix<double, 4, 4> rotation_z = transform_z(rad2deg(angle_z));
-            Eigen::Matrix<double, 4, 4> translation = transform_translation(tx, ty, tz);
-            Eigen::Matrix<double, 4, 4> combined_transform = translation * rotation_z * rotation_y * rotation_x * best_transformation_icp;
-            initial_guesses_mi.push_back(combined_transform);
+    for (double angle_x = -10; angle_x <= 10; angle_x += 5) {
+        for (double angle_y = -10; angle_y <= 10; angle_y += 5) {
+            for (double angle_z = -10; angle_z <= 10; angle_z += 5){
+                double tx = 0 ;
+                double ty = 0;
+                double tz = 0;
+                Eigen::Matrix<double, 4, 4> rotation_x = transform_x(rad2deg(angle_x));
+                Eigen::Matrix<double, 4, 4> rotation_y = transform_y(rad2deg(angle_y));
+                Eigen::Matrix<double, 4, 4> rotation_z = transform_z(rad2deg(angle_z));
+                Eigen::Matrix<double, 4, 4> translation = transform_translation(tx, ty, tz);
+                Eigen::Matrix<double, 4, 4> combined_transform = translation * rotation_z * rotation_y * rotation_x * best_transformation_icp;
+                initial_guesses_mi.push_back(combined_transform);
+            }
         }
     }
 

@@ -80,6 +80,8 @@ ${ITK_LIBRARIES}
 add_subdirectory(volumetric)
 add_subdirectory(registration_strategies_exploration)
 add_subdirectory(registration_us_to_tc)
+add_subdirectory(phantom_line_segmentation)
+
 
 add_executable(extract_oblique_slice extract_oblique_slice.cpp)
 
