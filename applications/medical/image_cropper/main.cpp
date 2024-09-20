@@ -42,9 +42,8 @@ int main()
         DisplayParams param{std::move(context), 2200, 1200};
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-        std::mutex mut;
-
-        Application data_application{resources,"C:/Dev/NeuroNavigation/volumes/Stitched_CT_2_sides.mha", mut};
+        std::mutex mut; 
+        Application data_application{resources,CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha", mut};
 
         curan::ui::Page page{std::move(data_application.main_page()), SK_ColorBLACK};
 
