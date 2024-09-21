@@ -16,15 +16,23 @@ struct RegistrationConfiguration{
         SELECT_VERTICES_POINTING_INWARDS
     };
 
+    enum CentroidComputation{
+        FROM_POINT_CLOUD,
+        CENTER_OF_3D_IMAGE
+    };
+
     size_t number_of_roi_regions;
     MeshSelection fixed_image_selection_policy;
     MeshSelection moving_image_selection_policy;
+    CentroidComputation centroid_computation;
 
     RegistrationConfiguration(size_t in_number_of_roi_regions,
                                 MeshSelection in_fixed_image_selection_policy,
-                                MeshSelection in_moving_image_selection_policy) : number_of_roi_regions{in_number_of_roi_regions} , 
+                                MeshSelection in_moving_image_selection_policy,
+                                CentroidComputation in_centroid_computation_strategy) : number_of_roi_regions{in_number_of_roi_regions} , 
                                                                                 fixed_image_selection_policy{in_fixed_image_selection_policy}, 
-                                                                                moving_image_selection_policy{in_moving_image_selection_policy}
+                                                                                moving_image_selection_policy{in_moving_image_selection_policy},
+                                                                                centroid_computation{in_centroid_computation_strategy} 
     {};
 };
 

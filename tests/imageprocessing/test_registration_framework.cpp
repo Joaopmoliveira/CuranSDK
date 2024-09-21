@@ -27,9 +27,12 @@ int main(int argc, char **argv){
     }
     ImageType::Pointer pointer2inputfixedimage = fixedImageReader->GetOutput();
     ImageType::Pointer pointer2inputmovingimage = movingImageReader->GetOutput();
-
+    RegistrationConfiguration config{3,
+                                    RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_OUTWARDS,
+                                    RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_OUTWARDS,
+                                    RegistrationConfiguration::CentroidComputation::CENTER_OF_3D_IMAGE};
     register_volumes(pointer2inputfixedimage,
                 pointer2inputmovingimage,
-                {3,RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_INWARDS,RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_INWARDS});
+                config);
     return 0;
 }
