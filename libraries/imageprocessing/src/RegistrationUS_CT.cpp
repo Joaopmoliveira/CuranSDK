@@ -773,7 +773,7 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> sol
 
 using MeshType = itk::Mesh<double>;
 
-MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
+MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh, const RegistrationConfiguration::MeshSelection& selection_policy)
 {
     class MeshSimplierVisitor
     {
@@ -785,12 +785,14 @@ MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
         MeshSourceType::Pointer mesh_source;
         std::unordered_map<identifier_in_original_mesh, identifier_in_post_processed_mesh> identifiers;
         Eigen::Matrix<double, 3, 1> centroid;
+        RegistrationConfiguration::MeshSelection selection_policy;
 
-        void set_required_data(MeshType::Pointer inmesh, Eigen::Matrix<double, 3, 1> incentroid)
+        void set_required_data(MeshType::Pointer inmesh, Eigen::Matrix<double, 3, 1> incentroid,const RegistrationConfiguration::MeshSelection& in_selection_policy)
         {
             mesh = inmesh;
             mesh_source = MeshSourceType::New();
             centroid = incentroid;
+            selection_policy = in_selection_policy;
         }
 
         using TriangleType = itk::TriangleCell<MeshType::CellType>;
@@ -823,8 +825,16 @@ MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
             Eigen::Matrix<double, 3, 1> centroid_to_face_normalized_vector = center_of_face - centroid;
             centroid_to_face_normalized_vector.normalize();
 
-            if (centroid_to_face_normalized_vector.transpose() * normal_to_cell < -0.23)
-                return;
+            switch(selection_policy){
+                case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_INWARDS:
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell < -0.23)
+                        return;
+                break;
+                case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_OUTWARDS:
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell >  0.23)
+                        return;
+                break;
+            };
 
             MeshType::PointType p;
             MeshSourceType::IdentifierArrayType idArray(3);
@@ -872,7 +882,7 @@ MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
                                                 MeshSimplierVisitor>;
     auto triangleVisitor = TriangleVisitorInterfaceType::New();
 
-    triangleVisitor->set_required_data(input_mesh, centroid);
+    triangleVisitor->set_required_data(input_mesh, centroid,selection_policy);
 
     using CellMultiVisitorType = MeshType::CellType::MultiVisitor;
     auto multiVisitor = CellMultiVisitorType::New();
@@ -944,7 +954,7 @@ auto transform_translation = [](double tx, double ty, double tz)
     return T_translation;
 };
 
-int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Pointer pointer2inputmovingimage, size_t number_of_roi_regions)
+int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Pointer pointer2inputmovingimage,const RegistrationConfiguration& configuration)
 {
     // Segmentation parameters
     float fixed_sigma = 4;
@@ -962,8 +972,8 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
     // Preprocess the cutted volumes using laplacian and create pointers for them. These are the ones that will effectively be used with registration
     std::printf("\nPreprocessing input volumes...\n");
 
-    auto pointer2fixedimage = apply_laplacian(pointer2inputfixedimage, fixed_sigma, fixed_histogram_percentage, "fixed", write_segmentation_volumes,number_of_roi_regions);
-    auto pointer2movingimage = apply_laplacian(pointer2inputmovingimage, moving_sigma, moving_histogram_percentage, "moving", write_segmentation_volumes,number_of_roi_regions);
+    auto pointer2fixedimage = apply_laplacian(pointer2inputfixedimage, fixed_sigma, fixed_histogram_percentage, "fixed", write_segmentation_volumes,configuration.number_of_roi_regions);
+    auto pointer2movingimage = apply_laplacian(pointer2inputmovingimage, moving_sigma, moving_histogram_percentage, "moving", write_segmentation_volumes,configuration.number_of_roi_regions);
 
     // Create matrix to store direction and origin that come from the results of the PCA
     Eigen::Matrix<double, 4, 4> T_origin_fixed = Eigen::Matrix<double, 4, 4>::Identity();
@@ -1007,7 +1017,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         meshSource->SetInput(filter_threshold->GetOutput());
         update_ikt_filter(meshSource);
         
-        auto mesh = recompute_and_simplify_mesh(meshSource->GetOutput());
+        auto mesh = recompute_and_simplify_mesh(meshSource->GetOutput(),configuration.fixed_image_selection_policy);
 
         using WriterType = itk::MeshFileWriter<MeshType>;
         auto writer = WriterType::New();
@@ -1084,7 +1094,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         meshSource->SetInput(filter_threshold->GetOutput());
         update_ikt_filter(meshSource);
 
-        auto mesh = recompute_and_simplify_mesh(meshSource->GetOutput());
+        auto mesh = recompute_and_simplify_mesh(meshSource->GetOutput(),configuration.moving_image_selection_policy);
 
         using WriterType = itk::MeshFileWriter<MeshType>;
         auto writer = WriterType::New();
@@ -1184,7 +1194,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         meshSource_fixed->SetInput(filter_threshold_fixed->GetOutput());
         update_ikt_filter(meshSource_fixed);
 
-        auto mesh_fixed = recompute_and_simplify_mesh(meshSource_fixed->GetOutput());
+        auto mesh_fixed = recompute_and_simplify_mesh(meshSource_fixed->GetOutput(),configuration.fixed_image_selection_policy);
         using WriterType = itk::MeshFileWriter<MeshType>;
         auto writer = WriterType::New();
         writer->SetFileName("fixed_point_cloud_in_origin.obj");
@@ -1240,7 +1250,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         meshSource_moving->SetInput(filter_threshold_moving->GetOutput());
         update_ikt_filter(meshSource_moving);
 
-        auto mesh_moving = recompute_and_simplify_mesh(meshSource_moving->GetOutput());
+        auto mesh_moving = recompute_and_simplify_mesh(meshSource_moving->GetOutput(),configuration.moving_image_selection_policy);
         using WriterType = itk::MeshFileWriter<MeshType>;
         auto writer = WriterType::New();
         writer->SetFileName("moving_point_cloud_in_origin.obj");
