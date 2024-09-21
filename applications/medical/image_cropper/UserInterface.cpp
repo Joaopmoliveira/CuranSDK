@@ -86,16 +86,26 @@ Application::Application(curan::ui::IconResources &in_resources, std::string_vie
         {
             compute_point(vol_mas, strokes, config_draw);
         });
-    using ImageReaderType = itk::ImageFileReader<ImageType>;
+    using ImageReaderType = itk::ImageFileReader<itk::Image<double,3>>;
 
     std::printf("\nReading input volumes...\n");
     auto fixedImageReader = ImageReaderType::New();
 
     fixedImageReader->SetFileName(path_to_load.data());
+    using RescaleType = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>;
+
+        // Rescale and cast the volume to use with the correct MaskPixelType (0-255)
+        auto rescale = RescaleType::New();
+        rescale->SetInput(fixedImageReader->GetOutput());
+        rescale->SetOutputMinimum(0);
+        rescale->SetOutputMaximum(255.0);
+        using CastFilterType = itk::CastImageFilter<itk::Image<double,3>, ImageType>;
+        auto castfilter = CastFilterType::New();
+        castfilter->SetInput(rescale->GetOutput());
 
     try{
-        fixedImageReader->Update();
-         map[PanelType::ORIGINAL_VOLUME].update_volume(fixedImageReader->GetOutput());
+        castfilter->Update();
+         map[PanelType::ORIGINAL_VOLUME].update_volume(castfilter->GetOutput());
     } catch(const itk::ExceptionObject &err){
         std::cout << "ExceptionObject caught !" << std::endl;
         std::cout << err.GetDescription() << std::endl;

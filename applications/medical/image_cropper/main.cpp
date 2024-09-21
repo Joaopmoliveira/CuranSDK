@@ -31,6 +31,14 @@ typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion
     return  output;
 }
 
+//#define "/us_image1_"
+//#define "/ct_image1_"
+
+#define FILE_NAME "/us_image1_"
+
+#define FULL_VOLUME CURAN_COPIED_RESOURCE_PATH  FILE_NAME"full_volume.mha"
+#define CROPPED_VOLUME CURAN_COPIED_RESOURCE_PATH FILE_NAME"cropepd_volume.mha"
+
 int main()
 {
     try
@@ -43,15 +51,17 @@ int main()
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
         std::mutex mut; 
-        Application data_application{resources,CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha", mut};
+
+        // CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha"
+        // "C:/Dev/NeuroNavigation/volumes/reconstruction_results5.mha"
+
+        Application data_application{resources,"C:/Dev/NeuroNavigation/volumes/reconstruction_results5.mha", mut};
 
         curan::ui::Page page{std::move(data_application.main_page()), SK_ColorBLACK};
 
         ConfigDraw config{&page};
 
         data_application.ptr_config = &config;
-
-        std::atomic<bool> function_value = false;
 
         while (!glfwWindowShouldClose(viewer->window))
         {
@@ -75,8 +85,6 @@ int main()
             std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
         }
 
-        function_value = true;
-
         auto return_current_time_and_date = []()
         {
             auto now = std::chrono::system_clock::now();
@@ -85,33 +93,6 @@ int main()
             ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
             return ss.str();
         };
-
-        Eigen::IOFormat CleanFmt(Eigen::StreamPrecision, 0, ", ", "\n", " ", " ");
-
-        if (data_application.final_first_point && data_application.final_second_point && data_application.final_third_point)
-        {
-            nlohmann::json trajectory_specification;
-            trajectory_specification["timestamp"] = return_current_time_and_date();
-            {
-                std::stringstream target;
-                target << (*data_application.final_first_point).format(CleanFmt) << std::endl;
-                trajectory_specification["target"] = target.str();
-            }
-            {
-                std::stringstream entry;
-                entry << (*data_application.final_third_point).format(CleanFmt) << std::endl;
-                trajectory_specification["entry"] = entry.str();
-            }
-
-            // write prettified JSON to another file
-            std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json");
-            o << trajectory_specification;
-            std::cout << trajectory_specification << std::endl;
-        }
-        else
-        {
-            std::cout << "the points required to specify the trajectory \nwere not specified, please specify them" << std::endl;
-        }
 
         if (data_application.map[ORIGINAL_VOLUME].get_volume().IsNull())
         {
@@ -169,14 +150,14 @@ int main()
 
         {
             auto writer = WriterType::New();
-            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/original_volume.mha");
+            writer->SetFileName(FULL_VOLUME);
             writer->SetInput(data_application.map[ORIGINAL_VOLUME].get_volume());
             writer->Update();
         }
 
         {
             auto writer = WriterType::New();
-            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/masked_volume.mha");
+            writer->SetFileName(CROPPED_VOLUME);
             writer->SetInput(masked_output_image);
             writer->Update();
         }

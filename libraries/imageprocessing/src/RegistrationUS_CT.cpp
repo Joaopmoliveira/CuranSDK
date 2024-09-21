@@ -288,7 +288,7 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
     using ThresholdFilterType2 = itk::ThresholdImageFilter<LabelImageType>;
     ThresholdFilterType2::Pointer thresholdFilter2 = ThresholdFilterType2::New();
     thresholdFilter2->SetInput(relabelFilter->GetOutput());
-    thresholdFilter2->ThresholdOutside(1, 2);
+    thresholdFilter2->ThresholdOutside(1, 3);
     thresholdFilter2->SetOutsideValue(0);
     thresholdFilter2->Update();
 
@@ -963,6 +963,8 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
     std::printf("\nPreprocessing input volumes...\n");
     auto pointer2fixedimage = apply_laplacian(pointer2inputfixedimage, fixed_sigma, fixed_histogram_percentage, "fixed", write_segmentation_volumes);
     auto pointer2movingimage = apply_laplacian(pointer2inputmovingimage, moving_sigma, moving_histogram_percentage, "moving", write_segmentation_volumes);
+
+
 
     // Create matrix to store direction and origin that come from the results of the PCA
     Eigen::Matrix<double, 4, 4> T_origin_fixed = Eigen::Matrix<double, 4, 4>::Identity();
