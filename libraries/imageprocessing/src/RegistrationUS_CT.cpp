@@ -1451,6 +1451,9 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         update_ikt_filter(movingSpatialObjectMask);
     }
 
+
+    throw std::runtime_error("error to stop");
+
     // Execute paralelized icp registration for all the initial configs
     std::printf("\nPre-alignement using ICP...\n");
     auto run_parameterized_icp_optimization = [&]()

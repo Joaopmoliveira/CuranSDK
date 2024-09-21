@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 
+#include "itkMeshSpatialObject.h"
+#include "itkSpatialObjectReader.h"
 #include "itkAutomaticTopologyMeshSource.h"
 #include "imageprocessing/RegistrationUS_CT.h"
 #include "itkLaplacianImageFilter.h"
@@ -274,6 +276,7 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
     ThresholdFilterType::Pointer thresholdFilter = ThresholdFilterType::New();
     thresholdFilter->SetInput(laplacian->GetOutput());
     thresholdFilter->ThresholdOutside(minValue, thresholdvalue); // 0.02 para a precious
+
     // thresholdFilter->ThresholdOutside(minMaxCalculator->GetMinimum(), thresholdvalue);
     thresholdFilter->SetOutsideValue(0);
     thresholdFilter->Update();
@@ -633,6 +636,13 @@ int main(int argc, char **argv)
     update_ikt_filter(meshSource);
 
     MeshType::Pointer mesh = meshSource->GetOutput();
+
+    using MeshSpatialObjectType = itk::MeshSpatialObject<MeshType>;
+    auto myMeshSpatialObject = MeshSpatialObjectType::New();
+    myMeshSpatialObject->SetMesh(mesh);
+    myMeshSpatialObject->Update();
+    myMeshSpatialObject->GetMesh();
+
     MeshType::Pointer simplified_mesh = recompute_and_simplify_mesh(mesh);
 
     {
