@@ -128,7 +128,7 @@ const double pi = std::atan(1) * 4;
 /*Function to segment the region of interest of the input cutted image. Applies a gaussin gilter, then a laplacian. The histogram of the laplacian is used to create a region of interest using a threashold.
 The treashold is defined as the value of the bin in which all the bins at the left contain the target number of samples (this target number is a percentage of the total number of samples).
 A mask is created with this region of interest, and the original values of the input image inside the region of interest are returned in the smallest volume possible.*/
-itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer input_image, float sigma, float cuttoff_histogram_percentage, std::string suffix, bool write_images)
+itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer input_image, float sigma, float cuttoff_histogram_percentage, std::string suffix, bool write_images , size_t number_of_roi_regions)
 {
     using PixelType = float;
     constexpr unsigned int Dimension = 3;
@@ -823,7 +823,7 @@ MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
             Eigen::Matrix<double, 3, 1> centroid_to_face_normalized_vector = center_of_face - centroid;
             centroid_to_face_normalized_vector.normalize();
 
-            if (centroid_to_face_normalized_vector.transpose() * normal_to_cell > -0.23)
+            if (centroid_to_face_normalized_vector.transpose() * normal_to_cell < -0.23)
                 return;
 
             MeshType::PointType p;
@@ -944,7 +944,7 @@ auto transform_translation = [](double tx, double ty, double tz)
     return T_translation;
 };
 
-int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Pointer pointer2inputmovingimage)
+int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Pointer pointer2inputmovingimage, size_t number_of_roi_regions)
 {
     // Segmentation parameters
     float fixed_sigma = 4;
@@ -961,10 +961,9 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
 
     // Preprocess the cutted volumes using laplacian and create pointers for them. These are the ones that will effectively be used with registration
     std::printf("\nPreprocessing input volumes...\n");
-    auto pointer2fixedimage = apply_laplacian(pointer2inputfixedimage, fixed_sigma, fixed_histogram_percentage, "fixed", write_segmentation_volumes);
-    auto pointer2movingimage = apply_laplacian(pointer2inputmovingimage, moving_sigma, moving_histogram_percentage, "moving", write_segmentation_volumes);
 
-
+    auto pointer2fixedimage = apply_laplacian(pointer2inputfixedimage, fixed_sigma, fixed_histogram_percentage, "fixed", write_segmentation_volumes,number_of_roi_regions);
+    auto pointer2movingimage = apply_laplacian(pointer2inputmovingimage, moving_sigma, moving_histogram_percentage, "moving", write_segmentation_volumes,number_of_roi_regions);
 
     // Create matrix to store direction and origin that come from the results of the PCA
     Eigen::Matrix<double, 4, 4> T_origin_fixed = Eigen::Matrix<double, 4, 4>::Identity();
@@ -1009,6 +1008,14 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         update_ikt_filter(meshSource);
         
         auto mesh = recompute_and_simplify_mesh(meshSource->GetOutput());
+
+        using WriterType = itk::MeshFileWriter<MeshType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("fixed_point_cloud.obj");
+        writer->SetInput(mesh);
+
+        std::cout << "writing mesh ...\n";
+        update_ikt_filter(writer);
 
         // This pointer will be used later for registration
         pointer2fixedimage_registration = rescale->GetOutput();
@@ -1078,6 +1085,14 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         update_ikt_filter(meshSource);
 
         auto mesh = recompute_and_simplify_mesh(meshSource->GetOutput());
+
+        using WriterType = itk::MeshFileWriter<MeshType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("moving_point_cloud.obj");
+        writer->SetInput(mesh);
+
+        std::cout << "writing mesh ...\n";
+        update_ikt_filter(writer);
 
         // This pointer will be used later for registration
         pointer2movingimage_registration = rescale->GetOutput();
@@ -1170,6 +1185,14 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         update_ikt_filter(meshSource_fixed);
 
         auto mesh_fixed = recompute_and_simplify_mesh(meshSource_fixed->GetOutput());
+        using WriterType = itk::MeshFileWriter<MeshType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("fixed_point_cloud_in_origin.obj");
+        writer->SetInput(mesh_fixed);
+
+        std::cout << "writing mesh ...\n";
+        update_ikt_filter(writer);
+
         Eigen::Matrix<double, Eigen::Dynamic, 3> fixed_points = Eigen::Matrix<double, Eigen::Dynamic, 3>::Zero(mesh_fixed->GetNumberOfPoints(), 3);
         using PointsIterator = MeshType::PointsContainer::Iterator;
         PointsIterator pointIterator_fixed = mesh_fixed->GetPoints()->Begin();
@@ -1218,6 +1241,11 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         update_ikt_filter(meshSource_moving);
 
         auto mesh_moving = recompute_and_simplify_mesh(meshSource_moving->GetOutput());
+        using WriterType = itk::MeshFileWriter<MeshType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("moving_point_cloud_in_origin.obj");
+        writer->SetInput(mesh_moving);
+
         Eigen::Matrix<double, Eigen::Dynamic, 3> moving_points = Eigen::Matrix<double, Eigen::Dynamic, 3>::Zero(mesh_moving->GetNumberOfPoints(), 3);
         using PointsIterator = MeshType::PointsContainer::Iterator;
         PointsIterator pointIterator_moving = mesh_moving->GetPoints()->Begin();

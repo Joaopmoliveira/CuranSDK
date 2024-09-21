@@ -28,11 +28,6 @@ int main(int argc, char **argv){
     ImageType::Pointer pointer2inputfixedimage = fixedImageReader->GetOutput();
     ImageType::Pointer pointer2inputmovingimage = movingImageReader->GetOutput();
 
-    using WriterType = itk::ImageFileWriter<ImageType>;
-    auto writer = WriterType::New();
-    writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/us_image1_cropepd_volume_output.mha");
-    writer->SetInput(pointer2inputmovingimage);
-    writer->Update();
-    register_volumes(pointer2inputfixedimage,pointer2inputmovingimage);
+    register_volumes(pointer2inputfixedimage,pointer2inputmovingimage,3);
     return 0;
 }
