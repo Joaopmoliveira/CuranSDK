@@ -827,11 +827,11 @@ MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh, cons
 
             switch(selection_policy){
                 case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_INWARDS:
-                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell < -0.5)
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell > -0.5)
                         return;
                 break;
                 case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_OUTWARDS:
-                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell >  0.5)
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell <  0.5)
                         return;
                 break;
             };
@@ -1171,7 +1171,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
 
     auto fixedSpatialObjectMask = MaskType::New();
     // For fixed
-    {
+    { // this entire section is stupid. If should be enough to just rotate the previous point clouds without applying filters two times
         using MaskPixelType = unsigned char;
         using MaskImageType = itk::Image<MaskPixelType, Dimension>;
         using CastFilterType = itk::CastImageFilter<ImageType, MaskImageType>;
@@ -1228,7 +1228,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
 
     auto movingSpatialObjectMask = MaskType::New();
     // For moving
-    {
+    { // this entire section is stupid. If should be enough to just rotate the previous point clouds without applying filters two times
         using MaskPixelType = unsigned char;
         using MaskImageType = itk::Image<MaskPixelType, Dimension>;
         using CastFilterType = itk::CastImageFilter<ImageType, MaskImageType>;
