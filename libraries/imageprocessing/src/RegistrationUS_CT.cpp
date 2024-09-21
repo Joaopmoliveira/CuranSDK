@@ -827,11 +827,11 @@ MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh, cons
 
             switch(selection_policy){
                 case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_INWARDS:
-                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell < -0.23)
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell < -0.5)
                         return;
                 break;
                 case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_OUTWARDS:
-                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell >  0.23)
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell >  0.5)
                         return;
                 break;
             };
