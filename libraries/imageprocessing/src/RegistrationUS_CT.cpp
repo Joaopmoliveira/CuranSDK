@@ -676,18 +676,14 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> sol
     itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
     itk::Vector<double, 3> origin;
     itk::Matrix<double> direction;
-    // std::cout << info_registration.initial_rotation << std::endl;
 
     for (size_t row = 0; row < 3; ++row)
     {
         origin[row] = info_registration.initial_rotation(row, 3);
         for (size_t col = 0; col < 3; ++col)
-        {
             direction(row, col) = info_registration.initial_rotation(row, col);
-        }
     }
 
-    // sanity check
     if (!(info_registration.initial_rotation.block<3, 3>(0, 0).transpose() * info_registration.initial_rotation.block<3, 3>(0, 0)).isDiagonal())
     {
         std::cout << "failure to initialize rotation matrix...\n";
@@ -1450,9 +1446,6 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         movingSpatialObjectMask->SetImage(filter_threshold_moving->GetOutput());
         update_ikt_filter(movingSpatialObjectMask);
     }
-
-
-    throw std::runtime_error("error to stop");
 
     // Execute paralelized icp registration for all the initial configs
     std::printf("\nPre-alignement using ICP...\n");

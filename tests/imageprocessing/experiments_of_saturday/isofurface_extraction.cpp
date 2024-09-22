@@ -118,21 +118,94 @@ void update_ikt_filter(T &filter)
     }
 }
 
-constexpr bool in_bebug_mode = false;
+inline double rad2deg(double in)
+{
+    constexpr double constant_convert_deg_two_radians = 0.0174532925;
+    return constant_convert_deg_two_radians * in;
+}
 
+// Lamda to get a rotation matrix from a given angle
+auto transform_x = [](double alpha)
+{
+    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
+    poorly_constrained_direction << 1.0, 0.0, 0.0,
+        0.0, std::cos(alpha), -std::sin(alpha),
+        0.0, std::sin(alpha), std::cos(alpha);
+    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
+    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
+    return T_rotation_extra;
+};
+
+auto transform_y = [](double alpha)
+{
+    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
+    poorly_constrained_direction << std::cos(alpha), 0.0, std::sin(alpha),
+        0.0, 1.0, 0.0,
+        -std::sin(alpha), 0.0, std::cos(alpha);
+    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
+    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
+    return T_rotation_extra;
+};
+
+auto transform_z = [](double alpha)
+{
+    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
+    poorly_constrained_direction << std::cos(alpha), -std::sin(alpha), 0.0,
+        std::sin(alpha), std::cos(alpha), 0.0,
+        0.0, 0.0, 1.0;
+    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
+    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
+    return T_rotation_extra;
+};
+
+// Lamda to get a rotation matrix from a given angle but with a flipped principal direction
+auto transform_flipped_principal_component = [](double alpha)
+{
+    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
+    poorly_constrained_direction << 1.0, 0.0, 0.0,
+        0.0, std::cos(alpha), -std::sin(alpha),
+        0.0, std::sin(alpha), std::cos(alpha);
+
+    Eigen::Matrix<double, 3, 3> flipping_direction;
+    flipping_direction << -1.0, 0.0, 0.0,
+        0.0, -1.0, 0.0,
+        0.0, 0.0, 1.0;
+
+    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
+    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction * flipping_direction;
+    return T_rotation_extra;
+};
+
+enum ExtractionSurfaceTransformation{
+    ELIMINATE_VERTICIES_WITH_OUTWARD_NORMALS,
+    ELIMINATE_VERTICIES_WITH_INNARD_NORMALS,
+    SUBSAMPLE_VERTCIES,
+    LEAVE_UNCHANGED
+};
+
+template<bool is_in_debug>
 struct ExtractionSurfaceInfo{
     size_t connected_components;
     double frequency;
     std::string appendix;
+    double reduction_factor;
+    ExtractionSurfaceTransformation transform_surface = LEAVE_UNCHANGED;
+    int buffer_of_mask;
+
     ExtractionSurfaceInfo(size_t in_connected_components,
                       double in_frequency,
-                      std::string in_appendix) : connected_components{in_connected_components} ,
+                      std::string in_appendix,
+                      double in_reduction_factor,
+                      int in_buffer_of_mask) : connected_components{in_connected_components} ,
                                                  frequency{in_frequency},
-                                                 appendix{in_appendix}
+                                                 appendix{in_appendix},
+                                                 reduction_factor{in_reduction_factor},
+                                                 buffer_of_mask{in_buffer_of_mask}
     {};
 };
 
-itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer image,const ExtractionSurfaceInfo& info)
+template<bool is_in_debug>
+std::tuple<itk::Mesh<double>::Pointer,itk::ImageMaskSpatialObject<3>::Pointer> extract_point_cloud(itk::Image<double, 3>::Pointer image,const ExtractionSurfaceInfo<is_in_debug>& info)
 {
     auto bluring = itk::BinomialBlurImageFilter<itk::Image<double, 3>, itk::Image<double, 3>>::New();
     bluring->SetInput(image);
@@ -140,7 +213,6 @@ itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer im
 
     update_ikt_filter(bluring);
 
-    constexpr double reduction_factor = 5.0;
     auto input_size = image->GetLargestPossibleRegion().GetSize();
     auto input_spacing = image->GetSpacing();
     auto input_origin = image->GetOrigin();
@@ -151,9 +223,9 @@ itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer im
     physicalspace[2] = input_size[2] * input_spacing[2];
 
     auto output_size = input_size;
-    output_size[0] = (size_t)std::floor((1.0 / reduction_factor) * output_size[0]);
-    output_size[1] = (size_t)std::floor((1.0 / reduction_factor) * output_size[1]);
-    output_size[2] = (size_t)std::floor((1.0 / reduction_factor) * output_size[2]);
+    output_size[0] = (size_t)std::floor((1.0 / info.reduction_factor) * output_size[0]);
+    output_size[1] = (size_t)std::floor((1.0 / info.reduction_factor) * output_size[1]);
+    output_size[2] = (size_t)std::floor((1.0 / info.reduction_factor) * output_size[2]);
 
     auto output_spacing = input_spacing;
     output_spacing[0] = physicalspace[0] / output_size[0];
@@ -170,7 +242,7 @@ itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer im
     resampleFilter->SetOutputSpacing(output_spacing);
     resampleFilter->SetOutputOrigin(input_origin);
 
-    if(in_bebug_mode)
+    if constexpr (is_in_debug)
     {
         auto writer = itk::ImageFileWriter<itk::Image<double, 3>>::New();
         writer->SetInput(resampleFilter->GetOutput());
@@ -236,7 +308,7 @@ itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer im
     final_binary_threshold->SetLowerThreshold(0);
     final_binary_threshold->SetUpperThreshold(info.connected_components);
 
-    if(in_bebug_mode)
+    if constexpr (is_in_debug)
     {
         auto writer = itk::ImageFileWriter<itk::Image<unsigned char, 3>>::New();
         writer->SetInput(final_binary_threshold->GetOutput());
@@ -245,12 +317,107 @@ itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer im
     } else
         update_ikt_filter(final_binary_threshold);
 
+    // we extract the mask as a function of the number of connected components we wish to extract
+    auto requested_mask = itk::ImageMaskSpatialObject<3>::New();
+    {
+        std::vector<int> minimum_x_indicies_of_regions;
+        minimum_x_indicies_of_regions.resize(info.connected_components);
+        std::vector<int> maximum_x_indicies_of_regions;
+        maximum_x_indicies_of_regions.resize(info.connected_components);
+        std::vector<int> minimum_y_indicies_of_regions;
+        minimum_y_indicies_of_regions.resize(info.connected_components);
+        std::vector<int> maximum_y_indicies_of_regions;
+        maximum_y_indicies_of_regions.resize(info.connected_components);
+        std::vector<int> minimum_z_indicies_of_regions;
+        minimum_z_indicies_of_regions.resize(info.connected_components);
+        std::vector<int> maximum_z_indicies_of_regions;
+        maximum_z_indicies_of_regions.resize(info.connected_components);
+        for(unsigned char highlighted_region = 0; highlighted_region < info.connected_components; ++highlighted_region){
+            minimum_x_indicies_of_regions[highlighted_region] = 10000;
+            maximum_x_indicies_of_regions[highlighted_region] = 0;
+            minimum_y_indicies_of_regions[highlighted_region] = 10000;
+            maximum_y_indicies_of_regions[highlighted_region] = 0;
+            minimum_z_indicies_of_regions[highlighted_region] = 10000;
+            maximum_z_indicies_of_regions[highlighted_region] = 0;
+        }
+
+        itk::ImageRegionIteratorWithIndex<itk::Image<unsigned char, 3>>  iterator( relabelFilter->GetOutput(), relabelFilter->GetOutput()->GetLargestPossibleRegion() );
+        iterator.GoToBegin();
+        
+        while( !iterator.IsAtEnd() ){
+            for(int highlighted_region = 0; highlighted_region < info.connected_components; ++highlighted_region){
+                if((int)iterator.Get()==(highlighted_region+1)){
+                    auto index = iterator.GetIndex();
+                    if(minimum_x_indicies_of_regions[highlighted_region] > index[0])
+                        minimum_x_indicies_of_regions[highlighted_region] = index[0];
+                    if(maximum_x_indicies_of_regions[highlighted_region] < index[0])
+                        maximum_x_indicies_of_regions[highlighted_region] = index[0];
+                    if(minimum_y_indicies_of_regions[highlighted_region] > index[1])
+                        minimum_y_indicies_of_regions[highlighted_region] = index[1];
+                    if(maximum_y_indicies_of_regions[highlighted_region] < index[1])
+                        maximum_y_indicies_of_regions[highlighted_region] = index[1];
+                    if(minimum_z_indicies_of_regions[highlighted_region] > index[2])
+                        minimum_z_indicies_of_regions[highlighted_region] = index[2];
+                    if(maximum_z_indicies_of_regions[highlighted_region] < index[2])
+                        maximum_z_indicies_of_regions[highlighted_region] = index[2];
+                }    
+            }
+            ++iterator;
+        }
+
+        for(unsigned char highlighted_region = 0; highlighted_region < info.connected_components; ++highlighted_region){
+            std::printf("region: %d x(%d %d) y(%d %d) z(%d %d)\n",highlighted_region,
+                                                minimum_x_indicies_of_regions[highlighted_region],
+                                                maximum_x_indicies_of_regions[highlighted_region],
+                                                minimum_y_indicies_of_regions[highlighted_region],
+                                                maximum_y_indicies_of_regions[highlighted_region],
+                                                minimum_z_indicies_of_regions[highlighted_region],
+                                                maximum_z_indicies_of_regions[highlighted_region]
+                                                );
+        }
+
+        auto image_to_fill = itk::ImageMaskSpatialObject<3>::ImageType::New();
+        itk::ImageMaskSpatialObject<3>::ImageType::SizeType size = relabelFilter->GetOutput()->GetLargestPossibleRegion().GetSize();
+        itk::ImageMaskSpatialObject<3>::ImageType::IndexType index = { { 0, 0, 0 } };
+        itk::ImageMaskSpatialObject<3>::ImageType::RegionType region;
+        region.SetSize(size);
+        region.SetIndex(index);
+        image_to_fill->SetRegions(region);
+        image_to_fill->Allocate(true);  
+        image_to_fill->SetSpacing(relabelFilter->GetOutput()->GetSpacing());
+        image_to_fill->SetOrigin(relabelFilter->GetOutput()->GetOrigin());
+        image_to_fill->SetDirection(relabelFilter->GetOutput()->GetDirection());
+        itk::ImageRegionIteratorWithIndex<itk::Image<unsigned char, 3>>  iterator_of_image_to_fill( image_to_fill, image_to_fill->GetLargestPossibleRegion() );
+        while( !iterator_of_image_to_fill.IsAtEnd() ){
+            auto index = iterator_of_image_to_fill.GetIndex();
+            for(unsigned char highlighted_region = 0; highlighted_region < info.connected_components; ++highlighted_region){
+                bool is_inside_highlighted = (index[0]> minimum_x_indicies_of_regions[highlighted_region]-info.buffer_of_mask && index[0]< info.buffer_of_mask+maximum_x_indicies_of_regions[highlighted_region]) &&
+                                             (index[1]> minimum_y_indicies_of_regions[highlighted_region]-info.buffer_of_mask && index[1]< info.buffer_of_mask+maximum_y_indicies_of_regions[highlighted_region]) && 
+                                             (index[2]> minimum_z_indicies_of_regions[highlighted_region]-info.buffer_of_mask && index[2]< info.buffer_of_mask+maximum_z_indicies_of_regions[highlighted_region]);
+                if(is_inside_highlighted){
+                    iterator_of_image_to_fill.Set(255);
+                    break;
+                }
+            }
+            ++iterator_of_image_to_fill;
+        }
+
+        if constexpr (is_in_debug){
+            auto writer = itk::ImageFileWriter<itk::Image<unsigned char, 3>>::New();
+            writer->SetInput(image_to_fill);
+            writer->SetFileName(info.appendix+"_filled_mask.mha");
+            update_ikt_filter(writer);
+        }
+        requested_mask->SetImage(image_to_fill);
+        update_ikt_filter(requested_mask);
+    }   
+
     auto meshSource = itk::BinaryMask3DMeshSource<itk::Image<unsigned char, 3>, itk::Mesh<double>>::New();
     meshSource->SetObjectValue(255);
     meshSource->SetInput(final_binary_threshold->GetOutput());
     update_ikt_filter(meshSource);
 
-    if(in_bebug_mode)
+    if constexpr (is_in_debug)
     {
         using WriterType = itk::MeshFileWriter<itk::Mesh<double>>;
         auto writer = WriterType::New();
@@ -259,7 +426,12 @@ itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer im
         update_ikt_filter(writer);
     }
 
-    return meshSource->GetOutput();
+    return {meshSource->GetOutput(),requested_mask};
+}
+
+template<bool is_in_debug>
+itk::Mesh<double>::Pointer extract_surface(itk::Image<double, 3>::Pointer image,const ExtractionSurfaceInfo<is_in_debug>& info)
+{
 }
 
 std::tuple<Eigen::Matrix<double,4,4>,itk::PointSet<double, 3>::Pointer> recentered_data(itk::Mesh<double>::Pointer mesh){
@@ -323,46 +495,6 @@ std::tuple<Eigen::Matrix<double,4,4>,itk::PointSet<double, 3>::Pointer> recenter
     point_set->SetPoints(point_container);
     return {pca_alignement,point_set};
 }
-
-void extract_surface(itk::Image<double, 3>::Pointer image)
-{
-}
-
-inline double rad2deg(double in)
-{
-    constexpr double constant_convert_deg_two_radians = 0.0174532925;
-    return constant_convert_deg_two_radians * in;
-}
-
-// Lamda to get a rotation matrix from a given angle
-auto transform_x = [](double alpha)
-{
-    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
-    poorly_constrained_direction << 1.0, 0.0, 0.0,
-        0.0, std::cos(alpha), -std::sin(alpha),
-        0.0, std::sin(alpha), std::cos(alpha);
-    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
-    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
-    return T_rotation_extra;
-};
-
-// Lamda to get a rotation matrix from a given angle but with a flipped principal direction
-auto transform_flipped_principal_component = [](double alpha)
-{
-    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
-    poorly_constrained_direction << 1.0, 0.0, 0.0,
-        0.0, std::cos(alpha), -std::sin(alpha),
-        0.0, std::sin(alpha), std::cos(alpha);
-
-    Eigen::Matrix<double, 3, 3> flipping_direction;
-    flipping_direction << -1.0, 0.0, 0.0,
-        0.0, -1.0, 0.0,
-        0.0, 0.0, 1.0;
-
-    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
-    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction * flipping_direction;
-    return T_rotation_extra;
-};
 
 std::tuple<double, Eigen::Matrix<double, 4, 4>> icp_registration(Eigen::Matrix4d initial_config, itk::PointSet<double, 3>::Pointer& fixed_point_cloud, itk::PointSet<double, 3>::Pointer& moving_point_cloud )
 {
@@ -451,27 +583,187 @@ void print_image_with_transform(itk::Image<double, 3>::Pointer image, const std:
 };
 
 
-    //"C:/Dev/Curan/build/bin/resources/us_image1_cropepd_volume.mha"
-    // "C:/Dev/NeuroNavigation/volumes/reconstruction_results5.mha"
+struct info_solve_registration
+{
+    itk::Image<double, 3>::Pointer fixed_image;
+    itk::Image<double, 3>::Pointer moving_image;
+    std::optional<itk::ImageMaskSpatialObject<3>::Pointer> fixed_image_mask;
+    std::optional<itk::ImageMaskSpatialObject<3>::Pointer> moving_image_mask;
+    const Eigen::Matrix<double, 4, 4> &initial_rotation;
+};
 
-    //  "C:/Dev/Curan/build/bin/resources/ct_image1_full_volume.mha"
-    // "C:/Dev/Curan/build/bin/resources/ct_image1_cropepd_volume.mha"
+constexpr size_t size_info = 1;
 
+struct RegistrationParameters
+{
+    size_t bin_numbers = 1;
+    double relative_scales = 1;
+    double learning_rate = 1;
+    double sampling_percentage = .1;
+    double relaxation_factor = 1;
+    size_t convergence_window_size;
+    size_t optimization_iterations = 1;
+    std::array<size_t, size_info> piramid_sizes;
+    std::array<double, size_info> bluering_sizes;
+
+    RegistrationParameters(size_t in_bin_numbers,
+                           double in_relative_scales,
+                           double in_learning_rate,
+                           double in_sampling_percentage,
+                           double in_relaxation_factor,
+                           size_t in_convergence_window_size,
+                           size_t in_optimization_iterations,
+                           std::array<size_t, size_info> in_piramid_sizes,
+                           std::array<double, size_info> in_bluering_sizes) : bin_numbers{in_bin_numbers},
+                                                                              relative_scales{in_relative_scales},
+                                                                              learning_rate{in_learning_rate},
+                                                                              sampling_percentage{in_sampling_percentage},
+                                                                              relaxation_factor{in_relaxation_factor},
+                                                                              convergence_window_size{in_convergence_window_size},
+                                                                              optimization_iterations{in_optimization_iterations},
+                                                                              piramid_sizes{in_piramid_sizes},
+                                                                              bluering_sizes{in_bluering_sizes}
+    {
+    }
+};
+
+std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> solve_registration(const info_solve_registration &info_registration, const RegistrationParameters &parameters)
+{
+    using MaskType = itk::ImageMaskSpatialObject<3>;
+    using PixelType = double;
+    using RegistrationPixelType = PixelType;
+    constexpr unsigned int Dimension = 3;
+    using ImageType = itk::Image<PixelType, Dimension>;
+    using ImageRegistrationType = itk::Image<RegistrationPixelType, Dimension>;
+    using TransformType = itk::VersorRigid3DTransform<double>;
+    using InterpolatorType = itk::LinearInterpolateImageFunction<ImageRegistrationType, double>;
+    using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+    using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageRegistrationType, ImageRegistrationType>;
+    using RegistrationType = itk::ImageRegistrationMethodv4<ImageRegistrationType, ImageRegistrationType, TransformType>;
+
+    auto metric = MetricType::New();
+    auto optimizer = OptimizerType::New();
+    auto registration = RegistrationType::New();
+    InterpolatorType::Pointer interpolator_moving = InterpolatorType::New();
+    InterpolatorType::Pointer interpolator_fixed = InterpolatorType::New();
+
+    registration->SetMetric(metric);
+    registration->SetOptimizer(optimizer);
+
+    metric->SetNumberOfHistogramBins(parameters.bin_numbers);
+
+    metric->SetUseMovingImageGradientFilter(false);
+    metric->SetUseFixedImageGradientFilter(false);
+
+    if (info_registration.fixed_image_mask)
+        metric->SetFixedImageMask(*info_registration.fixed_image_mask);
+    if (info_registration.moving_image_mask)
+        metric->SetMovingImageMask(*info_registration.moving_image_mask);
+    metric->SetMovingInterpolator(interpolator_moving);
+    metric->SetFixedInterpolator(interpolator_fixed);
+
+    auto initialTransform = TransformType::New();
+    itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
+    itk::Vector<double, 3> origin;
+    itk::Matrix<double> direction;
+
+    for (size_t row = 0; row < 3; ++row)
+    {
+        origin[row] = info_registration.initial_rotation(row, 3);
+        for (size_t col = 0; col < 3; ++col)
+            direction(row, col) = info_registration.initial_rotation(row, col);
+    }
+
+    if (!(info_registration.initial_rotation.block<3, 3>(0, 0).transpose() * info_registration.initial_rotation.block<3, 3>(0, 0)).isDiagonal())
+    {
+        std::cout << "failure to initialize rotation matrix...\n";
+        std::cout << "values are: \n";
+        std::cout << info_registration.initial_rotation.block<3, 3>(0, 0) << std::endl;
+        std::cout << "the multiplication with itself is:";
+        std::cout << info_registration.initial_rotation.block<3, 3>(0, 0).transpose() * info_registration.initial_rotation.block<3, 3>(0, 0) << std::endl;
+        throw std::runtime_error("failure to initialize the rotation matrix");
+    }
+    initialTransform->SetMatrix(direction);
+    initialTransform->SetTranslation(origin);
+
+    registration->SetFixedImage(info_registration.fixed_image);
+    registration->SetMovingImage(info_registration.moving_image);
+    registration->SetInitialTransform(initialTransform);
+
+    using OptimizerScalesType = OptimizerType::ScalesType;
+    OptimizerScalesType optimizerScales(initialTransform->GetNumberOfParameters());
+
+    optimizerScales[0] = 1.0;
+    optimizerScales[1] = 1.0;
+    optimizerScales[2] = 1.0;
+    optimizerScales[3] = parameters.relative_scales;
+    optimizerScales[4] = parameters.relative_scales;
+    optimizerScales[5] = parameters.relative_scales;
+
+    optimizer->SetScales(optimizerScales);
+
+    optimizer->SetNumberOfIterations(parameters.optimization_iterations);
+
+    optimizer->SetLearningRate(parameters.learning_rate);
+    optimizer->SetMinimumStepLength(0.0001);
+    optimizer->SetReturnBestParametersAndValue(false);
+    itk::SizeValueType value{parameters.convergence_window_size};
+    optimizer->SetConvergenceWindowSize(value);
+    optimizer->SetRelaxationFactor(parameters.relaxation_factor);
+
+    RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
+    shrinkFactorsPerLevel.SetSize(size_info);
+    RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+    smoothingSigmasPerLevel.SetSize(size_info);
+
+    for (size_t i = 0; i < size_info; ++i)
+    {
+        shrinkFactorsPerLevel[i] = parameters.piramid_sizes[i];
+        smoothingSigmasPerLevel[i] = parameters.bluering_sizes[i];
+    }
+
+    registration->SetNumberOfLevels(size_info);
+    registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
+    registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
+    RegistrationType::MetricSamplingStrategyEnum samplingStrategy = RegistrationType::MetricSamplingStrategyEnum::REGULAR;
+
+    registration->SetMetricSamplingStrategy(samplingStrategy);
+    registration->SetMetricSamplingPercentage(parameters.sampling_percentage);
+    registration->MetricSamplingReinitializeSeed(std::rand());
+    registration->SetInPlace(false);
+
+    try{
+        registration->Update();
+    } catch (const itk::ExceptionObject &err) {
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err << std::endl;
+        return {100.0, Eigen::Matrix<double, 4, 4>::Identity(), info_registration.initial_rotation};
+    }
+    TransformType::Pointer final_registration = registration->GetModifiableTransform();
+    Eigen::Matrix<double, 4, 4> final_transformation = Eigen::Matrix<double, 4, 4>::Identity();
+    for (size_t row = 0; row < 3; ++row)
+    {
+        final_transformation(row, 3) = final_registration->GetOffset()[row];
+        for (size_t col = 0; col < 3; ++col)
+            final_transformation(row, col) = final_registration->GetMatrix()(row, col);
+    }
+    return {optimizer->GetValue(), final_transformation, info_registration.initial_rotation};
+}
 
 int main()
 {
     std::cout << "extracting surface from fixed\n";
     auto image_reader_fixed = itk::ImageFileReader<itk::Image<double, 3>>::New();
-    image_reader_fixed->SetFileName("C:/Dev/Curan/build/bin/resources/ct_image1_cropepd_volume.mha"); 
+    image_reader_fixed->SetFileName("C:/Dev/Curan/build/bin/resources/us_image1_cropepd_volume.mha");
     update_ikt_filter(image_reader_fixed);
-    auto point_cloud_fixed = extract_point_cloud(image_reader_fixed->GetOutput(),ExtractionSurfaceInfo{6,0.85,"fixed"});
+    auto [point_cloud_fixed,mask_fixed_image] = extract_point_cloud(image_reader_fixed->GetOutput(),ExtractionSurfaceInfo<true>{4,0.9,"fixed",5,5});
     auto [transformation_acording_to_pca_fixed,fixed_point_set] = recentered_data(point_cloud_fixed);
 
     std::cout << "extracting surface from moving\n";
     auto image_reader_moving = itk::ImageFileReader<itk::Image<double, 3>>::New();
-    image_reader_moving->SetFileName("C:/Dev/Curan/build/bin/resources/us_image1_cropepd_volume.mha");
+    image_reader_moving->SetFileName("C:/Dev/Curan/build/bin/resources/ct_image1_cropepd_volume.mha"); 
     update_ikt_filter(image_reader_moving);
-    auto point_cloud_moving = extract_point_cloud(image_reader_moving->GetOutput(),ExtractionSurfaceInfo{4,0.9,"moving"});
+    auto [point_cloud_moving,mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(),ExtractionSurfaceInfo<true>{6,0.8,"moving",3,5});
     auto [transformation_acording_to_pca_moving,moving_point_set] = recentered_data(point_cloud_moving);
 
     
@@ -532,20 +824,124 @@ int main()
         }
     }
 
-    modify_image_with_transform(Eigen::Matrix<double,4,4>::Identity(), image_reader_fixed->GetOutput());
+    modify_image_with_transform(Timage_origin_fixed, image_reader_fixed->GetOutput());
     print_image_with_transform(image_reader_fixed->GetOutput(),"fixed_image.mha");
 
     modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
     print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_after_pca.mha");
 
-    modify_image_with_transform(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, image_reader_fixed->GetOutput());
-    print_image_with_transform(image_reader_fixed->GetOutput(),"fixed_image_in_origin.mha");
+    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
+    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_after_icp.mha");
 
-    modify_image_with_transform(best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
-    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_in_origin_1.mha");
+    return 0;
 
-    modify_image_with_transform(best_transformation_icp.inverse()*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
-    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_in_origin_2.mha");
+    std::ofstream myfile{"results_of_fullscale_optimization.csv"};
+    myfile << "run,bins,sampling percentage,relative_scales,learning rate,relaxation,convergence window,piramid sizes,bluring sizes,best cost,total time\n";
+
+    // Optimizer parameters
+    constexpr size_t local_permut = 1;
+    std::array<size_t, local_permut> bin_numbers{50};
+    std::array<double, local_permut> percentage_numbers{1};
+    std::array<double, local_permut> relative_scales{1000.0};
+    std::array<double, local_permut> learning_rate{0.1};
+    std::array<double, local_permut> relaxation_factor{0.7};
+    std::array<size_t, local_permut> optimization_iterations{400};
+    std::array<size_t, local_permut> convergence_window_size{30};
+    std::array<std::array<size_t, size_info>, local_permut> piramid_sizes{{{1}}};
+    std::array<std::array<double, size_info>, local_permut> bluering_sizes{{{0}}};
+
+    constexpr size_t total_permutations = bin_numbers.size() * percentage_numbers.size() * relative_scales.size() * learning_rate.size() * relaxation_factor.size() * convergence_window_size.size() * piramid_sizes.size() * bluering_sizes.size();
+    std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>>> full_runs;
+
+    std::printf("\nGenerating initial guesses for MI...\n");
+    std::vector<Eigen::Matrix<double, 4, 4>> initial_guesses_mi;
+
+    // Currentely just rotation and translation on x are being applied (these were found to be the most critical)
+    for (double angle_x = -5; angle_x <= 5; angle_x += 1)
+    {
+        for (double tx = -5; tx <= 5; tx += 5)
+        {
+            double angle_y = 0;
+            double angle_z = 0;
+            double ty = 0;
+            double tz = 0;
+            Eigen::Matrix<double, 4, 4> translation =  transform_x(rad2deg(angle_x))*transform_y(rad2deg(angle_y))*transform_z(rad2deg(angle_z));
+            Eigen::Matrix<double, 4, 4> combined_transform = translation * best_transformation_icp;
+            initial_guesses_mi.push_back(combined_transform);
+        }
+    }
+
+    // Execute paralelized MI registration for the more aproximate initial configs
+    std::printf("\nResgistering using MI...\n");
+    auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales, double learning_rate, double relaxation_factor, size_t window_size, auto piramid_sizes, auto bluering_sizes)
+    {
+        std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>>> full_runs_inner;
+        {
+            std::mutex mut;
+            auto pool = curan::utilities::ThreadPool::create(6, curan::utilities::TERMINATE_ALL_PENDING_TASKS);
+            size_t counter = 0;
+            for (const auto &initial_config : initial_guesses_mi)
+            {
+                curan::utilities::Job job{"solving registration", [&]()
+                                          {
+                                              auto solution = solve_registration(info_solve_registration{image_reader_fixed->GetOutput(), image_reader_moving->GetOutput(), mask_fixed_image, mask_moving_image, initial_config}, RegistrationParameters{bins, relative_scales, learning_rate, percentage, relaxation_factor, window_size, iters, piramid_sizes, bluering_sizes});
+                                              {
+                                                  std::lock_guard<std::mutex> g{mut};
+                                                  full_runs_inner.emplace_back(solution);
+                                                  ++counter;
+                                                  std::printf("%.0f %% %.3f\n", (counter / (double)initial_guesses_mi.size()) * 100, std::get<0>(solution));
+                                              }
+                                          }};
+                pool->submit(job);
+            }
+        }
+        return full_runs_inner;
+    };
+
+    size_t total_runs = 0;
+    for (const auto &bin_n : bin_numbers)
+        for (const auto &percent_n : percentage_numbers)
+            for (const auto &rel_scale : relative_scales)
+                for (const auto &learn_rate : learning_rate)
+                    for (const auto &relax_factor : relaxation_factor)
+                        for (const auto &wind_size : convergence_window_size)
+                            for (const auto &pira_size : piramid_sizes)
+                                for (const auto &iters : optimization_iterations)
+                                    for (const auto &blur_size : bluering_sizes)
+                                    {
+                                        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                                        auto paralel_solutions = run_parameterized_optimization(bin_n, iters, percent_n, rel_scale, learn_rate, relax_factor, wind_size, pira_size, blur_size);
+                                        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                                        for (auto &&run : paralel_solutions)
+                                        {
+                                            myfile << total_runs << "," << bin_n << "," << percent_n << "," << rel_scale << "," << learn_rate << "," << relax_factor << "," << wind_size << ", {";
+                                            for (const auto &val : pira_size)
+                                                myfile << val << ";";
+                                            myfile << "}, {";
+                                            for (const auto &val : blur_size)
+                                                myfile << val << ";";
+                                            myfile << "}," << std::get<0>(run) << "," << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+                                        }
+                                        ++total_runs;
+                                        full_runs.insert(std::end(full_runs), std::begin(paralel_solutions), std::end(paralel_solutions));
+                                    }
+    std::sort(full_runs.begin(), full_runs.end(),
+              [](const std::tuple<double, Eigen::Matrix4d, Eigen::Matrix4d> &a, const std::tuple<double, Eigen::Matrix4d, Eigen::Matrix4d> &b)
+              {
+                  return std::get<0>(a) < std::get<0>(b);
+              });
+    const double pi = std::atan(1) * 4;
+    auto calc_rotation_difference = [&](const Eigen::Matrix4d &mat1, const Eigen::Matrix4d &mat2)
+    {
+        Eigen::Matrix3d rot1 = mat1.block<3, 3>(0, 0);
+        Eigen::Matrix3d rot2 = mat2.block<3, 3>(0, 0);
+        Eigen::Matrix3d R = (rot1.transpose() * rot2);
+        Eigen::AngleAxisd angleAxisDiff(R);
+        return angleAxisDiff.angle() * 180.0 / pi;
+    };
+
+    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
+    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_after_mi_and_icp.mha");
 
     return 0;
 }
