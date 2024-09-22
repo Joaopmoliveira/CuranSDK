@@ -118,8 +118,7 @@ void update_ikt_filter(T &filter)
     }
 }
 
-constexpr size_t number_of_connected_components = 6;
-constexpr double frequency_of_bone_occurence = 0.85;
+constexpr bool in_bebug_mode = false;
 
 struct ExtractionSurfaceInfo{
     size_t connected_components;
@@ -171,12 +170,15 @@ itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer im
     resampleFilter->SetOutputSpacing(output_spacing);
     resampleFilter->SetOutputOrigin(input_origin);
 
+    if(in_bebug_mode)
     {
         auto writer = itk::ImageFileWriter<itk::Image<double, 3>>::New();
         writer->SetInput(resampleFilter->GetOutput());
         writer->SetFileName(info.appendix+"_processed.mha");
         update_ikt_filter(writer);
-    }
+    }else 
+        update_ikt_filter(resampleFilter);
+    
 
     using HistogramGeneratorType = itk::Statistics::ScalarImageToHistogramGenerator<itk::Image<double, 3>>;
     using HistogramType = HistogramGeneratorType::HistogramType;
@@ -234,18 +236,21 @@ itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer im
     final_binary_threshold->SetLowerThreshold(0);
     final_binary_threshold->SetUpperThreshold(info.connected_components);
 
+    if(in_bebug_mode)
     {
         auto writer = itk::ImageFileWriter<itk::Image<unsigned char, 3>>::New();
         writer->SetInput(final_binary_threshold->GetOutput());
         writer->SetFileName(info.appendix+"_processed_filtered.mha");
         update_ikt_filter(writer);
-    }
+    } else
+        update_ikt_filter(final_binary_threshold);
 
     auto meshSource = itk::BinaryMask3DMeshSource<itk::Image<unsigned char, 3>, itk::Mesh<double>>::New();
     meshSource->SetObjectValue(255);
     meshSource->SetInput(final_binary_threshold->GetOutput());
     update_ikt_filter(meshSource);
 
+    if(in_bebug_mode)
     {
         using WriterType = itk::MeshFileWriter<itk::Mesh<double>>;
         auto writer = WriterType::New();
@@ -260,9 +265,9 @@ itk::Mesh<double>::Pointer extract_point_cloud(itk::Image<double, 3>::Pointer im
 std::tuple<Eigen::Matrix<double,4,4>,itk::PointSet<double, 3>::Pointer> recentered_data(itk::Mesh<double>::Pointer mesh){
     itk::PointSet<double, 3>::Pointer point_set = itk::PointSet<double, 3>::New();
     auto point_container = itk::PointSet<double, 3>::PointsContainer::New();
-
+    std::cout << "Number of points :" << mesh->GetNumberOfPoints() << std::endl;
     Eigen::Matrix<double,4,4> pca_alignement = Eigen::Matrix<double,4,4>::Identity();
-    Eigen::Matrix<double, Eigen::Dynamic, 3> points_in_matrix_form = Eigen::Matrix<double, Eigen::Dynamic, 3>::Zero(mesh->GetNumberOfPoints(), 4);
+    Eigen::Matrix<double, Eigen::Dynamic, 3> points_in_matrix_form = Eigen::Matrix<double, Eigen::Dynamic, 3>::Zero(mesh->GetNumberOfPoints(), 3);
     using PointsIterator = itk::Mesh<double>::PointsContainer::Iterator;
     PointsIterator pointIterator = mesh->GetPoints()->Begin();
     PointsIterator end = mesh->GetPoints()->End();
@@ -359,7 +364,7 @@ auto transform_flipped_principal_component = [](double alpha)
     return T_rotation_extra;
 };
 
-std::tuple<double, Eigen::Matrix<double, 4, 4>> icp_registration(Eigen::Matrix4d initial_config, itk::PointSet<double, 3>::Pointer fixed_point_cloud, itk::PointSet<double, 3>::Pointer moving_point_cloud )
+std::tuple<double, Eigen::Matrix<double, 4, 4>> icp_registration(Eigen::Matrix4d initial_config, itk::PointSet<double, 3>::Pointer& fixed_point_cloud, itk::PointSet<double, 3>::Pointer& moving_point_cloud )
 {
     auto metric = itk::EuclideanDistancePointMetric<itk::PointSet<double, 3>, itk::PointSet<double, 3>>::New();
     auto transform = itk::Euler3DTransform<double>::New();
@@ -421,6 +426,31 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>> icp_registration(Eigen::Matrix4d
     return {optimizer->GetValue().two_norm(), final_transformation};
 }
 
+int modify_image_with_transform(Eigen::Matrix<double, 4, 4> transform, itk::Image<double, 3>::Pointer image)
+{
+    itk::Point<double, 3> origin;
+    itk::Matrix<double> direction;
+    for (size_t row = 0; row < 3; ++row)
+    {
+        origin[row] = transform(row, 3);
+        for (size_t col = 0; col < 3; ++col)
+            direction(row, col) = transform(row, col);
+    }
+    image->SetOrigin(origin);
+    image->SetDirection(direction);
+    return 1;
+};
+
+void print_image_with_transform(itk::Image<double, 3>::Pointer image, const std::string& image_path)
+{
+    auto writer = itk::ImageFileWriter<itk::Image<double, 3>>::New();
+    writer->SetFileName(image_path);
+    writer->SetInput(image);
+    update_ikt_filter(writer);
+    return;
+};
+
+
     //"C:/Dev/Curan/build/bin/resources/us_image1_cropepd_volume.mha"
     // "C:/Dev/NeuroNavigation/volumes/reconstruction_results5.mha"
 
@@ -430,48 +460,92 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>> icp_registration(Eigen::Matrix4d
 
 int main()
 {
+    std::cout << "extracting surface from fixed\n";
     auto image_reader_fixed = itk::ImageFileReader<itk::Image<double, 3>>::New();
-    image_reader_fixed->SetFileName("C:/Dev/Curan/build/bin/resources/us_image1_cropepd_volume.mha");
+    image_reader_fixed->SetFileName("C:/Dev/Curan/build/bin/resources/ct_image1_cropepd_volume.mha"); 
     update_ikt_filter(image_reader_fixed);
     auto point_cloud_fixed = extract_point_cloud(image_reader_fixed->GetOutput(),ExtractionSurfaceInfo{6,0.85,"fixed"});
     auto [transformation_acording_to_pca_fixed,fixed_point_set] = recentered_data(point_cloud_fixed);
 
+    std::cout << "extracting surface from moving\n";
     auto image_reader_moving = itk::ImageFileReader<itk::Image<double, 3>>::New();
-    image_reader_moving->SetFileName("C:/Dev/Curan/build/bin/resources/ct_image1_cropepd_volume.mha");
+    image_reader_moving->SetFileName("C:/Dev/Curan/build/bin/resources/us_image1_cropepd_volume.mha");
     update_ikt_filter(image_reader_moving);
-    auto point_cloud_moving = extract_point_cloud(image_reader_moving->GetOutput(),ExtractionSurfaceInfo{6,0.85,"moving"});
+    auto point_cloud_moving = extract_point_cloud(image_reader_moving->GetOutput(),ExtractionSurfaceInfo{4,0.9,"moving"});
     auto [transformation_acording_to_pca_moving,moving_point_set] = recentered_data(point_cloud_moving);
 
+    
+    std::cout << "setting icp data\n";
     std::vector<Eigen::Matrix<double, 4, 4>> initial_guesses_icp;
-    for (double angle = 0; angle < 360.0; angle += 10.0)
+    for (double angle = 0; angle < 360.0; angle += 50.0)
     {
         initial_guesses_icp.push_back(transform_x(rad2deg(angle)));
         initial_guesses_icp.push_back(transform_flipped_principal_component(rad2deg(angle)));
     }
-
-    auto run_parameterized_icp_optimization = [&]()
-    {
-        std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>>> full_runs_inner;
-        {
-            std::mutex mut;
-            auto pool = curan::utilities::ThreadPool::create(6, curan::utilities::TERMINATE_ALL_PENDING_TASKS);
-            size_t counter = 0;
-            for (const auto &initial_config : initial_guesses_icp)
-            {
-                curan::utilities::Job job{"solving icp", [&](){
-                    auto solution = icp_registration(initial_config,fixed_point_set,moving_point_set);
-                    {
-                        std::lock_guard<std::mutex> g{mut};
-                        full_runs_inner.emplace_back(solution);
-                        ++counter;
-                        std::printf("%.0f %% %.3f\n", (counter / (double)initial_guesses_icp.size()) * 100, std::get<0>(solution));
-                    }
-                }};
-                pool->submit(job);
-            }
-        }
-        return full_runs_inner;
-    };
     
+    std::cout << "running parallel solving of icp\n";
+    std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>>> full_runs_inner;
+    {
+        std::mutex mut;
+        auto pool = curan::utilities::ThreadPool::create(6, curan::utilities::TERMINATE_ALL_PENDING_TASKS);
+        size_t counter = 0;
+        for (const auto &initial_config : initial_guesses_icp)
+        {
+            curan::utilities::Job job{"solving icp", [&](){
+                auto solution = icp_registration(initial_config,fixed_point_set,moving_point_set);
+                {
+                    std::lock_guard<std::mutex> g{mut};
+                    full_runs_inner.emplace_back(solution);
+                    ++counter;
+                    std::printf("%.0f %% %.3f\n", (counter / (double)initial_guesses_icp.size()) * 100, std::get<0>(solution));
+                }
+            }};
+            pool->submit(job);
+        }
+    }
+
+    Eigen::Matrix<double, 4, 4> best_transformation_icp;
+    auto min_element_iter = std::min_element(full_runs_inner.begin(), full_runs_inner.end(),
+                                             [](const auto &a, const auto &b)
+                                             {
+                                                 return std::get<0>(a) < std::get<0>(b);
+                                             });
+
+    if (min_element_iter != full_runs_inner.end())
+    {
+        auto [minimum,best_icp_transform] = *min_element_iter;
+        best_transformation_icp = best_icp_transform;
+        std::cout << "Minimum Value: " << minimum << std::endl;
+        std::cout << "Corresponding Transformation Matrix (ICP): \n" << best_icp_transform << std::endl;
+    }
+
+    Eigen::Matrix<double, 4, 4> Timage_origin_fixed = Eigen::Matrix<double, 4, 4>::Identity();
+    Eigen::Matrix<double, 4, 4> Timage_origin_moving = Eigen::Matrix<double, 4, 4>::Identity();
+    for (size_t row = 0; row < 3; ++row)
+    {
+        Timage_origin_fixed(row, 3) = image_reader_fixed->GetOutput()->GetOrigin()[row];
+        Timage_origin_moving(row, 3) = image_reader_moving->GetOutput()->GetOrigin()[row];
+        for (size_t col = 0; col < 3; ++col)
+        {
+            Timage_origin_fixed(row, col) = image_reader_fixed->GetOutput()->GetDirection()(row, col);
+            Timage_origin_moving(row, col) = image_reader_moving->GetOutput()->GetDirection()(row, col);
+        }
+    }
+
+    modify_image_with_transform(Eigen::Matrix<double,4,4>::Identity(), image_reader_fixed->GetOutput());
+    print_image_with_transform(image_reader_fixed->GetOutput(),"fixed_image.mha");
+
+    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
+    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_after_pca.mha");
+
+    modify_image_with_transform(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, image_reader_fixed->GetOutput());
+    print_image_with_transform(image_reader_fixed->GetOutput(),"fixed_image_in_origin.mha");
+
+    modify_image_with_transform(best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
+    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_in_origin_1.mha");
+
+    modify_image_with_transform(best_transformation_icp.inverse()*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
+    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_in_origin_2.mha");
+
     return 0;
 }
