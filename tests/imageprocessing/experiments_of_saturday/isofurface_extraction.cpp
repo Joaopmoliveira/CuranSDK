@@ -942,6 +942,7 @@ int main()
     auto fixed = image_reader_fixed->GetOutput();
     auto moving = image_reader_moving->GetOutput();
 
+/*
     modify_image_with_transform(Timage_origin_fixed, fixed);
     print_image_with_transform(fixed,"fixed_image.mha");
 
@@ -956,6 +957,105 @@ int main()
 
     modify_image_with_transform(best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
     print_image_with_transform(moving,"moving_image_after_icp_in_origin.mha");
+*/
+    modify_image_with_transform(Timage_origin_fixed, fixed);
+    modify_image_with_transform(transformation_acording_to_pca_fixed*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
+
+std::ofstream myfile{"results_of_fullscale_optimization.csv"};
+    myfile << "run,bins,sampling percentage,relative_scales,learning rate,relaxation,convergence window,piramid sizes,bluring sizes,best cost,total time\n";
+
+    // Optimizer parameters
+    constexpr size_t local_permut = 1;
+    std::array<size_t, local_permut> bin_numbers{50};
+    std::array<double, local_permut> percentage_numbers{1};
+    std::array<double, local_permut> relative_scales{1000.0};
+    std::array<double, local_permut> learning_rate{0.1};
+    std::array<double, local_permut> relaxation_factor{0.7};
+    std::array<size_t, local_permut> optimization_iterations{400};
+    std::array<size_t, local_permut> convergence_window_size{30};
+    std::array<std::array<size_t, size_info>, local_permut> piramid_sizes{{{1}}};
+    std::array<std::array<double, size_info>, local_permut> bluering_sizes{{{0}}};
+
+    constexpr size_t total_permutations = bin_numbers.size() * percentage_numbers.size() * relative_scales.size() * learning_rate.size() * relaxation_factor.size() * convergence_window_size.size() * piramid_sizes.size() * bluering_sizes.size();
+    std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>>> full_runs;
+
+    std::vector<Eigen::Matrix<double, 4, 4>> initial_guesses_mi;
+
+    std::array<double,5> offset{-10.0,-5.0,0.0,5.0,10.0};
+    for (const auto& angle_x : offset)
+        for (const auto& angle_y : offset)
+            for (const auto& angle_z : offset)
+                initial_guesses_mi.push_back(transform_x(rad2deg(angle_x))*transform_y(rad2deg(angle_y))*transform_z(rad2deg(angle_z)));
+
+    auto run_parameterized_optimization = [&](size_t bins, size_t iters, double percentage, double relative_scales, double learning_rate, double relaxation_factor, size_t window_size, auto piramid_sizes, auto bluering_sizes)
+    {
+        std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>>> full_runs_inner;
+        {
+            std::mutex mut;
+            auto pool = curan::utilities::ThreadPool::create(6, curan::utilities::TERMINATE_ALL_PENDING_TASKS);
+            size_t counter = 0;
+            for (const auto &initial_config : initial_guesses_mi)
+            {
+                curan::utilities::Job job{"solving registration", [&]()
+                                          {
+                                              auto solution = solve_registration(info_solve_registration{image_reader_fixed->GetOutput(), image_reader_moving->GetOutput(), mask_fixed_image, mask_moving_image, initial_config}, RegistrationParameters{bins, relative_scales, learning_rate, percentage, relaxation_factor, window_size, iters, piramid_sizes, bluering_sizes});
+                                              {
+                                                  std::lock_guard<std::mutex> g{mut};
+                                                  full_runs_inner.emplace_back(solution);
+                                                  ++counter;
+                                                  std::printf("%.0f %% %.3f\n", (counter / (double)initial_guesses_mi.size()) * 100, std::get<0>(solution));
+                                              }
+                                          }};
+                pool->submit(job);
+            }
+        }
+        return full_runs_inner;
+    };
+
+    size_t total_runs = 0;
+    for (const auto &bin_n : bin_numbers)
+        for (const auto &percent_n : percentage_numbers)
+            for (const auto &rel_scale : relative_scales)
+                for (const auto &learn_rate : learning_rate)
+                    for (const auto &relax_factor : relaxation_factor)
+                        for (const auto &wind_size : convergence_window_size)
+                            for (const auto &pira_size : piramid_sizes)
+                                for (const auto &iters : optimization_iterations)
+                                    for (const auto &blur_size : bluering_sizes)
+                                    {
+                                        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                                        auto paralel_solutions = run_parameterized_optimization(bin_n, iters, percent_n, rel_scale, learn_rate, relax_factor, wind_size, pira_size, blur_size);
+                                        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                                        for (auto &&run : paralel_solutions)
+                                        {
+                                            myfile << total_runs << "," << bin_n << "," << percent_n << "," << rel_scale << "," << learn_rate << "," << relax_factor << "," << wind_size << ", {";
+                                            for (const auto &val : pira_size)
+                                                myfile << val << ";";
+                                            myfile << "}, {";
+                                            for (const auto &val : blur_size)
+                                                myfile << val << ";";
+                                            myfile << "}," << std::get<0>(run) << "," << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+                                        }
+                                        ++total_runs;
+                                        full_runs.insert(std::end(full_runs), std::begin(paralel_solutions), std::end(paralel_solutions));
+                                    }
+    std::sort(full_runs.begin(), full_runs.end(),
+              [](const std::tuple<double, Eigen::Matrix4d, Eigen::Matrix4d> &a, const std::tuple<double, Eigen::Matrix4d, Eigen::Matrix4d> &b)
+              {
+                  return std::get<0>(a) < std::get<0>(b);
+              });
+    const double pi = std::atan(1) * 4;
+    auto calc_rotation_difference = [&](const Eigen::Matrix4d &mat1, const Eigen::Matrix4d &mat2)
+    {
+        Eigen::Matrix3d rot1 = mat1.block<3, 3>(0, 0);
+        Eigen::Matrix3d rot2 = mat2.block<3, 3>(0, 0);
+        Eigen::Matrix3d R = (rot1.transpose() * rot2);
+        Eigen::AngleAxisd angleAxisDiff(R);
+        return angleAxisDiff.angle() * 180.0 / pi;
+    };
+
+    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
+    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_after_mi_and_icp.mha");
     return 0;
 }
 
