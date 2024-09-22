@@ -945,10 +945,10 @@ int main()
     modify_image_with_transform(Timage_origin_fixed, fixed);
     print_image_with_transform(fixed,"fixed_image.mha");
 
-    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving,moving);
+    modify_image_with_transform(transformation_acording_to_pca_fixed*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving,moving);
     print_image_with_transform(moving,"moving_image_after_pca.mha");
 
-    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
+    modify_image_with_transform(transformation_acording_to_pca_fixed*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
     print_image_with_transform(moving,"moving_image_after_icp.mha");
 
     modify_image_with_transform(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, fixed);
