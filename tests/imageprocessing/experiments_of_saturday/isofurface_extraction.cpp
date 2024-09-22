@@ -365,17 +365,6 @@ std::tuple<itk::Mesh<double>::Pointer,itk::ImageMaskSpatialObject<3>::Pointer> e
             ++iterator;
         }
 
-        for(unsigned char highlighted_region = 0; highlighted_region < info.connected_components; ++highlighted_region){
-            std::printf("region: %d x(%d %d) y(%d %d) z(%d %d)\n",highlighted_region,
-                                                minimum_x_indicies_of_regions[highlighted_region],
-                                                maximum_x_indicies_of_regions[highlighted_region],
-                                                minimum_y_indicies_of_regions[highlighted_region],
-                                                maximum_y_indicies_of_regions[highlighted_region],
-                                                minimum_z_indicies_of_regions[highlighted_region],
-                                                maximum_z_indicies_of_regions[highlighted_region]
-                                                );
-        }
-
         auto image_to_fill = itk::ImageMaskSpatialObject<3>::ImageType::New();
         itk::ImageMaskSpatialObject<3>::ImageType::SizeType size = relabelFilter->GetOutput()->GetLargestPossibleRegion().GetSize();
         itk::ImageMaskSpatialObject<3>::ImageType::IndexType index = { { 0, 0, 0 } };
@@ -429,18 +418,99 @@ std::tuple<itk::Mesh<double>::Pointer,itk::ImageMaskSpatialObject<3>::Pointer> e
     return {meshSource->GetOutput(),requested_mask};
 }
 
+itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>::Pointer convert_mesh(const itk::Mesh<double>::Pointer& mesh){
+    class MeshConverterVisitor
+    {
+    public:
+        itk::Mesh<double>::Pointer inmesh;
+        using MeshSourceType = itk::AutomaticTopologyMeshSource<itk::Mesh<double>>;
+        itk::QuadEdgeMesh<double, 3>::Pointer outmesh;
+        itk::QuadEdgeMesh<double, 3>::PointsContainer::Pointer container;
+
+        void set_required_data(itk::Mesh<double>::Pointer ref_inmesh, itk::QuadEdgeMesh<double, 3>::Pointer ref_outmesh)
+        {
+            inmesh = ref_inmesh;
+            container = itk::QuadEdgeMesh<double, 3>::PointsContainer::New();
+            container->Reserve(inmesh->GetNumberOfPoints());
+            outmesh = ref_outmesh;
+            
+        }
+
+        using TriangleType = itk::TriangleCell<itk::Mesh<double>::CellType>;
+        void
+        Visit(unsigned long cellId, TriangleType *t)
+        {
+            TriangleType::PointIdIterator pit = t->PointIdsBegin();
+            std::array<TriangleType::PointIdentifier,3> ident; 
+            for (size_t index = 0; pit !=  t->PointIdsEnd(); ++pit, ++index){
+                ident[index] = *pit;
+                container->SetElement(*pit,inmesh->GetPoint(*pit));
+
+            }
+            outmesh->AddFaceTriangle(ident[0],ident[1],ident[2]);
+        }
+
+        MeshConverterVisitor() = default;
+        virtual ~MeshConverterVisitor() {
+            outmesh->SetPoints(container);
+        }
+    };
+
+    using TriangleType = itk::TriangleCell<itk::Mesh<double>::CellType>;
+
+    using TriangleVisitorInterfaceType =
+        itk::CellInterfaceVisitorImplementation<itk::Mesh<double>::PixelType,
+                                                itk::Mesh<double>::CellTraits,
+                                                TriangleType,
+                                                MeshConverterVisitor>;
+    itk::QuadEdgeMesh<double, 3>::Pointer out_mesh = itk::QuadEdgeMesh<double, 3>::New(); 
+    {
+        auto triangleVisitor = TriangleVisitorInterfaceType::New();
+
+        triangleVisitor->set_required_data(mesh,out_mesh);
+
+        using CellMultiVisitorType = itk::Mesh<double>::CellType::MultiVisitor;
+        auto multiVisitor = CellMultiVisitorType::New();
+        multiVisitor->AddVisitor(triangleVisitor);
+        mesh->Accept(multiVisitor);
+    }
+    auto computation_of_normals = itk::NormalQuadEdgeMeshFilter<itk::QuadEdgeMesh<double, 3>, itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>>::New();
+    itk::NormalQuadEdgeMeshFilter<itk::QuadEdgeMesh<double, 3>, itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>>::WeightEnum weight_type = itk::NormalQuadEdgeMeshFilterEnums::Weight::THURMER;    
+    computation_of_normals->SetInput(out_mesh);
+    computation_of_normals->SetWeight(weight_type);
+    update_ikt_filter(computation_of_normals);
+    return computation_of_normals->GetOutput();
+
+}
+
+void prune_surface(itk::Mesh<double>::Pointer mesh){
+  auto converted_mesh = convert_mesh(mesh);
+  itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>::PointsContainerIterator p_it = converted_mesh->GetPoints()->Begin();
+  itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>::PointDataContainerIterator d_it = converted_mesh->GetPointData()->Begin();
+  while (p_it != converted_mesh->GetPoints()->End())
+  {
+    std::cout << p_it.Index() << " * ";
+    std::cout << p_it.Value() << " * ";
+    std::cout << d_it.Value() << std::endl;
+
+    ++p_it;
+    ++d_it;
+  }
+
+}
+
 template<bool is_in_debug>
 itk::Mesh<double>::Pointer extract_surface(itk::Image<double, 3>::Pointer image,const ExtractionSurfaceInfo<is_in_debug>& info)
 {
 }
 
-std::tuple<Eigen::Matrix<double,4,4>,itk::PointSet<double, 3>::Pointer> recentered_data(itk::Mesh<double>::Pointer mesh){
+std::tuple<Eigen::Matrix<double,4,4>,itk::PointSet<double, 3>::Pointer> recentered_data(const itk::Mesh<double>::Pointer& mesh){
     itk::PointSet<double, 3>::Pointer point_set = itk::PointSet<double, 3>::New();
     auto point_container = itk::PointSet<double, 3>::PointsContainer::New();
     std::cout << "Number of points :" << mesh->GetNumberOfPoints() << std::endl;
     Eigen::Matrix<double,4,4> pca_alignement = Eigen::Matrix<double,4,4>::Identity();
     Eigen::Matrix<double, Eigen::Dynamic, 3> points_in_matrix_form = Eigen::Matrix<double, Eigen::Dynamic, 3>::Zero(mesh->GetNumberOfPoints(), 3);
-    using PointsIterator = itk::Mesh<double>::PointsContainer::Iterator;
+    using PointsIterator = itk::Mesh<double>::PointsContainer::ConstIterator;
     PointsIterator pointIterator = mesh->GetPoints()->Begin();
     PointsIterator end = mesh->GetPoints()->End();
     size_t index = 0;
@@ -756,20 +826,70 @@ int main()
     auto image_reader_fixed = itk::ImageFileReader<itk::Image<double, 3>>::New();
     image_reader_fixed->SetFileName("C:/Dev/Curan/build/bin/resources/us_image1_cropepd_volume.mha");
     update_ikt_filter(image_reader_fixed);
-    auto [point_cloud_fixed,mask_fixed_image] = extract_point_cloud(image_reader_fixed->GetOutput(),ExtractionSurfaceInfo<true>{4,0.9,"fixed",5,5});
+    auto [point_cloud_fixed,mask_fixed_image] = extract_point_cloud(image_reader_fixed->GetOutput(),ExtractionSurfaceInfo<true>{3,0.9,"fixed",5,5});
     auto [transformation_acording_to_pca_fixed,fixed_point_set] = recentered_data(point_cloud_fixed);
 
     std::cout << "extracting surface from moving\n";
     auto image_reader_moving = itk::ImageFileReader<itk::Image<double, 3>>::New();
     image_reader_moving->SetFileName("C:/Dev/Curan/build/bin/resources/ct_image1_cropepd_volume.mha"); 
     update_ikt_filter(image_reader_moving);
-    auto [point_cloud_moving,mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(),ExtractionSurfaceInfo<true>{6,0.8,"moving",3,5});
+    auto [point_cloud_moving,mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(),ExtractionSurfaceInfo<true>{3,0.8,"moving",5,5});
     auto [transformation_acording_to_pca_moving,moving_point_set] = recentered_data(point_cloud_moving);
+
+    {
+        itk::Mesh<double>::PointsContainer::Iterator pointIterator = point_cloud_fixed->GetPoints()->Begin();
+        itk::Mesh<double>::PointsContainer::Iterator end = point_cloud_fixed->GetPoints()->End();
+        auto transformation_acording_to_pca_fixed_inverse = transformation_acording_to_pca_fixed.inverse();
+        while (pointIterator != end)
+        {
+            auto& p = pointIterator->Value();
+            Eigen::Matrix<double,4,1> original_point = Eigen::Matrix<double,4,1>::Ones();
+            original_point[0] = p[0];
+            original_point[1] = p[1];
+            original_point[2] = p[2];
+            Eigen::Matrix<double,4,1> transformed_point = transformation_acording_to_pca_fixed_inverse*original_point;
+            p[0] = transformed_point[0];
+            p[1] = transformed_point[1];
+            p[2] = transformed_point[2];
+            ++pointIterator;
+        }
+        prune_surface(point_cloud_fixed);
+        return 0;
+
+        auto writer = itk::MeshFileWriter<itk::Mesh<double>>::New();
+        writer->SetFileName("before_moving_point_set.obj");
+        writer->SetInput(point_cloud_fixed);
+        update_ikt_filter(writer);
+    }
+
+    {
+        itk::Mesh<double>::PointsContainer::Iterator pointIterator = point_cloud_moving->GetPoints()->Begin();
+        itk::Mesh<double>::PointsContainer::Iterator end = point_cloud_moving->GetPoints()->End();
+        auto transformation_acording_to_pca_moving_inverse = transformation_acording_to_pca_moving.inverse();
+        while (pointIterator != end)
+        {
+            auto& p = pointIterator->Value();
+            Eigen::Matrix<double,4,1> original_point = Eigen::Matrix<double,4,1>::Ones();
+            original_point[0] = p[0];
+            original_point[1] = p[1];
+            original_point[2] = p[2];
+            Eigen::Matrix<double,4,1> transformed_point = transformation_acording_to_pca_moving_inverse*original_point;
+            p[0] = transformed_point[0];
+            p[1] = transformed_point[1];
+            p[2] = transformed_point[2];
+            ++pointIterator;
+        }
+        using WriterType = itk::MeshFileWriter<itk::Mesh<double>>;
+        auto writer = WriterType::New();
+        writer->SetFileName("fixed_point_set.obj");
+        writer->SetInput(point_cloud_moving);
+        update_ikt_filter(writer);
+    }
 
     
     std::cout << "setting icp data\n";
     std::vector<Eigen::Matrix<double, 4, 4>> initial_guesses_icp;
-    for (double angle = 0; angle < 360.0; angle += 50.0)
+    for (double angle = 0; angle < 360.0; angle += 10.0)
     {
         initial_guesses_icp.push_back(transform_x(rad2deg(angle)));
         initial_guesses_icp.push_back(transform_flipped_principal_component(rad2deg(angle)));
@@ -827,23 +947,49 @@ int main()
     auto fixed = image_reader_fixed->GetOutput();
     auto moving = image_reader_moving->GetOutput();
 
+    {
+        itk::Mesh<double>::PointsContainer::Iterator pointIterator = point_cloud_moving->GetPoints()->Begin();
+        itk::Mesh<double>::PointsContainer::Iterator end = point_cloud_moving->GetPoints()->End();
+        auto best_transformation_icp_inverse = best_transformation_icp.inverse();
+        while (pointIterator != end)
+        {
+            auto& p = pointIterator->Value();
+            Eigen::Matrix<double,4,1> original_point = Eigen::Matrix<double,4,1>::Ones();
+            original_point[0] = p[0];
+            original_point[1] = p[1];
+            original_point[2] = p[2];
+            Eigen::Matrix<double,4,1> transformed_point = best_transformation_icp*original_point;
+            p[0] = transformed_point[0];
+            p[1] = transformed_point[1];
+            p[2] = transformed_point[2];
+            ++pointIterator;
+        }
+        using WriterType = itk::MeshFileWriter<itk::Mesh<double>>;
+        auto writer = WriterType::New();
+        writer->SetFileName("after_moving_point_set.obj");
+        writer->SetInput(point_cloud_moving);
+        update_ikt_filter(writer);
+    }
+
     modify_image_with_transform(Timage_origin_fixed, fixed);
     print_image_with_transform(fixed,"fixed_image.mha");
 
     modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving,moving);
     print_image_with_transform(moving,"moving_image_after_pca.mha");
 
-    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*(transformation_acording_to_pca_moving*best_transformation_icp).inverse() * Timage_origin_moving, moving);
+    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving*best_transformation_icp, moving);
     print_image_with_transform(moving,"moving_image_after_icp.mha");
 
     modify_image_with_transform(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, fixed);
     print_image_with_transform(fixed,"fixed_image_in_origin.mha");
 
-    modify_image_with_transform(transformation_acording_to_pca_moving.inverse() * best_transformation_icp * Timage_origin_moving, moving);
+    modify_image_with_transform(transformation_acording_to_pca_moving.inverse() * Timage_origin_moving*best_transformation_icp, moving);
     print_image_with_transform(moving,"moving_image_after_icp_in_origin.mha");
-
     return 0;
+}
 
+
+/*
     std::ofstream myfile{"results_of_fullscale_optimization.csv"};
     myfile << "run,bins,sampling percentage,relative_scales,learning rate,relaxation,convergence window,piramid sizes,bluring sizes,best cost,total time\n";
 
@@ -952,5 +1098,4 @@ int main()
     modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
     print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_after_mi_and_icp.mha");
 
-    return 0;
-}
+*/
