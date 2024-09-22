@@ -824,14 +824,23 @@ int main()
         }
     }
 
-    modify_image_with_transform(Timage_origin_fixed, image_reader_fixed->GetOutput());
-    print_image_with_transform(image_reader_fixed->GetOutput(),"fixed_image.mha");
+    auto fixed = image_reader_fixed->GetOutput();
+    auto moving = image_reader_moving->GetOutput();
 
-    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
-    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_after_pca.mha");
+    modify_image_with_transform(Timage_origin_fixed, fixed);
+    print_image_with_transform(fixed,"fixed_image.mha");
 
-    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
-    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_after_icp.mha");
+    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving,moving);
+    print_image_with_transform(moving,"moving_image_after_pca.mha");
+
+    modify_image_with_transform((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*(transformation_acording_to_pca_moving*best_transformation_icp).inverse() * Timage_origin_moving, moving);
+    print_image_with_transform(moving,"moving_image_after_icp.mha");
+
+    modify_image_with_transform(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, fixed);
+    print_image_with_transform(fixed,"fixed_image_in_origin.mha");
+
+    modify_image_with_transform(transformation_acording_to_pca_moving.inverse() * best_transformation_icp * Timage_origin_moving, moving);
+    print_image_with_transform(moving,"moving_image_after_icp_in_origin.mha");
 
     return 0;
 
