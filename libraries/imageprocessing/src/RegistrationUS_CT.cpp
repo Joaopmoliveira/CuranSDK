@@ -1558,7 +1558,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
                                                   std::printf("%.0f %% %.3f\n", (counter / (double)initial_guesses_mi.size()) * 100, std::get<0>(solution));
                                               }
                                           }};
-                pool->submit(job);run
+                pool->submit(job);
             }
         }
         return full_runs_inner;

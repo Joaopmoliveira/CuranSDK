@@ -692,7 +692,7 @@ struct info_solve_registration
     const Eigen::Matrix<double, 4, 4> &initial_rotation;
 };
 
-constexpr size_t size_info = 1;
+constexpr size_t size_info = 3;
 
 struct RegistrationParameters
 {
@@ -904,7 +904,7 @@ int main()
                     std::lock_guard<std::mutex> g{mut};
                     full_runs_inner.emplace_back(solution);
                     ++counter;
-                    std::printf("%.0f %% %.3f\n", (counter / (double)initial_guesses_icp.size()) * 100, std::get<0>(solution));
+                    std::printf("%.2f %% %.3f\n", (counter / (double)initial_guesses_icp.size()) * 100, std::get<0>(solution));
                 }
             }};
             pool->submit(job);
@@ -953,16 +953,16 @@ int main()
     myfile << "run,bins,sampling percentage,relative_scales,learning rate,relaxation,convergence window,piramid sizes,bluring sizes,best cost,total time\n";
 
     // Optimizer parameters
-    constexpr size_t local_permut = 1;
-    std::array<size_t, local_permut> bin_numbers{50};
-    std::array<double, local_permut> percentage_numbers{1};
-    std::array<double, local_permut> relative_scales{1000.0};
-    std::array<double, local_permut> learning_rate{0.1};
-    std::array<double, local_permut> relaxation_factor{0.7};
-    std::array<size_t, local_permut> optimization_iterations{400};
-    std::array<size_t, local_permut> convergence_window_size{30};
-    std::array<std::array<size_t, size_info>, local_permut> piramid_sizes{{{1}}};
-    std::array<std::array<double, size_info>, local_permut> bluering_sizes{{{0}}};
+    constexpr size_t local_permut = 2;
+    std::array<size_t, local_permut> bin_numbers{50,100};
+    std::array<double, local_permut> percentage_numbers{0.1,0.3};
+    std::array<double, local_permut> relative_scales{1000.0,1500.0};
+    std::array<double, local_permut> learning_rate{0.1,0.07};
+    std::array<double, local_permut> relaxation_factor{0.5,0.8};
+    std::array<size_t, local_permut> optimization_iterations{400,500};
+    std::array<size_t, local_permut> convergence_window_size{30,40};
+    std::array<std::array<size_t, size_info>, local_permut> piramid_sizes{{{10,5,2},{10,2,1}}};
+    std::array<std::array<double, size_info>, local_permut> bluering_sizes{{{4,2,0},{4,1,0}}};
 
     constexpr size_t total_permutations = bin_numbers.size() * percentage_numbers.size() * relative_scales.size() * learning_rate.size() * relaxation_factor.size() * convergence_window_size.size() * piramid_sizes.size() * bluering_sizes.size();
     std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>>> full_runs;
@@ -990,43 +990,44 @@ int main()
                                         {
                                             curan::utilities::Job job{"solving registration", [&](){
                                                 std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-                                                auto [cost,transformation,initial_transform] = solve_registration(info_solve_registration{image_reader_fixed->GetOutput(), image_reader_moving->GetOutput(), transformed_mask_fixed_image, transformed_mask_moving_image, Eigen::Matrix<double, 4, 4>::Identity()}, RegistrationParameters{bin_n, relative_scales, learning_rate, percent_n, relaxation_factor, wind_size, iters, piramid_sizes, bluering_sizes});
+                                                auto [cost,transformation,initial_transform] = solve_registration(info_solve_registration{image_reader_fixed->GetOutput(), 
+                                                                                                                                          image_reader_moving->GetOutput(), 
+                                                                                                                                          transformed_mask_fixed_image, 
+                                                                                                                                          transformed_mask_moving_image, Eigen::Matrix<double, 4, 4>::Identity()}, 
+                                                                                                                  RegistrationParameters{bin_n, 
+                                                                                                                                         rel_scale, 
+                                                                                                                                         learn_rate, 
+                                                                                                                                         percent_n, 
+                                                                                                                                         relax_factor, 
+                                                                                                                                         wind_size, 
+                                                                                                                                         iters, 
+                                                                                                                                         pira_size, 
+                                                                                                                                         blur_size});
                                                 std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
                                                 {
                                                     std::lock_guard<std::mutex> g{mut};
                                                     myfile << total_runs << "," << bin_n << "," << percent_n << "," << rel_scale << "," << learn_rate << "," << relax_factor << "," << wind_size << ", {";
                                                     for (const auto &val : pira_size)
-                                                        myfile << val << ";";
+                                                        myfile << val << " ";
                                                     myfile << "}, {";
                                                     for (const auto &val : blur_size)
-                                                        myfile << val << ";";
+                                                        myfile << val << " ";
                                                     myfile << "}," << cost << "," << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
 
                                                     ++total_runs;
                                                     full_runs.emplace_back(cost,transformation);
+                                                    std::printf("mi (%.2f %%)\n", (total_runs / (double)total_permutations) * 100);
                                                 }
                                                 }};
                                             pool->submit(job);
                                         }
     }
 
-    std::sort(full_runs.begin(), full_runs.end(),
-              [](const std::tuple<double, Eigen::Matrix4d, Eigen::Matrix4d> &a, const std::tuple<double, Eigen::Matrix4d, Eigen::Matrix4d> &b)
-              {
-                  return std::get<0>(a) < std::get<0>(b);
-              });
+    std::sort(full_runs.begin(), full_runs.end(),[](const std::tuple<double, Eigen::Matrix4d> &a, const std::tuple<double, Eigen::Matrix4d> &b){return std::get<0>(a) < std::get<0>(b);});
     const double pi = std::atan(1) * 4;
-    auto calc_rotation_difference = [&](const Eigen::Matrix4d &mat1, const Eigen::Matrix4d &mat2)
-    {
-        Eigen::Matrix3d rot1 = mat1.block<3, 3>(0, 0);
-        Eigen::Matrix3d rot2 = mat2.block<3, 3>(0, 0);
-        Eigen::Matrix3d R = (rot1.transpose() * rot2);
-        Eigen::AngleAxisd angleAxisDiff(R);
-        return angleAxisDiff.angle() * 180.0 / pi;
-    };
-
-    modify_image_with_transform<double>((transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed).inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, image_reader_moving->GetOutput());
-    print_image_with_transform(image_reader_moving->GetOutput(),"moving_image_after_mi_and_icp.mha");
+    auto[cost,best_transformation_mi] = full_runs[0];
+    modify_image_with_transform<double>(transformation_acording_to_pca_fixed*best_transformation_icp*best_transformation_mi*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving,moving);
+    print_image_with_transform(moving,"moving_image_after_mi_and_icp.mha");
     return 0;
 }
 
