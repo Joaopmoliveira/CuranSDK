@@ -540,11 +540,6 @@ itk::PointSet<double, 3>::Pointer prune_surface(itk::Mesh<double>::Pointer mesh)
   return point_set;
 }
 
-template<bool is_in_debug>
-itk::Mesh<double>::Pointer extract_surface(itk::Image<double, 3>::Pointer image,const ExtractionSurfaceInfo<is_in_debug>& info)
-{
-}
-
 std::tuple<Eigen::Matrix<double,4,4>,itk::PointSet<double, 3>::Pointer> recentered_data(const itk::Mesh<double>::Pointer& mesh){
     std::cout << "Number of points :" << mesh->GetNumberOfPoints() << std::endl;
     Eigen::Matrix<double,4,4> pca_alignement = Eigen::Matrix<double,4,4>::Identity();
@@ -868,7 +863,7 @@ int main()
 {
     std::cout << "extracting surface from fixed\n";
     auto image_reader_fixed = itk::ImageFileReader<itk::Image<double, 3>>::New();
-    image_reader_fixed->SetFileName("C:/Dev/Curan/build/bin/resources/us_image1_cropepd_volume.mha");
+    image_reader_fixed->SetFileName(CURAN_COPIED_RESOURCE_PATH"/us_image1_cropepd_volume.mha");
     update_ikt_filter(image_reader_fixed);
     auto [point_cloud_fixed,mask_fixed_image] = extract_point_cloud(image_reader_fixed->GetOutput(),ExtractionSurfaceInfo<false>{3,0.9,"fixed",5,5});
     auto [transformation_acording_to_pca_fixed,fixed_point_set] = recentered_data(point_cloud_fixed);
@@ -876,7 +871,7 @@ int main()
 
     std::cout << "extracting surface from moving\n";
     auto image_reader_moving = itk::ImageFileReader<itk::Image<double, 3>>::New();
-    image_reader_moving->SetFileName("C:/Dev/Curan/build/bin/resources/ct_image1_cropepd_volume.mha"); 
+    image_reader_moving->SetFileName(CURAN_COPIED_RESOURCE_PATH"/ct_image1_cropepd_volume.mha"); 
     update_ikt_filter(image_reader_moving);
     auto [point_cloud_moving,mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(),ExtractionSurfaceInfo<false>{3,0.8,"moving",5,5});
     auto [transformation_acording_to_pca_moving,moving_point_set] = recentered_data(point_cloud_moving);
