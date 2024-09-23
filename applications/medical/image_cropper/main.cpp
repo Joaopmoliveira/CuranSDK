@@ -150,7 +150,6 @@ int main()
             internals.push_back(boundaries);
         }
 
-
         auto evaluate_if_pixel_inside_mask = [&](double in_x, double in_y, double in_z)
         {
             for (const auto &boundary : internals){
