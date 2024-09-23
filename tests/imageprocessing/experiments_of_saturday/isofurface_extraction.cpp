@@ -724,6 +724,10 @@ struct RegistrationParameters
 
 std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> solve_registration(const info_solve_registration &info_registration, const RegistrationParameters &parameters)
 {
+
+    std::cout << "fixed image spacing : " << info_registration.fixed_image->GetSpacing() << std::endl;
+    std::cout << "moving image spacing : " << info_registration.moving_image->GetSpacing() << std::endl;
+
     using MaskType = itk::ImageMaskSpatialObject<3>;
     using PixelType = double;
     using RegistrationPixelType = PixelType;
@@ -794,6 +798,8 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> sol
     optimizerScales[3] = parameters.relative_scales;
     optimizerScales[4] = parameters.relative_scales;
     optimizerScales[5] = parameters.relative_scales;
+
+    std::cout << "optimizer scales: " << optimizerScales << std::endl; 
 
     optimizer->SetScales(optimizerScales);
 
@@ -940,9 +946,9 @@ int main()
     auto moving = image_reader_moving->GetOutput();
 
     Eigen::Matrix<double,4,4> bad_transform = Eigen::Matrix<double,4,4>::Identity();
-    bad_transform(0,3) = 1000;
-    bad_transform(1,3) = 1000;
-    bad_transform(2,3) = 1000;
+    bad_transform(0,3) = 0;
+    bad_transform(1,3) = 0;
+    bad_transform(2,3) = 0;
     std::cout << "the bad transform is: \n" << bad_transform << std::endl;
 
     modify_image_with_transform<double>(transformation_acording_to_pca_fixed.inverse()*Timage_origin_fixed, fixed);
@@ -950,6 +956,9 @@ int main()
 
     modify_image_with_transform<unsigned char>(transformation_acording_to_pca_fixed.inverse()*Timage_origin_fixed, mask_fixed_image);
     modify_image_with_transform<unsigned char>(bad_transform*best_transformation_icp*transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, mask_moving_image);
+
+    std::cout << "mask fixed image spacing : " << mask_fixed_image->GetSpacing() << std::endl;
+    std::cout << "mask moving image spacing : " << mask_moving_image->GetSpacing() << std::endl;
 
     std::ofstream myfile{"results_of_fullscale_optimization.csv"};
     myfile << "run,bins,sampling percentage,relative_scales,learning rate,relaxation,convergence window,piramid sizes,bluring sizes,best cost,total time\n";
@@ -975,8 +984,8 @@ int main()
     std::array<double, local_permut> relaxation_factor{0.7};
     std::array<size_t, local_permut> optimization_iterations{500};
     std::array<size_t, local_permut> convergence_window_size{30};
-    std::array<std::array<size_t, size_info>, local_permut> piramid_sizes{{{10,5,1}}};
-    std::array<std::array<double, size_info>, local_permut> bluering_sizes{{{4,2,1}}};
+    std::array<std::array<size_t, size_info>, local_permut> piramid_sizes{{{1,1,0}}};
+    std::array<std::array<double, size_info>, local_permut> bluering_sizes{{{1,1,0}}};
 
 
     constexpr size_t total_permutations = bin_numbers.size() * percentage_numbers.size() * relative_scales.size() * learning_rate.size() * relaxation_factor.size() * convergence_window_size.size() * piramid_sizes.size() * bluering_sizes.size();
