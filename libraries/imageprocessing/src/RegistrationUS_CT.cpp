@@ -128,7 +128,7 @@ const double pi = std::atan(1) * 4;
 /*Function to segment the region of interest of the input cutted image. Applies a gaussin gilter, then a laplacian. The histogram of the laplacian is used to create a region of interest using a threashold.
 The treashold is defined as the value of the bin in which all the bins at the left contain the target number of samples (this target number is a percentage of the total number of samples).
 A mask is created with this region of interest, and the original values of the input image inside the region of interest are returned in the smallest volume possible.*/
-itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer input_image, float sigma, float cuttoff_histogram_percentage, std::string suffix, bool write_images)
+itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer input_image, float sigma, float cuttoff_histogram_percentage, std::string suffix, bool write_images , size_t number_of_roi_regions)
 {
     using PixelType = float;
     constexpr unsigned int Dimension = 3;
@@ -288,7 +288,7 @@ itk::Image<float, 3>::Pointer apply_laplacian(itk::Image<float, 3>::Pointer inpu
     using ThresholdFilterType2 = itk::ThresholdImageFilter<LabelImageType>;
     ThresholdFilterType2::Pointer thresholdFilter2 = ThresholdFilterType2::New();
     thresholdFilter2->SetInput(relabelFilter->GetOutput());
-    thresholdFilter2->ThresholdOutside(1, 2);
+    thresholdFilter2->ThresholdOutside(1, 3);
     thresholdFilter2->SetOutsideValue(0);
     thresholdFilter2->Update();
 
@@ -676,18 +676,14 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> sol
     itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
     itk::Vector<double, 3> origin;
     itk::Matrix<double> direction;
-    // std::cout << info_registration.initial_rotation << std::endl;
 
     for (size_t row = 0; row < 3; ++row)
     {
         origin[row] = info_registration.initial_rotation(row, 3);
         for (size_t col = 0; col < 3; ++col)
-        {
             direction(row, col) = info_registration.initial_rotation(row, col);
-        }
     }
 
-    // sanity check
     if (!(info_registration.initial_rotation.block<3, 3>(0, 0).transpose() * info_registration.initial_rotation.block<3, 3>(0, 0)).isDiagonal())
     {
         std::cout << "failure to initialize rotation matrix...\n";
@@ -773,7 +769,7 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> sol
 
 using MeshType = itk::Mesh<double>;
 
-MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
+MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh, const RegistrationConfiguration::MeshSelection& selection_policy)
 {
     class MeshSimplierVisitor
     {
@@ -785,12 +781,14 @@ MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
         MeshSourceType::Pointer mesh_source;
         std::unordered_map<identifier_in_original_mesh, identifier_in_post_processed_mesh> identifiers;
         Eigen::Matrix<double, 3, 1> centroid;
+        RegistrationConfiguration::MeshSelection selection_policy;
 
-        void set_required_data(MeshType::Pointer inmesh, Eigen::Matrix<double, 3, 1> incentroid)
+        void set_required_data(MeshType::Pointer inmesh, Eigen::Matrix<double, 3, 1> incentroid,const RegistrationConfiguration::MeshSelection& in_selection_policy)
         {
             mesh = inmesh;
             mesh_source = MeshSourceType::New();
             centroid = incentroid;
+            selection_policy = in_selection_policy;
         }
 
         using TriangleType = itk::TriangleCell<MeshType::CellType>;
@@ -823,8 +821,16 @@ MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
             Eigen::Matrix<double, 3, 1> centroid_to_face_normalized_vector = center_of_face - centroid;
             centroid_to_face_normalized_vector.normalize();
 
-            if (centroid_to_face_normalized_vector.transpose() * normal_to_cell > -0.23)
-                return;
+            switch(selection_policy){
+                case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_INWARDS:
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell > -0.5)
+                        return;
+                break;
+                case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_OUTWARDS:
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell <  0.5)
+                        return;
+                break;
+            };
 
             MeshType::PointType p;
             MeshSourceType::IdentifierArrayType idArray(3);
@@ -872,7 +878,116 @@ MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh)
                                                 MeshSimplierVisitor>;
     auto triangleVisitor = TriangleVisitorInterfaceType::New();
 
-    triangleVisitor->set_required_data(input_mesh, centroid);
+    triangleVisitor->set_required_data(input_mesh, centroid,selection_policy);
+
+    using CellMultiVisitorType = MeshType::CellType::MultiVisitor;
+    auto multiVisitor = CellMultiVisitorType::New();
+    multiVisitor->AddVisitor(triangleVisitor);
+    input_mesh->Accept(multiVisitor);
+
+    return triangleVisitor->mesh_source->GetOutput();
+}
+
+MeshType::Pointer recompute_and_simplify_mesh(MeshType::Pointer input_mesh, const RegistrationConfiguration::MeshSelection& selection_policy, Eigen::Matrix<double,3,1> centroid)
+{
+    class MeshSimplierVisitor
+    {
+    public:
+        using identifier_in_original_mesh = size_t;
+        using identifier_in_post_processed_mesh = size_t;
+        MeshType::Pointer mesh;
+        using MeshSourceType = itk::AutomaticTopologyMeshSource<MeshType>;
+        MeshSourceType::Pointer mesh_source;
+        std::unordered_map<identifier_in_original_mesh, identifier_in_post_processed_mesh> identifiers;
+        Eigen::Matrix<double, 3, 1> centroid;
+        RegistrationConfiguration::MeshSelection selection_policy;
+
+        void set_required_data(MeshType::Pointer inmesh, Eigen::Matrix<double, 3, 1> incentroid,const RegistrationConfiguration::MeshSelection& in_selection_policy)
+        {
+            mesh = inmesh;
+            mesh_source = MeshSourceType::New();
+            centroid = incentroid;
+            selection_policy = in_selection_policy;
+        }
+
+        using TriangleType = itk::TriangleCell<MeshType::CellType>;
+        void
+        Visit(unsigned long cellId, TriangleType *t)
+        {
+            TriangleType::PointIdIterator pit = t->PointIdsBegin();
+            TriangleType::PointIdIterator end = t->PointIdsEnd();
+            Eigen::Matrix<double, 3, 3> points_in_cell;
+            std::vector<identifier_in_original_mesh> identifiers_local;
+            size_t col = 0;
+            for (; pit != end; ++pit, ++col)
+            {
+                identifiers_local.emplace_back(*pit);
+                auto point = mesh->GetPoint(*pit);
+                points_in_cell(0, col) = point[0];
+                points_in_cell(1, col) = point[1];
+                points_in_cell(2, col) = point[2];
+            }
+            using IdentifierArrayType = MeshSourceType::IdentifierArrayType;
+
+            // check if cell is towards center
+            Eigen::Matrix<double, 3, 1> along_first_edge = points_in_cell.col(1) - points_in_cell.col(0);
+            Eigen::Matrix<double, 3, 1> along_second_edge = points_in_cell.col(2) - points_in_cell.col(0);
+            Eigen::Matrix<double, 3, 1> normal_to_cell = along_first_edge.cross(along_second_edge);
+
+            normal_to_cell.normalize();
+
+            Eigen::Matrix<double, 3, 1> center_of_face = points_in_cell.rowwise().mean();
+            Eigen::Matrix<double, 3, 1> centroid_to_face_normalized_vector = center_of_face - centroid;
+            centroid_to_face_normalized_vector.normalize();
+
+            switch(selection_policy){
+                case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_INWARDS:
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell > -0.5)
+                        return;
+                break;
+                case RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_OUTWARDS:
+                    if (centroid_to_face_normalized_vector.transpose() * normal_to_cell <  0.5)
+                        return;
+                break;
+            };
+
+            MeshType::PointType p;
+            MeshSourceType::IdentifierArrayType idArray(3);
+            assert(identifiers_local.size() == points_in_cell.cols());
+            size_t collum = 0;
+            for (size_t collum = 0; collum < 3; ++collum)
+            {
+                auto search = identifiers.find(identifiers_local[collum]);
+                if (search != identifiers.end())
+                {
+                    idArray[collum] = search->second;
+                }
+                else
+                {
+                    p[0] = points_in_cell(0, collum);
+                    p[1] = points_in_cell(1, collum);
+                    p[2] = points_in_cell(2, collum);
+                    idArray[collum] = mesh_source->AddPoint(p);
+                    identifiers.emplace(identifiers_local[collum], idArray[collum]);
+                }
+            }
+            mesh_source->AddTriangle(idArray[0], idArray[1], idArray[2]);
+        }
+
+        MeshSimplierVisitor() = default;
+        virtual ~MeshSimplierVisitor() = default;
+    };
+
+    using TriangleType = itk::TriangleCell<MeshType::CellType>;
+
+    using TriangleVisitorInterfaceType =
+        itk::CellInterfaceVisitorImplementation<MeshType::PixelType,
+                                                MeshType::CellTraits,
+                                                TriangleType,
+                                                MeshSimplierVisitor>;
+    auto triangleVisitor = TriangleVisitorInterfaceType::New();
+
+    triangleVisitor->set_required_data(input_mesh, centroid,selection_policy);
 
     using CellMultiVisitorType = MeshType::CellType::MultiVisitor;
     auto multiVisitor = CellMultiVisitorType::New();
@@ -944,7 +1059,7 @@ auto transform_translation = [](double tx, double ty, double tz)
     return T_translation;
 };
 
-int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Pointer pointer2inputmovingimage)
+int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Pointer pointer2inputmovingimage,const RegistrationConfiguration& configuration)
 {
     // Segmentation parameters
     float fixed_sigma = 4;
@@ -961,8 +1076,9 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
 
     // Preprocess the cutted volumes using laplacian and create pointers for them. These are the ones that will effectively be used with registration
     std::printf("\nPreprocessing input volumes...\n");
-    auto pointer2fixedimage = apply_laplacian(pointer2inputfixedimage, fixed_sigma, fixed_histogram_percentage, "fixed", write_segmentation_volumes);
-    auto pointer2movingimage = apply_laplacian(pointer2inputmovingimage, moving_sigma, moving_histogram_percentage, "moving", write_segmentation_volumes);
+
+    auto pointer2fixedimage = apply_laplacian(pointer2inputfixedimage, fixed_sigma, fixed_histogram_percentage, "fixed", write_segmentation_volumes,configuration.number_of_roi_regions);
+    auto pointer2movingimage = apply_laplacian(pointer2inputmovingimage, moving_sigma, moving_histogram_percentage, "moving", write_segmentation_volumes,configuration.number_of_roi_regions);
 
     // Create matrix to store direction and origin that come from the results of the PCA
     Eigen::Matrix<double, 4, 4> T_origin_fixed = Eigen::Matrix<double, 4, 4>::Identity();
@@ -998,6 +1114,13 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         filter_threshold->SetUpperThreshold(255);
         update_ikt_filter(filter_threshold);
 
+        auto image_size = filter_threshold->GetOutput()->GetLargestPossibleRegion().GetSize();
+        MaskImageType::IndexType center_index{(long long)std::floor(image_size[0]/2.0),(long long)std::floor(image_size[1]/2.0),(long long)std::floor(image_size[2]/2.0)};
+        MaskImageType::PointType center_in_world;
+        filter_threshold->GetOutput()->TransformIndexToPhysicalPoint(center_index,center_in_world);
+        Eigen::Matrix<double,3,1> center_in_world_eigen;
+        center_in_world_eigen << center_in_world[0] , center_in_world[1] , center_in_world[2] ;
+
         // Exctract a mesh from the region of interest
         using MeshType = itk::Mesh<double>;
         using MeshSourceType = itk::BinaryMask3DMeshSource<MaskImageType, MeshType>;
@@ -1006,7 +1129,24 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         meshSource->SetInput(filter_threshold->GetOutput());
         update_ikt_filter(meshSource);
         
-        auto mesh = recompute_and_simplify_mesh(meshSource->GetOutput());
+
+        MeshType::Pointer mesh;
+        switch(configuration.centroid_computation){
+            case RegistrationConfiguration::CentroidComputation::CENTER_OF_3D_IMAGE:
+                mesh = recompute_and_simplify_mesh(meshSource->GetOutput(),configuration.fixed_image_selection_policy,center_in_world_eigen);
+            break;
+            case RegistrationConfiguration::CentroidComputation::FROM_POINT_CLOUD:
+                mesh = recompute_and_simplify_mesh(meshSource->GetOutput(),configuration.fixed_image_selection_policy);
+            break;
+        }
+        
+        using WriterType = itk::MeshFileWriter<MeshType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("fixed_point_cloud.obj");
+        writer->SetInput(mesh);
+
+        std::cout << "writing mesh ...\n";
+        update_ikt_filter(writer);
 
         // This pointer will be used later for registration
         pointer2fixedimage_registration = rescale->GetOutput();
@@ -1067,6 +1207,13 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         filter_threshold->SetUpperThreshold(255);
         update_ikt_filter(filter_threshold);
 
+        auto image_size = filter_threshold->GetOutput()->GetLargestPossibleRegion().GetSize();
+        MaskImageType::IndexType center_index{(long long)std::floor(image_size[0]/2.0),(long long)std::floor(image_size[1]/2.0),(long long)std::floor(image_size[2]/2.0)};
+        MaskImageType::PointType center_in_world;
+        filter_threshold->GetOutput()->TransformIndexToPhysicalPoint(center_index,center_in_world);
+        Eigen::Matrix<double,3,1> center_in_world_eigen;
+        center_in_world_eigen << center_in_world[0] , center_in_world[1] , center_in_world[2] ;
+
         // Exctract a mesh from the region of interest
         using MeshType = itk::Mesh<double>;
         using MeshSourceType = itk::BinaryMask3DMeshSource<MaskImageType, MeshType>;
@@ -1075,7 +1222,23 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         meshSource->SetInput(filter_threshold->GetOutput());
         update_ikt_filter(meshSource);
 
-        auto mesh = recompute_and_simplify_mesh(meshSource->GetOutput());
+        MeshType::Pointer mesh;
+        switch(configuration.centroid_computation){
+            case RegistrationConfiguration::CentroidComputation::CENTER_OF_3D_IMAGE:
+                mesh = recompute_and_simplify_mesh(meshSource->GetOutput(),configuration.moving_image_selection_policy,center_in_world_eigen);
+            break;
+            case RegistrationConfiguration::CentroidComputation::FROM_POINT_CLOUD:
+                mesh = recompute_and_simplify_mesh(meshSource->GetOutput(),configuration.moving_image_selection_policy);
+            break;
+        }
+
+        using WriterType = itk::MeshFileWriter<MeshType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("moving_point_cloud.obj");
+        writer->SetInput(mesh);
+
+        std::cout << "writing mesh ...\n";
+        update_ikt_filter(writer);
 
         // This pointer will be used later for registration
         pointer2movingimage_registration = rescale->GetOutput();
@@ -1144,7 +1307,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
 
     auto fixedSpatialObjectMask = MaskType::New();
     // For fixed
-    {
+    { // this entire section is stupid. If should be enough to just rotate the previous point clouds without applying filters two times
         using MaskPixelType = unsigned char;
         using MaskImageType = itk::Image<MaskPixelType, Dimension>;
         using CastFilterType = itk::CastImageFilter<ImageType, MaskImageType>;
@@ -1162,12 +1325,36 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         filter_threshold_fixed->SetUpperThreshold(255);
         filter_threshold_fixed->Update();
 
+        auto image_size = filter_threshold_fixed->GetOutput()->GetLargestPossibleRegion().GetSize();
+        MaskImageType::IndexType center_index{(long long)std::floor(image_size[0]/2.0),(long long)std::floor(image_size[1]/2.0),(long long)std::floor(image_size[2]/2.0)};
+        MaskImageType::PointType center_in_world;
+        filter_threshold_fixed->GetOutput()->TransformIndexToPhysicalPoint(center_index,center_in_world);
+        Eigen::Matrix<double,3,1> center_in_world_eigen;
+        center_in_world_eigen << center_in_world[0] , center_in_world[1] , center_in_world[2] ;
+
         auto meshSource_fixed = MeshSourceType::New();
         meshSource_fixed->SetObjectValue(1);
         meshSource_fixed->SetInput(filter_threshold_fixed->GetOutput());
         update_ikt_filter(meshSource_fixed);
 
-        auto mesh_fixed = recompute_and_simplify_mesh(meshSource_fixed->GetOutput());
+        MeshType::Pointer mesh_fixed;
+        switch(configuration.centroid_computation){
+            case RegistrationConfiguration::CentroidComputation::CENTER_OF_3D_IMAGE:
+                mesh_fixed = recompute_and_simplify_mesh(meshSource_fixed->GetOutput(),configuration.fixed_image_selection_policy,center_in_world_eigen);
+            break;
+            case RegistrationConfiguration::CentroidComputation::FROM_POINT_CLOUD:
+                mesh_fixed = recompute_and_simplify_mesh(meshSource_fixed->GetOutput(),configuration.fixed_image_selection_policy);
+            break;
+        }
+
+        using WriterType = itk::MeshFileWriter<MeshType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("fixed_point_cloud_in_origin.obj");
+        writer->SetInput(mesh_fixed);
+
+        std::cout << "writing mesh ...\n";
+        update_ikt_filter(writer);
+
         Eigen::Matrix<double, Eigen::Dynamic, 3> fixed_points = Eigen::Matrix<double, Eigen::Dynamic, 3>::Zero(mesh_fixed->GetNumberOfPoints(), 3);
         using PointsIterator = MeshType::PointsContainer::Iterator;
         PointsIterator pointIterator_fixed = mesh_fixed->GetPoints()->Begin();
@@ -1193,7 +1380,7 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
 
     auto movingSpatialObjectMask = MaskType::New();
     // For moving
-    {
+    { // this entire section is stupid. If should be enough to just rotate the previous point clouds without applying filters two times
         using MaskPixelType = unsigned char;
         using MaskImageType = itk::Image<MaskPixelType, Dimension>;
         using CastFilterType = itk::CastImageFilter<ImageType, MaskImageType>;
@@ -1210,12 +1397,33 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
         filter_threshold_moving->SetUpperThreshold(255);
         filter_threshold_moving->Update();
 
+        auto image_size = filter_threshold_moving->GetOutput()->GetLargestPossibleRegion().GetSize();
+        MaskImageType::IndexType center_index{(long long)std::floor(image_size[0]/2.0),(long long)std::floor(image_size[1]/2.0),(long long)std::floor(image_size[2]/2.0)};
+        MaskImageType::PointType center_in_world;
+        filter_threshold_moving->GetOutput()->TransformIndexToPhysicalPoint(center_index,center_in_world);
+        Eigen::Matrix<double,3,1> center_in_world_eigen;
+        center_in_world_eigen << center_in_world[0] , center_in_world[1] , center_in_world[2] ;
+
         auto meshSource_moving = MeshSourceType::New();
         meshSource_moving->SetObjectValue(1);
         meshSource_moving->SetInput(filter_threshold_moving->GetOutput());
         update_ikt_filter(meshSource_moving);
 
-        auto mesh_moving = recompute_and_simplify_mesh(meshSource_moving->GetOutput());
+        MeshType::Pointer mesh_moving;
+        switch(configuration.centroid_computation){
+            case RegistrationConfiguration::CentroidComputation::CENTER_OF_3D_IMAGE:
+                mesh_moving = recompute_and_simplify_mesh(meshSource_moving->GetOutput(),configuration.moving_image_selection_policy,center_in_world_eigen);
+            break;
+            case RegistrationConfiguration::CentroidComputation::FROM_POINT_CLOUD:
+                mesh_moving = recompute_and_simplify_mesh(meshSource_moving->GetOutput(),configuration.moving_image_selection_policy);
+            break;
+        }
+
+        using WriterType = itk::MeshFileWriter<MeshType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("moving_point_cloud_in_origin.obj");
+        writer->SetInput(mesh_moving);
+
         Eigen::Matrix<double, Eigen::Dynamic, 3> moving_points = Eigen::Matrix<double, Eigen::Dynamic, 3>::Zero(mesh_moving->GetNumberOfPoints(), 3);
         using PointsIterator = MeshType::PointsContainer::Iterator;
         PointsIterator pointIterator_moving = mesh_moving->GetPoints()->Begin();

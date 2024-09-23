@@ -3,12 +3,13 @@
 
 #include "imageprocessing/RegistrationUS_CT.h"
 #include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
 
 using ImageReaderType = itk::ImageFileReader<ImageType>;
 
 int main(int argc, char **argv){
-    std::string path_fixed{"C:/Dev/NeuroNavigation/volumes/Stitched_CT_2_sides.mha"};
-    std::string path_moving{"C:/Dev/NeuroNavigation/volumes/Stitched_US_2_sides.mha"};
+    std::string path_fixed{CURAN_COPIED_RESOURCE_PATH"/ct_image1_cropepd_volume.mha"};
+    std::string path_moving{CURAN_COPIED_RESOURCE_PATH"/us_image1_cropepd_volume.mha"};
 
     std::printf("\nReading input volumes...\n");
     auto fixedImageReader = ImageReaderType::New();
@@ -26,6 +27,12 @@ int main(int argc, char **argv){
     }
     ImageType::Pointer pointer2inputfixedimage = fixedImageReader->GetOutput();
     ImageType::Pointer pointer2inputmovingimage = movingImageReader->GetOutput();
-    register_volumes(pointer2inputfixedimage,pointer2inputmovingimage);
+    RegistrationConfiguration config{3,
+                                    RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_OUTWARDS,
+                                    RegistrationConfiguration::MeshSelection::SELECT_VERTICES_POINTING_OUTWARDS,
+                                    RegistrationConfiguration::CentroidComputation::CENTER_OF_3D_IMAGE};
+    register_volumes(pointer2inputfixedimage,
+                pointer2inputmovingimage,
+                config);
     return 0;
 }

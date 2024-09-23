@@ -77,6 +77,7 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 
+add_subdirectory(experiments_of_saturday)
 add_subdirectory(volumetric)
 add_subdirectory(registration_strategies_exploration)
 add_subdirectory(registration_us_to_tc)
