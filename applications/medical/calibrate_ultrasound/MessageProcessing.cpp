@@ -280,7 +280,7 @@ void ProcessingMessage::communicate() {
 		
 	}
 	button->set_waiting_color(SK_ColorGREEN);
-	io_context.reset();
+	io_context.restart();
 	asio::ip::tcp::resolver resolver(io_context);
 	auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(io_context,resolver.resolve("localhost", std::to_string(port)));
 	connection_status.set(true);
