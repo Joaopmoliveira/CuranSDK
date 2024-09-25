@@ -1,6 +1,5 @@
 add_subdirectory(calibrate_ultrasound)
 add_subdirectory(temporal_calibration)
-add_subdirectory(registration)
 add_subdirectory(volumetric_reconstruction)
 add_subdirectory(volumetric_path_planing)
 add_subdirectory(intraoperative_navigation)

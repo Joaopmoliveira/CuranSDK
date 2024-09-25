@@ -597,8 +597,8 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         }
     };
 
-    if(state.dynamic_texture->get()!=nullptr)
-        state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+    //if(state.dynamic_texture->get()!=nullptr)
+    //    state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
     igtl::Matrix4x4 image_transform;
     message_body->GetMatrix(image_transform);
     vsg::dmat4 homogeneous_transformation;
@@ -632,12 +632,11 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
     image_to_render->SetOrigin(origin);
 
     static size_t counter = 0;
-    constexpr size_t update_rate = 4;
+    constexpr size_t update_rate = 2;
     ++counter;
 
     if (state.record_frames() && (counter % update_rate == 0))
     {
-        std::cout << "injecting frame into box\n";
         state.box_class.add_frame(image_to_render);
         state.box_class.update();
     }

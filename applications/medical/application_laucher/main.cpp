@@ -104,7 +104,7 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 	{
 		plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,
 															   std::string{"--config-file="} + std::string{CURAN_COPIED_RESOURCE_PATH "/plus_config/plus_spacial_calib_robot_xml/robot_image.xml"},
-															   "--verbose=4",
+															   "--verbose=1",
 															   boost::process::std_out > plus_out,
 															   plus_ec,
 															   asio_ctx,

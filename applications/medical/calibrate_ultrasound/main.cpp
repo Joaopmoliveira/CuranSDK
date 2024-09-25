@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
 	ceres::Solver::Options options;
 	options.max_num_iterations = 2500;
 	options.linear_solver_type = ceres::DENSE_QR;
-	options.minimizer_progress_to_stdout = true;
+	options.minimizer_progress_to_stdout = false;
 
    double lower_bound = -10.0;
    double upper_bound = +10.0;
