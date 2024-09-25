@@ -20,8 +20,7 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
     {
         if (!processing->connection_status.value())
         {
-            curan::utilities::Job val{"connection thread", [processing]()
-                                      { processing->communicate(); }};
+            curan::utilities::Job val{"connection thread", [processing](){ processing->communicate(); }};
             data.shared_pool->submit(val);
         }
         else
@@ -31,35 +30,50 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
         }
     };
 
+	processing = std::make_shared<ProcessingMessage>(data);
+	processing->port = data.port;
+
     auto start_connection = Button::make("Connect", resources);
-    start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
+    start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorRED).set_size(SkRect::MakeWH(300, 180));
     start_connection->add_press_call(start_connection_callback);
-    processing->button = start_connection.get();
+
 
     auto button_record_pose = Button::make("Record Pose", resources);
-    button_record_pose->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+    button_record_pose->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
     button_record_pose->add_press_call([processing](Button *button, Press press, ConfigDraw *config)
-                                       {
-		auto val = !processing->should_record.load();
-		processing->should_record.store(val);
-		SkColor color = (val) ? SK_ColorCYAN : SK_ColorBLACK;
-		button->set_waiting_color(color); });
+        {
+            button->set_waiting_color(SK_ColorCYAN);
+            processing->should_record_point_from_world = true;
+        }
+    );
 
     auto button_record_calibrate = Button::make("Record Calib Pose", resources);
-    button_record_calibrate->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+    button_record_calibrate->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
     button_record_calibrate->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config) {
-
-    });
+        button->set_waiting_color(SK_ColorCYAN);
+        processing->should_record_point_for_calibration = true;
+    }); 
 
     auto button_trigger_calibration = Button::make("Calibrate", resources);
-    button_trigger_calibration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+    button_trigger_calibration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
     button_trigger_calibration->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config) {
-
+        if(processing->calibrate_needle())
+            button->set_waiting_color(SK_ColorGREEN);
+        else
+            button->set_waiting_color(SK_ColorRED);
     });
 
-    auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration);
+    processing->connection_button = start_connection.get();
+    processing->record_calib_button = button_record_calibrate.get();
+    processing->record_world_button = button_record_pose.get();
 
+    auto image = resources.get_icon("hr_repeating.png");
+	std::unique_ptr<curan::ui::Container> buttoncontainer;
+	if (image)
+		buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL, *image);
+	else
+		buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
+    *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration);
     return Page{std::move(buttoncontainer), SK_ColorBLACK};
 }
 
@@ -67,13 +81,15 @@ int main(int argc, char *argv[])
 {
     using namespace curan::ui;
 
+	curan::ui::IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
+
     ConfigurationData data;
     data.shared_pool = curan::utilities::ThreadPool::create(4);
     std::cout << "the received port is: " << data.port << "\n";
     std::unique_ptr<Context> context = std::make_unique<Context>();
     DisplayParams param{std::move(context)};
     std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
-    IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
+
 
     std::shared_ptr<ProcessingMessage> processing;
     auto page = create_main_page(data, processing, resources);
@@ -136,8 +152,8 @@ int main(int argc, char *argv[])
         nlohmann::json needle_poses_recorded_from_world_coordinates;
         needle_poses_recorded_from_world_coordinates["timestamp"] = return_current_time_and_date();
         std::stringstream ss;
-        ss << processing->needle_calibration;
-        needle_poses_recorded_from_world_coordinates["needle_homogeneous_transformation"] = ss.str();
+        ss << processing->world_points();
+        needle_poses_recorded_from_world_coordinates["world_points"] = ss.str();
         // write prettified JSON to another file
         std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/points_in_world_space.json");
         o << needle_poses_recorded_from_world_coordinates;
