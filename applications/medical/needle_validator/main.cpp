@@ -34,7 +34,7 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
     auto start_connection = Button::make("Connect", resources);
     start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
     start_connection->add_press_call(start_connection_callback);
-    auto start_connection_pointer = start_connection.get();
+    processing->button = start_connection.get();
 
     auto button_record_pose = Button::make("Record Pose", resources);
     button_record_pose->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
@@ -59,7 +59,6 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
 
     auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration);
-    processing->button = start_connection_pointer;
 
     return Page{std::move(buttoncontainer), SK_ColorBLACK};
 }
@@ -106,11 +105,8 @@ int main(int argc, char *argv[])
         std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
     }
     processing->attempt_stop();
-    std::cout << "trying to stop communication\n"
-              << std::endl;
+    std::cout << "trying to stop communication"<< std::endl;
 
-    // Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the
-    // tracker transformation ()
     std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration! Produced JSON file:\n");
 
     auto return_current_time_and_date = []()

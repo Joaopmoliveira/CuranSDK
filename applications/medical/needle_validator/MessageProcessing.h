@@ -43,9 +43,7 @@ public:
 
 	curan::utilities::Flag connection_status;
 	curan::ui::Button* button;
-	size_t number_of_circles = 3;
-	size_t number_of_circles_plus_extra = 5;
-	std::vector<SkColor> colors = { SK_ColorMAGENTA,SK_ColorBLUE,SK_ColorGREEN,SK_ColorYELLOW,SK_ColorRED};
+
 	asio::io_context io_context;
 	ConfigurationData& configuration;
 	std::atomic<bool> should_record = false;
