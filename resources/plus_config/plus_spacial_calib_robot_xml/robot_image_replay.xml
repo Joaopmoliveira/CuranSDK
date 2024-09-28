@@ -1,0 +1,69 @@
+<PlusConfiguration version="2.1">
+
+  <DataCollection StartupDelaySec="1.0">
+    <DeviceSet 
+      Name="robot + image + replay"
+      Description="robot + image replay" />
+
+<Device
+      Id="TrackedVideoDevice"
+      Type="SavedDataSource"
+      SequenceFile="TemporalCalibrationCuran_20240928_182017.igs.mha"
+      UseData="IMAGE_AND_TRANSFORM"
+      UseOriginalTimestamps="TRUE"
+      RepeatEnabled="TRUE" >
+      <DataSources>
+        <DataSource Type="Video" Id="Video" />
+      </DataSources>
+      <OutputChannels>
+        <OutputChannel Id="TrackedVideoStream" VideoDataSourceId="Video" />
+      </OutputChannels>
+    </Device>
+	
+  </DataCollection>
+  
+    <CoordinateDefinitions>
+    <Transform From="Image" To="Flange"
+      Matrix="
+        1 0 0 0 
+		0 1 0 0
+		0 0 1 0
+        0	0	0	1"/>
+  </CoordinateDefinitions>
+  
+ <PlusOpenIGTLinkServer 
+	MaxNumberOfIgtlMessagesToSend="1" 
+	MaxTimeSpentWithProcessingMs="50" 
+	ListeningPort="18944" 
+	SendValidTransformsOnly="true" 
+	OutputChannelId="TrackedVideoStream" > 
+	<DefaultClientInfo> 
+		<MessageTypes> 
+			<Message Type="IMAGE" />
+		</MessageTypes>
+		<ImageNames>
+			<Image Name="Image" EmbeddedTransformToFrame="Base"/>
+		</ImageNames>
+	</DefaultClientInfo>
+  </PlusOpenIGTLinkServer> 
+  
+ <fCal
+    NumberOfCalibrationImagesToAcquire="200"
+    NumberOfValidationImagesToAcquire="100"
+    NumberOfStylusCalibrationPointsToAcquire="200"
+    RecordingIntervalMs="100"
+    MaxTimeSpentWithProcessingMs="70"
+    ImageCoordinateFrame="Image"
+    ProbeCoordinateFrame="Flange"
+    ReferenceCoordinateFrame="Base"
+    TransducerOriginCoordinateFrame="TransducerOrigin"
+    TransducerOriginPixelCoordinateFrame="TransducerOriginPixel"
+    TemporalCalibrationDurationSec="10"
+    FixedChannelId="VideoStream" 
+    FixedSourceId="Video"
+    MovingChannelId="RobotStream"
+    MovingSourceId="FlangeToBase"
+    DefaultSelectedChannelId="TrackedVideoStream" 
+    FreeHandStartupDelaySec="3" />
+  
+</PlusConfiguration>

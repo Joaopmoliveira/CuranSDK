@@ -9,12 +9,14 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 	using namespace curan::ui;
 
 	auto image_display = ImageDisplay::make();
-	auto image_display_pointer = image_display.get();
+	auto filtered_image_display = ImageDisplay::make();
+
+	processing = std::make_shared<ProcessingMessage>(image_display.get(),filtered_image_display.get());
 
 	auto displaycontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-	*displaycontainer << std::move(image_display);
+	*displaycontainer << std::move(image_display) << std::move(filtered_image_display);
 
-	processing = std::make_shared<ProcessingMessage>(image_display_pointer);
+
 
 	auto start_connection_callback = [processing](Button* button, Press press ,ConfigDraw* config) {
 		if (!processing->connection_status.value()) {
@@ -29,41 +31,49 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 	auto start_connection = Button::make("Connect",resources);
 	start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
 	start_connection->add_press_call(start_connection_callback);
-	auto start_connection_pointer = start_connection.get();
+	processing->button = start_connection.get();
 
-	auto pointcloud = Button::make("Compute Pointcloud",resources);
+	auto continuous_recording = Button::make("Continuous Recording",resources);
+	continuous_recording->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	continuous_recording->add_press_call([processing](Button* button, Press press ,ConfigDraw* config) {
+    	processing->snapshot = false;
+		processing->store_to_file = false;
+		processing->record_poincloud = !processing->record_poincloud;
+		if(processing->record_poincloud)
+			button->set_waiting_color(SK_ColorCYAN);
+		else
+			button->set_waiting_color(SK_ColorBLACK);
+	});
+	processing->button_start_collection = continuous_recording.get();
+
+	auto snapshot = Button::make("Snapshot Recording",resources);
+	snapshot->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	snapshot->add_press_call([processing](Button* button, Press press ,ConfigDraw* config) {  
+		processing->store_to_file = false;
+		processing->record_poincloud = false;  
+    	processing->snapshot = true;
+		processing->button_start_collection->set_waiting_color(SK_ColorBLACK);
+    });
+
+	auto pointcloud = Button::make("Save Pointcloud",resources);
 	pointcloud->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
 	pointcloud->add_press_call([processing](Button* button, Press press ,ConfigDraw* config) {    
-    auto val = !processing->compute_poincloud.load();
-    processing->compute_poincloud.store(val);
-    processing->pointcloud_finished.store(false);
-
+    	processing->snapshot = false;
+		processing->record_poincloud = false;
+		processing->store_to_file = true;
+		processing->button_start_collection->set_waiting_color(SK_ColorBLACK);
     });
 
-	auto resetpointcloud = Button::make("Reset Pointcloud",resources);
+
+	auto resetpointcloud = Button::make("Clear Pointcloud",resources);
 	resetpointcloud->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
 	resetpointcloud->add_press_call([processing](Button* button, Press press ,ConfigDraw* config) {    
-    processing->list_of_recorded_points.clear();
+    	processing->snapshot = false;
+		processing->record_poincloud = false;
+		processing->store_to_file = false;
+		processing->button_start_collection->set_waiting_color(SK_ColorBLACK);
+    	processing->list_of_recorded_points.clear();
     });
-
-	auto calibration = Button::make("Start pointcloud colection",resources);
-	calibration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
-	calibration->add_press_call([processing](Button* button, Press press ,ConfigDraw* config) {
-		//processing->start_calibration.load();
-		auto val = !processing->start_calibration.load();
-		processing->start_calibration.store(val);
-		SkColor color = (val) ? SK_ColorCYAN : SK_ColorBLACK;
-		button->set_waiting_color(color);;
-		//processing->list_of_recorded_points.clear();
-		processing->projections.clear();
-		processing->normalized_position_signal.clear();
-		processing->normalized_video_signal.clear();
-		processing->timer = 0;
-		processing->calibration_value = 0;
-    	processing->start_time = std::chrono::steady_clock::now();
-        processing->shifted_signal.clear();
-	});
-
 
 /*
 	auto button_results = Button::make("Results",resources);
@@ -73,10 +83,10 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 	});
 */
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
-	*buttoncontainer << std::move(start_connection) << std::move(calibration) << std::move(pointcloud) << std::move(resetpointcloud);
-	processing->button = start_connection_pointer;
+	*buttoncontainer << std::move(start_connection) << std::move(continuous_recording) << std::move(snapshot) << std::move(pointcloud) << std::move(resetpointcloud);
+	
 
-	start_connection_pointer->set_waiting_color(SK_ColorRED);
+	processing->button->set_waiting_color(SK_ColorRED);
 
 	auto widgetcontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	*widgetcontainer << std::move(buttoncontainer) << std::move(displaycontainer);

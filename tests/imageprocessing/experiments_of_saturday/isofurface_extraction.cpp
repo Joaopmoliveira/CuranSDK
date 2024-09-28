@@ -1210,5 +1210,34 @@ int main()
     std::cout << "final transformation with icp only:\n"
               << transformation_acording_to_pca_fixed * best_transformation_icp * transformation_acording_to_pca_moving.inverse() << std::endl;
 
+
+auto return_current_time_and_date = [](){
+	    auto now = std::chrono::system_clock::now();
+    	auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+    	std::stringstream ss;
+    	ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+   		return ss.str();
+	};
+
+	Eigen::IOFormat CleanFmt(Eigen::StreamPrecision, 0, ", ", "\n", " ", " ");
+	std::stringstream optimized_values;
+	optimized_values << (transformation_acording_to_pca_fixed * best_transformation_mi.inverse() * best_transformation_icp * transformation_acording_to_pca_moving.inverse()).format(CleanFmt) << std::endl;
+	
+	// Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the 
+	// tracker transformation ()
+	std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration! Produced JSON file:\n");
+
+	nlohmann::json registration_data;
+	registration_data["timestamp"] = return_current_time_and_date();
+	registration_data["moving_to_fixed_transform"] = optimized_values.str();
+	registration_data["registration_error"] = evaluate_mi_with_both_images(info_solve_registration<unsigned char>{fixed, moving, transformed_mask_fixed_image, transformed_mask_moving_image, Eigen::Matrix<double, 4, 4>::Identity()}, bin_numbers[0]);
+    registration_data["type"] = "MI";
+
+	// write prettified JSON to another file
+	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/registration.json");
+	o << registration_data;
+	std::cout << registration_data << std::endl;
+
     return 0;
 }

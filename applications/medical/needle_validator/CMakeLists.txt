@@ -15,4 +15,5 @@ ${ITK_LIBRARIES}
 imageprocessing
 userinterface
 communication
+utils
 )

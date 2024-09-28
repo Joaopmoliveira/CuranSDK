@@ -254,7 +254,17 @@ bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::P
 	if (!(c & igtl::MessageHeader::UNPACK_BODY))
 		return false; //failed to unpack message, therefore returning without doing anything
     
-    Eigen::Matrix<double,3,1> needle_tip;
+    Eigen::Matrix<double,4,4> robot_to_world = Eigen::Matrix<double,4,4>::Identity();
+    igtl::Matrix4x4 local_mat;
+	transform_message->GetMatrix(local_mat);
+	for (size_t cols = 0; cols < 4; ++cols)
+		for (size_t lines = 0; lines < 4; ++lines)
+			robot_to_world(lines, cols) = local_mat[lines][cols];
+    
+    auto needle_to_world = robot_to_world*processor->needle_calibration;
+
+
+    Eigen::Matrix<double,3,1> needle_tip = needle_to_world.block<3,1>(0,3);
     Eigen::Matrix<double,3,3> R_ImageToWorld;
     auto world_frame_difference_error = processor->desired_rotation.col(2)-R_ImageToWorld.col(2);
 
@@ -321,7 +331,6 @@ std::map<std::string,std::function<bool(ProcessingMessage*,igtl::MessageBase::Po
 };
 
 bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val) {
-	//std::cout << "received message\n";
 	assert(val.IsNotNull());
 	if (er){
         return true;
@@ -336,7 +345,7 @@ bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_
 void ProcessingMessage::communicate() {
 	using namespace curan::communication;
 	button->set_waiting_color(SK_ColorGREEN);
-	io_context.reset();
+	io_context.restart();
 	asio::ip::tcp::resolver resolver(io_context);
 	auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(io_context,resolver.resolve("localhost", std::to_string(port)));
 	connection_status.set(true);

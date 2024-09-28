@@ -26,6 +26,7 @@ calibration
 */
 
 int main(int argc, char* argv[]) {
+try{
 	using namespace curan::ui;
 	
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
@@ -64,6 +65,9 @@ int main(int argc, char* argv[]) {
 
 	processing->attempt_stop();
 	std::cout << "trying to stop communication\n" << std::endl;
-
+	return 0;
+} catch(std::runtime_error& e){
+	std::cout << "exception thrown:" << e.what() << std::endl;
 	return 1;
+}
 }

@@ -48,6 +48,7 @@ namespace curan{
 	        std::vector<curan::image::reconstruction::KernelDescriptor> kernels;
 	        curan::image::reconstruction::FillingStrategy fillType;
 			std::mutex mut;
+            size_t counter_of_injected_frames = 0;
         public:
 
             struct Info{
@@ -90,7 +91,7 @@ namespace curan{
 
 		void fill_holes();
 
-	    bool update();
+	    bool update(size_t skip_texture_update_every_n_cicles=1);
 
         inline void reset(){
             std::lock_guard<std::mutex> g{mut};
@@ -98,7 +99,7 @@ namespace curan{
                 *pix = 0.0;
         } 
 
-		bool multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool);
+		bool multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool,size_t skip_texture_update_every_n_cicles=1);
 };
 
 

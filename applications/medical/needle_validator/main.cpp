@@ -4,7 +4,7 @@
 
 #include <random>
 #include "MessageProcessing.h"
-
+#include "utils/Reader.h"
 /*
 This executable requires nothing
 
@@ -15,23 +15,26 @@ It produces
 curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<ProcessingMessage> &processing, curan::ui::IconResources &resources)
 {
     using namespace curan::ui;
+	processing = std::make_shared<ProcessingMessage>(data);
+	processing->port = data.port;
 
     auto start_connection_callback = [&data, processing](Button *button, Press press, ConfigDraw *config)
     {
+        std::cout << "clicked" << std::endl;
+        std::cout << "adress ;" << (size_t) processing.get() << std::endl;
         if (!processing->connection_status.value())
         {
+            std::cout << "requesting connection" << std::endl;
             curan::utilities::Job val{"connection thread", [processing](){ processing->communicate(); }};
             data.shared_pool->submit(val);
         }
         else
         {
+            std::cout << "attempting to stop communication" << std::endl;
             processing->attempt_stop();
             processing->connection_status.set(false);
         }
     };
-
-	processing = std::make_shared<ProcessingMessage>(data);
-	processing->port = data.port;
 
     auto start_connection = Button::make("Connect", resources);
     start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorRED).set_size(SkRect::MakeWH(300, 180));
@@ -81,6 +84,18 @@ int main(int argc, char *argv[])
 {
     using namespace curan::ui;
 
+    if(argc<2 ){
+        std::cout << "please pass the name of the calibration file that will be outputed\n";
+        return 1;
+    }
+
+    if(argc>3){
+         std::cout << "you can only pass the name of the calibration file you wish to execute and the name of the current calibration you wish to assume\n";
+    }
+
+    std::string pathname{argv[1]};
+
+
 	curan::ui::IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
 
     ConfigurationData data;
@@ -93,6 +108,43 @@ int main(int argc, char *argv[])
 
     std::shared_ptr<ProcessingMessage> processing;
     auto page = create_main_page(data, processing, resources);
+
+
+    if(argc==3){
+        std::cout << "reading previous calibration...\n";
+        std::string previous_calibration{argv[2]};
+        std::string path_output_location{CURAN_COPIED_RESOURCE_PATH};
+        path_output_location +="/";
+        path_output_location+=previous_calibration;
+        path_output_location+=".json";
+        std::ifstream in{path_output_location};
+        if(in.is_open())
+            std::cout << "read file.\n"; 
+        else
+            {
+                std::cout << "failure to read file\n";
+                return 1;    
+            }
+        nlohmann::json calibration_data;
+        in >> calibration_data;
+        std::cout << "parsed json.\n"; 
+        processing->calibration_error =calibration_data["optimization_error"];
+
+        std::cout << "using calibration with error: "<<processing->calibration_error << std::endl;
+
+        std::string homogenenous_transformation = calibration_data["needle_homogeneous_transformation"];
+
+        std::stringstream matrix_strm;
+        matrix_strm << homogenenous_transformation;
+        std::cout << "string stream: " << matrix_strm.str();
+        auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
+       
+        std::cout << "with the homogeneous matrix :\n" << calibration_matrix << std::endl;
+        for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
+            for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
+                processing->needle_calibration(row, col) = calibration_matrix(row, col);
+        std::cout << "using calibration:\n"<<processing->needle_calibration << std::endl;
+    }
 
     page.update_page(viewer.get());
 
@@ -135,24 +187,29 @@ int main(int argc, char *argv[])
         return ss.str();
     };
 
-    {
+    if(processing->size_calibration_points()!=0){
         nlohmann::json calibration_data;
         calibration_data["timestamp"] = return_current_time_and_date();
         std::stringstream ss;
+        Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision,0, ", ", ", ", "", "", " ", "");
         ss << processing->needle_calibration;
         calibration_data["needle_homogeneous_transformation"] = ss.str();
         calibration_data["optimization_error"] = processing->calibration_error;
         // write prettified JSON to another file
-        std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/needle_calibration.json");
+        std::string path_output_location{CURAN_COPIED_RESOURCE_PATH};
+        path_output_location +="/";
+        path_output_location+=pathname;
+        path_output_location+=".json";
+        std::ofstream o(path_output_location);
         o << calibration_data;
         std::cout<< "calibration data from needle coordinates" << calibration_data << std::endl;
     }
-
-    {
+    auto points = processing->world_points();
+    if(points){
         nlohmann::json needle_poses_recorded_from_world_coordinates;
         needle_poses_recorded_from_world_coordinates["timestamp"] = return_current_time_and_date();
         std::stringstream ss;
-        ss << processing->world_points();
+        ss << *points;
         needle_poses_recorded_from_world_coordinates["world_points"] = ss.str();
         // write prettified JSON to another file
         std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/points_in_world_space.json");

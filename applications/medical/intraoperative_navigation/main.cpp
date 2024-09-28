@@ -35,6 +35,34 @@ int main()
             desired_direction = desired_target_point-vectorized_eigen_entry;
             desired_direction.normalize();
         }
+
+        {
+            nlohmann::json trajectory_data;
+	        std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
+            if(!in.is_open()){
+                std::cout << "failure to find the trajectory specification file";
+                return 1;
+            }
+    	    in >> trajectory_data;
+            std::stringstream ss;
+        	std::string target = trajectory_data["target"];
+            ss << target;
+            auto eigen_target = curan::utilities::convert_matrix(ss);
+            ss = std::stringstream{};
+	        std::string entry = trajectory_data["entry"];
+            ss << entry;
+            auto eigen_entry = curan::utilities::convert_matrix(ss);
+            assert(eigen_target.cols()==1 && eigen_target.rows()==3);
+            assert(eigen_entry.cols()==1 && eigen_entry.rows()==3);
+            Eigen::Matrix<double, 3, 1> vectorized_eigen_entry;
+            for(size_t i = 0; i < 3; ++i){
+                desired_target_point[i] = eigen_target(i,0);
+                vectorized_eigen_entry[i] = eigen_entry(i,0);
+            }
+            desired_direction = desired_target_point-vectorized_eigen_entry;
+            desired_direction.normalize();
+        }
+
         using namespace curan::ui;
         std::unique_ptr<Context> context = std::make_unique<Context>();
 
