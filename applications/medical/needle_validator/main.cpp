@@ -113,14 +113,19 @@ int main(int argc, char *argv[])
     DisplayParams param{std::move(context)};
     std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-    std::shared_ptr<ProcessingMessage> processing;
-    auto page = create_main_page(data, processing, resources, argc >= 4);
+
+    bool previous_calibration = false;
+    double calibration_error ;
+    Eigen::Matrix<double,4,4> needle_calibration = Eigen::Matrix<double,4,4>::Identity();
+    bool specified_landmarks = false;
+    Eigen::Matrix<double, 4, Eigen::Dynamic> landmarks;
 
     if (argc >= 3)
     {
         nlohmann::json needle_calibration_specification;
         if (needle_calibration_specification.contains("previous_calibration_file"))
         {
+            previous_calibration = true;
             std::cout << "reading previous calibration...\n";
             std::string path_output_location = needle_calibration_specification["previous_calibration_file"];
             std::ifstream in{path_output_location};
@@ -132,9 +137,9 @@ int main(int argc, char *argv[])
             nlohmann::json calibration_data;
             in >> calibration_data;
             std::cout << "parsed json.\n";
-            processing->calibration_error = calibration_data["optimization_error"];
+            calibration_error = calibration_data["optimization_error"];
 
-            std::cout << "using calibration with error: " << processing->calibration_error << std::endl;
+            std::cout << "using calibration with error: " << calibration_error << std::endl;
 
             std::string homogenenous_transformation = calibration_data["needle_homogeneous_transformation"];
 
@@ -143,19 +148,18 @@ int main(int argc, char *argv[])
             std::cout << "string stream: " << matrix_strm.str();
             auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
 
-            std::cout << "with the homogeneous matrix :\n"
-                      << calibration_matrix << std::endl;
+            std::cout << "with the homogeneous matrix :\n" << calibration_matrix << std::endl;
             for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
                 for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
-                    processing->needle_calibration(row, col) = calibration_matrix(row, col);
-            std::cout << "using calibration:\n"
-                      << processing->needle_calibration << std::endl;
+                    needle_calibration(row, col) = calibration_matrix(row, col);
+            std::cout << "using calibration:\n" << needle_calibration << std::endl;
         } else{
             std::cout << "no previous calibration was specified\n";
         }
 
         if (needle_calibration_specification.contains("landmarks_to_register"))
         {
+            specified_landmarks = true;
             std::cout << "reading landmarks to register\n";
             std::string path_output_location = needle_calibration_specification["landmarks_to_register"];
             std::ifstream in{path_output_location};
@@ -171,22 +175,27 @@ int main(int argc, char *argv[])
             std::stringstream stream;
             stream << homogenenous_transformation;
             std::cout << "string stream: " << stream.str();
-            auto landmarks = curan::utilities::convert_matrix(stream, ',');
+            auto temp_landmarks = curan::utilities::convert_matrix(stream, ',');
 
             std::cout << "with the homogeneous matrix :\n"
                       << landmarks << std::endl;
 
-            processing->landmarks = Eigen::Matrix<double, 4, Eigen::Dynamic>::Ones(4, landmarks.cols());
+            landmarks = Eigen::Matrix<double, 4, Eigen::Dynamic>::Ones(4, temp_landmarks.cols());
 
-            for (Eigen::Index row = 0; row < landmarks.rows(); ++row)
-                for (Eigen::Index col = 0; col < landmarks.cols(); ++col)
-                    processing->landmarks(row, col) = landmarks(row, col);
-            std::cout << "using calibration:\n"
-                      << processing->landmarks << std::endl;
+            for (Eigen::Index row = 0; row < temp_landmarks.rows(); ++row)
+                for (Eigen::Index col = 0; col < temp_landmarks.cols(); ++col)
+                    landmarks(row, col) = temp_landmarks(row, col);
+            std::cout << "using calibration:\n" << landmarks << std::endl;
         } else{
             std::cout << "no landmark registration was requested\n";
         }
     }
+
+    std::shared_ptr<ProcessingMessage> processing;
+    auto page = create_main_page(data, processing, resources, specified_landmarks);
+    processing->calibration_error = calibration_error;
+    processing->needle_calibration = needle_calibration;
+    processing->landmarks = landmarks;
 
     page.update_page(viewer.get());
 
@@ -229,10 +238,12 @@ int main(int argc, char *argv[])
         return ss.str();
     };
 
+    auto date = return_current_time_and_date();
+
     if (processing->size_calibration_points() != 0)
     {
         nlohmann::json calibration_data;
-        calibration_data["timestamp"] = return_current_time_and_date();
+        calibration_data["timestamp"] = date;
         std::stringstream ss;
         Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision, 0, ", ", ", ", "", "", " ", "");
         ss << processing->needle_calibration;
@@ -252,7 +263,7 @@ int main(int argc, char *argv[])
     if (points)
     {
         nlohmann::json needle_poses_recorded_from_world_coordinates;
-        needle_poses_recorded_from_world_coordinates["timestamp"] = return_current_time_and_date();
+        needle_poses_recorded_from_world_coordinates["timestamp"] = date;
         std::stringstream ss;
         ss << *points;
         needle_poses_recorded_from_world_coordinates["world_points"] = ss.str();
@@ -260,6 +271,21 @@ int main(int argc, char *argv[])
         std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/points_in_world_space.json");
         o << needle_poses_recorded_from_world_coordinates;
         std::cout << "needle poses from world coordinates" << needle_poses_recorded_from_world_coordinates << std::endl;
+    }
+
+    if(processing->registration_solution){
+        nlohmann::json registration_data;
+	    registration_data["timestamp"] = date;
+        std::stringstream ss;
+        Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision, 0, ", ", ", ", "", "", " ", "");
+        auto [registration_sol,error] = *(processing->registration_solution);
+        ss << registration_sol;
+	    registration_data["moving_to_fixed_transform"] = ss.str();
+	    registration_data["registration_error"] = error;
+        registration_data["type"] = "landmark";
+        std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/points_in_world_space.json");
+        o << registration_data;
+        std::cout << "needle poses from world coordinates" << registration_data << std::endl;
     }
 
     return 0;

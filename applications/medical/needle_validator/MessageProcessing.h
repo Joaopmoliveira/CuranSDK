@@ -41,6 +41,8 @@ public:
 	Eigen::Matrix<double,4,4> needle_calibration = Eigen::Matrix<double,4,4>::Identity();
 	double calibration_error = 0.0;
 
+	std::optional<std::tuple<Eigen::Matrix<double,4,4>,double>> registration_solution;
+
 	Eigen::Matrix<double,4,Eigen::Dynamic> landmarks;
 
 	curan::utilities::Flag connection_status;
