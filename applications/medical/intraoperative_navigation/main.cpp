@@ -8,7 +8,8 @@ int main()
     {
         Eigen::Matrix<double, 3, 1> desired_target_point;
         Eigen::Matrix<double, 3, 1> desired_direction;
-        std::string path_ ;
+        std::string path_to_moving_image;
+
         { // reading of the trajectory specification from the fixed volume
             nlohmann::json trajectory_data;
 	        std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
@@ -34,21 +35,26 @@ int main()
             }
             desired_direction = desired_target_point-vectorized_eigen_entry;
             desired_direction.normalize();
+            path_to_moving_image = trajectory_data["moving_image_directory"];
         }
 
         { // reading of the needle calibration data
             nlohmann::json needle_calibration_data;
-	        std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
+	        std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/needle_calibration.json");
             if(!in.is_open()){
                 std::cout << "failure to find the trajectory specification file";
                 return 1;
             }
     	    in >> needle_calibration_data;
+            needle_calibration_data["timestamp"];
+            std::stringstream ss;
+            ss << needle_calibration_data["needle_homogeneous_transformation"];
+            std::cout << "reading needle calibration with error: " << needle_calibration_data["optimization_error"];
         }
 
         { // reading of the registration data 
 	        nlohmann::json registration_data;
-            std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
+            std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/registration.json");
             if(!in.is_open()){
                 std::cout << "failure to find the trajectory specification file";
                 return 1;

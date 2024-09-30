@@ -249,12 +249,7 @@ int main(int argc, char *argv[])
         ss << processing->needle_calibration;
         calibration_data["needle_homogeneous_transformation"] = ss.str();
         calibration_data["optimization_error"] = processing->calibration_error;
-        // write prettified JSON to another file
-        std::string path_output_location{CURAN_COPIED_RESOURCE_PATH};
-        path_output_location += "/";
-        path_output_location += std::string{argv[1]};
-        path_output_location += ".json";
-        std::ofstream o(path_output_location);
+        std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/needle_calibration.json");
         o << calibration_data;
         std::cout << "calibration data from needle coordinates" << calibration_data << std::endl;
     }
