@@ -9,17 +9,16 @@
 curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<ProcessingMessage> &processing, curan::ui::IconResources &resources, bool registration_possible_to_solve = false)
 {
     using namespace curan::ui;
-	processing = std::make_shared<ProcessingMessage>(data);
-	processing->port = data.port;
+    processing = std::make_shared<ProcessingMessage>(data);
+    processing->port = data.port;
 
     auto start_connection_callback = [&data, processing](Button *button, Press press, ConfigDraw *config)
     {
-        std::cout << "clicked" << std::endl;
-        std::cout << "adress ;" << (size_t) processing.get() << std::endl;
         if (!processing->connection_status.value())
         {
             std::cout << "requesting connection" << std::endl;
-            curan::utilities::Job val{"connection thread", [processing](){ processing->communicate(); }};
+            curan::utilities::Job val{"connection thread", [processing]()
+                                      { processing->communicate(); }};
             data.shared_pool->submit(val);
         }
         else
@@ -34,55 +33,53 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
     start_connection->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorRED).set_size(SkRect::MakeWH(300, 180));
     start_connection->add_press_call(start_connection_callback);
 
-
     auto button_record_pose = Button::make("Record Pose", resources);
     button_record_pose->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
     button_record_pose->add_press_call([processing](Button *button, Press press, ConfigDraw *config)
-        {
+                                       {
             button->set_waiting_color(SK_ColorCYAN);
-            processing->should_record_point_from_world = true;
-        }
-    );
+            processing->should_record_point_from_world = true; });
 
     auto button_record_calibrate = Button::make("Record Calib Pose", resources);
     button_record_calibrate->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
-    button_record_calibrate->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config) {
+    button_record_calibrate->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config)
+                                            {
         button->set_waiting_color(SK_ColorCYAN);
-        processing->should_record_point_for_calibration = true;
-    }); 
+        processing->should_record_point_for_calibration = true; });
 
     auto button_trigger_calibration = Button::make("Calibrate", resources);
     button_trigger_calibration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
-    button_trigger_calibration->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config) {
+    button_trigger_calibration->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config)
+                                               {
         if(processing->calibrate_needle())
             button->set_waiting_color(SK_ColorGREEN);
         else
-            button->set_waiting_color(SK_ColorRED);
-    });
+            button->set_waiting_color(SK_ColorRED); });
 
     std::unique_ptr<Button> solve_registration;
-    if(registration_possible_to_solve){
+    if (registration_possible_to_solve)
+    {
         solve_registration = Button::make("Solve Registration", resources);
         solve_registration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
-        solve_registration->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config) {
+        solve_registration->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config)
+                                           {
             if(processing->calibrate_needle())
                 button->set_waiting_color(SK_ColorGREEN);
             else
-                button->set_waiting_color(SK_ColorRED);
-        });
-    } 
+                button->set_waiting_color(SK_ColorRED); });
+    }
 
     processing->connection_button = start_connection.get();
     processing->record_calib_button = button_record_calibrate.get();
     processing->record_world_button = button_record_pose.get();
 
     auto image = resources.get_icon("hr_repeating.png");
-	std::unique_ptr<curan::ui::Container> buttoncontainer;
-	if (image)
-		buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL, *image);
-	else
-		buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
-    if(solve_registration)
+    std::unique_ptr<curan::ui::Container> buttoncontainer;
+    if (image)
+        buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL, *image);
+    else
+        buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
+    if (solve_registration)
         *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration) << std::move(solve_registration);
     else
         *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration);
@@ -93,19 +90,21 @@ int main(int argc, char *argv[])
 {
     using namespace curan::ui;
 
-    if(argc<2 ){
+    if (argc < 2)
+    {
         std::cout << "please pass the name of the calibration file that will be outputed\n";
         return 1;
     }
 
-    if(argc>4){
-        std::cout << "you can only pass \n(1) the name of the calibration file you wish to execute \n(2) the name of the current calibration you wish to assume\n(3) the name of the file with landmarks\n";
+    if (argc > 4)
+    {
+        std::cout << "you can only pass the name of the calibration file and single json file that optionaly specifies\n"
+                  << "(1) the name of the current calibration you wish to assume\n"
+                  << "(2) the name of the file with landmarks\n";
+        return 1;
     }
 
-    std::string pathname{argv[1]};
-
-
-	curan::ui::IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
+    curan::ui::IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
 
     ConfigurationData data;
     data.shared_pool = curan::utilities::ThreadPool::create(4);
@@ -114,78 +113,79 @@ int main(int argc, char *argv[])
     DisplayParams param{std::move(context)};
     std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-
     std::shared_ptr<ProcessingMessage> processing;
-    auto page = create_main_page(data, processing, resources,argc>=4);
+    auto page = create_main_page(data, processing, resources, argc >= 4);
 
-    if(argc>=3){
-        std::cout << "reading previous calibration...\n";
-        std::string previous_calibration{argv[2]};
-        std::string path_output_location{CURAN_COPIED_RESOURCE_PATH};
-        path_output_location +="/";
-        path_output_location+=previous_calibration;
-        path_output_location+=".json";
-        std::ifstream in{path_output_location};
-        if(in.is_open())
-            std::cout << "read file.\n"; 
-        else
+    if (argc >= 3)
+    {
+        nlohmann::json needle_calibration_specification;
+        if (needle_calibration_specification.contains("previous_calibration_file"))
+        {
+            std::cout << "reading previous calibration...\n";
+            std::string path_output_location = needle_calibration_specification["previous_calibration_file"];
+            std::ifstream in{path_output_location};
+            if (!in.is_open())
             {
-                std::cout << "failure to read file\n";
-                return 1;    
+                std::cout << "failure to read previous calibration file\n";
+                return 1;
             }
-        nlohmann::json calibration_data;
-        in >> calibration_data;
-        std::cout << "parsed json.\n"; 
-        processing->calibration_error =calibration_data["optimization_error"];
+            nlohmann::json calibration_data;
+            in >> calibration_data;
+            std::cout << "parsed json.\n";
+            processing->calibration_error = calibration_data["optimization_error"];
 
-        std::cout << "using calibration with error: "<<processing->calibration_error << std::endl;
+            std::cout << "using calibration with error: " << processing->calibration_error << std::endl;
 
-        std::string homogenenous_transformation = calibration_data["needle_homogeneous_transformation"];
+            std::string homogenenous_transformation = calibration_data["needle_homogeneous_transformation"];
 
-        std::stringstream matrix_strm;
-        matrix_strm << homogenenous_transformation;
-        std::cout << "string stream: " << matrix_strm.str();
-        auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
-       
-        std::cout << "with the homogeneous matrix :\n" << calibration_matrix << std::endl;
-        for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
-            for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
-                processing->needle_calibration(row, col) = calibration_matrix(row, col);
-        std::cout << "using calibration:\n"<<processing->needle_calibration << std::endl;
-    }
+            std::stringstream matrix_strm;
+            matrix_strm << homogenenous_transformation;
+            std::cout << "string stream: " << matrix_strm.str();
+            auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
 
-    if(argc>=4){
-        std::cout << "reading landmarks to register...\n";
-        std::string landmarks_file{argv[3]};
-        std::string path_output_location{CURAN_COPIED_RESOURCE_PATH};
-        path_output_location +="/";
-        path_output_location+=landmarks_file;
-        path_output_location+=".json";
-        std::ifstream in{path_output_location};
-        if(in.is_open())
-            std::cout << "read file.\n"; 
-        else
+            std::cout << "with the homogeneous matrix :\n"
+                      << calibration_matrix << std::endl;
+            for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
+                for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
+                    processing->needle_calibration(row, col) = calibration_matrix(row, col);
+            std::cout << "using calibration:\n"
+                      << processing->needle_calibration << std::endl;
+        } else{
+            std::cout << "no previous calibration was specified\n";
+        }
+
+        if (needle_calibration_specification.contains("landmarks_to_register"))
+        {
+            std::cout << "reading landmarks to register\n";
+            std::string path_output_location = needle_calibration_specification["landmarks_to_register"];
+            std::ifstream in{path_output_location};
+            if (!in.is_open())
             {
-                std::cout << "failure to read file\n";
-                return 1;    
+                std::cout << "failure to read previous calibration file\n";
+                return 1;
             }
-        nlohmann::json json_landmarks;
-        in >> json_landmarks;
-        std::cout << "parsed json.\n"; 
-        std::string homogenenous_transformation = json_landmarks["landmarks"];
-        std::stringstream stream;
-        stream << homogenenous_transformation;
-        std::cout << "string stream: " << stream.str();
-        auto landmarks = curan::utilities::convert_matrix(stream, ',');
-       
-        std::cout << "with the homogeneous matrix :\n" << landmarks << std::endl;
+            nlohmann::json json_landmarks;
+            in >> json_landmarks;
+            std::cout << "parsed json.\n";
+            std::string homogenenous_transformation = json_landmarks["landmarks"];
+            std::stringstream stream;
+            stream << homogenenous_transformation;
+            std::cout << "string stream: " << stream.str();
+            auto landmarks = curan::utilities::convert_matrix(stream, ',');
 
-        processing->landmarks = Eigen::Matrix<double,4,Eigen::Dynamic>::Ones(4,landmarks.cols());
+            std::cout << "with the homogeneous matrix :\n"
+                      << landmarks << std::endl;
 
-        for (Eigen::Index row = 0; row < landmarks.rows(); ++row)
-            for (Eigen::Index col = 0; col < landmarks.cols(); ++col)
-                processing->landmarks(row, col) = landmarks(row, col);
-        std::cout << "using calibration:\n"<< processing->landmarks << std::endl;
+            processing->landmarks = Eigen::Matrix<double, 4, Eigen::Dynamic>::Ones(4, landmarks.cols());
+
+            for (Eigen::Index row = 0; row < landmarks.rows(); ++row)
+                for (Eigen::Index col = 0; col < landmarks.cols(); ++col)
+                    processing->landmarks(row, col) = landmarks(row, col);
+            std::cout << "using calibration:\n"
+                      << processing->landmarks << std::endl;
+        } else{
+            std::cout << "no landmark registration was requested\n";
+        }
     }
 
     page.update_page(viewer.get());
@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
         std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
     }
     processing->attempt_stop();
-    std::cout << "trying to stop communication"<< std::endl;
+    std::cout << "trying to stop communication" << std::endl;
 
     std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration! Produced JSON file:\n");
 
@@ -229,25 +229,28 @@ int main(int argc, char *argv[])
         return ss.str();
     };
 
-    if(processing->size_calibration_points()!=0){
+    if (processing->size_calibration_points() != 0)
+    {
         nlohmann::json calibration_data;
         calibration_data["timestamp"] = return_current_time_and_date();
         std::stringstream ss;
-        Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision,0, ", ", ", ", "", "", " ", "");
+        Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision, 0, ", ", ", ", "", "", " ", "");
         ss << processing->needle_calibration;
         calibration_data["needle_homogeneous_transformation"] = ss.str();
         calibration_data["optimization_error"] = processing->calibration_error;
         // write prettified JSON to another file
         std::string path_output_location{CURAN_COPIED_RESOURCE_PATH};
-        path_output_location +="/";
-        path_output_location+=pathname;
-        path_output_location+=".json";
+        path_output_location += "/";
+        path_output_location += std::string{argv[1]};
+        path_output_location += ".json";
         std::ofstream o(path_output_location);
         o << calibration_data;
-        std::cout<< "calibration data from needle coordinates" << calibration_data << std::endl;
+        std::cout << "calibration data from needle coordinates" << calibration_data << std::endl;
     }
+
     auto points = processing->world_points();
-    if(points){
+    if (points)
+    {
         nlohmann::json needle_poses_recorded_from_world_coordinates;
         needle_poses_recorded_from_world_coordinates["timestamp"] = return_current_time_and_date();
         std::stringstream ss;
@@ -258,5 +261,6 @@ int main(int argc, char *argv[])
         o << needle_poses_recorded_from_world_coordinates;
         std::cout << "needle poses from world coordinates" << needle_poses_recorded_from_world_coordinates << std::endl;
     }
+
     return 0;
 }

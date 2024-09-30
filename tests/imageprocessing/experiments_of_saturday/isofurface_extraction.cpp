@@ -1211,7 +1211,7 @@ int main()
               << transformation_acording_to_pca_fixed * best_transformation_icp * transformation_acording_to_pca_moving.inverse() << std::endl;
 
 
-auto return_current_time_and_date = [](){
+    auto return_current_time_and_date = [](){
 	    auto now = std::chrono::system_clock::now();
     	auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
