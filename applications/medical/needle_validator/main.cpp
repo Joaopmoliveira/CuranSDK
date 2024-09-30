@@ -5,14 +5,8 @@
 #include <random>
 #include "MessageProcessing.h"
 #include "utils/Reader.h"
-/*
-This executable requires nothing
 
-It produces
-
-*/
-
-curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<ProcessingMessage> &processing, curan::ui::IconResources &resources)
+curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<ProcessingMessage> &processing, curan::ui::IconResources &resources, bool registration_possible_to_solve = false)
 {
     using namespace curan::ui;
 	processing = std::make_shared<ProcessingMessage>(data);
@@ -66,6 +60,18 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
             button->set_waiting_color(SK_ColorRED);
     });
 
+    std::unique_ptr<Button> solve_registration;
+    if(registration_possible_to_solve){
+        solve_registration = Button::make("Solve Registration", resources);
+        solve_registration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
+        solve_registration->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config) {
+            if(processing->calibrate_needle())
+                button->set_waiting_color(SK_ColorGREEN);
+            else
+                button->set_waiting_color(SK_ColorRED);
+        });
+    } 
+
     processing->connection_button = start_connection.get();
     processing->record_calib_button = button_record_calibrate.get();
     processing->record_world_button = button_record_pose.get();
@@ -76,7 +82,10 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
 		buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL, *image);
 	else
 		buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
-    *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration);
+    if(solve_registration)
+        *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration) << std::move(solve_registration);
+    else
+        *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration);
     return Page{std::move(buttoncontainer), SK_ColorBLACK};
 }
 
@@ -89,8 +98,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if(argc>3){
-         std::cout << "you can only pass the name of the calibration file you wish to execute and the name of the current calibration you wish to assume\n";
+    if(argc>4){
+        std::cout << "you can only pass \n(1) the name of the calibration file you wish to execute \n(2) the name of the current calibration you wish to assume\n(3) the name of the file with landmarks\n";
     }
 
     std::string pathname{argv[1]};
@@ -107,10 +116,9 @@ int main(int argc, char *argv[])
 
 
     std::shared_ptr<ProcessingMessage> processing;
-    auto page = create_main_page(data, processing, resources);
+    auto page = create_main_page(data, processing, resources,argc>=4);
 
-
-    if(argc==3){
+    if(argc>=3){
         std::cout << "reading previous calibration...\n";
         std::string previous_calibration{argv[2]};
         std::string path_output_location{CURAN_COPIED_RESOURCE_PATH};
@@ -144,6 +152,40 @@ int main(int argc, char *argv[])
             for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
                 processing->needle_calibration(row, col) = calibration_matrix(row, col);
         std::cout << "using calibration:\n"<<processing->needle_calibration << std::endl;
+    }
+
+    if(argc>=4){
+        std::cout << "reading landmarks to register...\n";
+        std::string landmarks_file{argv[3]};
+        std::string path_output_location{CURAN_COPIED_RESOURCE_PATH};
+        path_output_location +="/";
+        path_output_location+=landmarks_file;
+        path_output_location+=".json";
+        std::ifstream in{path_output_location};
+        if(in.is_open())
+            std::cout << "read file.\n"; 
+        else
+            {
+                std::cout << "failure to read file\n";
+                return 1;    
+            }
+        nlohmann::json json_landmarks;
+        in >> json_landmarks;
+        std::cout << "parsed json.\n"; 
+        std::string homogenenous_transformation = json_landmarks["landmarks"];
+        std::stringstream stream;
+        stream << homogenenous_transformation;
+        std::cout << "string stream: " << stream.str();
+        auto landmarks = curan::utilities::convert_matrix(stream, ',');
+       
+        std::cout << "with the homogeneous matrix :\n" << landmarks << std::endl;
+
+        processing->landmarks = Eigen::Matrix<double,4,Eigen::Dynamic>::Ones(4,landmarks.cols());
+
+        for (Eigen::Index row = 0; row < landmarks.rows(); ++row)
+            for (Eigen::Index col = 0; col < landmarks.cols(); ++col)
+                processing->landmarks(row, col) = landmarks(row, col);
+        std::cout << "using calibration:\n"<< processing->landmarks << std::endl;
     }
 
     page.update_page(viewer.get());

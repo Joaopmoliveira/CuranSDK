@@ -61,6 +61,6 @@ using TransformType = itk::Euler3DTransform<double>;
 
 using ReaderType = itk::ImageFileReader<InputImageType>;
 
-InputImageType::Pointer load_dicom();
+InputImageType::Pointer load_dicom(const std::string& path);
 
 #endif

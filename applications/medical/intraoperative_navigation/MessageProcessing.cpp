@@ -113,13 +113,12 @@ template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
-OutputImageType::Pointer resampler(InputImageType::Pointer volume, Eigen::Matrix<double, 3, 1> &needle_tip, Eigen::Matrix<double, 3, 3> &R_ImageToWorld, double &image_size, double &image_spacing)
+InputImageType::Pointer resampler(InputImageType::Pointer volume, Eigen::Matrix<double, 3, 1> &needle_tip, Eigen::Matrix<double, 3, 3> &R_ImageToWorld, double &image_size, double &image_spacing)
 {
-    using FilterType = itk::ResampleImageFilter<InputImageType, OutputImageType>;
+    using FilterType = itk::ResampleImageFilter<InputImageType, InputImageType>;
     auto filter = FilterType::New();
 
     using InterpolatorType = itk::LinearInterpolateImageFunction<InputImageType, double>;
-    // using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<InputImageType, double>;
     auto interpolator = InterpolatorType::New();
     filter->SetInterpolator(interpolator);
     filter->SetDefaultPixelValue(0);
@@ -263,19 +262,18 @@ bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::P
     
     auto needle_to_world = robot_to_world*processor->needle_calibration;
 
-
     Eigen::Matrix<double,3,1> needle_tip = needle_to_world.block<3,1>(0,3);
-    Eigen::Matrix<double,3,3> R_ImageToWorld;
+    Eigen::Matrix<double,3,3> R_ImageToWorld = needle_to_world.block<3,3>(0,0);
     auto world_frame_difference_error = processor->desired_rotation.col(2)-R_ImageToWorld.col(2);
 
     double phy = world_frame_difference_error.transpose()*processor->desired_rotation.col(0);
     double theta = world_frame_difference_error.transpose()*processor->desired_rotation.col(1);
             
-    OutputImageType::Pointer slice = resampler(processor->volume, needle_tip, R_ImageToWorld, processor->image_size,processor->image_spacing);
-    OutputImageType::IndexType coordinate_of_needle_in_image_position;
-    OutputImageType::PointType needle_tip_ikt_coordinates{{needle_tip[0], needle_tip[1], needle_tip[2]}};
+    InputImageType::Pointer slice = resampler(processor->volume, needle_tip, R_ImageToWorld, processor->image_size,processor->image_spacing);
+    InputImageType::IndexType coordinate_of_needle_in_image_position;
+    InputImageType::PointType needle_tip_ikt_coordinates{{needle_tip[0], needle_tip[1], needle_tip[2]}};
     slice->TransformPhysicalPointToIndex(needle_tip_ikt_coordinates, coordinate_of_needle_in_image_position);
-    OutputImageType::SizeType size_itk = slice->GetLargestPossibleRegion().GetSize();
+    InputImageType::SizeType size_itk = slice->GetLargestPossibleRegion().GetSize();
     auto buff = curan::utilities::CaptureBuffer::make_shared(slice->GetBufferPointer(), slice->GetPixelContainer()->Size() * sizeof(OutputPixelType), slice);
     curan::ui::ImageWrapper wrapper{buff, size_itk[0], size_itk[1]};
 
@@ -284,8 +282,8 @@ bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::P
     auto d = (std::abs(inner_projection(0,0))>1e-5) ? projected_unto_plane(0,0)/(inner_projection(0,0)) : 100000.0;
 
     Eigen::Matrix<double,3,1> real_intersection = processor->target+processor->desired_rotation.col(2)*d;
-    OutputImageType::IndexType index_coordinate_of_perfect_traject_in_needle_plane;
-    OutputImageType::PointType coordinate_of_perfect_traject_in_needle_plane{{real_intersection[0], real_intersection[1], real_intersection[2]}};
+    InputImageType::IndexType index_coordinate_of_perfect_traject_in_needle_plane;
+    InputImageType::PointType coordinate_of_perfect_traject_in_needle_plane{{real_intersection[0], real_intersection[1], real_intersection[2]}};
     slice->TransformPhysicalPointToIndex(coordinate_of_perfect_traject_in_needle_plane,index_coordinate_of_perfect_traject_in_needle_plane);
 
     auto custimized_drawing = [=](SkCanvas* canvas,SkRect image_area, SkRect content_area){

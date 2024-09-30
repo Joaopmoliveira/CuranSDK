@@ -9,6 +9,7 @@ int main()
         Eigen::Matrix<double, 3, 1> desired_target_point;
         Eigen::Matrix<double, 3, 3> desired_orientation;
         Eigen::Matrix<double, 3, 1> desired_direction;
+
         {
             nlohmann::json trajectory_data;
 	        std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
@@ -70,7 +71,7 @@ int main()
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
         IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
-        InputImageType::Pointer input_volume = load_dicom();
+        InputImageType::Pointer input_volume = load_dicom(CURAN_COPIED_RESOURCE_PATH"/moving_image.mha");
         if (input_volume.GetPointer() == nullptr){
             std::cout << "failed to read the dicom image\n";
             return 1;

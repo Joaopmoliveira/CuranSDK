@@ -1090,7 +1090,7 @@ int main()
     auto moving = converter(image_reader_moving->GetOutput());
 
     modify_image_with_transform<unsigned char>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, fixed);
-    modify_image_with_transform<unsigned char>((best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
+    modify_image_with_transform<unsigned char>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
 
     modify_image_with_transform<unsigned char>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, mask_fixed_image);
     modify_image_with_transform<unsigned char>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, mask_moving_image);
