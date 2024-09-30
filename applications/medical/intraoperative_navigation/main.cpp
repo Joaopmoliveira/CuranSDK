@@ -8,7 +8,7 @@ int main()
     {
         Eigen::Matrix<double, 3, 1> desired_target_point;
         Eigen::Matrix<double, 3, 1> desired_direction;
-
+        std::string path_ ;
         { // reading of the trajectory specification from the fixed volume
             nlohmann::json trajectory_data;
 	        std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
@@ -36,7 +36,7 @@ int main()
             desired_direction.normalize();
         }
 
-        { // reading of the trajectory specification from the fixed volume
+        { // reading of the needle calibration data
             nlohmann::json needle_calibration_data;
 	        std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
             if(!in.is_open()){
@@ -46,7 +46,7 @@ int main()
     	    in >> needle_calibration_data;
         }
 
-        { // reading of the trajectory specification from the fixed volume
+        { // reading of the registration data 
 	        nlohmann::json registration_data;
             std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
             if(!in.is_open()){
