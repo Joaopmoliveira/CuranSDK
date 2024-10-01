@@ -63,6 +63,7 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
         solve_registration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
         solve_registration->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config)
                                            {
+            
             if(processing->calibrate_needle())
                 button->set_waiting_color(SK_ColorGREEN);
             else
@@ -90,15 +91,9 @@ int main(int argc, char *argv[])
 {
     using namespace curan::ui;
 
-    if (argc < 2)
+    if (argc > 2)
     {
-        std::cout << "please pass the name of the calibration file that will be outputed\n";
-        return 1;
-    }
-
-    if (argc > 4)
-    {
-        std::cout << "you can only pass the name of the calibration file and single json file that optionaly specifies\n"
+        std::cout << "you can only pass single json file that optionaly specifies\n"
                   << "(1) the name of the current calibration you wish to assume\n"
                   << "(2) the name of the file with landmarks\n";
         return 1;
@@ -120,8 +115,13 @@ int main(int argc, char *argv[])
     bool specified_landmarks = false;
     Eigen::Matrix<double, 4, Eigen::Dynamic> landmarks;
 
-    if (argc >= 3)
+    if (argc > 1)
     {
+        std::ifstream in(argv[1]);
+        if(!in.is_open()){
+            std::cout << "failure to read the specification file";
+            return 1;
+        }
         nlohmann::json needle_calibration_specification;
         if (needle_calibration_specification.contains("previous_calibration_file"))
         {
@@ -180,6 +180,11 @@ int main(int argc, char *argv[])
             std::cout << "with the homogeneous matrix :\n"
                       << landmarks << std::endl;
 
+            if( temp_landmarks.cols()<3){
+                std::cout << "to solve the registration problem you need at least 3 points\n";
+                return 1;
+            }
+               
             landmarks = Eigen::Matrix<double, 4, Eigen::Dynamic>::Ones(4, temp_landmarks.cols());
 
             for (Eigen::Index row = 0; row < temp_landmarks.rows(); ++row)
@@ -278,7 +283,7 @@ int main(int argc, char *argv[])
 	    registration_data["moving_to_fixed_transform"] = ss.str();
 	    registration_data["registration_error"] = error;
         registration_data["type"] = "landmark";
-        std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/points_in_world_space.json");
+        std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/registration.json");
         o << registration_data;
         std::cout << "needle poses from world coordinates" << registration_data << std::endl;
     }
