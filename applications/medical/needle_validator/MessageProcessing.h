@@ -43,7 +43,7 @@ public:
 
 	std::optional<std::tuple<Eigen::Matrix<double,4,4>,double>> registration_solution;
 
-	Eigen::Matrix<double,4,Eigen::Dynamic> landmarks;
+	Eigen::Matrix<double,3,Eigen::Dynamic> landmarks;
 
 	curan::utilities::Flag connection_status;
 	curan::ui::Button* connection_button;

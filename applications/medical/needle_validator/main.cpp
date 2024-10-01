@@ -178,6 +178,7 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
         buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL, *image);
     else
         buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
+    
     if (solve_registration)
         *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration) << std::move(solve_registration);
     else
@@ -293,6 +294,8 @@ int main(int argc, char *argv[])
             std::cout << "no landmark registration was requested\n";
         }
     }
+
+    return 0;
 
     std::shared_ptr<ProcessingMessage> processing;
     auto page = create_main_page(data, processing, resources, specified_landmarks);
