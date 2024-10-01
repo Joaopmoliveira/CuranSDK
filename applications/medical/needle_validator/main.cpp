@@ -63,7 +63,38 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
         solve_registration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
         solve_registration->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config)
                                            {
-            
+            Eigen::Matrix<double,3,Eigen::Dynamic> fixed_points;
+            Eigen::Matrix<double,3,Eigen::Dynamic> moving_points;
+
+            Eigen::Matrix<double,3,1> centroid_fixed_points;
+            Eigen::Matrix<double,3,1> centroid_moving_points;
+
+            Eigen::Matrix<double,3,Eigen::Dynamic> centered_fixed_points;
+            Eigen::Matrix<double,3,Eigen::Dynamic> centered_moving_points;
+
+            Eigen::Matrix<double,3,3> H = Eigen::Matrix<double,3,3>::Zero();
+
+            if(centered_fixed_points.cols()!=centered_moving_points.cols())
+                throw std::runtime_error("the number of columns between the moving points and the fixed points must be the same");
+
+            for(size_t i = 0; i < centered_fixed_points.cols(); ++i)
+                H+=centered_fixed_points.col(i)*centered_moving_points.col(i).transpose();
+
+            Eigen::JacobiSVD<Eigen::Matrix<double,3,3>> svd( H, Eigen::ComputeFullU | Eigen::ComputeFullV);
+            Eigen::Matrix<double,3,3> rotation_fixed_to_moving = svd.matrixV()* svd.matrixU().transpose();
+            auto determinant = rotation_fixed_to_moving.determinant();
+            if(determinant < 1-1e-7 || determinant> 1+1e-7)
+                throw std::runtime_error("arun algorithm has failed");
+
+            Eigen::Matrix<double,3,1> translation_fixed_to_moving = centroid_moving_points-rotation_fixed_to_moving*centroid_fixed_points;   
+
+            Eigen::Matrix<double,4,4> registration_solution =  Eigen::Matrix<double,4,4>::Identity();
+            registration_solution.block<3,3>(0,0) = rotation_fixed_to_moving.transpose();
+            registration_solution.block<3,1>(0,3) = -rotation_fixed_to_moving.transpose()*translation_fixed_to_moving;
+
+            Eigen::Matrix<double,3,Eigen::Dynamic> aligned_moving_points = rotation_fixed_to_moving.transpose()*moving_points-rotation_fixed_to_moving.transpose()*translation_fixed_to_moving;
+            auto error = (aligned_moving_points-fixed_points).array().square().rowwise().sum().sqrt().colwise().sum();
+            std::cout << "registration error: " << error << std::endl; 
             if(processing->calibrate_needle())
                 button->set_waiting_color(SK_ColorGREEN);
             else
