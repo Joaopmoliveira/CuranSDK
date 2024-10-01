@@ -247,22 +247,36 @@ std::tuple<itk::Mesh<double>::Pointer, itk::ImageMaskSpatialObject<3>::ImageType
     output_spacing[1] = physicalspace[1] / output_size[1];
     output_spacing[2] = physicalspace[2] / output_size[2];
 
+    //std::printf("input spacing (%f %f %f) output spacing (%f %f %f)",);
+    //std::printf("input size (%f %f %f) output size (%f %f %f)",);
+    //std::printf("input spacing (%f %f %f) output spacing (%f %f %f)",);
+
     auto interpolator = itk::LinearInterpolateImageFunction<itk::Image<double, 3>, double>::New();
     auto transform = itk::AffineTransform<double, 3>::New();
+    transform->SetIdentity();
     auto resampleFilter = itk::ResampleImageFilter<itk::Image<double, 3>, itk::Image<double, 3>>::New();
     resampleFilter->SetInput(bluring->GetOutput());
     resampleFilter->SetTransform(transform);
     resampleFilter->SetInterpolator(interpolator);
+    resampleFilter->SetOutputDirection(bluring->GetOutput()->GetDirection());
     resampleFilter->SetSize(output_size);
     resampleFilter->SetOutputSpacing(output_spacing);
     resampleFilter->SetOutputOrigin(input_origin);
 
     if constexpr (is_in_debug)
     {
-        auto writer = itk::ImageFileWriter<itk::Image<double, 3>>::New();
-        writer->SetInput(resampleFilter->GetOutput());
-        writer->SetFileName(info.appendix + "_processed.mha");
-        update_ikt_filter(writer);
+        {
+            auto writer = itk::ImageFileWriter<itk::Image<double, 3>>::New();
+            writer->SetInput(resampleFilter->GetOutput());
+            writer->SetFileName(info.appendix + "_processed.mha");
+            update_ikt_filter(writer);
+        }
+        {
+            auto writer = itk::ImageFileWriter<itk::Image<double, 3>>::New();
+            writer->SetInput(resampleFilter->GetOutput());
+            writer->SetFileName(info.appendix + "_bluered.mha");
+            update_ikt_filter(writer);
+        }
     }
     else
         update_ikt_filter(resampleFilter);
@@ -1003,9 +1017,9 @@ int main()
 {
     std::cout << "extracting surface from fixed\n";
     auto image_reader_fixed = itk::ImageFileReader<itk::Image<double, 3>>::New();
-    image_reader_fixed->SetFileName("C:/Dev/Curan/build/bin/resources/us_image1_cropepd_volume.mha");
+    image_reader_fixed->SetFileName("C:/Dev/NeuroNavigation/data_for_home_processing/reconstruction_results_first.mha");
     update_ikt_filter(image_reader_fixed);
-    auto [point_cloud_fixed, mask_fixed_image] = extract_point_cloud(image_reader_fixed->GetOutput(), ExtractionSurfaceInfo<false>{3, 0.9, "fixed", 5, 5});
+    auto [point_cloud_fixed, mask_fixed_image] = extract_point_cloud(image_reader_fixed->GetOutput(), ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
     auto [transformation_acording_to_pca_fixed, tmp_fixed_point_set] = recentered_data(point_cloud_fixed);
 
     auto fixed_point_set = tmp_fixed_point_set;
@@ -1013,7 +1027,7 @@ int main()
     auto image_reader_moving = itk::ImageFileReader<itk::Image<double, 3>>::New();
     image_reader_moving->SetFileName("C:/Dev/Curan/build/bin/resources/ct_image1_cropepd_volume.mha");
     update_ikt_filter(image_reader_moving);
-    auto [point_cloud_moving, mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(), ExtractionSurfaceInfo<false>{3, 0.8, "moving", 5, 5});
+    auto [point_cloud_moving, mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(), ExtractionSurfaceInfo<true>{3, 0.8, "moving", 5, 5});
     auto [transformation_acording_to_pca_moving, tmp_moving_point_set] = recentered_data(point_cloud_moving);
     auto moving_point_set = tmp_moving_point_set;
 
@@ -1090,7 +1104,7 @@ int main()
     auto moving = converter(image_reader_moving->GetOutput());
 
     modify_image_with_transform<unsigned char>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, fixed);
-    modify_image_with_transform<unsigned char>((best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
+    modify_image_with_transform<unsigned char>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
 
     modify_image_with_transform<unsigned char>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, mask_fixed_image);
     modify_image_with_transform<unsigned char>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, mask_moving_image);
