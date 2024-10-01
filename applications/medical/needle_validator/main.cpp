@@ -6,6 +6,52 @@
 #include "MessageProcessing.h"
 #include "utils/Reader.h"
 
+std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning, curan::ui::IconResources &resources)
+{
+    using namespace curan::ui;
+    auto warn = Button::make(" ", "warning.png", resources);
+    warn->set_click_color(SK_AlphaTRANSPARENT)
+        .set_hover_color(SK_AlphaTRANSPARENT)
+        .set_waiting_color(SK_AlphaTRANSPARENT)
+        .set_size(SkRect::MakeWH(400, 200));
+
+    auto button = Button::make(warning, resources);
+    button->set_click_color(SK_AlphaTRANSPARENT)
+        .set_hover_color(SK_AlphaTRANSPARENT)
+        .set_waiting_color(SK_AlphaTRANSPARENT)
+        .set_size(SkRect::MakeWH(200, 50));
+
+    auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *viwers_container << std::move(warn) << std::move(button);
+    viwers_container->set_color(SK_ColorTRANSPARENT).set_divisions({0.0, .8, 1.0});
+
+    return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
+}
+
+std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success, curan::ui::IconResources &resources)
+{
+    using namespace curan::ui;
+    auto warn = Button::make(" ", "submit.png", resources);
+    warn->set_click_color(SK_AlphaTRANSPARENT)
+        .set_hover_color(SK_AlphaTRANSPARENT)
+        .set_waiting_color(SK_AlphaTRANSPARENT)
+        .set_size(SkRect::MakeWH(400, 200));
+
+    auto button = Button::make(success, resources);
+    button->set_click_color(SK_AlphaTRANSPARENT)
+        .set_hover_color(SK_AlphaTRANSPARENT)
+        .set_waiting_color(SK_AlphaTRANSPARENT)
+        .set_size(SkRect::MakeWH(200, 50));
+
+    auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *viwers_container << std::move(warn) << std::move(button);
+    viwers_container->set_color(SK_ColorTRANSPARENT)
+        .set_divisions({0.0, .8, 1.0});
+
+    return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
+}
+
+
 curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<ProcessingMessage> &processing, curan::ui::IconResources &resources, bool registration_possible_to_solve = false)
 {
     using namespace curan::ui;
@@ -35,8 +81,10 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
 
     auto button_record_pose = Button::make("Record Pose", resources);
     button_record_pose->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
-    button_record_pose->add_press_call([processing](Button *button, Press press, ConfigDraw *config)
+    button_record_pose->add_press_call([processing,&resources](Button *button, Press press, ConfigDraw *config)
                                        {
+            if(config!=nullptr && config->stack_page!=nullptr)
+                config->stack_page->stack(success_overlay("recorded word point",resources));
             button->set_waiting_color(SK_ColorCYAN);
             processing->should_record_point_from_world = true; });
 
@@ -44,6 +92,8 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
     button_record_calibrate->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
     button_record_calibrate->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config)
                                             {
+            if(config!=nullptr && config->stack_page!=nullptr)
+                config->stack_page->stack(success_overlay("recorded calibration point",resources));
         button->set_waiting_color(SK_ColorCYAN);
         processing->should_record_point_for_calibration = true; });
 
@@ -61,30 +111,47 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
     {
         solve_registration = Button::make("Solve Registration", resources);
         solve_registration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
-        solve_registration->add_press_call([&processing, &resources](Button *button, Press press, ConfigDraw *config)
+        solve_registration->add_press_call([processing, &resources](Button *button, Press press, ConfigDraw *config)
                                            {
-            Eigen::Matrix<double,3,Eigen::Dynamic> fixed_points;
-            Eigen::Matrix<double,3,Eigen::Dynamic> moving_points;
+            Eigen::Matrix<double,3,Eigen::Dynamic> fixed_points = processing->landmarks;
 
-            Eigen::Matrix<double,3,1> centroid_fixed_points;
-            Eigen::Matrix<double,3,1> centroid_moving_points;
+            auto points = processing->world_points();
+            if (!points){
+                if(config!=nullptr && config->stack_page!=nullptr)
+                    config->stack_page->stack(warning_overlay("no landmark collected",resources));
+                return;
+            }
 
-            Eigen::Matrix<double,3,Eigen::Dynamic> centered_fixed_points;
-            Eigen::Matrix<double,3,Eigen::Dynamic> centered_moving_points;
+            Eigen::Matrix<double,3,Eigen::Dynamic> moving_points = *points;
+
+            Eigen::Matrix<double,3,1> centroid_fixed_points = fixed_points.rowwise().mean();
+            Eigen::Matrix<double,3,1> centroid_moving_points = moving_points.rowwise().mean();
+
+            Eigen::Matrix<double,3,Eigen::Dynamic> centered_fixed_points = fixed_points;
+            Eigen::Matrix<double,3,Eigen::Dynamic> centered_moving_points = moving_points;
+
+            centered_fixed_points.colwise() -= centroid_fixed_points;
+            centered_moving_points.colwise() -= centroid_moving_points;
 
             Eigen::Matrix<double,3,3> H = Eigen::Matrix<double,3,3>::Zero();
 
-            if(centered_fixed_points.cols()!=centered_moving_points.cols())
-                throw std::runtime_error("the number of columns between the moving points and the fixed points must be the same");
-
+            if(centered_fixed_points.cols()!=centered_moving_points.cols()){
+                if(config!=nullptr && config->stack_page!=nullptr)
+                    config->stack_page->stack(warning_overlay("number of fixed and moving landmarks must be the same",resources));    
+                return;
+            }
+            
             for(size_t i = 0; i < centered_fixed_points.cols(); ++i)
                 H+=centered_fixed_points.col(i)*centered_moving_points.col(i).transpose();
 
             Eigen::JacobiSVD<Eigen::Matrix<double,3,3>> svd( H, Eigen::ComputeFullU | Eigen::ComputeFullV);
             Eigen::Matrix<double,3,3> rotation_fixed_to_moving = svd.matrixV()* svd.matrixU().transpose();
             auto determinant = rotation_fixed_to_moving.determinant();
-            if(determinant < 1-1e-7 || determinant> 1+1e-7)
-                throw std::runtime_error("arun algorithm has failed");
+            if(determinant < 1-1e-7 || determinant> 1+1e-7){
+                if(config!=nullptr && config->stack_page!=nullptr)
+                    config->stack_page->stack(warning_overlay("estimated rotation matrix has -1 determinant",resources));    
+                return;
+            }
 
             Eigen::Matrix<double,3,1> translation_fixed_to_moving = centroid_moving_points-rotation_fixed_to_moving*centroid_fixed_points;   
 
@@ -94,11 +161,11 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
 
             Eigen::Matrix<double,3,Eigen::Dynamic> aligned_moving_points = rotation_fixed_to_moving.transpose()*moving_points-rotation_fixed_to_moving.transpose()*translation_fixed_to_moving;
             auto error = (aligned_moving_points-fixed_points).array().square().rowwise().sum().sqrt().colwise().sum();
+
+            if(config!=nullptr && config->stack_page!=nullptr)
+                config->stack_page->stack(success_overlay("performed registration",resources));    
             std::cout << "registration error: " << error << std::endl; 
-            if(processing->calibrate_needle())
-                button->set_waiting_color(SK_ColorGREEN);
-            else
-                button->set_waiting_color(SK_ColorRED); });
+        });
     }
 
     processing->connection_button = start_connection.get();
