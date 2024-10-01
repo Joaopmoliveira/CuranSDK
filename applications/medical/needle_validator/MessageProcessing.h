@@ -23,7 +23,7 @@
 #include <iostream>
 
 struct ConfigurationData {
-	int port = 18944;
+	int port = 30008;
 	std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
 };
 
@@ -40,6 +40,10 @@ private:
 public:
 	Eigen::Matrix<double,4,4> needle_calibration = Eigen::Matrix<double,4,4>::Identity();
 	double calibration_error = 0.0;
+
+	std::optional<std::tuple<Eigen::Matrix<double,4,4>,double>> registration_solution;
+
+	Eigen::Matrix<double,4,Eigen::Dynamic> landmarks;
 
 	curan::utilities::Flag connection_status;
 	curan::ui::Button* connection_button;
@@ -64,6 +68,11 @@ public:
 		list_of_recorded_points_for_calibration = std::list<ObservationEigenFormat>{};
 	}
 
+	inline size_t size_calibration_points(){
+		std::lock_guard<std::mutex> g{mut};
+		return list_of_recorded_points_for_calibration.size();
+	}
+
 	inline void push_world_point(const ObservationEigenFormat& world){
 		std::lock_guard<std::mutex> g{mut};
 		list_of_recorded_points.push_back(world);
@@ -74,8 +83,10 @@ public:
 		list_of_recorded_points = std::list<ObservationEigenFormat>{};
 	}
 
-	inline Eigen::Matrix<double,4,Eigen::Dynamic> world_points(){
+	inline std::optional<Eigen::Matrix<double,4,Eigen::Dynamic>> world_points(){
 		std::lock_guard<std::mutex> g{mut};
+		if(list_of_recorded_points.size()==0)
+			return std::nullopt;
 		Eigen::Matrix<double,4,Eigen::Dynamic> world_p = Eigen::Matrix<double,4,Eigen::Dynamic>::Ones(4,list_of_recorded_points.size());
 		auto iterator = list_of_recorded_points.begin();
 		for(size_t i = 0; i < list_of_recorded_points.size() ; ++i,++iterator)
@@ -83,39 +94,57 @@ public:
 		return world_p;
 	}
 
-	inline Eigen::Matrix<double,4,Eigen::Dynamic> calibration_points(){
-		std::lock_guard<std::mutex> g{mut};
-		Eigen::Matrix<double,4,Eigen::Dynamic> calib_p = Eigen::Matrix<double,4,Eigen::Dynamic>::Ones(4,list_of_recorded_points_for_calibration.size());
-		auto iterator = list_of_recorded_points_for_calibration.begin();
-		for(size_t i = 0; i < list_of_recorded_points_for_calibration.size() ; ++i,++iterator)
-			calib_p.col(i) = (*iterator).flange_data.col(3);
-		return calib_p;
-	}
-
 	inline bool calibrate_needle(){
 		std::lock_guard<std::mutex> g{mut};
 		if(list_of_recorded_points_for_calibration.size()==0)
 			return false;
-		Eigen::Matrix<double,4,Eigen::Dynamic> calib_p = Eigen::Matrix<double,4,Eigen::Dynamic>::Ones(4,list_of_recorded_points_for_calibration.size());
+		Eigen::Matrix<double,Eigen::Dynamic,4> calib_p = Eigen::Matrix<double,Eigen::Dynamic,4>::Ones(list_of_recorded_points_for_calibration.size(),4);
 		auto iterator = list_of_recorded_points_for_calibration.begin();
 		for(size_t i = 0; i < list_of_recorded_points_for_calibration.size() ; ++i,++iterator)
-			calib_p.col(i) = (*iterator).flange_data.col(3);
+			calib_p.row(i) = (*iterator).flange_data.col(3).transpose();
 		double conditioned = (calib_p.transpose()*calib_p).determinant();
-		if(conditioned<1e-4)
+		if(std::abs(conditioned)<1e-4)
 			return false;
-		Eigen::Matrix<double,4,1> solution = (calib_p.transpose()*calib_p).inverse()*calib_p.transpose()*calib_p.array().square().matrix();
-		Eigen::Matrix<double,3,1> pivot_point = solution.block<3,1>(0,0);
-		double radius = solution[4];
+		std::cout << (calib_p.array().square().rowwise().sum()-1.0).matrix() << std::endl;
+
+		Eigen::Matrix<double,4,1> solution = (calib_p.transpose()*calib_p).inverse()*(calib_p.transpose())*(calib_p.array().square().rowwise().sum()-1.0).matrix();
+		Eigen::Matrix<double,3,1> pivot_point = solution.block<3,1>(0,0)*0.5;
+
+
+		double radius = std::sqrt(solution[3]+pivot_point.transpose()*pivot_point);
 		if(radius<1e-4)
 			return false;
 
+
 		Eigen::Matrix<double,3,1> average_normal_vectors = Eigen::Matrix<double,3,1>::Zero();
-		for(const auto& pose : calib_p.colwise())
-			average_normal_vectors += (1.0/list_of_recorded_points_for_calibration.size())*(pivot_point-pose.block<3,1>(0,0));
+		iterator = list_of_recorded_points_for_calibration.begin();
+		for(size_t i = 0; i < list_of_recorded_points_for_calibration.size() ; ++i,++iterator){
+			Eigen::Matrix<double,4,1> pivot_point_homogenenous = Eigen::Matrix<double,4,1>::Ones();
+			pivot_point_homogenenous.block<3,1>(0,0) = pivot_point;
+			Eigen::Matrix<double,3,1> to_normalize = ((((*iterator).flange_data).inverse()*pivot_point_homogenenous)).block<3,1>(0,0);
+			to_normalize.normalize();
+			average_normal_vectors += (1.0/list_of_recorded_points_for_calibration.size())*to_normalize;
+		}
+			
 		average_normal_vectors.normalize();
+
 		Eigen::Matrix<double,4,4> calibrated_needle = Eigen::Matrix<double,4,4>::Identity();
-		calibrated_needle.block<3,1>(0,3) = radius*calibrated_needle;
+		calibrated_needle.block<3,1>(0,3) = radius*average_normal_vectors;
 		needle_calibration = calibrated_needle;
+
+
+		calibration_error = 0.0;
+		iterator = list_of_recorded_points_for_calibration.begin();
+		for(size_t i = 0; i < list_of_recorded_points_for_calibration.size() ; ++i,++iterator){
+			Eigen::Matrix<double,4,1> pivot_point_homogenenous = Eigen::Matrix<double,4,1>::Ones();
+			pivot_point_homogenenous.block<3,1>(0,0) = pivot_point;
+			auto supposed_pivot_point = (*iterator).flange_data*needle_calibration;
+			calibration_error += (1.0/list_of_recorded_points_for_calibration.size())*(supposed_pivot_point.col(3)-pivot_point_homogenenous).norm();
+		}
+
+		std::cout << "calibration error: " << calibration_error << std::endl;
+		std::cout << "calibration matrix: \n" << needle_calibration << std::endl;
+
 		return true;
 	}
 

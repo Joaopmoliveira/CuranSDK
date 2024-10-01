@@ -138,6 +138,8 @@ std::vector<std::pair<unsigned int, unsigned int>> segment_points(int min_coordx
 
     //Para cada linha encontra qual é a soma de intensidades máxima e a que bloco corresponde, e a coordenada média desse bloco
     for (int i = 0; i < numValidLines; ++i) {
+            if(intensitySums[i].size()<1)
+            continue;
         //Index do bloco com soma de intensidade maxima
         int maxIntensityIndex = std::distance(intensitySums[i].begin(), std::max_element(intensitySums[i].begin(), intensitySums[i].end()));
         //Inicio e fim do bloco com soma de intensidade maxima

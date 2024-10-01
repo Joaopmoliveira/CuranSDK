@@ -26,6 +26,7 @@
 #include "itkImportImageFilter.h"
 #include "imgui_stdlib.h"
 #include <map>
+#include <string>
 
 /*
 This executable requires:
@@ -53,7 +54,8 @@ auto return_current_time_and_date = []()
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+    auto val = std::chrono::system_clock::now();
+    ss << val.time_since_epoch().count();
     return ss.str();
 };
 
@@ -413,7 +415,7 @@ struct ApplicationState
                                                    nlohmann::json specified_box;
                                                    specified_box["timestamp"] = return_current_time_and_date();
 
-                                                   constexpr size_t maximum_float_size = 125.0e6 * 0.5;
+                                                   constexpr size_t maximum_float_size = 62.5e6 * 0.5;
                                                    double new_spacing = std::cbrt((2 * final_box.extent[0] * 2 * final_box.extent[1] * 2 * final_box.extent[2]) / (maximum_float_size));
 
                                                    std::stringstream ss;
@@ -726,12 +728,33 @@ bool process_message(RobotState &state, size_t protocol_defined_val, std::error_
     return false;
 }
 
+
+
+std::ofstream& get_file_handle(){
+    static bool initializing = true;
+    static std::string pathname = std::string{"joint_recording_"}+return_current_time_and_date()+std::string{".txt"};
+    static std::ofstream out{pathname};
+    if(initializing){
+        if(!out.is_open())
+            std::cout << "failed to create file with name:" << pathname << std::endl;
+        else
+            std::cout << "printing to file" << pathname << std::endl;
+    }
+    initializing = false;
+    return out;
+}
+
 bool process_joint_message(RobotState &state, const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
 {
+    auto& handle = get_file_handle();
     if (er)
         return true;
-    for (size_t joint_index = 0; joint_index < curan::communication::FRIMessage::n_joints; ++joint_index)
+    for (size_t joint_index = 0; joint_index < curan::communication::FRIMessage::n_joints; ++joint_index){
         state.robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, message->angles[joint_index]);
+        handle << message->angles[joint_index] << " ";
+    }
+    handle << "\n";
+    handle.flush();
     return false;
 }
 
@@ -848,5 +871,7 @@ int main(int argc, char **argv)
 
     window.run();
     context.stop();
+    get_file_handle().close();
+    std::cout << "closed file handle";
     return 0;
 }

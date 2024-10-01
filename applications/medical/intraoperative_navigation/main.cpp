@@ -7,9 +7,10 @@ int main()
     try
     {
         Eigen::Matrix<double, 3, 1> desired_target_point;
-        Eigen::Matrix<double, 3, 3> desired_orientation;
         Eigen::Matrix<double, 3, 1> desired_direction;
-        {
+        std::string path_to_moving_image;
+
+        { // reading of the trajectory specification from the fixed volume
             nlohmann::json trajectory_data;
 	        std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
             if(!in.is_open()){
@@ -34,7 +35,39 @@ int main()
             }
             desired_direction = desired_target_point-vectorized_eigen_entry;
             desired_direction.normalize();
+            path_to_moving_image = trajectory_data["moving_image_directory"];
         }
+
+        { // reading of the needle calibration data
+            nlohmann::json needle_calibration_data;
+	        std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/needle_calibration.json");
+            if(!in.is_open()){
+                std::cout << "failure to find the trajectory specification file";
+                return 1;
+            }
+    	    in >> needle_calibration_data;
+            needle_calibration_data["timestamp"];
+            std::stringstream ss;
+            ss << needle_calibration_data["needle_homogeneous_transformation"];
+            std::cout << "reading needle calibration with error: " << needle_calibration_data["optimization_error"];
+        }
+
+        { // reading of the registration data 
+	        nlohmann::json registration_data;
+            std::ifstream in(CURAN_COPIED_RESOURCE_PATH"/registration.json");
+            if(!in.is_open()){
+                std::cout << "failure to find the trajectory specification file";
+                return 1;
+            }
+            std::cout << "registration type: " << registration_data["type"];
+	        std::cout << "timestamp of registration to use" << registration_data["timestamp"];
+	        std::cout << "error of registration" << registration_data["registration_error"];
+            std::stringstream ss;
+        	std::string target = registration_data["moving_to_fixed_transform"];
+            ss << target;
+            auto registration_matrix = curan::utilities::convert_matrix(ss);
+        }
+
         using namespace curan::ui;
         std::unique_ptr<Context> context = std::make_unique<Context>();
 
@@ -42,7 +75,7 @@ int main()
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
         IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
-        InputImageType::Pointer input_volume = load_dicom();
+        InputImageType::Pointer input_volume = load_dicom(CURAN_COPIED_RESOURCE_PATH"/moving_image.mha");
         if (input_volume.GetPointer() == nullptr){
             std::cout << "failed to read the dicom image\n";
             return 1;

@@ -34,6 +34,9 @@ struct ProcessingMessage {
     Eigen::Matrix<double,3,1> entry_point;
     Eigen::Matrix<double,3,1> desired_rotation;
 
+	Eigen::Matrix<double,4,4> registration;
+	Eigen::Matrix<double,4,4> needle_calibration;
+
     std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
 
     double image_size = 1.0;

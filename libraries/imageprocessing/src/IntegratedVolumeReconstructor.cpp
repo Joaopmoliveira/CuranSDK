@@ -504,7 +504,7 @@ itk::Size<3U> IntegratedReconstructor::get_output_size() {
 }
 
 
-bool IntegratedReconstructor::update(){
+bool IntegratedReconstructor::update(size_t skip_texture_update_every_n_cicles){
 	vsg::dvec3 position_of_center_in_global_frame;
     position_of_center_in_global_frame[0] = volumetric_bounding_box.center[0];
     position_of_center_in_global_frame[1] = volumetric_bounding_box.center[1];
@@ -662,11 +662,13 @@ bool IntegratedReconstructor::update(){
 		paste_slice_info.matrix = output_to_origin;
 		curan::image::reconstruction::TemplatedUnoptimizedInsertSlice<input_pixel_type,output_pixel_type,255>(&paste_slice_info);
 	};
-    textureData->dirty();
-    return true;
+	if(counter_of_injected_frames % skip_texture_update_every_n_cicles == 0)
+    	textureData->dirty();
+    ++counter_of_injected_frames;
+	return true;
 }
 
-bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool){
+bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool,size_t skip_texture_update_every_n_cicles){
 	vsg::dvec3 position_of_center_in_global_frame;
 	position_of_center_in_global_frame[0] = volumetric_bounding_box.center[0];
     position_of_center_in_global_frame[1] = volumetric_bounding_box.center[1];
@@ -862,7 +864,9 @@ bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::Th
 		//this blocks until all threads have processed their corresponding block that they need to process
 		cv.wait(unique_,[&](){ return executed==block_divisions.size();});
 	};
-    textureData->dirty();
+	if(counter_of_injected_frames % skip_texture_update_every_n_cicles == 0)
+    	textureData->dirty();
+	++counter_of_injected_frames;
     return true;
 }
 

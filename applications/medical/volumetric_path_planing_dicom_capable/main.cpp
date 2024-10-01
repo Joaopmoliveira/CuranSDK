@@ -128,6 +128,8 @@ int main()
                 trajectory_specification["entry"] = entry.str();
             }
 
+            trajectory_specification["moving_image_directory"] = entry.str();
+
             // write prettified JSON to another file
             std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json");
             o << trajectory_specification;
