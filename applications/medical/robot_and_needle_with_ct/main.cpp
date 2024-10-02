@@ -163,16 +163,13 @@ int main(int argc, char **argv)
 {
     asio::io_context context;
 
-    curan::renderable::ImGUIInterface::Info info_gui{[pointer_to_address = &app_pointer](vsg::CommandBuffer &cb){interface(cb,pointer_to_address);}};
-    auto ui_interface = curan::renderable::ImGUIInterface::make(info_gui);
     curan::renderable::Window::Info info;
     info.api_dump = false;
     info.display = "";
     info.full_screen = false;
     info.is_debug = false;
     info.screen_number = 0;
-    info.title = "Volume Reconstructor";
-    info.imgui_interface = ui_interface;
+    info.title = "Intra Operative Nagivation";
     curan::renderable::Window::WindowSize size{2000, 1800};
     info.window_size = size;
     curan::renderable::Window window{info};
