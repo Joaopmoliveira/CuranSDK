@@ -25,28 +25,30 @@ void signal_handler(int signal)
 	context.stop();
 }
 
-void GetRobotConfiguration(const curan::robotic::WrappedState& wrapped,igtl::Matrix4x4& matrix)
+void GetRobotConfiguration(const curan::robotic::RobotModel<curan::robotic::number_of_joints>& robot,igtl::Matrix4x4& matrix)
 {
-	matrix[0][0] = wrapped.f_end_effector(0, 0);
-	matrix[1][0] = wrapped.f_end_effector(1, 0);
-	matrix[2][0] = wrapped.f_end_effector(2, 0);
+	
 
-	matrix[0][1] = wrapped.f_end_effector(0, 1);
-	matrix[1][1] = wrapped.f_end_effector(1, 1);
-	matrix[2][1] = wrapped.f_end_effector(2, 1);
+	matrix[0][0] = robot.rotation()(0,0);
+	matrix[1][0] = robot.rotation()(1,0);
+	matrix[2][0] = robot.rotation()(2,0);
 
-	matrix[0][2] = wrapped.f_end_effector(0, 2);
-	matrix[1][2] = wrapped.f_end_effector(1, 2);
-	matrix[2][2] = wrapped.f_end_effector(2, 2);
+	matrix[0][1] = robot.rotation()(0,1);
+	matrix[1][1] = robot.rotation()(1,1);
+	matrix[2][1] = robot.rotation()(2,1);
+
+	matrix[0][2] = robot.rotation()(0,2);
+	matrix[1][2] = robot.rotation()(1,2);
+	matrix[2][2] = robot.rotation()(2,2);
 
 	matrix[3][0] = 0.0;
 	matrix[3][1] = 0.0;
 	matrix[3][2] = 0.0;
 	matrix[3][3] = 1.0;
 
-	matrix[0][3] = wrapped.f_end_effector(0, 0)*1000.0;
-	matrix[1][3] = wrapped.f_end_effector(1, 0)*1000.0;
-	matrix[2][3] = wrapped.f_end_effector(2, 0)*1000.0;
+	matrix[0][3] = robot.translation()[0]*1.0e3;
+	matrix[1][3] = robot.translation()[1]*1.0e3;
+	matrix[2][3] = robot.translation()[2]*1.0e3;
 	return;
 }
 
@@ -87,9 +89,8 @@ void start_tracking(std::shared_ptr<curan::communication::Server<curan::communic
 				trackingMsg->GetTrackingDataElement(0, ptr);
 				current_state = shared_state.load();
 				robot_model.update(current_state);
-				curan::robotic::WrappedState wrapped{current_state};	
 				igtl::Matrix4x4 matrix;
-				GetRobotConfiguration(wrapped,matrix);			
+				GetRobotConfiguration(robot_model,matrix);			
 				ptr->SetMatrix(matrix);
 				trackingMsg->SetTimeStamp(ts);
 				trackingMsg->Pack();

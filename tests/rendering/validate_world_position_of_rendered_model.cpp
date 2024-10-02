@@ -42,19 +42,20 @@ int main(){
     window << sphere;
 
     curan::robotic::RobotModel<7> robot_model{"C:/Dev/Curan/resources/models/lbrmed/robot_mass_data.json","C:/Dev/Curan/resources/models/lbrmed/robot_kinematic_limits.json"};
-    auto robotRenderableCasted = robotRenderable->cast<curan::renderable::SequencialLinks>();
 
     double q_current [n_joints] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     double sampletime = 0.001;
     double time = 0.0;
 
     curan::robotic::State state;
+    state.sampleTime = sampletime;
 
     while(window.run_once()) {
 	    for (int i = 0; i < n_joints; i++) {
-            state.q[i] = std::sin(10*time)*1.57;
-            robotRenderableCasted->set(i,q_current[i]);
+            state.q[i] = std::sin(time)*1.57;
+            robotRenderable->cast<curan::renderable::SequencialLinks>()->set(i, state.q[i] );
 	    }
+        robot_model.update(state);
         mat = vsg::translate(robot_model.translation()(0,0),robot_model.translation()(1,0),robot_model.translation()(2,0));
         sphere->update_transform(mat);
         time += sampletime;

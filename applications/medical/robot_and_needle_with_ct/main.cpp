@@ -79,6 +79,7 @@ bool process_tracking_message(RobotState &state, igtl::MessageBase::Pointer val)
 
         igtl::Matrix4x4 image_transform;
         trackingElement->GetMatrix(image_transform);
+
         vsg::dmat4 homogeneous_transformation;
         for (size_t row = 0; row < 4; ++row)
             for (size_t col = 0; col < 4; ++col)
@@ -87,10 +88,11 @@ bool process_tracking_message(RobotState &state, igtl::MessageBase::Pointer val)
         homogeneous_transformation(3, 0) *= 1e-3;
         homogeneous_transformation(3, 1) *= 1e-3;
         homogeneous_transformation(3, 2) *= 1e-3;
-        auto product = homogeneous_transformation * state.needle_calibration;
+
+        auto product = homogeneous_transformation*state.needle_calibration;
 
         if (state.needle_tip.get() != nullptr)
-            state.needle_tip->cast<curan::renderable::Sphere>()->update_transform(product);
+            state.needle_tip->cast<curan::renderable::Sphere>()->update_transform(vsg::translate(product(3,0),product(3,1),product(3,2)));
 
         return true;
     }
@@ -130,8 +132,7 @@ int communication(RobotState &state, asio::io_context &context)
     {
         try
         {
-            if (process_message(state, protocol_defined_val, er, val) || state)
-                context.stop();
+            process_message(state, protocol_defined_val, er, val);
         }
         catch (...)
         {
@@ -140,6 +141,14 @@ int communication(RobotState &state, asio::io_context &context)
     };
     client->connect(lam);
     std::cout << "connecting to client\n";
+
+    igtl::StartTrackingDataMessage::Pointer startTrackingMsg = igtl::StartTrackingDataMessage::New();
+	startTrackingMsg->SetDeviceName("ROBOT");
+	startTrackingMsg->SetResolution(40);
+	startTrackingMsg->SetCoordinateName("Base");
+	startTrackingMsg->Pack();
+	auto to_send = curan::utilities::CaptureBuffer::make_shared(startTrackingMsg->GetPackPointer(), startTrackingMsg->GetPackSize(), startTrackingMsg);
+	client->write(to_send);
 
     asio::ip::tcp::resolver fri_resolver(context);
     auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context, fri_resolver.resolve("localhost", std::to_string(50010)));
@@ -215,16 +224,22 @@ void updateBaseTexture3D(vsg::floatArray3D &image, typename itkImage::Pointer ou
 Eigen::Matrix<double, 4, 4> append_ct_registered_volume_to_scene(RobotState &state, const std::string &path_to_moving_image)
 {
     nlohmann::json registration_data;
-    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/needle_calibration.json");
+    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/registration.json");
 
     if (!in.is_open())
     {
-        std::cout << "failure to open needle calibration configuration file\n";
+        std::cout << "failure to open needle calibration configuration file" << std::endl;
         std::terminate();
+    } else {
+        std::cout << "file is open" << std::endl;
     }
 
+    in >> registration_data;
+
     std::string type = registration_data["type"];
+    std::cout << "registration type: " << type << std::endl;
     std::string timestamp = registration_data["timestamp"];
+    std::cout << "timestamp : " << timestamp << std::endl;
     std::string homogenenous_transformation = registration_data["moving_to_fixed_transform"];
     double error = registration_data["registration_error"];
     std::cout << "using registration estimated using: " << type << std::endl;
@@ -233,8 +248,7 @@ Eigen::Matrix<double, 4, 4> append_ct_registered_volume_to_scene(RobotState &sta
     std::stringstream matrix_strm;
     matrix_strm << homogenenous_transformation;
     auto registration_mat = curan::utilities::convert_matrix(matrix_strm, ',');
-    std::cout << "with the homogeneous matrix :\n"
-              << registration_mat << std::endl;
+    std::cout << "with the homogeneous matrix :\n"<< registration_mat << std::endl;
 
     vsg::dmat4 registration_matrix;
 
@@ -268,8 +282,7 @@ Eigen::Matrix<double, 4, 4> append_ct_registered_volume_to_scene(RobotState &sta
     auto volume = curan::renderable::Volume::make(volumeinfo);
     state.window_pointer << volume;
 
-    volume->cast<curan::renderable::Volume>()->update_volume([=](vsg::floatArray3D &image)
-                                                             { updateBaseTexture3D<itk::Image<double, 3>>(image, output); });
+    volume->cast<curan::renderable::Volume>()->update_volume([=](vsg::floatArray3D &image){ updateBaseTexture3D<itk::Image<double, 3>>(image, output); });
     volume->cast<curan::renderable::Volume>()->update_transform(registration_matrix);
     return registration_mat;
 }
@@ -283,15 +296,23 @@ void append_desired_trajectory_data(RobotState &state)
         std::cout << "failure to find the trajectory specification file";
         std::terminate();
     }
+    
     in >> trajectory_data;
+
+    std::cout << "using json with data:\n" << trajectory_data << std::endl;
+
     std::stringstream ss;
     std::string target = trajectory_data["target"];
+    std::cout << "string target:\n" << target << std::endl;
     ss << target;
-    auto eigen_target = curan::utilities::convert_matrix(ss);
+    auto eigen_target = curan::utilities::convert_matrix(ss,',');
+    std::cout << "target:" << eigen_target << std::endl;
     ss = std::stringstream{};
     std::string entry = trajectory_data["entry"];
+    std::cout << "string target:\n" << entry << std::endl;
     ss << entry;
-    auto eigen_entry = curan::utilities::convert_matrix(ss);
+    auto eigen_entry = curan::utilities::convert_matrix(ss,',');
+    std::cout << "entry:" << eigen_entry << std::endl;
     assert(eigen_target.cols() == 1 && eigen_target.rows() == 3);
     assert(eigen_entry.cols() == 1 && eigen_entry.rows() == 3);
     Eigen::Matrix<double, 4, 1> vectorized_eigen_entry = Eigen::Matrix<double, 4, 1>::Ones();
@@ -301,7 +322,11 @@ void append_desired_trajectory_data(RobotState &state)
         desired_target_point[i] = eigen_target(i, 0);
         vectorized_eigen_entry[i] = eigen_entry(i, 0);
     }
+
+    std::cout << "getting path....";
     std::string path_to_moving_image = trajectory_data["moving_image_directory"];
+    std::cout << path_to_moving_image << std::endl;
+
     auto registration_matrix = append_ct_registered_volume_to_scene(state, path_to_moving_image);
 
     curan::renderable::Sphere::Info infosphere;
@@ -345,16 +370,19 @@ int main(int argc, char **argv)
 
     RobotState robot_state{window};
 
-    std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";
     curan::renderable::SequencialLinks::Info create_info;
     create_info.convetion = vsg::CoordinateConvention::Y_UP;
-    create_info.json_path = robot_path;
+    create_info.json_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";
     create_info.number_of_links = 8;
     robot_state.robot = curan::renderable::SequencialLinks::make(create_info);
     window << robot_state.robot;
 
+    std::cout << "appending needle tip\n";
     append_needle_tip_with_calibration(robot_state);
+    std::cout << "appending desired trajectory\n";
     append_desired_trajectory_data(robot_state);
+
+    std::cout << "appended everything\n";
 
     pool->submit(curan::utilities::Job{"communication with robot", [&]()
                                        { communication(robot_state, context); }});

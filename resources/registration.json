@@ -1,0 +1,6 @@
+{
+    "type": "landmarks",
+    "moving_to_fixed_transform": "1 , 0 , 0 , 0 \n 0 , 1 , 0 , 0 \n 0 , 0 , 1 , 0 \n 0 , 0 , 0 , 1",
+    "registration_error": 0.0,
+    "timestamp": "2024-09-25 14:36:09"
+}
