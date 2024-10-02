@@ -124,7 +124,7 @@ bool process_joint_message(RobotState &state, const size_t &protocol_defined_val
 int communication(RobotState &state, asio::io_context &context)
 {
     asio::ip::tcp::resolver resolver(context);
-    auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(context, resolver.resolve("172.31.1.148", std::to_string(50000)));
+    auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(context, resolver.resolve("localhost", std::to_string(50000)));
 
     auto lam = [&](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val)
     {
@@ -142,7 +142,7 @@ int communication(RobotState &state, asio::io_context &context)
     std::cout << "connecting to client\n";
 
     asio::ip::tcp::resolver fri_resolver(context);
-    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context, fri_resolver.resolve("172.31.1.148", std::to_string(50010)));
+    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context, fri_resolver.resolve("localhost", std::to_string(50010)));
 
     auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
     {
@@ -276,9 +276,6 @@ Eigen::Matrix<double, 4, 4> append_ct_registered_volume_to_scene(RobotState &sta
 
 void append_desired_trajectory_data(RobotState &state)
 {
-    Eigen::Matrix<double, 3, 1> desired_target_point;
-    Eigen::Matrix<double, 3, 1> desired_direction;
-
     nlohmann::json trajectory_data;
     std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json");
     if (!in.is_open())
@@ -297,7 +294,8 @@ void append_desired_trajectory_data(RobotState &state)
     auto eigen_entry = curan::utilities::convert_matrix(ss);
     assert(eigen_target.cols() == 1 && eigen_target.rows() == 3);
     assert(eigen_entry.cols() == 1 && eigen_entry.rows() == 3);
-    Eigen::Matrix<double, 3, 1> vectorized_eigen_entry;
+    Eigen::Matrix<double, 4, 1> vectorized_eigen_entry = Eigen::Matrix<double, 4, 1>::Ones();
+    Eigen::Matrix<double, 4, 1> desired_target_point = Eigen::Matrix<double, 4, 1>::Ones();
     for (size_t i = 0; i < 3; ++i)
     {
         desired_target_point[i] = eigen_target(i, 0);
@@ -306,26 +304,26 @@ void append_desired_trajectory_data(RobotState &state)
     std::string path_to_moving_image = trajectory_data["moving_image_directory"];
     auto registration_matrix = append_ct_registered_volume_to_scene(state, path_to_moving_image);
 
+    curan::renderable::Sphere::Info infosphere;
+    infosphere.builder = vsg::Builder::create();
+    infosphere.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
+    infosphere.geomInfo.dx = vsg::vec3(0.01f, 0.0, 0.0);
+    infosphere.geomInfo.dy = vsg::vec3(0.0, 0.01f, 0.0);
+    infosphere.geomInfo.dz = vsg::vec3(0.0, 0.0, 0.01f);
+    infosphere.stateInfo.blending = true;
+
     { // we define a point for the entry of the brain
-        curan::renderable::Sphere::Info infosphere;
-        infosphere.builder = vsg::Builder::create();
-        infosphere.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
-        infosphere.geomInfo.dx = vsg::vec3(0.01f, 0.0, 0.0);
-        infosphere.geomInfo.dy = vsg::vec3(0.0, 0.01f, 0.0);
-        infosphere.geomInfo.dz = vsg::vec3(0.0, 0.0, 0.01f);
-        infosphere.stateInfo.blending = true;
         auto entry_point = curan::renderable::Sphere::make(infosphere);
+        auto entry_point_in_world_coordiantes = registration_matrix*vectorized_eigen_entry;
+        entry_point->cast<curan::renderable::Sphere>()->update_transform(vsg::translate(entry_point_in_world_coordiantes[0],entry_point_in_world_coordiantes[1],entry_point_in_world_coordiantes[2]));
+        state.window_pointer << entry_point;
     }
 
     { // we define a point for the target of the brain
-        curan::renderable::Sphere::Info infosphere;
-        infosphere.builder = vsg::Builder::create();
-        infosphere.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
-        infosphere.geomInfo.dx = vsg::vec3(0.01f, 0.0, 0.0);
-        infosphere.geomInfo.dy = vsg::vec3(0.0, 0.01f, 0.0);
-        infosphere.geomInfo.dz = vsg::vec3(0.0, 0.0, 0.01f);
-        infosphere.stateInfo.blending = true;
-        auto entry_point = curan::renderable::Sphere::make(infosphere);
+        auto target = curan::renderable::Sphere::make(infosphere);
+        auto target_point_in_world_coordiantes = registration_matrix*desired_target_point;
+        target->cast<curan::renderable::Sphere>()->update_transform(vsg::translate(target_point_in_world_coordiantes[0],target_point_in_world_coordiantes[1],target_point_in_world_coordiantes[2]));
+        state.window_pointer << target;
     }
 }
 
