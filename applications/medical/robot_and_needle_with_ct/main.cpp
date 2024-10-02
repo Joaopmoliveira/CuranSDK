@@ -2,6 +2,9 @@
 #include "rendering/Renderable.h"
 #include "rendering/SequencialLinks.h"
 #include "rendering/ImGUIInterface.h"
+#include "rendering/Sphere.h"
+#include "rendering/Volume.h"
+
 #include <iostream>
 #include "utils/TheadPool.h"
 #include "utils/Reader.h"
@@ -27,26 +30,20 @@
 #include "imgui_stdlib.h"
 #include <map>
 #include <string>
+#include "communication/ProtoIGTL.h"
 
-
-class RobotState{
+class RobotState
+{
     std::atomic<bool> commit_senpuko = false;
-    std::atomic<bool> f_record_frame = false;
-    std::atomic<bool> f_regenerate_integrated_reconstructor_frame = false;
-    std::atomic<bool> f_inject_frame = false;
 
 public:
-    vsg::ref_ptr<curan::renderable::Renderable> robot;
     curan::renderable::Window &window_pointer;
-    curan::image::BoundingBox4Reconstruction box_class;
-    vsg::ref_ptr<curan::renderable::Renderable> rendered_box;
-    curan::image::IntegratedReconstructor::Info integrated_volume_create_info;
-    vsg::ref_ptr<curan::renderable::Renderable> integrated_volume;
-    std::optional<vsg::ref_ptr<curan::renderable::Renderable>> dynamic_texture;
-    vsg::dmat4 calibration_matrix;
-    
 
-    RobotState(curan::renderable::Window &wind) : window_pointer{wind},integrated_volume_create_info{{{0.1,0.1,0.1}}, {{0,0,0}}, {{10,10,10}}, {{{1,0,0},{0,1,0},{0,0,1}}}}
+    vsg::ref_ptr<curan::renderable::Renderable> robot;
+    vsg::ref_ptr<curan::renderable::Renderable> needle_tip;
+    vsg::dmat4 needle_calibration;
+
+    RobotState(curan::renderable::Window &wind) : window_pointer{wind}
     {
     }
 
@@ -64,63 +61,70 @@ public:
     {
         commit_senpuko.store(value);
     }
+};
 
-    enum RecordStatus
+bool process_tracking_message(RobotState &state, igtl::MessageBase::Pointer val)
+{
+    igtl::TrackingDataMessage::Pointer trackingData;
+    trackingData = igtl::TrackingDataMessage::New();
+    trackingData->Copy(val);
+    int c = trackingData->Unpack(1);
+    if (c & igtl::MessageHeader::UNPACK_BODY) // if CRC check is OK
     {
-        START_RECORDING_FOR_BOX_UPDATE,
-        NOT_RECORDING
-    };
+        int nElements = trackingData->GetNumberOfTrackingDataElements();
+        if (nElements != 1)
+            throw std::runtime_error("there are not enough tracking elements in the incoming message");
+        igtl::TrackingDataElement::Pointer trackingElement;
+        trackingData->GetTrackingDataElement(0, trackingElement);
 
-    void record_frames(RecordStatus status)
-    {
-        //std::cout << "flag \"record_frames\" updated!!!";
-        f_record_frame.store(status == START_RECORDING_FOR_BOX_UPDATE);
+        igtl::Matrix4x4 image_transform;
+        trackingElement->GetMatrix(image_transform);
+        vsg::dmat4 homogeneous_transformation;
+        for (size_t row = 0; row < 4; ++row)
+            for (size_t col = 0; col < 4; ++col)
+                homogeneous_transformation(col, row) = image_transform[row][col];
+
+        homogeneous_transformation(3, 0) *= 1e-3;
+        homogeneous_transformation(3, 1) *= 1e-3;
+        homogeneous_transformation(3, 2) *= 1e-3;
+        auto product = homogeneous_transformation * state.needle_calibration;
+
+        if (state.needle_tip.get() != nullptr)
+            state.needle_tip->cast<curan::renderable::Sphere>()->update_transform(product);
+
+        return true;
     }
+    return false;
+}
 
-    bool record_frames()
+std::map<std::string, std::function<bool(RobotState &state, igtl::MessageBase::Pointer val)>> openigtlink_callbacks{
+    {"TDATA", process_tracking_message}};
+
+bool process_message(RobotState &state, size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val)
+{
+    assert(val.IsNotNull());
+    if (er)
+        return true;
+    if (auto search = openigtlink_callbacks.find(val->GetMessageType()); search != openigtlink_callbacks.end())
+        search->second(state, val);
+    return false;
+}
+
+bool process_joint_message(RobotState &state, const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
+{
+    if (er)
+        return true;
+    for (size_t joint_index = 0; joint_index < curan::communication::FRIMessage::n_joints; ++joint_index)
     {
-        return f_record_frame.load();
+        state.robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, message->angles[joint_index]);
     }
-
-    enum GenerateStatus
-    {
-        GENERATE_VOLUME,
-        ALREADY_GENERATED
-    };
-
-    void generate_volume(GenerateStatus status)
-    {
-        //std::cout << "flag \"generate_volume\" updated!!!";
-        f_regenerate_integrated_reconstructor_frame.store(status == GENERATE_VOLUME);
-    }
-
-    bool generate_volume()
-    {
-        return f_regenerate_integrated_reconstructor_frame.load();
-    }
-
-    enum InjectVolumeStatus
-    {
-        INJECT_FRAME,
-        FREEZE_VOLUME
-    };
-
-    void inject_frame(InjectVolumeStatus status)
-    {
-        //std::cout << "flag \"inject_frame\" updated!!!";
-        f_inject_frame.store(status == INJECT_FRAME);
-    }
-
-    bool inject_frame()
-    {
-        return f_inject_frame.load();
-    }
+    return false;
 };
 
 int communication(RobotState &state, asio::io_context &context)
 {
     asio::ip::tcp::resolver resolver(context);
-    auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(context,resolver.resolve("172.31.1.148", std::to_string(50000)));
+    auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(context, resolver.resolve("172.31.1.148", std::to_string(50000)));
 
     auto lam = [&](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val)
     {
@@ -136,9 +140,9 @@ int communication(RobotState &state, asio::io_context &context)
     };
     client->connect(lam);
     std::cout << "connecting to client\n";
-    
+
     asio::ip::tcp::resolver fri_resolver(context);
-    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context,fri_resolver.resolve("172.31.1.148", std::to_string(50010)));
+    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context, fri_resolver.resolve("172.31.1.148", std::to_string(50010)));
 
     auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
     {
@@ -153,14 +157,181 @@ int communication(RobotState &state, asio::io_context &context)
         }
     };
     fri_client->connect(lam_fri);
-    
+
     context.run();
     std::cout << "stopped connecting to client\n";
     return 0;
 }
 
+void append_needle_tip_with_calibration(RobotState &state)
+{
+    nlohmann::json needle_calibration_data;
+    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/needle_calibration.json");
+
+    if (!in.is_open())
+    {
+        std::cout << "failure to open needle calibration configuration file\n";
+        std::terminate();
+    }
+
+    in >> needle_calibration_data;
+    std::string timestamp = needle_calibration_data["timestamp"];
+    std::string homogenenous_transformation = needle_calibration_data["needle_homogeneous_transformation"];
+    double error = needle_calibration_data["optimization_error"];
+    std::printf("Using calibration with average error of : %f\n on the date ", error);
+    std::cout << timestamp << std::endl;
+    std::stringstream matrix_strm;
+    matrix_strm << homogenenous_transformation;
+    auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
+    std::cout << "with the homogeneous matrix :\n"
+              << calibration_matrix << std::endl;
+
+    curan::renderable::Sphere::Info infosphere;
+    infosphere.builder = vsg::Builder::create();
+    infosphere.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
+    infosphere.geomInfo.dx = vsg::vec3(0.01f, 0.0, 0.0);
+    infosphere.geomInfo.dy = vsg::vec3(0.0, 0.01f, 0.0);
+    infosphere.geomInfo.dz = vsg::vec3(0.0, 0.0, 0.01f);
+    infosphere.stateInfo.blending = true;
+    state.needle_tip = curan::renderable::Sphere::make(infosphere);
+
+    for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
+        for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
+            state.needle_calibration(col, row) = calibration_matrix(row, col);
+
+    state.needle_tip->update_transform(state.needle_calibration);
+    state.window_pointer << state.needle_tip;
+}
+
+template <typename itkImage>
+void updateBaseTexture3D(vsg::floatArray3D &image, typename itkImage::Pointer out)
+{
+    typename itk::ImageRegionIteratorWithIndex<itkImage> outputIt(out, out->GetRequestedRegion());
+    for (outputIt.GoToBegin(); !outputIt.IsAtEnd(); ++outputIt)
+        image.set(outputIt.GetIndex()[0], outputIt.GetIndex()[1], outputIt.GetIndex()[2], outputIt.Get());
+    image.dirty();
+}
+
+Eigen::Matrix<double, 4, 4> append_ct_registered_volume_to_scene(RobotState &state, const std::string &path_to_moving_image)
+{
+    nlohmann::json registration_data;
+    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/needle_calibration.json");
+
+    if (!in.is_open())
+    {
+        std::cout << "failure to open needle calibration configuration file\n";
+        std::terminate();
+    }
+
+    std::string type = registration_data["type"];
+    std::string timestamp = registration_data["timestamp"];
+    std::string homogenenous_transformation = registration_data["moving_to_fixed_transform"];
+    double error = registration_data["registration_error"];
+    std::cout << "using registration estimated using: " << type << std::endl;
+    std::printf("Using registration with average error of : %f\n on the date ", error);
+    std::cout << timestamp << std::endl;
+    std::stringstream matrix_strm;
+    matrix_strm << homogenenous_transformation;
+    auto registration_mat = curan::utilities::convert_matrix(matrix_strm, ',');
+    std::cout << "with the homogeneous matrix :\n"
+              << registration_mat << std::endl;
+
+    vsg::dmat4 registration_matrix;
+
+    for (Eigen::Index row = 0; row < registration_mat.rows(); ++row)
+        for (Eigen::Index col = 0; col < registration_mat.cols(); ++col)
+            registration_matrix(col, row) = registration_mat(row, col);
+
+    auto fixedImageReader = itk::ImageFileReader<itk::Image<double, 3>>::New();
+    fixedImageReader->SetFileName(path_to_moving_image);
+
+    // Rescale and cast the volume to use with the correct MaskPixelType (0-255)
+    auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double, 3>, itk::Image<double, 3>>::New();
+    rescale->SetInput(fixedImageReader->GetOutput());
+    rescale->SetOutputMinimum(0);
+    rescale->SetOutputMaximum(1.0);
+
+    rescale->Update();
+
+    itk::Image<double, 3>::Pointer output = rescale->GetOutput();
+    auto region = output->GetLargestPossibleRegion();
+    auto size_itk = region.GetSize();
+    auto spacing = output->GetSpacing();
+
+    curan::renderable::Volume::Info volumeinfo;
+    volumeinfo.width = size_itk.GetSize()[0];
+    volumeinfo.height = size_itk.GetSize()[1];
+    volumeinfo.depth = size_itk.GetSize()[2];
+    volumeinfo.spacing_x = spacing[0];
+    volumeinfo.spacing_y = spacing[1];
+    volumeinfo.spacing_z = spacing[2];
+    auto volume = curan::renderable::Volume::make(volumeinfo);
+    state.window_pointer << volume;
+
+    volume->cast<curan::renderable::Volume>()->update_volume([=](vsg::floatArray3D &image)
+                                                             { updateBaseTexture3D<itk::Image<double, 3>>(image, output); });
+    volume->cast<curan::renderable::Volume>()->update_transform(registration_matrix);
+    return registration_mat;
+}
+
+void append_desired_trajectory_data(RobotState &state)
+{
+    Eigen::Matrix<double, 3, 1> desired_target_point;
+    Eigen::Matrix<double, 3, 1> desired_direction;
+
+    nlohmann::json trajectory_data;
+    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json");
+    if (!in.is_open())
+    {
+        std::cout << "failure to find the trajectory specification file";
+        std::terminate();
+    }
+    in >> trajectory_data;
+    std::stringstream ss;
+    std::string target = trajectory_data["target"];
+    ss << target;
+    auto eigen_target = curan::utilities::convert_matrix(ss);
+    ss = std::stringstream{};
+    std::string entry = trajectory_data["entry"];
+    ss << entry;
+    auto eigen_entry = curan::utilities::convert_matrix(ss);
+    assert(eigen_target.cols() == 1 && eigen_target.rows() == 3);
+    assert(eigen_entry.cols() == 1 && eigen_entry.rows() == 3);
+    Eigen::Matrix<double, 3, 1> vectorized_eigen_entry;
+    for (size_t i = 0; i < 3; ++i)
+    {
+        desired_target_point[i] = eigen_target(i, 0);
+        vectorized_eigen_entry[i] = eigen_entry(i, 0);
+    }
+    std::string path_to_moving_image = trajectory_data["moving_image_directory"];
+    auto registration_matrix = append_ct_registered_volume_to_scene(state, path_to_moving_image);
+
+    { // we define a point for the entry of the brain
+        curan::renderable::Sphere::Info infosphere;
+        infosphere.builder = vsg::Builder::create();
+        infosphere.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
+        infosphere.geomInfo.dx = vsg::vec3(0.01f, 0.0, 0.0);
+        infosphere.geomInfo.dy = vsg::vec3(0.0, 0.01f, 0.0);
+        infosphere.geomInfo.dz = vsg::vec3(0.0, 0.0, 0.01f);
+        infosphere.stateInfo.blending = true;
+        auto entry_point = curan::renderable::Sphere::make(infosphere);
+    }
+
+    { // we define a point for the target of the brain
+        curan::renderable::Sphere::Info infosphere;
+        infosphere.builder = vsg::Builder::create();
+        infosphere.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
+        infosphere.geomInfo.dx = vsg::vec3(0.01f, 0.0, 0.0);
+        infosphere.geomInfo.dy = vsg::vec3(0.0, 0.01f, 0.0);
+        infosphere.geomInfo.dz = vsg::vec3(0.0, 0.0, 0.01f);
+        infosphere.stateInfo.blending = true;
+        auto entry_point = curan::renderable::Sphere::make(infosphere);
+    }
+}
+
 int main(int argc, char **argv)
 {
+    auto pool = curan::utilities::ThreadPool::create(3);
     asio::io_context context;
 
     curan::renderable::Window::Info info;
@@ -173,50 +344,24 @@ int main(int argc, char **argv)
     curan::renderable::Window::WindowSize size{2000, 1800};
     info.window_size = size;
     curan::renderable::Window window{info};
-    
-    nlohmann::json needle_calibration_data;
-    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json");
 
-    if(!in.is_open()){
-        std::cout << "failure to open configuration file\n";
-        return 1;
-    }
+    RobotState robot_state{window};
 
-    in >> needle_calibration_data;
-    std::string timestamp = needle_calibration_data["timestamp"];
-    std::string homogenenous_transformation = needle_calibration_data["homogeneous_transformation"];
-    double error = needle_calibration_data["optimization_error"];
-    std::printf("Using calibration with average error of : %f\n on the date ", error);
-    std::cout << timestamp << std::endl;
-    std::stringstream matrix_strm;
-    matrix_strm << homogenenous_transformation;
-    auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
-    std::cout << "with the homogeneous matrix :\n"
-              << calibration_matrix << std::endl;
-    for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
-        for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
-            application_state.robot_state.calibration_matrix(col, row) = calibration_matrix(row, col);
-    
-   
     std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";
     curan::renderable::SequencialLinks::Info create_info;
     create_info.convetion = vsg::CoordinateConvention::Y_UP;
     create_info.json_path = robot_path;
     create_info.number_of_links = 8;
-    application_state.robot_state.robot = curan::renderable::SequencialLinks::make(create_info);
-    window << application_state.robot_state.robot;
+    robot_state.robot = curan::renderable::SequencialLinks::make(create_info);
+    window << robot_state.robot;
 
-    application_state.pool->submit(curan::utilities::Job{"communication with robot",[&](){communication(application_state.robot_state,context);}});
-    application_state.pool->submit(curan::utilities::Job{"reconstruct volume",[&](){
-        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(8);
-        while(!context.stopped()){
-            if(application_state.robot_state.inject_frame() && application_state.robot_state.integrated_volume.get()!=nullptr)
-                application_state.robot_state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->multithreaded_update(reconstruction_thread_pool);
-        }
-    }});
+    append_needle_tip_with_calibration(robot_state);
+    append_desired_trajectory_data(robot_state);
+
+    pool->submit(curan::utilities::Job{"communication with robot", [&]()
+                                       { communication(robot_state, context); }});
 
     window.run();
     context.stop();
-    std::cout << "closed file handle";
     return 0;
 }

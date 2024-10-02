@@ -404,3 +404,22 @@ vsgImGui::vsgImGui
 ${OPERATING_SYSTEM_REQUIRMENTS}
 )
 
+
+add_executable(test_render_volume_from_itk
+test_render_volume_from_itk.cpp
+)
+
+target_compile_definitions(test_render_volume_from_itk PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_render_volume_from_itk PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_render_volume_from_itk
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
+${ITK_LIBRARIES}
+)
+
+
