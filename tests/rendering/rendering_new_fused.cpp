@@ -139,7 +139,8 @@ void showOverlayErrorWindow(){
     ImGui::Dummy(padding); ImGui::SameLine();
     ImGui::TextColored(ImVec4(1,0,0,1),"Operation already in progress...");
     ImGui::Dummy(padding); ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1,0,0,1),operation_description.data());
+    const char* data = operation_description.data();
+    ImGui::TextColored(ImVec4(1,0,0,1),data);
     ImGui::Dummy(padding); ImGui::SameLine();
     if(ImGui::Button("Ok!")){
         show_error = false;
@@ -154,7 +155,8 @@ void showOverlaySuccessWindow(){
     ImGui::Dummy(padding); ImGui::SameLine();
     ImGui::TextColored(ImVec4(0,1,0,1),"Operation finished");
     ImGui::Dummy(padding); ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0,1,0,1),success_description.data());
+    const char* data = success_description.data();
+    ImGui::TextColored(ImVec4(0,1,0,1),data);
     ImGui::Dummy(padding); ImGui::SameLine();
     if(ImGui::Button("Ok!")){
         show_sucess = false;

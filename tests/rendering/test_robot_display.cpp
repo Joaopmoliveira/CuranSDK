@@ -85,6 +85,7 @@ std::optional<Num> read_number(std::istream & i){
     else if (ec == std::errc::result_out_of_range)
         return std::nullopt;   
 
+    return std::nullopt;
 }
 
 std::istream & operator>>(std::istream & i,joint_token & d){

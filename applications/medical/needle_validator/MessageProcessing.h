@@ -83,18 +83,18 @@ public:
 		list_of_recorded_points = std::list<ObservationEigenFormat>{};
 	}
 
-	inline std::optional<Eigen::Matrix<double,4,Eigen::Dynamic>> world_points(){
+	inline std::optional<Eigen::Matrix<double,3,Eigen::Dynamic>> world_points(){
 		std::lock_guard<std::mutex> g{mut};
 		if(list_of_recorded_points.size()==0)
 			return std::nullopt;
-		Eigen::Matrix<double,4,Eigen::Dynamic> world_p = Eigen::Matrix<double,4,Eigen::Dynamic>::Ones(4,list_of_recorded_points.size());
+		Eigen::Matrix<double,3,Eigen::Dynamic> world_p = Eigen::Matrix<double,3,Eigen::Dynamic>::Ones(4,list_of_recorded_points.size());
 		auto iterator = list_of_recorded_points.begin();
 		for(size_t i = 0; i < list_of_recorded_points.size() ; ++i,++iterator)
-			world_p.col(i) = (*iterator).flange_data.col(3);
+			world_p.col(i) = (*iterator).flange_data.col(3).block<3,1>(0,0);
 		return world_p;
 	}
 
-	inline bool calibrate_needle(){
+	[[nodiscard]] inline bool calibrate_needle(){
 		std::lock_guard<std::mutex> g{mut};
 		if(list_of_recorded_points_for_calibration.size()==0)
 			return false;

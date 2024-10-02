@@ -5,7 +5,7 @@
 #include "itkImageDuplicator.h"
 
 template <typename TImage,typename InclusionPolicy>
-std::tuple<typename TImage::Pointer,typename TImage::Pointer> DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
+std::tuple<typename TImage::Pointer,itk::Image<unsigned char,3>::Pointer> DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
 {
     typename TImage::Pointer output = TImage::New();
     output->SetRegions(input->GetLargestPossibleRegion());
@@ -14,7 +14,7 @@ std::tuple<typename TImage::Pointer,typename TImage::Pointer> DeepCopyWithInclus
     output->SetOrigin(input->GetOrigin());
     output->Allocate();
 
-    itk::Image<unsigned char>::Pointer mask = itk::Image<unsigned char>::New();
+    auto mask = itk::Image<unsigned char,3>::New();
     mask->SetRegions(input->GetLargestPossibleRegion());
     mask->SetDirection(input->GetDirection());
     mask->SetSpacing(input->GetSpacing());
@@ -23,7 +23,7 @@ std::tuple<typename TImage::Pointer,typename TImage::Pointer> DeepCopyWithInclus
 
     itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
     itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
-    itk::ImageRegionIterator<itk::Image<unsigned char>> maskIterator(mask, mask->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<itk::Image<unsigned char,3>> maskIterator(mask, mask->GetLargestPossibleRegion());
 
     for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator,++maskIterator ){
         if(inclusion_policy((double)(inputIterator.GetIndex()[0]),(double)(inputIterator.GetIndex()[1]),(double)(inputIterator.GetIndex()[2]))){
@@ -174,24 +174,23 @@ int main()
         };
 
         auto [masked_output_image,mask_to_use] = DeepCopyWithInclusionPolicy<ImageType>(evaluate_if_pixel_inside_mask,data_application.map[ORIGINAL_VOLUME].get_volume());
-        using WriterType = itk::ImageFileWriter<ImageType>;
 
         {
-            auto writer = WriterType::New();
+            auto writer = itk::ImageFileWriter<ImageType>::New();
             writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/original_volume.mha");
             writer->SetInput(data_application.map[ORIGINAL_VOLUME].get_volume());
             writer->Update();
         }
 
         {
-            auto writer = WriterType::New();
+            auto writer = itk::ImageFileWriter<ImageType>::New();
             writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/masked_volume.mha");
             writer->SetInput(masked_output_image);
             writer->Update();
         }
 
         {
-            auto writer = WriterType::New();
+            auto writer = itk::ImageFileWriter<itk::Image<unsigned char,3>>::New();
             writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/mask.mha");
             writer->SetInput(mask_to_use);
             writer->Update();

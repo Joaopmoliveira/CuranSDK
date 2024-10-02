@@ -172,12 +172,12 @@ imageprocessing
 ${ITK_LIBRARIES}
 )
 
-add_executable(resample_point_cloud_fance_algorithm resample_point_cloud_fance_algorithm.cpp)
+add_executable(test_landmark_registration landmark_registration.cpp)
 
-target_compile_definitions(resample_point_cloud_fance_algorithm PRIVATE vsgXchange_FOUND)
-target_compile_definitions(resample_point_cloud_fance_algorithm PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_compile_definitions(test_landmark_registration PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_landmark_registration PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-target_link_libraries(resample_point_cloud_fance_algorithm
+target_link_libraries(test_landmark_registration
 PUBLIC
 imageprocessing
 ${ITK_LIBRARIES}

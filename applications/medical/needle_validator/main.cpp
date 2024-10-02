@@ -51,7 +51,6 @@ std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success, 
     return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
 }
 
-
 curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<ProcessingMessage> &processing, curan::ui::IconResources &resources, bool registration_possible_to_solve = false)
 {
     using namespace curan::ui;
@@ -81,7 +80,7 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
 
     auto button_record_pose = Button::make("Record Pose", resources);
     button_record_pose->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
-    button_record_pose->add_press_call([processing,&resources](Button *button, Press press, ConfigDraw *config)
+    button_record_pose->add_press_call([processing, &resources](Button *button, Press press, ConfigDraw *config)
                                        {
             if(config!=nullptr && config->stack_page!=nullptr)
                 config->stack_page->stack(success_overlay("recorded word point",resources));
@@ -113,7 +112,7 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
         solve_registration->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(300, 180));
         solve_registration->add_press_call([processing, &resources](Button *button, Press press, ConfigDraw *config)
                                            {
-            Eigen::Matrix<double,3,Eigen::Dynamic> fixed_points = processing->landmarks;
+            Eigen::Matrix<double,3,Eigen::Dynamic> moving_points = processing->landmarks;
 
             auto points = processing->world_points();
             if (!points){
@@ -122,7 +121,7 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
                 return;
             }
 
-            Eigen::Matrix<double,3,Eigen::Dynamic> moving_points = *points;
+            Eigen::Matrix<double,3,Eigen::Dynamic> fixed_points = *points;
 
             Eigen::Matrix<double,3,1> centroid_fixed_points = fixed_points.rowwise().mean();
             Eigen::Matrix<double,3,1> centroid_moving_points = moving_points.rowwise().mean();
@@ -153,19 +152,26 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
                 return;
             }
 
-            Eigen::Matrix<double,3,1> translation_fixed_to_moving = centroid_moving_points-rotation_fixed_to_moving*centroid_fixed_points;   
+            Eigen::Matrix<double, 3, 1> translation_fixed_to_moving = centroid_moving_points - rotation_fixed_to_moving * centroid_fixed_points;
 
-            Eigen::Matrix<double,4,4> registration_solution =  Eigen::Matrix<double,4,4>::Identity();
-            registration_solution.block<3,3>(0,0) = rotation_fixed_to_moving.transpose();
-            registration_solution.block<3,1>(0,3) = -rotation_fixed_to_moving.transpose()*translation_fixed_to_moving;
+            Eigen::Matrix<double, 4, 4> registration_solution = Eigen::Matrix<double, 4, 4>::Identity();
+            registration_solution.block<3, 3>(0, 0) = rotation_fixed_to_moving.transpose();
+            registration_solution.block<3, 1>(0, 3) = -rotation_fixed_to_moving.transpose() * translation_fixed_to_moving;
 
-            Eigen::Matrix<double,3,Eigen::Dynamic> aligned_moving_points = rotation_fixed_to_moving.transpose()*moving_points-rotation_fixed_to_moving.transpose()*translation_fixed_to_moving;
+            Eigen::Matrix<double, 3, Eigen::Dynamic> aligned_moving_points =  moving_points;
+
+            for(size_t col = 0; col <aligned_moving_points.cols() ; ++col)
+                aligned_moving_points.col(col) = (rotation_fixed_to_moving.transpose()*aligned_moving_points.col(col)- rotation_fixed_to_moving.transpose() * translation_fixed_to_moving).eval();
+            
             auto error = (aligned_moving_points-fixed_points).array().square().rowwise().sum().sqrt().colwise().sum();
 
             if(config!=nullptr && config->stack_page!=nullptr)
                 config->stack_page->stack(success_overlay("performed registration",resources));    
             std::cout << "registration error: " << error << std::endl; 
-        });
+            
+            processing->registration_solution = std::make_tuple(registration_solution,error(0,0));
+            
+            });
     }
 
     processing->connection_button = start_connection.get();
@@ -178,7 +184,7 @@ curan::ui::Page create_main_page(ConfigurationData &data, std::shared_ptr<Proces
         buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL, *image);
     else
         buttoncontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
-    
+
     if (solve_registration)
         *buttoncontainer << std::move(start_connection) << std::move(button_record_pose) << std::move(button_record_calibrate) << std::move(button_trigger_calibration) << std::move(solve_registration);
     else
@@ -207,26 +213,27 @@ int main(int argc, char *argv[])
     DisplayParams param{std::move(context)};
     std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-
     bool previous_calibration = false;
-    double calibration_error ;
-    Eigen::Matrix<double,4,4> needle_calibration = Eigen::Matrix<double,4,4>::Identity();
+    double calibration_error;
+    Eigen::Matrix<double, 4, 4> needle_calibration = Eigen::Matrix<double, 4, 4>::Identity();
     bool specified_landmarks = false;
-    Eigen::Matrix<double, 4, Eigen::Dynamic> landmarks;
+    Eigen::Matrix<double, 3, Eigen::Dynamic> landmarks;
 
     if (argc > 1)
     {
         std::ifstream in(argv[1]);
-        if(!in.is_open()){
+        if (!in.is_open())
+        {
             std::cout << "failure to read the specification file";
             return 1;
         }
         nlohmann::json needle_calibration_specification;
-        if (needle_calibration_specification.contains("previous_calibration_file"))
+        in >> needle_calibration_specification;
+        if (needle_calibration_specification.contains("previous_calibration_file_path"))
         {
             previous_calibration = true;
             std::cout << "reading previous calibration...\n";
-            std::string path_output_location = needle_calibration_specification["previous_calibration_file"];
+            std::string path_output_location = needle_calibration_specification["previous_calibration_file_path"];
             std::ifstream in{path_output_location};
             if (!in.is_open())
             {
@@ -244,23 +251,24 @@ int main(int argc, char *argv[])
 
             std::stringstream matrix_strm;
             matrix_strm << homogenenous_transformation;
-            std::cout << "string stream: " << matrix_strm.str();
             auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
 
-            std::cout << "with the homogeneous matrix :\n" << calibration_matrix << std::endl;
             for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
                 for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
                     needle_calibration(row, col) = calibration_matrix(row, col);
-            std::cout << "using calibration:\n" << needle_calibration << std::endl;
-        } else{
+            std::cout << "using calibration:\n"
+                      << needle_calibration << std::endl;
+        }
+        else
+        {
             std::cout << "no previous calibration was specified\n";
         }
 
-        if (needle_calibration_specification.contains("landmarks_to_register"))
+        if (needle_calibration_specification.contains("landmarks_to_register_path"))
         {
             specified_landmarks = true;
             std::cout << "reading landmarks to register\n";
-            std::string path_output_location = needle_calibration_specification["landmarks_to_register"];
+            std::string path_output_location = needle_calibration_specification["landmarks_to_register_path"];
             std::ifstream in{path_output_location};
             if (!in.is_open())
             {
@@ -270,32 +278,33 @@ int main(int argc, char *argv[])
             nlohmann::json json_landmarks;
             in >> json_landmarks;
             std::cout << "parsed json.\n";
-            std::string homogenenous_transformation = json_landmarks["landmarks"];
+            std::string homogenenous_transformation = json_landmarks["landmarks_to_register"];
             std::stringstream stream;
             stream << homogenenous_transformation;
-            std::cout << "string stream: " << stream.str();
             auto temp_landmarks = curan::utilities::convert_matrix(stream, ',');
 
             std::cout << "with the homogeneous matrix :\n"
                       << landmarks << std::endl;
 
-            if( temp_landmarks.cols()<3){
+            if (temp_landmarks.cols() < 3)
+            {
                 std::cout << "to solve the registration problem you need at least 3 points\n";
                 return 1;
             }
-               
-            landmarks = Eigen::Matrix<double, 4, Eigen::Dynamic>::Ones(4, temp_landmarks.cols());
+
+            landmarks = Eigen::Matrix<double, 3, Eigen::Dynamic>::Ones(3, temp_landmarks.cols());
 
             for (Eigen::Index row = 0; row < temp_landmarks.rows(); ++row)
                 for (Eigen::Index col = 0; col < temp_landmarks.cols(); ++col)
                     landmarks(row, col) = temp_landmarks(row, col);
-            std::cout << "using calibration:\n" << landmarks << std::endl;
-        } else{
+            std::cout << "using landmarks to register:\n"
+                      << landmarks << std::endl;
+        }
+        else
+        {
             std::cout << "no landmark registration was requested\n";
         }
     }
-
-    return 0;
 
     std::shared_ptr<ProcessingMessage> processing;
     auto page = create_main_page(data, processing, resources, specified_landmarks);
@@ -345,17 +354,17 @@ int main(int argc, char *argv[])
     };
 
     auto date = return_current_time_and_date();
+    Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision, 0, ", ", ", ", "", "", " ", "");
 
     if (processing->size_calibration_points() != 0)
     {
         nlohmann::json calibration_data;
         calibration_data["timestamp"] = date;
         std::stringstream ss;
-        Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision, 0, ", ", ", ", "", "", " ", "");
-        ss << processing->needle_calibration;
+        ss << processing->needle_calibration.format(CommaInitFmt);
         calibration_data["needle_homogeneous_transformation"] = ss.str();
         calibration_data["optimization_error"] = processing->calibration_error;
-        std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/needle_calibration.json");
+        std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/needle_calibration.json");
         o << calibration_data;
         std::cout << "calibration data from needle coordinates" << calibration_data << std::endl;
     }
@@ -366,7 +375,7 @@ int main(int argc, char *argv[])
         nlohmann::json needle_poses_recorded_from_world_coordinates;
         needle_poses_recorded_from_world_coordinates["timestamp"] = date;
         std::stringstream ss;
-        ss << *points;
+        ss << (*points).format(CommaInitFmt);
         needle_poses_recorded_from_world_coordinates["world_points"] = ss.str();
         // write prettified JSON to another file
         std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/points_in_world_space.json");
@@ -374,15 +383,16 @@ int main(int argc, char *argv[])
         std::cout << "needle poses from world coordinates" << needle_poses_recorded_from_world_coordinates << std::endl;
     }
 
-    if(processing->registration_solution){
+    if (processing->registration_solution)
+    {
         nlohmann::json registration_data;
-	    registration_data["timestamp"] = date;
+        registration_data["timestamp"] = date;
         std::stringstream ss;
         Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision, 0, ", ", ", ", "", "", " ", "");
-        auto [registration_sol,error] = *(processing->registration_solution);
-        ss << registration_sol;
-	    registration_data["moving_to_fixed_transform"] = ss.str();
-	    registration_data["registration_error"] = error;
+        auto [registration_sol, error] = *(processing->registration_solution);
+        ss << registration_sol.format(CommaInitFmt);
+        registration_data["moving_to_fixed_transform"] = ss.str();
+        registration_data["registration_error"] = error;
         registration_data["type"] = "landmark";
         std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/registration.json");
         o << registration_data;
