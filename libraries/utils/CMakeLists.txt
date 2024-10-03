@@ -5,6 +5,7 @@ src/TheadPool.cpp
 src/MemoryUtils.cpp
 src/Reader.cpp
 src/ModifyXMLField.cpp
+src/FileStructures.cpp
 )
 
 target_include_directories(utils

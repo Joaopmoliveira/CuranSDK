@@ -31,6 +31,7 @@ int main()
 	    ProcessingMessage processing{nullptr,input_volume};
         processing.target = trajectory_data.target();
         processing.entry_point = trajectory_data.entry();
+        processing.desired_rotation = trajectory_data.desired_direction();
         processing.registration = registration_data.moving_to_fixed_transform();
         processing.needle_calibration = needle_calibration_data.needle_calibration();
 
