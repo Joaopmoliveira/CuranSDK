@@ -9,7 +9,7 @@
 
 void function(SkPoint p, SkMatrix mat){
 	SkMatrix inverse;
-	if(!mat.invert(&inverse));
+	if(!mat.invert(&inverse))
 		throw std::runtime_error("failed to invert matrix");
 	auto p1 = mat.mapPoint(p);
 	auto p2 = inverse.mapPoint(p);

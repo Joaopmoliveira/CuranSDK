@@ -48,8 +48,5 @@ int main(int argc, char* argv[]){
         std::cout << "to call this executable, you need to provide four arguments:\n"
                   << "DataReplayer joint_recording.txt plus_configuration_file.xml plus_recording_file.xml";
     }
-
-
-
     return 0;
 }

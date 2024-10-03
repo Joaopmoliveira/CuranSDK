@@ -4,6 +4,8 @@
 #include <nlohmann/json.hpp>
 #include <time.h>
 #include "itkImageDuplicator.h"
+#include "utils/DateManipulation.h"
+#include "utils/FileStructures.h"
 
 void load_all_files_in_directory(Application &app_data, curan::ui::ConfigDraw *drawing_data, std::atomic<bool> &stop_value, std::mutex &mut)
 {
@@ -102,33 +104,24 @@ int main()
 
         function_value = true;
 
-        auto return_current_time_and_date = []()
-        {
-            auto now = std::chrono::system_clock::now();
-            auto in_time_t = std::chrono::system_clock::to_time_t(now);
-            std::stringstream ss;
-            ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
-            return ss.str();
-        };
-
-        Eigen::IOFormat CleanFmt(Eigen::StreamPrecision, 0, ", ", "\n", " ", " ");
-
         if (data_application.final_first_point && data_application.final_second_point && data_application.final_third_point)
         {
-            nlohmann::json trajectory_specification;
-            trajectory_specification["timestamp"] = return_current_time_and_date();
-            {
-                std::stringstream target;
-                target << (*data_application.final_first_point).format(CleanFmt) << std::endl;
-                trajectory_specification["target"] = target.str();
-            }
-            {
-                std::stringstream entry;
-                entry << (*data_application.final_third_point).format(CleanFmt) << std::endl;
-                trajectory_specification["entry"] = entry.str();
-            }
+            Eigen::Vector3d desired_dir_z = *data_application.final_first_point-*data_application.final_third_point;
+            Eigen::Vector3d desired_dir_x = *data_application.final_first_point-*data_application.final_second_point;
+            desired_dir_z.normalize();
+            desired_dir_x.normalize();
 
-            // write prettified JSON to another file
+            Eigen::Vector3d desired_dir_y = desired_dir_x.cross(desired_dir_z);
+            desired_dir_y.normalize();
+            desired_dir_x = desired_dir_y.cross(desired_dir_z);
+
+            Eigen::Matrix<double,3,3> desired_orientation;
+            desired_orientation.block<3,1>(0,0) = desired_dir_x;
+            desired_orientation.block<3,1>(0,1) = desired_dir_y;
+            desired_orientation.block<3,1>(0,2) = desired_dir_z;
+
+            curan::utilities::TrajectorySpecificationData trajectory_specification{curan::utilities::get_formated_date(),*data_application.final_first_point,*data_application.final_third_point,desired_orientation,data_application.path};
+
             std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json");
             o << trajectory_specification;
             std::cout << trajectory_specification << std::endl;

@@ -23,6 +23,13 @@ struct Application
 {
     std::optional<Eigen::Matrix<double, 3, 2>> first_path;
     std::optional<Eigen::Matrix<double, 3, 2>> second_path;
+    std::optional<Eigen::Matrix<double, 3, 1>> first_point;
+    std::optional<Eigen::Matrix<double, 3, 1>> second_point;
+    std::optional<Eigen::Matrix<double, 3, 1>> third_point;
+    std::optional<Eigen::Matrix<double, 3, 1>> final_first_point;
+    std::optional<Eigen::Matrix<double, 3, 1>> final_second_point;
+    std::optional<Eigen::Matrix<double, 3, 1>> final_third_point;
+    
     curan::ui::IconResources &resources;
     curan::ui::MiniPage *minipage = nullptr;
     curan::ui::Button* ptr_button_ac_point = nullptr;
@@ -33,12 +40,7 @@ struct Application
     std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(4);
     std::vector<std::tuple<ImageType::Pointer,std::string>> loaded;
     std::string path;
-    std::optional<Eigen::Matrix<double, 3, 1>> first_point;
-    std::optional<Eigen::Matrix<double, 3, 1>> second_point;
-    std::optional<Eigen::Matrix<double, 3, 1>> third_point;
-    std::optional<Eigen::Matrix<double, 3, 1>> final_first_point;
-    std::optional<Eigen::Matrix<double, 3, 1>> final_second_point;
-    std::optional<Eigen::Matrix<double, 3, 1>> final_third_point;
+
     std::array<curan::ui::VolumetricMask, PanelType::NUMBER_OF_VOLUMES> map;
     PanelType current_volume = PanelType::ORIGINAL_VOLUME;
     Panels current_panel_arragement = Panels::ONE_PANEL;
