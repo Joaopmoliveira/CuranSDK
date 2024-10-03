@@ -11,11 +11,6 @@
 #include <vsg/all.h>
 #include <vsgXchange/all.h>
 #include <iostream>
-#include "rendering/Window.h"
-#include "rendering/Renderable.h"
-#include "rendering/SequencialLinks.h"
-#include "rendering/DynamicTexture.h"
-#include "rendering/Box.h"
 #include <asio.hpp>
 #include "communication/Client.h"
 #include "communication/Server.h"

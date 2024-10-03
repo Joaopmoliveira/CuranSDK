@@ -23,34 +23,41 @@
 
 
 
-struct ProcessingMessage {
-	curan::ui::ImageDisplay* processed_viwer = nullptr;
+struct ProcessingMessage
+{
+	curan::ui::ImageDisplay *processed_viwer = nullptr;
 	curan::utilities::Flag connection_status;
-	curan::ui::Button* button;
+	curan::ui::Button *button;
 	asio::io_context io_context;
-    InputImageType::Pointer volume;
+	InputImageType::Pointer volume;
 
-    Eigen::Matrix<double,3,1> target;
-    Eigen::Matrix<double,3,1> entry_point;
-    Eigen::Matrix<double,3,1> desired_rotation;
+	Eigen::Matrix<double, 3, 1> target;
+	Eigen::Matrix<double, 3, 1> entry_point;
+	Eigen::Matrix<double, 3, 1> desired_rotation;
 
-	Eigen::Matrix<double,4,4> registration;
-	Eigen::Matrix<double,4,4> needle_calibration;
+	Eigen::Matrix<double, 4, 4> registration;
+	Eigen::Matrix<double, 4, 4> needle_calibration;
 
-    std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
+	std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
 
-    double image_size = 1.0;
-    double image_spacing = 0.1;
+	double image_size = 1.0;
+	double image_spacing = 0.1;
 
 	short port = 10000;
 
-	ProcessingMessage(curan::ui::ImageDisplay* in_processed_viwer,InputImageType::Pointer in_volume);
+	ProcessingMessage(curan::ui::ImageDisplay *in_processed_viwer, InputImageType::Pointer in_volume);
 
 	bool process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val);
 
 	void communicate();
 
 	void attempt_stop();
+
+	void append_needle_tip_with_calibration();
+
+	Eigen::Matrix<double, 4, 4> append_ct_registered_volume_to_scene(const std::string &path_to_moving_image);
+
+	void append_desired_trajectory_data();
 };
 
 #endif

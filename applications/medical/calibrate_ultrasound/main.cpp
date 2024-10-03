@@ -2,7 +2,7 @@
 #include <cmath>
 #include "ceres/ceres.h"
 #include "optimization/WireCalibration.h"
-#include <nlohmann/json.hpp>
+#include "utils/FileStructures.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "CalibratePages.h"
@@ -210,23 +210,14 @@ int main(int argc, char* argv[]) {
    		return ss.str();
 	};
 
-	Eigen::IOFormat CleanFmt(Eigen::StreamPrecision, 0, ", ", "\n", " ", " ");
-	std::stringstream optimized_values;
-	optimized_values << transformation_matrix.format(CleanFmt) << std::endl;
-	
-	// Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the 
-	// tracker transformation ()
 	std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration! Produced JSON file:\n");
 
-	nlohmann::json calibration_data;
-	calibration_data["timestamp"] = return_current_time_and_date();
-	calibration_data["homogeneous_transformation"] = optimized_values.str();
-	calibration_data["optimization_error"] = best_run.summary.final_cost;
+	curan::utilities::UltrasoundCalibrationData calibration{return_current_time_and_date(),transformation_matrix,best_run.summary.final_cost};
 
 	// write prettified JSON to another file
 	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/spatial_calibration.json");
-	o << calibration_data;
-	std::cout << calibration_data << std::endl;
+	o << calibration;
+	std::cout << calibration << std::endl;
 
 	std::ofstream data_to_matlab(CURAN_COPIED_RESOURCE_PATH"/data_to_matlab.json");
 	data_to_matlab << flange_data_to_matlab << std::endl;

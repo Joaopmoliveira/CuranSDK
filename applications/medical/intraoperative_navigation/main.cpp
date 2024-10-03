@@ -75,11 +75,12 @@ int main()
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
         IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
-        InputImageType::Pointer input_volume = load_dicom(CURAN_COPIED_RESOURCE_PATH"/moving_image.mha");
+        InputImageType::Pointer input_volume;
         if (input_volume.GetPointer() == nullptr){
             std::cout << "failed to read the dicom image\n";
             return 1;
         }
+
 	    ProcessingMessage processing{nullptr,input_volume};
         Page page{create_main_page(resources,processing),SK_ColorBLACK};
 	    page.update_page(viewer.get());

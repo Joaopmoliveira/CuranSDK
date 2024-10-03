@@ -15,6 +15,8 @@ target_link_libraries(utils PUBLIC
 asio
 pugixml::static 
 pugixml::pugixml
+nlohmann_json 
+nlohmann_json::nlohmann_json 
 )
 
 IF (WIN32)
