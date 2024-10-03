@@ -82,7 +82,6 @@ int main()
         double total_error = 0.0;
         constexpr bool print_input_output = false;
         double max_error = 0.0;
-        size_t index = 0;
         for (size_t it = 0; it < number_of_tests; ++it)
         {
             nlohmann::json test = testing["test" + std::to_string(it + 1)];
@@ -114,7 +113,6 @@ int main()
             total_error += squared_local_error;
             if (max_error < squared_local_error)
             {
-                index = it;
                 max_error = squared_local_error;
             }
             if (print_input_output)
@@ -162,7 +160,6 @@ int main()
             total_error += squared_local_error;
             if (max_error < squared_local_error)
             {
-                index = it;
                 max_error = squared_local_error;
             }
             if (print_input_output)

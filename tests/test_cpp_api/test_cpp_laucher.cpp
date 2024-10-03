@@ -56,7 +56,7 @@ int main(int argc, TCHAR *argv[] ){
         &pi )           // Pointer to PROCESS_INFORMATION structure
     ) 
     {
-        printf( "CreateProcess failed (%d).\n", GetLastError() );
+        printf( "CreateProcess failed (%lu).\n", GetLastError() );
         return 1;
     }
     printf("Starting to wait\n");

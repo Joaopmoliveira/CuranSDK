@@ -729,8 +729,6 @@ int inner_main_dual()
         for (auto &val : imesh.vertices)
             std::cout << " " << (double)val[0] << " " << (double)val[1] << "  " << (double)val[2] << ";\n";
         std::cout << "];\n";
-        uint32_t const numVertices = static_cast<uint32_t>(imesh.vertices.size());
-
         std::vector<int32_t> indices;
         indices.resize(mResult.intersectionMesh.triangles.size()*3);
         size_t const numBytes = imesh.triangles.size() * sizeof(std::array<int32_t, 3>);

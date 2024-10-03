@@ -21,40 +21,32 @@ enum PanelType
 
 struct Application
 {
-    bool are_points_being_defined = false;
-    bool is_roi_being_specified = false;
-    std::string path;
-    std::vector<std::tuple<ImageType::Pointer,std::string>> loaded;
-    std::array<curan::ui::VolumetricMask, PanelType::NUMBER_OF_VOLUMES> map;
-
-    PanelType current_volume = PanelType::ORIGINAL_VOLUME;
-    Panels current_panel_arragement = Panels::ONE_PANEL;
-    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(4);
-
-    curan::ui::IconResources &resources;
-
-    bool is_first_point_being_defined = false;
-    std::optional<Eigen::Matrix<double, 3, 1>> first_point;
     std::optional<Eigen::Matrix<double, 3, 2>> first_path;
-    bool is_second_point_being_defined = false;
-    std::optional<Eigen::Matrix<double, 3, 1>> second_point;
     std::optional<Eigen::Matrix<double, 3, 2>> second_path;
-    bool is_third_point_being_defined = false;
-    std::optional<Eigen::Matrix<double, 3, 1>> third_point;
-
+    curan::ui::IconResources &resources;
     curan::ui::MiniPage *minipage = nullptr;
-
     curan::ui::Button* ptr_button_ac_point = nullptr;
     curan::ui::Button* ptr_button_pc_point = nullptr;
     curan::ui::Button* ptr_button_midpoint = nullptr;
-
+    std::mutex& mut;
+    curan::ui::ConfigDraw* ptr_config = nullptr;
+    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(4);
+    std::vector<std::tuple<ImageType::Pointer,std::string>> loaded;
+    std::string path;
+    std::optional<Eigen::Matrix<double, 3, 1>> first_point;
+    std::optional<Eigen::Matrix<double, 3, 1>> second_point;
+    std::optional<Eigen::Matrix<double, 3, 1>> third_point;
     std::optional<Eigen::Matrix<double, 3, 1>> final_first_point;
     std::optional<Eigen::Matrix<double, 3, 1>> final_second_point;
     std::optional<Eigen::Matrix<double, 3, 1>> final_third_point;
-
-    std::mutex& mut;
-
-    curan::ui::ConfigDraw* ptr_config = nullptr;
+    std::array<curan::ui::VolumetricMask, PanelType::NUMBER_OF_VOLUMES> map;
+    PanelType current_volume = PanelType::ORIGINAL_VOLUME;
+    Panels current_panel_arragement = Panels::ONE_PANEL;
+    bool are_points_being_defined = false;
+    bool is_roi_being_specified = false;
+    bool is_first_point_being_defined = false;
+    bool is_second_point_being_defined = false;
+    bool is_third_point_being_defined = false;
 
     inline void clear_all_paths_and_points(){
         first_point = std::nullopt;

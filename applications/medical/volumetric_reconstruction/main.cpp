@@ -500,7 +500,7 @@ struct ApplicationState
         ImGui::TextColored(ImVec4(1, 0, 0, 1), "Operation already in progress...");
         ImGui::Dummy(padding);
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1, 0, 0, 1), operation_description.data());
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s",operation_description.data());
         ImGui::Dummy(padding);
         ImGui::SameLine();
         if (ImGui::Button("Ok!"))
@@ -520,7 +520,7 @@ struct ApplicationState
         ImGui::TextColored(ImVec4(0, 1, 0, 1), "Operation finished");
         ImGui::Dummy(padding);
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0, 1, 0, 1), success_description.data());
+        ImGui::TextColored(ImVec4(0, 1, 0, 1),"%s",success_description.data());
         ImGui::Dummy(padding);
         ImGui::SameLine();
         if (ImGui::Button("Ok!"))

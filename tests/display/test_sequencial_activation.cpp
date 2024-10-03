@@ -181,7 +181,7 @@ curan::ui::drawablefunction draw() override{
             SkRect drawable = SkRect::MakeXYWH(widget_rect.centerX()-size.width()/2.0,widget_rect.centerY()-size.height()/2.0,size.width(),size.height());
             canvas->drawRect(drawable,paint);
 
-            double y_offset = widget_rect.centerY() - size.height()/2.0; + minimum_spacing;
+            double y_offset = widget_rect.centerY() - size.height()/2.0;
             double x_offset = widget_rect.centerX() - size.width()/2.0;
             for(auto& v : sequential_values){
                 if(v.state == Status::UNEXECUTED)

@@ -45,11 +45,6 @@ void function(curan::ui::ImageDisplay *image_display, curan::ui::ImageDisplay *r
         return;
     }
 
-
-    auto pointer_to_float_image =ImageFloatReader->GetOutput();
-
-    //[0.0000 1.00000] --------> [0 255] 
-
     ImageType::Pointer pointer_to_block_of_memory = ImageReader->GetOutput();
     ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
     auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);

@@ -59,7 +59,6 @@ int main() {
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
 		std::unique_ptr<Panel> image_display = Panel::make(resources,get_image());
-		Panel* panel_pointer = image_display.get();
 
 		auto button = Button::make("Connect",resources);
 		button->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));

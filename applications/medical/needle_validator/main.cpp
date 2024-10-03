@@ -309,9 +309,12 @@ int main(int argc, char *argv[])
 
     std::shared_ptr<ProcessingMessage> processing;
     auto page = create_main_page(data, processing, resources, specified_landmarks);
-    processing->calibration_error = calibration_error;
-    processing->needle_calibration = needle_calibration;
-    processing->landmarks = landmarks;
+    if(previous_calibration){
+        processing->calibration_error = calibration_error;
+        processing->needle_calibration = needle_calibration;
+    }
+    if(specified_landmarks)
+        processing->landmarks = landmarks;
 
     page.update_page(viewer.get());
 

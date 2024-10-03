@@ -117,7 +117,6 @@ int main()
 		VolumetricMask mask{*volume};
 
 		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
-		curan::ui::SlidingPanel *panel_pointer = image_display.get();
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);

@@ -64,6 +64,7 @@ in which case we can stop the application
         filter_value = 0.9*filter_value+0.1**value;
         std::printf("sensor: %.4f filtered: %.4f\n",*value,filter_value);
     }
+    return 0;
 }
 
 /*

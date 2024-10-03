@@ -156,7 +156,6 @@ void fn(unique_ptr_mine<double>&& v){
 
 int main2(){
     unique_ptr_mine<double> g{new double{0}};
-    double* f = g.get();
     fn(std::move(g));
     return 0;
 }

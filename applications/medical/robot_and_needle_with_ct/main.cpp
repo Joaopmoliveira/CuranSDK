@@ -302,8 +302,7 @@ int main(int argc, char **argv)
     append_needle_tip_with_calibration(robot_state);
     append_desired_trajectory_data(robot_state);
 
-    pool->submit(curan::utilities::Job{"communication with robot", [&]()
-                                       { communication(robot_state, context); }});
+    pool->submit(curan::utilities::Job{"communication with robot", [&](){ communication(robot_state, context); }});
 
     window.run();
     context.stop();
