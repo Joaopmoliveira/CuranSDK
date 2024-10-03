@@ -18,7 +18,11 @@ add_compile_definitions(DataReplayer CURAN_BINARY_SUFFIX="${CMAKE_EXECUTABLE_SUF
 target_include_directories(DataReplayer PUBLIC ${Boost_INCLUDE_DIRS})
 
 target_link_libraries(DataReplayer PUBLIC
-userinterface
+Eigen3::Eigen
+robotutils
+utils
+${OPERATING_SYSTEM_REQUIRMENTS}
+communication
 ${Boost_LIBRARIES}
 )
 
