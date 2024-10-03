@@ -33,7 +33,7 @@ struct ProcessingMessage
 
 	Eigen::Matrix<double, 3, 1> target;
 	Eigen::Matrix<double, 3, 1> entry_point;
-	Eigen::Matrix<double, 3, 1> desired_rotation;
+	Eigen::Matrix<double, 3, 3> desired_rotation;
 
 	Eigen::Matrix<double, 4, 4> registration;
 	Eigen::Matrix<double, 4, 4> needle_calibration;
@@ -52,12 +52,6 @@ struct ProcessingMessage
 	void communicate();
 
 	void attempt_stop();
-
-	void append_needle_tip_with_calibration();
-
-	Eigen::Matrix<double, 4, 4> append_ct_registered_volume_to_scene(const std::string &path_to_moving_image);
-
-	void append_desired_trajectory_data();
 };
 
 #endif
