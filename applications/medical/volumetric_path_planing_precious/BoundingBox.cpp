@@ -16,8 +16,9 @@
         orientation.col(2) = direct_z;
 
         double determinant = orientation.determinant();
+        if(determinant<0.9999 || determinant>1.0001)
+            throw std::runtime_error("failure to generate an ortogonal rotation matrix");
 
-        assert(determinant>0.9999 && determinant<1.0001 && "failure to generate an ortogonal rotation matrix");
         spacing = in_spacing;
         size[0] = vector_along_direction_x.norm()/spacing[0];
         size[1] = vector_along_direction_y.norm()/spacing[1];

@@ -107,7 +107,7 @@ namespace curan
             std::string f_timestamp;
             Eigen::Matrix<double, 3, 1> f_target;
             Eigen::Matrix<double, 3, 1> f_entrypoint;
-            Eigen::Matrix<double, 3, 1> f_desired_orientation;
+            Eigen::Matrix<double, 3, 3> f_desired_orientation;
             std::string f_path_to_image;
 
         public:

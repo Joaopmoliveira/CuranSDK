@@ -18,9 +18,11 @@ namespace curan{
 
             auto builder = vsg::Builder::create();
             auto scene = vsg::Group::create();
+            float y_pos = lim_y_min;
+            float x_pos = lim_x_min;
 
-            for(float y_pos = lim_y_min; y_pos < lim_y_max ; y_pos+=spacing )
-                for(float x_pos = lim_x_min; x_pos < lim_x_max ; x_pos+=spacing ){
+            for(int y_increments = -20; y_increments < 20 ; y_pos+=spacing,++y_increments )
+                for(int x_increments = -20; x_increments < 20 ; x_pos+=spacing,++x_increments){
                     geomInfo.dx.set(spacing,0.0f,0.0f);
                     geomInfo.dy.set(0.0f,spacing,0.0f);
                     geomInfo.dz.set(0.0f,0.0f,0.0f);

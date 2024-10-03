@@ -1292,10 +1292,9 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
     // Generate the initial conditions for the moving point cloud
     std::printf("\nGenerating initial guesses for ICP...\n");
     std::vector<Eigen::Matrix<double, 4, 4>> initial_guesses_icp;
-    for (double angle = 0; angle < 360.0; angle += 10.0)
-    {
-        initial_guesses_icp.push_back(transform_x(rad2deg(angle)));
-        initial_guesses_icp.push_back(transform_flipped_principal_component(rad2deg(angle)));
+    for (int angle = 0; angle < 360; angle += 10){
+        initial_guesses_icp.push_back(transform_x(rad2deg((double)angle)));
+        initial_guesses_icp.push_back(transform_flipped_principal_component(rad2deg((double)angle)));
     }
 
     // Align the principal axis of both volumes with the directions of the world frame and push their centroids to the origin.
@@ -1519,18 +1518,18 @@ int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Poin
     std::vector<Eigen::Matrix<double, 4, 4>> initial_guesses_mi;
 
     // Currentely just rotation and translation on x are being applied (these were found to be the most critical)
-    for (double angle_x = -5; angle_x <= 5; angle_x += 1)
+    for (int angle_x = -5; angle_x <= 5; angle_x += 1)
     {
-        for (double tx = -5; tx <= 5; tx += 5)
+        for (int tx = -5; tx <= 5; tx += 5)
         {
             double angle_y = 0;
             double angle_z = 0;
             double ty = 0;
             double tz = 0;
-            Eigen::Matrix<double, 4, 4> rotation_x = transform_x(rad2deg(angle_x));
+            Eigen::Matrix<double, 4, 4> rotation_x = transform_x(rad2deg((double)angle_x));
             Eigen::Matrix<double, 4, 4> rotation_y = transform_y(rad2deg(angle_y));
             Eigen::Matrix<double, 4, 4> rotation_z = transform_z(rad2deg(angle_z));
-            Eigen::Matrix<double, 4, 4> translation = transform_translation(tx, ty, tz);
+            Eigen::Matrix<double, 4, 4> translation = transform_translation((double)tx, ty, tz);
             Eigen::Matrix<double, 4, 4> combined_transform = translation * rotation_z * rotation_y * rotation_x * best_transformation_icp;
             initial_guesses_mi.push_back(combined_transform);
         }

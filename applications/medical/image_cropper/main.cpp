@@ -4,7 +4,7 @@
 #include <time.h>
 #include "itkImageDuplicator.h"
 #include <string_view>
-
+#include "utils/DateManipulation.h"
 
 template <typename TImage,typename InclusionPolicy>
 typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
@@ -84,15 +84,6 @@ int main()
             auto end = std::chrono::high_resolution_clock::now();
             std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
         }
-
-        auto return_current_time_and_date = []()
-        {
-            auto now = std::chrono::system_clock::now();
-            auto in_time_t = std::chrono::system_clock::to_time_t(now);
-            std::stringstream ss;
-            ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
-            return ss.str();
-        };
 
         if (data_application.map[ORIGINAL_VOLUME].get_volume().IsNull())
         {

@@ -115,11 +115,9 @@ int main(int argc, char* argv[]) {
 		
 		KUKA::FRI::UdpConnection connection{20};
 		KUKA::FRI::ClientApplication app(connection, client);
-		bool success = app.connect(DEFAULT_PORTID, NULL);
-		success = app.step();
-		
+		app.connect(DEFAULT_PORTID, NULL);
 		while (client){
-			success = app.step();
+			app.step();
 		}
 		app.disconnect();
         robot_renderer.join();

@@ -104,7 +104,6 @@ public:
 
     void record_frames(RecordStatus status)
     {
-        //std::cout << "flag \"record_frames\" updated!!!";
         f_record_frame.store(status == START_RECORDING_FOR_BOX_UPDATE);
     }
 
@@ -828,7 +827,7 @@ int main(int argc, char **argv)
 
     ApplicationState application_state{window};
     app_pointer = &application_state;
-        
+
     curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
 
     for (Eigen::Index row = 0; row < 4; ++row)

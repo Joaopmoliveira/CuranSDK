@@ -75,13 +75,11 @@ std::optional<ImageType::Pointer> get_representative_series_image(std::string pa
     // The metadata dictionary is organized as a container with its corresponding
     // iterators. We can therefore visit all its entries by first getting access to
     // its Begin() and End() methods.
-    auto itr = dictionary.Begin();
-    auto end = dictionary.End();
 
     auto query = [&](const std::string& entryID){
         auto tagItr = dictionary.Find(entryID);
         std::optional<std::string> tagvalue = std::nullopt;
-        if (tagItr == end){  
+        if (tagItr == dictionary.End()){  
             std::cout << "Tag " << entryID;
             std::cout << " not found in the DICOM header" << std::endl;
             return tagvalue;
@@ -192,16 +190,11 @@ std::optional<ImageType::Pointer> load_volume_from_selected_uid(std::string path
     // string type in order to receive those particular values.
     using MetaDataStringType = itk::MetaDataObject<std::string>;
 
-    // The metadata dictionary is organized as a container with its corresponding
-    // iterators. We can therefore visit all its entries by first getting access to
-    // its Begin() and End() methods.
-    auto itr = dictionary.Begin();
-    auto end = dictionary.End();
 
     auto query = [&](const std::string& entryID){
         auto tagItr = dictionary.Find(entryID);
         std::optional<std::string> tagvalue = std::nullopt;
-        if (tagItr == end){  
+        if (tagItr == dictionary.End()){  
             std::cout << "Tag " << entryID;
             std::cout << " not found in the DICOM header" << std::endl;
             return tagvalue;

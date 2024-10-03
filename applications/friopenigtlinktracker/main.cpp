@@ -30,10 +30,10 @@ void robot_control(curan::robotic::RobotLBR& lbr)
 	try
 	{
 		curan::utilities::cout << "Lauching robot control thread\n";
-		KUKA::FRI::UdpConnection connection;
+		KUKA::FRI::UdpConnection connection{20};
 		KUKA::FRI::ClientApplication app(connection, lbr);
-		bool success = app.connect(DEFAULT_PORTID, NULL);
-		success = app.step();
+		app.connect(DEFAULT_PORTID, NULL);
+		bool success = app.step();
 		while (success && lbr)
 			success = app.step();
 		app.disconnect();

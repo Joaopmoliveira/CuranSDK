@@ -636,8 +636,8 @@ bool ApplySticks(char_pixel_type* inputData,
 	bool valid; // set to true when we've hit a filled voxel
 	int fwdTrav, rvsTrav; // store the number of voxels that have been searched
 	char_pixel_type fwdVal, rvsVal; // store the values at each end of the stick
-	char_pixel_type* values = new char_pixel_type[descrip->numSticksInList];
-	double* weights = new double[descrip->numSticksInList];
+	std::vector<char_pixel_type> values(descrip->numSticksInList,0);
+	std::vector<double> weights(descrip->numSticksInList,0.0);
 	// try each stick direction
 	for (int i = 0; i < descrip->numSticksInList; i++) {
 
@@ -742,9 +742,6 @@ bool ApplySticks(char_pixel_type* inputData,
 		}
 
 	}
-
-	delete[] weights;
-	delete[] values;
 
 	if (sumWeights != 0) {
 		returnVal = (char_pixel_type)(sumWeightedValues / sumWeights);
