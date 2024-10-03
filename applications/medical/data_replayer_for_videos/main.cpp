@@ -30,9 +30,10 @@ void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::co
 	
 	int val = 40;
 	std::string name = "Base";
-
+    
     std::ifstream input_data{path};
     if(!input_data.is_open()){
+        std::cout << "failed to read joint tracking data: " << path << std::endl;
         signal_handler(1);
         return;
     }
@@ -41,7 +42,8 @@ void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::co
     ss << input_data.rdbuf();
     auto joint_readings = curan::utilities::convert_matrix(ss,',');
 
-    assert(joint_readings.cols()==7 && joint_readings.rows()>2);
+    if(joint_readings.cols()!=7 || joint_readings.rows()<3)
+        throw std::runtime_error("the dimensions do not match what is expected");
     
     size_t i = 0;
 
@@ -107,6 +109,35 @@ int intermediate(int argc, char* argv[]){
 																						   if (exit)
 																							   std::cout << "Plus failure" << ec_in.message() << std::endl;
 																					   }));
+        struct Async{
+            boost::asio::streambuf& plus_buf;
+	        std::error_code& plus_ec;
+	        boost::process::async_pipe& plus_out;
+
+            Async(boost::asio::streambuf& in_plus_buf,std::error_code& in_plus_ec,boost::process::async_pipe& in_plus_out) : plus_buf{in_plus_buf},plus_ec{in_plus_ec},plus_out{in_plus_out}{
+
+            };
+
+            void operator() (const boost::system::error_code &ec, std::size_t size){
+			    static std::string line;
+			    static std::istream istr(&plus_buf);
+			    if (!ec){
+				    std::getline(istr, line);
+				    std::cout << "plus >> " << line << std::endl;
+			    }
+			    if (!ec)
+                    post_async();
+            };
+
+            void post_async(){
+                boost::asio::async_read_until(plus_out,plus_buf,'\n',*this);
+            }
+
+        };
+
+        Async post_reading_operations{plus_buf,plus_ec,plus_out};
+        post_reading_operations.post_async();
+		
         pool->submit(curan::utilities::Job{"run process tracking",[&](){ std::cout << "running plus"; in_asio_ctx.run();}});
     } else {
         std::cout << "no plus configuration file" << std::endl;
@@ -120,7 +151,7 @@ int intermediate(int argc, char* argv[]){
     }else {
         std::cout << "no joint configuration file" << std::endl;
     }
-
+    auto work_protection = asio::make_work_guard(context);
 	context.run();
     if (plus_process)
 		plus_process->terminate();
