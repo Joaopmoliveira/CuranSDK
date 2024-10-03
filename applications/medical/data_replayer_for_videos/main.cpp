@@ -16,10 +16,12 @@
 #include <nlohmann/json.hpp>
 
 asio::io_context context;
+boost::asio::io_context in_asio_ctx;
 
 void signal_handler(int signal)
 {
 	context.stop();
+    in_asio_ctx.stop();
 }
 
 void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::communication::protocols::fri>> server, const std::string& path)
@@ -62,7 +64,7 @@ void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::co
 	}
 }
 
-int main(int argc, char* argv[]){
+int intermediate(int argc, char* argv[]){
     if(argc != 2){
         std::cout << "to call this executable, you need to provide two arguments:\n"
                   << "DataReplayer joint_recording.txt plus_configuration_file.xml";
@@ -72,14 +74,14 @@ int main(int argc, char* argv[]){
     std::ifstream json_file_in(argv[1]);
     if (!json_file_in.is_open())
     {
-        std::cout << "failure to read the specification file";
+        std::cout << "failure to read the specification file" << std::endl;
         return 1;
     }
     
     unsigned short port_fri = 50010;
     std::shared_ptr<curan::communication::Server<curan::communication::protocols::fri>> server_joints;
 
-    boost::asio::io_context in_asio_ctx;
+
 	boost::asio::streambuf plus_buf;
 	std::error_code plus_ec;
 	boost::process::async_pipe plus_out{in_asio_ctx};
@@ -92,9 +94,10 @@ int main(int argc, char* argv[]){
 
     nlohmann::json needle_calibration_specification;
     json_file_in >> needle_calibration_specification;
+
     if (needle_calibration_specification.contains("plus_configuration_file"))
     {
-        std::string  path_to_plus = needle_calibration_specification["plus_configuration_file"];
+        std::string path_to_plus = needle_calibration_specification["plus_configuration_file"];
 	    plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH, std::string{"--config-file="} + path_to_plus,"--verbose=1",
 															   boost::process::std_out > plus_out,
 															   plus_ec,
@@ -104,7 +107,9 @@ int main(int argc, char* argv[]){
 																						   if (exit)
 																							   std::cout << "Plus failure" << ec_in.message() << std::endl;
 																					   }));
-        pool->submit(curan::utilities::Job{"run process tracking",[&](){while(!context.stopped()){in_asio_ctx.run_one();}}});
+        pool->submit(curan::utilities::Job{"run process tracking",[&](){ std::cout << "running plus"; in_asio_ctx.run();}});
+    } else {
+        std::cout << "no plus configuration file" << std::endl;
     }
 
     if (needle_calibration_specification.contains("joint_configuration_file"))
@@ -112,6 +117,8 @@ int main(int argc, char* argv[]){
         std::string  path_to_joints = needle_calibration_specification["joint_configuration_file"];
         server_joints = curan::communication::Server<curan::communication::protocols::fri>::make(context, port_fri);
         pool->submit(curan::utilities::Job{"run joint tracking",[&](){start_joint_tracking(server_joints, path_to_joints);}});
+    }else {
+        std::cout << "no joint configuration file" << std::endl;
     }
 
 	context.run();
@@ -119,5 +126,17 @@ int main(int argc, char* argv[]){
 		plus_process->terminate();
 	plus_process = nullptr;
 	plus_out.async_close();
+    std::cout << "terminating" << std::endl;
     return 0;
+}
+
+int main(int argc, char* argv[]){
+    try{
+        return intermediate(argc,argv);
+    } catch(std::runtime_error& e){
+        std::cout << "exception: " << e.what() << std::endl; 
+    } catch(...){
+        std::cout << "unknown exception"<< std::endl; 
+    }
+    return 1;
 }
