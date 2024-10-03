@@ -4,6 +4,7 @@
 #include <Eigen/Dense>
 #include <nlohmann/json.hpp>
 #include "utils/Reader.h"
+#include <fstream>
 
 namespace curan
 {

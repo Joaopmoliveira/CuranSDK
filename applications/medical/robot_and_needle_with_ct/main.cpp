@@ -27,6 +27,8 @@
 #include <string>
 #include "communication/ProtoIGTL.h"
 
+#include "utils/FileStructures.h"
+
 class RobotState
 {
     std::atomic<bool> commit_senpuko = false;
@@ -169,26 +171,7 @@ int communication(RobotState &state, asio::io_context &context)
 
 void append_needle_tip_with_calibration(RobotState &state)
 {
-    nlohmann::json needle_calibration_data;
-    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/needle_calibration.json");
-
-    if (!in.is_open())
-    {
-        std::cout << "failure to open needle calibration configuration file\n";
-        std::terminate();
-    }
-
-    in >> needle_calibration_data;
-    std::string timestamp = needle_calibration_data["timestamp"];
-    std::string homogenenous_transformation = needle_calibration_data["needle_homogeneous_transformation"];
-    double error = needle_calibration_data["optimization_error"];
-    std::printf("Using calibration with average error of : %f\n on the date ", error);
-    std::cout << timestamp << std::endl;
-    std::stringstream matrix_strm;
-    matrix_strm << homogenenous_transformation;
-    auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
-    std::cout << "with the homogeneous matrix :\n"
-              << calibration_matrix << std::endl;
+    curan::utilities::NeedleCalibrationData needle_calibration_data{CURAN_COPIED_RESOURCE_PATH "/needle_calibration.json"};
 
     curan::renderable::Sphere::Info infosphere;
     infosphere.builder = vsg::Builder::create();
@@ -199,9 +182,9 @@ void append_needle_tip_with_calibration(RobotState &state)
     infosphere.stateInfo.blending = true;
     state.needle_tip = curan::renderable::Sphere::make(infosphere);
 
-    for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
-        for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
-            state.needle_calibration(col, row) = calibration_matrix(row, col);
+    for (Eigen::Index row = 0; row < needle_calibration_data.needle_calibration().rows(); ++row)
+        for (Eigen::Index col = 0; col < needle_calibration_data.needle_calibration().cols(); ++col)
+            state.needle_calibration(col, row) = needle_calibration_data.needle_calibration()(row, col);
 
     state.needle_tip->update_transform(state.needle_calibration);
     state.window_pointer << state.needle_tip;
@@ -218,38 +201,12 @@ void updateBaseTexture3D(vsg::floatArray3D &image, typename itkImage::Pointer ou
 
 Eigen::Matrix<double, 4, 4> append_ct_registered_volume_to_scene(RobotState &state, const std::string &path_to_moving_image)
 {
-    nlohmann::json registration_data;
-    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/registration.json");
-
-    if (!in.is_open())
-    {
-        std::cout << "failure to open needle calibration configuration file" << std::endl;
-        std::terminate();
-    } else {
-        std::cout << "file is open" << std::endl;
-    }
-
-    in >> registration_data;
-
-    std::string type = registration_data["type"];
-    std::cout << "registration type: " << type << std::endl;
-    std::string timestamp = registration_data["timestamp"];
-    std::cout << "timestamp : " << timestamp << std::endl;
-    std::string homogenenous_transformation = registration_data["moving_to_fixed_transform"];
-    double error = registration_data["registration_error"];
-    std::cout << "using registration estimated using: " << type << std::endl;
-    std::printf("Using registration with average error of : %f\n on the date ", error);
-    std::cout << timestamp << std::endl;
-    std::stringstream matrix_strm;
-    matrix_strm << homogenenous_transformation;
-    auto registration_mat = curan::utilities::convert_matrix(matrix_strm, ',');
-    std::cout << "with the homogeneous matrix :\n"<< registration_mat << std::endl;
-
+    curan::utilities::RegistrationData registration_data{CURAN_COPIED_RESOURCE_PATH "/registration.json"};
     vsg::dmat4 registration_matrix;
 
-    for (Eigen::Index row = 0; row < registration_mat.rows(); ++row)
-        for (Eigen::Index col = 0; col < registration_mat.cols(); ++col)
-            registration_matrix(col, row) = registration_mat(row, col);
+    for (Eigen::Index row = 0; row < registration_data.moving_to_fixed_transform().rows(); ++row)
+        for (Eigen::Index col = 0; col < registration_data.moving_to_fixed_transform().cols(); ++col)
+            registration_matrix(col, row) = registration_data.moving_to_fixed_transform()(row, col);
 
     auto fixedImageReader = itk::ImageFileReader<itk::Image<double, 3>>::New();
     fixedImageReader->SetFileName(path_to_moving_image);
@@ -279,50 +236,20 @@ Eigen::Matrix<double, 4, 4> append_ct_registered_volume_to_scene(RobotState &sta
 
     volume->cast<curan::renderable::Volume>()->update_volume([=](vsg::floatArray3D &image){ updateBaseTexture3D<itk::Image<double, 3>>(image, output); });
     volume->cast<curan::renderable::Volume>()->update_transform(registration_matrix);
-    return registration_mat;
+    return registration_data.moving_to_fixed_transform();
 }
 
 void append_desired_trajectory_data(RobotState &state)
 {
-    nlohmann::json trajectory_data;
-    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json");
-    if (!in.is_open())
-    {
-        std::cout << "failure to find the trajectory specification file";
-        std::terminate();
-    }
-    
-    in >> trajectory_data;
+    curan::utilities::TrajectorySpecificationData trajectory_data{CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json"};
 
-    std::cout << "using json with data:\n" << trajectory_data << std::endl;
-
-    std::stringstream ss;
-    std::string target = trajectory_data["target"];
-    std::cout << "string target:\n" << target << std::endl;
-    ss << target;
-    auto eigen_target = curan::utilities::convert_matrix(ss,',');
-    std::cout << "target:" << eigen_target << std::endl;
-    ss = std::stringstream{};
-    std::string entry = trajectory_data["entry"];
-    std::cout << "string target:\n" << entry << std::endl;
-    ss << entry;
-    auto eigen_entry = curan::utilities::convert_matrix(ss,',');
-    std::cout << "entry:" << eigen_entry << std::endl;
-    assert(eigen_target.cols() == 1 && eigen_target.rows() == 3);
-    assert(eigen_entry.cols() == 1 && eigen_entry.rows() == 3);
     Eigen::Matrix<double, 4, 1> vectorized_eigen_entry = Eigen::Matrix<double, 4, 1>::Ones();
     Eigen::Matrix<double, 4, 1> desired_target_point = Eigen::Matrix<double, 4, 1>::Ones();
-    for (size_t i = 0; i < 3; ++i)
-    {
-        desired_target_point[i] = eigen_target(i, 0);
-        vectorized_eigen_entry[i] = eigen_entry(i, 0);
-    }
 
-    std::cout << "getting path....";
-    std::string path_to_moving_image = trajectory_data["moving_image_directory"];
-    std::cout << path_to_moving_image << std::endl;
+    vectorized_eigen_entry.block<3,1>(0,0) = trajectory_data.entry();
+    desired_target_point.block<3,1>(0,0) = trajectory_data.target();
 
-    auto registration_matrix = append_ct_registered_volume_to_scene(state, path_to_moving_image);
+    auto registration_matrix = append_ct_registered_volume_to_scene(state, trajectory_data.path_to_image());
 
     curan::renderable::Sphere::Info infosphere;
     infosphere.builder = vsg::Builder::create();
@@ -372,12 +299,8 @@ int main(int argc, char **argv)
     robot_state.robot = curan::renderable::SequencialLinks::make(create_info);
     window << robot_state.robot;
 
-    std::cout << "appending needle tip\n";
     append_needle_tip_with_calibration(robot_state);
-    std::cout << "appending desired trajectory\n";
     append_desired_trajectory_data(robot_state);
-
-    std::cout << "appended everything\n";
 
     pool->submit(curan::utilities::Job{"communication with robot", [&]()
                                        { communication(robot_state, context); }});

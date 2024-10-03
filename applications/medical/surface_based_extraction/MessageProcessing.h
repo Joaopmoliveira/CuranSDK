@@ -25,6 +25,7 @@
 #include "userinterface/widgets/Plotter.h"
 #include <Eigen/Dense>
 #include <nlohmann/json.hpp>
+#include "utils/FileStructures.h"
 
 struct ObservationEigenFormat {
 	Eigen::Matrix4d pose;
@@ -62,25 +63,8 @@ struct ProcessingMessage {
 
 	ProcessingMessage(curan::ui::ImageDisplay* in_processed_viwer,curan::ui::ImageDisplay* in_filter_viwer) : processed_viwer{ in_processed_viwer } , filter_viwer{in_filter_viwer}
 	{
-		nlohmann::json calibration_data;
-        std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json");
-
-        if (!in.is_open())
-            throw std::runtime_error("failure to open configuration file");
-
-        in >> calibration_data;
-        std::string timestamp = calibration_data["timestamp"];
-        std::string homogenenous_transformation = calibration_data["homogeneous_transformation"];
-        double error = calibration_data["optimization_error"];
-        std::printf("Using calibration with average error of : %f\n on the date ", error);
-        std::cout << timestamp << std::endl;
-        std::stringstream matrix_strm;
-        matrix_strm << homogenenous_transformation;
-        auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
-        std::cout << "with the homogeneous matrix :\n"
-                  << calibration_matrix << std::endl;
-
-		calibration = calibration_matrix;
+		curan::utilities::UltrasoundCalibrationData calibration_data{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
+		calibration = calibration_data.homogeneous_transformation();
 	}
 
 	bool process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val);

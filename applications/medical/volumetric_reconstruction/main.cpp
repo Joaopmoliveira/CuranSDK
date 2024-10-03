@@ -27,6 +27,7 @@
 #include "imgui_stdlib.h"
 #include <map>
 #include <string>
+#include "utils/FileStructures.h"
 
 /*
 This executable requires:
@@ -827,29 +828,12 @@ int main(int argc, char **argv)
 
     ApplicationState application_state{window};
     app_pointer = &application_state;
-    
-    nlohmann::json calibration_data;
-    std::ifstream in(CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json");
+        
+    curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
 
-    if(!in.is_open()){
-        std::cout << "failure to open configuration file\n";
-        return 1;
-    }
-
-    in >> calibration_data;
-    std::string timestamp = calibration_data["timestamp"];
-    std::string homogenenous_transformation = calibration_data["homogeneous_transformation"];
-    double error = calibration_data["optimization_error"];
-    std::printf("Using calibration with average error of : %f\n on the date ", error);
-    std::cout << timestamp << std::endl;
-    std::stringstream matrix_strm;
-    matrix_strm << homogenenous_transformation;
-    auto calibration_matrix = curan::utilities::convert_matrix(matrix_strm, ',');
-    std::cout << "with the homogeneous matrix :\n"
-              << calibration_matrix << std::endl;
-    for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
-        for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
-            application_state.robot_state.calibration_matrix(col, row) = calibration_matrix(row, col);
+    for (Eigen::Index row = 0; row < 4; ++row)
+        for (Eigen::Index col = 0; col < 4; ++col)
+            application_state.robot_state.calibration_matrix(col, row) = calibration.homogeneous_transformation()(row,col);
     
    
     std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";

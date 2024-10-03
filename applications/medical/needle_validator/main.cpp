@@ -5,6 +5,7 @@
 #include <random>
 #include "MessageProcessing.h"
 #include "utils/Reader.h"
+#include "utils/FileStructures.h"
 
 std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning, curan::ui::IconResources &resources)
 {
@@ -352,21 +353,15 @@ int main(int argc, char *argv[])
         ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
         return ss.str();
     };
-
     auto date = return_current_time_and_date();
     Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision, 0, ", ", ", ", "", "", " ", "");
 
     if (processing->size_calibration_points() != 0)
     {
-        nlohmann::json calibration_data;
-        calibration_data["timestamp"] = date;
-        std::stringstream ss;
-        ss << processing->needle_calibration.format(CommaInitFmt);
-        calibration_data["needle_homogeneous_transformation"] = ss.str();
-        calibration_data["optimization_error"] = processing->calibration_error;
+        curan::utilities::NeedleCalibrationData calibration{date,needle_calibration,processing->calibration_error};
         std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/needle_calibration.json");
-        o << calibration_data;
-        std::cout << "calibration data from needle coordinates" << calibration_data << std::endl;
+        o << calibration;
+        std::cout << "calibration data from needle coordinates" << calibration << std::endl;
     }
 
     auto points = processing->world_points();
@@ -385,15 +380,8 @@ int main(int argc, char *argv[])
 
     if (processing->registration_solution)
     {
-        nlohmann::json registration_data;
-        registration_data["timestamp"] = date;
-        std::stringstream ss;
-        Eigen::IOFormat CommaInitFmt(Eigen::StreamPrecision, 0, ", ", ", ", "", "", " ", "");
         auto [registration_sol, error] = *(processing->registration_solution);
-        ss << registration_sol.format(CommaInitFmt);
-        registration_data["moving_to_fixed_transform"] = ss.str();
-        registration_data["registration_error"] = error;
-        registration_data["type"] = "landmark";
+        curan::utilities::RegistrationData registration_data{date,registration_sol,error,curan::utilities::Type::LANDMARK};
         std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/registration.json");
         o << registration_data;
         std::cout << "needle poses from world coordinates" << registration_data << std::endl;
