@@ -306,14 +306,3 @@ utils
 robotutils
 renderable
 )
-
-add_executable(test_command_line_calibration command_line_calibration.cpp)
-
-target_compile_definitions(test_command_line_calibration PRIVATE SK_VULKAN)
-target_compile_definitions(test_command_line_calibration PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_command_line_calibration PUBLIC
-utils
-robotutils
-renderable
-)

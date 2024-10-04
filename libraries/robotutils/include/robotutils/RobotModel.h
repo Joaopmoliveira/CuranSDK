@@ -165,7 +165,7 @@ namespace curan
                 f_dq = Eigen::Matrix<double, model_joints, 1>::Zero();
                 f_ddq = Eigen::Matrix<double, model_joints, 1>::Zero();
                 f_measured_torque = Eigen::Matrix<double, model_joints, 1>::Zero();
-                f_end_effector = Eigen::Matrix<double, 4, 4>::Zero();
+                f_end_effector = Eigen::Matrix<double, 4, 4>::Identity();
                 f_jacobian = Eigen::Matrix<double, 6, model_joints>::Zero();
 
                 // except the electrical flange which we set to this offset

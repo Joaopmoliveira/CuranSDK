@@ -66,8 +66,8 @@ public:
     vsg::ref_ptr<curan::renderable::Renderable> rendered_box;
     curan::image::IntegratedReconstructor::Info integrated_volume_create_info;
     vsg::ref_ptr<curan::renderable::Renderable> integrated_volume;
-    std::atomic<bool> accessible = false;
-    std::atomic<std::optional<vsg::ref_ptr<curan::renderable::Renderable>>> dynamic_texture;
+    std::atomic<curan::renderable::Renderable*> raw_dynamic_texture = nullptr;
+    vsg::ref_ptr<curan::renderable::Renderable> dynamic_texture;
     vsg::dmat4 calibration_matrix;
     
 
@@ -533,7 +533,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
     int c = message_body->Unpack(1);
     if (!(c & igtl::MessageHeader::UNPACK_BODY))
         return false; // failed to unpack message, therefore returning without doing anything
-    if (!state.dynamic_texture)
+    if (state.dynamic_texture.get()==nullptr)
     {
         std::cout << "creating dynamic texture\n";
         int x, y, z;
@@ -546,8 +546,8 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         infotexture.identifier = "ultrasound";
         infotexture.builder = vsg::Builder::create();
         state.dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
-        state.window_pointer << *state.dynamic_texture;
-        state.accessible = true;
+        state.window_pointer << state.dynamic_texture;
+        state.raw_dynamic_texture = state.dynamic_texture.get();
 
         std::cout << "creating bounding box texture\n";
         curan::renderable::Box::Info infobox;
@@ -595,8 +595,8 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
     };
 
     if constexpr (display_ultrasound_with_plus_homogeneous_data){
-        if(state.dynamic_texture->get()!=nullptr)
-            state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+        if(state.dynamic_texture.get()!=nullptr)
+            state.dynamic_texture.cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
     }
 
 
@@ -767,9 +767,11 @@ bool process_joint_message(RobotState &state, const size_t &protocol_defined_val
 
     auto product = homogeneous_transformation * state.calibration_matrix;
     if constexpr (!display_ultrasound_with_plus_homogeneous_data){
-        if(state.accessible)
-            if(state.dynamic_texture->get()!=nullptr)
-                state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(product);
+        if(state.raw_dynamic_texture!=nullptr){
+            std::cout << homogeneous_transformation << std::endl;
+            auto local = state.raw_dynamic_texture.load();
+            local->cast<curan::renderable::DynamicTexture>()->update_transform(product);
+        }
     }
 
     //handle << "\n";
