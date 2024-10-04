@@ -13,6 +13,13 @@
 #include "itkImageRegionIterator.h"
 #include "itkCastImageFilter.h"
 
+#include "itkCurvatureAnisotropicDiffusionImageFilter.h"
+#include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
+#include "itkSigmoidImageFilter.h"
+#include "itkFastMarchingImageFilter.h"
+#include "itkBinaryThresholdImageFilter.h"
+
+
 bool process_transform_message(ProcessingMessage *processor, igtl::MessageBase::Pointer val)
 {
     igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
@@ -26,6 +33,59 @@ bool process_transform_message(ProcessingMessage *processor, igtl::MessageBase::
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 2;
 using ImageType = itk::Image<PixelType, Dimension>;
+
+std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer> segment_points(ImageType::Pointer input_image)
+{
+    using ThresholdingFilterType = itk::BinaryThresholdImageFilter<itk::Image<float, 2>, ImageType>;
+    auto thresholder = ThresholdingFilterType::New();
+    thresholder->SetLowerThreshold(0.0);
+    thresholder->SetUpperThreshold(40);
+    thresholder->SetOutsideValue(0);
+    thresholder->SetInsideValue(255);
+
+    using SmoothingFilterType = itk::CurvatureAnisotropicDiffusionImageFilter<itk::Image<float, 2>,itk::Image<float, 2>>;
+    auto smoothing = SmoothingFilterType::New();
+
+    using GradientFilterType = itk::GradientMagnitudeRecursiveGaussianImageFilter<itk::Image<float, 2>,itk::Image<float, 2>>;
+    using SigmoidFilterType = itk::SigmoidImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+
+auto gradientMagnitude = GradientFilterType::New();
+auto sigmoid = SigmoidFilterType::New();
+
+sigmoid->SetOutputMinimum(0.0);
+sigmoid->SetOutputMaximum(1.0);
+
+using FastMarchingFilterType =
+itk::FastMarchingImageFilter<InternalImageType, InternalImageType>;
+
+auto fastMarching = FastMarchingFilterType::New();
+smoothing->SetInput(reader->GetOutput());
+gradientMagnitude->SetInput(smoothing->GetOutput());
+sigmoid->SetInput(gradientMagnitude->GetOutput());
+fastMarching->SetInput(sigmoid->GetOutput());
+thresholder->SetInput(fastMarching->GetOutput());
+
+smoothing->SetTimeStep(0.125);
+smoothing->SetNumberOfIterations(5);
+smoothing->SetConductanceParameter(9.0);
+
+gradientMagnitude->SetSigma(sigma);
+
+sigmoid->SetAlpha(alpha);
+sigmoid->SetBeta(beta);
+
+using NodeContainer = FastMarchingFilterType::NodeContainer;
+using NodeType = FastMarchingFilterType::NodeType;
+auto seeds = NodeContainer::New();
+
+NodeType node;
+constexpr double seedValue = 0.0;
+node.SetValue(seedValue);
+node.SetIndex(seedPosition);
+
+
+    return {pointsToFit,converter->GetOutput()};
+}
 
 std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer> segment_points(int min_coordx, int max_coordx, int numLines, ImageType::Pointer input_image)
 {
@@ -100,7 +160,7 @@ std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer
         unsigned int xPosition = validXPositions[i];
 
         // Inicializar variáveis
-        unsigned int maxIntensity = 0;
+        unsigned int maxIntensity = -100;
         bool blockStart = false;
         int blockNum = 0;
         int blockSum = 0;
@@ -174,7 +234,6 @@ std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer
         unsigned int mid_y = midPixel_y[i];
         pointsToFit.push_back(std::make_pair(xPosition, mid_y));
     }
-
     return {pointsToFit,converter->GetOutput()};
 }
 

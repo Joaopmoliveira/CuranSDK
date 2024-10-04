@@ -745,7 +745,6 @@ std::ofstream &get_file_handle()
 
 bool process_joint_message(RobotState &state, const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
 {
-    static bool initializing = true;
     static curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
     constexpr auto sample_time = std::chrono::milliseconds(1);
 
@@ -753,44 +752,21 @@ bool process_joint_message(RobotState &state, const size_t &protocol_defined_val
     internal_state.sampleTime = sample_time.count();
     double time = 0;
 
-    static curan::renderable::Renderable* ptr_sphere = nullptr;
-
-    if (initializing)
-    {
-        initializing = false;
-        curan::renderable::Sphere::Info infosphere;
-        infosphere.builder = vsg::Builder::create();
-        infosphere.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
-        infosphere.geomInfo.dx = vsg::vec3(0.02f, 0.0, 0.0);
-        infosphere.geomInfo.dy = vsg::vec3(0.0, 0.02f, 0.0);
-        infosphere.geomInfo.dz = vsg::vec3(0.0, 0.0, 0.02f);
-        infosphere.stateInfo.blending = true;
-        auto sphere = curan::renderable::Sphere::make(infosphere);
-        auto mat = vsg::translate(0.0, 0.0, 0.0);
-        sphere->update_transform(mat);
-        state.window_pointer << sphere;
-        ptr_sphere = sphere.get();
-    }
-
-    // auto& handle = get_file_handle();
     if (er)
         return true;
     for (size_t joint_index = 0; joint_index < curan::communication::FRIMessage::n_joints; ++joint_index)
-    {
         state.robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, message->angles[joint_index]);
-        // handle << message->angles[joint_index] << " ";
-    }
 
     internal_state.q = message->angles;
 
     robot_model.update(internal_state);
     auto transform = robot_model.homogenenous_transformation();
-    Eigen::Matrix<double,4,4> local_transform = Eigen::Matrix<double,4,4>::Identity();
-    local_transform(0,3) = 0.1925;
-    local_transform(1,3) = 0.2125;
-    local_transform(2,3) = 0;
+    Eigen::Matrix<double,4,4> transform_imposed_by_plus_because_of_obscure_reaons = Eigen::Matrix<double,4,4>::Identity();
+    transform_imposed_by_plus_because_of_obscure_reaons(0,3) = 0.1925;
+    transform_imposed_by_plus_because_of_obscure_reaons(1,3) = 0.2125;
+    transform_imposed_by_plus_because_of_obscure_reaons(2,3) = 0;
 
-    transform = (transform*local_transform).eval();
+    transform = (transform*transform_imposed_by_plus_because_of_obscure_reaons).eval();
 
     vsg::dmat4 homogeneous_transformation;
     for (size_t row = 0; row < 4; ++row)
@@ -802,13 +778,8 @@ bool process_joint_message(RobotState &state, const size_t &protocol_defined_val
         if (state.raw_dynamic_texture != nullptr){
             auto local = state.raw_dynamic_texture.load();
             local->cast<curan::renderable::DynamicTexture>()->update_transform(product);
-            if(!initializing && ptr_sphere!=nullptr)
-                ptr_sphere->cast<curan::renderable::Sphere>()->update_transform(vsg::translate(homogeneous_transformation(3,0),homogeneous_transformation(3,1),homogeneous_transformation(3,2)));
         }
     }
-
-    // handle << "\n";
-    // handle.flush();
     return false;
 }
 
