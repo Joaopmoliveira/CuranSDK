@@ -22,4 +22,5 @@ vsg::vsg
 vsgXchange::vsgXchange
 renderable
 utils
+robotutils
 )

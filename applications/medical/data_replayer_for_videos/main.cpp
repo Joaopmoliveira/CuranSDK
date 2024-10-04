@@ -24,7 +24,7 @@ void signal_handler(int signal)
     in_asio_ctx.stop();
 }
 
-void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::communication::protocols::fri>> server, const std::string& path)
+void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::communication::protocols::fri>> server, const std::string& path, double delay_in_milliseconds)
 {
 	asio::io_context &in_context = server->get_context();
 	
@@ -38,6 +38,8 @@ void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::co
         return;
     }
 
+    std::cout << "reading joint tracking data" << std::endl;
+
     std::stringstream ss;
     ss << input_data.rdbuf();
     auto joint_readings = curan::utilities::convert_matrix(ss,',');
@@ -45,14 +47,18 @@ void start_joint_tracking(std::shared_ptr<curan::communication::Server<curan::co
     if(joint_readings.cols()!=7 || joint_readings.rows()<3)
         throw std::runtime_error("the dimensions do not match what is expected");
     
-    size_t i = 0;
+    std::cout << "number of observations:" << joint_readings.rows() << std::endl;
 
+    size_t i = 0;
+    std::cout << "sleeping for " << (size_t)delay_in_milliseconds;
+    std::this_thread::sleep_for(std::chrono::milliseconds((size_t)delay_in_milliseconds));
+    std::cout << "stopped sleeping " << std::endl;
 	while (!in_context.stopped() && i<joint_readings.rows())
 	{
 		const auto start = std::chrono::high_resolution_clock::now();
 		std::shared_ptr<curan::communication::FRIMessage> message = std::shared_ptr<curan::communication::FRIMessage>(new curan::communication::FRIMessage());
 
-        Eigen::Matrix<double,7,1> joint_at_index = joint_readings.block<1,7>(i,0);
+        Eigen::Matrix<double,1,7> joint_at_index = joint_readings.block<1,7>(i,0);
         for(size_t j = 0; j< 7; ++j)
             message->angles[j] = joint_at_index[j];
 		message->serialize();
@@ -100,6 +106,7 @@ int intermediate(int argc, char* argv[]){
     if (needle_calibration_specification.contains("plus_configuration_file"))
     {
         std::string path_to_plus = needle_calibration_specification["plus_configuration_file"];
+        std::cout << path_to_plus << std::endl;
 	    plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH, std::string{"--config-file="} + path_to_plus,"--verbose=1",
 															   boost::process::std_out > plus_out,
 															   plus_ec,
@@ -138,16 +145,22 @@ int intermediate(int argc, char* argv[]){
         Async post_reading_operations{plus_buf,plus_ec,plus_out};
         post_reading_operations.post_async();
 		
-        pool->submit(curan::utilities::Job{"run process tracking",[&](){ std::cout << "running plus"; in_asio_ctx.run();}});
+        pool->submit(curan::utilities::Job{"run process tracking",[&](){ std::cout << "running plus"; in_asio_ctx.run(); std::cout << "stopped running plus" << std::endl;}});
     } else {
         std::cout << "no plus configuration file" << std::endl;
     }
 
     if (needle_calibration_specification.contains("joint_configuration_file"))
     {
-        std::string  path_to_joints = needle_calibration_specification["joint_configuration_file"];
+        double delay = 0.0;
+        std::string path_to_joints = needle_calibration_specification["joint_configuration_file"];
+        if(needle_calibration_specification.contains("joint_delay_in_millisec"))  
+            delay = needle_calibration_specification["joint_delay_in_millisec"];
+        if(delay<0.0)
+            signal_handler(1);
+        std::cout << path_to_joints << std::endl;
         server_joints = curan::communication::Server<curan::communication::protocols::fri>::make(context, port_fri);
-        pool->submit(curan::utilities::Job{"run joint tracking",[&](){start_joint_tracking(server_joints, path_to_joints);}});
+        pool->submit(curan::utilities::Job{"run joint tracking",[=](){start_joint_tracking(server_joints, path_to_joints,delay); std::cout << "stopped running joint tracking data" << std::endl;}});
     }else {
         std::cout << "no joint configuration file" << std::endl;
     }

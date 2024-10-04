@@ -28,6 +28,8 @@
 #include <map>
 #include <string>
 #include "utils/FileStructures.h"
+#include "robotutils/RobotModel.h"
+#include "utils/DateManipulation.h"
 
 /*
 This executable requires:
@@ -49,16 +51,7 @@ And it outputs
 using OutputPixelType = unsigned char;
 using OutputImageType = itk::Image<OutputPixelType, 3>;
 
-auto return_current_time_and_date = []()
-{
-    auto now = std::chrono::system_clock::now();
-    auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
-    std::stringstream ss;
-    auto val = std::chrono::system_clock::now();
-    ss << val.time_since_epoch().count();
-    return ss.str();
-};
+constexpr bool display_ultrasound_with_plus_homogeneous_data = false;
 
 class RobotState{
     std::atomic<bool> commit_senpuko = false;
@@ -73,7 +66,8 @@ public:
     vsg::ref_ptr<curan::renderable::Renderable> rendered_box;
     curan::image::IntegratedReconstructor::Info integrated_volume_create_info;
     vsg::ref_ptr<curan::renderable::Renderable> integrated_volume;
-    std::optional<vsg::ref_ptr<curan::renderable::Renderable>> dynamic_texture;
+    std::atomic<bool> accessible = false;
+    std::atomic<std::optional<vsg::ref_ptr<curan::renderable::Renderable>>> dynamic_texture;
     vsg::dmat4 calibration_matrix;
     
 
@@ -413,7 +407,7 @@ struct ApplicationState
 
                                                    auto global_corner_position = position_of_center_in_global_frame - rotation_0_1 * position_in_local_box_frame;
                                                    nlohmann::json specified_box;
-                                                   specified_box["timestamp"] = return_current_time_and_date();
+                                                   specified_box["timestamp"] = curan::utilities::get_formated_date();
 
                                                    constexpr size_t maximum_float_size = 62.5e6 * 0.5;
                                                    double new_spacing = std::cbrt((2 * final_box.extent[0] * 2 * final_box.extent[1] * 2 * final_box.extent[2]) / (maximum_float_size));
@@ -553,6 +547,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         infotexture.builder = vsg::Builder::create();
         state.dynamic_texture = curan::renderable::DynamicTexture::make(infotexture);
         state.window_pointer << *state.dynamic_texture;
+        state.accessible = true;
 
         std::cout << "creating bounding box texture\n";
         curan::renderable::Box::Info infobox;
@@ -599,8 +594,12 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         }
     };
 
-    //if(state.dynamic_texture->get()!=nullptr)
-    //    state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+    if constexpr (display_ultrasound_with_plus_homogeneous_data){
+        if(state.dynamic_texture->get()!=nullptr)
+            state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+    }
+
+
     igtl::Matrix4x4 image_transform;
     message_body->GetMatrix(image_transform);
     vsg::dmat4 homogeneous_transformation;
@@ -612,9 +611,6 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
     homogeneous_transformation(3, 1) *= 1e-3;
     homogeneous_transformation(3, 2) *= 1e-3;
     auto product = homogeneous_transformation * state.calibration_matrix;
-
-    if(state.dynamic_texture->get()!=nullptr)
-        state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(product);
 
     OutputImageType::Pointer image_to_render;
     curan::image::igtl2ITK_im_convert(message_body, image_to_render);
@@ -732,7 +728,7 @@ bool process_message(RobotState &state, size_t protocol_defined_val, std::error_
 
 std::ofstream& get_file_handle(){
     static bool initializing = true;
-    static std::string pathname = std::string{"joint_recording_"}+return_current_time_and_date()+std::string{".txt"};
+    static std::string pathname = std::string{"joint_recording_"}+curan::utilities::get_formated_date()+std::string{".txt"};
     static std::ofstream out{pathname};
     if(initializing){
         if(!out.is_open())
@@ -746,15 +742,38 @@ std::ofstream& get_file_handle(){
 
 bool process_joint_message(RobotState &state, const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
 {
-    auto& handle = get_file_handle();
+    static curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
+    constexpr auto sample_time = std::chrono::milliseconds(1);
+
+    static curan::robotic::State internal_state;
+    internal_state.sampleTime = sample_time.count();
+    double time = 0;
+
+    //auto& handle = get_file_handle();
     if (er)
         return true;
     for (size_t joint_index = 0; joint_index < curan::communication::FRIMessage::n_joints; ++joint_index){
         state.robot->cast<curan::renderable::SequencialLinks>()->set(joint_index, message->angles[joint_index]);
-        handle << message->angles[joint_index] << " ";
+        internal_state.q[joint_index] = message->angles[joint_index];
+        //handle << message->angles[joint_index] << " ";
     }
-    handle << "\n";
-    handle.flush();
+
+    robot_model.update(internal_state);
+
+    vsg::dmat4 homogeneous_transformation;
+    for (size_t row = 0; row < 4; ++row)
+        for (size_t col = 0; col < 4; ++col)
+            homogeneous_transformation(col, row) = robot_model.homogenenous_transformation()(row,col);
+
+    auto product = homogeneous_transformation * state.calibration_matrix;
+    if constexpr (!display_ultrasound_with_plus_homogeneous_data){
+        if(state.accessible)
+            if(state.dynamic_texture->get()!=nullptr)
+                state.dynamic_texture->cast<curan::renderable::DynamicTexture>()->update_transform(product);
+    }
+
+    //handle << "\n";
+    //handle.flush();
     return false;
 }
 
@@ -779,7 +798,7 @@ int communication(RobotState &state, asio::io_context &context)
     std::cout << "connecting to client\n";
     
     asio::ip::tcp::resolver fri_resolver(context);
-    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context,fri_resolver.resolve("172.31.1.148", std::to_string(50010)));
+    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context,fri_resolver.resolve("localhost", std::to_string(50010)));
 
     auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
     {
@@ -829,7 +848,7 @@ int main(int argc, char **argv)
     app_pointer = &application_state;
 
     curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
-
+    std::cout << "using calibration matrix: \n" << calibration.homogeneous_transformation() << std::endl;
     for (Eigen::Index row = 0; row < 4; ++row)
         for (Eigen::Index col = 0; col < 4; ++col)
             application_state.robot_state.calibration_matrix(col, row) = calibration.homogeneous_transformation()(row,col);
