@@ -206,7 +206,7 @@ namespace curan
                 f_model.gravity = RigidBodyDynamics::Math::Vector3d(0.0, 0.0, -9.81);
 
                 f_body[0] = RigidBodyDynamics::Body(f_mass[0], f_center_of_mass[0], f_inertia[0]);
-                ;
+
                 f_joint[0] = RigidBodyDynamics::Joint(RigidBodyDynamics::JointTypeRevolute, f_axis_direction[0]);
                 f_body_id[0] = f_model.AddBody(0, RigidBodyDynamics::Math::Xtrans(f_axis_origin[0]), f_joint[0], f_body[0], std::to_string(0));
 
