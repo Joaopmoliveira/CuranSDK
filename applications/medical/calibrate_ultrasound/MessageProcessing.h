@@ -25,20 +25,20 @@
 struct ConfigurationData {
 	int port = 18944;
 
-	std::array<double, 2> minimum_radius_limit = { 5.0,10.0 };
-	std::array<double, 2> maximum_radius_limit = { 11.0,30.0 };
-	std::array<double, 2> sweep_angle_limit = { 0.1,0.8 };
+	std::array<double, 2> minimum_radius_limit = { 3.0,5.0 };
+	std::array<double, 2> maximum_radius_limit = { 5.0,30.0 };
+	std::array<double, 2> sweep_angle_limit = { 0.1,0.99 };
 	std::array<double, 2> sigma_gradient_limit = { 1.0,20.0 };
 	std::array<double, 2> variance_limit = { 1.0,10.0 };
-	std::array<double, 2> disk_ratio_limit = { 0.1,10.0 };
+	std::array<double, 2> disk_ratio_limit = { 0.1,20.0 };
 	std::array<double, 2> threshold_limit = { 50.0,200.0 };
 
-	std::atomic<double> minimum_radius = 10.0;
-	std::atomic<double> maximum_radius = 11.5;
-	std::atomic<double> sweep_angle = 0.26;
-	std::atomic<double> sigma_gradient = 5.0;
+	std::atomic<double> minimum_radius = 4.230001;
+	std::atomic<double> maximum_radius = 5.000000;
+	std::atomic<double> sweep_angle = 0.260000;
+	std::atomic<double> sigma_gradient = 9.274997;
 	std::atomic<double> variance = 5.0;
-	std::atomic<double> disk_ratio = 2.888;
+	std::atomic<double> disk_ratio = 11.146494;
 	std::atomic<double> threshold = 125.0;
 
 	std::shared_ptr<curan::utilities::ThreadPool> shared_pool;

@@ -3,6 +3,8 @@
 #include "utils/Overloading.h"
 #include <variant>
 
+#include <iostream>
+
 namespace curan
 {
 	namespace ui
@@ -91,7 +93,7 @@ namespace curan
 				};
 				interpreter.process(check_inside_fixed_area, check_inside_fixed_area, sig);
 
-				if (interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT | SCROLL_EVENT))
+				if (interpreter.check(INSIDE_FIXED_AREA | SCROLL_EVENT))
 				{
 					auto widget_rect = get_position();
 					auto size = get_size();
@@ -112,18 +114,30 @@ namespace curan
 					return true;
 				}
 
+				static std::pair<double,double> old_pressed_value;
+
+				if(interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT_EVENT)){
+					old_pressed_value = interpreter.last_move();
+				}
+
 				if (interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT))
 				{
-					auto [x_pos,y_pos] = interpreter.last_move();
 					auto widget_rect = get_position();
 					auto size = get_size();
 					SkRect drawable = size;
-					drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
-					auto offset_x = ((float)x_pos - drawable.x()) / size.width();
+					auto [xarg,yarg] = interpreter.last_move();
+					auto [xarg_last,yarg_last] = old_pressed_value;
 					auto current_val = get_current_value();
-					current_val += offset_x - read_trigger();
-					trigger(offset_x);
+					drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
+					auto offsetx = (float)(xarg-xarg_last) / size.width();
+					set_current_value(offsetx+current_val);
 					set_current_state(SliderStates::PRESSED);
+					if (callback)
+					{
+						auto val = *callback;
+						val(this, config);
+					}
+					old_pressed_value = interpreter.last_move();
 					return true;
 				}
 
