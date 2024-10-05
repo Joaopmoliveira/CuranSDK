@@ -32,7 +32,26 @@ struct ObservationEigenFormat {
     std::vector<std::pair<unsigned int, unsigned int>> segmented_points;
 };
 
+/*
+    smoothing->SetTimeStep(0.125);
+    smoothing->SetNumberOfIterations(5);
+    smoothing->SetConductanceParameter(9.0);
+
+    gradientMagnitude->SetSigma(3);
+
+*/
+
 struct ProcessingMessage {
+	std::array<double, 2> limits_timestep = {0.05,0.25 };
+	std::array<double, 2> limits_iterations = { 1,20 };
+	std::array<double, 2> limits_conductance = { 0.2,6.0 };
+	std::array<double, 2> limits_sigma = { 1.0,10.0 };
+
+	std::atomic<double> timestep = 0.05;
+	std::atomic<size_t> iterations = 5;
+	std::atomic<double> conductance = 3.0;
+	std::atomic<double> sigma = 2.0;
+
 	std::list<ObservationEigenFormat> list_of_recorded_points;
 
 	curan::ui::ImageDisplay* processed_viwer = nullptr;
