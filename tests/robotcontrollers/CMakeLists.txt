@@ -306,3 +306,17 @@ utils
 robotutils
 renderable
 )
+
+add_executable(test_forward_kin_vs_plus test_forward_kin_vs_plus.cpp)
+
+target_compile_definitions(test_forward_kin_vs_plus PRIVATE SK_VULKAN)
+target_compile_definitions(test_forward_kin_vs_plus PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_forward_kin_vs_plus PUBLIC
+utils
+robotutils
+communication
+renderable
+)
+
+
