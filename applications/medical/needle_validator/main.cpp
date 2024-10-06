@@ -279,6 +279,7 @@ int main(int argc, char *argv[])
             nlohmann::json json_landmarks;
             in >> json_landmarks;
             std::cout << "parsed json.\n";
+            std::string moving_image_path = json_landmarks["moving_image_path"];
             std::string homogenenous_transformation = json_landmarks["landmarks_to_register"];
             std::stringstream stream;
             stream << homogenenous_transformation;

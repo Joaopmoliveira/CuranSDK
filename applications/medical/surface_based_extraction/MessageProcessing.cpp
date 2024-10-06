@@ -12,13 +12,14 @@
 #include "itkSmoothingRecursiveGaussianImageFilter.h"
 #include "itkImageRegionIterator.h"
 #include "itkCastImageFilter.h"
-
+#include "itkConnectedComponentImageFilter.h"
 #include "itkGradientMagnitudeImageFilter.h"
-
+#include "itkMaskImageFilter.h"
 #include "itkCurvatureAnisotropicDiffusionImageFilter.h"
 #include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
 #include "itkSigmoidImageFilter.h"
 #include "itkFastMarchingImageFilter.h"
+#include "itkRelabelComponentImageFilter.h"
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkBinomialBlurImageFilter.h"
 #include "itkStatisticsImageFilter.h"
@@ -37,6 +38,53 @@ bool process_transform_message(ProcessingMessage *processor, igtl::MessageBase::
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 2;
 using ImageType = itk::Image<PixelType, Dimension>;
+
+template <typename TImage>
+typename TImage::Pointer DeepCopy(typename TImage::Pointer input)
+{
+    typename TImage::Pointer output = TImage::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+
+    while (!inputIterator.IsAtEnd()){
+        outputIterator.Set(inputIterator.Get());
+        ++inputIterator;
+        ++outputIterator;
+    }
+
+    return  output;
+}
+
+template <typename TImage,typename InclusionPolicy>
+typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
+{
+    typename TImage::Pointer output = TImage::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+
+    while (!inputIterator.IsAtEnd()){
+        if(inclusion_policy((double)(inputIterator.GetIndex()[0]),(double)(inputIterator.GetIndex()[1]))){
+            outputIterator.Set(inputIterator.Get());
+        }else
+            outputIterator.Set(0);
+        ++inputIterator;
+        ++outputIterator;
+    }
+
+    return  output;
+}
 
 ImageType::Pointer segment_points(ProcessingMessage *processor, ImageType::Pointer input_image)
 {
@@ -128,75 +176,55 @@ ImageType::Pointer segment_points(ProcessingMessage *processor, ImageType::Point
     binary_threshold->SetLowerThreshold(histogram->GetBinMin(0, threshold_bin));
     binary_threshold->SetUpperThreshold(minMaxCalculator->GetMaximum());
 
-    //auto reverse_converter = itk::CastImageFilter<itk::Image<float, 2>,ImageType>::New();
-    //reverse_converter->SetInput(smoothing->GetOutput());
+    auto connectedComponentFilter = itk::ConnectedComponentImageFilter<ImageType, ImageType>::New();
+    connectedComponentFilter->SetInput(binary_threshold->GetOutput());
 
-    auto rescaler = itk::RescaleIntensityImageFilter<ImageType,ImageType>::New();
-    rescaler->SetInput(binary_threshold->GetOutput());
-    rescaler->SetOutputMinimum(0.0);
-    rescaler->SetOutputMaximum(255.0);
+    auto relabelFilter = itk::RelabelComponentImageFilter<ImageType,ImageType>::New();
+    relabelFilter->SetInput(connectedComponentFilter->GetOutput());
+
+    auto filtered_image_with_largest_components = itk::ThresholdImageFilter<ImageType>::New();
+    filtered_image_with_largest_components->SetInput(relabelFilter->GetOutput());
+    filtered_image_with_largest_components->ThresholdOutside(1,processor->connected_components);
+    filtered_image_with_largest_components->SetOutsideValue(255);
+
+    auto final_binary_threshold = itk::BinaryThresholdImageFilter<ImageType,ImageType>::New();
+    final_binary_threshold->SetInput(filtered_image_with_largest_components->GetOutput());
+    final_binary_threshold->SetOutsideValue(0);
+    final_binary_threshold->SetInsideValue(255);
+    final_binary_threshold->SetLowerThreshold(0);
+    final_binary_threshold->SetUpperThreshold(processor->connected_components);
 
     try{
-        rescaler->Update();
-        return rescaler->GetOutput();
-    } catch(...){
-        std::cout << "error" << std::endl;
+        final_binary_threshold->Update();
+    } catch (const itk::ExceptionObject &err){
+        std::cout << "ExceptionObject caught !" << std::endl
+                  << err << std::endl;
+        return nullptr;
+    } catch (...) {
+        std::cout << "generic unknown exception" << std::endl;
+        return nullptr;
     }
 
-    /*
-    using SmoothingFilterType = itk::CurvatureAnisotropicDiffusionImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
-    auto smoothing = SmoothingFilterType::New();
+    auto copied_mask = DeepCopyWithInclusionPolicy<ImageType>([=](double x, double y){ return (y< output_size[1]-5) ? true : false ; },final_binary_threshold->GetOutput());
 
-    using GradientFilterType = itk::GradientMagnitudeRecursiveGaussianImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
-    using SigmoidFilterType = itk::SigmoidImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+    using MaskFilterType = itk::MaskImageFilter<itk::Image<float,2>, ImageType>;
+    auto maskFilter = MaskFilterType::New();
+    maskFilter->SetInput(resampleFilter->GetOutput());
+    maskFilter->SetMaskImage(copied_mask);
 
-    auto gradientMagnitude = GradientFilterType::New();
-    smoothing->SetInput(resampleFilter->GetOutput());
-    gradientMagnitude->SetInput(smoothing->GetOutput());
+    auto reconverter_converter = itk::CastImageFilter<itk::Image<float, 2>,ImageType>::New();
+    reconverter_converter->SetInput(maskFilter->GetOutput());
 
-    smoothing->SetTimeStep(0.125);
-    smoothing->SetNumberOfIterations(5);
-    smoothing->SetConductanceParameter(9.0);
-
-    gradientMagnitude->SetSigma(3);
-
-    auto rescaler = itk::RescaleIntensityImageFilter<itk::Image<float, 2>,itk::Image<float, 2>>::New();
-    rescaler->SetInput(gradientMagnitude->GetOutput());
-    rescaler->SetOutputMinimum(0.0);
-    rescaler->SetOutputMaximum(255.0);
-
-    auto reverse_converter = itk::CastImageFilter<itk::Image<float, 2>,ImageType>::New();
-    reverse_converter->SetInput(rescaler->GetOutput());
     try{
-        reverse_converter->Update();
-        return reverse_converter->GetOutput();
-    } catch(...){
-        std::cout << "error" << std::endl;
+        reconverter_converter->Update();
+        return reconverter_converter->GetOutput();
+    } catch (const itk::ExceptionObject &err) {
+        std::cout << "ExceptionObject caught !" << std::endl
+                  << err << std::endl;
+    } catch (...) {
+        std::cout << "generic unknown exception" << std::endl;
     }
-        */
     return nullptr;
-}
-
-template <typename TImage>
-typename TImage::Pointer DeepCopy(typename TImage::Pointer input)
-{
-    typename TImage::Pointer output = TImage::New();
-    output->SetRegions(input->GetLargestPossibleRegion());
-    output->SetDirection(input->GetDirection());
-    output->SetSpacing(input->GetSpacing());
-    output->SetOrigin(input->GetOrigin());
-    output->Allocate();
-
-    itk::ImageRegionConstIterator<TImage> inputIterator(input, input->GetLargestPossibleRegion());
-    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
-
-    while (!inputIterator.IsAtEnd()){
-        outputIterator.Set(inputIterator.Get());
-        ++inputIterator;
-        ++outputIterator;
-    }
-
-    return  output;
 }
 
 std::tuple<std::vector<std::pair<unsigned int, unsigned int>>, ImageType::Pointer> segment_points(int min_coordx, int max_coordx, int numLines, ImageType::Pointer input_image)

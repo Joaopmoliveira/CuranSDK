@@ -42,17 +42,22 @@ struct ObservationEigenFormat {
 */
 
 struct ProcessingMessage {
+
 	std::array<double, 2> limits_timestep = {0.05,0.25 };
 	std::array<double, 2> limits_iterations = { 1,20 };
 	std::array<double, 2> limits_conductance = { 0.2,6.0 };
 	std::array<double, 2> limits_sigma = { 1.0,10.0 };
 	std::array<double, 2> limits_percentage = { 0.01, 0.99 };
+	std::array<double, 2> limits_connected_components = { 1, 10 };
+	std::array<double, 2> limits_horizontal_divisions = { 20, 200 };
 
 	std::atomic<double> timestep = 0.05;
 	std::atomic<size_t> iterations = 5;
+	std::atomic<size_t> connected_components = 5;
 	std::atomic<double> conductance = 3.0;
 	std::atomic<double> sigma = 2.0;
 	std::atomic<double> percentage = 0.9;
+	std::atomic<double> horizontal_divisions = 50;
 
 	std::list<ObservationEigenFormat> list_of_recorded_points;
 
