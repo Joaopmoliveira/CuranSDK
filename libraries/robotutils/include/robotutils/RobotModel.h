@@ -165,7 +165,7 @@ namespace curan
                 f_dq = Eigen::Matrix<double, model_joints, 1>::Zero();
                 f_ddq = Eigen::Matrix<double, model_joints, 1>::Zero();
                 f_measured_torque = Eigen::Matrix<double, model_joints, 1>::Zero();
-                f_end_effector = Eigen::Matrix<double, 4, 4>::Zero();
+                f_end_effector = Eigen::Matrix<double, 4, 4>::Identity();
                 f_jacobian = Eigen::Matrix<double, 6, model_joints>::Zero();
 
                 // except the electrical flange which we set to this offset
@@ -206,7 +206,7 @@ namespace curan
                 f_model.gravity = RigidBodyDynamics::Math::Vector3d(0.0, 0.0, -9.81);
 
                 f_body[0] = RigidBodyDynamics::Body(f_mass[0], f_center_of_mass[0], f_inertia[0]);
-                ;
+
                 f_joint[0] = RigidBodyDynamics::Joint(RigidBodyDynamics::JointTypeRevolute, f_axis_direction[0]);
                 f_body_id[0] = f_model.AddBody(0, RigidBodyDynamics::Math::Xtrans(f_axis_origin[0]), f_joint[0], f_body[0], std::to_string(0));
 

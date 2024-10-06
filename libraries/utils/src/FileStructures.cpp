@@ -33,7 +33,7 @@ namespace curan
 
             for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
                 for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
-                    f_homogeneous_transformation(col, row) = calibration_matrix(row, col);
+                    f_homogeneous_transformation(row, col) = calibration_matrix(row, col);
         }
 
         std::string UltrasoundCalibrationData::timestamp() const
@@ -98,7 +98,7 @@ namespace curan
 
             for (Eigen::Index row = 0; row < registration_mat.rows(); ++row)
                 for (Eigen::Index col = 0; col < registration_mat.cols(); ++col)
-                    f_moving_to_fixed_transform(col, row) = registration_mat(row, col);
+                    f_moving_to_fixed_transform(row, col) = registration_mat(row, col);
         }
 
         std::string RegistrationData::timestamp() const
@@ -158,7 +158,7 @@ namespace curan
 
             for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
                 for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
-                    f_needle_homogeneous_transformation(col, row) = calibration_matrix(row, col);
+                    f_needle_homogeneous_transformation(row, col) = calibration_matrix(row, col);
         }
 
         std::string NeedleCalibrationData::timestamp() const

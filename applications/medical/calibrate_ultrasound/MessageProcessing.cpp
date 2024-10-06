@@ -34,6 +34,28 @@ std::optional<Eigen::Matrix<double, 3, Eigen::Dynamic>> rearrange_wire_geometry(
 	return local_copy;
 }
 
+template <typename TImage>
+typename TImage::Pointer DeepCopy(typename TImage::Pointer input)
+{
+    typename TImage::Pointer output = TImage::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    itk::ImageRegionConstIterator<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+
+    while (!inputIterator.IsAtEnd()){
+        outputIterator.Set(inputIterator.Get());
+        ++inputIterator;
+        ++outputIterator;
+    }
+
+    return  output;
+}
+
 bool process_transform_message(ProcessingMessage* processor,igtl::MessageBase::Pointer val){
 	processor->open_viwer->process_message(val);
 	igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
@@ -81,12 +103,39 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	
 	const bool importImageFilterWillOwnTheBuffer = false;
 	importFilter->SetImportPointer((PixelType*)message_body->GetScalarPointer(), message_body->GetScalarSize(), importImageFilterWillOwnTheBuffer);
+	importFilter->Update();
+	
+	auto input_image = DeepCopy<ImageType>(importFilter->GetOutput());
+
+    double physicalspace[2];
+    physicalspace[0] = size[0] * spacing[0];
+    physicalspace[1] = size[1] * spacing[1];
+
+    auto output_size = size;
+    output_size[0] = (size_t)std::floor((1.0 / 2) * output_size[0]);
+    output_size[1] = (size_t)std::floor((1.0 / 2) * output_size[1]);
+
+    itk::SpacePrecisionType output_spacing[Dimension];
+    output_spacing[0] = physicalspace[0] / output_size[0];
+    output_spacing[1] = physicalspace[1] / output_size[1];
+
+    auto interpolator = itk::LinearInterpolateImageFunction<ImageType, double>::New();
+    auto transform = itk::AffineTransform<double, 2>::New();
+    transform->SetIdentity();
+    auto resampleFilter = itk::ResampleImageFilter<ImageType, ImageType>::New();
+    resampleFilter->SetInput(importFilter->GetOutput());
+    resampleFilter->SetTransform(transform);
+    resampleFilter->SetInterpolator(interpolator);
+    resampleFilter->SetOutputDirection(importFilter->GetDirection());
+    resampleFilter->SetSize(output_size);
+    resampleFilter->SetOutputSpacing(output_spacing);
+    resampleFilter->SetOutputOrigin(origin);
 
 	using FilterType = itk::ThresholdImageFilter<ImageType>;
 	auto filter = FilterType::New();
 	unsigned char lowerThreshold = (unsigned int)processor->configuration.threshold;
 	unsigned char upperThreshold = 255;
-	filter->SetInput(importFilter->GetOutput());
+	filter->SetInput(resampleFilter->GetOutput());
 	filter->ThresholdOutside(lowerThreshold, upperThreshold);
 	filter->SetOutsideValue(0);
 
@@ -100,7 +149,7 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	auto blurfilter = FilterTypeBlur::New();
 	blurfilter->SetInput(rescaletofloat->GetOutput());
 	blurfilter->SetVariance(processor->configuration.variance);
-	blurfilter->SetMaximumKernelWidth(15);
+	blurfilter->SetMaximumKernelWidth(7);
 
 	using RescaleTypeToImageType = itk::RescaleIntensityImageFilter<FloatImageType, ImageType>;
 	auto rescaletochar = RescaleTypeToImageType::New();
@@ -136,10 +185,21 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	rescale->SetOutputMinimum(0);
 	rescale->SetOutputMaximum(itk::NumericTraits<PixelType>::max());
 
+    auto to_interpolator = itk::LinearInterpolateImageFunction<ImageType, double>::New();
+    auto to_resampleFilter = itk::ResampleImageFilter<ImageType, ImageType>::New();
+    to_resampleFilter->SetInput(rescale->GetOutput());
+    to_resampleFilter->SetTransform(transform);
+    to_resampleFilter->SetInterpolator(interpolator);
+    to_resampleFilter->SetOutputDirection(importFilter->GetDirection());
+    to_resampleFilter->SetSize(size);
+    to_resampleFilter->SetOutputSpacing(spacing);
+    to_resampleFilter->SetOutputOrigin(origin);
+
 	try {
-		rescale->Update();
+		to_resampleFilter->Update();
 	}
 	catch (...) {
+		std::printf("failure\n");
 		return false;
 	}
 
@@ -159,10 +219,9 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	while (itCircles != circles.end())
 	{
 		Eigen::Matrix<double, 3, 1> segmented_point = Eigen::Matrix<double, 3, 1>::Zero();
-		const HoughTransformFilterType::CircleType::PointType centerPoint =
-			(*itCircles)->GetCenterInObjectSpace();
-		segmented_point(0, 0) = centerPoint[0];
-		segmented_point(1, 0) = centerPoint[1];
+		const HoughTransformFilterType::CircleType::PointType centerPoint =(*itCircles)->GetCenterInObjectSpace();
+		segmented_point(0, 0) = 2.0*centerPoint[0];
+		segmented_point(1, 0) = 2.0*centerPoint[1];
 		segmented_wires.col(circle_index) = segmented_point;
 		itCircles++;
 		++circle_index;
@@ -191,16 +250,12 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 	}
 
 	if (processor->show_circles.load()) {
-		ImageType::Pointer localImage = rescale->GetOutput();
-		auto lam = [message_body,localImage, x, y](SkPixmap& requested) {
-			auto inf = SkImageInfo::Make(x, y, SkColorType::kGray_8_SkColorType, SkAlphaType::kOpaque_SkAlphaType);
-			size_t row_size = x * sizeof(unsigned char);
-			SkPixmap map{ inf,localImage->GetBufferPointer(),row_size };
-			requested = map;
-			return;
-		};
 		auto local_colors = processor->colors;
-		auto special_custom = [x,y,processor,segmented_wires, local_colors](SkCanvas* canvas, SkRect image_area,SkRect allowed_area) {
+		ImageType::Pointer post_processed_image = to_resampleFilter->GetOutput();
+    	ImageType::SizeType size_itk =  post_processed_image->GetLargestPossibleRegion().GetSize();
+    	auto buff = curan::utilities::CaptureBuffer::make_shared(post_processed_image->GetBufferPointer(),size_itk[0]*size_itk[1]*sizeof(char),post_processed_image);
+    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
+		auto special_custom = [x = 2.0*output_size[0],y = 2.0*output_size[1],processor,segmented_wires, local_colors](SkCanvas* canvas, SkRect image_area,SkRect allowed_area) {
 			float scalling_factor_x = image_area.width()/x;
 			float scalling_factor_y = image_area.height()/y;
 			float radius = 5;
@@ -231,20 +286,14 @@ bool process_image_message(ProcessingMessage* processor,igtl::MessageBase::Point
 				}
 			}
 		};
-
-		ImageType::Pointer pointer_to_block_of_memory = rescale->GetOutput();
-    	ImageType::SizeType size_itk =  pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
-    	auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(),pointer_to_block_of_memory->GetPixelContainer()->Size()*sizeof(char),pointer_to_block_of_memory);
-    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1],SkColorType::kAlpha_8_SkColorType,SkAlphaType::kUnpremul_SkAlphaType};
 		processor->processed_viwer->update_batch(special_custom,wrapper);
 	}
 	else {
 		processor->processed_viwer->clear_custom_drawingcall();
-		//ImageType::Pointer localImage = rescale->GetOutput();
-		ImageType::Pointer pointer_to_block_of_memory = rescale->GetOutput();
-    	ImageType::SizeType size_itk =  pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
-    	auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(),pointer_to_block_of_memory->GetPixelContainer()->Size()*sizeof(char),pointer_to_block_of_memory);
-    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1],SkColorType::kAlpha_8_SkColorType,SkAlphaType::kUnpremul_SkAlphaType};
+		ImageType::Pointer post_processed_image = to_resampleFilter->GetOutput();
+    	ImageType::SizeType size_itk =  post_processed_image->GetLargestPossibleRegion().GetSize();
+    	auto buff = curan::utilities::CaptureBuffer::make_shared(post_processed_image->GetBufferPointer(),size_itk[0]*size_itk[1]*sizeof(char),post_processed_image);
+    	curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
 		processor->processed_viwer->update_image(wrapper);
 	}
 	end = std::chrono::steady_clock::now();

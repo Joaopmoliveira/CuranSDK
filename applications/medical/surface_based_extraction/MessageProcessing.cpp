@@ -13,6 +13,17 @@
 #include "itkImageRegionIterator.h"
 #include "itkCastImageFilter.h"
 
+#include "itkGradientMagnitudeImageFilter.h"
+
+#include "itkCurvatureAnisotropicDiffusionImageFilter.h"
+#include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
+#include "itkSigmoidImageFilter.h"
+#include "itkFastMarchingImageFilter.h"
+#include "itkBinaryThresholdImageFilter.h"
+#include "itkBinomialBlurImageFilter.h"
+#include "itkStatisticsImageFilter.h"
+#include "itkScalarImageToHistogramGenerator.h"
+
 bool process_transform_message(ProcessingMessage *processor, igtl::MessageBase::Pointer val)
 {
     igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
@@ -27,7 +38,168 @@ using PixelType = unsigned char;
 constexpr unsigned int Dimension = 2;
 using ImageType = itk::Image<PixelType, Dimension>;
 
-std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer> segment_points(int min_coordx, int max_coordx, int numLines, ImageType::Pointer input_image)
+ImageType::Pointer segment_points(ProcessingMessage *processor, ImageType::Pointer input_image)
+{
+    auto converter = itk::CastImageFilter<ImageType, itk::Image<float, 2>>::New();
+    converter->SetInput(input_image);
+
+    auto input_size = input_image->GetLargestPossibleRegion().GetSize();
+    auto input_spacing = input_image->GetSpacing();
+    auto input_origin = input_image->GetOrigin();
+
+    double physicalspace[2];
+    physicalspace[0] = input_size[0] * input_spacing[0];
+    physicalspace[1] = input_size[1] * input_spacing[1];
+
+    auto output_size = input_size;
+    output_size[0] = (size_t)std::floor((1.0 / 2) * output_size[0]);
+    output_size[1] = (size_t)std::floor((1.0 / 2) * output_size[1]);
+
+    auto output_spacing = input_spacing;
+    output_spacing[0] = physicalspace[0] / output_size[0];
+    output_spacing[1] = physicalspace[1] / output_size[1];
+
+    auto interpolator = itk::LinearInterpolateImageFunction<itk::Image<float, 2>, double>::New();
+    auto transform = itk::AffineTransform<double, 2>::New();
+    transform->SetIdentity();
+    auto resampleFilter = itk::ResampleImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>::New();
+    resampleFilter->SetInput(converter->GetOutput());
+    resampleFilter->SetTransform(transform);
+    resampleFilter->SetInterpolator(interpolator);
+    resampleFilter->SetOutputDirection(input_image->GetDirection());
+    resampleFilter->SetSize(output_size);
+    resampleFilter->SetOutputSpacing(output_spacing);
+    resampleFilter->SetOutputOrigin(input_origin);
+
+    auto bluring = itk::BinomialBlurImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>::New();
+    bluring->SetInput(resampleFilter->GetOutput());
+    bluring->SetRepetitions(4);
+
+    using SmoothingFilterType = itk::CurvatureAnisotropicDiffusionImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+    auto smoothing = SmoothingFilterType::New();
+
+    smoothing->SetInput(bluring->GetOutput());
+    smoothing->SetTimeStep(processor->timestep);
+    smoothing->SetNumberOfIterations(processor->iterations);
+    smoothing->SetConductanceParameter(processor->conductance);
+
+    try{
+        smoothing->Update();
+    } catch(...){
+        std::cout << "error" << std::endl;
+        return nullptr;
+    }
+
+    using HistogramGeneratorType = itk::Statistics::ScalarImageToHistogramGenerator<itk::Image<float, 2>>;
+    using HistogramType = HistogramGeneratorType::HistogramType;
+    auto histogramGenerator = HistogramGeneratorType::New();
+    histogramGenerator->SetInput(smoothing->GetOutput());
+    histogramGenerator->SetNumberOfBins(500);
+    histogramGenerator->Compute();
+
+    auto histogram = histogramGenerator->GetOutput();
+    double total_frequency = 0;
+    for (size_t i = 1; i < histogram->Size(); ++i)
+        total_frequency += histogram->GetFrequency(i);
+
+    auto target_frequency = processor->percentage * total_frequency;
+
+    double cumulative_frequency = 0;
+    size_t threshold_bin = 0;
+    for (size_t i = 1; i < histogram->Size(); ++i)
+    {
+        if (cumulative_frequency >= target_frequency)
+        {
+            threshold_bin = i;
+            break;
+        }
+        cumulative_frequency += histogram->GetFrequency(i);
+    }
+    auto minMaxCalculator = itk::MinimumMaximumImageCalculator<itk::Image<float, 2>>::New();
+    minMaxCalculator->SetImage(smoothing->GetOutput());
+    minMaxCalculator->Compute();
+
+    HistogramType::MeasurementType thresholdvalue = histogram->GetBinMin(0, threshold_bin);
+
+    auto binary_threshold = itk::BinaryThresholdImageFilter<itk::Image<float, 2>, itk::Image<unsigned char, 2>>::New();
+    binary_threshold->SetInput(smoothing->GetOutput());
+    binary_threshold->SetOutsideValue(0);
+    binary_threshold->SetInsideValue(255);
+    binary_threshold->SetLowerThreshold(histogram->GetBinMin(0, threshold_bin));
+    binary_threshold->SetUpperThreshold(minMaxCalculator->GetMaximum());
+
+    //auto reverse_converter = itk::CastImageFilter<itk::Image<float, 2>,ImageType>::New();
+    //reverse_converter->SetInput(smoothing->GetOutput());
+
+    auto rescaler = itk::RescaleIntensityImageFilter<ImageType,ImageType>::New();
+    rescaler->SetInput(binary_threshold->GetOutput());
+    rescaler->SetOutputMinimum(0.0);
+    rescaler->SetOutputMaximum(255.0);
+
+    try{
+        rescaler->Update();
+        return rescaler->GetOutput();
+    } catch(...){
+        std::cout << "error" << std::endl;
+    }
+
+    /*
+    using SmoothingFilterType = itk::CurvatureAnisotropicDiffusionImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+    auto smoothing = SmoothingFilterType::New();
+
+    using GradientFilterType = itk::GradientMagnitudeRecursiveGaussianImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+    using SigmoidFilterType = itk::SigmoidImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+
+    auto gradientMagnitude = GradientFilterType::New();
+    smoothing->SetInput(resampleFilter->GetOutput());
+    gradientMagnitude->SetInput(smoothing->GetOutput());
+
+    smoothing->SetTimeStep(0.125);
+    smoothing->SetNumberOfIterations(5);
+    smoothing->SetConductanceParameter(9.0);
+
+    gradientMagnitude->SetSigma(3);
+
+    auto rescaler = itk::RescaleIntensityImageFilter<itk::Image<float, 2>,itk::Image<float, 2>>::New();
+    rescaler->SetInput(gradientMagnitude->GetOutput());
+    rescaler->SetOutputMinimum(0.0);
+    rescaler->SetOutputMaximum(255.0);
+
+    auto reverse_converter = itk::CastImageFilter<itk::Image<float, 2>,ImageType>::New();
+    reverse_converter->SetInput(rescaler->GetOutput());
+    try{
+        reverse_converter->Update();
+        return reverse_converter->GetOutput();
+    } catch(...){
+        std::cout << "error" << std::endl;
+    }
+        */
+    return nullptr;
+}
+
+template <typename TImage>
+typename TImage::Pointer DeepCopy(typename TImage::Pointer input)
+{
+    typename TImage::Pointer output = TImage::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    itk::ImageRegionConstIterator<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+
+    while (!inputIterator.IsAtEnd()){
+        outputIterator.Set(inputIterator.Get());
+        ++inputIterator;
+        ++outputIterator;
+    }
+
+    return  output;
+}
+
+std::tuple<std::vector<std::pair<unsigned int, unsigned int>>, ImageType::Pointer> segment_points(int min_coordx, int max_coordx, int numLines, ImageType::Pointer input_image)
 {
 
     ImageType::SizeType image_size = input_image->GetLargestPossibleRegion().GetSize();
@@ -59,7 +231,7 @@ std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer
     }
 
     if (numValidLines < 1)
-        return {std::vector<std::pair<unsigned int, unsigned int>>{},nullptr};
+        return {std::vector<std::pair<unsigned int, unsigned int>>{}, nullptr};
 
     // Inicializar vetores e matrizes
     // Matriz que armazena os a coordenadas y de inicio e fim de cada bloco, para cada linha
@@ -86,12 +258,10 @@ std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer
 
     gaussianFilter->Update();
 
-    auto converter = itk::CastImageFilter<SignedImageType,ImageType>::New();
+    auto converter = itk::CastImageFilter<SignedImageType, ImageType>::New();
     converter->SetInput(gaussianFilter->GetOutput());
     converter->Update();
     SignedImageType::Pointer gaussianImage = gaussianFilter->GetOutput();
-
-
 
     // Iterar para todas as linhas de avaliação
     for (int i = 0; i < numValidLines; ++i)
@@ -100,7 +270,7 @@ std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer
         unsigned int xPosition = validXPositions[i];
 
         // Inicializar variáveis
-        unsigned int maxIntensity = 0;
+        unsigned int maxIntensity = -100;
         bool blockStart = false;
         int blockNum = 0;
         int blockSum = 0;
@@ -120,7 +290,7 @@ std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer
         unsigned int threashold = maxIntensity / 2;
         // Iterar na linha, descobrir o número de blocos a considerar, as coordenadas de
         // onde o bloco começa e acaba e calcular a soma de intensidades de cada bloco
-        for (int y = 0; y < image_size[1]-15; ++y)
+        for (int y = 0; y < image_size[1] - 15; ++y)
         {
             PixelType pixelValue = gaussianImage->GetPixel({{xPosition, y}});
             if (pixelValue > threashold)
@@ -149,13 +319,12 @@ std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer
         // std::cout << "Num bolcks of Line " << i << ": " << blockNum << std::endl;
     }
 
-
     if (blockPixelPairs.size() != numValidLines)
         throw std::runtime_error("blockPixelPairs different from numValidLines");
 
     for (int i = 0; i < numValidLines; ++i)
     {
-        if(blockPixelPairs[i].size()<1)
+        if (blockPixelPairs[i].size() < 1)
             continue;
         int maxYIndex = std::distance(blockPixelPairs[i].begin(), std::max_element(
                                                                       blockPixelPairs[i].begin(), blockPixelPairs[i].end(),
@@ -174,8 +343,7 @@ std::tuple<std::vector<std::pair<unsigned int, unsigned int>>,ImageType::Pointer
         unsigned int mid_y = midPixel_y[i];
         pointsToFit.push_back(std::make_pair(xPosition, mid_y));
     }
-
-    return {pointsToFit,converter->GetOutput()};
+    return {pointsToFit, converter->GetOutput()};
 }
 
 void WritePointCloudToFile(const std::vector<Eigen::Vector3d> &point_cloud, const std::string &filename)
@@ -198,7 +366,7 @@ int CreatePointCloud(ProcessingMessage *processor)
 {
     std::vector<Eigen::Vector3d> point_cloud;
     std::cout << "number of points : " << processor->list_of_recorded_points.size() << std::endl;
-    if (processor->list_of_recorded_points.size()<1)
+    if (processor->list_of_recorded_points.size() < 1)
         return 0;
 
     for (const auto &observation : processor->list_of_recorded_points)
@@ -275,6 +443,7 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
 
     // Frame
     ImageType::Pointer shr_ptr_imported = importFilter->GetOutput();
+    auto ptr_imported_copy = DeepCopy<ImageType>(shr_ptr_imported);
 
     // Pixel x médio
     ImageType::SizeType size_itk = shr_ptr_imported->GetLargestPossibleRegion().GetSize();
@@ -292,12 +461,12 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
     }
 
     // Segmentation
-
-    auto [local_segmented_points,local_image] = segment_points(processor->min_coordx, processor->max_coordx, processor->numLines, shr_ptr_imported);
-    auto segmented_points = local_segmented_points;
-    auto image_blured =  local_image;
-    if (segmented_points.size() == 0)
-        return true;
+    auto local_image = segment_points(processor,shr_ptr_imported);
+    //auto [local_segmented_points, local_image] = segment_points(processor->min_coordx, processor->max_coordx, processor->numLines, shr_ptr_imported);
+    //auto segmented_points = local_segmented_points;
+    //auto image_blured = local_image;
+    //if (segmented_points.size() == 0)
+    //    return true;
 
     igtl::Matrix4x4 local_mat;
     message_body->GetMatrix(local_mat);
@@ -308,6 +477,8 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
             eigen_mat(i, j) = local_mat[i][j];
 
     ObservationEigenFormat observation_n;
+
+    /*
     if (processor->record_poincloud)
     {
         observation_n.pose = eigen_mat * processor->calibration;
@@ -329,10 +500,12 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
         processor->store_to_file = false;
         CreatePointCloud(processor);
     }
+    */
 
-    auto buff = curan::utilities::CaptureBuffer::make_shared(shr_ptr_imported->GetBufferPointer(), shr_ptr_imported->GetPixelContainer()->Size() * sizeof(char), shr_ptr_imported);
+    auto buff = curan::utilities::CaptureBuffer::make_shared(ptr_imported_copy->GetBufferPointer(), ptr_imported_copy->GetPixelContainer()->Size() * sizeof(char), ptr_imported_copy);
     curan::ui::ImageWrapper wrapper{buff, size_itk[0], size_itk[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType};
-    // curan::ui::ImageWrapper wrapper{buff,size_itk[0],size_itk[1]};
+    processor->processed_viwer->update_image(wrapper);
+    /*
     processor->processed_viwer->update_batch([segmented_points, size_itk, processor](SkCanvas *canvas, SkRect image_area, SkRect widget_area)
                                              { 
         float scalling_factor_x = image_area.width()/size_itk[0];
@@ -346,11 +519,16 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
         for (auto& points : segmented_points){
             canvas->drawCircle(points.first * scalling_factor_x + image_area.left(), points.second * scalling_factor_y + image_area.top(), radius, paint);
         } }, wrapper);
+    */
+    if(local_image.IsNotNull())
+    {   
+        auto smaller_size_itk = local_image->GetLargestPossibleRegion().GetSize();
+        auto buff2 = curan::utilities::CaptureBuffer::make_shared(local_image->GetBufferPointer(), local_image->GetPixelContainer()->Size() * sizeof(char), local_image);
+        curan::ui::ImageWrapper wrapper2{buff2, smaller_size_itk[0], smaller_size_itk[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType};
 
-    auto buff2 = curan::utilities::CaptureBuffer::make_shared(image_blured->GetBufferPointer(), image_blured->GetPixelContainer()->Size() * sizeof(char), image_blured);
-    curan::ui::ImageWrapper wrapper2{buff2, size_itk[0], size_itk[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType};
+        processor->filter_viwer->update_image(wrapper2);
 
-    processor->filter_viwer->update_image(wrapper2);
+    }
 
     end = std::chrono::steady_clock::now();
     auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();

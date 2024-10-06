@@ -21,7 +21,7 @@ namespace curan{
             float y_pos = lim_y_min;
             float x_pos = lim_x_min;
 
-            for(int y_increments = -20; y_increments < 20 ; y_pos+=spacing,++y_increments )
+            for(int y_increments = -20; y_increments < 20 ; y_pos+=spacing,++y_increments ){
                 for(int x_increments = -20; x_increments < 20 ; x_pos+=spacing,++x_increments){
                     geomInfo.dx.set(spacing,0.0f,0.0f);
                     geomInfo.dy.set(0.0f,spacing,0.0f);
@@ -29,6 +29,8 @@ namespace curan{
                     geomInfo.position.set(x_pos,y_pos,0.0f);
                     scene->addChild(builder->createQuad(geomInfo, stateInfo));
                 }
+                x_pos = lim_x_min;
+            }
 
             return scene;
         }
