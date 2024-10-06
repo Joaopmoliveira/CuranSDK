@@ -10,7 +10,7 @@
 	std::atomic<double> sigma = 2.0;
 */
 
-std::unique_ptr<curan::ui::Overlay> create_filtercontroler_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources) {
+std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<ProcessingMessage>& processing,curan::ui::IconResources& resources) {
 	using namespace curan::ui;
 	//---------------------- row Minimum Radius -------------------//
 	auto slider = Slider::make({ 0.0f, 300.0f });

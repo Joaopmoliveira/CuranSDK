@@ -13,6 +13,8 @@
 #include "itkImageRegionIterator.h"
 #include "itkCastImageFilter.h"
 
+#include "itkGradientMagnitudeImageFilter.h"
+
 #include "itkCurvatureAnisotropicDiffusionImageFilter.h"
 #include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
 #include "itkSigmoidImageFilter.h"
@@ -33,16 +35,10 @@ using PixelType = unsigned char;
 constexpr unsigned int Dimension = 2;
 using ImageType = itk::Image<PixelType, Dimension>;
 
-ImageType::Pointer segment_points(ImageType::Pointer input_image)
+ImageType::Pointer segment_points(ProcessingMessage *processor, ImageType::Pointer input_image)
 {
     auto converter = itk::CastImageFilter<ImageType, itk::Image<float, 2>>::New();
     converter->SetInput(input_image);
-
-    using SmoothingFilterType = itk::CurvatureAnisotropicDiffusionImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
-    auto smoothing = SmoothingFilterType::New();
-
-    using GradientFilterType = itk::GradientMagnitudeRecursiveGaussianImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
-    using SigmoidFilterType = itk::SigmoidImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
 
     auto input_size = input_image->GetLargestPossibleRegion().GetSize();
     auto input_spacing = input_image->GetSpacing();
@@ -72,24 +68,48 @@ ImageType::Pointer segment_points(ImageType::Pointer input_image)
     resampleFilter->SetOutputSpacing(output_spacing);
     resampleFilter->SetOutputOrigin(input_origin);
 
+    auto gradient_filter = itk::GradientMagnitudeImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>::New();
+    gradient_filter->SetInput(resampleFilter->GetOutput());
+
+    using SmoothingFilterType = itk::CurvatureAnisotropicDiffusionImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+    auto smoothing = SmoothingFilterType::New();
+
+    smoothing->SetInput(gradient_filter->GetOutput());
+    smoothing->SetTimeStep(processor->timestep);
+    smoothing->SetNumberOfIterations(processor->iterations);
+    smoothing->SetConductanceParameter(processor->conductance);
+
+    auto reverse_converter = itk::CastImageFilter<itk::Image<float, 2>,ImageType>::New();
+    reverse_converter->SetInput(smoothing->GetOutput());
+
+    auto rescaler = itk::RescaleIntensityImageFilter<ImageType,ImageType>::New();
+    rescaler->SetInput(reverse_converter->GetOutput());
+    rescaler->SetOutputMinimum(0.0);
+    rescaler->SetOutputMaximum(255.0);
+
+    try{
+        rescaler->Update();
+        return rescaler->GetOutput();
+    } catch(...){
+        std::cout << "error" << std::endl;
+    }
+
+    /*
+    using SmoothingFilterType = itk::CurvatureAnisotropicDiffusionImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+    auto smoothing = SmoothingFilterType::New();
+
+    using GradientFilterType = itk::GradientMagnitudeRecursiveGaussianImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+    using SigmoidFilterType = itk::SigmoidImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
+
     auto gradientMagnitude = GradientFilterType::New();
-    //auto sigmoid = SigmoidFilterType::New();
-
-    //sigmoid->SetOutputMinimum(0.0);
-    //sigmoid->SetOutputMaximum(1.0);
-
     smoothing->SetInput(resampleFilter->GetOutput());
     gradientMagnitude->SetInput(smoothing->GetOutput());
-    //sigmoid->SetInput(gradientMagnitude->GetOutput());
 
     smoothing->SetTimeStep(0.125);
     smoothing->SetNumberOfIterations(5);
     smoothing->SetConductanceParameter(9.0);
 
     gradientMagnitude->SetSigma(3);
-
-    //sigmoid->SetAlpha(-0.3);
-    //sigmoid->SetBeta(3);
 
     auto rescaler = itk::RescaleIntensityImageFilter<itk::Image<float, 2>,itk::Image<float, 2>>::New();
     rescaler->SetInput(gradientMagnitude->GetOutput());
@@ -104,6 +124,7 @@ ImageType::Pointer segment_points(ImageType::Pointer input_image)
     } catch(...){
         std::cout << "error" << std::endl;
     }
+        */
     return nullptr;
 }
 
@@ -391,7 +412,7 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
     }
 
     // Segmentation
-    auto local_image = segment_points(shr_ptr_imported);
+    auto local_image = segment_points(processor,shr_ptr_imported);
     //auto [local_segmented_points, local_image] = segment_points(processor->min_coordx, processor->max_coordx, processor->numLines, shr_ptr_imported);
     //auto segmented_points = local_segmented_points;
     //auto image_blured = local_image;
