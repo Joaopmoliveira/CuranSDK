@@ -20,6 +20,9 @@
 #include "itkSigmoidImageFilter.h"
 #include "itkFastMarchingImageFilter.h"
 #include "itkBinaryThresholdImageFilter.h"
+#include "itkBinomialBlurImageFilter.h"
+#include "itkStatisticsImageFilter.h"
+#include "itkScalarImageToHistogramGenerator.h"
 
 bool process_transform_message(ProcessingMessage *processor, igtl::MessageBase::Pointer val)
 {
@@ -68,22 +71,68 @@ ImageType::Pointer segment_points(ProcessingMessage *processor, ImageType::Point
     resampleFilter->SetOutputSpacing(output_spacing);
     resampleFilter->SetOutputOrigin(input_origin);
 
-    auto gradient_filter = itk::GradientMagnitudeImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>::New();
-    gradient_filter->SetInput(resampleFilter->GetOutput());
+    auto bluring = itk::BinomialBlurImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>::New();
+    bluring->SetInput(resampleFilter->GetOutput());
+    bluring->SetRepetitions(4);
 
     using SmoothingFilterType = itk::CurvatureAnisotropicDiffusionImageFilter<itk::Image<float, 2>, itk::Image<float, 2>>;
     auto smoothing = SmoothingFilterType::New();
 
-    smoothing->SetInput(gradient_filter->GetOutput());
+    smoothing->SetInput(bluring->GetOutput());
     smoothing->SetTimeStep(processor->timestep);
     smoothing->SetNumberOfIterations(processor->iterations);
     smoothing->SetConductanceParameter(processor->conductance);
 
-    auto reverse_converter = itk::CastImageFilter<itk::Image<float, 2>,ImageType>::New();
-    reverse_converter->SetInput(smoothing->GetOutput());
+    try{
+        smoothing->Update();
+    } catch(...){
+        std::cout << "error" << std::endl;
+        return nullptr;
+    }
+
+    using HistogramGeneratorType = itk::Statistics::ScalarImageToHistogramGenerator<itk::Image<float, 2>>;
+    using HistogramType = HistogramGeneratorType::HistogramType;
+    auto histogramGenerator = HistogramGeneratorType::New();
+    histogramGenerator->SetInput(smoothing->GetOutput());
+    histogramGenerator->SetNumberOfBins(500);
+    histogramGenerator->Compute();
+
+    auto histogram = histogramGenerator->GetOutput();
+    double total_frequency = 0;
+    for (size_t i = 1; i < histogram->Size(); ++i)
+        total_frequency += histogram->GetFrequency(i);
+
+    auto target_frequency = processor->percentage * total_frequency;
+
+    double cumulative_frequency = 0;
+    size_t threshold_bin = 0;
+    for (size_t i = 1; i < histogram->Size(); ++i)
+    {
+        if (cumulative_frequency >= target_frequency)
+        {
+            threshold_bin = i;
+            break;
+        }
+        cumulative_frequency += histogram->GetFrequency(i);
+    }
+    auto minMaxCalculator = itk::MinimumMaximumImageCalculator<itk::Image<float, 2>>::New();
+    minMaxCalculator->SetImage(smoothing->GetOutput());
+    minMaxCalculator->Compute();
+
+    HistogramType::MeasurementType thresholdvalue = histogram->GetBinMin(0, threshold_bin);
+
+    auto binary_threshold = itk::BinaryThresholdImageFilter<itk::Image<float, 2>, itk::Image<unsigned char, 2>>::New();
+    binary_threshold->SetInput(smoothing->GetOutput());
+    binary_threshold->SetOutsideValue(0);
+    binary_threshold->SetInsideValue(255);
+    binary_threshold->SetLowerThreshold(histogram->GetBinMin(0, threshold_bin));
+    binary_threshold->SetUpperThreshold(minMaxCalculator->GetMaximum());
+
+    //auto reverse_converter = itk::CastImageFilter<itk::Image<float, 2>,ImageType>::New();
+    //reverse_converter->SetInput(smoothing->GetOutput());
 
     auto rescaler = itk::RescaleIntensityImageFilter<ImageType,ImageType>::New();
-    rescaler->SetInput(reverse_converter->GetOutput());
+    rescaler->SetInput(binary_threshold->GetOutput());
     rescaler->SetOutputMinimum(0.0);
     rescaler->SetOutputMaximum(255.0);
 

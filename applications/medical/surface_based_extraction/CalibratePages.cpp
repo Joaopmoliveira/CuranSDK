@@ -68,10 +68,24 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 	auto container3 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*container3 << std::move(textblob3) << std::move(slider3);
 	container3->set_divisions({ 0.0 , 0.5 , 1.0 });
+	//---------------------- row Sigma Gradient -------------------//
+	auto slider4 = Slider::make({ 0.0f, 300.0f });
+	slider4->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 40));
+	auto textblob4 = TextBlob::make("Percentage");
+	textblob4->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+	double current_val4 = (processing->percentage - processing->limits_percentage[0]) / (processing->limits_percentage[1] - processing->limits_percentage[0]);
+	slider4->set_current_value(current_val4);
+	slider4->set_callback([&processing](Slider* slider, ConfigDraw* config) {
+		processing->percentage = processing->limits_percentage[0] + slider->get_current_value() * (processing->limits_percentage[1] - processing->limits_percentage[0]);
+	});
+
+	auto container4 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container4 << std::move(textblob4) << std::move(slider4);
+	container4->set_divisions({ 0.0 , 0.5 , 1.0 });
 	//---------------------- final -------------------//
 
 	auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
-	*slidercontainer << std::move(container) << std::move(container1) << std::move(container2) << std::move(container3);
+	*slidercontainer << std::move(container) << std::move(container1) << std::move(container2) << std::move(container3) << std::move(container4);
 
 	return Overlay::make(std::move(slidercontainer),SK_ColorTRANSPARENT,true);
 }
