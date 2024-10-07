@@ -271,13 +271,12 @@ std::tuple<ImageType::Pointer,std::vector<std::pair<unsigned int,unsigned int>>,
     for(size_t col = 0; col < image->GetLargestPossibleRegion().GetSize()[0] ; col+=offset){
         std::vector<std::pair<unsigned int,unsigned int>> vals;
         if(col+offset<image->GetLargestPossibleRegion().GetSize()[0])
-            std::copy(max_intensity_found_points.begin()+col,max_intensity_found_points.begin()+col,std::back_inserter(vals));
+            std::copy(max_intensity_found_points.begin()+col,max_intensity_found_points.begin()+col+offset,std::back_inserter(vals));
         else
             break;
         std::sort(vals.begin(),vals.end(),[](std::pair<unsigned int,unsigned int> first, std::pair<unsigned int, unsigned int> second){ return std::get<1>(first) < std::get<1>(second);});
         found_points.emplace_back(vals[std::pow(2,processor->horizontal_divisions.load()-1)]);
     }
-
     return {image,found_points,max_intensity_found_points};
 }
 
@@ -431,8 +430,8 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
             paint.setStyle(SkPaint::kFill_Style); 
             SkScalar radius = 6;
             paint.setColor(SK_ColorCYAN); 
-            for(auto& largest : max_array_of_segmented_points)
-                canvas->drawCircle(largest.first * scalling_factor_x + image_area.left(), largest.second * scalling_factor_y + image_area.top(), radius, paint);
+            //for(auto& largest : max_array_of_segmented_points)
+            //    canvas->drawCircle(largest.first * scalling_factor_x + image_area.left(), largest.second * scalling_factor_y + image_area.top(), radius, paint);
             radius = 3;
             paint.setColor(SK_ColorGREEN);
             for(auto& largest_robust : array_of_segmented_points)
