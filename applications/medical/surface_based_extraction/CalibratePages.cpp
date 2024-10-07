@@ -96,6 +96,20 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 	auto container5 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*container5 << std::move(textblob5) << std::move(slider5);
 	container5->set_divisions({ 0.0 , 0.5 , 1.0 });
+	//---------------------- row Sigma Gradient -------------------//
+	auto slider6 = Slider::make({ 0.0f, 300.0f });
+	slider6->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 40));
+	auto textblob6 = TextBlob::make("Step Size");
+	textblob6->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 40));
+	double current_val6 = (processing->horizontal_divisions - processing->limits_horizontal_divisions[0]) / (processing->limits_horizontal_divisions[1] - processing->limits_horizontal_divisions[0]);
+	slider6->set_current_value(current_val5);
+	slider6->set_callback([&processing](Slider* slider, ConfigDraw* config) {
+		processing->horizontal_divisions = processing->limits_horizontal_divisions[0] + slider->get_current_value() * (processing->limits_horizontal_divisions[1] - processing->limits_horizontal_divisions[0]);
+	});
+
+	auto container6 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container6 << std::move(textblob6) << std::move(slider6);
+	container6->set_divisions({ 0.0 , 0.5 , 1.0 });
 	//---------------------- final -------------------//
 
 	auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);

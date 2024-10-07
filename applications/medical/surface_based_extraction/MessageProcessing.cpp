@@ -86,9 +86,9 @@ typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion
     return  output;
 }
 
-std::tuple<ImageType::Pointer,std::vector<std::vector<std::pair<unsigned int,unsigned int>>>,std::vector<std::pair<unsigned int,unsigned int>>> segment_points(ProcessingMessage *processor, ImageType::Pointer input_image)
+std::tuple<ImageType::Pointer,std::vector<std::pair<unsigned int,unsigned int>>,std::vector<std::pair<unsigned int,unsigned int>>> segment_points(ProcessingMessage *processor, ImageType::Pointer input_image)
 {
-    std::vector<std::vector<std::pair<unsigned int,unsigned int>>> found_points;
+    std::vector<std::pair<unsigned int,unsigned int>> found_points;
     std::vector<std::pair<unsigned int,unsigned int>> max_intensity_found_points;
     auto converter = itk::CastImageFilter<ImageType, itk::Image<float, 2>>::New();
     converter->SetInput(input_image);
@@ -266,6 +266,18 @@ std::tuple<ImageType::Pointer,std::vector<std::vector<std::pair<unsigned int,uns
             max_intensity_found_points[cols] = std::make_pair(std::get<0>(largest),std::get<1>(largest));
     }
 
+    found_points.reserve(image->GetLargestPossibleRegion().GetSize()[0]);
+    int offset = std::pow(2,processor->horizontal_divisions.load())+1;
+    for(size_t col = 0; col < image->GetLargestPossibleRegion().GetSize()[0] ; col+=offset){
+        std::vector<std::pair<unsigned int,unsigned int>> vals;
+        if(col+offset<image->GetLargestPossibleRegion().GetSize()[0])
+            std::copy(max_intensity_found_points.begin()+col,max_intensity_found_points.begin()+col,std::back_inserter(vals));
+        else
+            break;
+        std::sort(vals.begin(),vals.end(),[](std::pair<unsigned int,unsigned int> first, std::pair<unsigned int, unsigned int> second){ return std::get<1>(first) < std::get<1>(second);});
+        found_points.emplace_back(vals[std::pow(2,processor->horizontal_divisions.load()-1)]);
+    }
+
     return {image,found_points,max_intensity_found_points};
 }
 
@@ -421,6 +433,10 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
             paint.setColor(SK_ColorCYAN); 
             for(auto& largest : max_array_of_segmented_points)
                 canvas->drawCircle(largest.first * scalling_factor_x + image_area.left(), largest.second * scalling_factor_y + image_area.top(), radius, paint);
+            radius = 3;
+            paint.setColor(SK_ColorGREEN);
+            for(auto& largest_robust : array_of_segmented_points)
+                canvas->drawCircle(largest_robust.first * scalling_factor_x + image_area.left(), largest_robust.second * scalling_factor_y + image_area.top(), radius, paint);        
         }, wrapper2);
     }
 
