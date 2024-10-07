@@ -56,7 +56,7 @@ struct ProcessingMessage {
 	std::atomic<size_t> connected_components = 5;
 	std::atomic<double> conductance = 3.0;
 	std::atomic<double> sigma = 2.0;
-	std::atomic<double> percentage = 0.9;
+	std::atomic<double> percentage = 0.7;
 	std::atomic<double> horizontal_divisions = 50;
 
 	std::list<ObservationEigenFormat> list_of_recorded_points;

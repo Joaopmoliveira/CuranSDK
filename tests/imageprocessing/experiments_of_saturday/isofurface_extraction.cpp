@@ -247,10 +247,6 @@ std::tuple<itk::Mesh<double>::Pointer, itk::ImageMaskSpatialObject<3>::ImageType
     output_spacing[1] = physicalspace[1] / output_size[1];
     output_spacing[2] = physicalspace[2] / output_size[2];
 
-    //std::printf("input spacing (%f %f %f) output spacing (%f %f %f)",);
-    //std::printf("input size (%f %f %f) output size (%f %f %f)",);
-    //std::printf("input spacing (%f %f %f) output spacing (%f %f %f)",);
-
     auto interpolator = itk::LinearInterpolateImageFunction<itk::Image<double, 3>, double>::New();
     auto transform = itk::AffineTransform<double, 3>::New();
     transform->SetIdentity();

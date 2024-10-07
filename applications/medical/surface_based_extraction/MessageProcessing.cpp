@@ -86,8 +86,10 @@ typename TImage::Pointer DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion
     return  output;
 }
 
-ImageType::Pointer segment_points(ProcessingMessage *processor, ImageType::Pointer input_image)
+std::tuple<ImageType::Pointer,std::vector<std::vector<std::pair<unsigned int,unsigned int>>>,std::vector<std::pair<unsigned int,unsigned int>>> segment_points(ProcessingMessage *processor, ImageType::Pointer input_image)
 {
+    std::vector<std::vector<std::pair<unsigned int,unsigned int>>> found_points;
+    std::vector<std::pair<unsigned int,unsigned int>> max_intensity_found_points;
     auto converter = itk::CastImageFilter<ImageType, itk::Image<float, 2>>::New();
     converter->SetInput(input_image);
 
@@ -135,7 +137,7 @@ ImageType::Pointer segment_points(ProcessingMessage *processor, ImageType::Point
         smoothing->Update();
     } catch(...){
         std::cout << "error" << std::endl;
-        return nullptr;
+        return {nullptr,found_points,max_intensity_found_points};
     }
 
     using HistogramGeneratorType = itk::Statistics::ScalarImageToHistogramGenerator<itk::Image<float, 2>>;
@@ -197,12 +199,11 @@ ImageType::Pointer segment_points(ProcessingMessage *processor, ImageType::Point
     try{
         final_binary_threshold->Update();
     } catch (const itk::ExceptionObject &err){
-        std::cout << "ExceptionObject caught !" << std::endl
-                  << err << std::endl;
-        return nullptr;
+        std::cout << "ExceptionObject caught !" << err << std::endl;
+        return {nullptr,found_points,max_intensity_found_points};
     } catch (...) {
         std::cout << "generic unknown exception" << std::endl;
-        return nullptr;
+        return {nullptr,found_points,max_intensity_found_points};
     }
 
     auto copied_mask = DeepCopyWithInclusionPolicy<ImageType>([=](double x, double y){ return (y< output_size[1]-5) ? true : false ; },final_binary_threshold->GetOutput());
@@ -217,161 +218,55 @@ ImageType::Pointer segment_points(ProcessingMessage *processor, ImageType::Point
 
     try{
         reconverter_converter->Update();
-        return reconverter_converter->GetOutput();
+
     } catch (const itk::ExceptionObject &err) {
-        std::cout << "ExceptionObject caught !" << std::endl
-                  << err << std::endl;
+        std::cout << "ExceptionObject caught !" << err << std::endl;
+        return {nullptr,found_points,max_intensity_found_points};
     } catch (...) {
         std::cout << "generic unknown exception" << std::endl;
-    }
-    return nullptr;
-}
-
-std::tuple<std::vector<std::pair<unsigned int, unsigned int>>, ImageType::Pointer> segment_points(int min_coordx, int max_coordx, int numLines, ImageType::Pointer input_image)
-{
-
-    ImageType::SizeType image_size = input_image->GetLargestPossibleRegion().GetSize();
-    double spacing = static_cast<double>(max_coordx - min_coordx) / (numLines - 1);
-
-    std::vector<unsigned int> validXPositions;
-
-    // Cálculo do numero de linhas válidas (com intensidade total maior que 0)
-    size_t numValidLines = 0;
-    for (int i = 0; i < numLines; ++i)
-    {
-        unsigned int sumIntensity = 0;
-        for (int y = 0; y < image_size[1]; ++y)
-        {
-            PixelType pixelValue = input_image->GetPixel({{min_coordx + static_cast<int>(i * spacing), y}});
-            sumIntensity += pixelValue;
-        }
-        if (sumIntensity != 0)
-        {
-            ++numValidLines;
-        }
-        else
-        {
-            continue;
-        }
-        // Guardar posição das linhas válidas
-        unsigned int xPosition = min_coordx + static_cast<int>(i * spacing);
-        validXPositions.push_back(xPosition);
+        return {nullptr,found_points,max_intensity_found_points};
     }
 
-    if (numValidLines < 1)
-        return {std::vector<std::pair<unsigned int, unsigned int>>{}, nullptr};
+    auto image = reconverter_converter->GetOutput();
 
-    // Inicializar vetores e matrizes
-    // Matriz que armazena os a coordenadas y de inicio e fim de cada bloco, para cada linha
-    std::vector<std::vector<std::pair<unsigned int, unsigned int>>> blockPixelPairs(numValidLines);
-    // Matriz que armazena a soma de intensidades de cada bloco, para cada linha (indexado da mesma forma que a matriz anterior)
-    std::vector<std::vector<unsigned int>> intensitySums(numValidLines);
-    // Vetor que armazena as coordenadas y de inicio e fim do bloco com a soma de intensidades mais alta, para cada linha
-    std::vector<std::pair<unsigned int, unsigned int>> highestIntensityPixelPairs(numValidLines);
-    // Vetor que armazena a coordanada y do pixel médio do bloco com a soma de intensidades mais alta, para cada linha
-    std::vector<unsigned int> midPixel_y(numValidLines);
-    // Vetor que armazena os pares de pontos que vão para a regressão
-    std::vector<std::pair<unsigned int, unsigned int>> pointsToFit;
-
-    using SignedPixelType = float;
-    using SignedImageType = itk::Image<SignedPixelType, 2>;
-    using CastFilterType = itk::CastImageFilter<ImageType, SignedImageType>;
-    CastFilterType::Pointer castFilter = CastFilterType::New();
-    castFilter->SetInput(input_image);
-
-    using GaussianFilterType = itk::SmoothingRecursiveGaussianImageFilter<SignedImageType, SignedImageType>;
-    GaussianFilterType::Pointer gaussianFilter = GaussianFilterType::New();
-    gaussianFilter->SetInput(castFilter->GetOutput());
-    gaussianFilter->SetSigma(1.0);
-
-    gaussianFilter->Update();
-
-    auto converter = itk::CastImageFilter<SignedImageType, ImageType>::New();
-    converter->SetInput(gaussianFilter->GetOutput());
-    converter->Update();
-    SignedImageType::Pointer gaussianImage = gaussianFilter->GetOutput();
-
-    // Iterar para todas as linhas de avaliação
-    for (int i = 0; i < numValidLines; ++i)
-    {
-        // Cálculo da coordanada x para a linha atual
-        unsigned int xPosition = validXPositions[i];
-
-        // Inicializar variáveis
-        unsigned int maxIntensity = -100;
-        bool blockStart = false;
-        int blockNum = 0;
-        int blockSum = 0;
-        unsigned int blockStartPixel;
-        unsigned int blockEndPixel;
-
-        // Cálculo da intensidade máxima do pixel para a linha atual
-        for (int y = 0; y < image_size[1]; ++y)
-        {
-            PixelType pixelValue = gaussianImage->GetPixel({{xPosition, y}});
-            if (pixelValue > maxIntensity)
-            {
-                maxIntensity = pixelValue;
+    max_intensity_found_points.resize(image->GetLargestPossibleRegion().GetSize()[0]);
+    for(int cols = 0; cols < image->GetLargestPossibleRegion().GetSize()[0]; ++cols){
+        std::vector<std::tuple<int,int,int>> local_with_max;
+        std::vector<std::pair<int,int>> local;
+        bool first_found = false;
+        int current_max_value = 0;
+        int index_of_max = 0;
+        for(int rows = 0; rows < image->GetLargestPossibleRegion().GetSize()[1]; ++rows){
+            auto current_value = image->GetPixel(itk::Index<2>{cols,rows});
+            if(current_value!=0 && !first_found){
+                first_found = true;
+                current_max_value = 0;
+                index_of_max = 0;
+            }
+            if(current_value==0 && first_found){
+                first_found = false;
+                local_with_max.emplace_back(cols,index_of_max,current_max_value);
+                local.emplace_back(cols,index_of_max);
+            }
+            if(first_found && current_value>current_max_value){
+                current_max_value = current_value;
+                index_of_max = rows;
             }
         }
-
-        unsigned int threashold = maxIntensity / 2;
-        // Iterar na linha, descobrir o número de blocos a considerar, as coordenadas de
-        // onde o bloco começa e acaba e calcular a soma de intensidades de cada bloco
-        for (int y = 0; y < image_size[1] - 15; ++y)
-        {
-            PixelType pixelValue = gaussianImage->GetPixel({{xPosition, y}});
-            if (pixelValue > threashold)
-            {
-                if (!blockStart)
-                {
-                    blockNum++;
-                    blockStart = true;
-                    blockStartPixel = y;
-                }
-                blockEndPixel = y;
-                blockSum += pixelValue;
-            }
-            else
-            {
-                if (blockStart)
-                {
-                    blockStart = false;
-                    blockPixelPairs[i].push_back(std::make_pair(blockStartPixel, blockEndPixel));
-                    intensitySums[i].push_back(blockSum);
-                    blockSum = 0;
-                    // std::cout << "End pixel of Line " << i << ": " << blockEndPixel << std::endl;
-                }
+        std::tuple<int,int,int> largest = std::make_tuple<int,int,int>(0,0,0);
+        bool found = false;
+        for(auto & possible_largest : local_with_max){
+            if(std::get<2>(possible_largest)>std::get<2>(largest)){
+                largest = possible_largest;
+                found = true;
             }
         }
-        // std::cout << "Num bolcks of Line " << i << ": " << blockNum << std::endl;
+        //found_points[cols] = local;
+        if(found)
+            max_intensity_found_points[cols] = std::make_pair(std::get<0>(largest),std::get<1>(largest));
     }
 
-    if (blockPixelPairs.size() != numValidLines)
-        throw std::runtime_error("blockPixelPairs different from numValidLines");
-
-    for (int i = 0; i < numValidLines; ++i)
-    {
-        if (blockPixelPairs[i].size() < 1)
-            continue;
-        int maxYIndex = std::distance(blockPixelPairs[i].begin(), std::max_element(
-                                                                      blockPixelPairs[i].begin(), blockPixelPairs[i].end(),
-                                                                      [](const std::pair<unsigned int, unsigned int> &a, const std::pair<unsigned int, unsigned int> &b)
-                                                                      {
-                                                                          return a.second < b.second;
-                                                                      }));
-        std::pair<unsigned int, unsigned int> highestYBlock = blockPixelPairs[i][maxYIndex];
-
-        midPixel_y[i] = highestYBlock.second;
-    }
-
-    for (int i = 0; i < numValidLines; ++i)
-    {
-        unsigned int xPosition = min_coordx + static_cast<int>(i * spacing);
-        unsigned int mid_y = midPixel_y[i];
-        pointsToFit.push_back(std::make_pair(xPosition, mid_y));
-    }
-    return {pointsToFit, converter->GetOutput()};
+    return {image,found_points,max_intensity_found_points};
 }
 
 void WritePointCloudToFile(const std::vector<Eigen::Vector3d> &point_cloud, const std::string &filename)
@@ -417,7 +312,6 @@ int CreatePointCloud(ProcessingMessage *processor)
     return 0;
 }
 
-bool codeExecuted = false;
 bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Pointer val)
 {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -469,32 +363,12 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
         return false;
     }
 
-    // Frame
     ImageType::Pointer shr_ptr_imported = importFilter->GetOutput();
     auto ptr_imported_copy = DeepCopy<ImageType>(shr_ptr_imported);
 
-    // Pixel x médio
     ImageType::SizeType size_itk = shr_ptr_imported->GetLargestPossibleRegion().GetSize();
 
-    // Usado para definir limites do botão e a janela de análise para o algoritmo de segmentação
-    if (!codeExecuted)
-    {
-        int size_x = size_itk[0] - 1;
-        float float_size_x = size_x;
-        processor->max_coordx_limit[1] = float_size_x;
-        processor->max_coordx_limit[0] = float_size_x - 200.0;
-        processor->max_coordx = size_x;
-
-        codeExecuted = true;
-    }
-
-    // Segmentation
-    auto local_image = segment_points(processor,shr_ptr_imported);
-    //auto [local_segmented_points, local_image] = segment_points(processor->min_coordx, processor->max_coordx, processor->numLines, shr_ptr_imported);
-    //auto segmented_points = local_segmented_points;
-    //auto image_blured = local_image;
-    //if (segmented_points.size() == 0)
-    //    return true;
+    auto [minimized_image,array_of_segmented_points,max_array_of_segmented_points] = segment_points(processor,shr_ptr_imported);
 
     igtl::Matrix4x4 local_mat;
     message_body->GetMatrix(local_mat);
@@ -506,20 +380,19 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
 
     ObservationEigenFormat observation_n;
 
-    /*
+    
     if (processor->record_poincloud)
     {
         observation_n.pose = eigen_mat * processor->calibration;
-        observation_n.segmented_points = segmented_points;
+        observation_n.segmented_points = max_array_of_segmented_points;
         processor->list_of_recorded_points.push_back(observation_n);
     }
 
     if (processor->snapshot)
     {
-        std::cout << "snapshotting!\n";
         processor->snapshot = false;
         observation_n.pose = eigen_mat * processor->calibration;
-        observation_n.segmented_points = segmented_points;
+        observation_n.segmented_points = max_array_of_segmented_points;
         processor->list_of_recorded_points.push_back(observation_n);
     }
 
@@ -528,34 +401,27 @@ bool process_image_message(ProcessingMessage *processor, igtl::MessageBase::Poin
         processor->store_to_file = false;
         CreatePointCloud(processor);
     }
-    */
+    
 
     auto buff = curan::utilities::CaptureBuffer::make_shared(ptr_imported_copy->GetBufferPointer(), ptr_imported_copy->GetPixelContainer()->Size() * sizeof(char), ptr_imported_copy);
     curan::ui::ImageWrapper wrapper{buff, size_itk[0], size_itk[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType};
     processor->processed_viwer->update_image(wrapper);
-    /*
-    processor->processed_viwer->update_batch([segmented_points, size_itk, processor](SkCanvas *canvas, SkRect image_area, SkRect widget_area)
-                                             { 
-        float scalling_factor_x = image_area.width()/size_itk[0];
-        float scalling_factor_y = image_area.height()/size_itk[1];
-        //Todos os pontos
-        SkPaint paint;
-        SkColor customColor = SkColorSetARGB(255, 255, 153, 153);
-        paint.setColor(customColor); 
-        paint.setStyle(SkPaint::kFill_Style); 
-        SkScalar radius = 3;
-        for (auto& points : segmented_points){
-            canvas->drawCircle(points.first * scalling_factor_x + image_area.left(), points.second * scalling_factor_y + image_area.top(), radius, paint);
-        } }, wrapper);
-    */
-    if(local_image.IsNotNull())
+    if(minimized_image.IsNotNull())
     {   
-        auto smaller_size_itk = local_image->GetLargestPossibleRegion().GetSize();
-        auto buff2 = curan::utilities::CaptureBuffer::make_shared(local_image->GetBufferPointer(), local_image->GetPixelContainer()->Size() * sizeof(char), local_image);
+        auto smaller_size_itk = minimized_image->GetLargestPossibleRegion().GetSize();
+        auto buff2 = curan::utilities::CaptureBuffer::make_shared(minimized_image->GetBufferPointer(), smaller_size_itk[0]* smaller_size_itk[1] * sizeof(char), minimized_image);
         curan::ui::ImageWrapper wrapper2{buff2, smaller_size_itk[0], smaller_size_itk[1], SkColorType::kGray_8_SkColorType, SkAlphaType::kPremul_SkAlphaType};
-
-        processor->filter_viwer->update_image(wrapper2);
-
+        processor->filter_viwer->update_batch([max_array_of_segmented_points,array_of_segmented_points, smaller_size_itk, processor](SkCanvas *canvas, SkRect image_area, SkRect widget_area)
+                                             { 
+            float scalling_factor_x = image_area.width()/smaller_size_itk[0];
+            float scalling_factor_y = image_area.height()/smaller_size_itk[1];
+            SkPaint paint;
+            paint.setStyle(SkPaint::kFill_Style); 
+            SkScalar radius = 6;
+            paint.setColor(SK_ColorCYAN); 
+            for(auto& largest : max_array_of_segmented_points)
+                canvas->drawCircle(largest.first * scalling_factor_x + image_area.left(), largest.second * scalling_factor_y + image_area.top(), radius, paint);
+        }, wrapper2);
     }
 
     end = std::chrono::steady_clock::now();
