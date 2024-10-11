@@ -821,6 +821,8 @@ int communication(RobotState &state, asio::io_context &context)
     fri_client->connect(lam_fri);
 
     context.run();
+    if(!state.window_pointer.erase("ultrasound"))
+        std::cout << "could not erase ultrasound from image\n";
     std::cout << "stopped connecting to client\n";
     return 0;
 }

@@ -261,7 +261,6 @@ std::tuple<ImageType::Pointer,std::vector<std::pair<unsigned int,unsigned int>>,
                 found = true;
             }
         }
-        //found_points[cols] = local;
         if(found)
             max_intensity_found_points[cols] = std::make_pair(std::get<0>(largest),std::get<1>(largest));
     }
