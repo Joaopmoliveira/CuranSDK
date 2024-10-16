@@ -4,10 +4,25 @@
 #include "include/core/SkTypes.h"
 #include "word_boundaries.h"
 #include "modules/skunicode/include/SkUnicode.h"
+#include "modules/skunicode/include/SkUnicode_icu.h"
 #include <memory>
 
+#if defined(SK_UNICODE_ICU_IMPLEMENTATION)
+#include "modules/skunicode/include/SkUnicode_icu.h"
+#endif
+
+#if defined(SK_UNICODE_LIBGRAPHEME_IMPLEMENTATION)
+#include "modules/skunicode/include/SkUnicode_libgrapheme.h"
+#endif
+
+#if defined(SK_UNICODE_ICU4X_IMPLEMENTATION)
+#include "modules/skunicode/include/SkUnicode_icu4x.h"
+#endif
+
 std::vector<bool> GetUtf8WordBoundaries(const char* begin, size_t byteCount, const char* locale) {
-    auto unicode = SkUnicode::Make();
+    
+    
+    auto unicode = SkUnicodes::ICU::Make();
     if (nullptr == unicode) {
         return {};
     }

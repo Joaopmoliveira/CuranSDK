@@ -122,27 +122,6 @@ namespace curan
             auto error_in_velocity = desired_velocity - iiwa.jacobian() * filtered_velocity;
             auto actuation = stiffness * desired_velocity + damping_cartesian * error_in_velocity;
 
-            /*
-            Computation of forces caused by coordinate change from joints to cartersian pose
-            */
-            static auto previous_jacobian = iiwa.jacobian();
-            static Eigen::Matrix<double, 6, curan::robotic::number_of_joints> jacobian_derivative = (iiwa.jacobian() - previous_jacobian) / iiwa.sample_time();
-            jacobian_derivative = (0.8 * jacobian_derivative + 0.2 * (iiwa.jacobian() - previous_jacobian) / iiwa.sample_time()).eval();
-            previous_jacobian = iiwa.jacobian();
-            auto conditioned_matrix = iiwa.jacobian().transpose() * iiwa.jacobian();
-            Eigen::JacobiSVD<Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints>> svdjacobian{conditioned_matrix, Eigen::ComputeFullU};
-            auto U = svdjacobian.matrixU();
-            auto singular_values = svdjacobian.singularValues();
-            for (auto &diag : singular_values)
-            {
-                diag = (diag < 0.02) ? 0.02 : diag;
-            }
-            auto properly_conditioned_matrix = (U * singular_values.asDiagonal() * U.transpose());
-            auto inverse_jacobian = properly_conditioned_matrix.inverse() * iiwa.jacobian().transpose();
-            // these values can becomes quite high with large accelerations
-            Eigen::Matrix<double,6,1> forces_caused_by_coordinate_change = inverse_jacobian.transpose()*iiwa.mass()* inverse_jacobian * jacobian_derivative * inverse_jacobian * iiwa.jacobian() * filtered_velocity;
-            
-            
             state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * desired_velocity + damping_cartesian * error_in_velocity) +
                             nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
             // absolute damper - this thing should avoid larger accelerations
@@ -152,9 +131,6 @@ namespace curan
             {
                 state.user_defined[i] = actuation[i];
                 state.user_defined2[i] = error_in_velocity[i];
-                if(i<6)
-                    state.user_defined3[i] = forces_caused_by_coordinate_change[i];
-                state.user_defined4[i] = svdjacobian.singularValues()[i];
             }
             /*
             The Java controller has two values which it reads, namely:

@@ -46,11 +46,11 @@ class Context {
 public:
 	VkInstance instance = VK_NULL_HANDLE;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	std::unique_ptr<GrVkExtensions> extensions = nullptr;
+	std::unique_ptr<skgpu::VulkanExtensions> extensions = nullptr;
 	std::vector<const char*> deviceLayerNames;
 	std::vector<const char*> deviceExtensionNames;
 	QueueFamilyIndices indices;
-	GrVkGetProc vulkan_pointer = VK_NULL_HANDLE;
+	skgpu::VulkanGetProc vulkan_pointer = VK_NULL_HANDLE;
 
 	Context();
 	~Context();

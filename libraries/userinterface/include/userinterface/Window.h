@@ -228,7 +228,7 @@ private:
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	VkQueue presentQueue = VK_NULL_HANDLE;
 	std::unique_ptr<BackbufferInfo[]> fBackbuffers = nullptr;
-	std::unique_ptr<GrVkBackendContext> vkContext = nullptr;
+	std::unique_ptr<skgpu::VulkanBackendContext> vkContext = nullptr;
 	std::unique_ptr<GrDirectContext> skia_context = nullptr;
 	std::vector<SkSurface*> swapSurface;
 	uint32_t fCurrentBackbufferIndex{ 0 };

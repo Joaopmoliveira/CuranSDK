@@ -14,5 +14,4 @@ unofficial::skia::skia
 glfw 
 Vulkan::Vulkan 
 skshaper
-skunicode
 )

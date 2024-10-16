@@ -1,6 +1,20 @@
 cmake_minimum_required(VERSION 3.17)
 cmake_policy(SET CMP0091 NEW)
 cmake_policy(SET CMP0075 NEW)
+
+if(UNIX)
+  string(VCPKG_TARGET_TRIPLET "x64-linux")
+  string(VCPKG_HOST_TRIPLET "x64-linux")
+endif(UNIX)
+
+if(WIN32)
+  set(VCPKG_TARGET_TRIPLET "x64-windows-static")
+  set(VCPKG_HOST_TRIPLET "x64-windows-static")
+endif(WIN32)
+
+set(VCPKG_ROOT "${CMAKE_CURRENT_LIST_DIR}/vcpkg")
+set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+
 project(Curan)
 
 #Language definitions used throught the entire project

@@ -296,24 +296,8 @@ struct ControllerSwitcher : public curan::robotic::UserData
         auto val = 0.8 * filtered_velocity + 0.2 * iiwa.velocities();
         filtered_velocity = val;
 
-        static auto previous_jacobian = iiwa.jacobian();
-        static Eigen::Matrix<double, 6, curan::robotic::number_of_joints> jacobian_derivative = (iiwa.jacobian() - previous_jacobian) / iiwa.sample_time();
-        jacobian_derivative = (0.8 * jacobian_derivative + 0.2 * (iiwa.jacobian() - previous_jacobian) / iiwa.sample_time()).eval();
-        previous_jacobian = iiwa.jacobian();
-        auto conditioned_matrix = iiwa.jacobian().transpose() * iiwa.jacobian();
-        Eigen::JacobiSVD<Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints>> svdjacobian{conditioned_matrix, Eigen::ComputeFullU};
-        auto U = svdjacobian.matrixU();
-        auto singular_values = svdjacobian.singularValues();
-        for (auto &diag : singular_values)
-            diag = (diag < 0.02) ? 0.02 : diag;
-
-        auto properly_conditioned_matrix = (U * singular_values.asDiagonal() * U.transpose());
-        auto inverse_jacobian = properly_conditioned_matrix.inverse() * iiwa.jacobian().transpose();
-        // these values can becomes quite high with large accelerations
-        // Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = inverse_jacobian.transpose() * iiwa.mass() * inverse_jacobian * jacobian_derivative * inverse_jacobian * iiwa.jacobian() * filtered_velocity;
-        Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = Eigen::Matrix<double, 6, 1>::Zero();
         // normalize the error to an upper bound
-        state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity - forces_caused_by_coordinate_change) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
+        state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
         return is_transitioning;
         return false;
     }
@@ -494,30 +478,13 @@ struct ControllerSwitcher : public curan::robotic::UserData
         auto val = 0.8 * filtered_velocity + 0.2 * iiwa.velocities();
         filtered_velocity = val;
 
-        static auto previous_jacobian = iiwa.jacobian();
-        static Eigen::Matrix<double, 6, curan::robotic::number_of_joints> jacobian_derivative = (iiwa.jacobian() - previous_jacobian) / iiwa.sample_time();
-        jacobian_derivative = (0.8 * jacobian_derivative + 0.2 * (iiwa.jacobian() - previous_jacobian) / iiwa.sample_time()).eval();
-        previous_jacobian = iiwa.jacobian();
-        auto conditioned_matrix = iiwa.jacobian().transpose() * iiwa.jacobian();
-        Eigen::JacobiSVD<Eigen::Matrix<double, curan::robotic::number_of_joints, curan::robotic::number_of_joints>> svdjacobian{conditioned_matrix, Eigen::ComputeFullU};
-        auto U = svdjacobian.matrixU();
-        auto singular_values = svdjacobian.singularValues();
-        for (auto &diag : singular_values)
-            diag = (diag < 0.02) ? 0.02 : diag;
-
-        auto properly_conditioned_matrix = (U * singular_values.asDiagonal() * U.transpose());
-        auto inverse_jacobian = properly_conditioned_matrix.inverse() * iiwa.jacobian().transpose();
-        // these values can becomes quite high with large accelerations
-        // Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = inverse_jacobian.transpose() * iiwa.mass() * inverse_jacobian * jacobian_derivative * inverse_jacobian * iiwa.jacobian() * filtered_velocity;
-        Eigen::Matrix<double, 6, 1> forces_caused_by_coordinate_change = Eigen::Matrix<double, 6, 1>::Zero();
         // normalize the error to an upper bound
         // now its the tricky part
-
         static bool already_triggered_function_once = false;
         if (is_transitioning || already_triggered_function_once)
         { // if we are transitioning, then we just need to follow the interpolated point using the full impedance controller
             error.block<3, 1>(0, 0) = translation_error;
-            state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity - forces_caused_by_coordinate_change) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
+            state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
         }
         else
         {
@@ -525,7 +492,7 @@ struct ControllerSwitcher : public curan::robotic::UserData
             double denominator = interpolated_pose.block<3, 3>(0, 0).block<3, 1>(0, 2).transpose() * interpolated_pose.block<3, 3>(0, 0).block<3, 1>(0, 2);
             double scaling_along_axis = numerator / denominator;
             error.block<3, 1>(0, 0) = scaling_along_axis * interpolated_pose.block<3, 3>(0, 0).block<3, 1>(0, 2);
-            state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity - forces_caused_by_coordinate_change) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
+            state.cmd_tau = iiwa.jacobian().transpose() * (stiffness * error - damping_cartesian * iiwa.jacobian() * filtered_velocity) + nullspace_projector * (nullspace_stiffness * error_in_nullspace - damping_nullspace * filtered_velocity - 10.0 * iiwa.mass() * filtered_velocity);
             //already_triggered_function_once = barrier_function_for_needle_controller(iiwa, state.cmd_tau, interpolated_pose);
         }
         return is_transitioning;
@@ -600,96 +567,6 @@ struct ControllerSwitcher : public curan::robotic::UserData
                                                       { return in_target_pose; }};
     }
 };
-
-int bar()
-{
-    Eigen::Matrix<double, 4, 4> initial_pose = Eigen::Matrix<double, 4, 4>::Identity();
-    Eigen::Matrix<double, 4, 4> target_pose = Eigen::Matrix<double, 4, 4>::Identity();
-    initial_pose.block<3, 3>(0, 0) = Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();
-    target_pose.block<3, 3>(0, 0) = Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();
-
-    initial_pose.block<3, 1>(0, 3) = Eigen::Matrix<double, 3, 1>::Random();
-    target_pose.block<3, 1>(0, 3) = Eigen::Matrix<double, 3, 1>::Random();
-    InterpolatedPose position_hold_interpolator{initial_pose, target_pose, 0.0001};
-
-    std::cout << "initial_pose : \n"
-              << initial_pose << std::endl;
-    std::cout << "target_pose : \n"
-              << target_pose << std::endl;
-    std::cout << position_hold_interpolator.interpolated() << std::endl;
-
-    for (size_t i = 0; i < 10; ++i)
-    {
-        position_hold_interpolator.advance();
-        std::cout << position_hold_interpolator.interpolated() << std::endl;
-    }
-
-    std::cout << position_hold_interpolator.interpolated() << std::endl;
-
-    return 0;
-}
-
-int foo()
-{
-try{
-    curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
-    constexpr auto sample_time = std::chrono::milliseconds(1);
-    curan::robotic::State state;
-    for (size_t i = 0; i < curan::robotic::number_of_joints; ++i)
-        state.q[i] = 1.0;
-    robot_model.update(state);
-
-    using namespace curan::robotic;
-
-    std::unique_ptr<ControllerSwitcher> handguinding_controller = std::make_unique<ControllerSwitcher>(std::initializer_list<double>{500.0, 500.0, 500.0, 50.0, 50.0, 50.0}, std::initializer_list<double>{1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, 0.0005);
-    Eigen::Matrix<double, 4, 4> initial_pose = Eigen::Matrix<double, 4, 4>::Identity();
-    Eigen::Matrix<double, 4, 4> target_pose = Eigen::Matrix<double, 4, 4>::Identity();
-
-    Eigen::Matrix<double, 7, 1> external_torque = Eigen::Matrix<double, 7, 1>::Zero();
-    initial_pose.block<3, 1>(0, 3) = curan::robotic::convert(state.translation);
-    initial_pose.block<3, 3>(0, 0) = curan::robotic::convert(state.rotation).reshaped(3, 3);
-    target_pose.block<3, 1>(0, 3) = initial_pose.block<3, 1>(0, 3);
-
-    target_pose.block<3, 3>(0, 0) = initial_pose.block<3, 3>(0, 0) * Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();
-    double time = 0.0;
-    size_t counter = 1;
-
-    std::cout << "initial config: \n" << robot_model.homogenenous_transformation() << std::endl;;
-
-    while (keep_running.load())
-    {
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        if (time < 5)
-        {
-        }
-        else if (time < 10 && counter == 1)
-        {
-            std::cout << "switches to target pose";
-            ++counter;
-            handguinding_controller->async_position_hold(target_pose);
-        }
-        else if (time < 15 && counter == 2)
-        {
-            std::cout << "switches to needle pose";
-            ++counter;
-            target_pose.block<3, 3>(0, 0) = initial_pose.block<3, 3>(0, 0) * Eigen::Quaternion<double>::UnitRandom().toRotationMatrix();
-            target_pose.block<3, 1>(0, 3) += Eigen::Matrix<double, 3, 1>::Ones() * 0.1;
-            handguinding_controller->async_needle(target_pose, 0.1);
-            time = 0.0;
-        }
-        state = curan::robotic::simulate_next_timestamp(robot_model, handguinding_controller.get(), sample_time, state, external_torque);
-        time += std::chrono::duration<double>(sample_time).count();
-        external_torque = Eigen::Matrix<double, 7, 1>::Ones()*std::sin(time); 
-    }
-    return 0;
-} catch(std::runtime_error& e){
-    std::cout << "exception throw:\n" << e.what() << std::endl;
-    return 1;
-} catch(...){
-    std::cout << "unknown exception\n" << std::endl;
-    return 2;
-}
-}
 
 int main()
 {

@@ -207,16 +207,16 @@ robotutils
 )
 
 
-add_executable(test_robot_controller_with_switch test_robot_controller_with_switch.cpp)
+#add_executable(test_robot_controller_with_switch test_robot_controller_with_switch.cpp)
 
-target_compile_definitions(test_robot_controller_with_switch PRIVATE NOMINMAX)
-target_compile_definitions(test_robot_controller_with_switch PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+#target_compile_definitions(test_robot_controller_with_switch PRIVATE NOMINMAX)
+#target_compile_definitions(test_robot_controller_with_switch PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-target_link_libraries(test_robot_controller_with_switch PUBLIC
-utils
-robotutils
-renderable
-)
+#target_link_libraries(test_robot_controller_with_switch PUBLIC
+#utils
+#robotutils
+#renderable
+#)
 
 add_executable(recorder_first_joint_only recorder_first_joint_only.cpp)
 

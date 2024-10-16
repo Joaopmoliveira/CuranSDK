@@ -1,3 +1,4 @@
+
 #define GLFW_INCLUDE_VULKAN
 
 #include <GLFW/glfw3.h>
@@ -5,9 +6,6 @@
 #include <vulkan/vulkan.h>
 
 #include "include/core/SkTypes.h"
-
-#include <thread>
-
 #include "include/core/SkAlphaType.h"
 #include "include/core/SkAnnotation.h"
 #include "include/core/SkBBHFactory.h"
@@ -114,10 +112,8 @@
 #include "include/effects/SkTrimPathEffect.h"
 #include "include/encode/SkJpegEncoder.h"
 #include "include/gpu/ganesh/SkSurfaceGanesh.h"
-#include "include/gpu/vk/GrVkBackendContext.h"
 #include "include/gpu/vk/VulkanExtensions.h"
 #include "include/gpu/GpuTypes.h"
-#include "include/gpu/GrBackendDrawableInfo.h"
 #include "include/gpu/GrBackendSemaphore.h"
 #include "include/gpu/GrBackendSurface.h"
 #include "include/gpu/GrContextOptions.h"
@@ -130,9 +126,9 @@
 #include "include/gpu/GrYUVABackendTextures.h"
 #include "include/gpu/ShaderErrorHandler.h"
 #include "include/gpu/mock/GrMockTypes.h"
-#include "include/gpu/vk/GrVkBackendContext.h"
-#include "include/gpu/vk/GrVkExtensions.h"
-#include "include/gpu/vk/GrVkMemoryAllocator.h"
+#include "include/gpu/vk/VulkanBackendContext.h"
+#include "include/gpu/vk/VulkanExtensions.h"
+#include "include/gpu/vk/VulkanMemoryAllocator.h"
 #include "include/gpu/vk/GrVkTypes.h"
 #include "include/pathops/SkPathOps.h"
 #include "include/ports/SkTypeface_win.h"
@@ -151,12 +147,15 @@
 #include "include/utils/SkTextUtils.h"
 #include "include/utils/SkTraceEventPhase.h"
 #include "include/utils/mac/SkCGUtils.h"
-
 #include "include/gpu/vk/VulkanMutableTextureState.h"
 #include "include/gpu/ganesh/vk/GrVkDirectContext.h"
 #include "include/gpu/ganesh/vk/GrVkBackendSemaphore.h"
 #include "include/gpu/ganesh/vk/GrVkBackendSurface.h"
 #include "include/gpu/ganesh/vk/GrBackendDrawableInfo.h"
+
+#if defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
+#include "include/ports/SkFontMgr_fontconfig.h"
+#endif
 
 #include <string>
 #include <variant>
@@ -237,13 +236,14 @@ class Context {
 	VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 
 public:
+	
 	VkInstance instance = VK_NULL_HANDLE;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	std::unique_ptr<GrVkExtensions> extensions = nullptr;
+	std::unique_ptr<skgpu::VulkanExtensions> extensions = nullptr;
 	std::vector<const char*> deviceLayerNames;
 	std::vector<const char*> deviceExtensionNames;
 	QueueFamilyIndices indices;
-	GrVkGetProc vulkan_pointer = VK_NULL_HANDLE;
+	skgpu::VulkanGetProc vulkan_pointer = VK_NULL_HANDLE;
 
 	Context() {
 		initialize_context();
@@ -431,7 +431,7 @@ private:
 		}
 
 		if (extensions == nullptr)
-			extensions = std::unique_ptr<GrVkExtensions>(new GrVkExtensions());
+			extensions = std::make_unique<skgpu::VulkanExtensions>();
 
 		extensions->init(vulkan_pointer, instance, physicalDevice,
 			(uint32_t)instanceExtensionNames.size(),
@@ -586,7 +586,7 @@ private:
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	VkQueue presentQueue = VK_NULL_HANDLE;
 	std::unique_ptr<BackbufferInfo[]> fBackbuffers = nullptr;
-	std::unique_ptr<GrVkBackendContext> vkContext = nullptr;
+	std::unique_ptr<skgpu::VulkanBackendContext> vkContext = nullptr;
 	std::unique_ptr<GrDirectContext> skia_context = nullptr;
 	std::vector<SkSurface*> swapSurface;
 	uint32_t fCurrentBackbufferIndex{ 0 };
@@ -762,7 +762,7 @@ public:
 		vkGetDeviceQueue(device, context->indices.presentFamily.value(), 0, &presentQueue);
 
 		if (vkContext == nullptr)
-			vkContext = std::make_unique<GrVkBackendContext>();
+			vkContext = std::make_unique<skgpu::VulkanBackendContext>();
 
 		vkContext->fInstance = context->instance;
 		vkContext->fPhysicalDevice = context->physicalDevice;
@@ -773,7 +773,6 @@ public:
 		vkContext->fVkExtensions = context->extensions.get();
 		vkContext->fDeviceFeatures = nullptr;
 		vkContext->fGetProc = context->vulkan_pointer;
-		vkContext->fOwnsInstanceAndDevice = false;
 		vkContext->fProtectedContext = GrProtected::kNo;
 
 		// so far i dont think we have any special needs,
@@ -993,7 +992,7 @@ public:
 
 			GrVkImageInfo info;
 			info.fImage = swapChainImages[i];
-			info.fAlloc = GrVkAlloc();
+			info.fAlloc = skgpu::VulkanAlloc();
 			info.fImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			info.fImageTiling = VK_IMAGE_TILING_OPTIMAL;
 			info.fFormat = swapChainImageFormat;
@@ -1321,7 +1320,7 @@ public:
 
 			GrVkImageInfo info;
 			info.fImage = swapChainImages[i];
-			info.fAlloc = GrVkAlloc();
+			info.fAlloc = skgpu::VulkanAlloc();
 			info.fImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			info.fImageTiling = VK_IMAGE_TILING_OPTIMAL;
 			info.fFormat = swapChainImageFormat;

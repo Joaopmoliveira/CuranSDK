@@ -224,7 +224,7 @@ bool Context::initialize_context() {
 	}
 
 	if (extensions == nullptr)
-		extensions = std::unique_ptr<GrVkExtensions>(new GrVkExtensions());
+		extensions = std::make_unique<skgpu::VulkanExtensions>();
 
 	extensions->init(vulkan_pointer, instance, physicalDevice,
 		(uint32_t)instanceExtensionNames.size(),

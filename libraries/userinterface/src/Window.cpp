@@ -194,7 +194,7 @@ bool Window::initialize()
 	vkGetDeviceQueue(device, context->indices.presentFamily.value(), 0, &presentQueue);
 
 	if (vkContext == nullptr)
-		vkContext = std::make_unique<GrVkBackendContext>();
+		vkContext = std::make_unique<skgpu::VulkanBackendContext>();
 
 	vkContext->fInstance = context->instance;
 	vkContext->fPhysicalDevice = context->physicalDevice;
@@ -205,7 +205,6 @@ bool Window::initialize()
 	vkContext->fVkExtensions = context->extensions.get();
 	vkContext->fDeviceFeatures = nullptr;
 	vkContext->fGetProc = context->vulkan_pointer;
-	vkContext->fOwnsInstanceAndDevice = false;
 	vkContext->fProtectedContext = GrProtected::kNo;
 
 	// so far i dont think we have any special needs,
@@ -422,7 +421,7 @@ bool Window::initialize()
 
 		GrVkImageInfo info;
 		info.fImage = swapChainImages[i];
-		info.fAlloc = GrVkAlloc();
+		info.fAlloc = skgpu::VulkanAlloc();
 		info.fImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		info.fImageTiling = VK_IMAGE_TILING_OPTIMAL;
 		info.fFormat = swapChainImageFormat;
@@ -746,7 +745,7 @@ bool Window::recreateDisplay()
 
 		GrVkImageInfo info;
 		info.fImage = swapChainImages[i];
-		info.fAlloc = GrVkAlloc();
+		info.fAlloc = skgpu::VulkanAlloc();
 		info.fImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		info.fImageTiling = VK_IMAGE_TILING_OPTIMAL;
 		info.fFormat = swapChainImageFormat;
