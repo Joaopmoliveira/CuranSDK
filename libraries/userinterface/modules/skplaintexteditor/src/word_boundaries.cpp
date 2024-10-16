@@ -5,6 +5,7 @@
 #include "word_boundaries.h"
 #include "modules/skunicode/include/SkUnicode.h"
 #include "modules/skunicode/include/SkUnicode_icu.h"
+#include "modules/skunicode/include/SkUnicode_client.h"
 #include <memory>
 
 #if defined(SK_UNICODE_ICU_IMPLEMENTATION)
@@ -20,8 +21,6 @@
 #endif
 
 std::vector<bool> GetUtf8WordBoundaries(const char* begin, size_t byteCount, const char* locale) {
-    
-    
     auto unicode = SkUnicodes::ICU::Make();
     if (nullptr == unicode) {
         return {};

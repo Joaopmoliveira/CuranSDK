@@ -11,6 +11,7 @@ target_include_directories(skplaintexteditor
 
 target_link_libraries(skplaintexteditor PUBLIC
 unofficial::skia::skia
+unofficial::skia::modules::skunicode_icu
 glfw 
 Vulkan::Vulkan 
 skshaper
