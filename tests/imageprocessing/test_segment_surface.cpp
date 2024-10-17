@@ -222,7 +222,7 @@ itk::PointSet<double, 3>::Pointer prune_surface(itk::Mesh<double>::Pointer mesh)
         point[2] = p_it.Value()[2] - centroid[2];
         normal.normalize();
         point.normalize();
-        if (normal.transpose() * point > 0.23)
+        if (normal.transpose() * point > 0.7)
         {
             point_container->InsertElement(index, p_it->Value());
             ++index;

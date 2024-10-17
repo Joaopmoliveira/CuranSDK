@@ -12,7 +12,7 @@ target_include_directories(skplaintexteditor
 target_link_libraries(skplaintexteditor PUBLIC
 unofficial::skia::skia
 unofficial::skia::modules::skunicode_icu
+unofficial::skia::modules::skshaper
 glfw 
-Vulkan::Vulkan 
-skshaper
+Vulkan::Vulkan
 )

@@ -1,2 +1,1 @@
-add_subdirectory(skshaper)
 add_subdirectory(skplaintexteditor)
