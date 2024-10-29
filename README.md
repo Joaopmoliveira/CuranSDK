@@ -1,16 +1,12 @@
 # Curan
 
-This file describes the Curan Library. The intent is to provide a general
-idea on how the library is constructed, how to use the building blocks
-supplied to create higher level abstraction until a fully usable UI with
-proper functioning is supplied. 
-
-Curan is a medical viewer, developed by IST, with contribution from
+Welcome to the Curan SDK, a framework developed to explore surgical navigation platforms with flexible-joint robots. 
+At its essence Curan is a medical viewer, developed at IST, with contribution from
 the contribution list and the end of the file. The library provides interfaces which
 simplify the implementation of medical demos with real time
 capabilities. 
 
-The library is divided into four main modules
+The SDK is divided into four main modules
 1. The utilities library contains base classes used by all other modules,
 such as thread safe queues, blocks used to connect objects, memory buffers
 which can usurp the ownbership of shared pointers, etc..
@@ -32,57 +28,60 @@ to other types of optimizations).
 
 2. Second install Vulkan from the website https://vulkan.lunarg.com/sdk/home (this is a graphics API to communicate with the GPU of your computer)
 
-3. Install the lattest version of Mycrosoft Visual Studio - Community Edition which integrates C++ compilers in your system. 
+(if on windows)
+3.* Install the build tools required for your operating system - Install the lattest version of Mycrosoft Visual Studio - Community Edition which integrates C++ compilers in your system. 
 
-4. Search in your system for the command window "x64 native tools command prompt for vs 20XX" where XX is whatever version of Visual Studio that you
+3.1* Search in your system for the command window "x64 native tools command prompt for vs 20XX" where XX is whatever version of Visual Studio that you
 installed.
 
-5. Use vcpkg to build the required third party libraries
-To use this strategy we can first install vcpkg as: (this is all done in the x64 native tools command prompt)
+(if on linux)
+3.* Install the build tools required for your operating system - Install the lattest build-tools which integrates C++ compilers in your system.
 
+
+4. To set up the package manager that deals with our third party dependencies go to your command prompt and write
 ```sh
-~path >> mkdir development
-~path >> cd development
-~path/development >> git clone https://github.com/Microsoft/vcpkg.git
-~path/development >> ./vcpkg/bootstrap-vcpkg.bat
+~path >> git clone https://github.com/Joaopmoliveira/CuranSDK.git
+~path >> cd CuranSDK
+~path/CuranSDK >> cd vcpkg
+~path/CuranSDK/vcpkg >> ./vcpkg/bootstrap-vcpkg.bat
 ```
 
-Now we have two options, the first one is to install universally the dependencies 
-of our project (this is called the classic mode). The second strategy is the manifest
-mode where we define a file, vcpkg.json, with the dependencies of our project. Currently our
-project has the following dependencies
+5. Now we have to specify a couple of details which are specific to each computer. In modern build systems CMake is the tool for the job.
+We can configure CMake through a file called CMakePresents.json which specifies flags required for proper compilation of the project. s
 
 ```
 {
-  "dependencies": [
-    "eigen3",
-    "itk",
-    "ceres",
-    "asio",
-    "glfw3",
-    "nlohmann-json",
-    "boost-process",
-    "vsg",
-    "vsgimgui",
-    "pugixml",
+  "version": 5,
+  "configurePresets": [
     {
-      "name": "vsgxchange",
-      "features": [ "assimp" ]
+      "name": "debug",
+      "displayName": "Debug",
+      "generator": "Ninja",
+      "binaryDir": "build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CURAN_PLUS_EXECUTABLE_PATH": "~path_to_plus/bin/PlusServer.exe"
+      }
     },
     {
-      "name": "skia",
-      "features": [ "vulkan" ]
+      "name": "release",
+      "displayName": "Release",
+      "generator": "Ninja",
+      "binaryDir": "build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CURAN_PLUS_EXECUTABLE_PATH": "~path_to_plus/bin/PlusServer.exe"
+      }
     }
-  ],
-  "builtin-baseline":"f7423ee180c4b7f40d43402c2feb3859161ef625"
+  ]
 }
 ```
 
 Now we could just go to the command line and install the dependencies as in
 
 ```sh
-~path/development >> cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="~path/development/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>
-~path/development >> cmake --build build
+~path/CuranSDK >> cmake -B build -S . 
+~path/CuranSDK >> cmake --build build
 ```
 
 And the project should just compile out of the box (this will take a LOOOOONG TIME to compile 

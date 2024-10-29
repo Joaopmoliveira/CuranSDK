@@ -307,8 +307,8 @@ int CreatePointCloud(ProcessingMessage *processor)
         for (const auto &segmented_point : observation.segmented_points)
         {
             // Coordenadas da imagem
-            unsigned int x = segmented_point.first;
-            unsigned int y = segmented_point.second;
+            unsigned int x = 2.0*segmented_point.first;
+            unsigned int y = 2.0*segmented_point.second;
             constexpr double pixel_size = 0.00018867924; // confirmar
             Eigen::Vector4d image_point(pixel_size * x, pixel_size * y, 0, 1.0);
             Eigen::Vector4d point_in_world_with_1 = observation.pose * image_point;

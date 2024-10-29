@@ -1,10 +1,11 @@
+#include "imageprocessing/VolumetricRegistration.h"
+
 #include <iostream>
 #include <string>
 
 #include "itkMeshSpatialObject.h"
 #include "itkSpatialObjectReader.h"
 #include "itkAutomaticTopologyMeshSource.h"
-#include "imageprocessing/VolumetricRegistration.h"
 #include "itkLaplacianImageFilter.h"
 #include "itkZeroCrossingBasedEdgeDetectionImageFilter.h"
 #include "itkImageFileReader.h"
@@ -98,25 +99,13 @@
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkBinomialBlurImageFilter.h"
 
-template <typename T>
-void update_ikt_filter(T &filter)
+enum ExtractionSurfaceTransformation
 {
-    try
-    {
-        filter->Update();
-    }
-    catch (const itk::ExceptionObject &err)
-    {
-        std::cout << "ExceptionObject caught !" << std::endl
-                  << err << std::endl;
-        std::terminate();
-    }
-    catch (...)
-    {
-        std::cout << "generic unknown exception" << std::endl;
-        std::terminate();
-    }
-}
+    ELIMINATE_VERTICIES_WITH_OUTWARD_NORMALS,
+    ELIMINATE_VERTICIES_WITH_INNARD_NORMALS,
+    SUBSAMPLE_VERTCIES,
+    LEAVE_UNCHANGED
+};
 
 inline double rad2deg(double in)
 {
@@ -158,43 +147,23 @@ auto transform_z = [](double alpha)
     return T_rotation_extra;
 };
 
-
-
-std::tuple<Eigen::Matrix<double,4,9>,Eigen::Matrix<double,4,9>> get_points_to_minimize(){
-    Eigen::Matrix<double,4,9> points_in_us_coordinates;
-    points_in_us_coordinates << 1;
-
-    Eigen::Matrix<double,4,9> points_in_ct_coordinates ;
-    points_in_ct_coordinates << 1;
-
-    return {points_in_us_coordinates,points_in_ct_coordinates};
-}
-
 // Lamda to get a rotation matrix from a given angle but with a flipped principal direction
 auto transform_flipped_principal_component = [](double alpha)
-{
-    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
-    poorly_constrained_direction << 1.0, 0.0, 0.0,
-        0.0, std::cos(alpha), -std::sin(alpha),
-        0.0, std::sin(alpha), std::cos(alpha);
+    {
+        Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
+        poorly_constrained_direction << 1.0, 0.0, 0.0,
+            0.0, std::cos(alpha), -std::sin(alpha),
+            0.0, std::sin(alpha), std::cos(alpha);
 
-    Eigen::Matrix<double, 3, 3> flipping_direction;
-    flipping_direction << -1.0, 0.0, 0.0,
-        0.0, -1.0, 0.0,
-        0.0, 0.0, 1.0;
+        Eigen::Matrix<double, 3, 3> flipping_direction;
+        flipping_direction << -1.0, 0.0, 0.0,
+            0.0, -1.0, 0.0,
+            0.0, 0.0, 1.0;
 
-    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
-    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction * flipping_direction;
-    return T_rotation_extra;
-};
-
-enum ExtractionSurfaceTransformation
-{
-    ELIMINATE_VERTICIES_WITH_OUTWARD_NORMALS,
-    ELIMINATE_VERTICIES_WITH_INNARD_NORMALS,
-    SUBSAMPLE_VERTCIES,
-    LEAVE_UNCHANGED
-};
+        Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
+        T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction * flipping_direction;
+        return T_rotation_extra;
+    };
 
 template <bool is_in_debug>
 struct ExtractionSurfaceInfo
@@ -216,6 +185,27 @@ struct ExtractionSurfaceInfo
                                                    reduction_factor{in_reduction_factor},
                                                    buffer_of_mask{in_buffer_of_mask} {};
 };
+
+template <typename T>
+void update_ikt_filter(T &filter)
+{
+    try
+    {
+        filter->Update();
+    }
+    catch (const itk::ExceptionObject &err)
+    {
+        std::cout << "ExceptionObject caught !" << std::endl
+                  << err << std::endl;
+        std::terminate();
+    }
+    catch (...)
+    {
+        std::cout << "generic unknown exception" << std::endl;
+        std::terminate();
+    }
+}
+
 
 template <bool is_in_debug>
 std::tuple<itk::Mesh<double>::Pointer, itk::ImageMaskSpatialObject<3>::ImageType::Pointer> extract_point_cloud(itk::Image<float, 3>::Pointer image, const ExtractionSurfaceInfo<is_in_debug> &info)
@@ -448,6 +438,7 @@ std::tuple<itk::Mesh<double>::Pointer, itk::ImageMaskSpatialObject<3>::ImageType
     return {meshSource->GetOutput(), image_to_fill};
 }
 
+
 itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>::Pointer convert_mesh(const itk::Mesh<double>::Pointer &mesh)
 {
     class MeshTriangleVisitor
@@ -572,6 +563,7 @@ itk::PointSet<double, 3>::Pointer prune_surface(itk::Mesh<double>::Pointer mesh)
     return point_set;
 }
 
+
 std::tuple<Eigen::Matrix<double, 4, 4>, itk::PointSet<double, 3>::Pointer> recentered_data(const itk::Mesh<double>::Pointer &mesh)
 {
     std::cout << "Number of points :" << mesh->GetNumberOfPoints() << std::endl;
@@ -623,72 +615,8 @@ std::tuple<Eigen::Matrix<double, 4, 4>, itk::PointSet<double, 3>::Pointer> recen
     return {pca_alignement, prune_surface(mesh)};
 }
 
-std::tuple<double, Eigen::Matrix<double, 4, 4>> icp_registration(Eigen::Matrix4d initial_config, itk::PointSet<double, 3>::Pointer &fixed_point_cloud, itk::PointSet<double, 3>::Pointer &moving_point_cloud)
-{
-    auto metric = itk::EuclideanDistancePointMetric<itk::PointSet<double, 3>, itk::PointSet<double, 3>>::New();
-    auto transform = itk::Euler3DTransform<double>::New();
-    auto optimizer = itk::LevenbergMarquardtOptimizer::New();
-    optimizer->SetUseCostFunctionGradient(false);
-
-    auto registration = itk::PointSetToPointSetRegistrationMethod<itk::PointSet<double, 3>, itk::PointSet<double, 3>>::New();
-    itk::LevenbergMarquardtOptimizer::ScalesType scales(transform->GetNumberOfParameters());
-    constexpr double translationScale = 1000.0;
-    constexpr double rotationScale = 1.0;
-    scales[0] = 1.0 / rotationScale;
-    scales[1] = 1.0 / rotationScale;
-    scales[2] = 1.0 / rotationScale;
-    scales[3] = 1.0 / translationScale;
-    scales[4] = 1.0 / translationScale;
-    scales[5] = 1.0 / translationScale;
-
-    unsigned long numberOfIterations = 2000;
-    double gradientTolerance = 1e-4;
-    double valueTolerance = 1e-4;
-    double epsilonFunction = 1e-5;
-
-    optimizer->SetScales(scales);
-    optimizer->SetNumberOfIterations(numberOfIterations);
-    optimizer->SetValueTolerance(valueTolerance);
-    optimizer->SetGradientTolerance(gradientTolerance);
-    optimizer->SetEpsilonFunction(epsilonFunction);
-
-    auto initialTransform = itk::Euler3DTransform<double>::New();
-    itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
-    itk::Vector<double, 3> origin;
-    itk::Matrix<double> direction;
-
-    for (size_t row = 0; row < 3; ++row)
-    {
-        origin[row] = initial_config(row, 3);
-        for (size_t col = 0; col < 3; ++col)
-            direction(row, col) = initial_config(row, col);
-    }
-
-    initialTransform->SetMatrix(direction);
-    initialTransform->SetTranslation(origin);
-
-    registration->SetInitialTransformParameters(initialTransform->GetParameters());
-    registration->SetMetric(metric);
-    registration->SetOptimizer(optimizer);
-    registration->SetTransform(transform);
-    registration->SetFixedPointSet(fixed_point_cloud);
-    registration->SetMovingPointSet(moving_point_cloud);
-
-    update_ikt_filter(registration);
-
-    Eigen::Matrix<double, 4, 4> final_transformation = Eigen::Matrix<double, 4, 4>::Identity();
-    for (size_t row = 0; row < 3; ++row)
-    {
-        final_transformation(row, 3) = transform->GetOffset()[row];
-        for (size_t col = 0; col < 3; ++col)
-            final_transformation(row, col) = transform->GetMatrix()(row, col);
-    }
-
-    return {optimizer->GetValue().two_norm(), final_transformation};
-}
-
 template <typename pixel_type>
-int modify_image_with_transform(Eigen::Matrix<double, 4, 4> transform, typename itk::Image<pixel_type, 3>::Pointer image)
+int move_image_to_frame(Eigen::Matrix<double, 4, 4> transform, typename itk::Image<pixel_type, 3>::Pointer image)
 {
     itk::Point<double, 3> origin;
     itk::Matrix<double> direction;
@@ -703,15 +631,6 @@ int modify_image_with_transform(Eigen::Matrix<double, 4, 4> transform, typename 
     return 1;
 };
 
-template <typename pixel_type>
-void print_image_with_transform(typename itk::Image<pixel_type, 3>::Pointer image, const std::string &image_path)
-{
-    auto writer = itk::ImageFileWriter<typename itk::Image<pixel_type, 3>>::New();
-    writer->SetFileName(image_path);
-    writer->SetInput(image);
-    update_ikt_filter(writer);
-    return;
-};
 
 template <typename PixelType>
 struct info_solve_registration
@@ -946,83 +865,79 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> sol
     return {optimizer->GetValue(), final_transformation, info_registration.initial_rotation};
 }
 
-void write_point_set(const std::string &filename, itk::PointSet<double, 3>::Pointer pointset)
+std::tuple<double, Eigen::Matrix<double, 4, 4>> icp_registration(Eigen::Matrix4d initial_config, itk::PointSet<double, 3>::Pointer& fixed_point_cloud, itk::PointSet<double, 3>::Pointer& moving_point_cloud)
 {
-    std::ofstream file(filename);
-    if (!file.is_open())
+    auto metric = itk::EuclideanDistancePointMetric<itk::PointSet<double, 3>, itk::PointSet<double, 3>>::New();
+    auto transform = itk::Euler3DTransform<double>::New();
+    auto optimizer = itk::LevenbergMarquardtOptimizer::New();
+    optimizer->SetUseCostFunctionGradient(false);
+
+    auto registration = itk::PointSetToPointSetRegistrationMethod<itk::PointSet<double, 3>, itk::PointSet<double, 3>>::New();
+    itk::LevenbergMarquardtOptimizer::ScalesType scales(transform->GetNumberOfParameters());
+    constexpr double translationScale = 1000.0;
+    constexpr double rotationScale = 1.0;
+    scales[0] = 1.0 / rotationScale;
+    scales[1] = 1.0 / rotationScale;
+    scales[2] = 1.0 / rotationScale;
+    scales[3] = 1.0 / translationScale;
+    scales[4] = 1.0 / translationScale;
+    scales[5] = 1.0 / translationScale;
+
+    unsigned long numberOfIterations = 2000;
+    double gradientTolerance = 1e-4;
+    double valueTolerance = 1e-4;
+    double epsilonFunction = 1e-5;
+
+    optimizer->SetScales(scales);
+    optimizer->SetNumberOfIterations(numberOfIterations);
+    optimizer->SetValueTolerance(valueTolerance);
+    optimizer->SetGradientTolerance(gradientTolerance);
+    optimizer->SetEpsilonFunction(epsilonFunction);
+
+    auto initialTransform = itk::Euler3DTransform<double>::New();
+    itk::Euler3DTransform<double>::Pointer matrix = itk::Euler3DTransform<double>::New();
+    itk::Vector<double, 3> origin;
+    itk::Matrix<double> direction;
+
+    for (size_t row = 0; row < 3; ++row)
     {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-        return;
+        origin[row] = initial_config(row, 3);
+        for (size_t col = 0; col < 3; ++col)
+            direction(row, col) = initial_config(row, col);
     }
-    file << std::fixed << std::setprecision(6);
-    for (itk::PointSet<double, 3>::PointsContainer::Iterator iterator = pointset->GetPoints()->Begin(); iterator < pointset->GetPoints()->End(); ++iterator)
-        file << iterator->Value()[0] << " " << iterator->Value()[1] << " " << iterator->Value()[2] << "\n";
-    file.close();
+
+    initialTransform->SetMatrix(direction);
+    initialTransform->SetTranslation(origin);
+
+    registration->SetInitialTransformParameters(initialTransform->GetParameters());
+    registration->SetMetric(metric);
+    registration->SetOptimizer(optimizer);
+    registration->SetTransform(transform);
+    registration->SetFixedPointSet(fixed_point_cloud);
+    registration->SetMovingPointSet(moving_point_cloud);
+
+    update_ikt_filter(registration);
+
+    Eigen::Matrix<double, 4, 4> final_transformation = Eigen::Matrix<double, 4, 4>::Identity();
+    for (size_t row = 0; row < 3; ++row)
+    {
+        final_transformation(row, 3) = transform->GetOffset()[row];
+        for (size_t col = 0; col < 3; ++col)
+            final_transformation(row, col) = transform->GetMatrix()(row, col);
+    }
+
+    return { optimizer->GetValue().two_norm(), final_transformation };
 }
 
-template <typename PixelType>
-double evaluate_mi_with_both_images(const info_solve_registration<PixelType> &info_registration, size_t bin_numbers)
-{
-    using RegistrationPixelType = PixelType;
-    constexpr unsigned int Dimension = 3;
-    using ImageType = itk::Image<PixelType, Dimension>;
-    using ImageRegistrationType = itk::Image<RegistrationPixelType, Dimension>;
-    using MetricType = itk::MattesMutualInformationImageToImageMetricv4<ImageRegistrationType, ImageRegistrationType>;
-    using InterpolatorType = itk::LinearInterpolateImageFunction<ImageRegistrationType, double>;
-    using TransformType = itk::VersorRigid3DTransform<double>;
-
-    typename InterpolatorType::Pointer interpolator_moving = InterpolatorType::New();
-    typename InterpolatorType::Pointer interpolator_fixed = InterpolatorType::New();
-
-    auto metric = MetricType::New();
-    metric->SetNumberOfHistogramBins(bin_numbers);
-    metric->SetUseMovingImageGradientFilter(false);
-    metric->SetUseFixedImageGradientFilter(false);
-    metric->SetFixedImage(info_registration.fixed_image);
-    metric->SetFixedImageMask(*info_registration.fixed_image_mask);
-    metric->SetMovingImageMask(*info_registration.moving_image_mask);
-    metric->SetMovingImage(info_registration.moving_image);
-    metric->SetFixedInterpolator(interpolator_fixed);
-    metric->SetMovingInterpolator(interpolator_moving);
-
-    auto initialTransform = TransformType::New();
-    initialTransform->SetIdentity();
-    metric->SetTransform(initialTransform);
-
-    TransformType::ParametersType displacement(initialTransform->GetNumberOfParameters());
-    displacement.Fill(0);
-    try
-    {
-        metric->Initialize();
-        metric->SetParameters(displacement);
-
-        return metric->GetValue();
-    }
-    catch (const itk::ExceptionObject &err)
-    {
-        return 100.0;
-    }
-}
-
-int main()
-{
-    std::cout << "extracting surface from fixed\n";
-    auto image_reader_fixed = itk::ImageFileReader<itk::Image<float, 3>>::New();
-    image_reader_fixed->SetFileName("C:/Dev/NeuroNavigation/data_for_home_processing/reconstruction_results_first.mha");
-    update_ikt_filter(image_reader_fixed);
-    auto [point_cloud_fixed, mask_fixed_image] = extract_point_cloud(image_reader_fixed->GetOutput(), ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
+int register_volumes(ImageType::Pointer fixedimage, ImageType::Pointer movingimage, const RegistrationConfiguration& configuration){
+    auto [point_cloud_fixed,mask_fixed_image] = extract_point_cloud(fixedimage, ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
     auto [transformation_acording_to_pca_fixed, tmp_fixed_point_set] = recentered_data(point_cloud_fixed);
-
     auto fixed_point_set = tmp_fixed_point_set;
-    std::cout << "extracting surface from moving\n";
-    auto image_reader_moving = itk::ImageFileReader<itk::Image<float, 3>>::New();
-    image_reader_moving->SetFileName("C:/Dev/Curan/build/bin/resources/ct_image1_cropepd_volume.mha");
-    update_ikt_filter(image_reader_moving);
-    auto [point_cloud_moving, mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(), ExtractionSurfaceInfo<true>{3, 0.8, "moving", 5, 5});
+
+    auto [point_cloud_moving,mask_moving_image] = extract_point_cloud(movingimage, ExtractionSurfaceInfo<true>{3, 0.8, "moving", 5, 5});
     auto [transformation_acording_to_pca_moving, tmp_moving_point_set] = recentered_data(point_cloud_moving);
     auto moving_point_set = tmp_moving_point_set;
 
-    std::cout << "setting icp data\n";
     std::vector<Eigen::Matrix<double, 4, 4>> initial_guesses_icp;
     for (double angle = 0; angle < 360.0; angle += 45.0)
     {
@@ -1030,7 +945,6 @@ int main()
         initial_guesses_icp.push_back(transform_flipped_principal_component(rad2deg(angle)));
     }
 
-    std::cout << "running parallel solving of icp\n";
     std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>>> full_runs_inner;
     {
         std::mutex mut;
@@ -1069,12 +983,12 @@ int main()
     Eigen::Matrix<double, 4, 4> Timage_origin_moving = Eigen::Matrix<double, 4, 4>::Identity();
     for (size_t row = 0; row < 3; ++row)
     {
-        Timage_origin_fixed(row, 3) = image_reader_fixed->GetOutput()->GetOrigin()[row];
-        Timage_origin_moving(row, 3) = image_reader_moving->GetOutput()->GetOrigin()[row];
+        Timage_origin_fixed(row, 3) = fixedimage->GetOrigin()[row];
+        Timage_origin_moving(row, 3) = movingimage->GetOrigin()[row];
         for (size_t col = 0; col < 3; ++col)
         {
-            Timage_origin_fixed(row, col) = image_reader_fixed->GetOutput()->GetDirection()(row, col);
-            Timage_origin_moving(row, col) = image_reader_moving->GetOutput()->GetDirection()(row, col);
+            Timage_origin_fixed(row, col) = fixedimage->GetDirection()(row, col);
+            Timage_origin_moving(row, col) = movingimage->GetDirection()(row, col);
         }
     }
 
@@ -1089,14 +1003,14 @@ int main()
         return output;
     };
 
-    auto fixed = converter(image_reader_fixed->GetOutput());
-    auto moving = converter(image_reader_moving->GetOutput());
+    auto fixed = converter(fixedimage);
+    auto moving = converter(movingimage);
 
-    modify_image_with_transform<float>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, fixed);
-    modify_image_with_transform<float>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
+    move_image_to_frame<float>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, fixed);
+    move_image_to_frame<float>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
 
-    modify_image_with_transform<unsigned char>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, mask_fixed_image);
-    modify_image_with_transform<unsigned char>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, mask_moving_image);
+    move_image_to_frame<unsigned char>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, mask_fixed_image);
+    move_image_to_frame<unsigned char>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, mask_moving_image);
 
     std::ofstream myfile{"results_of_fullscale_optimization.csv"};
     myfile << "run,bins,sampling percentage,relative_scales,learning rate,relaxation,convergence window,piramid sizes,bluring sizes,best cost,total time\n";
@@ -1124,8 +1038,6 @@ int main()
     auto transformed_mask_moving_image = itk::ImageMaskSpatialObject<3>::New();
     transformed_mask_moving_image->SetImage(mask_moving_image);
     update_ikt_filter(transformed_mask_moving_image);
-
-    std::cout << "mi_before_optimization: " << evaluate_mi_with_both_images(info_solve_registration<float>{fixed, moving, transformed_mask_fixed_image, transformed_mask_moving_image, Eigen::Matrix<double, 4, 4>::Identity()}, bin_numbers[0]) << std::endl;
 
     {
         std::mutex mut;
@@ -1183,64 +1095,6 @@ int main()
     const double pi = std::atan(1) * 4;
     auto [cost, best_transformation_mi] = full_runs[0];
 
-    std::cout << "cost of best: " << cost << "\nbest transform according to MI:\n"
-              << best_transformation_mi.inverse() << std::endl;
-
-    modify_image_with_transform<float>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, fixed);
-    modify_image_with_transform<unsigned char>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, mask_fixed_image);
-
-    modify_image_with_transform<float>(best_transformation_mi.inverse() * best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
-    modify_image_with_transform<unsigned char>(best_transformation_mi.inverse() * best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, mask_moving_image);
-
-    transformed_mask_moving_image->SetImage(mask_moving_image);
-    update_ikt_filter(transformed_mask_moving_image);
-    std::cout << "mi after optimization: " << evaluate_mi_with_both_images(info_solve_registration<float>{fixed, moving, transformed_mask_fixed_image, transformed_mask_moving_image, Eigen::Matrix<double, 4, 4>::Identity()}, bin_numbers[0]) << std::endl;
-
-    modify_image_with_transform<float>(Timage_origin_fixed, fixed);
-    print_image_with_transform<float>(fixed, "fixed_image.mha");
-
-    modify_image_with_transform<float>(transformation_acording_to_pca_fixed * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
-    print_image_with_transform<float>(moving, "moving_image_after_pca.mha");
-
-    modify_image_with_transform<float>(transformation_acording_to_pca_fixed * best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
-    print_image_with_transform<float>(moving, "moving_image_after_icp.mha");
-
-    modify_image_with_transform<float>(transformation_acording_to_pca_fixed * best_transformation_mi.inverse() * best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
-    print_image_with_transform<float>(moving, "moving_image_after_icp.mha");
-
-    std::cout << "final transformation:\n"
-              << transformation_acording_to_pca_fixed * best_transformation_mi.inverse() * best_transformation_icp * transformation_acording_to_pca_moving.inverse() << std::endl;
-    std::cout << "final transformation with icp only:\n"
-              << transformation_acording_to_pca_fixed * best_transformation_icp * transformation_acording_to_pca_moving.inverse() << std::endl;
-
-
-    auto return_current_time_and_date = [](){
-	    auto now = std::chrono::system_clock::now();
-    	auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
-    	std::stringstream ss;
-    	ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
-   		return ss.str();
-	};
-
-	Eigen::IOFormat CleanFmt(Eigen::StreamPrecision, 0, ", ", "\n", " ", " ");
-	std::stringstream optimized_values;
-	optimized_values << (transformation_acording_to_pca_fixed * best_transformation_mi.inverse() * best_transformation_icp * transformation_acording_to_pca_moving.inverse()).format(CleanFmt) << std::endl;
-	
-	// Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the 
-	// tracker transformation ()
-	std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration! Produced JSON file:\n");
-
-	nlohmann::json registration_data;
-	registration_data["timestamp"] = return_current_time_and_date();
-	registration_data["moving_to_fixed_transform"] = optimized_values.str();
-	registration_data["registration_error"] = evaluate_mi_with_both_images(info_solve_registration<float>{fixed, moving, transformed_mask_fixed_image, transformed_mask_moving_image, Eigen::Matrix<double, 4, 4>::Identity()}, bin_numbers[0]);
-    registration_data["type"] = "MI";
-
-	// write prettified JSON to another file
-	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/registration.json");
-	o << registration_data;
-	std::cout << registration_data << std::endl;
-
+    std::cout << "cost of best: " << cost << "\nbest transform according to MI:\n" << best_transformation_mi.inverse() << std::endl;
     return 0;
 }

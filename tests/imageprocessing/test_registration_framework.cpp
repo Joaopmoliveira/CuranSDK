@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "imageprocessing/RegistrationUS_CT.h"
+#include "imageprocessing/VolumetricRegistration.h"
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 

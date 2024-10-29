@@ -1,10 +1,11 @@
 #include <iostream>
 #include <string>
 
+#include "imageprocessing/VolumetricRegistration.h"
+
 #include "itkMeshSpatialObject.h"
 #include "itkSpatialObjectReader.h"
 #include "itkAutomaticTopologyMeshSource.h"
-#include "imageprocessing/RegistrationUS_CT.h"
 #include "itkLaplacianImageFilter.h"
 #include "itkZeroCrossingBasedEdgeDetectionImageFilter.h"
 #include "itkImageFileReader.h"
@@ -74,6 +75,8 @@
 #include "itkQuadEdgeMeshExtendedTraits.h"
 #include "itkNormalQuadEdgeMeshFilter.h"
 #include "itkBinomialBlurImageFilter.h"
+
+
 
 typedef itk::Mesh<double> MeshType;
 typedef itk::BinaryMask3DMeshSource< ImageType,MeshType> MeshSourceType;
@@ -251,7 +254,7 @@ void write_point_set(const std::string& filename, itk::PointSet<double, 3>::Poin
 
 int main(int argc, char* argv[]){
 
-    if (argc != 3)
+    if (argc != 4)
     {
         std::cerr << "Usage: " << std::endl;
         std::cerr << argv[0];
@@ -260,11 +263,11 @@ int main(int argc, char* argv[]){
         return EXIT_FAILURE;
     }
 
-    auto lowerThreshold = static_cast<PixelType>(std::stoi(argv[1]));
-    auto upperThreshold = static_cast<PixelType>(std::stoi(argv[2]));
+    auto lowerThreshold = static_cast<PixelType>(std::stoi(argv[2]));
+    auto upperThreshold = static_cast<PixelType>(std::stoi(argv[3]));
 
     auto image_reader_fixed = itk::ImageFileReader<itk::Image<float, 3>>::New();
-    image_reader_fixed->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha");
+    image_reader_fixed->SetFileName(argv[1]);
 
     auto rescaler = itk::RescaleIntensityImageFilter<itk::Image<float, 3>, itk::Image<float, 3>>::New();
     rescaler->SetInput(image_reader_fixed->GetOutput());

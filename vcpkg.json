@@ -10,6 +10,7 @@
     "vsg",
     "vsgimgui",
     "pugixml",
+    "pcl",
     {
       "name": "vsgxchange",
       "features": [ "assimp" ]

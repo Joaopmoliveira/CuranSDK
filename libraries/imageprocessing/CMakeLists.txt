@@ -10,7 +10,7 @@ src/IntegratedVolumeReconstructor.cpp
 src/SplicingTools.cpp
 src/igtl2itkConverter.cpp
 src/ImageProcessingDefinitions.cpp
-src/RegistrationUS_CT.cpp
+src/VolumetricRegistration.cpp
 )
 
 find_package(ITK CONFIG REQUIRED)

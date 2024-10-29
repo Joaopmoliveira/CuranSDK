@@ -9,6 +9,8 @@ using RegistrationPixelType = PixelType;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 
+using MaskType = itk::Image<unsigned char, Dimension>;
+
 struct RegistrationConfiguration{
 
     enum MeshSelection{
@@ -36,6 +38,6 @@ struct RegistrationConfiguration{
     {};
 };
 
-int register_volumes(ImageType::Pointer pointer2inputfixedimage, ImageType::Pointer pointer2inputmovingimage,const RegistrationConfiguration& configuration);
+int register_volumes(ImageType::Pointer fixedimage, ImageType::Pointer movingimage, const RegistrationConfiguration& configuration);
 
 #endif
