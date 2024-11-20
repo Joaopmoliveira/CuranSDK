@@ -3,16 +3,10 @@ src/LBRController.cpp
 src/HandGuidance.cpp
 src/NeedleController.cpp
 src/WallAvoidanceData.cpp
-src/FilterRippleFirstHarmonic.cpp
 src/JointVelocityController.cpp
-src/RippleReinjection.cpp
 src/RobotState.cpp
 src/ImpedanceController.cpp
 src/CartesianVelocityController.cpp
-src/InertiaReduction.cpp
-src/InertiaAugmentation.cpp
-src/EnhancedInertiaImpedanceController.cpp
-src/EnhancedInertiaJointImpedanceControl.cpp
 )
 
 target_include_directories(robotutils

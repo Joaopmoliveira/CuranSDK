@@ -58,18 +58,6 @@ robotutils
 renderable
 )
 
-add_executable(visualize_filtered_velocity visualize_filtered_velocity.cpp)
-
-target_compile_definitions(visualize_filtered_velocity PRIVATE SK_VULKAN)
-target_compile_definitions(visualize_filtered_velocity PRIVATE NOMINMAX)
-target_compile_definitions(visualize_filtered_velocity PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(visualize_filtered_velocity PUBLIC
-utils
-robotutils
-renderable
-)
-
 
 add_executable(test_rhytmic_motion test_rhytmic_motion.cpp)
 
@@ -82,16 +70,6 @@ utils
 robotutils
 renderable
 )
-
-add_executable(stupid_filter_test stupid_filter_test.cpp)
-
-target_compile_definitions(stupid_filter_test PRIVATE NOMINMAX)
-
-target_link_libraries(stupid_filter_test PUBLIC
-utils
-robotutils
-)
-
 
 add_executable(test_internal_rbdl_logic test_internal_rbdl_logic.cpp)
 
@@ -206,102 +184,12 @@ utils
 robotutils
 )
 
-
-#add_executable(test_robot_controller_with_switch test_robot_controller_with_switch.cpp)
-
-#target_compile_definitions(test_robot_controller_with_switch PRIVATE NOMINMAX)
-#target_compile_definitions(test_robot_controller_with_switch PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-#target_link_libraries(test_robot_controller_with_switch PUBLIC
-#utils
-#robotutils
-#renderable
-#)
-
 add_executable(recorder_first_joint_only recorder_first_joint_only.cpp)
 
 target_compile_definitions(recorder_first_joint_only PRIVATE SK_VULKAN)
 target_compile_definitions(recorder_first_joint_only PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
 target_link_libraries(recorder_first_joint_only PUBLIC
-utils
-robotutils
-renderable
-)
-
-add_executable(test_filtering_filter_joint test_filtering_filter_joint.cpp)
-
-target_compile_definitions(test_filtering_filter_joint PRIVATE SK_VULKAN)
-target_compile_definitions(test_filtering_filter_joint PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_filtering_filter_joint PUBLIC
-utils
-robotutils
-renderable
-)
-
-add_executable(test_filtering_all_joints test_filtering_all_joints.cpp)
-
-target_compile_definitions(test_filtering_all_joints PRIVATE SK_VULKAN)
-target_compile_definitions(test_filtering_all_joints PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_filtering_all_joints PUBLIC
-utils
-robotutils
-renderable
-)
-
-add_executable(test_simulation_filtering_all_joints test_simulation_filtering_all_joints.cpp)
-
-target_compile_definitions(test_simulation_filtering_all_joints PRIVATE SK_VULKAN)
-target_compile_definitions(test_simulation_filtering_all_joints PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_simulation_filtering_all_joints PUBLIC
-utils
-robotutils
-renderable
-)
-
-
-add_executable(test_inertia_reduction test_inertia_reduction.cpp)
-
-target_compile_definitions(test_inertia_reduction PRIVATE SK_VULKAN)
-target_compile_definitions(test_inertia_reduction PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_inertia_reduction PUBLIC
-utils
-robotutils
-renderable
-)
-
-add_executable(test_inertia_increase test_inertia_increase.cpp)
-
-target_compile_definitions(test_inertia_increase PRIVATE SK_VULKAN)
-target_compile_definitions(test_inertia_increase PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_inertia_increase PUBLIC
-utils
-robotutils
-renderable
-)
-
-add_executable(test_comparison_two_and_three_harmonics test_comparison_two_and_three_harmonics.cpp)
-
-target_compile_definitions(test_comparison_two_and_three_harmonics PRIVATE SK_VULKAN)
-target_compile_definitions(test_comparison_two_and_three_harmonics PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_comparison_two_and_three_harmonics PUBLIC
-utils
-robotutils
-renderable
-)
-
-add_executable(test_inertia_reduction_plus_stiffness test_inertia_reduction_plus_stiffness.cpp)
-
-target_compile_definitions(test_inertia_reduction_plus_stiffness PRIVATE SK_VULKAN)
-target_compile_definitions(test_inertia_reduction_plus_stiffness PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_inertia_reduction_plus_stiffness PUBLIC
 utils
 robotutils
 renderable
