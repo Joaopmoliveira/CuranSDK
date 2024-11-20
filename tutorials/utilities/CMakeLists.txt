@@ -9,3 +9,15 @@ add_executable(tutorial_thread_pool tutorial_thread_pool.cpp)
 target_link_libraries(tutorial_thread_pool PUBLIC
 utils
 )
+
+add_executable(tutorial_string_manipulation tutorial_string_manipulation.cpp)
+
+target_link_libraries(tutorial_string_manipulation PUBLIC
+utils
+)
+
+add_executable(tutorial_memory_utilities tutorial_memory_utilities.cpp)
+
+target_link_libraries(tutorial_memory_utilities PUBLIC
+utils
+)

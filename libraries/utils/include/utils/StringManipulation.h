@@ -7,12 +7,13 @@
 namespace curan {
 	namespace utilities {
 		template <typename T>
-		std::string to_string_with_precision(const T a_value, const int n = 6)
+		inline std::string to_string_with_precision(const T value, const int significant_digits = 6)
 		{
-			std::ostringstream out;
-			out.precision(n);
-			out << std::fixed << a_value;
-			return out.str();
+			char buffer[50];
+			auto result = std::snprintf(buffer, sizeof(buffer), "%.*g", significant_digits, value);
+			if(result < 0 )
+				return std::string{};
+			return std::string{buffer};
 		}
 	}
 }
