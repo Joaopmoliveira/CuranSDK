@@ -1,3 +1,0 @@
-add_subdirectory(visualize_ripple)
-add_subdirectory(inertia_increase)
-add_subdirectory(inertia_decrease)
