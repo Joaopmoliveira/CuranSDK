@@ -6,21 +6,40 @@ the contribution list and the end of the file. The library provides interfaces w
 simplify the implementation of medical demos with real time
 capabilities. 
 
-The SDK is divided into four main modules
-1. The utilities library contains base classes used by all other modules,
+## API Reference
+
+Curan has a [website](https://human-robotics-lab.github.io/CuranWeb/) where you can follow our tutorials on how to use the SDK we developed at the surgical robotics lab.
+
+The SDK is divided into nine main modules and a tenth module that was made when and if we ever decide to migrate away from the Plus Server
+1. utils - The library contains base classes used by all other modules,
 such as thread safe queues, blocks used to connect objects, memory buffers
 which can usurp the ownbership of shared pointers, etc..
-2. The communication library supplies higher level abstractions over asio which
+
+2. communication - The library supplies higher level abstractions over asio which
 allow us to lauch an application with a indifinite number of clients, with any protocol.
-Currently only the OpenIGTlink protocol is implemented in the library. More protocols
-can be added at will without any effort.
-3. The userinferface library contains higher level abstractions over the Skia library
-to render 2D entities in real time. 
-4. The imageprocessing library contains the simplified wrappers around ITK which 
+Currently only the OpenIGTlink and custimized FRI protocols are available. More protocols
+can be added at will without major effort.
+
+3. userinterface - The library contains higher level abstractions over the Skia library
+to render 2D entities in real time. We employ Skia because we are very much interested
+in customizing precisly the behavior we desire.
+
+4. imageprocessing - The library contains the simplified wrappers around ITK which 
 should simplify the development speed whilst implementing sequencial filters.
-5. The optimization library contains classes dedicated to particular optimization problems
+
+5. optimization -The library contains classes dedicated to particular optimization problems
 which are usefull to us (for now only in the medical context, but this can be extended
 to other types of optimizations).
+
+6. gaussianmixtures - 
+
+7. geometry - 
+ 
+8. rendering - 
+
+9. robotutils - 
+
+10. realtimekernel - 
 
 # Build intructions
 
@@ -36,7 +55,6 @@ installed.
 
 (if on linux)
 3.* Install the build tools required for your operating system - Install the lattest build-tools which integrates C++ compilers in your system.
-
 
 4. To set up the package manager that deals with our third party dependencies go to your command prompt and write
 ```sh
@@ -59,8 +77,7 @@ We can configure CMake through a file called CMakePresents.json which specifies 
       "generator": "Ninja",
       "binaryDir": "build/debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CURAN_PLUS_EXECUTABLE_PATH": "~path_to_plus/bin/PlusServer.exe"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
@@ -69,8 +86,7 @@ We can configure CMake through a file called CMakePresents.json which specifies 
       "generator": "Ninja",
       "binaryDir": "build/release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CURAN_PLUS_EXECUTABLE_PATH": "~path_to_plus/bin/PlusServer.exe"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     }
   ]
@@ -90,7 +106,10 @@ because ITK and SKIA are huge). Reserve at least 30Gb of memory for vcpkg to com
 
 # Supported operating systems
 
-Althought the software was developed based on open source solutions which are compatible accross multiple operating systems, the build system, aka VCPKG, might only provide experimental support for obscure platforms. If you face any problem with vcpkg try to search online for custom solutions for your particular system. The officially supported operating systems are :
+Althought the software was developed based on open source solutions which are compatible accross multiple operating systems, 
+the build system, aka VCPKG, might only provide experimental support for obscure platforms. 
+If you face any problem with vcpkg try to search online for custom solutions for your particular system.
+ The officially supported operating systems are :
 
 1. Windows 
 2. Ubuntu - Linux
@@ -122,59 +141,49 @@ project called .vscode) with a file inside it called settings.json with the foll
         "-DVCPKG_TARGET_TRIPLET=x64-windows-static"
     ],
     "vcpkg.general.enable": true,
-    "vcpkg.target.hostTriplet": "x64-windows-static",
-    "vcpkg.target.defaultTriplet": "x64-windows-static",
     "vcpkg.target.useStaticLib": true,
-    "cmake.configureSettings": {
-        "CMAKE_TOOLCHAIN_FILE": "path to your vcpkg instalation directory",
-        "CMAKE_MSVC_RUNTIME_LIBRARY" : "MultiThreaded$<$<CONFIG:Debug>:Debug>"
-    },
     "vcpkg.target.installDependencies": true,
     "vcpkg.target.preferSystemLibs": false,
     "vcpkg.target.useManifest": true
 }
 ```
 
-Notice that we are forcing the cmake extension to pass the arguments of where vcpkg is installed in the line --CMAKE_TOOLCHAIN_FILE: "path to your vcpkg instalation directory"--. This should compile out of the box once all the steps are solved.
+Notice that we are forcing the cmake extension to pass the arguments of where vcpkg is installed in the line 
+--CMAKE_TOOLCHAIN_FILE: "path to your vcpkg instalation directory"--. 
+This should compile out of the box once all the steps are solved.
 
 ## Integrating Plus directly in the source code
 
 When doing demonstrations for outsiders, or trying to use the software in real world environments, having to deal with manually lauching Plus
 can be a bother. Thus CURAN allows you to attach the root path to the Plus Server so that when you launch the main application, ApplicationLauncher
 plus is automatically launches as well, reducing the ammount of work required by you. This is an optinal behavior, thus if you desire to trigger it,
-you must pass to CMAKE the command line option 
-```
-"-DCURAN_PLUS_EXECUTABLE_PATH=C:/Users/joaom/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe"
-```
-Assume that you have your plus executable installed in the root folder
-
-```
-C:/Users/example/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe
-```
-
-If you are using vscode as your development environment, you can instead modify settings.json with the following extra parameter
+you must pass to CMAKE the command line option through the CMakePresents.json file in the cache variables.
 
 ```
 {
-    "cmake.generator": "Ninja",
-    "cmake.configureArgs": [
-        "-DVCPKG_APPLOCAL_DEPS=ON",
-        "-DX_VCPKG_APPLOCAL_DEPS_INSTALL=ON",
-        "-DVCPKG_MANIFEST_MODE=ON",
-        "-DVCPKG_TARGET_TRIPLET=x64-windows-static",
-        "-DCURAN_PLUS_EXECUTABLE_PATH=C:/Users/example/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe"
-    ],
-    "vcpkg.general.enable": true,
-    "vcpkg.target.hostTriplet": "x64-windows-static",
-    "vcpkg.target.defaultTriplet": "x64-windows-static",
-    "vcpkg.target.useStaticLib": true,
-    "cmake.configureSettings": {
-        "CMAKE_TOOLCHAIN_FILE": "path to your vcpkg instalation directory",
-        "CMAKE_MSVC_RUNTIME_LIBRARY" : "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+  "version": 5,
+  "configurePresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "generator": "Ninja",
+      "binaryDir": "build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CURAN_PLUS_EXECUTABLE_PATH": "~path_to_plus/bin/PlusServer.exe"
+      }
     },
-    "vcpkg.target.installDependencies": true,
-    "vcpkg.target.preferSystemLibs": false,
-    "vcpkg.target.useManifest": true
+    {
+      "name": "release",
+      "displayName": "Release",
+      "generator": "Ninja",
+      "binaryDir": "build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CURAN_PLUS_EXECUTABLE_PATH": "~path_to_plus/bin/PlusServer.exe"
+      }
+    }
+  ]
 }
 ```
 
@@ -182,11 +191,9 @@ Now once you build the executable ApplicationLauncher will deal with the pesky d
 
 ## Build Problems
 
-When using VScode to compile the project, if the previous order of the build instructions is not followed properly, the build fails due to incorrect configurations. When you find yourself faced with these problems the simplest solution is to delete the .vscode folder and the build folder and reconfigure the project, this usually solves all the problems. 
-
-## API Reference
-
-Curan finaly has a [website](https://human-robotics-lab.github.io/CuranWeb/) where you can follow our tutorials on how to use the SDK we developed at the surgical robotics lab.
+When using VScode to compile the project, if the previous order of the build instructions is not followed properly, 
+the build fails due to incorrect configurations. When you find yourself faced with these problems the simplest solution is to delete the 
+.vscode folder and the build folder and reconfigure the project, this usually solves all the problems. 
 
 ## Acknowledgments 
 The volume reconstruction code is essencially a copy of [IGSIO](https://github.com/IGSIO/IGSIO) modified to work with the interal classes and structures of Curan. 
