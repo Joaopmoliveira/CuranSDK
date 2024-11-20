@@ -114,7 +114,7 @@ std::unique_ptr<curan::ui::Overlay> create_options_overlay(std::shared_ptr<Proce
 
 	auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	*slidercontainer << std::move(container) << std::move(container1) << std::move(container2) << std::move(container3) << std::move(container4) << std::move(container5);
-
+	slidercontainer->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(246, 246, 246)});
 	return Overlay::make(std::move(slidercontainer),SK_ColorTRANSPARENT,true);
 }
 
@@ -194,7 +194,7 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*buttoncontainer << std::move(start_connection) << std::move(continuous_recording) << std::move(snapshot) << std::move(pointcloud) << std::move(resetpointcloud) << std::move(button_options);
-	
+	buttoncontainer->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(246, 246, 246)});
 	processing->button->set_waiting_color(SK_ColorRED);
 
 	auto widgetcontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);

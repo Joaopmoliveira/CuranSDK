@@ -38,7 +38,8 @@ Context::~Context() {
 }
 
 bool Context::initialize_context() {
-	glfwInit();
+	if(glfwInit()!=GLFW_TRUE)
+		throw std::runtime_error("failed to initialize GFLW");
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 	PFN_vkGetInstanceProcAddr getInstanceProc = (PFN_vkGetInstanceProcAddr)glfwGetInstanceProcAddress(instance, "vkGetInstanceProcAddr");
@@ -52,20 +53,22 @@ bool Context::initialize_context() {
 		return getInstanceProc(instance, proc_name);
 	};
 
-	uint32_t instanceVersion = VK_MAKE_VERSION(1, 0, 0);;
+
+
+	uint32_t instanceVersion = VK_MAKE_API_VERSION(1, 0, 0,0);;
 	// Provided by VK_VERSION_1_1
 	VkResult res = vkEnumerateInstanceVersion(&instanceVersion);
 	if (res < 0) {
 		return false;
 	}
 
-	uint32_t apiVersion = VK_MAKE_VERSION(1, 0, 0);
-	if (instanceVersion >= VK_MAKE_VERSION(1, 1, 0)) {
+	uint32_t apiVersion = VK_MAKE_API_VERSION(1, 0, 0,0);
+	if (instanceVersion >= VK_MAKE_API_VERSION(1, 1, 0,0)) {
 		// If the instance version is 1.0 we must have the apiVersion also be 1.0. However, if the
 		// instance version is 1.1 or higher, we can set the apiVersion to be whatever the highest
 		// api we may use in skia (technically it can be arbitrary). So for now we set it to 1.1
 		// since that is the highest vulkan version.
-		apiVersion = VK_MAKE_VERSION(1, 1, 0);
+		apiVersion = VK_MAKE_API_VERSION(1, 1, 0,0);
 	}
 
 	instanceVersion = std::min(instanceVersion, apiVersion);
@@ -126,16 +129,16 @@ bool Context::initialize_context() {
 
 	res = vkCreateInstance(&instance_create, nullptr, &instance);
 
-	if (res < 0) {
-		return false;
-	}
+	if (res < 0) 
+		throw std::runtime_error("failure to initialize VKinstance");
+	
 
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
-	if (deviceCount == 0) {
+	if (deviceCount == 0) 
 		throw std::runtime_error("failed to find GPUs with Vulkan support!");
-	}
+	
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());

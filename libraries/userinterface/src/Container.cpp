@@ -72,7 +72,7 @@ drawablefunction Container::draw(){
 			paint_square.setStrokeWidth(4);
 			paint_square.setColor(SK_ColorGREEN);
 
-			paint_layout.setColor(get_color());
+			if(!shader_colors)	paint_layout.setColor(get_color());
 			canvas->drawRect(rectangle, paint_layout);
 
 			auto image_display_surface = (*background_image).image;
@@ -88,22 +88,14 @@ drawablefunction Container::draw(){
 	else if(background_effect)
 		return [this](SkCanvas* canvas) {
 			SkRect rectangle = get_position();
-
-			SkPaint paint_square;
-			paint_square.setStyle(SkPaint::kStroke_Style);
-			paint_square.setAntiAlias(true);
-			paint_square.setStrokeWidth(4);
-			paint_square.setColor(SK_ColorGREEN);
-
-			paint_layout.setColor(get_color());
+			if(!shader_colors)	paint_layout.setColor(get_color());
 			canvas->drawRect(rectangle, paint_layout);
-
 			(*background_effect).draw(canvas,SkIRect::MakeXYWH(rectangle.x(),rectangle.y(),rectangle.width(),rectangle.height()));
 		};
 	else
 		return [this](SkCanvas* canvas) {
 			SkRect rectangle = get_position();
-			paint_layout.setColor(get_color());
+			if(!shader_colors)	paint_layout.setColor(get_color());
 			canvas->drawRect(rectangle, paint_layout);
 		};
 }
@@ -135,6 +127,15 @@ void Container::framebuffer_resize(const SkRect& new_page_size){
 		(*iter_drawables)->set_position(temp);
 		(*iter_drawables)->framebuffer_resize(new_page_size);
 	}
+
+    // Define gradient start and end points
+    SkPoint points[] = { SkPoint::Make(my_position.fLeft, my_position.fTop), SkPoint::Make(my_position.fRight, my_position.fTop) };
+
+    // Create a linear gradient shader
+	if(shader_colors){
+		paint_layout = SkPaint{};
+		paint_layout.setShader(SkGradientShader::MakeLinear(points, (*shader_colors).data(), nullptr, 2, SkTileMode::kClamp));
+	}	
 }
 
 SkRect Container::minimum_size(){

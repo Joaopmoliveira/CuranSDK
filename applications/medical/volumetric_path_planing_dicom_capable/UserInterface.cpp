@@ -226,7 +226,7 @@ void Application::view_image_simple()
     else
         *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
 
-    viwers_container->set_color(SK_ColorTRANSPARENT);
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto image_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
@@ -307,7 +307,7 @@ void Application::view_roi_selection()
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *viwers_container << std::move(button) << std::move(button2);
 
-    viwers_container->set_color(SK_ColorTRANSPARENT);
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto image_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
@@ -497,7 +497,7 @@ void Application::view_roi_selection()
             pool->submit(job); });
 
     *text_container << std::move(button_ac_point) << std::move(button_pc_point) << std::move(create_geometry);
-
+    text_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
     auto image_and_text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *image_and_text_container << std::move(text_container) << std::move(image_container);
     image_and_text_container->set_divisions({0.0, 0.1, 1.0});
@@ -578,7 +578,7 @@ void Application::view_image_with_point_selection()
     else
         *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
 
-    viwers_container->set_color(SK_ColorTRANSPARENT);
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto image_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
@@ -864,7 +864,7 @@ void Application::view_image_with_point_selection()
             pool->submit(job); });
 
     *text_container << std::move(button_ac_point) << std::move(button_pc_point) << std::move(button_midpoint) << std::move(perform_resampling);
-
+    text_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
     auto image_and_text_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *image_and_text_container << std::move(text_container) << std::move(image_container);
     image_and_text_container->set_divisions({0.0, 0.1, 1.0});
@@ -1119,7 +1119,7 @@ std::unique_ptr<curan::ui::Container> Application::main_page()
     else
         *viwers_container << std::move(button) << std::move(button4) << std::move(button5);
 
-    viwers_container->set_color(SK_ColorTRANSPARENT);
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
     *container << std::move(viwers_container) << std::move(image_display);

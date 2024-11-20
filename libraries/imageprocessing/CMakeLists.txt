@@ -11,6 +11,8 @@ src/SplicingTools.cpp
 src/igtl2itkConverter.cpp
 src/ImageProcessingDefinitions.cpp
 src/VolumetricRegistration.cpp
+src/PointCloudDownsampling.cpp
+src/ArunAlgorithm.cpp
 )
 
 find_package(ITK CONFIG REQUIRED)
@@ -28,4 +30,5 @@ renderable
 userinterface
 GeometricTools
 OpenIGTLink
+${PCL_LIBRARIES}
 )

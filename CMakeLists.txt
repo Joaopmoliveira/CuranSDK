@@ -48,6 +48,7 @@ find_package(vsg CONFIG REQUIRED)
 find_package(vsgXchange CONFIG REQUIRED)
 find_package(vsgImGui CONFIG REQUIRED)
 find_package(pugixml CONFIG REQUIRED)
+find_package(PCL CONFIG REQUIRED)
 
 #Externally provided targets
 add_subdirectory(third_party)

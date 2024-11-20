@@ -135,7 +135,7 @@ std::unique_ptr<curan::ui::Overlay> Application::warning_overlay(const std::stri
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
     *viwers_container << std::move(warn) << std::move(button);
-    viwers_container->set_color(SK_ColorTRANSPARENT).set_divisions({0.0, .8, 1.0});
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)}).set_divisions({0.0, .8, 1.0});
 
     return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
 }
@@ -237,7 +237,7 @@ void Application::view_image_simple()
     else
         *viwers_container << std::move(button) << std::move(button4);
 
-    viwers_container->set_color(SK_ColorTRANSPARENT);
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto image_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
@@ -318,7 +318,7 @@ void Application::view_roi_selection()
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *viwers_container << std::move(button) << std::move(button2);
 
-    viwers_container->set_color(SK_ColorTRANSPARENT);
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto image_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
@@ -581,7 +581,7 @@ void Application::view_image_with_point_selection()
     else
         *viwers_container << std::move(button) << std::move(button4);
 
-    viwers_container->set_color(SK_ColorTRANSPARENT);
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto image_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
 
@@ -1073,7 +1073,7 @@ std::unique_ptr<curan::ui::Container> Application::main_page()
     else
         *viwers_container << std::move(button) << std::move(button4);
 
-    viwers_container->set_color(SK_ColorTRANSPARENT);
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
     *container << std::move(viwers_container) << std::move(image_display);

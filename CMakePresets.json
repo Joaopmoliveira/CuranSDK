@@ -1,25 +1,39 @@
 {
-  "version": 5,
-  "configurePresets": [
-    {
-      "name": "debug",
-      "displayName": "Debug",
-      "generator": "Ninja",
-      "binaryDir": "build/debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CURAN_PLUS_EXECUTABLE_PATH": "C:/Users/joaom/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe"
-      }
-    },
-    {
-      "name": "release",
-      "displayName": "Release",
-      "generator": "Ninja",
-      "binaryDir": "build/release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CURAN_PLUS_EXECUTABLE_PATH": "C:/Users/joaom/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe"
-      }
-    }
-  ]
+    "version": 8,
+    "configurePresets": [
+        {
+            "name": "debug",
+            "displayName": "Debug",
+            "generator": "Ninja",
+            "binaryDir": "build/debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CURAN_PLUS_EXECUTABLE_PATH": "C:/Users/joaom/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Release",
+            "generator": "Ninja",
+            "binaryDir": "build/release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CURAN_PLUS_EXECUTABLE_PATH": "C:/Users/joaom/PlusApp-2.8.0.20191105-Win32/bin/PlusServer.exe"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "Release",
+            "description": "Compile project in release mode",
+            "displayName": "",
+            "configurePreset": "release"
+        },
+        {
+            "name": "Debug",
+            "description": "Compile project in debug mode",
+            "displayName": "",
+            "configurePreset": "debug"
+        }
+    ]
 }

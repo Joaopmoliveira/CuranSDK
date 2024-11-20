@@ -42,6 +42,8 @@ std::unique_ptr<curan::ui::Overlay> create_aquisition_overlay(std::shared_ptr<Pr
 	auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::VERTICAL);
 	*slidercontainer << std::move(container) << std::move(container1);
 
+	slidercontainer->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(246, 246, 246)});
+
 	return Overlay::make(std::move(slidercontainer),SK_ColorTRANSPARENT,true);
 }
 
@@ -216,7 +218,7 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 	auto start_connection_pointer = start_connection.get();
 
 	auto segmentation = Button::make("Segmentation Visualizer",resources);
-	segmentation->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	segmentation->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 	segmentation->add_press_call([processing](Button* button, Press press ,ConfigDraw* config) {
 		//processing->show_line.load();
 		auto val = !processing->show_line.load();
@@ -262,20 +264,16 @@ curan::ui::Page create_main_page(std::shared_ptr<ProcessingMessage>& processing 
 	});
 
 	auto button_options = Button::make("Options",resources);
-	button_options->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
+	button_options->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(100, 80));
 	button_options->add_press_call([&processing,&resources](Button* button,Press press , ConfigDraw* config) {
 		config->stack_page->stack(create_options_overlay(processing,resources));
 	});
-/*
-	auto button_results = Button::make("Results",resources);
-	button_results->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 80));
-	button_results->add_press_call([&processing,&resources](Button* button,Press press , ConfigDraw* config) {
-		config->stack_page->stack(create_results_overlay(processing,resources));
-	});
-*/
+
 	auto buttoncontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 	*buttoncontainer << std::move(start_connection) << std::move(segmentation) << std::move(lines) << std::move(points) << std::move(calibration) << std::move(button_options);
 	processing->button = start_connection_pointer;
+
+	buttoncontainer->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(246, 246, 246)});
 
 	start_connection_pointer->set_waiting_color(SK_ColorRED);
 

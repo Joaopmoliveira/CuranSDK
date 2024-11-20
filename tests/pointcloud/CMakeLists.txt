@@ -1,5 +1,3 @@
-find_package(PCL CONFIG REQUIRED)
-
 add_executable(test_point_cloud_experiments
 main.cpp 
 )

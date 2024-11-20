@@ -145,6 +145,12 @@ inline Container& set_divisions(const std::vector<SkScalar>& indivision){
 	return *(this);
 }
 
+inline Container& set_shader_colors(std::array<SkColor,2> in_shader_colors){
+	std::lock_guard<std::mutex> g{ get_mutex() };
+	shader_colors = in_shader_colors;
+	return *(this);
+}
+
 inline Container& set_variable_layout(const std::vector<SkRect>& indivision){
 	std::lock_guard<std::mutex> g{ get_mutex() };
 	if(type==ContainerType::LINEAR_CONTAINER)
@@ -183,6 +189,7 @@ Container(const ContainerType& type,const Arrangement& arragement, RuntimeEffect
 			
 std::optional<ImageWrapper> background_image;
 std::optional<RuntimeEffect> background_effect;
+std::optional<std::array<SkColor,2>> shader_colors;
 SkPaint paint_layout;
 std::vector<SkScalar> divisions;
 std::vector<std::unique_ptr<Drawable>> contained_layouts;
