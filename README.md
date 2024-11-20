@@ -25,21 +25,32 @@ to render 2D entities in real time. We employ Skia because we are very much inte
 in customizing precisly the behavior we desire.
 
 4. imageprocessing - The library contains the simplified wrappers around ITK which 
-should simplify the development speed whilst implementing sequencial filters.
+should simplify the development speed whilst implementing sequencial filters. It also 
+implements algorithms to manipulate point clouds and volumes associated with medical
+images.
 
 5. optimization -The library contains classes dedicated to particular optimization problems
 which are usefull to us (for now only in the medical context, but this can be extended
 to other types of optimizations).
 
-6. gaussianmixtures - 
+6. gaussianmixtures - Code that allows us to perform regression of a bi-dimensional gaussian 
+mixture model
 
-7. geometry - 
+7. geometry - The geometry library allows us to create geometric shapes and compute the intersection between
+distinct geometries. Its mainly used for the userinterface library, when the user select particular regions
+on the screen. 
  
-8. rendering - 
+8. rendering - The library is basically a nice wrapper around vsg. It simplifies the creation of a complex scene 
+while augmenting the types of fancy renders we require in Curan, e.g., volume rendering. 
 
-9. robotutils - 
+9. robotutils - The library has control laws useful to command the LBR Med through the FRI channel. Note that
+the main inovation brought by Curan, the ripple compensation, is still unavailable in this project. We 
+are currently attempting to patent this solution. Once this process is terminated, it is our wish to publish
+this material. 
 
-10. realtimekernel - 
+10. realtimekernel - The last library is the realtimekernel. Although its not a real kernel, its a library that can 
+generate code at compile time to establish communication between sensors and consumers with extremely precise timings.
+If we ever wish to migrate away from Plus, this is our backup solution.
 
 # Build intructions
 
