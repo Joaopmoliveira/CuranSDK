@@ -3,3 +3,9 @@ add_executable(tutorial_safe_queue tutorial_safe_queue.cpp)
 target_link_libraries(tutorial_safe_queue PUBLIC
 utils
 )
+
+add_executable(tutorial_thread_pool tutorial_thread_pool.cpp)
+
+target_link_libraries(tutorial_thread_pool PUBLIC
+utils
+)

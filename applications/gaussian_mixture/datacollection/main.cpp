@@ -1,6 +1,5 @@
 #include "robotutils/LBRController.h"
 #include "robotutils/HandGuidance.h"
-#include "robotutils/FilterRippleFirstHarmonic.h"
 #include "utils/Logger.h"
 #include "friUdpConnection.h"
 #include "friClientApplication.h"
