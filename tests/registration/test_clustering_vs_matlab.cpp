@@ -153,7 +153,6 @@ convertEigenToPCLPointCloudWithSpacingVoxelGrid(
               (int)outEigenPoints.cols());
   return {cloudout, outEigenPoints};
 }
-*/
 
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>
 permutations(size_t num_clusters) {
@@ -179,10 +178,37 @@ permutations(size_t num_clusters) {
   return index_permutations_eigen;
 }
 
+*/
+
+
 
 
 std::array<std::tuple<Eigen::Matrix<double, 4, 4>, double>, 6> extract_potential_solutions(const Eigen::Matrix<double, 3, Eigen::Dynamic> &fixed_cloud,const  Eigen::Matrix<double, 3, Eigen::Dynamic> &moving_cloud,size_t number_of_clusters) {
   std::vector<std::tuple<Eigen::Matrix<double, 4, 4>, double>>potential_solutions;
+
+ auto permutations = [](size_t num_clusters) {
+  std::vector<size_t> random_cluster_order(num_clusters);
+  std::iota(std::begin(random_cluster_order), std::end(random_cluster_order),
+            0);
+
+  std::vector<std::vector<size_t>> index_permutations;
+  do {
+    index_permutations.push_back(random_cluster_order);
+  } while (std::next_permutation(random_cluster_order.begin(),
+                                 random_cluster_order.end()));
+
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>
+      index_permutations_eigen =
+          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(
+              index_permutations.size(), num_clusters);
+
+  for (size_t row = 0; row < index_permutations.size(); ++row)
+    for (size_t col = 0; col < num_clusters; ++col)
+      index_permutations_eigen(row, col) = index_permutations[row][col];
+
+  return index_permutations_eigen;
+};
+
 
   auto perms = permutations(number_of_clusters);
   Eigen::Matrix<double, 3, Eigen::Dynamic> fixed_clusters = curan::image::kmeans(fixed_cloud, number_of_clusters);
