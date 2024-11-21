@@ -6,7 +6,7 @@
 namespace curan{
 namespace image{
 
-Eigen::Matrix<double,3,Eigen::Dynamic> kmeans(Eigen::Matrix<double,3,Eigen::Dynamic>& points , size_t nclusters);
+Eigen::Matrix<double,3,Eigen::Dynamic> kmeans(const  Eigen::Matrix<double,3,Eigen::Dynamic>& points , size_t nclusters);
 
 std::tuple<Eigen::Matrix<double,4,4>,double> arun_estimate(const Eigen::Matrix<double,3,Eigen::Dynamic>& fixed_point_cloud, const Eigen::Matrix<double,3,Eigen::Dynamic>& moving_point_cloud);
 

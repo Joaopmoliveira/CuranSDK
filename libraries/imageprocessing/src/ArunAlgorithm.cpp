@@ -19,7 +19,7 @@ std::tuple<double,Eigen::Matrix<size_t,Eigen::Dynamic,1>,Eigen::Matrix<size_t,Ei
     return {cost,correspondance,bins};
 }
 
-Eigen::Matrix<double,3,Eigen::Dynamic> kmeans(Eigen::Matrix<double,3,Eigen::Dynamic>& points , size_t nclusters){
+Eigen::Matrix<double,3,Eigen::Dynamic> kmeans(const Eigen::Matrix<double,3,Eigen::Dynamic>& points , size_t nclusters){
     double cumdist_threshold = 1e-10;
     size_t maxIter = 100;
     Eigen::Matrix<double,3,Eigen::Dynamic> clusters = Eigen::Matrix<double,3,Eigen::Dynamic>::Zero(3,nclusters);
@@ -54,47 +54,56 @@ Eigen::Matrix<double,3,Eigen::Dynamic> kmeans(Eigen::Matrix<double,3,Eigen::Dyna
 }
 
 std::tuple<Eigen::Matrix<double,4,4>,double> arun_estimate(const Eigen::Matrix<double,3,Eigen::Dynamic>& P, const Eigen::Matrix<double,3,Eigen::Dynamic>& Q){
-    if(P.cols() != Q.cols())
-        throw std::runtime_error("the algorithm requires the same number of cols");
-    Eigen::Matrix<double,4,4> T = Eigen::Matrix<double,4,4>::Identity();
+     if (P.cols() != Q.cols())
+    throw std::runtime_error("the algorithm requires the same number of cols");
+  Eigen::Matrix<double, 4, 4> T = Eigen::Matrix<double, 4, 4>::Identity();
 
-    Eigen::Matrix<double,3,1> centroid_p = P.rowwise().mean();
-    Eigen::Matrix<double,3,1> centroid_q = Q.rowwise().mean();
+  Eigen::Matrix<double, 3, 1> centroid_p = P.rowwise().mean();
+  Eigen::Matrix<double, 3, 1> centroid_q = Q.rowwise().mean();
 
-    Eigen::Matrix<double,3,Eigen::Dynamic> P_centered = P.colwise()-centroid_p;
-    Eigen::Matrix<double,3,Eigen::Dynamic> Q_centered = Q.colwise()-centroid_q;
+  Eigen::Matrix<double, 3, Eigen::Dynamic> P_centered =
+      P.colwise() - centroid_p;
+  Eigen::Matrix<double, 3, Eigen::Dynamic> Q_centered =
+      Q.colwise() - centroid_q;
 
-    Eigen::Matrix<double,3,3> H = Eigen::Matrix<double,3,3>::Zero();
-    for(size_t i= 0; i<Q.cols() ; ++i )
-        H += P_centered.col(i) * Q_centered.col(i).transpose(); 
-    
-    Eigen::JacobiSVD<Eigen::Matrix<double,3,3>> svd(H, Eigen::ComputeFullV | Eigen::ComputeFullU);
-    Eigen::Matrix<double,3,3> R = Eigen::Matrix<double,3,3>::Identity();
-    Eigen::Matrix<double,3,1> t = Eigen::Matrix<double,3,1>::Zero();
+  Eigen::Matrix<double, 3, 3> H = Eigen::Matrix<double, 3, 3>::Zero();
+  for (size_t i = 0; i < Q.cols(); ++i)
+    H += P_centered.col(i) * Q_centered.col(i).transpose();
 
-    Eigen::Matrix<double,3,3> U = svd.matrixU();
-    Eigen::Matrix<double,3,3> V = svd.matrixV();
+  Eigen::JacobiSVD<Eigen::Matrix<double, 3, 3>> svd(H, Eigen::ComputeFullV | Eigen::ComputeFullU);
+  Eigen::Matrix<double, 3, 3> R = Eigen::Matrix<double, 3, 3>::Identity();
+  Eigen::Matrix<double, 3, 1> t = Eigen::Matrix<double, 3, 1>::Zero();
 
-    Eigen::Matrix<double,3,3> X = V*U.transpose();
+  Eigen::Matrix<double, 3, 3> U = svd.matrixU();
+  Eigen::Matrix<double, 3, 3> V = svd.matrixV();
 
-    double error = -1;
-    if(X.determinant()>0){
-        R = X;
-        t = centroid_q-R*centroid_p;
-        error = ((P-((R.transpose()*Q).colwise()-R.transpose()*t)).array().square().rowwise().sum().sqrt().colwise().sum())(0,0);
-    } else {
-        Eigen::FullPivLU<Eigen::Matrix<double,3,3>> lu_decomp(H);
-        auto rank = lu_decomp.rank();
-        if(rank<3){
-            V.col(2) *= -1.0;
-            R = V*U.transpose();
-            t = centroid_q-R*centroid_p;
-            error = ((P-((R.transpose()*Q).colwise()-R.transpose()*t)).array().square().rowwise().sum().sqrt().colwise().sum())(0,0);
-        }
+  Eigen::Matrix<double, 3, 3> X = V * (U.transpose());
+
+  double error = -1;
+  
+  if (X.determinant() > 0) {
+    R = X;
+    t = centroid_q - R * centroid_p;
+    Eigen::Matrix<double, 3, Eigen::Dynamic> Q_rotated = R.transpose()*Q;
+    Q_rotated.colwise() -= R.transpose() * t; 
+    Eigen::Matrix<double, 1, Eigen::Dynamic> error_loc = (P - Q_rotated).array().square().matrix().colwise().sum().array().sqrt().matrix();
+    error = error_loc.sum();
+  } else {
+    Eigen::FullPivLU<Eigen::Matrix<double, 3, 3>> lu_decomp(H);
+    auto rank = lu_decomp.rank();
+    if (rank < 3) {
+      V.col(2) *= -1.0;
+      R = V * (U.transpose());
+      t = centroid_q - R * centroid_p;
+      Eigen::Matrix<double, 3, Eigen::Dynamic> Q_rotated = R.transpose()*Q;
+      Q_rotated.colwise() -= R.transpose() * t; 
+      Eigen::Matrix<double, 1, Eigen::Dynamic> error_loc = (P - Q_rotated).array().square().matrix().colwise().sum().array().sqrt().matrix();
+      error = error_loc.sum();
     }
-    T.block<3,3>(0,0) = R.transpose();
-    T.block<3,1>(0,3) = -R.transpose()*t;
-    return {T,error};
+  }
+  T.block<3, 3>(0, 0) = R.transpose();
+  T.block<3, 1>(0, 3) = -R.transpose() * t;
+  return {T, error};
 }
 
 }

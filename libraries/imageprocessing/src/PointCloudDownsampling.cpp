@@ -24,7 +24,15 @@ std::tuple<pcl::PointCloud<pcl::PointXYZ>::Ptr,Eigen::Matrix<double, 3, Eigen::D
     sor.setLeafSize(spacing, spacing, spacing);
     sor.filter(*cloudout);
 
-    return {cloudout,eigenPoints};
+    Eigen::Matrix<double, 3, Eigen::Dynamic> outEigenPoints = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3,cloudout->width);
+    for (size_t i = 0; i < cloudout->width; ++i) {
+        outEigenPoints(0, i) = cloudout->points[i].x;
+        outEigenPoints(1, i) = cloudout->points[i].y;
+        outEigenPoints(2, i) = cloudout->points[i].z;
+    }
+
+
+    return {cloudout,outEigenPoints};
 }
 
 std::tuple<pcl::PointCloud<pcl::PointXYZ>::Ptr,Eigen::Matrix<double, 3, Eigen::Dynamic>> convertEigenToPCLPointCloudWithSpacingUniform(const Eigen::Matrix<double, 3, Eigen::Dynamic> &eigenPoints, double spacing)
@@ -44,10 +52,17 @@ std::tuple<pcl::PointCloud<pcl::PointXYZ>::Ptr,Eigen::Matrix<double, 3, Eigen::D
     uniform_sampling.setInputCloud(cloud_just_points);
     uniform_sampling.setRadiusSearch(spacing);
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr downsampled_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr downsampled_cloud;
     uniform_sampling.filter(*downsampled_cloud);
 
-    return {downsampled_cloud,eigenPoints};
+    Eigen::Matrix<double, 3, Eigen::Dynamic> outEigenPoints = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3,downsampled_cloud->width);
+    for (size_t i = 0; i < downsampled_cloud->width; ++i) {
+        outEigenPoints(0, i) = downsampled_cloud->points[i].x;
+        outEigenPoints(1, i) = downsampled_cloud->points[i].y;
+        outEigenPoints(2, i) = downsampled_cloud->points[i].z;
+    }
+
+    return {downsampled_cloud,outEigenPoints};
 }
 
 }
