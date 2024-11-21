@@ -13,6 +13,7 @@ src/ImageProcessingDefinitions.cpp
 src/VolumetricRegistration.cpp
 src/PointCloudDownsampling.cpp
 src/ArunAlgorithm.cpp
+src/SurfaceRegistration.cpp
 )
 
 find_package(ITK CONFIG REQUIRED)

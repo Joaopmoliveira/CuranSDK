@@ -9,7 +9,6 @@
 #include <pcl/registration/icp.h>
 #include <pcl/registration/icp_nl.h>
 #include <random>
-#include <pcl/registration/incremental_registration.h>
 
 
 #include <fstream>

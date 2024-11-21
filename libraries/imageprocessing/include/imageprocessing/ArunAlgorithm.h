@@ -10,6 +10,8 @@ Eigen::Matrix<double,3,Eigen::Dynamic> kmeans(const  Eigen::Matrix<double,3,Eige
 
 std::tuple<Eigen::Matrix<double,4,4>,double> arun_estimate(const Eigen::Matrix<double,3,Eigen::Dynamic>& fixed_point_cloud, const Eigen::Matrix<double,3,Eigen::Dynamic>& moving_point_cloud);
 
+std::array<std::tuple<Eigen::Matrix<double, 4, 4>, double>, 6> extract_potential_solutions(const Eigen::Matrix<double, 3, Eigen::Dynamic> &fixed_cloud,const  Eigen::Matrix<double, 3, Eigen::Dynamic> &moving_cloud,size_t number_of_clusters);
+
 }
 }
 

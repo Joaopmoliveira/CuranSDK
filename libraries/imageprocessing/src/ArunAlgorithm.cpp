@@ -1,4 +1,5 @@
 #include "imageprocessing/ArunAlgorithm.h"
+#include <numeric>
 #include <random>
 #include <chrono>
 
@@ -105,6 +106,56 @@ std::tuple<Eigen::Matrix<double,4,4>,double> arun_estimate(const Eigen::Matrix<d
   T.block<3, 1>(0, 3) = -R.transpose() * t;
   return {T, error};
 }
+
+std::array<std::tuple<Eigen::Matrix<double, 4, 4>, double>, 6> extract_potential_solutions(const Eigen::Matrix<double, 3, Eigen::Dynamic> &fixed_cloud,const  Eigen::Matrix<double, 3, Eigen::Dynamic> &moving_cloud,size_t number_of_clusters) {
+  std::vector<std::tuple<Eigen::Matrix<double, 4, 4>, double>>potential_solutions;
+
+ auto permutations = [](size_t num_clusters) {
+  std::vector<size_t> random_cluster_order(num_clusters);
+  std::iota(std::begin(random_cluster_order), std::end(random_cluster_order),
+            0);
+
+  std::vector<std::vector<size_t>> index_permutations;
+  do {
+    index_permutations.push_back(random_cluster_order);
+  } while (std::next_permutation(random_cluster_order.begin(),
+                                 random_cluster_order.end()));
+
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>
+      index_permutations_eigen =
+          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(
+              index_permutations.size(), num_clusters);
+
+  for (size_t row = 0; row < index_permutations.size(); ++row)
+    for (size_t col = 0; col < num_clusters; ++col)
+      index_permutations_eigen(row, col) = index_permutations[row][col];
+
+  return index_permutations_eigen;
+};
+
+  auto perms = permutations(number_of_clusters);
+  Eigen::Matrix<double, 3, Eigen::Dynamic> fixed_clusters = curan::image::kmeans(fixed_cloud, number_of_clusters);
+  Eigen::Matrix<double, 3, Eigen::Dynamic> moving_clusters = curan::image::kmeans(moving_cloud, number_of_clusters);
+  Eigen::Matrix<double, 3, Eigen::Dynamic> reordered_moving_clusters = moving_clusters;
+
+  for (size_t perm = 0; perm < perms.rows(); ++perm) {
+    for (size_t p = 0; p < perms.cols(); ++p)
+      reordered_moving_clusters.col(p) = moving_clusters.col(perms(perm, p));
+    const auto & [est_sol,cos] = curan::image::arun_estimate(fixed_clusters, reordered_moving_clusters);
+    potential_solutions.push_back(std::make_tuple(est_sol,cos));
+  }
+  std::sort(potential_solutions.begin(), potential_solutions.end(),
+            [](std::tuple<Eigen::Matrix<double, 4, 4>, double> &a,
+               std::tuple<Eigen::Matrix<double, 4, 4>, double> &b) {
+              return std::get<1>(a) < std::get<1>(b);
+            });
+  std::array<std::tuple<Eigen::Matrix<double, 4, 4>, double>, 6>
+      ordered_potential_solutions;
+  for (size_t perm = 0; perm < 6; ++perm) {
+    ordered_potential_solutions.at(perm) = potential_solutions.at(perm);
+  }
+  return ordered_potential_solutions;
+};
 
 }
 }
