@@ -9,6 +9,7 @@
 #include <pcl/registration/icp.h>
 #include <pcl/registration/icp_nl.h>
 #include <random>
+#include <pcl/registration/incremental_registration.h>
 
 
 #include <fstream>
@@ -173,9 +174,7 @@ permutations(size_t num_clusters) {
   return index_permutations_eigen;
 }
 
-std::tuple<Eigen::Matrix<double, 4, 4>, double>
-arun_estimate(const Eigen::Matrix<double, 3, Eigen::Dynamic> &P,
-              const Eigen::Matrix<double, 3, Eigen::Dynamic> &Q) {
+std::tuple<Eigen::Matrix<double, 4, 4>, double> arun_estimate(const Eigen::Matrix<double, 3, Eigen::Dynamic> &P, const Eigen::Matrix<double, 3, Eigen::Dynamic> &Q) {
   if (P.cols() != Q.cols())
     throw std::runtime_error("the algorithm requires the same number of cols");
   Eigen::Matrix<double, 4, 4> T = Eigen::Matrix<double, 4, 4>::Identity();
@@ -192,43 +191,35 @@ arun_estimate(const Eigen::Matrix<double, 3, Eigen::Dynamic> &P,
   for (size_t i = 0; i < Q.cols(); ++i)
     H += P_centered.col(i) * Q_centered.col(i).transpose();
 
-  Eigen::JacobiSVD<Eigen::Matrix<double, 3, 3>> svd(H, Eigen::ComputeFullV |
-                                                           Eigen::ComputeFullU);
+  Eigen::JacobiSVD<Eigen::Matrix<double, 3, 3>> svd(H, Eigen::ComputeFullV | Eigen::ComputeFullU);
   Eigen::Matrix<double, 3, 3> R = Eigen::Matrix<double, 3, 3>::Identity();
   Eigen::Matrix<double, 3, 1> t = Eigen::Matrix<double, 3, 1>::Zero();
 
   Eigen::Matrix<double, 3, 3> U = svd.matrixU();
   Eigen::Matrix<double, 3, 3> V = svd.matrixV();
 
-  Eigen::Matrix<double, 3, 3> X = V * U.transpose();
+  Eigen::Matrix<double, 3, 3> X = V * (U.transpose());
 
   double error = -1;
+  
   if (X.determinant() > 0) {
     R = X;
     t = centroid_q - R * centroid_p;
-    error = ((P - ((R.transpose() * Q).colwise() - R.transpose() * t))
-                 .array()
-                 .square()
-                 .rowwise()
-                 .sum()
-                 .sqrt()
-                 .colwise()
-                 .sum())(0, 0);
+    Eigen::Matrix<double, 3, Eigen::Dynamic> Q_rotated = R.transpose()*Q;
+    Q_rotated.colwise() -= R.transpose() * t; 
+    Eigen::Matrix<double, 1, Eigen::Dynamic> error_loc = (P - Q_rotated).array().square().matrix().colwise().sum().array().sqrt().matrix();
+    error = error_loc.sum();
   } else {
     Eigen::FullPivLU<Eigen::Matrix<double, 3, 3>> lu_decomp(H);
     auto rank = lu_decomp.rank();
     if (rank < 3) {
       V.col(2) *= -1.0;
-      R = V * U.transpose();
+      R = V * (U.transpose());
       t = centroid_q - R * centroid_p;
-      error = ((P - ((R.transpose() * Q).colwise() - R.transpose() * t))
-                   .array()
-                   .square()
-                   .rowwise()
-                   .sum()
-                   .sqrt()
-                   .colwise()
-                   .sum())(0, 0);
+      Eigen::Matrix<double, 3, Eigen::Dynamic> Q_rotated = R.transpose()*Q;
+      Q_rotated.colwise() -= R.transpose() * t; 
+      Eigen::Matrix<double, 1, Eigen::Dynamic> error_loc = (P - Q_rotated).array().square().matrix().colwise().sum().array().sqrt().matrix();
+      error = error_loc.sum();
     }
   }
   T.block<3, 3>(0, 0) = R.transpose();
@@ -236,8 +227,7 @@ arun_estimate(const Eigen::Matrix<double, 3, Eigen::Dynamic> &P,
   return {T, error};
 }
 
-std::array<std::tuple<Eigen::Matrix<double, 4, 4>, double>, 6>
-extract_potential_solutions(
+std::array<std::tuple<Eigen::Matrix<double, 4, 4>, double>, 6> extract_potential_solutions(
     Eigen::Matrix<double, 3, Eigen::Dynamic> &fixed_cloud,
     Eigen::Matrix<double, 3, Eigen::Dynamic> &moving_cloud,
     size_t number_of_clusters) {
@@ -250,11 +240,13 @@ extract_potential_solutions(
       kmeans(moving_cloud, number_of_clusters);
   Eigen::Matrix<double, 3, Eigen::Dynamic> reordered_moving_clusters =
       moving_clusters;
+
   for (size_t perm = 0; perm < perms.rows(); ++perm) {
     for (size_t p = 0; p < perms.cols(); ++p)
       reordered_moving_clusters.col(p) = moving_clusters.col(perms(perm, p));
-    potential_solutions.push_back(
-        arun_estimate(fixed_clusters, reordered_moving_clusters));
+    //std::cout << "reordered_moving_clusters:\n" << reordered_moving_clusters << std::endl;
+    const auto & [est_sol,cos] = arun_estimate(fixed_clusters, reordered_moving_clusters);
+    potential_solutions.push_back(std::make_tuple(est_sol,cos));
   }
   std::sort(potential_solutions.begin(), potential_solutions.end(),
             [](std::tuple<Eigen::Matrix<double, 4, 4>, double> &a,
@@ -292,18 +284,28 @@ Eigen::Matrix<double,4,4> homogenenous_from_vec(Eigen::Matrix<double,3,1> euler_
     return hom;
 }
 
+enum Units{
+    METERS,
+    MILLIMETERS,
+    CENTIMETERS
+};
+
+void solve_registration_problem(Units point_cloud_units,Eigen::Matrix<double,3,Eigen::Dynamic>& fixed_point_cloud,Eigen::Matrix<double,3,Eigen::Dynamic>& moving_point_cloud, double grid_spacing){
+
+}
+
 int main() {
  try{
-std::cout << "reading point cloud 1..." << std::endl;
-  auto [cloud_fixed, eige_cloud_fixed] = convertEigenToPCLPointCloudWithSpacingVoxelGrid(read_point_cloud(CURAN_COPIED_RESOURCE_PATH"/temporary/file_fixed.txt"),4);
+    std::cout << "reading point cloud 1..." << std::endl;
+  auto [cloud_fixed, eige_cloud_fixed] = convertEigenToPCLPointCloudWithSpacingVoxelGrid(read_point_cloud(CURAN_COPIED_RESOURCE_PATH"/temporary/file_fixed.txt",0.001),0.004);
   std::cout << "reading point cloud 1!" << std::endl;
   std::cout << "reading point cloud 2..." << std::endl;
-  auto [cloud_moving, eige_cloud_moving] = convertEigenToPCLPointCloudWithSpacingVoxelGrid(read_point_cloud(CURAN_COPIED_RESOURCE_PATH"/temporary/file_moving.txt"),4);
+  auto [cloud_moving, eige_cloud_moving] = convertEigenToPCLPointCloudWithSpacingVoxelGrid(read_point_cloud(CURAN_COPIED_RESOURCE_PATH"/temporary/file_moving.txt",0.001),0.004);
   std::cout << "reading point cloud 2!" << std::endl;
   int num_clusters = 3;
 
-  std::cout << "eige_cloud_fixed:\n" << eige_cloud_fixed << std::endl;
-  std::cout << "eige_cloud_moving:\n" << eige_cloud_moving << std::endl;
+  //std::cout << "eige_cloud_fixed:\n" << eige_cloud_fixed << std::endl;
+  //std::cout << "eige_cloud_moving:\n" << eige_cloud_moving << std::endl;
 
   auto ordered_solutions = extract_potential_solutions(eige_cloud_fixed, eige_cloud_moving, num_clusters);
 
@@ -311,9 +313,7 @@ std::cout << "reading point cloud 1..." << std::endl;
     std::cout << "transform:\n" << transf << std::endl; 
 
   Eigen::Matrix<double,4,4> T_to_centroid_moving = Eigen::Matrix<double,4,4>::Identity();
-  T_to_centroid_moving.block<3,1>(0,3) = eige_cloud_moving.rowwise().mean();
 
-  std::cout << "T_to_centroid_moving:\n" << T_to_centroid_moving << std::endl;
 
     Eigen::Matrix<double, 3, 27> angle_array_around_estimated_solution;
     angle_array_around_estimated_solution << -10, -10, -10, 0, 0, 0, 10, 10, 10,
@@ -322,15 +322,9 @@ std::cout << "reading point cloud 1..." << std::endl;
       -10, 0, 10, -10, 0, 10, -10, 0, 10, -10, -10, -10, -10, -10, -10, -10,
       -10, -10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10;
 
-    std::cout << "perturbed:\n" << homogenenous_from_vec(angle_array_around_estimated_solution.col(0)) << std::endl;
-
-    std::cout << "solution array:\n" << angle_array_around_estimated_solution << std::endl; 
-
-    int iterations = 1000; // Default number of ICP iterations
+    int iterations = 100; // Default number of ICP iterations
 
     pcl::PointCloud<pcl::PointXYZ> aligned_cloud;
-
-    pcl::PointCloud<pcl::PointXYZ> best_aligned_cloud;
 
     double lowest_cost = 1e100;
 
@@ -338,22 +332,18 @@ std::cout << "reading point cloud 1..." << std::endl;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     for(const auto& [transform,cost] : ordered_solutions){
         for(Eigen::Matrix<double,3,1> euler_angles : angle_array_around_estimated_solution.colwise()){
-            
-            pcl::IterativeClosestPointNonLinear<pcl::PointXYZ, pcl::PointXYZ> icp;
+            pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+            icp.setRANSACOutlierRejectionThreshold(0.03);
             icp.setMaximumIterations(iterations);
             icp.setInputSource(cloud_moving);
             icp.setInputTarget(cloud_fixed);
-            icp.setMaxCorrespondenceDistance(100);
+            icp.setMaxCorrespondenceDistance(0.01);
             icp.setTransformationEpsilon(1e-8);
+            T_to_centroid_moving.block<3,1>(0,3) = transform.block<3,3>(0,0)*eige_cloud_moving.rowwise().mean()+transform.block<3,1>(0,3);
             icp.align(aligned_cloud,(T_to_centroid_moving*homogenenous_from_vec(euler_angles)*T_to_centroid_moving.inverse()*transform).cast<float>());
-
-            if (icp.hasConverged()){
+            
+            if (icp.hasConverged())
                 icp_solutions.emplace_back(icp.getFinalTransformation().cast<double>(),icp.getFitnessScore(100));
-                if(lowest_cost>icp.getFitnessScore(100)){
-                    lowest_cost = icp.getFitnessScore(100);
-                    best_aligned_cloud = aligned_cloud;
-                }
-            }
             else 
                 icp_solutions.emplace_back(icp.getFinalTransformation().cast<double>(),1.0e10);
         }
@@ -366,6 +356,12 @@ std::cout << "reading point cloud 1..." << std::endl;
               return std::get<1>(a) < std::get<1>(b);
             });
     const auto&[transf,cost] = icp_solutions[0];
+
+    for(size_t best_index = 0; best_index < 6 && best_index < icp_solutions.size(); ++best_index ){
+        const auto&[l_transf,l_cost] = icp_solutions[best_index];
+        std::cout << "transform:\n" << l_transf << "\ncost:" << l_cost << std::endl;
+    }
+
     Eigen::Matrix<double,3,Eigen::Dynamic> transformed_eige_cloud_moving = transf.block<3,3>(0,0)*eige_cloud_moving;
     transformed_eige_cloud_moving.colwise() += transf.block<3,1>(0,3);
     write_point_cloud(transformed_eige_cloud_moving,"rotated_moving.txt");
