@@ -97,6 +97,8 @@
 #include "itkBinaryMask3DMeshSource.h"
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkBinomialBlurImageFilter.h"
+#include "itkLabelStatisticsImageFilter.h"
+#include "imageprocessing/ArunAlgorithm.h"
 
 template <typename T>
 void update_ikt_filter(T &filter)
@@ -124,84 +126,24 @@ inline double rad2deg(double in)
     return constant_convert_deg_two_radians * in;
 }
 
-// Lamda to get a rotation matrix from a given angle
-auto transform_x = [](double alpha)
+Eigen::Matrix<double, 1, 9> get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed)
 {
-    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
-    poorly_constrained_direction << 1.0, 0.0, 0.0,
-        0.0, std::cos(alpha), -std::sin(alpha),
-        0.0, std::sin(alpha), std::cos(alpha);
-    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
-    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
-    return T_rotation_extra;
-};
+    Eigen::Matrix<double, 3, 9> ct_points;
+    ct_points << 51.0910, 45.7005, 18.7328, -26.3736, -53.1790, -53.1238, -38.7812, 5.9589, -26.4164,
+        80.3660, 128.6975, 156.8359, 158.2443, 127.2275, 87.3330, 67.2878, 99.4279, 129.4901,
+        517.6372, 516.1141, 514.3752, 514.4684, 515.4078, 517.3948, 519.6219, 505.9474, 509.5589;
 
-auto transform_y = [](double alpha)
-{
-    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
-    poorly_constrained_direction << std::cos(alpha), 0.0, std::sin(alpha),
-        0.0, 1.0, 0.0,
-        -std::sin(alpha), 0.0, std::cos(alpha);
-    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
-    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
-    return T_rotation_extra;
-};
+    Eigen::Matrix<double, 3, 9> world_points;
+    world_points << -674.874, -714.276, -741.764, -741.121, -716.382, -677.195, -660.926, -683.793, -713.982,
+        90.9651, 88.4241, 58.843, 15.514, -11.3519, -9.55646, 3.30793, 50.3275, 16.0374,
+        31.3693, 8.2447, -2.56189, -5.17164, 11.5598, 26.49, 36.5624, 10.8589, 2.87831;
 
-auto transform_z = [](double alpha)
-{
-    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
-    poorly_constrained_direction << std::cos(alpha), -std::sin(alpha), 0.0,
-        std::sin(alpha), std::cos(alpha), 0.0,
-        0.0, 0.0, 1.0;
-    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
-    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
-    return T_rotation_extra;
-};
+    Eigen::Matrix<double, 3, 9> moved = (moving_to_fixed.block<3, 3>(0, 0) * ct_points).colwise() + moving_to_fixed.block<3, 1>(0, 3);
 
-Eigen::Matrix<double,1,9> get_error(Eigen::Matrix<double,4,4> moving_to_fixed){
-    Eigen::Matrix<double,3,9> ct_points;
-    ct_points << 51.0910 ,  45.7005 ,  18.7328  , -26.3736 , -53.1790 , -53.1238 , -38.7812  ,  5.9589 , -26.4164 ,
-                80.3660 , 128.6975 , 156.8359 , 158.2443 , 127.2275 ,  87.3330 ,  67.2878 ,  99.4279 , 129.4901 ,
-                517.6372 , 516.1141 , 514.3752 , 514.4684 , 515.4078 , 517.3948 , 519.6219 , 505.9474 , 509.5589;
-
-
-    Eigen::Matrix<double,3,9> world_points ;
-    world_points  << -674.874, -714.276, -741.764, -741.121, -716.382, -677.195, -660.926, -683.793, -713.982 ,
-                    90.9651,  88.4241,   58.843,   15.514, -11.3519, -9.55646,  3.30793,  50.3275,  16.0374 ,
-                    31.3693,   8.2447, -2.56189, -5.17164,  11.5598,    26.49,  36.5624,  10.8589,  2.87831;
-
-    Eigen::Matrix<double,3,9> moved = (moving_to_fixed.block<3,3>(0,0)*ct_points).colwise()+moving_to_fixed.block<3,1>(0,3);
-
-    Eigen::Matrix<double,3,9> error = world_points-moved;
-    Eigen::Array<double,1,9> rooted = error.array().square().colwise().sum().sqrt();
+    Eigen::Matrix<double, 3, 9> error = world_points - moved;
+    Eigen::Array<double, 1, 9> rooted = error.array().square().colwise().sum().sqrt();
     return rooted.matrix();
 }
-
-// Lamda to get a rotation matrix from a given angle but with a flipped principal direction
-auto transform_flipped_principal_component = [](double alpha)
-{
-    Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
-    poorly_constrained_direction << 1.0, 0.0, 0.0,
-        0.0, std::cos(alpha), -std::sin(alpha),
-        0.0, std::sin(alpha), std::cos(alpha);
-
-    Eigen::Matrix<double, 3, 3> flipping_direction;
-    flipping_direction << -1.0, 0.0, 0.0,
-        0.0, -1.0, 0.0,
-        0.0, 0.0, 1.0;
-
-    Eigen::Matrix<double, 4, 4> T_rotation_extra = Eigen::Matrix<double, 4, 4>::Identity();
-    T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction * flipping_direction;
-    return T_rotation_extra;
-};
-
-enum ExtractionSurfaceTransformation
-{
-    ELIMINATE_VERTICIES_WITH_OUTWARD_NORMALS,
-    ELIMINATE_VERTICIES_WITH_INNARD_NORMALS,
-    SUBSAMPLE_VERTCIES,
-    LEAVE_UNCHANGED
-};
 
 template <bool is_in_debug>
 struct ExtractionSurfaceInfo
@@ -210,7 +152,6 @@ struct ExtractionSurfaceInfo
     double frequency;
     std::string appendix;
     double reduction_factor;
-    ExtractionSurfaceTransformation transform_surface = LEAVE_UNCHANGED;
     int buffer_of_mask;
 
     ExtractionSurfaceInfo(size_t in_connected_components,
@@ -225,7 +166,7 @@ struct ExtractionSurfaceInfo
 };
 
 template <bool is_in_debug>
-std::tuple<Eigen::Matrix<double,3,Eigen::Dynamic>, itk::ImageMaskSpatialObject<3>::ImageType::Pointer> extract_point_cloud(itk::Image<float, 3>::Pointer image, const ExtractionSurfaceInfo<is_in_debug> &info)
+std::tuple<Eigen::Matrix<double, 3, Eigen::Dynamic>, itk::ImageMaskSpatialObject<3>::ImageType::Pointer> extract_point_cloud(itk::Image<float, 3>::Pointer image, const ExtractionSurfaceInfo<is_in_debug> &info)
 {
     auto image_to_fill = itk::ImageMaskSpatialObject<3>::ImageType::New();
 
@@ -350,24 +291,32 @@ std::tuple<Eigen::Matrix<double,3,Eigen::Dynamic>, itk::ImageMaskSpatialObject<3
     else
         update_ikt_filter(final_binary_threshold);
 
+    auto labelStatsFilter = itk::LabelStatisticsImageFilter<itk::Image<float, 3>, itk::Image<unsigned char, 3>>::New();
+    labelStatsFilter->SetInput(resampleFilter->GetOutput());
+    labelStatsFilter->SetLabelInput(relabelFilter->GetOutput());
+    labelStatsFilter->Update();
+    size_t number_of_pixels = 0;
+
+    for (unsigned char highlighted_region = 0; highlighted_region < info.connected_components; ++highlighted_region)
+        number_of_pixels += labelStatsFilter->GetCount(highlighted_region);
+
     itk::ImageRegionIteratorWithIndex<itk::Image<unsigned char, 3>> iterator(final_binary_threshold->GetOutput(), final_binary_threshold->GetOutput()->GetLargestPossibleRegion());
     iterator.GoToBegin();
-    std::vector<size_t> number_of_points;
-    number_of_points.resize(info.connected_components);
-    Eigen::Matrix<double,3,Eigen::Dynamic> centroids = Eigen::Matrix<double,3,Eigen::Dynamic>::Zeros(3,info.connected_components);
-    while (!iterator.IsAtEnd()){
+    Eigen::Matrix<double, 3, Eigen::Dynamic> centroids = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3, number_of_pixels);
+    itk::Image<unsigned char, 3>::PointType itk_point;
+    size_t point_index = 0;
+    while (!iterator.IsAtEnd())
+    {
         for (unsigned char highlighted_region = 0; highlighted_region < info.connected_components; ++highlighted_region)
-            if(iterator.Get()==highlighted_region){
-                ++number_of_points[highlighted_region];
-                auto itk_point = (1e-3)*final_binary_threshold->GetOutput()->TransformIndexToPhysicalPoint(iterator.GetIndex());
-                Eigen::Matrix<double,3,1> point{{itk_point[0],itk_point[1],itk_point[2]}};
-                centroids.col(highlighted_region) += point;
+            if (iterator.Get() == highlighted_region)
+            {
+                final_binary_threshold->GetOutput()->TransformIndexToPhysicalPoint(iterator.GetIndex(), itk_point);
+                Eigen::Matrix<double, 3, 1> point{{1.0e-3 * itk_point[0], 1.0e-3 * itk_point[1], 1.0e-3 * itk_point[2]}};
+                centroids.col(point_index) = point;
+                ++point_index;
             }
         ++iterator;
     }
-
-    for(size_t index = 0; index < centroids.cols(); ++index)
-        centroids[index] *= (1.0/number_of_points[index])*(1e3);
     return {centroids, image_to_fill};
 }
 
@@ -479,8 +428,8 @@ public:
         else
         {
             optimizer->SetLearningRate(optimizer->GetCurrentStepLength());
-            optimizer->SetMinimumStepLength(optimizer->GetMinimumStepLength() *0.2);
-            optimizer->SetMaximumStepSizeInPhysicalUnits(optimizer->GetMaximumStepSizeInPhysicalUnits()*0.2);
+            optimizer->SetMinimumStepLength(optimizer->GetMinimumStepLength() * 0.2);
+            optimizer->SetMaximumStepSizeInPhysicalUnits(optimizer->GetMaximumStepSizeInPhysicalUnits() * 0.2);
         }
     }
 
@@ -560,9 +509,9 @@ std::tuple<double, Eigen::Matrix<double, 4, 4>, Eigen::Matrix<double, 4, 4>> sol
     optimizerScales[0] = 1.0;
     optimizerScales[1] = 1.0;
     optimizerScales[2] = 1.0;
-    optimizerScales[3] = 1.0/parameters.relative_scales;
-    optimizerScales[4] = 1.0/parameters.relative_scales;
-    optimizerScales[5] = 1.0/parameters.relative_scales;
+    optimizerScales[3] = 1.0 / parameters.relative_scales;
+    optimizerScales[4] = 1.0 / parameters.relative_scales;
+    optimizerScales[5] = 1.0 / parameters.relative_scales;
 
     optimizer->SetScales(optimizerScales);
 
@@ -688,9 +637,10 @@ double evaluate_mi_with_both_images(const info_solve_registration<PixelType> &in
     }
 }
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
-    if(argc!=3){
+    if (argc != 3)
+    {
         std::cout << "need to call function with 3 params\n";
         return 1;
     }
@@ -705,7 +655,11 @@ int main(int argc, char * argv[])
     update_ikt_filter(image_reader_moving);
     auto [centroids_moving, mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(), ExtractionSurfaceInfo<true>{3, 0.8, "moving", 5, 5});
 
-    Eigen::Matrix<double, 4, 4> best_transformation_icp;
+    Eigen::Matrix<double, 4, 4> Timage_centroid_fixed = Eigen::Matrix<double, 4, 4>::Identity();
+    Timage_centroid_fixed.block<3, 1>(0, 3) = centroids_fixed.rowwise().mean();
+
+    Eigen::Matrix<double, 4, 4> Timage_centroid_moving = Eigen::Matrix<double, 4, 4>::Identity();
+    Timage_centroid_moving.block<3, 1>(0, 3) = centroids_moving.rowwise().mean();
 
     Eigen::Matrix<double, 4, 4> Timage_origin_fixed = Eigen::Matrix<double, 4, 4>::Identity();
     Eigen::Matrix<double, 4, 4> Timage_origin_moving = Eigen::Matrix<double, 4, 4>::Identity();
@@ -734,11 +688,7 @@ int main(int argc, char * argv[])
     auto fixed = converter(image_reader_fixed->GetOutput());
     auto moving = converter(image_reader_moving->GetOutput());
 
-    modify_image_with_transform<float>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, fixed);
-    modify_image_with_transform<float>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, moving);
-
-    modify_image_with_transform<unsigned char>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed, mask_fixed_image);
-    modify_image_with_transform<unsigned char>(best_transformation_icp * transformation_acording_to_pca_moving.inverse() * Timage_origin_moving, mask_moving_image);
+    auto ordered_solutions = curan::image::extract_potential_solutions(centroids_fixed, centroids_moving, 3);
 
     std::ofstream myfile{"results_of_fullscale_optimization.csv"};
     myfile << "run,bins,sampling percentage,relative_scales,learning rate,relaxation,convergence window,piramid sizes,bluring sizes,best cost,total time\n";
@@ -760,62 +710,71 @@ int main(int argc, char * argv[])
     constexpr size_t total_permutations = bin_numbers.size() * percentage_numbers.size() * relative_scales.size() * learning_rate.size() * relaxation_factor.size() * convergence_window_size.size() * piramid_sizes.size() * bluering_sizes.size();
     std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>>> full_runs;
 
-    auto transformed_mask_fixed_image = itk::ImageMaskSpatialObject<3>::New();
-    transformed_mask_fixed_image->SetImage(mask_fixed_image);
-    update_ikt_filter(transformed_mask_fixed_image);
-    auto transformed_mask_moving_image = itk::ImageMaskSpatialObject<3>::New();
-    transformed_mask_moving_image->SetImage(mask_moving_image);
-    update_ikt_filter(transformed_mask_moving_image);
-
+    for (const auto &[T_arun_estimated_transform, cost] : ordered_solutions)
     {
-        std::mutex mut;
-        auto pool = curan::utilities::ThreadPool::create(8, curan::utilities::TERMINATE_ALL_PENDING_TASKS);
-        size_t total_runs = 0;
-        for (const auto &bin_n : bin_numbers)
-            for (const auto &percent_n : percentage_numbers)
-                for (const auto &rel_scale : relative_scales)
-                    for (const auto &learn_rate : learning_rate)
-                        for (const auto &relax_factor : relaxation_factor)
-                            for (const auto &wind_size : convergence_window_size)
-                                for (const auto &pira_size : piramid_sizes)
-                                    for (const auto &iters : optimization_iterations)
-                                        for (const auto &blur_size : bluering_sizes)
-                                        {
-                                            curan::utilities::Job job{"solving registration", [&]()
-                                                                      {
-                                                                          std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-                                                                          auto [cost, transformation, initial_transform] = solve_registration(info_solve_registration<float>{fixed,
-                                                                                                                                                                                     moving,
-                                                                                                                                                                                     transformed_mask_fixed_image,
-                                                                                                                                                                                     transformed_mask_moving_image,
-                                                                                                                                                                                     Eigen::Matrix<double, 4, 4>::Identity()},
-                                                                                                                                              RegistrationParameters{bin_n,
-                                                                                                                                                                     rel_scale,
-                                                                                                                                                                     learn_rate,
-                                                                                                                                                                     percent_n,
-                                                                                                                                                                     relax_factor,
-                                                                                                                                                                     wind_size,
-                                                                                                                                                                     iters,
-                                                                                                                                                                     pira_size,
-                                                                                                                                                                     blur_size});
-                                                                          std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-                                                                          {
-                                                                              std::lock_guard<std::mutex> g{mut};
-                                                                              myfile << total_runs << "," << bin_n << "," << percent_n << "," << rel_scale << "," << learn_rate << "," << relax_factor << "," << wind_size << ", {";
-                                                                              for (const auto &val : pira_size)
-                                                                                  myfile << val << " ";
-                                                                              myfile << "}, {";
-                                                                              for (const auto &val : blur_size)
-                                                                                  myfile << val << " ";
-                                                                              myfile << "}," << cost << "," << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+        modify_image_with_transform<float>(Timage_centroid_fixed.inverse() * Timage_origin_fixed, fixed);
+        modify_image_with_transform<float>(T_arun_estimated_transform * Timage_centroid_moving.inverse() * Timage_origin_moving, moving);
 
-                                                                              ++total_runs;
-                                                                              full_runs.emplace_back(cost, transformation);
-                                                                              std::printf("mi (%.2f %%)\n", (total_runs / (double)total_permutations) * 100);
-                                                                          }
-                                                                      }};
-                                            pool->submit(job);
-                                        }
+        modify_image_with_transform<unsigned char>(Timage_centroid_fixed.inverse() * Timage_origin_fixed, mask_fixed_image);
+        modify_image_with_transform<unsigned char>(T_arun_estimated_transform * Timage_centroid_moving.inverse() * Timage_origin_moving, mask_moving_image);
+
+        auto transformed_mask_fixed_image = itk::ImageMaskSpatialObject<3>::New();
+        transformed_mask_fixed_image->SetImage(mask_fixed_image);
+        update_ikt_filter(transformed_mask_fixed_image);
+        auto transformed_mask_moving_image = itk::ImageMaskSpatialObject<3>::New();
+        transformed_mask_moving_image->SetImage(mask_moving_image);
+        update_ikt_filter(transformed_mask_moving_image);
+
+        {
+            std::mutex mut;
+            auto pool = curan::utilities::ThreadPool::create(8, curan::utilities::TERMINATE_ALL_PENDING_TASKS);
+            size_t total_runs = 0;
+            for (const auto &bin_n : bin_numbers)
+                for (const auto &percent_n : percentage_numbers)
+                    for (const auto &rel_scale : relative_scales)
+                        for (const auto &learn_rate : learning_rate)
+                            for (const auto &relax_factor : relaxation_factor)
+                                for (const auto &wind_size : convergence_window_size)
+                                    for (const auto &pira_size : piramid_sizes)
+                                        for (const auto &iters : optimization_iterations)
+                                            for (const auto &blur_size : bluering_sizes)
+                                            {
+                                                curan::utilities::Job job{"solving registration", [&]()
+                                                                          {
+                                                                              std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                                                                              auto [cost, transformation, initial_transform] = solve_registration(info_solve_registration<float>{fixed,
+                                                                                                                                                                                 moving,
+                                                                                                                                                                                 transformed_mask_fixed_image,
+                                                                                                                                                                                 transformed_mask_moving_image,
+                                                                                                                                                                                 Eigen::Matrix<double, 4, 4>::Identity()},
+                                                                                                                                                  RegistrationParameters{bin_n,
+                                                                                                                                                                         rel_scale,
+                                                                                                                                                                         learn_rate,
+                                                                                                                                                                         percent_n,
+                                                                                                                                                                         relax_factor,
+                                                                                                                                                                         wind_size,
+                                                                                                                                                                         iters,
+                                                                                                                                                                         pira_size,
+                                                                                                                                                                         blur_size});
+                                                                              std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                                                                              {
+                                                                                  std::lock_guard<std::mutex> g{mut};
+                                                                                  myfile << total_runs << "," << bin_n << "," << percent_n << "," << rel_scale << "," << learn_rate << "," << relax_factor << "," << wind_size << ", {";
+                                                                                  for (const auto &val : pira_size)
+                                                                                      myfile << val << " ";
+                                                                                  myfile << "}, {";
+                                                                                  for (const auto &val : blur_size)
+                                                                                      myfile << val << " ";
+                                                                                  myfile << "}," << cost << "," << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+
+                                                                                  ++total_runs;
+                                                                                  full_runs.emplace_back(get_error(Timage_centroid_fixed * transformation.inverse() * T_arun_estimated_transform * Timage_centroid_moving.inverse()).mean(), transformation);
+                                                                                  std::printf("mi (%.2f %%)\n", (total_runs / (double)total_permutations) * 100);
+                                                                              }
+                                                                          }};
+                                                pool->submit(job);
+                                            }
+        }
     }
 
     std::sort(full_runs.begin(), full_runs.end(), [](const std::tuple<double, Eigen::Matrix4d> &a, const std::tuple<double, Eigen::Matrix4d> &b)
@@ -823,37 +782,17 @@ int main(int argc, char * argv[])
     const double pi = std::atan(1) * 4;
     auto [cost, best_transformation_mi] = full_runs[0];
 
-    std::cout << "\n error with MI:" <<  get_error(transformation_acording_to_pca_fixed * best_transformation_mi.inverse() * best_transformation_icp * transformation_acording_to_pca_moving.inverse());
-    std::cout << "\n error with ICP:" << get_error(transformation_acording_to_pca_fixed * best_transformation_icp * transformation_acording_to_pca_moving.inverse()) << "\n\n\n";
+    std::cout << "\n error with MI:" << cost;
 
+    auto return_current_time_and_date = []()
+    {
+        auto now = std::chrono::system_clock::now();
+        auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
-    auto return_current_time_and_date = [](){
-	    auto now = std::chrono::system_clock::now();
-    	auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
-    	std::stringstream ss;
-    	ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
-   		return ss.str();
-	};
-
-	//Eigen::IOFormat CleanFmt(Eigen::StreamPrecision, 0, ", ", "\n", " ", " ");
-	//std::stringstream optimized_values;
-	//optimized_values << (transformation_acording_to_pca_fixed * best_transformation_mi.inverse() * best_transformation_icp * transformation_acording_to_pca_moving.inverse()).format(CleanFmt) << std::endl;
-	
-	// Once the optimization is finished we need to print a json file with the correct configuration of the image transformation to the 
-	// tracker transformation ()
-	//std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration! Produced JSON file:\n");
-
-	//nlohmann::json registration_data;
-	//registration_data["timestamp"] = return_current_time_and_date();
-	//registration_data["moving_to_fixed_transform"] = optimized_values.str();
-	//registration_data["registration_error"] = evaluate_mi_with_both_images(info_solve_registration<float>{fixed, moving, transformed_mask_fixed_image, transformed_mask_moving_image, Eigen::Matrix<double, 4, 4>::Identity()}, bin_numbers[0]);
-    //registration_data["type"] = "MI";
-
-	// write prettified JSON to another file
-	//std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/registration.json");
-	//o << registration_data;
-	//std::cout << registration_data << std::endl;
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+        return ss.str();
+    };
 
     return 0;
 }
