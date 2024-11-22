@@ -3,6 +3,8 @@
 #include <random>
 #include <chrono>
 
+#include <iostream>
+
 namespace curan {
 namespace image {
 
@@ -136,6 +138,10 @@ std::array<std::tuple<Eigen::Matrix<double, 4, 4>, double>, 6> extract_potential
   auto perms = permutations(number_of_clusters);
   Eigen::Matrix<double, 3, Eigen::Dynamic> fixed_clusters = curan::image::kmeans(fixed_cloud, number_of_clusters);
   Eigen::Matrix<double, 3, Eigen::Dynamic> moving_clusters = curan::image::kmeans(moving_cloud, number_of_clusters);
+
+  std::cout << "fixed_clusters:\n" << fixed_clusters << std::endl;
+  std::cout << "moving_clusters:\n" << moving_clusters << std::endl;
+
   Eigen::Matrix<double, 3, Eigen::Dynamic> reordered_moving_clusters = moving_clusters;
 
   for (size_t perm = 0; perm < perms.rows(); ++perm) {
