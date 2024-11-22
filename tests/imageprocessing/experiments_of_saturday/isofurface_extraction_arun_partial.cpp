@@ -77,6 +77,8 @@
 #include <random>
 #include <type_traits>
 
+#include "imageprocessing/ArunAlgorithm.h"
+
 template <typename T>
 void update_ikt_filter(T &filter)
 {
@@ -207,7 +209,7 @@ struct ExtractionSurfaceInfo
 };
 
 template <bool is_in_debug>
-std::tuple<itk::Mesh<double>::Pointer,
+std::tuple<Eigen::Matrix<double, 3, Eigen::Dynamic>,
            itk::ImageMaskSpatialObject<3>::ImageType::Pointer>
 extract_point_cloud(itk::Image<float, 3>::Pointer image,
                     const ExtractionSurfaceInfo<is_in_debug> &info)
@@ -1144,89 +1146,29 @@ int main(int argc, char *argv[])
   auto image_reader_fixed = itk::ImageFileReader<itk::Image<float, 3>>::New();
   image_reader_fixed->SetFileName(argv[1]);
   update_ikt_filter(image_reader_fixed);
-  auto [point_cloud_fixed, mask_fixed_image] =
-      extract_point_cloud(image_reader_fixed->GetOutput(),
-                          ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
-  auto [transformation_acording_to_pca_fixed, tmp_fixed_point_set] =
-      recentered_data(point_cloud_fixed);
-  auto fixed_point_set = tmp_fixed_point_set;
+  auto [point_cloud_fixed, mask_fixed_image] = extract_point_cloud(image_reader_fixed->GetOutput(),ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
 
   auto image_reader_moving = itk::ImageFileReader<itk::Image<float, 3>>::New();
   image_reader_moving->SetFileName(argv[2]);
   update_ikt_filter(image_reader_moving);
-  auto [point_cloud_moving, mask_moving_image] =
-      extract_point_cloud(image_reader_moving->GetOutput(),
-                          ExtractionSurfaceInfo<true>{3, 0.8, "moving", 5, 5});
-  auto [transformation_acording_to_pca_moving, tmp_moving_point_set] =
-      recentered_data(point_cloud_moving);
-  auto moving_point_set = tmp_moving_point_set;
+  auto [point_cloud_moving, mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(),ExtractionSurfaceInfo<true>{3, 0.8, "moving", 5, 5});
 
-  std::vector<Eigen::Matrix<double, 4, 4>> initial_guesses_icp;
-  for (double angle = 0; angle < 360.0; angle += 100.0)
-  {
-    initial_guesses_icp.push_back(transform_x(rad2deg(angle)));
-    initial_guesses_icp.push_back(
-        transform_flipped_principal_component(rad2deg(angle)));
-  }
 
-  std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>>> full_runs_inner;
-  {
-    std::mutex mut;
-    auto pool = curan::utilities::ThreadPool::create(
-        6, curan::utilities::TERMINATE_ALL_PENDING_TASKS);
-    size_t counter = 0;
-    for (const auto &initial_config : initial_guesses_icp)
+    Eigen::Matrix<double, 4, 4> Timage_centroid_fixed =Eigen::Matrix<double, 4, 4>::Identity();
+    Timage_centroid_fixed.block<3, 1>(0, 3) = point_cloud_fixed.rowwise().mean();
+
+    Eigen::Matrix<double, 4, 4> Timage_origin_fixed = Eigen::Matrix<double, 4, 4>::Identity();
+    Eigen::Matrix<double, 4, 4> Timage_origin_moving = Eigen::Matrix<double, 4, 4>::Identity();
+    for (size_t row = 0; row < 3; ++row)
     {
-      curan::utilities::Job job{
-          "solving icp", [&]()
-          {
-            auto solution = icp_registration(initial_config, fixed_point_set,
-                                             moving_point_set);
-            {
-              std::lock_guard<std::mutex> g{mut};
-              full_runs_inner.emplace_back(solution);
-              ++counter;
-              std::printf("%.2f %% %.3f\n",
-                          (counter / (double)initial_guesses_icp.size()) * 100,
-                          std::get<0>(solution));
-            }
-          }};
-      pool->submit(job);
+        Timage_origin_fixed(row, 3) = image_reader_fixed->GetOutput()->GetOrigin()[row];
+        Timage_origin_moving(row, 3) =image_reader_moving->GetOutput()->GetOrigin()[row];
+        for (size_t col = 0; col < 3; ++col)
+        {
+            Timage_origin_fixed(row, col) = image_reader_fixed->GetOutput()->GetDirection()(row, col);
+            Timage_origin_moving(row, col) = image_reader_moving->GetOutput()->GetDirection()(row, col);
+        }
     }
-  }
-
-  Eigen::Matrix<double, 4, 4> best_transformation_icp;
-  auto min_element_iter =
-      std::min_element(full_runs_inner.begin(), full_runs_inner.end(),
-                       [](const auto &a, const auto &b)
-                       {
-                         return std::get<0>(a) < std::get<0>(b);
-                       });
-
-  if (min_element_iter != full_runs_inner.end())
-  {
-    auto [minimum, best_icp_transform] = *min_element_iter;
-    best_transformation_icp = best_icp_transform;
-  }
-
-  Eigen::Matrix<double, 4, 4> Timage_origin_fixed =
-      Eigen::Matrix<double, 4, 4>::Identity();
-  Eigen::Matrix<double, 4, 4> Timage_origin_moving =
-      Eigen::Matrix<double, 4, 4>::Identity();
-  for (size_t row = 0; row < 3; ++row)
-  {
-    Timage_origin_fixed(row, 3) =
-        image_reader_fixed->GetOutput()->GetOrigin()[row];
-    Timage_origin_moving(row, 3) =
-        image_reader_moving->GetOutput()->GetOrigin()[row];
-    for (size_t col = 0; col < 3; ++col)
-    {
-      Timage_origin_fixed(row, col) =
-          image_reader_fixed->GetOutput()->GetDirection()(row, col);
-      Timage_origin_moving(row, col) =
-          image_reader_moving->GetOutput()->GetDirection()(row, col);
-    }
-  }
 
   auto converter = [](itk::Image<float, 3>::ConstPointer image)
   {
@@ -1243,24 +1185,16 @@ int main(int argc, char *argv[])
 
   auto fixed = converter(image_reader_fixed->GetOutput());
   auto moving = converter(image_reader_moving->GetOutput());
+  auto ordered_solutions = curan::image::extract_potential_solutions(point_cloud_fixed,point_cloud_moving,3);
 
-  modify_image_with_transform<float>(
-      transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed,
-      fixed);
-  modify_image_with_transform<float>(
-      best_transformation_icp *
-          transformation_acording_to_pca_moving.inverse() *
-          Timage_origin_moving,
-      moving);
+  const auto &[T_arun_estimated_transform, cost] = ordered_solutions[0];
 
-  modify_image_with_transform<unsigned char>(
-      transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed,
-      mask_fixed_image);
-  modify_image_with_transform<unsigned char>(
-      best_transformation_icp *
-          transformation_acording_to_pca_moving.inverse() *
-          Timage_origin_moving,
-      mask_moving_image);
+  modify_image_with_transform<float>(Timage_centroid_fixed.inverse() * Timage_origin_fixed, fixed);
+  modify_image_with_transform<float>(Timage_centroid_fixed.inverse() * T_arun_estimated_transform *Timage_origin_moving,moving);
+
+  modify_image_with_transform<unsigned char>(Timage_centroid_fixed.inverse() *Timage_origin_fixed,mask_fixed_image);
+  modify_image_with_transform<unsigned char>(Timage_centroid_fixed.inverse()* T_arun_estimated_transform *Timage_origin_moving,mask_moving_image);
+
 
   std::ofstream myfile{"results_of_fullscale_optimization.csv"};
   myfile << "run,iterations,bins,sampling percentage,relative_scales,learning "
@@ -1271,17 +1205,15 @@ int main(int argc, char *argv[])
   constexpr size_t local_permut = 1;
 
   std::vector<size_t> bin_numbers{100};
-  std::vector<double> percentage_numbers{1.0, 0.9, 0.8, 0.6, 0.5, 0.4, 0.3};
+  std::vector<double> percentage_numbers{0.4};
   std::vector<double> relative_scales{1000.0};
   std::vector<double> learning_rate{.1};
   std::vector<double> relaxation_factor{0.7};
-  std::vector<size_t> optimization_iterations{100, 300, 500, 750, 1000};
+  std::vector<size_t> optimization_iterations{500};
   std::vector<size_t> convergence_window_size{40};
 
-  std::array<std::array<size_t, size_info>, local_permut> piramid_sizes{
-      {{3, 2, 1}}};
-  std::array<std::array<double, size_info>, local_permut> bluering_sizes{
-      {{2, 0, 0}}};
+  std::array<std::array<size_t, size_info>, local_permut> piramid_sizes{{{3, 2, 1}}};
+  std::array<std::array<double, size_info>, local_permut> bluering_sizes{{{2, 0, 0}}};
 
   size_t total_permutations = optimization_iterations.size() *
                               bin_numbers.size() * percentage_numbers.size() *
@@ -1353,12 +1285,7 @@ int main(int argc, char *argv[])
                                 myfile << val << " ";
                               myfile
                                   << "}," << cost << "," << duration << ","
-                                  << get_error(
-                                         transformation_acording_to_pca_fixed *
-                                         transformation.inverse() *
-                                         best_transformation_icp *
-                                         transformation_acording_to_pca_moving
-                                             .inverse())
+                                  << get_error(Timage_centroid_fixed * transformation * Timage_centroid_fixed.inverse()*T_arun_estimated_transform)
                                          .mean()
                                   << std::endl;
 
@@ -1383,16 +1310,8 @@ int main(int argc, char *argv[])
   const double pi = std::atan(1) * 4;
   auto [cost, best_transformation_mi] = full_runs[0];
 
-  std::cout << "\n error with MI:"
-            << get_error(transformation_acording_to_pca_fixed *
-                         best_transformation_mi.inverse() *
-                         best_transformation_icp *
-                         transformation_acording_to_pca_moving.inverse());
-  std::cout << "\n error with ICP:"
-            << get_error(transformation_acording_to_pca_fixed *
-                         best_transformation_icp *
-                         transformation_acording_to_pca_moving.inverse())
-            << "\n\n\n";
+  std::cout << "\n error with MI:" << get_error(Timage_centroid_fixed * best_transformation_mi.inverse() * Timage_centroid_fixed.inverse()*T_arun_estimated_transform);
+  std::cout << "\n error with Arun:" << get_error(T_arun_estimated_transform) << "\n\n\n";
 
   auto return_current_time_and_date = []()
   {

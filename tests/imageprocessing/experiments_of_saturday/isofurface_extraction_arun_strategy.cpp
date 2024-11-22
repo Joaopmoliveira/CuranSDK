@@ -764,25 +764,15 @@ Eigen::Matrix<double, 4, 4> solve_volume_registration_problem(
     auto fixed = converter(fixed_info.image);
     auto moving = converter(moving_info.image);
 
-    auto ordered_solutions = curan::image::extract_potential_solutions(
-        centroids_fixed, centroids_moving, 3);
+    auto ordered_solutions = curan::image::extract_potential_solutions( centroids_fixed, centroids_moving, 3);
 
     for (const auto &[T_arun_estimated_transform, cost] : ordered_solutions)
     {
-        modify_image_transform(
-            Timage_centroid_fixed.inverse() * Timage_origin_fixed, fixed);
-        modify_image_transform(T_arun_estimated_transform *
-                                   Timage_centroid_moving.inverse() *
-                                   Timage_origin_moving,
-                               moving);
+        modify_image_transform(Timage_centroid_fixed.inverse() * Timage_origin_fixed, fixed);
+        modify_image_transform(T_arun_estimated_transform *Timage_centroid_moving.inverse() *Timage_origin_moving,moving);
 
-        modify_image_transform(Timage_centroid_fixed.inverse() *
-                                   Timage_origin_fixed,
-                               mask_fixed_image);
-        modify_image_transform(T_arun_estimated_transform *
-                                   Timage_centroid_moving.inverse() *
-                                   Timage_origin_moving,
-                               mask_moving_image);
+        modify_image_transform(Timage_centroid_fixed.inverse() *Timage_origin_fixed,mask_fixed_image);
+        modify_image_transform(T_arun_estimated_transform *Timage_centroid_moving.inverse() *Timage_origin_moving,mask_moving_image);
 
         auto transformed_mask_fixed_image = itk::ImageMaskSpatialObject<3>::New();
         transformed_mask_fixed_image->SetImage(mask_fixed_image);
