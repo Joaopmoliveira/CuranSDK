@@ -106,6 +106,40 @@ inline double rad2deg(double in)
   return constant_convert_deg_two_radians * in;
 }
 
+// Lamda to get a rotation matrix from a given angle
+auto transform_x = [](double alpha)
+{
+  Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
+  poorly_constrained_direction << 1.0, 0.0, 0.0, 0.0, std::cos(alpha),
+      -std::sin(alpha), 0.0, std::sin(alpha), std::cos(alpha);
+  Eigen::Matrix<double, 4, 4> T_rotation_extra =
+      Eigen::Matrix<double, 4, 4>::Identity();
+  T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
+  return T_rotation_extra;
+};
+
+auto transform_y = [](double alpha)
+{
+  Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
+  poorly_constrained_direction << std::cos(alpha), 0.0, std::sin(alpha), 0.0,
+      1.0, 0.0, -std::sin(alpha), 0.0, std::cos(alpha);
+  Eigen::Matrix<double, 4, 4> T_rotation_extra =
+      Eigen::Matrix<double, 4, 4>::Identity();
+  T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
+  return T_rotation_extra;
+};
+
+auto transform_z = [](double alpha)
+{
+  Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
+  poorly_constrained_direction << std::cos(alpha), -std::sin(alpha), 0.0,
+      std::sin(alpha), std::cos(alpha), 0.0, 0.0, 0.0, 1.0;
+  Eigen::Matrix<double, 4, 4> T_rotation_extra =
+      Eigen::Matrix<double, 4, 4>::Identity();
+  T_rotation_extra.block<3, 3>(0, 0) = poorly_constrained_direction;
+  return T_rotation_extra;
+};
+
 Eigen::Matrix<double, 1, 9>
 get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed)
 {
@@ -130,6 +164,24 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed)
       error.array().square().colwise().sum().sqrt();
   return rooted.matrix();
 }
+
+// Lamda to get a rotation matrix from a given angle but with a flipped
+// principal direction
+auto transform_flipped_principal_component = [](double alpha)
+{
+  Eigen::Matrix<double, 3, 3> poorly_constrained_direction;
+  poorly_constrained_direction << 1.0, 0.0, 0.0, 0.0, std::cos(alpha),
+      -std::sin(alpha), 0.0, std::sin(alpha), std::cos(alpha);
+
+  Eigen::Matrix<double, 3, 3> flipping_direction;
+  flipping_direction << -1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0;
+
+  Eigen::Matrix<double, 4, 4> T_rotation_extra =
+      Eigen::Matrix<double, 4, 4>::Identity();
+  T_rotation_extra.block<3, 3>(0, 0) =
+      poorly_constrained_direction * flipping_direction;
+  return T_rotation_extra;
+};
 
 enum ExtractionSurfaceTransformation
 {
@@ -157,306 +209,7 @@ struct ExtractionSurfaceInfo
         buffer_of_mask{in_buffer_of_mask} {};
 };
 
-template <bool is_in_debug>
-std::tuple<Eigen::Matrix<double, 3, Eigen::Dynamic>,
-           itk::ImageMaskSpatialObject<3>::ImageType::Pointer>
-extract_significant_regions(itk::Image<float, 3>::Pointer image, const ExtractionSurfaceInfo<is_in_debug> &info)
-{
-  auto image_to_fill = itk::ImageMaskSpatialObject<3>::ImageType::New();
 
-  auto bluring = itk::BinomialBlurImageFilter<itk::Image<float, 3>,
-                                              itk::Image<float, 3>>::New();
-  bluring->SetInput(image);
-  bluring->SetRepetitions(10);
-
-  update_ikt_filter(bluring);
-
-  auto input_size = image->GetLargestPossibleRegion().GetSize();
-  auto input_spacing = image->GetSpacing();
-  auto input_origin = image->GetOrigin();
-
-  double physicalspace[3];
-  physicalspace[0] = input_size[0] * input_spacing[0];
-  physicalspace[1] = input_size[1] * input_spacing[1];
-  physicalspace[2] = input_size[2] * input_spacing[2];
-
-  auto output_size = input_size;
-  output_size[0] =
-      (size_t)std::floor((1.0 / info.reduction_factor) * output_size[0]);
-  output_size[1] =
-      (size_t)std::floor((1.0 / info.reduction_factor) * output_size[1]);
-  output_size[2] =
-      (size_t)std::floor((1.0 / info.reduction_factor) * output_size[2]);
-
-  auto output_spacing = input_spacing;
-  output_spacing[0] = physicalspace[0] / output_size[0];
-  output_spacing[1] = physicalspace[1] / output_size[1];
-  output_spacing[2] = physicalspace[2] / output_size[2];
-
-  auto interpolator =
-      itk::LinearInterpolateImageFunction<itk::Image<float, 3>, double>::New();
-  auto transform = itk::AffineTransform<double, 3>::New();
-  transform->SetIdentity();
-  auto resampleFilter = itk::ResampleImageFilter<itk::Image<float, 3>,
-                                                 itk::Image<float, 3>>::New();
-  resampleFilter->SetInput(bluring->GetOutput());
-  resampleFilter->SetTransform(transform);
-  resampleFilter->SetInterpolator(interpolator);
-  resampleFilter->SetOutputDirection(bluring->GetOutput()->GetDirection());
-  resampleFilter->SetSize(output_size);
-  resampleFilter->SetOutputSpacing(output_spacing);
-  resampleFilter->SetOutputOrigin(input_origin);
-
-  if constexpr (is_in_debug)
-  {
-    {
-      auto writer = itk::ImageFileWriter<itk::Image<float, 3>>::New();
-      writer->SetInput(resampleFilter->GetOutput());
-      writer->SetFileName(info.appendix + "_processed.mha");
-      update_ikt_filter(writer);
-    }
-    {
-      auto writer = itk::ImageFileWriter<itk::Image<float, 3>>::New();
-      writer->SetInput(resampleFilter->GetOutput());
-      writer->SetFileName(info.appendix + "_bluered.mha");
-      update_ikt_filter(writer);
-    }
-  }
-  else
-    update_ikt_filter(resampleFilter);
-
-  using HistogramGeneratorType =
-      itk::Statistics::ScalarImageToHistogramGenerator<itk::Image<float, 3>>;
-  using HistogramType = HistogramGeneratorType::HistogramType;
-  auto histogramGenerator = HistogramGeneratorType::New();
-  histogramGenerator->SetInput(resampleFilter->GetOutput());
-  histogramGenerator->SetNumberOfBins(500);
-  histogramGenerator->Compute();
-
-  auto histogram = histogramGenerator->GetOutput();
-  double total_frequency = 0;
-  for (size_t i = 1; i < histogram->Size(); ++i)
-    total_frequency += histogram->GetFrequency(i);
-
-  auto target_frequency = info.frequency * total_frequency;
-
-  double cumulative_frequency = 0;
-  size_t threshold_bin = 0;
-  for (size_t i = 1; i < histogram->Size(); ++i)
-  {
-    if (cumulative_frequency >= target_frequency)
-    {
-      threshold_bin = i;
-      break;
-    }
-    cumulative_frequency += histogram->GetFrequency(i);
-  }
-  auto minMaxCalculator =
-      itk::MinimumMaximumImageCalculator<itk::Image<float, 3>>::New();
-  minMaxCalculator->SetImage(resampleFilter->GetOutput());
-  minMaxCalculator->Compute();
-
-  HistogramType::MeasurementType thresholdvalue =
-      histogram->GetBinMin(0, threshold_bin);
-
-  auto binary_threshold =
-      itk::BinaryThresholdImageFilter<itk::Image<float, 3>,
-                                      itk::Image<unsigned char, 3>>::New();
-  binary_threshold->SetInput(resampleFilter->GetOutput());
-  binary_threshold->SetOutsideValue(0);
-  binary_threshold->SetInsideValue(255);
-  binary_threshold->SetLowerThreshold(histogram->GetBinMin(0, threshold_bin));
-  binary_threshold->SetUpperThreshold(minMaxCalculator->GetMaximum() + 1.0);
-
-  auto connectedComponentFilter =
-      itk::ConnectedComponentImageFilter<itk::Image<unsigned char, 3>,
-                                         itk::Image<unsigned char, 3>>::New();
-  connectedComponentFilter->SetInput(binary_threshold->GetOutput());
-
-  auto relabelFilter =
-      itk::RelabelComponentImageFilter<itk::Image<unsigned char, 3>,
-                                       itk::Image<unsigned char, 3>>::New();
-  relabelFilter->SetInput(connectedComponentFilter->GetOutput());
-
-  auto filtered_image_with_largest_components =
-      itk::ThresholdImageFilter<itk::Image<unsigned char, 3>>::New();
-  filtered_image_with_largest_components->SetInput(relabelFilter->GetOutput());
-  filtered_image_with_largest_components->ThresholdOutside(
-      1, info.connected_components);
-  filtered_image_with_largest_components->SetOutsideValue(255);
-
-  auto final_binary_threshold =
-      itk::BinaryThresholdImageFilter<itk::Image<unsigned char, 3>,
-                                      itk::Image<unsigned char, 3>>::New();
-  final_binary_threshold->SetInput(filtered_image_with_largest_components->GetOutput());
-  final_binary_threshold->SetOutsideValue(0);
-  final_binary_threshold->SetInsideValue(255);
-  final_binary_threshold->SetLowerThreshold(0);
-  final_binary_threshold->SetUpperThreshold(info.connected_components);
-
-  if constexpr (is_in_debug)
-  {
-    auto writer = itk::ImageFileWriter<itk::Image<unsigned char, 3>>::New();
-    writer->SetInput(final_binary_threshold->GetOutput());
-    writer->SetFileName(info.appendix + "_processed_filtered.mha");
-    update_ikt_filter(writer);
-  }
-  else
-    update_ikt_filter(final_binary_threshold);
-
-  auto labelStatsFilter =
-      itk::LabelStatisticsImageFilter<itk::Image<float, 3>,
-                                      itk::Image<unsigned char, 3>>::New();
-  labelStatsFilter->SetInput(resampleFilter->GetOutput());
-  labelStatsFilter->SetLabelInput(relabelFilter->GetOutput());
-  labelStatsFilter->Update();
-  size_t number_of_pixels = 0;
-
-  for (unsigned char highlighted_region = 1; highlighted_region <= info.connected_components; ++highlighted_region)
-  {
-    std::cout << "number of pixels: " << labelStatsFilter->GetCount(highlighted_region) << std::endl;
-    number_of_pixels += labelStatsFilter->GetCount(highlighted_region);
-  }
-
-  itk::ImageRegionIteratorWithIndex<itk::Image<unsigned char, 3>> iterator(final_binary_threshold->GetOutput(), final_binary_threshold->GetOutput()->GetLargestPossibleRegion());
-  iterator.GoToBegin();
-  Eigen::Matrix<double, 3, Eigen::Dynamic> centroids = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3, number_of_pixels);
-  itk::Image<unsigned char, 3>::PointType itk_point;
-  size_t point_index = 0;
-  while (!iterator.IsAtEnd())
-  {
-    if (iterator.Get())
-    {
-      final_binary_threshold->GetOutput()->TransformIndexToPhysicalPoint(iterator.GetIndex(), itk_point);
-      Eigen::Matrix<double, 3, 1> point{{itk_point[0], itk_point[1], itk_point[2]}};
-      centroids.col(point_index) = point;
-      ++point_index;
-    }
-    ++iterator;
-  }
-
-  std::cout << "processed points:" << point_index << std::endl;
-
-  auto meshSource = itk::BinaryMask3DMeshSource<itk::Image<unsigned char, 3>,
-                                                itk::Mesh<double>>::New();
-  meshSource->SetObjectValue(255);
-  meshSource->SetInput(final_binary_threshold->GetOutput());
-  update_ikt_filter(meshSource);
-
-  if constexpr (is_in_debug)
-  {
-    using WriterType = itk::MeshFileWriter<itk::Mesh<double>>;
-    auto writer = WriterType::New();
-    writer->SetFileName(info.appendix + "_point_cloud.obj");
-    writer->SetInput(meshSource->GetOutput());
-    update_ikt_filter(writer);
-  }
-
-// we extract the mask as a function of the number of connected components we
-  // wish to extract
-  {
-    std::vector<int> minimum_x_indicies_of_regions;
-    minimum_x_indicies_of_regions.resize(info.connected_components);
-    std::vector<int> maximum_x_indicies_of_regions;
-    maximum_x_indicies_of_regions.resize(info.connected_components);
-    std::vector<int> minimum_y_indicies_of_regions;
-    minimum_y_indicies_of_regions.resize(info.connected_components);
-    std::vector<int> maximum_y_indicies_of_regions;
-    maximum_y_indicies_of_regions.resize(info.connected_components);
-    std::vector<int> minimum_z_indicies_of_regions;
-    minimum_z_indicies_of_regions.resize(info.connected_components);
-    std::vector<int> maximum_z_indicies_of_regions;
-    maximum_z_indicies_of_regions.resize(info.connected_components);
-    for (unsigned char highlighted_region = 0;
-         highlighted_region < info.connected_components; ++highlighted_region) {
-      minimum_x_indicies_of_regions[highlighted_region] = 10000;
-      maximum_x_indicies_of_regions[highlighted_region] = 0;
-      minimum_y_indicies_of_regions[highlighted_region] = 10000;
-      maximum_y_indicies_of_regions[highlighted_region] = 0;
-      minimum_z_indicies_of_regions[highlighted_region] = 10000;
-      maximum_z_indicies_of_regions[highlighted_region] = 0;
-    }
-
-    itk::ImageRegionIteratorWithIndex<itk::Image<unsigned char, 3>> iterator(
-        relabelFilter->GetOutput(),
-        relabelFilter->GetOutput()->GetLargestPossibleRegion());
-    iterator.GoToBegin();
-
-    while (!iterator.IsAtEnd()) {
-      for (int highlighted_region = 0;
-           highlighted_region < info.connected_components;
-           ++highlighted_region) {
-        if ((int)iterator.Get() == (highlighted_region + 1)) {
-          auto index = iterator.GetIndex();
-          if (minimum_x_indicies_of_regions[highlighted_region] > index[0])
-            minimum_x_indicies_of_regions[highlighted_region] = index[0];
-          if (maximum_x_indicies_of_regions[highlighted_region] < index[0])
-            maximum_x_indicies_of_regions[highlighted_region] = index[0];
-          if (minimum_y_indicies_of_regions[highlighted_region] > index[1])
-            minimum_y_indicies_of_regions[highlighted_region] = index[1];
-          if (maximum_y_indicies_of_regions[highlighted_region] < index[1])
-            maximum_y_indicies_of_regions[highlighted_region] = index[1];
-          if (minimum_z_indicies_of_regions[highlighted_region] > index[2])
-            minimum_z_indicies_of_regions[highlighted_region] = index[2];
-          if (maximum_z_indicies_of_regions[highlighted_region] < index[2])
-            maximum_z_indicies_of_regions[highlighted_region] = index[2];
-        }
-      }
-      ++iterator;
-    }
-
-    itk::ImageMaskSpatialObject<3>::ImageType::SizeType size =
-        relabelFilter->GetOutput()->GetLargestPossibleRegion().GetSize();
-    itk::ImageMaskSpatialObject<3>::ImageType::IndexType index = {{0, 0, 0}};
-    itk::ImageMaskSpatialObject<3>::ImageType::RegionType region;
-    region.SetSize(size);
-    region.SetIndex(index);
-    image_to_fill->SetRegions(region);
-    image_to_fill->Allocate(true);
-    image_to_fill->SetSpacing(relabelFilter->GetOutput()->GetSpacing());
-    image_to_fill->SetOrigin(relabelFilter->GetOutput()->GetOrigin());
-    image_to_fill->SetDirection(relabelFilter->GetOutput()->GetDirection());
-    itk::ImageRegionIteratorWithIndex<itk::Image<unsigned char, 3>>
-        iterator_of_image_to_fill(image_to_fill,
-                                  image_to_fill->GetLargestPossibleRegion());
-    while (!iterator_of_image_to_fill.IsAtEnd()) {
-      auto index = iterator_of_image_to_fill.GetIndex();
-      for (unsigned char highlighted_region = 0;
-           highlighted_region < info.connected_components;
-           ++highlighted_region) {
-        bool is_inside_highlighted =
-            (index[0] > minimum_x_indicies_of_regions[highlighted_region] -
-                            info.buffer_of_mask &&
-             index[0] <
-                 info.buffer_of_mask +
-                     maximum_x_indicies_of_regions[highlighted_region]) &&
-            (index[1] > minimum_y_indicies_of_regions[highlighted_region] -
-                            info.buffer_of_mask &&
-             index[1] <
-                 info.buffer_of_mask +
-                     maximum_y_indicies_of_regions[highlighted_region]) &&
-            (index[2] > minimum_z_indicies_of_regions[highlighted_region] -
-                            info.buffer_of_mask &&
-             index[2] < info.buffer_of_mask +
-                            maximum_z_indicies_of_regions[highlighted_region]);
-        if (is_inside_highlighted) {
-          iterator_of_image_to_fill.Set(255);
-          break;
-        }
-      }
-      ++iterator_of_image_to_fill;
-    }
-
-    if constexpr (is_in_debug) {
-      auto writer = itk::ImageFileWriter<itk::Image<unsigned char, 3>>::New();
-      writer->SetInput(image_to_fill);
-      writer->SetFileName(info.appendix + "_filled_mask.mha");
-      update_ikt_filter(writer);
-    }
-  }
-
-  return {centroids, image_to_fill};
-}
 
 void write_point_cloud(Eigen::Matrix<double, 3, Eigen::Dynamic> &rotated_point_cloud, const std::string &path)
 {
@@ -466,6 +219,151 @@ void write_point_cloud(Eigen::Matrix<double, 3, Eigen::Dynamic> &rotated_point_c
 
   out << rotated_point_cloud;
 };
+
+itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>::Pointer
+convert_mesh(const itk::Mesh<double>::Pointer &mesh)
+{
+  class MeshTriangleVisitor
+  {
+  public:
+    itk::Mesh<double>::Pointer inmesh;
+    using MeshSourceType = itk::AutomaticTopologyMeshSource<itk::Mesh<double>>;
+    itk::QuadEdgeMesh<double, 3>::PointsContainer::Pointer container;
+
+    void set_required_data(itk::Mesh<double>::Pointer ref_inmesh)
+    {
+      inmesh = ref_inmesh;
+      container = itk::QuadEdgeMesh<double, 3>::PointsContainer::New();
+      container->Reserve(inmesh->GetNumberOfPoints());
+    }
+
+    using TriangleType = itk::TriangleCell<itk::Mesh<double>::CellType>;
+    void Visit(unsigned long cellId, TriangleType *t)
+    {
+      TriangleType::PointIdIterator pit = t->PointIdsBegin();
+      for (size_t index = 0; pit != t->PointIdsEnd(); ++pit, ++index)
+      {
+        container->SetElement(*pit, inmesh->GetPoint(*pit));
+      }
+    }
+
+    MeshTriangleVisitor() = default;
+    virtual ~MeshTriangleVisitor() = default;
+  };
+
+  class MeshTriangleConstructorVisitor
+  {
+  public:
+    itk::Mesh<double>::Pointer inmesh;
+    using MeshSourceType = itk::AutomaticTopologyMeshSource<itk::Mesh<double>>;
+    itk::QuadEdgeMesh<double, 3>::Pointer outmesh;
+
+    void set_required_data(
+        itk::Mesh<double>::Pointer ref_inmesh,
+        itk::QuadEdgeMesh<double, 3>::Pointer ref_outmesh,
+        itk::QuadEdgeMesh<double, 3>::PointsContainer::Pointer in_container)
+    {
+      inmesh = ref_inmesh;
+      outmesh = ref_outmesh;
+      outmesh->SetPoints(in_container);
+    }
+
+    using TriangleType = itk::TriangleCell<itk::Mesh<double>::CellType>;
+    void Visit(unsigned long cellId, TriangleType *t)
+    {
+      TriangleType::PointIdIterator pit = t->PointIdsBegin();
+      std::array<TriangleType::PointIdentifier, 3> ident;
+      for (size_t index = 0; pit != t->PointIdsEnd(); ++pit, ++index)
+        ident[index] = *pit;
+      outmesh->AddFaceTriangle(ident[0], ident[1], ident[2]);
+    }
+
+    MeshTriangleConstructorVisitor() = default;
+    virtual ~MeshTriangleConstructorVisitor() = default;
+  };
+
+  itk::QuadEdgeMesh<double, 3>::Pointer out_mesh =
+      itk::QuadEdgeMesh<double, 3>::New();
+  itk::QuadEdgeMesh<double, 3>::PointsContainer::Pointer container;
+  {
+    using TriangleType = itk::TriangleCell<itk::Mesh<double>::CellType>;
+    using TriangleVisitorInterfaceType =
+        itk::CellInterfaceVisitorImplementation<
+            itk::Mesh<double>::PixelType, itk::Mesh<double>::CellTraits,
+            TriangleType, MeshTriangleVisitor>;
+    auto triangleVisitor = TriangleVisitorInterfaceType::New();
+    triangleVisitor->set_required_data(mesh);
+    using CellMultiVisitorType = itk::Mesh<double>::CellType::MultiVisitor;
+    auto multiVisitor = CellMultiVisitorType::New();
+    multiVisitor->AddVisitor(triangleVisitor);
+    mesh->Accept(multiVisitor);
+    container = triangleVisitor->container;
+  }
+  {
+    using TriangleType = itk::TriangleCell<itk::Mesh<double>::CellType>;
+    using TriangleVisitorInterfaceType =
+        itk::CellInterfaceVisitorImplementation<
+            itk::Mesh<double>::PixelType, itk::Mesh<double>::CellTraits,
+            TriangleType, MeshTriangleConstructorVisitor>;
+    auto triangleVisitor = TriangleVisitorInterfaceType::New();
+    triangleVisitor->set_required_data(mesh, out_mesh, container);
+    using CellMultiVisitorType = itk::Mesh<double>::CellType::MultiVisitor;
+    auto multiVisitor = CellMultiVisitorType::New();
+    multiVisitor->AddVisitor(triangleVisitor);
+    mesh->Accept(multiVisitor);
+  }
+  auto computation_of_normals = itk::NormalQuadEdgeMeshFilter<
+      itk::QuadEdgeMesh<double, 3>,
+      itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>>::New();
+  itk::NormalQuadEdgeMeshFilter<
+      itk::QuadEdgeMesh<double, 3>,
+      itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>>::WeightEnum weight_type =
+      itk::NormalQuadEdgeMeshFilterEnums::Weight::THURMER;
+  computation_of_normals->SetInput(out_mesh);
+  computation_of_normals->SetWeight(weight_type);
+  update_ikt_filter(computation_of_normals);
+  return computation_of_normals->GetOutput();
+}
+
+Eigen::Matrix<double,3,Eigen::Dynamic> prune_surface(itk::Mesh<double>::Pointer mesh)
+{
+  auto converted_mesh = convert_mesh(mesh);
+  auto point_container = itk::PointSet<double, 3>::PointsContainer::New();
+  itk::PointSet<double, 3>::Pointer point_set = itk::PointSet<double, 3>::New();
+  itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>::PointsContainerIterator p_it = converted_mesh->GetPoints()->Begin();
+  itk::QuadEdgeMesh<itk::Vector<double, 3>, 3>::PointDataContainerIterator d_it = converted_mesh->GetPointData()->Begin();
+  size_t index = 0;
+  while (p_it != converted_mesh->GetPoints()->End())
+  {
+    Eigen::Matrix<double, 3, 1> normal;
+    normal[0] = d_it.Value()[0];
+    normal[1] = d_it.Value()[1];
+    normal[2] = d_it.Value()[2];
+    Eigen::Matrix<double, 3, 1> point;
+    point[0] = p_it.Value()[0];
+    point[1] = p_it.Value()[1];
+    point[2] = p_it.Value()[2];
+    normal.normalize();
+    point.normalize();
+    if (normal.transpose() * point > 0.23)
+    {
+      point_container->InsertElement(index, p_it->Value());
+      ++index;
+    }
+    ++p_it;
+    ++d_it;
+  }
+  point_set->SetPoints(point_container);
+
+  index = 0;
+  Eigen::Matrix<double,3,Eigen::Dynamic> points = Eigen::Matrix<double,3,Eigen::Dynamic>::Zero(3,index);
+  for(const auto& point : (*point_container)){
+    points.col(index) = Eigen::Matrix<double,3,1>{{point[0],point[1],point[2]}};
+    ++index;
+  }
+  
+  return points;
+}
 
 template <typename pixel_type>
 int modify_image_with_transform(
@@ -849,14 +747,14 @@ int main(int argc, char *argv[])
   auto image_reader_fixed = itk::ImageFileReader<itk::Image<float, 3>>::New();
   image_reader_fixed->SetFileName(argv[1]);
   update_ikt_filter(image_reader_fixed);
-  auto [point_cloud_fixed, mask_fixed_image] = extract_significant_regions(image_reader_fixed->GetOutput(), ExtractionSurfaceInfo<false>{3, 0.95, "fixed", 5, 5});
+  auto [point_cloud_fixed, mask_fixed_image] = extract_significant_regions(image_reader_fixed->GetOutput(), ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
   write_point_cloud(point_cloud_fixed, "fixed_point_blob.txt");
   std::cout << "wrote point cloud\n";
 
   auto image_reader_moving = itk::ImageFileReader<itk::Image<float, 3>>::New();
   image_reader_moving->SetFileName(argv[2]);
   update_ikt_filter(image_reader_moving);
-  auto [point_cloud_moving, mask_moving_image] = extract_significant_regions(image_reader_moving->GetOutput(), ExtractionSurfaceInfo<false>{3, 0.8, "moving", 5, 5});
+  auto [point_cloud_moving, mask_moving_image] = extract_significant_regions(image_reader_moving->GetOutput(), ExtractionSurfaceInfo<true>{3, 0.8, "moving", 5, 5});
   write_point_cloud(point_cloud_moving, "moving_point_blob.txt");
   std::cout << "wrote point cloud\n";
 
@@ -902,7 +800,7 @@ int main(int argc, char *argv[])
   constexpr size_t local_permut = 1;
 
   std::vector<size_t> bin_numbers{100};
-  std::vector<double> percentage_numbers{1.0};
+  std::vector<double> percentage_numbers{0.4};
   std::vector<double> relative_scales{1000.0};
   std::vector<double> learning_rate{.1};
   std::vector<double> relaxation_factor{0.7};

@@ -2,7 +2,7 @@
     "version": 8,
     "configurePresets": [
         {
-            "name": "debug",
+            "name": "Debug",
             "displayName": "Debug",
             "generator": "Ninja",
             "binaryDir": "build/debug",
@@ -12,7 +12,7 @@
             }
         },
         {
-            "name": "release",
+            "name": "Release",
             "displayName": "Release",
             "generator": "Ninja",
             "binaryDir": "build/release",
@@ -27,13 +27,13 @@
             "name": "Release",
             "description": "Compile project in release mode",
             "displayName": "",
-            "configurePreset": "release"
+            "configurePreset": "Release"
         },
         {
             "name": "Debug",
             "description": "Compile project in debug mode",
             "displayName": "",
-            "configurePreset": "debug"
+            "configurePreset": "Debug"
         }
     ]
 }
