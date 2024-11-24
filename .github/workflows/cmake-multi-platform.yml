@@ -24,7 +24,7 @@ jobs:
           submodules: true
 
       - name: Install system libraries on Ubuntu
-        if: runner.os == 'ubuntu-latest' || runner.os == 'macos-latest'
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         run: |
             sudo apt-get update
             sudo apt install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
