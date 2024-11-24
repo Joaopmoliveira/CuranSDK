@@ -1268,15 +1268,16 @@ int main_real(int argc, char *argv[])
   // Optimizer parameters
   constexpr size_t local_permut = 1;
 
-  std::vector<size_t> bin_numbers{100};
+  std::vector<size_t> bin_numbers{50,75,100};
   std::vector<double> percentage_numbers{1.0,0.9,0.8,0.7,0.6,0.5,0.4,0.3};
   std::vector<double> relative_scales{1000.0};
-  std::vector<double> learning_rate{0.1};
+  std::vector<double> learning_rate{0.1,0.15,0.2};
   std::vector<double> relaxation_factor{0.7};
   std::vector<size_t> optimization_iterations{500};
-  std::vector<size_t> convergence_window_size{40};
+  std::vector<size_t> convergence_window_size{10,20,30,40};
   std::vector<std::tuple<std::vector<size_t>,std::vector<size_t>>> piramid_bluring;
   piramid_bluring.push_back(std::make_tuple(std::vector<size_t>{1},std::vector<size_t>{0}));
+  piramid_bluring.push_back(std::make_tuple(std::vector<size_t>{2,1},std::vector<size_t>{1,0}));
 
   size_t total_permutations = optimization_iterations.size() *
                               bin_numbers.size() * percentage_numbers.size() *
