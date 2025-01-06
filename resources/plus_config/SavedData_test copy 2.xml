@@ -1,7 +1,7 @@
  <PlusConfiguration version="2.1">
   <DataCollection StartupDelaySec="1.0">
     <DeviceSet 
-      Name="Saved Data from file"
+      Name="8585678Saved Data from file"
       Description="Programa de testes Saved Data Device." />
 	
     <Device
@@ -20,6 +20,20 @@
         <OutputChannel Id="TrackedVideoStream" VideoDataSourceId="Video" />
       </OutputChannels>
     </Device>
+	
+    <Device
+      Id="VolumeReconstructorDevice"
+      Type="VirtualVolumeReconstructor"
+      OutputVolDeviceName="RecVol_Reference">
+      <InputChannels>
+        <InputChannel Id="TrackedVideoStream" />
+      </InputChannels>
+      <VolumeReconstruction
+        ImageCoordinateFrame="Image" ReferenceCoordinateFrame="Reference"
+        Interpolation="LINEAR" Optimization="NONE" CompoundingMode="MEAN" FillHoles="OFF" NumberOfThreads="8"
+        ClipRectangleOrigin="0 0" ClipRectangleSize="600 600"
+        OutputOrigin="-1 -1 -1" OutputExtent="0 300 0 300 0 300" OutputSpacing="0.007 0.007 0.007" />
+    </Device>
   </DataCollection>  
 
   <PlusOpenIGTLinkServer 
@@ -29,6 +43,13 @@
     	SendValidTransformsOnly="true" 
     	OutputChannelId="TrackedVideoStream" > 
     	<DefaultClientInfo> 
+      		<MessageTypes> 
+        		<Message Type="IMAGE" />
+				<Message Type="TRANSFORM" />
+      		</MessageTypes>
+      		<TransformNames> 
+				<Transform Name="ImageToReference"/>
+      		</TransformNames>
 			<ImageNames>
 				<Image Name="Image" EmbeddedTransformToFrame="Reference"/>
 			</ImageNames>

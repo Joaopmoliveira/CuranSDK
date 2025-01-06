@@ -24,6 +24,8 @@ if(WIN32)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif(WIN32)
 
+enable_testing()
+
 set(OPERATING_SYSTEM_REQUIRMENTS "")
 
 if(UNIX)
@@ -49,6 +51,7 @@ find_package(vsgXchange CONFIG REQUIRED)
 find_package(vsgImGui CONFIG REQUIRED)
 find_package(pugixml CONFIG REQUIRED)
 find_package(PCL CONFIG REQUIRED)
+find_package(GTest CONFIG REQUIRED)
 
 #Externally provided targets
 add_subdirectory(third_party)
@@ -91,6 +94,9 @@ add_subdirectory(applications)
 
 # Most of the time there is no need to compile the tests and the tutorials
 # folder so you can comment out these subfolders from the build directory
+
+# Add medical applications
+add_subdirectory(unittests)
 
 # Add tests for submodules of curan, i.e. utilities, communication, etc...
 add_subdirectory(tests)

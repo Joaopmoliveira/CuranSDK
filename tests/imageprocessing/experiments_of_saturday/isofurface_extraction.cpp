@@ -1145,7 +1145,7 @@ void solve_registration_solutions(std::string fixed_path, std::string moving_pat
   modify_image_with_transform<unsigned char>(transformation_acording_to_pca_fixed.inverse() * Timage_origin_fixed,mask_fixed_image);
   modify_image_with_transform<unsigned char>(best_transformation_icp *transformation_acording_to_pca_moving.inverse() *Timage_origin_moving,mask_moving_image);
 
-  
+  /*
   std::vector<size_t> bin_numbers{50, 75, 100};
   std::vector<double> percentage_numbers{0.75, 0.5, 0.2};
   std::vector<double> relative_scales{1000.0};
@@ -1153,8 +1153,9 @@ void solve_registration_solutions(std::string fixed_path, std::string moving_pat
   std::vector<double> relaxation_factor{0.2, 0.5, 0.8};
   std::vector<size_t> optimization_iterations{100, 200, 300};
   std::vector<size_t> convergence_window_size{10, 25, 40};
+  */
+
   
-  /*
   std::vector<size_t> bin_numbers{75};
   std::vector<double> percentage_numbers{0.5};
   std::vector<double> relative_scales{1000.0};
@@ -1162,11 +1163,11 @@ void solve_registration_solutions(std::string fixed_path, std::string moving_pat
   std::vector<double> relaxation_factor{0.8};
   std::vector<size_t> optimization_iterations{300};
   std::vector<size_t> convergence_window_size{40};
-  */
+  
   std::vector<std::tuple<std::vector<size_t>, std::vector<size_t>>> piramid_bluring;
-  piramid_bluring.push_back(std::make_tuple(std::vector<size_t>{1}, std::vector<size_t>{0}));
+  //piramid_bluring.push_back(std::make_tuple(std::vector<size_t>{1}, std::vector<size_t>{0}));
   piramid_bluring.push_back(std::make_tuple(std::vector<size_t>{2, 1}, std::vector<size_t>{1, 0}));
-  piramid_bluring.push_back(std::make_tuple(std::vector<size_t>{4, 2, 1},std::vector<size_t>{2, 1, 0}));
+  //piramid_bluring.push_back(std::make_tuple(std::vector<size_t>{4, 2, 1},std::vector<size_t>{2, 1, 0}));
 
   size_t total_permutations = optimization_iterations.size() *
                               bin_numbers.size() * percentage_numbers.size() *

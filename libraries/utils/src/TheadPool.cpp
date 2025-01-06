@@ -65,7 +65,7 @@ void ThreadPool::infinite_loop()
 	while (true){
 		job = job_queue.wait_and_pop();
 
-		if(job_queue.is_invalid()){
+		if(job_queue.invalid()){
 			return;
 		}
 			
@@ -86,9 +86,8 @@ void ThreadPool::infinite_loop()
 		{
 			std::lock_guard<std::mutex> lk(mut);
 			if (stopped && number_of_pending_tasks==0)
-				if(!job_queue.is_invalid()){
+				if(job_queue.valid())
 					job_queue.invalidate();
-				}
 		}
 
 	}
@@ -109,8 +108,6 @@ void ThreadPool::submit(Job task)
 	++number_of_pending_tasks;
 	job_queue.push(task);
 }
-
-
 
 std::shared_ptr<curan::utilities::ThreadPool> ThreadPool::create(size_t num_of_threads,ThreadPoolDestructionBehavior in_behavior){
 	return std::shared_ptr<curan::utilities::ThreadPool>(new ThreadPool{num_of_threads,in_behavior});

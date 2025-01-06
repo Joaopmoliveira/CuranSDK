@@ -101,3 +101,27 @@ renderable
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+add_executable(test_benchmark_thesis test_benchmark_thesis.cpp)
+
+target_compile_definitions(test_benchmark_thesis PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_benchmark_thesis PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_benchmark_thesis
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)
+
+add_executable(test_plus_benchmark_thesis test_plus_benchmark_thesis.cpp)
+
+target_compile_definitions(test_plus_benchmark_thesis PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_plus_benchmark_thesis PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+target_link_libraries(test_plus_benchmark_thesis
+PUBLIC
+communication
+renderable
+imageprocessing
+${ITK_LIBRARIES}
+)

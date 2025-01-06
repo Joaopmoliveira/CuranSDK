@@ -39,7 +39,7 @@ int foo(curan::utilities::SafeQueue<double>& queue){
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
     std::uniform_real_distribution<> dis(1.0, 2.0);
     size_t counter_until_invalidation = 0;
-    while(!queue.is_invalid() && counter_until_invalidation<5){ // we keep running while the queue is valid
+    while(queue.valid() && counter_until_invalidation<5){ // we keep running while the queue is valid
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         double sensor_reading = dis(gen);
         queue.push(sensor_reading);  // this call internaly locks a mutex 
@@ -51,7 +51,7 @@ int foo(curan::utilities::SafeQueue<double>& queue){
 
 int bar(curan::utilities::SafeQueue<double>& queue){
     double filter_value = 0.0; 
-    while(!queue.is_invalid()){
+    while(queue.valid()){
 /*
 The wait and pop function locks the queue until a value has been pushed int.
 It returns an optional, i.e., the other side of the foo function might invalidate the queue so we 

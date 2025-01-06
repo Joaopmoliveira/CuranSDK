@@ -112,7 +112,7 @@ void test_thread_safe_queue(std::shared_ptr<curan::utilities::ThreadPool> shared
 	auto function_to_execute = [&safe_queue]() {
 		try {
 			std::cout << "starting to wait for popable\n";
-			while (!safe_queue.is_invalid()) {
+			while (safe_queue.valid()) {
 				if(auto test = safe_queue.wait_and_pop(); test)
 					std::cout << "Received a poopable! yeye = " << (*test).val << "\n";
 			}

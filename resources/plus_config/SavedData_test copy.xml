@@ -1,0 +1,120 @@
+ <PlusConfiguration version="2.1">
+  <DataCollection StartupDelaySec="0.0">
+    <DeviceSet 
+      Name="12341234Saved Data from file"
+      Description="Programa de testes Saved Data Device." />
+	
+    <Device
+      Id="VideoDevice"
+      Type="OpenIGTLinkVideo"
+      MessageType="IMAGE"
+      ServerAddress="localhost"
+      ServerPort="50000"
+      UseReceivedTimestamps="false"
+	    AcquisitionRate="2"
+      ReceiveTimeoutSec = "5"
+      IgtlMessageCrcCheckEnabled="false"
+      LocalTimeOffsetSec="0" >
+      <DataSources>
+        <DataSource Type="Video" Id="Video" PortUsImageOrientation="MF"  AveragedItemsForFiltering="1"  />
+      </DataSources>
+      <OutputChannels>
+        <OutputChannel Id="VideoStream" VideoDataSourceId="Video" />
+      </OutputChannels>
+    </Device>
+
+<Device
+		Id="TrackerDevice"
+		Type="OpenIGTLinkTracker"
+		LocalTimeOffsetSec="0.0"
+		ServerAddress="localhost"
+		ServerPort="50010"
+    AveragedItemsForFiltering =  "1"
+		MessageType="TRANSFORM"
+		ToolReferenceFrame="Reference"
+		IgtlMessageCrcCheckEnabled="false"
+		AcquisitionRate="2" 
+    ReceiveTimeoutSec = "5"
+		UseReceivedTimestamps="false"
+		UseLastTransformsOnReceiveTimeout="false"
+		ReconnectOnReceiveTimeout="true">
+		<DataSources>
+			<DataSource Type="Tool" Id="Flange" AveragedItemsForFiltering="1"  /> 
+		</DataSources>
+		<OutputChannels>
+			<OutputChannel Id="TrackerStream">
+				<DataSource Id="Flange" />
+		</OutputChannel>
+		</OutputChannels>
+	</Device>
+
+    <Device 
+      Id="TrackedVideoDevice" 
+      AcquisitionRate = "2"
+      Type="VirtualMixer" >
+      <InputChannels>
+        <InputChannel Id="TrackerStream" />
+        <InputChannel Id="VideoStream" />
+      </InputChannels>
+      <OutputChannels>
+        <OutputChannel Id="TrackedVideoStream"/>
+      </OutputChannels>
+    </Device>
+	
+    <Device
+      Id="CaptureDevice"
+      Type="VirtualCapture"
+      AcquisitionRate = "2"
+      BaseFilename="RecordingTest.igs.mha"
+      EnableCapturingOnStart="FALSE" >
+      <InputChannels>
+        <InputChannel Id="TrackedVideoStream" />
+      </InputChannels>
+    </Device>
+
+    <Device
+      Id="VolumeReconstructorDevice"
+      Type="VirtualVolumeReconstructor"
+      AcquisitionRate = "2"
+      OutputVolDeviceName="RecVol_Reference">
+      <InputChannels>
+        <InputChannel Id="TrackedVideoStream" />
+      </InputChannels>
+      <VolumeReconstruction
+        ImageCoordinateFrame="Image" ReferenceCoordinateFrame="Reference"
+        Interpolation="LINEAR" Optimization="NONE" CompoundingMode="MAXIMUM" FillHoles="OFF" NumberOfThreads="8"
+        OutputOrigin="-1.0 -1.0 -1.0" OutputExtent="0 300 0 300 0 300" OutputSpacing="0.007 0.007 0.007" />
+    </Device>
+  </DataCollection>  
+
+    <CoordinateDefinitions>
+    <Transform From="Image" To="Flange"
+      Matrix="
+        0.0035 0 0 0 
+		    0 0.0035 0 0
+		    0 0 0.0035 0
+        0	0	0	1"/>
+  </CoordinateDefinitions>
+
+  <PlusOpenIGTLinkServer 
+    	MaxNumberOfIgtlMessagesToSend="2" 
+    	MaxTimeSpentWithProcessingMs="50" 
+    	ListeningPort="18944" 
+    	SendValidTransformsOnly="true" 
+    	OutputChannelId="TrackedVideoStream" > 
+    	<DefaultClientInfo> 
+      		<MessageTypes> 
+        		<Message Type="IMAGE" />
+				<Message Type="TRANSFORM" />
+      		</MessageTypes>
+      		<TransformNames> 
+				<Transform Name="ImageToReference"/>
+      		</TransformNames>
+			<ImageNames>
+				<Image Name="Image" EmbeddedTransformToFrame="Reference"/>
+			</ImageNames>
+    	</DefaultClientInfo>
+  </PlusOpenIGTLinkServer> 
+  
+ 
+</PlusConfiguration>

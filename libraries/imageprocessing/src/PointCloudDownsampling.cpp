@@ -47,12 +47,11 @@ std::tuple<pcl::PointCloud<pcl::PointXYZ>::Ptr,Eigen::Matrix<double, 3, Eigen::D
         cloud_just_points->points[i].y = eigenPoints(1, i);
         cloud_just_points->points[i].z = eigenPoints(2, i);
     }
-
     pcl::UniformSampling<pcl::PointXYZ> uniform_sampling;
     uniform_sampling.setInputCloud(cloud_just_points);
     uniform_sampling.setRadiusSearch(spacing);
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr downsampled_cloud;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr downsampled_cloud(new pcl::PointCloud<pcl::PointXYZ>());
     uniform_sampling.filter(*downsampled_cloud);
 
     Eigen::Matrix<double, 3, Eigen::Dynamic> outEigenPoints = Eigen::Matrix<double, 3, Eigen::Dynamic>::Zero(3,downsampled_cloud->width);

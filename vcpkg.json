@@ -11,6 +11,7 @@
     "vsgimgui",
     "pugixml",
     "pcl",
+    "gtest",
     {
       "name": "vsgxchange",
       "features": [ "assimp" ]

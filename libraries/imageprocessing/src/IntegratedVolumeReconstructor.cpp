@@ -836,15 +836,13 @@ bool IntegratedReconstructor::multithreaded_update(std::shared_ptr<utilities::Th
 		int executed = 0;
 		size_t index = 0;
 		for(const auto& range : block_divisions){
-			auto lamb = [index,range,paste_slice_info,&executed,&local_mut,&cv](){
+			auto lamb = [index,range,paste_slice_info,&executed,&local_mut,&cv,&block_divisions](){
 				size_t local_index = index;
 				try{
-					int this_thread_extent[6];
-					std::memcpy(this_thread_extent,range.data(),6*sizeof(int));
-
+					std::array<int,6> this_thread_extent = range;
 					curan::image::reconstruction::PasteSliceIntoVolumeInsertSliceParamsTemplated<input_pixel_type,output_pixel_type> local_paste_slice_info;
 					local_paste_slice_info = paste_slice_info;
-					local_paste_slice_info.inExt = this_thread_extent;
+					local_paste_slice_info.inExt = this_thread_extent.data();
 
 					curan::image::reconstruction::TemplatedUnoptimizedInsertSlice<input_pixel_type,output_pixel_type,255>(&local_paste_slice_info);
 					{

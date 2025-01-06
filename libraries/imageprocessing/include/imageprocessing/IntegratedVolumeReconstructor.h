@@ -100,6 +100,15 @@ namespace curan{
         } 
 
 		bool multithreaded_update(std::shared_ptr<utilities::ThreadPool>pool,size_t skip_texture_update_every_n_cicles=1);
+
+        using updater = std::function<void(vsg::floatArray3D& image)>;
+
+        inline void update_volume(updater&& update){
+            std::lock_guard<std::mutex> g{mut};
+            update(*(textureData.get()));
+            textureData->dirty();
+        }
+
 };
 
 

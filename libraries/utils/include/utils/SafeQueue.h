@@ -54,102 +54,107 @@ SafeQueue() {}
 SafeQueue(SafeQueue const& other) = delete;
 
 void push(const T& new_value) {
-	std::lock_guard<std::mutex> lk(mut);
-	if(invalid)
+	std::lock_guard<std::mutex> lk(m_mut);
+	if(m_invalid)
 		return;
-	data_queue.push(new_value);
-	data_cond.notify_one();
+	m_data_queue.push(new_value);
+	m_data_cond.notify_one();
 }
 
 void clear(){
-	std::lock_guard<std::mutex> lk(mut);
-	data_queue = std::queue<T>{};
+	std::lock_guard<std::mutex> lk(m_mut);
+	m_data_queue = std::queue<T>{};
 }
 
 [[nodiscard]] std::optional<T> wait_and_pop() {
-	std::unique_lock<std::mutex> lk(mut);
-	if (invalid)
+	std::unique_lock<std::mutex> lk(m_mut);
+	if (m_invalid)
 		return std::nullopt;
-	data_cond.wait(lk, [this] {return (!data_queue.empty() || invalid); });
-	if (invalid || data_queue.empty())
+	m_data_cond.wait(lk, [this] {return (!m_data_queue.empty() || m_invalid); });
+	if (m_invalid ||m_data_queue.empty())
 		return std::nullopt;
-	auto value = data_queue.front();
-	data_queue.pop();
+	auto value = m_data_queue.front();
+	m_data_queue.pop();
 	return value;
 }
 
 template< class Rep, class Period>
 [[nodiscard]] std::optional<T> wait_and_pop(const std::chrono::duration<Rep, Period>& rel_time) {
-	std::unique_lock<std::mutex> lk(mut);
-	if (invalid)
+	std::unique_lock<std::mutex> lk(m_mut);
+	if (m_invalid)
 		return std::nullopt;
-	data_cond.wait_until(lk,rel_time, [this] {return (!data_queue.empty() || invalid); });
-	if (invalid || data_queue.empty())
+	m_data_cond.wait_until(lk,rel_time, [this] {return (!m_data_queue.empty() || m_invalid); });
+	if (m_invalid || m_data_queue.empty())
 		return std::nullopt;
-	auto value = data_queue.front();
-	data_queue.pop();
+	auto value = m_data_queue.front();
+	m_data_queue.pop();
 	return value;
 }
 
 [[nodiscard]] std::optional<T> try_pop() {
-	std::lock_guard<std::mutex> lk(mut);
-	if (data_queue.empty())
+	std::lock_guard<std::mutex> lk(m_mut);
+	if (m_data_queue.empty() || m_invalid)
 		return std::nullopt;
-	auto value = data_queue.front();
-	data_queue.pop();
+	auto value = m_data_queue.front();
+	m_data_queue.pop();
 	return value;
 }
 
 [[nodiscard]] std::optional<T> front() {
-	std::lock_guard<std::mutex> lk(mut);
-	if (data_queue.empty())
+	std::lock_guard<std::mutex> lk(m_mut);
+	if (m_data_queue.empty() || m_invalid)
 		return std::nullopt;
-	auto value = data_queue.front();
+	auto value = m_data_queue.front();
 	return value;
 }
 
 [[nodiscard]] std::optional<T> back() {
-	std::lock_guard<std::mutex> lk(mut);
-	if (data_queue.empty())
+	std::lock_guard<std::mutex> lk(m_mut);
+	if (m_data_queue.empty() || m_invalid)
 		return std::nullopt;
-	auto value = data_queue.back();
+	auto value = m_data_queue.back();
 	return value;
 }
 
 [[nodiscard]] bool empty(){
-	std::lock_guard<std::mutex> lk(mut);
-	return data_queue.empty();
+	std::lock_guard<std::mutex> lk(m_mut);
+	return m_data_queue.empty();
 }
 
 [[nodiscard]] size_t size() {
-	std::lock_guard<std::mutex> lk(mut);
-	return data_queue.size();
+	std::lock_guard<std::mutex> lk(m_mut);
+	return m_data_queue.size();
 }
 
 void invalidate() {
-	std::lock_guard<std::mutex> lk(mut);
-	if (!invalid) {
-		invalid = true;
-		data_cond.notify_all();
+	std::lock_guard<std::mutex> lk(m_mut);
+	if (!m_invalid) {
+		m_invalid = true;
+		m_data_cond.notify_all();
 	}
 }
 
-[[nodiscard]] bool is_invalid() {
-	std::lock_guard<std::mutex> lk(mut);
-	return invalid;
+[[nodiscard]] bool invalid() {
+	std::lock_guard<std::mutex> lk(m_mut);
+	return m_invalid;
+}
+
+[[nodirscard]] bool  valid(){
+	std::lock_guard<std::mutex> lk(m_mut);
+	return !m_invalid;
 }
 
 [[nodiscard]] std::queue<T> request_current_queue_copy(){
-	std::lock_guard<std::mutex> lk(mut);
-	return data_queue;
+	std::lock_guard<std::mutex> lk(m_mut);
+	return m_data_queue;
 }
 
 private:
 
-bool invalid = false;
-std::mutex mut;
-std::queue<T> data_queue;
-std::condition_variable data_cond;
+bool m_invalid = false;
+std::mutex m_mut;
+std::queue<T> m_data_queue;
+std::condition_variable m_data_cond;
 
 };
 
