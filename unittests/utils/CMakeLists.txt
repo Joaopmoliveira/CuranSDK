@@ -19,3 +19,7 @@ gtest_discover_tests(MemoryUtils)
 add_executable(DateFormater date_formater.cpp)
 target_link_libraries(DateFormater GTest::gtest_main utils)
 gtest_discover_tests(DateFormater)
+
+add_executable(FileSharing file_data.cpp)
+target_link_libraries(FileSharing GTest::gtest_main utils)
+gtest_discover_tests(FileSharing)

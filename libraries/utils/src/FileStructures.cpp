@@ -15,11 +15,18 @@ namespace curan
         {
             nlohmann::json calibration_data;
             std::ifstream in(path);
-
             if (!in.is_open())
                 throw std::runtime_error("failure to open configuration file");
+            decode(in);
+        }
 
-            in >> calibration_data;
+        UltrasoundCalibrationData::UltrasoundCalibrationData(std::istream &instream){
+            decode(instream);
+        }
+
+        void UltrasoundCalibrationData::decode(std::istream &instream){
+            nlohmann::json calibration_data;
+            instream >> calibration_data;
             f_timestamp = calibration_data["timestamp"];
             std::string homogenenous_transformation = calibration_data["homogeneous_transformation"];
             f_optimization_error = calibration_data["optimization_error"];
@@ -35,6 +42,8 @@ namespace curan
                 for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
                     f_homogeneous_transformation(row, col) = calibration_matrix(row, col);
         }
+
+        
 
         std::string UltrasoundCalibrationData::timestamp() const
         {
@@ -78,7 +87,16 @@ namespace curan
             if (!in.is_open())
                 throw std::runtime_error("failure to open configuration file");
 
-            in >> registration_data;
+            decode(in);
+        }
+
+        RegistrationData::RegistrationData(std::istream &instream){
+            decode(instream);
+        }
+
+        void RegistrationData::decode(std::istream &instream){
+            nlohmann::json registration_data;
+            instream >> registration_data;
 
             if (auto search = conversion_to_type.find(registration_data["type"]); search != conversion_to_type.end())
                 f_registration_type = search->second;
@@ -144,7 +162,17 @@ namespace curan
             if (!in.is_open())
                 throw std::runtime_error("failure to open configuration file");
 
-            in >> needle_calibration_data;
+            decode(in);
+        }
+
+        NeedleCalibrationData::NeedleCalibrationData(std::istream &instream)
+        {
+            decode(instream);
+        }
+
+        void NeedleCalibrationData::decode(std::istream &instream){
+            nlohmann::json needle_calibration_data;
+            instream >> needle_calibration_data;
             f_timestamp = needle_calibration_data["timestamp"];
             std::string homogenenous_transformation = needle_calibration_data["needle_homogeneous_transformation"];
             f_optimization_error = needle_calibration_data["optimization_error"];
@@ -196,8 +224,17 @@ namespace curan
             std::ifstream in(path);
             if (!in.is_open())
                 throw std::runtime_error("failure to open configuration file");
+            decode(in);
+        }
 
-            in >> trajectory_data;
+        TrajectorySpecificationData::TrajectorySpecificationData(std::istream &instream)
+        {
+            decode(instream);
+        }
+
+        void TrajectorySpecificationData::decode(std::istream &instream){
+            nlohmann::json trajectory_data;
+            instream >> trajectory_data;
 
             std::stringstream ss;
             std::string target = trajectory_data["target"];

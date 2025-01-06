@@ -17,6 +17,8 @@ namespace curan
             Eigen::Matrix<double, 4, 4> f_homogeneous_transformation;
             double f_optimization_error;
 
+            void decode(std::istream &instream);
+
         public:
             UltrasoundCalibrationData(const std::string &in_timestamp,
                                       const Eigen::Matrix<double, 4, 4> &in_homogeneous_transformation,
@@ -27,6 +29,8 @@ namespace curan
             }
 
             UltrasoundCalibrationData(const std::string &path);
+
+            UltrasoundCalibrationData(std::istream &instream);
 
             std::string timestamp() const;
 
@@ -52,6 +56,8 @@ namespace curan
             double f_registration_error;
             Type f_registration_type = Type::LANDMARK;
 
+            void decode(std::istream &instream);
+
         public:
             RegistrationData(const std::string &in_timestamp,
                              const Eigen::Matrix<double, 4, 4> &in_moving_to_fixed_transform,
@@ -64,6 +70,8 @@ namespace curan
             }
 
             RegistrationData(const std::string &path);
+
+            RegistrationData(std::istream &instream);
 
             std::string timestamp() const;
 
@@ -82,6 +90,8 @@ namespace curan
             Eigen::Matrix<double, 4, 4> f_needle_homogeneous_transformation;
             double f_optimization_error;
 
+            void decode(std::istream &instream);
+
         public:
             NeedleCalibrationData(const std::string &in_timestamp,
                                   const Eigen::Matrix<double, 4, 4> &in_needle_homogeneous_transformation,
@@ -92,6 +102,8 @@ namespace curan
             }
 
             NeedleCalibrationData(const std::string &path);
+
+            NeedleCalibrationData(std::istream &instream);
 
             std::string timestamp() const;
 
@@ -110,6 +122,8 @@ namespace curan
             Eigen::Matrix<double, 3, 3> f_desired_orientation;
             std::string f_path_to_image;
 
+            void decode(std::istream &instream);
+
         public:
             TrajectorySpecificationData(const std::string &in_timestamp,
                                         const Eigen::Matrix<double, 3, 1> &in_target,
@@ -124,6 +138,8 @@ namespace curan
             }
 
             TrajectorySpecificationData(const std::string &path);
+
+            TrajectorySpecificationData(std::istream &instream);
 
             std::string timestamp() const;
 
