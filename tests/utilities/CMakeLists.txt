@@ -1,21 +1,16 @@
-add_executable(test_util test_utils.cpp)
-
-target_link_libraries(test_util PUBLIC
-utils
-)
-
 add_executable(testing_cpp_mechanics testing_cpp_mechanics.cpp)
+target_link_libraries(testing_cpp_mechanics PUBLIC utils)
+
+add_executable(test_util test_utils.cpp)
+target_link_libraries(test_util PUBLIC utils)
 
 add_executable(test_circular test_circular.cpp)
+target_link_libraries(test_circular PUBLIC utils)
 
-target_link_libraries(test_circular PUBLIC
-utils
-)
+add_executable(test_to_string test_to_string.cpp)
+target_link_libraries(test_to_string PUBLIC utils)
 
 add_executable(test_xml_plus_parsing test_xml_plus_parsing.cpp)
-
-target_link_libraries(test_xml_plus_parsing PUBLIC
-utils
-)
+target_link_libraries(test_xml_plus_parsing PUBLIC utils)
 
 target_compile_definitions(test_xml_plus_parsing PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")

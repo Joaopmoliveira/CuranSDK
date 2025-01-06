@@ -15,3 +15,7 @@ gtest_discover_tests(Reader)
 add_executable(MemoryUtils memory_utils.cpp)
 target_link_libraries(MemoryUtils GTest::gtest_main utils)
 gtest_discover_tests(MemoryUtils)
+
+add_executable(DateFormater date_formater.cpp)
+target_link_libraries(DateFormater GTest::gtest_main utils)
+gtest_discover_tests(DateFormater)
