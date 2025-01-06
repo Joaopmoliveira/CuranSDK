@@ -405,7 +405,7 @@ struct ApplicationState
 
                                                    auto global_corner_position = position_of_center_in_global_frame - rotation_0_1 * position_in_local_box_frame;
                                                    nlohmann::json specified_box;
-                                                   specified_box["timestamp"] = curan::utilities::get_formated_date();
+                                                   specified_box["timestamp"] = curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now());
 
                                                    constexpr size_t maximum_float_size = 62.5e6 * 0.5;
                                                    double new_spacing = std::cbrt((2 * final_box.extent[0] * 2 * final_box.extent[1] * 2 * final_box.extent[2]) / (maximum_float_size));
@@ -730,7 +730,7 @@ bool process_message(RobotState &state, size_t protocol_defined_val, std::error_
 std::ofstream &get_file_handle()
 {
     static bool initializing = true;
-    static std::string pathname = std::string{"joint_recording_"} + curan::utilities::get_formated_date() + std::string{".txt"};
+    static std::string pathname = std::string{"joint_recording_"} + curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now()) + std::string{".txt"};
     static std::ofstream out{pathname};
     if (initializing)
     {

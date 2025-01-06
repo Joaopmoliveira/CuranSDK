@@ -10,9 +10,10 @@
 namespace curan {
 namespace utilities {
 
-inline std::string get_formated_date(){
-    auto now = std::chrono::system_clock::now();
-    std::time_t in_time_t = std::chrono::system_clock::to_time_t(now);
+template<typename clocktype>
+inline std::string formated_date(typename clocktype::time_point point){
+    static_assert(std::chrono::is_clock_v<clocktype>,"type must be a clock");
+    std::time_t in_time_t = clocktype::to_time_t(point);
     std::tm local_tm;
     localtime_s(&local_tm, &in_time_t); 
     char buffer[100]; 

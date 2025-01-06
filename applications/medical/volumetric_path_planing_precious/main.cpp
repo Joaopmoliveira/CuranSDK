@@ -101,7 +101,7 @@ int main()
             desired_orientation.block<3,1>(0,1) = desired_dir_y;
             desired_orientation.block<3,1>(0,2) = desired_dir_z;
 
-            curan::utilities::TrajectorySpecificationData trajectory_specification{curan::utilities::get_formated_date(),*data_application.final_first_point,*data_application.final_third_point,desired_orientation,data_application.path};
+            curan::utilities::TrajectorySpecificationData trajectory_specification{curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now()),*data_application.final_first_point,*data_application.final_third_point,desired_orientation,data_application.path};
 
             std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json");
             o << trajectory_specification;
