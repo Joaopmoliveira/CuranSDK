@@ -21,8 +21,8 @@ TEST(UnitTestReader, CheckSpacelimitedMatrix) {
   char matrix_incorrect_3[] = R"(12.14285714  12.14285714
 13.14285714  12.14285714)";
 
-  char matrix_incorrect_4[] = R"(12.14285714  12.14285714
-12.14285714  13.14285714)";
+  char matrix_incorrect_4[] = R"(12.14285714 , 12.14285714
+12.14285714 , 13.14285714)";
 
   char matrix_incorrect_5[] = R"(12.14285714 , 12.14285714 , 12.14285714  
 13.14285714)";
@@ -36,27 +36,27 @@ TEST(UnitTestReader, CheckSpacelimitedMatrix) {
   auto stream = to_stringstream(matrix_correct);
   auto matrix = curan::utilities::convert_matrix(stream, ',');
   ASSERT_EQ(expected_matrix.isApprox(matrix, 0.00001), true)
-      << "The matrices should be equal";
+      << "#matrix_correct# The matrices should be equal (" << expected_matrix << ")\n(" << matrix << ")";
 
   stream = to_stringstream(matrix_incorrect_1);
   matrix = curan::utilities::convert_matrix(stream, ',');
   ASSERT_NE(expected_matrix.isApprox(matrix, 0.00001), true)
-      << "The matrices should be different";
+      << "#matrix_incorrect_1# The matrices should be different(" << expected_matrix << ")\n(" << matrix << ")";
 
   stream = to_stringstream(matrix_incorrect_2);
   matrix = curan::utilities::convert_matrix(stream, ',');
   ASSERT_NE(expected_matrix.isApprox(matrix, 0.00001), true)
-      << "The matrices should be different";
+      << "#matrix_incorrect_2# The matrices should be different(" << expected_matrix << ")\n(" << matrix << ")";
 
   stream = to_stringstream(matrix_incorrect_3);
   matrix = curan::utilities::convert_matrix(stream, ',');
   ASSERT_NE(expected_matrix.isApprox(matrix, 0.00001), true)
-      << "The matrices should be different";
+      << "#matrix_incorrect_3# The matrices should be different(" << expected_matrix << ")\n(" << matrix << ")";
 
   stream = to_stringstream(matrix_incorrect_4);
   matrix = curan::utilities::convert_matrix(stream, ',');
   ASSERT_NE(expected_matrix.isApprox(matrix, 0.00001), true)
-      << "The matrices should be different";
+      << "#matrix_incorrect_4# The matrices should be different(" << expected_matrix << ")\n(" << matrix << ")";
 
   stream = to_stringstream(matrix_incorrect_5);
   EXPECT_ANY_THROW(curan::utilities::convert_matrix(stream, ','))

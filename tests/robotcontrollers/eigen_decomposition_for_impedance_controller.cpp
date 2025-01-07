@@ -8,7 +8,7 @@ int sgn(T val)
     return (T(0) < val) - (val < T(0));
 }
 
-int main()
+int main1()
 {
     curan::robotic::State state;
     state.q = {1.4, 1.4, 1.4, 1.4, .1, 1., -1.0};
@@ -45,5 +45,16 @@ int main()
               << std::endl;
     std::cout << stiffness - Q * B0 * Q.transpose() << std::endl
               << std::endl;
+    return 0;
+}
+
+int main(){
+    Eigen::Matrix<double, 2, 2> L = Eigen::Matrix<double, 2, 2>::Zero();
+    L << 1.111111111111111111111 , 2.111111111111111111111, 3.111111111111111111111 , 4.111111111111111111111;
+
+    Eigen::Matrix<double, 2, 2> P = Eigen::Matrix<double, 2, 2>::Zero();
+    P << 1.111111111111111111111 , 2.111111111111111111111, 3.111111111111111111111 , 4.111111111111111111111;
+    
+    std::cout << "is L similar to P? :" <<  L.isApprox(P) << std::endl;
     return 0;
 }

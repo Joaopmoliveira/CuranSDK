@@ -58,6 +58,14 @@ void get_number_tasks(int& tasks_executing, int& tasks_in_queue);
 
 void submit(Job task);
 
+void submit(auto&&... args){
+	std::lock_guard<std::mutex> lk(mut);
+	if(stopped)
+		return;
+	++number_of_pending_tasks;
+	job_queue.emplace_back(std::forward<decltype(args)>(args)...);
+}
+
 void shutdown();
 
 inline size_t size(){

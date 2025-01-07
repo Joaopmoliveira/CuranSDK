@@ -28,7 +28,9 @@ TEST(UnitTestMemoryUtilities, CopyBufferLogic)
 
 /*
 this is a naive implementation of a memory owner, 
-simillar to a shared pointer
+simillar to a shared pointer. Basically there can
+be multiple copies of this object and when the last
+one dies, the memory that it owns is killed
 */
 class MemoryOwner 
 {

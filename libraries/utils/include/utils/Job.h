@@ -63,18 +63,18 @@ Job(std::string descript, std::function<void(void)> funct);
 Job();
 
 inline void operator() () const {
-	if(function_to_execute)
-		function_to_execute();
+	if(m_function_to_execute)
+		m_function_to_execute();
 }
 
 inline std::string description() const {
-	return _description;
+	return m_description;
 }
 
 private:
 
-std::function<void(void)> function_to_execute;
-std::string _description;
+std::function<void(void)> m_function_to_execute;
+std::string m_description;
 
 };
 

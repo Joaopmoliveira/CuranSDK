@@ -23,3 +23,8 @@ gtest_discover_tests(DateFormater)
 add_executable(FileSharing file_data.cpp)
 target_link_libraries(FileSharing GTest::gtest_main utils)
 gtest_discover_tests(FileSharing)
+
+add_executable(JobAndThreadPool job_and_pool.cpp)
+target_link_libraries(JobAndThreadPool GTest::gtest_main utils)
+gtest_discover_tests(JobAndThreadPool)
+

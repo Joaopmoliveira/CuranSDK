@@ -7,7 +7,7 @@ namespace curan
 
         static const Eigen::IOFormat &desired_matrix_format()
         {
-            static Eigen::IOFormat CleanFmt{Eigen::StreamPrecision, 0, ", ", "\n", " ", " "};
+            static Eigen::IOFormat CleanFmt{Eigen::FullPrecision, 0, ", ", "\n", " ", " "};
             return CleanFmt;
         };
 
@@ -235,6 +235,8 @@ namespace curan
         void TrajectorySpecificationData::decode(std::istream &instream){
             nlohmann::json trajectory_data;
             instream >> trajectory_data;
+
+            f_timestamp = trajectory_data["timestamp"];
 
             std::stringstream ss;
             std::string target = trajectory_data["target"];
