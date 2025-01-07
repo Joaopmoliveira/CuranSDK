@@ -61,6 +61,14 @@ void push(const T& new_value) {
 	m_data_cond.notify_one();
 }
 
+void emplace(auto&&... args){
+	std::lock_guard<std::mutex> lk(m_mut);
+	if(m_invalid)
+		return;
+	m_data_queue.emplace(std::forward<decltype(args)>(args)...);
+	m_data_cond.notify_one();
+}
+
 void clear(){
 	std::lock_guard<std::mutex> lk(m_mut);
 	m_data_queue = std::queue<T>{};

@@ -63,7 +63,7 @@ void submit(auto&&... args){
 	if(stopped)
 		return;
 	++number_of_pending_tasks;
-	job_queue.emplace_back(std::forward<decltype(args)>(args)...);
+	job_queue.emplace(std::forward<decltype(args)>(args)...);
 }
 
 void shutdown();
