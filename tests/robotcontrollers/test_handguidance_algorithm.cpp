@@ -79,26 +79,28 @@ int main(){
 
 	auto thread_pool = curan::utilities::ThreadPool::create(3);
 	thread_pool->submit(curan::utilities::Job{"running controller",[&](){
-		try
-		{
-			curan::utilities::cout << "Lauching robot control thread\n";
-			KUKA::FRI::UdpConnection connection;
-			KUKA::FRI::ClientApplication app(connection, client);
-			bool success = app.connect(DEFAULT_PORTID, NULL);
-			curan::utilities::cout << (success ? "Connected successefully\n" : "Failure to connect\n");
-			success = app.step();
-			while (success && client){
-				success = app.step();
-			}
-			app.disconnect();
-			curan::utilities::cout << "Terminating robot control thread\n";
-			return 0;
-		}
-		catch (...)
-		{
-			std::cout << "robot control exception\n";
-			return 1;
-		}
+												try
+												  {
+													  curan::utilities::print<curan::utilities::info>("Lauching robot control thread\n");
+													  KUKA::FRI::UdpConnection connection;
+													  KUKA::FRI::ClientApplication app(connection, client);
+													  bool success = app.connect(DEFAULT_PORTID, NULL);
+													  if(success) curan::utilities::print<curan::utilities::info>("Connected successefully\n");
+													  else curan::utilities::print<curan::utilities::info>("Failure to connect\n");
+													  success = app.step();
+													  while (success && client)
+													  {
+														  success = app.step();
+													  }
+													  app.disconnect();
+													  curan::utilities::print<curan::utilities::info>("Terminating robot control thread\n");
+													  return 0;
+												  }
+												  catch (...)
+												  {
+													  curan::utilities::print<curan::utilities::major_failure>("robot control exception\n");
+													  return 1;
+												  }
 	}});
 
 	window.run();

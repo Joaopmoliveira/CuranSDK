@@ -65,22 +65,22 @@ void foo(asio::io_context& cxt, unsigned short port) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(10) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 			++counter;
 		}
-		curan::utilities::cout << "Stopping context";
+		curan::utilities::print<curan::utilities::info>("Stopping context\n");
 		cxt.stop();
 	}
 	catch (std::exception& e) {
-		curan::utilities::cout << "CLient exception was thrown" + std::string(e.what());
+		curan::utilities::print<curan::utilities::info>("Client exception was thrown {0}\n",e.what());
 	}
 }
 
 void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Pointer val) {
-	curan::utilities::cout << "received message";
+	curan::utilities::print<curan::utilities::info>("received message\n");
 	assert(val.IsNotNull());
 	if (!er) {
 		std::string tmp = val->GetMessageType();
 		std::string desired = "TRANSFORM";
 		if (!tmp.compare(desired)) {
-			curan::utilities::cout << "Receiving TRANSFORM data type";
+			curan::utilities::print<curan::utilities::info>("Receiving TRANSFORM data type\n");
 			igtl::TransformMessage::Pointer transMsg = igtl::TransformMessage::New();
 			//transMsg->Copy(val);
 			//int c = transMsg->Unpack(1);
@@ -93,18 +93,18 @@ void bar(size_t protocol_defined_val,std::error_code er, igtl::MessageBase::Poin
 			//}
 		}
 		else {
-			curan::utilities::cout << "Not Receiving TRANSFORM data type";
+			curan::utilities::print<curan::utilities::info>("Not Receiving TRANSFORM data type\n");
 		}
 	}
 	else {
-		curan::utilities::cout << "failed";
+		curan::utilities::print<curan::utilities::info>("failed\n");
 	}
 
 }
 
 int main() {
 	try {
-		curan::utilities::cout << "started running";
+		curan::utilities::print<curan::utilities::info>("started running\n");
 		using namespace curan::communication;
 		unsigned short port = 50000;
 		asio::io_context io_context;
@@ -116,11 +116,11 @@ int main() {
 		auto client = Client<curan::communication::protocols::igtlink>::make(io_context,resolver.resolve("localhost", std::to_string(port)));
 		client->connect(bar);
 		io_context.run();
-		curan::utilities::cout << "stopped running";
+		curan::utilities::print<curan::utilities::info>("stopped running\n");
 		laucher.join();
 	}
 	catch (std::exception& e) {
-		curan::utilities::cout << "CLient exception was thrown"+std::string(e.what());
+		curan::utilities::print<curan::utilities::major_failure>("Client exception was thrown {0}\n",e.what());
 		return 1;
 	}
 	return 0;

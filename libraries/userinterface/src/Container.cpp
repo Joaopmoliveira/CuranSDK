@@ -1,5 +1,6 @@
 #include "userinterface/widgets/Container.h"
 #include "userinterface/widgets/ComputeImageBounds.h"
+#include "utils/Logger.h"
 
 namespace curan {
 namespace ui {
@@ -110,8 +111,11 @@ callablefunction Container::call(){
 void Container::framebuffer_resize(const SkRect& new_page_size){
     std::lock_guard<std::mutex> g{ get_mutex() };
 
-	if(!compiled)
+	if(!compiled){
+		utilities::print<utilities::Severity::major_failure>("container{:d} : was not compiled\n",(uintptr_t)this);
 		throw std::runtime_error("cannot query positions while container not compiled");
+	}
+		
 
 	auto iter_rect = rectangles_of_contained_layouts.begin();
 	auto iter_drawables = contained_layouts.begin();
@@ -140,8 +144,10 @@ void Container::framebuffer_resize(const SkRect& new_page_size){
 
 SkRect Container::minimum_size(){
     std::lock_guard<std::mutex> g{ get_mutex() };
-	if(!compiled)
+	if(!compiled){
+		utilities::print<utilities::Severity::major_failure>("container{:d} : was not compiled\n",(uintptr_t)this);
 		throw std::runtime_error("cannot query positions while container not compiled");
+	}
 	auto iter_rect = rectangles_of_contained_layouts.begin();
 	auto iter_drawables = contained_layouts.begin();
 	SkRect potential_largest_container = SkRect::MakeWH(1,1);
@@ -158,9 +164,10 @@ SkRect Container::minimum_size(){
 Container& Container::linearize_container(std::vector<drawablefunction>& callable_draw, std::vector<callablefunction>& callable_signal){
 	std::lock_guard<std::mutex> g{ get_mutex() };
 
-	if(!compiled)
+	if(!compiled){
+		utilities::print<utilities::Severity::major_failure>("container{:d} : was not compiled\n",(uintptr_t)this);
 		throw std::runtime_error("cannot query positions while container not compiled");
-
+	}
 	std::vector<drawablefunction> linearized_draw;
 	std::vector<callablefunction> linearized_call;
 
@@ -199,8 +206,10 @@ Container& Container::operator<<(std::unique_ptr<Drawable> drawable){
 
 void validate_minimum_width_and_height(const std::vector<SkRect>& rectangles){
 	for(const auto & rect : rectangles)
-		if(rect.width()<0.000001 || rect.height()<0.000001)
+		if(rect.width()<0.000001 || rect.height()<0.000001){
+			utilities::print<utilities::Severity::major_failure>("sizes are incorrect ({:f},{:f})\n",rect.width(),rect.height());
 			throw std::runtime_error("the size of one or more of the supplied widgets is too close to zero");
+		}
 }
 
 void Container::compile(){
@@ -242,6 +251,7 @@ void Container::compile(){
 		}
 		break;
 	default :
+		utilities::print<utilities::Severity::major_failure>("container{:d} : the Arrangement must be either vertical or horizontal\n",(uintptr_t)this);
 		throw std::runtime_error("the Arrangement must be either vertical or horizontal");
 		break;
 	}

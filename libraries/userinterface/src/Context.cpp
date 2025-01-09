@@ -38,8 +38,11 @@ Context::~Context() {
 }
 
 bool Context::initialize_context() {
-	if(glfwInit()!=GLFW_TRUE)
+	if(glfwInit()!=GLFW_TRUE){
+		utilities::print<utilities::Severity::major_failure>("glfwInit() failed\n");
 		throw std::runtime_error("failed to initialize GFLW");
+	}
+		
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 	PFN_vkGetInstanceProcAddr getInstanceProc = (PFN_vkGetInstanceProcAddr)glfwGetInstanceProcAddress(instance, "vkGetInstanceProcAddr");
@@ -88,6 +91,7 @@ bool Context::initialize_context() {
 
 	if (!init_instance_extensions_and_layers(instanceExtensions,
 		instanceLayers)) {
+		utilities::print<utilities::Severity::major_failure>("failed to allocate extensions and layers\n");
 		return false;
 	}
 
@@ -129,16 +133,20 @@ bool Context::initialize_context() {
 
 	res = vkCreateInstance(&instance_create, nullptr, &instance);
 
-	if (res < 0) 
+	if (res < 0) {
+		utilities::print<utilities::Severity::major_failure>("failure to initialize VKinstance\n");
 		throw std::runtime_error("failure to initialize VKinstance");
+	}
+	utilities::print<utilities::Severity::info>("allocated vk instance\n");
 	
 
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
-	if (deviceCount == 0) 
+	if (deviceCount == 0) {
+		utilities::print<utilities::Severity::major_failure>("failure to find GPUs with Vulkan support\n");
 		throw std::runtime_error("failed to find GPUs with Vulkan support!");
-	
+	}
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
@@ -328,13 +336,17 @@ bool Context::init_device_extensions_and_layers(std::vector<VkLayerProperties>& 
 }
 
 void Context::destroy_context() {
-	if (instance != VK_NULL_HANDLE)
+	if (instance != VK_NULL_HANDLE){
+		utilities::print<utilities::Severity::info>("destroying vk instance\n");
 		vkDestroyInstance(instance, nullptr);
+	}
+	utilities::print<utilities::Severity::info>("terminating glfw library\n");
 	glfwTerminate();
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL Context::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-	//utilities::cout << "validation layer: " << pCallbackData->pMessage << "\n";
+	std::string call{pCallbackData->pMessage};
+	curan::utilities::print<curan::utilities::Severity::debug>("validation layer {0}\n",call);
 	return VK_FALSE;
 }
 

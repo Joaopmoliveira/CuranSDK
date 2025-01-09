@@ -117,7 +117,7 @@ int main(){
     std::thread robot_renderer{[&](){rendering(client);}};
 	try
 	{
-		curan::utilities::cout << "Lauching robot control thread\n";
+		curan::utilities::print<curan::utilities::info>("Lauching robot control thread\n");
 		
 		KUKA::FRI::UdpConnection connection;
 		KUKA::FRI::ClientApplication app(connection, client);

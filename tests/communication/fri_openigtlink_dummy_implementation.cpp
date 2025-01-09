@@ -36,36 +36,33 @@ int server_function(){
     }
     return 0;
     } catch(...){
-        std::cout << "exception thrown\n";
+        curan::utilities::print<curan::utilities::major_failure>("exception thrown\n");
         return 0;
     }
 }
 
 int client_callback(const size_t& loc, const std::error_code& err, std::shared_ptr<curan::communication::FRIMessage> message){
-    std::printf("hi mark\n");
+    curan::utilities::print<curan::utilities::info>("hi mark!\n");
     if (!err) {
         for(size_t link = 0 ; link< curan::communication::FRIMessage::n_joints ; ++link){
-            std::printf("values: %f %f %f \n",message->angles[link],message->external_torques[link],message->measured_torques[link]);
+            curan::utilities::print<curan::utilities::info>("values {:f} {:f} {:f}\n",message->angles[link],message->external_torques[link],message->measured_torques[link]);
         }
     }else {
-        std::printf("error\n");
+        curan::utilities::print<curan::utilities::info>("error\n");
     }
     return 0;
 }
 
-void utilities_parser(){
-    while(!io_context.stopped()){
-        if(auto previous_string = curan::utilities::cout.outputqueue.wait_and_pop(); previous_string)
-            std::cout << *previous_string << "\n";
-    }
-
-}
-
 int main(){
     try{
+    curan::utilities::Logger logger{};
     std::signal(SIGINT, signal_handler);
     std::thread server_thread{server_function};
-    std::thread parser{utilities_parser};
+    std::thread parser{[&](){ 
+        while(logger && !io_context.stopped()){
+            logger.processing_function();
+        }
+    }};
     asio::ip::tcp::resolver resolver(io_context);
 	auto client_joints = curan::communication::Client<curan::communication::protocols::fri>::make( io_context ,resolver.resolve("localhost", std::to_string(port)));
     client_joints->connect(client_callback);

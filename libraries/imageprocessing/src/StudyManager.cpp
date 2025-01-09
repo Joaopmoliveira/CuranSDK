@@ -66,7 +66,7 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 				}
 				catch (const itk::ExceptionObject& e) {
 					std::string s{ e.what() };
-					utilities::cout << "Exception thrown: " + s;
+					utilities::print<utilities::minor_failure>("StudyManager load_studies exception thrown: {}",e.what());
 					return false;
 				}
 				study.study_img.push_back(image2D);
@@ -80,7 +80,7 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 
 			if (tagItr == end)
 			{
-				std::cerr << "Tag " << entryId; std::cerr << " not found in the DICOM header" << std::endl;
+				utilities::print<utilities::minor_failure>("Tag {} not found in the DICOM header\n",entryId);
 				return false;
 			}
 
@@ -90,7 +90,7 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 				tagvalue = entryvalue->GetMetaDataObjectValue();
 			}
 			else {
-				std::cerr << "Entry was not of string type" << std::endl;
+				utilities::print<utilities::minor_failure>("Entry was not of string type\n");
 				return false;
 			}
 
@@ -146,7 +146,7 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 
 		if (tagItr == end)
 		{
-			std::cerr << "Tag " << entryId; std::cerr << " not found in the DICOM header" << std::endl;
+			utilities::print<utilities::minor_failure>("Tag {} not found in the DICOM header\n",entryId);
 			return false;
 		}
 
@@ -155,7 +155,7 @@ bool StudyManager::load_studies(std::vector<std::filesystem::path> paths) {
 		if (entryvalue) {
 			tagvalue = entryvalue->GetMetaDataObjectValue();
 		} else {
-			std::cerr << "Entry was not of string type" << std::endl;
+			utilities::print<utilities::minor_failure>("Entry was not of string type\n");
 			return false;
 		}
 

@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
 
 	try
 	{
-		curan::utilities::cout << "Lauching robot control thread\n";
+		curan::utilities::print<curan::utilities::info>("Lauching robot control thread\n");
 		
 		KUKA::FRI::UdpConnection connection{20};
 		KUKA::FRI::ClientApplication app(connection, client);

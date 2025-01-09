@@ -3,6 +3,7 @@
 #include "userinterface/widgets/definitions/Interactive.h"
 
 #include <iostream>
+#include "utils/Logger.h"
 
 namespace curan {
 namespace ui {
@@ -61,8 +62,11 @@ std::unique_ptr<Button> Button::make(const std::string& button_text,const std::s
 }	
 
 drawablefunction Button::draw(){
-if(!compiled)
-	throw std::runtime_error("must compile the button before drawing operations");
+if(!compiled) {
+	utilities::print<utilities::Severity::major_failure>("button{:d} : was not compiled\n",(uintptr_t)this);
+	throw std::runtime_error("must compile the button before drawing operations"); 
+}
+	
 	auto lamb = [this](SkCanvas* canvas) {
 		switch (current_state) {
 		case ButtonStates::WAITING:
@@ -108,8 +112,10 @@ if(!compiled)
 }
 
 callablefunction Button::call(){
-if(!compiled)
+if(!compiled){
+	utilities::print<utilities::Severity::major_failure>("button{:d} : was not compiled\n",(uintptr_t)this);
 	throw std::runtime_error("must compile the button before drawing operations");
+}
 auto lamb = [this](Signal sig, ConfigDraw* config) {
 		auto check_inside_fixed_area = [this](double x,double y){ 
 			auto widget_rect = get_position();
@@ -151,6 +157,8 @@ auto lamb = [this](Signal sig, ConfigDraw* config) {
 
 void Button::compile(){
 	std::lock_guard<std::mutex> g{ get_mutex() };
+	utilities::print<utilities::Severity::debug>("button{:d} : is compiled\n",(uintptr_t)this);
+
 
 	auto text_font = SkFont(typeface, font_size, 1.0f, 0.0f);
 	text_font.setEdging(SkFont::Edging::kAntiAlias);

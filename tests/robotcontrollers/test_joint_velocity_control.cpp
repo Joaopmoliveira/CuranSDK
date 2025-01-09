@@ -115,7 +115,7 @@ int main(){
 	try
 	{
         std::list<curan::robotic::State> list_of_recorded_states;
-		curan::utilities::cout << "Lauching robot control thread\n";
+		curan::utilities::print<curan::utilities::info>("Lauching robot control thread\n");
 		
 		KUKA::FRI::UdpConnection connection;
 		KUKA::FRI::ClientApplication app(connection, client);

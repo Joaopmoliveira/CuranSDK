@@ -173,7 +173,7 @@ int main()
                                                   {
                                                       try
                                                       {
-                                                          curan::utilities::cout << "Lauching robot control thread\n";
+                                                          curan::utilities::print<curan::utilities::info>("Lauching robot control thread\n");
                                                           KUKA::FRI::UdpConnection connection{200};
                                                           KUKA::FRI::ClientApplication app(connection, client);
                                                           bool success = app.connect(DEFAULT_PORTID, NULL);
@@ -184,7 +184,7 @@ int main()
                 
                                                           }
                                                           app.disconnect();
-                                                          curan::utilities::cout << "Terminating robot control thread\n";
+                                                          curan::utilities::print<curan::utilities::info>("Terminating robot control thread\n");
                                                           return 0;
                                                       }
                                                       catch (...)

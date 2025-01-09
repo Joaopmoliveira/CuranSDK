@@ -1,0 +1,3 @@
+add_executable(ClientServerValidationDummy client_server_dummy_protocol.cpp)
+target_link_libraries(ClientServerValidationDummy GTest::gtest_main communication)
+gtest_discover_tests(ClientServerValidationDummy)

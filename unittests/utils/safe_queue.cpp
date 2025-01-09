@@ -83,4 +83,5 @@ TEST(UnitTestSafeQueue, InvalidationCheck) {
   queue_of_doubles.invalidate();
   ASSERT_EQ(queue_of_doubles.invalid(),true) << "the container should be invalid";
   ASSERT_EQ(queue_of_doubles.valid(),false) << "the container should not be valid";
+  ASSERT_EQ(queue_of_doubles.size(),100) << "the size of queues should be 100";
 }

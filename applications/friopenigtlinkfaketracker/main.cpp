@@ -108,7 +108,7 @@ void start_tracking(std::shared_ptr<curan::communication::Server<curan::communic
 	}
 	catch (...)
 	{
-		curan::utilities::cout << "exception was thrown in the communication loop\n";
+		curan::utilities::print<curan::utilities::major_failure>("exception was thrown in the communication loop\n");
 	}
 }
 
@@ -247,8 +247,7 @@ int main(int argc, char *argv[])
 		auto server_joints = curan::communication::Server<curan::communication::protocols::fri>::make(context, port_fri);
 
 		std::thread thred_joint{[&](){ start_joint_tracking(server_joints, state_flag, shared_state);}};
-
-		curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
+		curan::utilities::print<curan::utilities::major_failure>("Starting server with port: {:d} and in the localhost\n",port);
 		context.run();
 		keep_going.store(false);
 		robot_flag.set(false);
@@ -257,6 +256,6 @@ int main(int argc, char *argv[])
 	}
 	catch (std::exception &e)
 	{
-		std::cout << "main Exception : " << e.what() << std::endl;
+		curan::utilities::print<curan::utilities::major_failure>("main Exception : {}\n" ,e.what() );
 	}
 }

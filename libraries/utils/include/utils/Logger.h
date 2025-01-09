@@ -1,49 +1,84 @@
 #ifndef CURAN_LOGGER_MINE_HEADER_FILE_
 #define CURAN_LOGGER_MINE_HEADER_FILE_
 
-#include <list>
-#include <string>
-#include <sstream>
-#include <fstream>
-#include "SafeQueue.h"
+// Type your code here, or load an example.
+#include <format>
+#include <mutex>
+#include <deque>
+#include <thread>
+#include <condition_variable>
 #include <iostream>
+
+#define CURAN_WARNING_LEVEL info
 
 namespace curan {
 	namespace utilities {
 
-		constexpr int max_number_of_strings = 50;
+enum Severity
+{
+    debug,         // this prints everything
+    info,          // this prints relevant events
+    warning,       // this prints informations that is relevant when debugging but in day to day life is unecessary
+    minor_failure, // these are major errors that in principle should always be logged
+    major_failure,  // there are crashing errors
+    no_print
+};
 
-		
+constexpr size_t max_number_of_strings = 50;
 
-		struct Logger {		
+struct Logger;
 
-			Logger(const std::string& filename) {
+namespace detail{
+    extern Logger *cout;
+}
+struct Logger
+{
+    Logger();
 
-			};
+    void processing_function();
 
-			~Logger() {
+    ~Logger();
 
-			};
+    volatile bool running;
+    volatile bool terminated; 
+    std::condition_variable cv;
+    std::mutex m_mut;
+    std::deque<std::string> m_data_queue;
 
-			SafeQueue<std::string> outputqueue;
+    template <typename... Args>
+    void print(std::format_string<Args...> fmt, Args &&...args)
+    {
+        {
+            std::lock_guard<std::mutex> g{m_mut};
+            if (m_data_queue.size() < max_number_of_strings){
+                auto str = std::format(fmt,std::forward<Args>(args)...);
+                m_data_queue.emplace_back(str);
+            }else{
+                m_data_queue.pop_front();
+                auto str = std::format(fmt,std::forward<Args>(args)...);
+                m_data_queue.emplace_back(str);
+            }
+        }
+        cv.notify_one();
+    }
 
-			template<class U>
-			friend Logger& operator<<(Logger& os, const U& L);
-		};
+    operator bool(){
+        std::lock_guard<std::mutex> g{m_mut};
+        return running;
+    }
+};
 
-		template<typename T>
-		Logger& operator<< (Logger& io, const T& out) {
-			std::stringstream s;
-			s << out;
-			std::cout << s.str();
-			if(io.outputqueue.size()<max_number_of_strings)
-				io.outputqueue.push(s.str());
-			return io;
-		};
+template <Severity level, typename... Args>
+void print(std::format_string<Args...> fmt, Args &&...args)
+{
+    if constexpr (level >= CURAN_WARNING_LEVEL)
+    {
+        if (detail::cout)
+            detail::cout->print(fmt, std::forward<Args>(args)...);
+    } // else the text data is discarded
+}
 
-
-		extern Logger cout;
-	}
+}
 }
 
 #endif

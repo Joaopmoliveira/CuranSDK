@@ -52,19 +52,19 @@ class MemoryOwner
   unsigned char *pointer_to_data;
   size_t block_of_memory;
 
-  MemoryOwner() : pointer_to_data{nullptr}, control_block{nullptr}
+  MemoryOwner() : pointer_to_data{nullptr}, control_block{nullptr}, block_of_memory{0}
   {
     control_block = new ControlBlock{};
   }
 
-  MemoryOwner(size_t block_size) : pointer_to_data{nullptr}, control_block{nullptr}
+  MemoryOwner(size_t block_size) : pointer_to_data{nullptr}, control_block{nullptr}, block_of_memory{0}
   {
     control_block = new ControlBlock{};
     pointer_to_data = new unsigned char[block_size]{};
     block_of_memory = block_size;
   }
 
-  MemoryOwner(const MemoryOwner &other) : pointer_to_data{nullptr}, control_block{nullptr}
+  MemoryOwner(const MemoryOwner &other) : pointer_to_data{nullptr}, control_block{nullptr}, block_of_memory{0}
   {
     control_block = other.control_block;
     control_block->increment();
@@ -81,7 +81,7 @@ class MemoryOwner
     block_of_memory = other.block_of_memory;
   }
 
-  MemoryOwner(MemoryOwner &&other) : pointer_to_data{nullptr}, control_block{nullptr}
+  MemoryOwner(MemoryOwner &&other) : pointer_to_data{nullptr}, control_block{nullptr}, block_of_memory{0}
   {
     control_block = other.control_block;
     control_block->increment();

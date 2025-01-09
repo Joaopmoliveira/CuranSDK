@@ -29,7 +29,7 @@ void robot_control(curan::robotic::RobotLBR& lbr)
 {
 	try
 	{
-		curan::utilities::cout << "Lauching robot control thread\n";
+		curan::utilities::print<curan::utilities::info>("Lauching robot control thread\n");
 		KUKA::FRI::UdpConnection connection{20};
 		KUKA::FRI::ClientApplication app(connection, lbr);
 		app.connect(DEFAULT_PORTID, NULL);
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 			std::cout << "joint tracking stopping" << std::endl;
 		}}; //--------------------------- 
 
-		curan::utilities::cout << "Starting server with port: " << port << " and in the localhost\n";
+		curan::utilities::print<curan::utilities::info>("Starting server with port: {:d} and in the localhost\n",port);
 		context.run();
 		server_joints->cancel();
 		client.cancel();
@@ -256,6 +256,6 @@ int main(int argc, char *argv[])
 	}
 	catch (std::exception &e)
 	{
-		std::cout << "main Exception : " << e.what() << std::endl;
+		curan::utilities::print<curan::utilities::major_failure>("main Exception : {}\n",e.what());
 	}
 }

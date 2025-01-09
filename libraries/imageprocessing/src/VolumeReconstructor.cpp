@@ -314,8 +314,7 @@ void VolumeReconstructor::fill_holes()
 		break;
 	default:
 	{
-		std::string s = "Unknown interpolation mode: " + std::to_string(fillType);
-		utilities::cout << s;
+		utilities::print<utilities::minor_failure>("Unknown interpolation mode: {}\n", std::to_string(fillType));
 		return;
 	}
 	}

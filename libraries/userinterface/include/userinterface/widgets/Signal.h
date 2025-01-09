@@ -1,7 +1,6 @@
 #ifndef CURAN_SIGNAL_HEADER_FILE_
 #define CURAN_SIGNAL_HEADER_FILE_
 
-#include <variant>
 #include <string>
 #include <vector>
 #include <list>
@@ -9,6 +8,7 @@
 #include "definitions/UIdefinitions.h"
 #include <ostream>
 #include "utils/Overloading.h"
+#include <variant>
 
 namespace curan
 {

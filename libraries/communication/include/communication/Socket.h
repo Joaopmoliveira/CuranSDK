@@ -89,7 +89,6 @@ namespace curan
 							   bool shoud_write = to_send.empty();
 							   auto size_before = to_send.size();
 							   to_send.push_back(buff);
-							   // std::printf("(pointer = %llu ) before (%llu) after (%llu)\n",(size_t) this, size_before, to_send.size());
 							   if (shoud_write && is_connected)
 								   do_write();
 						   });
@@ -153,10 +152,12 @@ namespace curan
 				auto client = owner.lock();
 				timer.async_wait([this, client, connection_callback](asio::error_code ec)
 								 {
-				if (is_connected)
-					return;
-				close();
-				connection_callback(ec); });
+					if (is_connected)
+						return;
+					close();
+					connection_callback(ec);
+					 }
+				);
 				asio::async_connect(_socket, endpoints,
 									[this, client, connection_callback](std::error_code ec, asio::ip::tcp::endpoint e)
 									{

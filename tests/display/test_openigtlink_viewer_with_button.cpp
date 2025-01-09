@@ -169,7 +169,7 @@ void generate_image_message(std::atomic<bool>& continue_running ,curan::ui::Open
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
-	curan::utilities::cout << "stopped to send data";
+	curan::utilities::print<curan::utilities::info>("stopped to send data\n");
 }
 
 
@@ -227,7 +227,7 @@ int main() {
 
 			bool val = viewer->swapBuffers();
 			if (!val)
-				std::cout << "failed to swap buffers\n";
+				curan::utilities::print<curan::utilities::minor_failure>("failed to swap buffers\n");
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
@@ -236,7 +236,7 @@ int main() {
 		return 0;
 	}
 	catch (std::exception & e) {
-		std::cout << "Failed" << e.what() << std::endl;
+		curan::utilities::print<curan::utilities::major_failure>("Failed: {0}\n",e.what());
 		return 1;
 	}
 }

@@ -51,7 +51,7 @@ bool GetPerpendicularSlice(Volume& in_vol, InternalImageType::Pointer& out_vol, 
 		filter->Update();
 	}
 	catch (const itk::ExceptionObject& e) {
-		utilities::cout << e.what();
+		utilities::print<utilities::minor_failure>("GetPerpendicularSlice() exception thrown: {}",e.what());
 		return false;
 	}
 
@@ -210,8 +210,10 @@ int TrilinearInterpolation(const Eigen::Vector4d point,
 					a *= ACCUMULATION_MULTIPLIER; // needs to be done for proper conversion to unsigned short for accumulation buffer
 					break;
 				default:
-					std::string s = "Unknown Compounding operator detected, value " + std::to_string(compoundingMode) + ". Leaving value as-is.";
-					utilities::cout << s;
+					{
+						std::string compmode = std::to_string(compoundingMode);
+						utilities::print<utilities::minor_failure>("Unknown Compounding operator detected, value {0}. Leaving value as-is\n",compmode);
+					}
 					break;
 				}
 				inPtrTmp++;
@@ -363,8 +365,10 @@ int NearestNeighborInterpolation(const Eigen::Vector4d point,
 			break;
 		}
 		default:
-			std::string s = "Unknown Compounding operator detected, value " + std::to_string(compoundingMode) + ". Leaving value as-is.";
-			utilities::cout << s;
+			{	
+				std::string msg{std::to_string(compoundingMode)};
+				utilities::print<utilities::minor_failure>("Unknown Compounding operator detected, value {0}. Leaving value as-is\n",msg);
+			}
 			break;
 		}
 		return 1;

@@ -35,10 +35,6 @@ namespace curan
 			{
 			}
 
-			Server(asio::io_context &io_context, unsigned short port, std::function<bool(std::error_code ec)> connection_callback) : _cxt{io_context}, acceptor_{_cxt, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)}
-			{
-			}
-
 		public:
 			static inline std::shared_ptr<Server<protocol>> make(asio::io_context &io_context, unsigned short port)
 			{
@@ -55,7 +51,7 @@ namespace curan
 			*/
 			static inline std::shared_ptr<Server<protocol>> make(asio::io_context &io_context, unsigned short port, std::function<bool(std::error_code ec)> connection_callback)
 			{
-				std::shared_ptr<Server<protocol>> server = std::shared_ptr<Server<protocol>>(new Server{io_context, port, connection_callback});
+				std::shared_ptr<Server<protocol>> server = std::shared_ptr<Server<protocol>>(new Server{io_context, port});
 				server->accept(connection_callback);
 				return server;
 			}
@@ -98,17 +94,20 @@ namespace curan
 				acceptor_.cancel();
 			}
 
-			void write(std::shared_ptr<utilities::MemoryBuffer> buffer)
+			bool write(std::shared_ptr<utilities::MemoryBuffer> buffer)
 			{
 				std::lock_guard<std::mutex> g{mut};
+				bool send_info = false;
 				if (list_of_clients.size() == 0)
-					return;
-				list_of_clients.remove_if([buffer](std::shared_ptr<Client<protocol>> &client)
-										  {
-		if(!client->get_socket().sendable())
-			return true;
-		client->write(buffer);
-		return false; });
+					return send_info;
+				
+				list_of_clients.remove_if([buffer,&send_info](std::shared_ptr<Client<protocol>> &client){
+					if(!client->get_socket().sendable())
+						return true;
+					client->write(buffer);
+					send_info = true;
+					return false; });
+				return send_info;
 			}
 
 			inline asio::io_context &get_context()
@@ -129,10 +128,8 @@ namespace curan
 							for (auto &submitted_callables : callables)
 								client_ptr->connect(submitted_callables);
 							list_of_clients.push_back(client_ptr);
-							
 						}
-						else
-						{
+						else{ //what else to do if the user did not provide any callback mechanism? 
 							throw std::runtime_error("cannot wait for client");
 						}
 						accept();
@@ -156,12 +153,8 @@ namespace curan
 							else
 								client_ptr->get_socket().close();
 						}
-						else
-						{
-							connection_callback(ec);
-						}
-
-						accept(connection_callback);
+						else if(connection_callback(ec))
+								accept(connection_callback);
 					});
 			}
 		};

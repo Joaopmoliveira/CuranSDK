@@ -157,8 +157,7 @@ void generate_image_message(curan::ui::OpenIGTLinkViewer* button) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(500) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		++counter;
 	}
-	curan::utilities::cout << "stopped to send data";
-
+	curan::utilities::print<curan::utilities::info>("stopped to send data\n");
 }
 
 void generate_transform_message(curan::ui::OpenIGTLinkViewer* button) {
@@ -195,7 +194,7 @@ void generate_transform_message(curan::ui::OpenIGTLinkViewer* button) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(500) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		++counter;
 	}
-	curan::utilities::cout << "stopped to send data";
+	curan::utilities::print<curan::utilities::info>("stopped to send data\n");
 }
 
 
@@ -236,16 +235,16 @@ int main() {
 				calsignal(signals.back(),&config_draw);
 			bool val = viewer->swapBuffers();
 			if (!val)
-				curan::utilities::cout << "failed to swap buffers\n";
+				curan::utilities::print<curan::utilities::info>("failed to swap buffers\n");
 			auto end = std::chrono::high_resolution_clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 		}
-		curan::utilities::cout << "stopped window";
+		curan::utilities::print<curan::utilities::info>("stopped window\n");
 		message_generator.join();
 		return 0;
 	}
 	catch (std::exception& e) {
-		std::cout << "Failed: " << e.what() << std::endl;
+		curan::utilities::print<curan::utilities::major_failure>("Failed: {0}\n",e.what());
 		return 1;
 	}
 }

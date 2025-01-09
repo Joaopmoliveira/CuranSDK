@@ -1,5 +1,3 @@
-include(GoogleTest)
-
 add_executable(StringManipulation string_manipulation.cpp)
 target_link_libraries(StringManipulation GTest::gtest_main utils)
 gtest_discover_tests(StringManipulation)

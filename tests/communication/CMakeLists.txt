@@ -12,6 +12,12 @@ target_link_libraries(test_communication PUBLIC
 communication
 )
 
+add_executable(test_dummy_for_unittest_integration test_dummy_for_unittest_integration.cpp)
+
+target_link_libraries(test_dummy_for_unittest_integration PUBLIC
+communication
+)
+
 add_executable(test_fri_communication fri_openigtlink_dummy_implementation.cpp)
 
 target_link_libraries(test_fri_communication PUBLIC
