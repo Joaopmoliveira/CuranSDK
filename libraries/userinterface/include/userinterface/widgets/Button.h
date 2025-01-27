@@ -62,7 +62,7 @@ Now the button waits with the red color in the following drawing operations
 
 */
 
-class Button : public  Drawable , public utilities::Lockable, public SignalProcessor<Button> {
+class Button final : public  Drawable , public utilities::Lockable, public SignalProcessor<Button> {
 
 public:
 

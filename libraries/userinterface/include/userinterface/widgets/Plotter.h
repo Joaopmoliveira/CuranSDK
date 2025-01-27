@@ -13,13 +13,12 @@
 namespace curan {
 namespace ui {
 
-class Plotter : public  curan::ui::Drawable , public curan::utilities::Lockable, public curan::ui::SignalProcessor<Plotter> {
-
-    std::vector<curan::utilities::CircularBuffer<SkPoint>> buffers;
+class Plotter final : public  curan::ui::Drawable , public curan::utilities::Lockable, public curan::ui::SignalProcessor<Plotter> {
+    std::vector<std::tuple<size_t,std::vector<SkPoint>>> buffers_with_counters;
     std::vector<uint8_t> verbs;
     SkPath path;
     SkColor background = SK_ColorWHITE;
-    
+
 
 public:
 
@@ -42,8 +41,10 @@ void compile() override;
 ~Plotter();
 
 inline void append(const SkPoint& in,const size_t& index){
-    assert(index < buffers.size());
-    buffers[index].put(SkPoint{in});
+    assert(index < buffers_with_counters.size());
+    auto& [counter,array] = buffers_with_counters[index];
+    ++counter;
+    array[counter % array.size()] = in; 
 }
 
 curan::ui::drawablefunction draw() override;

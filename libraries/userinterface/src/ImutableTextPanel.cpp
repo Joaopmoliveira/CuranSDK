@@ -7,6 +7,7 @@ namespace curan
         ImutableTextPanel::ImutableTextPanel(const std::string &in_default_text)
         {
             fEditor.setFontMgr(fontMgr());
+            fEditor.setFont(SkFont(fEditor.FontMgr()->matchFamilyStyle(kTypefaces[fTypefaceIndex].data(), SkFontStyle(kFontWeight, kFontWidth, kFontSlant)), fFontSize));
             fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0,0},in_default_text.data(),in_default_text.size());
         }
 

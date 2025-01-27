@@ -137,9 +137,9 @@ asio::const_buffer buffer_;
 };
 
 class CopyBuffer final : public MemoryBuffer {
-explicit CopyBuffer(char* data, size_t size);
+explicit CopyBuffer(const char* data, size_t size);
 public:
-static std::shared_ptr<MemoryBuffer> make_shared(char* data, size_t size);
+static std::shared_ptr<MemoryBuffer> make_shared(const char* data, size_t size);
 
 inline const asio::const_buffer* begin() const override { return &buffer_; }
 inline const asio::const_buffer* end() const override { return &buffer_ + 1; }

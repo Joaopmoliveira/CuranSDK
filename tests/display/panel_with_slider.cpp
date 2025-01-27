@@ -7,96 +7,42 @@
 #include "userinterface/widgets/SliderPanel.h"
 #include "userinterface/widgets/Container.h"
 #include "userinterface/widgets/Page.h"
-#include "userinterface/widgets/Drawable.h"
 
-#include <unordered_map>
-#include <optional>
-#include <functional>
-
-
-#include "utils/Lockable.h"
-#include "userinterface/widgets/SignalProcessor.h"
-#include "userinterface/widgets/ImageWrapper.h"
-#include "userinterface/widgets/ComputeImageBounds.h"
-#include "utils/Overloading.h"
-
-#include "itkRescaleIntensityImageFilter.h"
-#include "itkCastImageFilter.h"
-#include "itkExtractImageFilter.h"
 #include "itkImage.h"
-#include "itkImageFileReader.h"
 
-#include "itkGDCMImageIO.h"
-#include "itkGDCMSeriesFileNames.h"
-#include "itkImageSeriesReader.h"
 
-using DicomPixelType = unsigned short;
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
-using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
 
-std::optional<ImageType::Pointer> get_volume(std::string path)
-{
-	using ReaderType = itk::ImageSeriesReader<DICOMImageType>;
-	auto reader = ReaderType::New();
+ImageType::Pointer get_volume(size_t dimensions) {
+  ImageType::Pointer memo = ImageType::New();
 
-	using ImageIOType = itk::GDCMImageIO;
-	auto dicomIO = ImageIOType::New();
+  ImageType::SizeType size;
+  size[0] = dimensions;
+  size[1] = dimensions;
+  size[2] = dimensions;
 
-	reader->SetImageIO(dicomIO);
+  ImageType::IndexType start;
+  start.Fill(0);
 
-	using NamesGeneratorType = itk::GDCMSeriesFileNames;
-	auto nameGenerator = NamesGeneratorType::New();
+  ImageType::RegionType region;
+  region.SetIndex(start);
+  region.SetSize(size);
 
-	nameGenerator->SetUseSeriesDetails(true);
-	nameGenerator->AddSeriesRestriction("0008|0021");
+  const itk::SpacePrecisionType origin[Dimension] = {0.0, 0.0, 0.0};
+  memo->SetOrigin(origin);
+  const itk::SpacePrecisionType spacing[Dimension] = {1.0, 1.0, 1.0};
+  memo->SetSpacing(spacing);
+  memo->SetRegions(region);
 
-	nameGenerator->SetDirectory(path);
+  memo->Allocate();
 
-	using SeriesIdContainer = std::vector<std::string>;
+  auto raw_buffer = memo->GetBufferPointer();
+  for (size_t i = 0; i < dimensions * dimensions * dimensions; ++i)
+    raw_buffer[i] = rand();
 
-	const SeriesIdContainer &seriesUID = nameGenerator->GetSeriesUIDs();
-
-	auto seriesItr = seriesUID.begin();
-	auto seriesEnd = seriesUID.end();
-	while (seriesItr != seriesEnd)
-	{
-		std::cout << seriesItr->c_str() << std::endl;
-		++seriesItr;
-	}
-
-	std::string seriesIdentifier;
-	seriesIdentifier = seriesUID.begin()->c_str();
-
-	using FileNamesContainer = std::vector<std::string>;
-	FileNamesContainer fileNames;
-
-	fileNames = nameGenerator->GetFileNames(seriesIdentifier);
-
-	reader->SetFileNames(fileNames);
-
-	using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
-	auto rescale = RescaleType::New();
-	rescale->SetInput(reader->GetOutput());
-	rescale->SetOutputMinimum(0);
-	rescale->SetOutputMaximum(itk::NumericTraits<PixelType>::max());
-
-	using FilterType = itk::CastImageFilter<DICOMImageType, ImageType>;
-	auto filter = FilterType::New();
-	filter->SetInput(rescale->GetOutput());
-
-	try
-	{
-		filter->Update();
-	}
-	catch (const itk::ExceptionObject &ex)
-	{
-		std::cout << ex << std::endl;
-		return std::nullopt;
-	}
-
-	return filter->GetOutput();
+  return memo;
 }
 
 int main()
@@ -110,12 +56,7 @@ int main()
 		DisplayParams param{std::move(context), 2200, 1200};
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		auto volume = get_volume(CURAN_COPIED_RESOURCE_PATH "/dicom_sample/mri_brain");
-		if (!volume)
-			return 1;
-
-		VolumetricMask mask{*volume};
-
+		VolumetricMask mask{get_volume()};
 		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);

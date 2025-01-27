@@ -9,7 +9,9 @@
 #include <condition_variable>
 #include <iostream>
 
+#ifndef CURAN_WARNING_LEVEL
 #define CURAN_WARNING_LEVEL info
+#endif
 
 namespace curan {
 	namespace utilities {

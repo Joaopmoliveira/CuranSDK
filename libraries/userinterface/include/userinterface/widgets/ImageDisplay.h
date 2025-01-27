@@ -15,7 +15,7 @@ namespace ui {
 
 using custom_step = std::function<void(SkCanvas*, SkRect, SkRect)>;
 
-class ImageDisplay : public  Drawable, public utilities::Lockable, public SignalProcessor<ImageDisplay>{
+class ImageDisplay final : public  Drawable, public utilities::Lockable, public SignalProcessor<ImageDisplay>{
 	int width = -1;
 	int height = -1;
 	bool compiled = false;

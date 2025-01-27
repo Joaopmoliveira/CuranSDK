@@ -11,16 +11,18 @@ namespace curan
         {
             auto font_manager = fontMgr();
             fEditor.setFontMgr(font_manager);
+            fEditor.setFont(SkFont(fEditor.FontMgr()->matchFamilyStyle(kTypefaces[fTypefaceIndex].data(), SkFontStyle(kFontWeight, kFontWidth, kFontSlant)), fFontSize));
         }
 
         MutatingTextPanel::MutatingTextPanel(bool is_tight,const std::string &in_default_text) : default_text{in_default_text}, fTight{is_tight}
         {
-            auto font_manager = SkFontMgr::RefEmpty();
+            auto font_manager = fontMgr();
             fEditor.setFontMgr(font_manager);
+            fEditor.setFont(SkFont(fEditor.FontMgr()->matchFamilyStyle(kTypefaces[fTypefaceIndex].data(), SkFontStyle(kFontWeight, kFontWidth, kFontSlant)), fFontSize));
             has_text_from_user = false;
             if (default_text)
             {
-                fEditor.insert(fTextPos, (*default_text).data(), (*default_text).size());
+                fEditor.insert(fTextPos, (*default_text).data(), (*default_text).size()); // I added the plus one because there is a null termianted character that is necessary
             }
         }
 
@@ -203,7 +205,7 @@ namespace curan
                                                                             has_text_from_user = false;
                                                                             if (default_text)
                                                                             {
-                                                                                fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, (*default_text).data(), (*default_text).size());
+                                                                                fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, (*default_text).data(), (*default_text).size()); // I added the plus one because there is a null termianted character that is necessary
                                                                             }
                                                                         }
                                                                         interacted = true;
@@ -223,7 +225,7 @@ namespace curan
                                                                             has_text_from_user = false;
                                                                             if (default_text)
                                                                             {
-                                                                                fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, (*default_text).data(), (*default_text).size());
+                                                                                fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, (*default_text).data(), (*default_text).size()); // I added the plus one because there is a null termianted character that is necessary
                                                                             }
                                                                         }
                                                                         interacted = true;
@@ -491,7 +493,7 @@ namespace curan
                                                                             has_text_from_user = false;
                                                                             if (default_text)
                                                                             {
-                                                                                fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, (*default_text).data(), (*default_text).size());
+                                                                                fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, (*default_text).data(), (*default_text).size()); // I added the plus one because there is a null termianted character that is necessary
                                                                             }
                                                                         }
                                                                         interacted = true;
@@ -511,7 +513,7 @@ namespace curan
                                                                             has_text_from_user = false;
                                                                             if (default_text)
                                                                             {
-                                                                                fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, (*default_text).data(), (*default_text).size());
+                                                                                fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, (*default_text).data(), (*default_text).size()); // I added the plus one because there is a null termianted character that is necessary
                                                                             }
                                                                         }
                                                                         interacted = true;
@@ -731,10 +733,10 @@ namespace curan
         void MutatingTextPanel::appendtext(const std::string &in_text)
         {
             if (has_text_from_user)
-                fTextPos = fEditor.insert(fTextPos, in_text.data(), in_text.size());
+                fTextPos = fEditor.insert(fTextPos, in_text.data(), in_text.size()); // I added the plus one because there is a null termianted character that is necessary
             else
             {
-                fTextPos = fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, in_text.data(), in_text.size());
+                fTextPos = fEditor.insert(SkPlainTextEditor::Editor::TextPosition{0, 0}, in_text.data(), in_text.size()); // I added the plus one because there is a null termianted character that is necessary
                 has_text_from_user = true;
             }
         }
@@ -742,7 +744,7 @@ namespace curan
         void MutatingTextPanel::replacetext(const std::string &in_text)
         {
             SkPlainTextEditor::Editor::TextPosition replacement_at_start{0, 0};
-            fTextPos = fEditor.insert(replacement_at_start, in_text.data(), in_text.size());
+            fTextPos = fEditor.insert(replacement_at_start, in_text.data(), in_text.size());// I added the plus one because there is a null termianted character that is necessary
             has_text_from_user = true;
         }
 

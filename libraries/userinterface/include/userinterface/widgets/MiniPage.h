@@ -12,7 +12,7 @@
 namespace curan {
 	namespace ui {
 
-		class MiniPage : public  Drawable , public utilities::Lockable, public SignalProcessor<MiniPage> {
+		class MiniPage final : public  Drawable , public utilities::Lockable, public SignalProcessor<MiniPage> {
 
 			std::unique_ptr<LightWeightPage> main_page;
 			std::unique_ptr<LightWeightPage> replacement_main_page;

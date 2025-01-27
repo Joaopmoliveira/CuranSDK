@@ -5,6 +5,7 @@
 
 #include "include/core/SkFont.h"
 #include "include/core/SkFontMetrics.h"
+#include "include/core/SkFontMgr.h"
 #include "include/core/SkPoint.h"
 #include "include/core/SkRefCnt.h"
 #include "include/core/SkScalar.h"
@@ -12,14 +13,28 @@
 #include "include/core/SkTextBlob.h"
 #include "include/core/SkTypes.h"
 #include "include/private/base/SkTFitsIn.h"
-#include "word_boundaries.h"
+#include "modules/skplaintexteditor/src/word_boundaries.h"
 #include "modules/skshaper/include/SkShaper.h"
 #include "src/base/SkUTF.h"
 #include "src/core/SkTextBlobPriv.h"
 
-#include <cfloat>
-#include <climits>
-#include <cstring>
+#if defined(SK_SHAPER_HARFBUZZ_AVAILABLE) && defined(SK_SHAPER_UNICODE_AVAILABLE)
+#include "modules/skshaper/include/SkShaper_harfbuzz.h"
+#include "modules/skshaper/include/SkShaper_skunicode.h"
+#include "modules/skunicode/include/SkUnicode.h"
+#else
+class SkUnicode;
+#endif
+
+#if defined(SK_UNICODE_ICU_IMPLEMENTATION)
+#include "modules/skunicode/include/SkUnicode_icu.h"
+#endif
+#if defined(SK_UNICODE_LIBGRAPHEME_IMPLEMENTATION)
+#include "modules/skunicode/include/SkUnicode_libgrapheme.h"
+#endif
+#if defined(SK_UNICODE_ICU4X_IMPLEMENTATION)
+#include "modules/skunicode/include/SkUnicode_icu4x.h"
+#endif
 
 
 using namespace SkPlainTextEditor;
@@ -252,6 +267,29 @@ static void set_character_bounds(void* context,
     }
 }
 
+// TODO(kjlubick,jlavrova) Remove these defines by having clients register something or somehow
+// plumbing this all into the animation builder factories.
+#if defined(SK_SHAPER_HARFBUZZ_AVAILABLE) && defined(SK_SHAPER_UNICODE_AVAILABLE)
+static sk_sp<SkUnicode> get_unicode() {
+#if defined(SK_UNICODE_ICU_IMPLEMENTATION)
+    if (auto unicode = SkUnicodes::ICU::Make()) {
+        return unicode;
+    }
+#endif  // defined(SK_UNICODE_ICU_IMPLEMENTATION)
+#if defined(SK_UNICODE_LIBGRAPHEME_IMPLEMENTATION)
+    if (auto unicode = SkUnicodes::Libgrapheme::Make()) {
+        return unicode;
+    }
+#endif
+#if defined(SK_UNICODE_ICU4X_IMPLEMENTATION)
+    if (auto unicode = SkUnicodes::ICU4X::Make()) {
+        return unicode;
+    }
+#endif
+    return nullptr;
+}
+#endif
+
 SkPlainTextEditor::ShapeResult SkPlainTextEditor::Shape(const char* utf8Text,
                                      size_t textByteLen,
                                      const SkFont& font,
@@ -264,7 +302,15 @@ SkPlainTextEditor::ShapeResult SkPlainTextEditor::Shape(const char* utf8Text,
         utf8Text = nullptr;
         textByteLen = 0;
     }
-    std::unique_ptr<SkShaper> shaper = SkShaper::MakePrimitive();
+    std::unique_ptr<SkShaper> shaper = nullptr;
+#if defined(SK_SHAPER_HARFBUZZ_AVAILABLE) && defined(SK_SHAPER_UNICODE_AVAILABLE)
+    auto unicode = get_unicode();
+    shaper = SkShapers::HB::ShaperDrivenWrapper(unicode, fontMgr);
+#else
+    shaper = SkShapers::Primitive::PrimitiveText();
+#endif
+    SkASSERT(shaper);
+
     float height = font.getSpacing();
     RunHandler runHandler(utf8Text, textByteLen);
     if (textByteLen) {
@@ -273,8 +319,39 @@ SkPlainTextEditor::ShapeResult SkPlainTextEditor::Shape(const char* utf8Text,
             c = SkRect{-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
         }
         runHandler.setRunCallback(set_character_bounds, result.glyphBounds.data());
-        // TODO: make use of locale in shaping.
-        shaper->shape(utf8Text, textByteLen, font, true, width, &runHandler);
+
+        static constexpr uint8_t kBidiLevelLTR = 0;
+        std::unique_ptr<SkShaper::BiDiRunIterator> bidi = nullptr;
+#if defined(SK_SHAPER_HARFBUZZ_AVAILABLE) && defined(SK_SHAPER_UNICODE_AVAILABLE)
+        bidi = SkShapers::unicode::BidiRunIterator(
+                unicode, utf8Text, textByteLen, kBidiLevelLTR);
+#endif
+        if (!bidi) {
+            bidi = std::make_unique<SkShaper::TrivialBiDiRunIterator>(kBidiLevelLTR, textByteLen);
+        }
+        SkASSERT(bidi);
+
+        std::unique_ptr<SkShaper::LanguageRunIterator> language =
+                SkShaper::MakeStdLanguageRunIterator(utf8Text, textByteLen);
+        SkASSERT(language);
+
+        std::unique_ptr<SkShaper::ScriptRunIterator> script =
+                SkShaper::MakeScriptRunIterator(utf8Text, textByteLen, SkSetFourByteTag('Z','z','z','z'));
+        SkASSERT(script);
+
+        std::unique_ptr<SkShaper::FontRunIterator> fontRuns = SkShaper::MakeFontMgrRunIterator(utf8Text, textByteLen, font, fontMgr);
+        SkASSERT(fontRuns);
+
+        shaper->shape(utf8Text,
+                      textByteLen,
+                      *fontRuns,
+                      *bidi,
+                      *script,
+                      *language,
+                      nullptr,
+                      0,
+                      width,
+                      &runHandler);
         if (runHandler.lineEndOffsets().size() > 1) {
             result.lineBreakOffsets = runHandler.lineEndOffsets();
             SkASSERT(result.lineBreakOffsets.size() > 0);

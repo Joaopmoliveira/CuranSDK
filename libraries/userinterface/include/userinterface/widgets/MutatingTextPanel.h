@@ -20,7 +20,7 @@ namespace curan
         class MutatingTextPanel;
         using text_defined_callback = std::function<void(MutatingTextPanel* button, const std::string& ,ConfigDraw* config)>;
 
-        class MutatingTextPanel : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<MutatingTextPanel>
+        class MutatingTextPanel final : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<MutatingTextPanel>
         {
             std::vector<text_defined_callback> panel_callback;
             const std::array<std::string, 3> kTypefaces = {"sans-serif", "serif", "monospace"};

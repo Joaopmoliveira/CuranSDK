@@ -319,7 +319,7 @@ namespace curan
 		constexpr size_t size_of_slider_in_height = 30;
 		constexpr size_t buffer_around_panel = 8;
 
-		class SlidingPanel : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<SlidingPanel>
+		class SlidingPanel final : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<SlidingPanel>
 		{
 		public:
 			enum class SliderStates

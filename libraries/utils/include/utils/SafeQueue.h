@@ -91,7 +91,7 @@ template< class Rep, class Period>
 	std::unique_lock<std::mutex> lk(m_mut);
 	if (m_invalid)
 		return std::nullopt;
-	m_data_cond.wait_until(lk,rel_time, [this] {return (!m_data_queue.empty() || m_invalid); });
+	bool cond = m_data_cond.wait_for(lk,rel_time, [this] {return (!m_data_queue.empty() || m_invalid); });
 	if (m_invalid || m_data_queue.empty())
 		return std::nullopt;
 	auto value = m_data_queue.front();

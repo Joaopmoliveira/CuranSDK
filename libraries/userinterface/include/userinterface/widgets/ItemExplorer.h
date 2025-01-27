@@ -34,7 +34,7 @@ struct Item {
 	explicit Item(size_t identifier, std::string text);
 };
 
-class ItemExplorer : public  Drawable , public utilities::Lockable, public SignalProcessor<ItemExplorer> {
+class ItemExplorer final : public  Drawable , public utilities::Lockable, public SignalProcessor<ItemExplorer> {
 public:
 
 	static std::unique_ptr<ItemExplorer> make(const std::string& default_icon_name,IconResources& system_icons,bool is_exclusive = true);

@@ -30,12 +30,6 @@ namespace curan
 			double ypos;
 		};
 
-		struct RightPress
-		{
-			double xpos;
-			double ypos;
-		};
-
 		struct Scroll
 		{
 			double xpos;

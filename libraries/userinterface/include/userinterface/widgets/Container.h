@@ -105,7 +105,7 @@ int main(){
 namespace curan {
 namespace ui {
 
-class Container : public Drawable , utilities::Lockable{
+class Container final : public Drawable , utilities::Lockable{
 public:
 
 enum class ContainerType{

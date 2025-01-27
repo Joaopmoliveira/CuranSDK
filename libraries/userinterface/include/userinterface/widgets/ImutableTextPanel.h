@@ -1,5 +1,5 @@
-#ifndef CURAN_MUTATING_TEXTPANEL_HEADER_FILE_
-#define CURAN_MUTATING_TEXTPANEL_HEADER_FILE_
+#ifndef CURAN_IMUTABLE_TEXTPANEL_HEADER_FILE_
+#define CURAN_IMUTABLE_TEXTPANEL_HEADER_FILE_
 
 #include "userinterface/widgets/ConfigDraw.h"
 #include "utils/Overloading.h"
@@ -19,7 +19,7 @@ namespace ui{
 
 */
 
-class ImutableTextPanel : public curan::ui::Drawable, public curan::utilities::Lockable
+class ImutableTextPanel final : public curan::ui::Drawable, public curan::utilities::Lockable
 {
 public:
 

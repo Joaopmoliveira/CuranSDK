@@ -287,7 +287,7 @@ int function_to_call()
 
     auto client = curan::communication::Client<DummyProtocol>::make(io_context,
                                                                     resolver.resolve("localhost", "50000"),
-                                                                    std::chrono::milliseconds(1000),
+                                                                    std::chrono::milliseconds(10000),
                                                                     [](std::error_code e)
                                                                     {
                                                                         std::cout << "the connection was? ";

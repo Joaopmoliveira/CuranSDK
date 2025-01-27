@@ -1,23 +1,8 @@
-add_executable(tutorial_safe_queue tutorial_safe_queue.cpp)
 
-target_link_libraries(tutorial_safe_queue PUBLIC
+
+add_executable(full_tutorial_suite_utils full_tutorial_suite.cpp)
+
+target_link_libraries(full_tutorial_suite_utils PUBLIC
 utils
-)
 
-add_executable(tutorial_thread_pool tutorial_thread_pool.cpp)
-
-target_link_libraries(tutorial_thread_pool PUBLIC
-utils
-)
-
-add_executable(tutorial_string_manipulation tutorial_string_manipulation.cpp)
-
-target_link_libraries(tutorial_string_manipulation PUBLIC
-utils
-)
-
-add_executable(tutorial_memory_utilities tutorial_memory_utilities.cpp)
-
-target_link_libraries(tutorial_memory_utilities PUBLIC
-utils
 )

@@ -1,5 +1,6 @@
 #include "userinterface/widgets/Plotter.h"
 #include "utils/Overloading.h"
+#include <algorithm>
 
 namespace curan {
 namespace ui {
@@ -51,9 +52,10 @@ curan::ui::drawablefunction Plotter::draw(){
         double min_y =  100000.0;
         double min_x =  100000.0;
 
-        for(auto & buff : buffers){
+        for(auto & buff : buffers_with_counters){
             std::lock_guard<std::mutex> g{get_mutex()};
-            buff.operate([&](SkPoint &in){
+            auto & [counter,data] = buff;
+            for(const auto & in : data){
                 if(in.fX> max_x)
                     max_x = in.fX;
                 if(in.fX < min_x)
@@ -62,17 +64,23 @@ curan::ui::drawablefunction Plotter::draw(){
                     max_y = in.fY;
                 if(in.fY < min_y)
                     min_y = in.fY;
-                });
+            };
         }
 
         size_t color_index = 0;
-        for(auto & buff : buffers){
+        for(auto & buff : buffers_with_counters){
             paint.setColor(colors[color_index]);
             std::vector<SkPoint> view;
             {
                 std::lock_guard<std::mutex> g{get_mutex()};
-                view = view = buff.linear_view([&](SkPoint& in){ in.fX = widget_rect.fLeft+widget_rect.width()*(in.fX-min_x)/(max_x-min_x); in.fY = widget_rect.fTop+widget_rect.height()*((max_y-in.fY)/(max_y-min_y));});
+                auto & [counter,data] = buff;
+                view = data;
             }
+            std::for_each(std::begin(view),std::end(view),[&](SkPoint& in){
+                in.fX = widget_rect.fLeft+widget_rect.width()*(in.fX-min_x)/(max_x-min_x); 
+                in.fY = widget_rect.fTop+widget_rect.height()*((max_y-in.fY)/(max_y-min_y));
+            });
+            std::sort(std::begin(view),std::end(view),[](SkPoint& p1, SkPoint& p2){ return p1.fX < p2.fX;});
             assert(verbs.size()>=view.size());
             if(view.size()>0){
                 path = SkPath::Make(view.data(),view.size(),verbs.data(),view.size(),nullptr,0,SkPathFillType::kEvenOdd,true);
@@ -117,7 +125,7 @@ curan::ui::callablefunction Plotter::call(){
 	return lamb;
 }
 
-Plotter::Plotter(const size_t& buffer_size, const size_t& number_of_buffers) : buffers{number_of_buffers,curan::utilities::CircularBuffer<SkPoint>{buffer_size}}{
+Plotter::Plotter(const size_t& buffer_size, const size_t& number_of_buffers) : buffers_with_counters{number_of_buffers,std::make_tuple(0,std::vector<SkPoint>{buffer_size,SkPoint::Make(0,0)})}{
     assert(buffer_size>0);
     assert(number_of_buffers>0);
     assert(colors.size()>=number_of_buffers);
@@ -125,11 +133,11 @@ Plotter::Plotter(const size_t& buffer_size, const size_t& number_of_buffers) : b
     for(auto& verb : verbs)
         verb = SkPath::kLine_Verb;
     verbs[0] = SkPath::kMove_Verb;
-    for(auto & buff : buffers)
-        buff.operate([&](SkPoint &in){
-            in.fX = 0.0;
-            in.fY = 0.0;
-    });
+    for(auto & buff : buffers_with_counters){
+        auto &[counter, data] = buff;
+        for(auto & v  : data)
+            v = SkPoint::Make(0,0);
+    }
 }
 
 }

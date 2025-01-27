@@ -15,7 +15,7 @@ namespace curan {
 
 		using slidercallback = std::function<void(Slider*, ConfigDraw*)>;
 
-		class Slider : public  Drawable, public utilities::Lockable, public SignalProcessor<Slider>{
+		class Slider final : public  Drawable, public utilities::Lockable, public SignalProcessor<Slider>{
 		public:
 			enum class SliderStates {
 				WAITING,

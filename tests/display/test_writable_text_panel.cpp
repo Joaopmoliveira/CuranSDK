@@ -18,14 +18,18 @@ int main(){
         DisplayParams param{std::move(context), 1200, 800};
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-        std::unique_ptr<MutatingTextPanel> layer = MutatingTextPanel::make("write for life");
+        std::unique_ptr<MutatingTextPanel> layer = MutatingTextPanel::make(false,"write for life");
         layer->set_background_color({.0f, .0f, .0f, 1.0f}).set_text_color({1.f,1.f,1.f,1.f}).set_highlighted_color({.2f, .2f, .2f, 1.0f}).set_cursor_color({1.0,0.0,0.0,1.0});
-        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+        auto container = Container::make(Container::ContainerType::VARIABLE_CONTAINER, Container::Arrangement::UNDEFINED);
+        container->set_variable_layout({SkRect::MakeLTRB(0.1,0.1,0.9,0.9)});
+        container->set_color(SkColorSetARGB(255,255,255,255));
+        auto ptr_layer = layer.get();
         
-        layer->setFont(MutatingTextPanel::typeface::sans_serif);
+        layer->setFont(MutatingTextPanel::typeface::serif);
         *container << std::move(layer);
 
         curan::ui::Page page{std::move(container), SK_ColorBLACK};
+
 
         ConfigDraw config{&page};
 
@@ -54,9 +58,13 @@ int main(){
         }
         return 0;
     }
-    catch (...)
+    catch (std::runtime_error& e)
     {
-        std::cout << "Failed";
+        std::cout << "Failed:" << e.what() << std::endl;
         return 1;
+    }
+    catch(...){
+        std::cout << "Failed:" << std::endl;
+        return 2; 
     }
 }

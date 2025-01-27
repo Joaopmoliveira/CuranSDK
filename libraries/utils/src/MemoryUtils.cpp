@@ -3,14 +3,14 @@
 namespace curan {
 namespace utilities {
 
-CopyBuffer::CopyBuffer(char* data, size_t size) {
+CopyBuffer::CopyBuffer(const char* data, size_t size) {
 	data_ = std::make_unique<std::vector<char>>();
 	data_->resize(size);
 	std::memcpy(data_->data(), data, size);
 	buffer_ = asio::buffer(*data_);
 }
 
-std::shared_ptr<MemoryBuffer> CopyBuffer::make_shared(char* data, size_t size) {
+std::shared_ptr<MemoryBuffer> CopyBuffer::make_shared(const char* data, size_t size) {
 	std::shared_ptr<CopyBuffer> buff = std::shared_ptr<CopyBuffer>{ new CopyBuffer{data,size} };
 	return buff;
 };

@@ -13,7 +13,7 @@
 namespace curan{
 namespace ui{
 
-class Panel : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<Panel>
+class Panel final : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<Panel>
 {
 private:
 
