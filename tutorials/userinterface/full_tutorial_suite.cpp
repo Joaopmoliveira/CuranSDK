@@ -378,9 +378,9 @@ void buttons_and_containers_tutorial() {
                         Container::Arrangement::UNDEFINED);
     *container << std::move(button) << std::move(button2) << std::move(button3);
     container->set_variable_layout(
-        {SkRect::MakeLTRB(0.0f, 0.0f, 0.3333f, 1.0f),
-         SkRect::MakeLTRB(0.3333f, 0.0f, 0.6666f, 1.0f),
-         SkRect::MakeLTRB(0.6666f, 0.0f, 1.0f, 1.0f)});
+        {SkRect::MakeLTRB(0.4f, 0.0f, 0.3333f, 0.8f),
+         SkRect::MakeLTRB(0.2f, 0.3333f, 0.6666f, 0.6f),
+         SkRect::MakeLTRB(0.4f, 0.6666f, 1.0f, 0.8f)});
     container->compile();
     for (const auto &rec : container->get_positioning())
       std::cout << "Rect left: " << rec.fLeft << " top: " << rec.fTop
