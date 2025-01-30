@@ -219,23 +219,25 @@ namespace curan
 		{
 			MOUSE_CLICKED_LEFT_EVENT = 1 << 1,
 			MOUSE_CLICKED_LEFT = 1 << 2,
-			MOUSE_CLICKED_RIGHT_EVENT = 1 << 3,
-			MOUSE_CLICKED_RIGHT = 1 << 4,
-			MOUSE_UNCLICK_LEFT_EVENT = 1 << 5,
-			MOUSE_UNCLICK_RIGHT_EVENT = 1 << 6,
-			MOUSE_MOVE_EVENT = 1 << 7, // move is always an event
-			SCROLL_EVENT = 1 << 8,	   // scroll is always an event
-			OUTSIDE_ALLOCATED_AREA = 1 << 9,
-			INSIDE_ALLOCATED_AREA = 1 << 10,
-			ENTERED_ALLOCATED_AREA_EVENT = 1 << 11,
-			LEFT_ALLOCATED_AREA_EVENT = 1 << 12,
-			OUTSIDE_FIXED_AREA = 1 << 13,
-			INSIDE_FIXED_AREA = 1 << 14,
-			LEFT_FIXED_AREA_EVENT = 1 << 15,
-			ENTERED_FIXED_AREA_EVENT = 1 << 16,
-			ITEM_DROPPED_EVENT = 1 << 17,
-			KEYBOARD_EVENT = 1 << 18,
-			HEART_BEAT = 1 << 19
+			MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED = 1 << 3,
+			MOUSE_CLICKED_RIGHT_EVENT = 1 << 4,
+			MOUSE_CLICKED_RIGHT = 1 << 5,
+			MOUSE_CLICKED_RIGHT_WAS_INSIDE_FIXED = 1 << 6,
+			MOUSE_UNCLICK_LEFT_EVENT = 1 << 7,
+			MOUSE_UNCLICK_RIGHT_EVENT = 1 << 8,
+			MOUSE_MOVE_EVENT = 1 << 9, // move is always an event
+			SCROLL_EVENT = 1 << 10,	   // scroll is always an event
+			OUTSIDE_ALLOCATED_AREA = 1 << 11,
+			INSIDE_ALLOCATED_AREA = 1 << 12,
+			ENTERED_ALLOCATED_AREA_EVENT = 1 << 13,
+			LEFT_ALLOCATED_AREA_EVENT = 1 << 14,
+			OUTSIDE_FIXED_AREA = 1 << 15,
+			INSIDE_FIXED_AREA = 1 << 16,
+			LEFT_FIXED_AREA_EVENT = 1 << 17,
+			ENTERED_FIXED_AREA_EVENT = 1 << 18,
+			ITEM_DROPPED_EVENT = 1 << 19,
+			KEYBOARD_EVENT = 1 << 20,
+			HEART_BEAT = 1 << 21
 		};
 
 		/*
@@ -330,6 +332,7 @@ namespace curan
 			{
 				std::visit(curan::utilities::overloaded{[&](curan::ui::Empty arg)
 														{
+															shutoff_oneoff_events();
 															current_status |= HEART_BEAT;
 														},
 														[&](curan::ui::Move arg)
@@ -346,9 +349,15 @@ namespace curan
 															shutoff_oneoff_events();
 															allocated_area_logic(std::forward<allocated>(inside_allocated), arg.xpos, arg.ypos);
 															fixed_area_logic(std::forward<fixed>(inside_fixed), arg.xpos, arg.ypos);
-															if (!(current_status & MOUSE_CLICKED_LEFT))
-															{
+															if (!(current_status & MOUSE_CLICKED_LEFT)){
+																if(current_status & INSIDE_FIXED_AREA)
+																	current_status |= MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED;
 																current_status |= MOUSE_CLICKED_LEFT_EVENT | MOUSE_CLICKED_LEFT;
+															}
+															if (!(current_status & MOUSE_CLICKED_RIGHT)){
+																if(current_status & INSIDE_FIXED_AREA)
+																	current_status |= MOUSE_CLICKED_RIGHT_WAS_INSIDE_FIXED;
+																current_status |= MOUSE_CLICKED_RIGHT_EVENT | MOUSE_CLICKED_RIGHT;
 															}
 															x_last_press = arg.xpos;
 															y_last_press = arg.ypos;
@@ -370,6 +379,12 @@ namespace curan
 																current_status |= MOUSE_UNCLICK_LEFT_EVENT;
 																current_status &= ~MOUSE_CLICKED_LEFT;
 															}
+															if ((current_status & MOUSE_CLICKED_RIGHT))
+															{
+																current_status |= MOUSE_UNCLICK_RIGHT_EVENT;
+																current_status &= ~MOUSE_CLICKED_RIGHT;
+															}
+															current_status &= ~(MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED | MOUSE_CLICKED_RIGHT_WAS_INSIDE_FIXED);
 														},
 														[&](curan::ui::Key arg)
 														{
@@ -440,6 +455,16 @@ namespace curan
 				if (val.current_status & MOUSE_UNCLICK_RIGHT_EVENT)
 				{
 					o << "MOUSE_UNCLICK_RIGHT_EVENT\n";
+				}
+
+				if(val.current_status & MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED)
+				{
+					o << "MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED\n";
+				}
+
+				if(val.current_status & MOUSE_CLICKED_RIGHT_WAS_INSIDE_FIXED)
+				{
+					o << "MOUSE_CLICKED_RIGHT_WAS_INSIDE_FIXED\n";
 				}
 
 				if (val.current_status & MOUSE_MOVE_EVENT)

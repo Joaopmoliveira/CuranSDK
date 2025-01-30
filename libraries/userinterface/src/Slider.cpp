@@ -114,13 +114,11 @@ namespace curan
 					return true;
 				}
 
-				static std::pair<double,double> old_pressed_value;
-
 				if(interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT_EVENT)){
 					old_pressed_value = interpreter.last_move();
 				}
 
-				if (interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT))
+				if (interpreter.check(MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED))
 				{
 					auto widget_rect = get_position();
 					auto size = get_size();

@@ -591,6 +591,7 @@ namespace curan
 					for (auto &pending : volumetric_mask->callbacks_pressedhighlighted)
 						pending(volumetric_mask, config, highlighted_stroke);
 
+
 				pending_strokes_to_process.clear();
 
 				auto check_inside_fixed_area = [this](double x, double y)
@@ -601,7 +602,34 @@ namespace curan
 				{
 					return get_position().contains(x, y);
 				};
+
+
 				interpreter.process(check_inside_allocated_area, check_inside_fixed_area, sig);
+
+				if (interpreter.check(KEYBOARD_EVENT)){
+					set_current_state(SliderStates::WAITING);
+					auto arg = std::get<curan::ui::Key>(sig);
+					if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
+					{
+						if (zoom_in)
+							zoom_in.deactivate();
+						else
+							zoom_in.activate();
+						return true;
+					}
+
+					if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS)
+					{
+						is_highlighting = !is_highlighting;
+						if (!current_stroke.empty())
+						{
+							insert_in_map(current_stroke);
+							current_stroke.clear();
+						}
+						return true;
+					}
+					return false;
+				}
 
 				is_pressed = false;
 
@@ -632,91 +660,70 @@ namespace curan
 					is_pressed = true;
 				else
 					is_pressed = false;
+				
+				if(interpreter.check(MOUSE_UNCLICK_RIGHT_EVENT | MOUSE_UNCLICK_LEFT_EVENT | LEFT_ALLOCATED_AREA_EVENT)){
+					set_current_state(SliderStates::WAITING);
+					insert_in_map(current_stroke);
+					current_stroke.clear();
+					return false;
+				}
 
-				if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT | MOUSE_CLICKED_LEFT) && interpreter.check(OUTSIDE_FIXED_AREA) && get_current_state()!=SliderStates::SCROLL)
+				if (interpreter.check(INSIDE_ALLOCATED_AREA | SCROLL_EVENT))
 				{
+					auto widget_rect = get_position();
+					auto size = get_size();
+					SkRect drawable = size;
+					auto arg = std::get<curan::ui::Scroll>(sig);
+					drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
+					auto offsetx = (float)arg.xoffset / size.width();
+					auto offsety = (float)arg.yoffset / size.width();
+					auto current_val = get_current_value();
+					current_val += (std::abs(offsetx) > std::abs(offsety)) ? offsetx : offsety;
+					set_current_value(current_val);
+					set_current_state(SliderStates::PRESSED);
+					return true;
+				}
+
+				if(interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT_EVENT)){
+					old_pressed_value = interpreter.last_move();
+				}
+
+				if (interpreter.check(MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED))
+				{
+					auto widget_rect = get_position();
+					auto size = get_size();
+					SkRect drawable = size;
+					auto [xarg,yarg] = interpreter.last_move();
+					auto [xarg_last,yarg_last] = old_pressed_value;
+					auto current_val = get_current_value();
+					drawable.offsetTo(widget_rect.centerX() - drawable.width() / 2.0f, widget_rect.centerY() - drawable.height() / 2.0f);
+					auto offsetx = (float)(xarg-xarg_last) / size.width();
+					set_current_value(offsetx+current_val);
+					set_current_state(SliderStates::PRESSED);
+					old_pressed_value = interpreter.last_move();
+					return true;
+				}
+
+				if(interpreter.status() & ~MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED && interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT | MOUSE_CLICKED_LEFT) ){
 					set_current_state(SliderStates::PRESSED);
 					if (!is_highlighting)
 						current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
 					return true;
 				}
-				else if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT) && !current_stroke.empty() && interpreter.check(OUTSIDE_FIXED_AREA) && get_current_state()!=SliderStates::SCROLL)
+
+				if (interpreter.check(INSIDE_FIXED_AREA))
 				{
-					set_current_state(SliderStates::WAITING);
-					insert_in_map(current_stroke);
-					current_stroke.clear();
-					return false;
-				} else if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT) && !current_stroke.empty() && interpreter.check(OUTSIDE_FIXED_AREA) && get_current_state()==SliderStates::SCROLL){
-					set_current_state(SliderStates::SCROLL);
-					auto offset_x = ((float)xpos - reserved_slider_space.x()) / reserved_slider_space.width();
-					auto current_val = get_current_value();
-					current_val += offset_x - read_trigger();
-					trigger(offset_x);
-					set_current_value(current_val);
+					set_current_state(SliderStates::HOVER);
 					return true;
 				}
 
-				if (interpreter.check(INSIDE_FIXED_AREA | MOUSE_MOVE_EVENT | MOUSE_CLICKED_LEFT))
-				{
-					set_current_state(SliderStates::SCROLL);
-					auto offset_x = ((float)xpos - reserved_slider_space.x()) / reserved_slider_space.width();
-					auto current_val = get_current_value();
-					current_val += offset_x - read_trigger();
-					trigger(offset_x);
-					set_current_value(current_val);
-				}
-
-				if (interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_CLICKED_LEFT_EVENT) && interpreter.check(OUTSIDE_FIXED_AREA))
-				{
-					if (!is_highlighting)
-					{
-						if (current_stroke.normalized_recorded_points.size() == 1)
-						{
-							insert_in_map(current_stroke);
-							current_stroke.clear();
-						}
-						auto [xpos, ypos] = interpreter.last_press();
-						current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
-						set_current_state(SliderStates::PRESSED);
-					}
-				}
-
-				if (interpreter.check(SCROLL_EVENT))
-				{
-					auto arg = std::get<curan::ui::Scroll>(sig);
-					auto offsetx = (float)arg.xoffset / reserved_slider_space.width();
-					auto offsety = (float)arg.yoffset / reserved_slider_space.width();
-					auto current_val = get_current_value();
-					current_val += (std::abs(offsetx) > std::abs(offsety)) ? offsetx : offsety;
-					set_current_value(current_val);
-					set_current_state(SliderStates::SCROLL);
-				}
-
-				if (interpreter.check(KEYBOARD_EVENT))
+				if (interpreter.check(OUTSIDE_FIXED_AREA | MOUSE_MOVE_EVENT))
 				{
 					set_current_state(SliderStates::WAITING);
-					auto arg = std::get<curan::ui::Key>(sig);
-					if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
-					{
-						if (zoom_in)
-							zoom_in.deactivate();
-						else
-							zoom_in.activate();
-						return true;
-					}
-
-					if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS)
-					{
-						is_highlighting = !is_highlighting;
-						if (!current_stroke.empty())
-						{
-							insert_in_map(current_stroke);
-							current_stroke.clear();
-						}
-						return true;
-					}
-					return false;
+					return true;
 				}
+
+				set_current_state(SliderStates::WAITING);
 
 				return false;
 			};

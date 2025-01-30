@@ -223,14 +223,9 @@ void signal_processor_tutorial() {
   interpreter.process(check_allocated_area, check_inside_size,
                       curan::ui::Press{77, 77});
   std::cout << interpreter;
-  interpreter.process(check_allocated_area, check_inside_size,
-                      curan::ui::Press{77, 77});
   std::cout << interpreter;
   interpreter.process(check_allocated_area, check_inside_size,
                       curan::ui::Move{77, 77});
-  std::cout << interpreter;
-  interpreter.process(check_allocated_area, check_inside_size,
-                      curan::ui::Unpress{77, 77});
   std::cout << interpreter;
   interpreter.process(check_allocated_area, check_inside_size,
                       curan::ui::Unpress{77, 77});
@@ -250,7 +245,8 @@ void signal_processor_tutorial() {
 void empty_canvas_tutorial() {
   using namespace curan::ui;
   std::unique_ptr<Context> context = std::make_unique<Context>();
-  DisplayParams param{std::move(context), 1200, 800};
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: empty canvas";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   SkPaint paint_square;
@@ -466,6 +462,73 @@ void buttons_and_containers_tutorial() {
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/ImageDisplay.h"
 #include "userinterface/widgets/Page.h"
+#include "userinterface/widgets/Button.h"
+#include "userinterface/widgets/Container.h"
+#include <iostream>
+
+void containers_and_pages(){
+  using namespace curan::ui;
+  IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
+  std::unique_ptr<Context> context = std::make_unique<Context>();
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: containers and pages";
+  std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+  auto button = Button::make("Touch!", resources);
+  button->set_click_color(SK_ColorRED)
+      .set_hover_color(SK_ColorCYAN)
+      .set_waiting_color(SK_ColorGRAY)
+      .set_size(SkRect::MakeWH(100, 200));
+
+  auto button2 = Button::make("Touch2!", resources);
+  button2->set_click_color(SK_ColorRED)
+      .set_hover_color(SK_ColorCYAN)
+      .set_waiting_color(SK_ColorGRAY)
+      .set_size(SkRect::MakeWH(100, 200));
+
+  auto button3 = Button::make("Touch3!", resources);
+  button3->set_click_color(SK_ColorRED)
+      .set_hover_color(SK_ColorCYAN)
+      .set_waiting_color(SK_ColorGRAY)
+      .set_size(SkRect::MakeWH(100, 200));
+
+  auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+  *container << std::move(button) << std::move(button2) << std::move(button3);
+
+  curan::ui::Page page{std::move(container), SK_ColorBLACK};
+  page.update_page(viewer.get());
+  ConfigDraw config{&page};
+
+  while (!glfwWindowShouldClose(viewer->window)) {
+    auto start = std::chrono::high_resolution_clock::now();
+    SkSurface *pointer_to_surface = viewer->getBackbufferSurface();
+    SkCanvas *canvas = pointer_to_surface->getCanvas();
+    if (viewer->was_updated()) {
+      page.update_page(viewer.get());
+      viewer->update_processed();
+    }
+    page.draw(canvas);
+    auto signals = viewer->process_pending_signals();
+    if (!signals.empty())
+      page.propagate_signal(signals.back(), &config);
+    glfwPollEvents();
+
+    bool val = viewer->swapBuffers();
+    if (!val)
+      std::cout << "failed to swap buffers\n";
+    auto end = std::chrono::high_resolution_clock::now();
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(16) -
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+  }
+  return;
+}
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "userinterface/Window.h"
+#include "userinterface/widgets/ConfigDraw.h"
+#include "userinterface/widgets/IconResources.h"
+#include "userinterface/widgets/ImageDisplay.h"
+#include "userinterface/widgets/Page.h"
 #include "utils/TheadPool.h"
 #include <iostream>
 
@@ -488,8 +551,8 @@ void image_display_tutorial() {
   using namespace curan::ui;
   using namespace curan::utilities;
   std::unique_ptr<Context> context = std::make_unique<Context>();
-  ;
-  DisplayParams param{std::move(context), 600, 600};
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: image display";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
   std::unique_ptr<ImageDisplay> image_display = ImageDisplay::make();
   ImageDisplay *pointer_to = image_display.get();
@@ -557,7 +620,8 @@ void imutable_text_panel_tutorial() {
   IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
   std::unique_ptr<Context> context = std::make_unique<Context>();
 
-  DisplayParams param{std::move(context), 1200, 800};
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: imutable text";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   std::unique_ptr<ImutableTextPanel> layer =
@@ -614,7 +678,8 @@ void item_explorer_tutorial() {
   IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
   std::unique_ptr<Context> context = std::make_unique<Context>();
   ;
-  DisplayParams param{std::move(context), 1200, 800};
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: item explorer";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   std::shared_ptr<std::array<unsigned char, 100 * 100>> image_buffer =
@@ -655,13 +720,17 @@ void item_explorer_tutorial() {
   auto pool = ThreadPool::create(1);
   pool->submit("data injector and remover", [&]() {
     for (size_t i = 0; i < 14; ++i) {
+      if(!running) return;
       ptr_item_explorer->add(Item{i, items_to_add.at(i), buff, 100, 100});
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      if(!running) return;
     }
 
     for (size_t i = 0; i < 14; ++i) {
+      if(!running) return;
       ptr_item_explorer->remove(i);
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      if(!running) return;
     }
   });
 
@@ -745,6 +814,7 @@ void loader_tutorial() {
   std::unique_ptr<Context> context = std::make_unique<Context>();
   ;
   DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: loader";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   auto button1 = Button::make("Temporal Calibration", resources);
@@ -890,7 +960,7 @@ auto container1(curan::ui::IconResources &resources) {
       .set_size(SkRect::MakeWH(100, 200));
 
   std::unique_ptr<Button> button1 = Button::make("Leave!", resources);
-  button->set_click_color(SK_ColorRED)
+  button1->set_click_color(SK_ColorRED)
       .set_hover_color(SK_ColorCYAN)
       .set_waiting_color(SK_ColorGRAY)
       .set_size(SkRect::MakeWH(100, 200));
@@ -925,7 +995,8 @@ void minipage_tutorial() {
   IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
   std::unique_ptr<Context> context = std::make_unique<Context>();
 
-  DisplayParams param{std::move(context), 1200, 800};
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: minipage";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   auto minipage = MiniPage::make(container1(resources), SK_ColorBLACK);
@@ -960,8 +1031,9 @@ void minipage_tutorial() {
     }
     page.draw(canvas);
     auto signals = viewer->process_pending_signals();
-    if (!signals.empty())
-      page.propagate_signal(signals.back(), &config);
+    for(auto sig : signals)
+      page.propagate_signal(sig, &config);
+    page.propagate_signal(Empty{}, &config);
     glfwPollEvents();
 
     bool val = viewer->swapBuffers();
@@ -988,7 +1060,8 @@ void mutating_text_panel_tutorial() {
   IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
   std::unique_ptr<Context> context = std::make_unique<Context>();
 
-  DisplayParams param{std::move(context), 1200, 800};
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: editor panel";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   std::unique_ptr<MutatingTextPanel> layer =
@@ -1143,7 +1216,8 @@ void open_igtlink_viewer_tutorial() {
   using namespace curan::ui;
   std::unique_ptr<Context> context = std::make_unique<Context>();
   ;
-  DisplayParams param{std::move(context), 1200, 800};
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: openigtlinkviewer";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   auto igtlink_viewer = OpenIGTLinkViewer::make();
@@ -1250,14 +1324,17 @@ void slider_panel_tutorial() {
   std::unique_ptr<Context> context = std::make_unique<Context>();
 
   DisplayParams param{std::move(context), 2200, 1200};
+  param.windowName = "tutorial: slider panel";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   VolumetricMask mask{get_volume(100)};
   std::unique_ptr<curan::ui::SlidingPanel> image_display =
       curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
 
-  auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,
-                                   Container::Arrangement::VERTICAL);
+  auto container = Container::make(Container::ContainerType::VARIABLE_CONTAINER,
+                                   Container::Arrangement::UNDEFINED);
+  container->set_variable_layout({SkRect::MakeLTRB(0.1, 0.1, 0.9, 0.9)});
+  container->set_color(SkColorSetARGB(255, 255, 255, 255));
   *container << std::move(image_display);
 
   curan::ui::Page page{std::move(container), SK_ColorBLACK};
@@ -1274,9 +1351,8 @@ void slider_panel_tutorial() {
     }
     page.draw(canvas);
     auto signals = viewer->process_pending_signals();
-    if (!signals.empty())
-      for (auto &&sig : signals)
-        page.propagate_signal(sig, &config);
+    for (auto &&sig : signals)
+      page.propagate_signal(sig, &config);
     glfwPollEvents();
 
     bool val = viewer->swapBuffers();
@@ -1302,7 +1378,8 @@ void plotter_tutorial() {
   using namespace curan::ui;
   IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
   std::unique_ptr<Context> context = std::make_unique<Context>();
-  DisplayParams param{std::move(context), 1200, 800};
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "tutorial: plotter";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   auto plotter = Plotter::make(500, 2);
@@ -1377,6 +1454,7 @@ void slider_tutorial() {
   std::unique_ptr<Context> context = std::make_unique<Context>();
 
   DisplayParams param{std::move(context), 2200, 1200};
+  param.windowName = "tutorial: slider";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   auto slider = Slider::make({ 0.0f, 300.0f });
@@ -1403,8 +1481,8 @@ void slider_tutorial() {
     }
     page.draw(canvas);
     auto signals = viewer->process_pending_signals();
-    if (!signals.empty())
-      page.propagate_signal(signals.back(), &config);
+    for(auto sig : signals)
+      page.propagate_signal(sig, &config);
     glfwPollEvents();
 
     bool val = viewer->swapBuffers();
@@ -1430,7 +1508,8 @@ void textblob_tutorial() {
   using namespace curan::ui;
   IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
   std::unique_ptr<Context> context = std::make_unique<Context>();
-  DisplayParams param{std::move(context), 1200, 800};
+  DisplayParams param{std::move(context), 2200, 1800};
+  param.windowName = "textblob tutorial";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
   auto textblob = TextBlob::make("example text");
@@ -1475,21 +1554,22 @@ void textblob_tutorial() {
 
 int main() {
   try {
-    signal_tutorial();
+    
+    //signal_tutorial();
     signal_processor_tutorial();
-    empty_canvas_tutorial();
-    buttons_and_containers_tutorial();
-    image_display_tutorial();
-    imutable_text_panel_tutorial();
-    item_explorer_tutorial();
-    loader_tutorial();
-    minipage_tutorial();
-    mutating_text_panel_tutorial();
-    open_igtlink_viewer_tutorial();
-    plotter_tutorial();
+    //empty_canvas_tutorial();
+    //buttons_and_containers_tutorial();
+    //image_display_tutorial();
+    //imutable_text_panel_tutorial();
+    //item_explorer_tutorial();
+    //loader_tutorial();
+    //minipage_tutorial();
+    //mutating_text_panel_tutorial();
+    //open_igtlink_viewer_tutorial();
+    //plotter_tutorial();
     slider_panel_tutorial();
-    slider_tutorial();
-    textblob_tutorial();
+    //slider_tutorial();
+    //textblob_tutorial();
     return 0;
   } catch (...) {
     return 1;

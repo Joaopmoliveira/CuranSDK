@@ -225,6 +225,8 @@ namespace curan
 						masks_z[_current_index_z].erase(iterator_to_inserted_object);
 					return insertion_successeful;
 				}
+				default:
+					throw std::runtime_error("incorrect mask direction selected");
 				};
 			}
 
@@ -312,6 +314,8 @@ namespace curan
 				return masks_y[along_dimension];
 				case Direction::Z:
 				return masks_z[along_dimension];
+				default : 
+				throw std::runtime_error("incorrect mask direction selected");
 				};
 			}
 		};
@@ -380,6 +384,7 @@ namespace curan
 			float current_value = 0.5;
 			float value_pressed = 0.5;
 			float dragable_percent_size = 0.01f;
+			std::pair<double,double> old_pressed_value;
 
 			SkSamplingOptions options;
 			std::optional<SkPaint> paint_compliant_filtered_image;

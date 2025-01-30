@@ -28,6 +28,7 @@ namespace curan {
 			SkColor waiting_color;
 			SkColor click_color;
 			SkColor slider_color;
+			std::pair<double,double> old_pressed_value;
 
 			SkPaint paint;
 			SkRect widget_rect_text;
