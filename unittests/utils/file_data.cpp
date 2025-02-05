@@ -59,7 +59,10 @@ TEST(UnitTestFilePropagator, UltrasoundCalibrationData)
     for (size_t run_n_times = 0; run_n_times < 20; ++run_n_times)
     {
         Eigen::Matrix<double, 4, 4> homogeneous_transformation = Eigen::Matrix<double, 4, 4>::Random();
-        curan::utilities::UltrasoundCalibrationData source_ultrasound_data(date, homogeneous_transformation, 1.0);
+        std::vector<Eigen::Matrix<double, 1, 4>> line_parameterization;
+        for(size_t i = 0; i < 3; ++i)
+            line_parameterization.push_back(Eigen::Matrix<double,1,4>::Random());
+        curan::utilities::UltrasoundCalibrationData source_ultrasound_data(date, homogeneous_transformation,line_parameterization, 1.0);
         std::stringstream mock_file;
         mock_file << source_ultrasound_data;  //here we mock an application that previously wrote to disk and now we are reading from disk
         curan::utilities::UltrasoundCalibrationData target_ultrasound_data{mock_file};

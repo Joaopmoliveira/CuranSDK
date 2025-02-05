@@ -125,7 +125,8 @@ void file_structure_tutorial()
     auto creation_data = formated_date<std::chrono::system_clock>(std::chrono::system_clock::now());
 
     {
-        UltrasoundCalibrationData data{creation_data, Eigen::Matrix<double, 4, 4>::Identity(), 0.0};
+        std::vector<Eigen::Matrix<double,1,4>> line_param{4,Eigen::Matrix<double,1,4>::Random()};
+        UltrasoundCalibrationData data{creation_data, Eigen::Matrix<double, 4, 4>::Identity(),line_param, 0.0};
         std::cout << "(original  ) ultrasound calibration data: \n"
                   << data << std::endl;
         auto mock_file_in_disk = print_to_file(data);

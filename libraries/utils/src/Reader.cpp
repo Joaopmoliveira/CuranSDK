@@ -23,8 +23,11 @@ Eigen::MatrixXd convert_matrix(std::stringstream& data, char separation_char)
     size_t first_num_cols = 0;
     bool should_initialize = true;
     size_t previous_num_cols = 0;
-    while (getline(data, matrixRowString)) // here we read a row by row of matrixDataFile and store every line into the string variable matrixRowString
-    {
+    auto tmp = data.str();
+    getline(data, matrixRowString);
+    do{
+        if(matrixRowString.size()<1)
+            break;
         size_t num_cols = 0;
         std::stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
         while (getline(matrixRowStringStream, matrixEntry, separation_char)) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
@@ -41,10 +44,12 @@ Eigen::MatrixXd convert_matrix(std::stringstream& data, char separation_char)
         }
             
         matrixRowNumber++; //update the row numbers
-    }
- 
+    } while(getline(data, matrixRowString));
+
     // here we convet the vector variable into the matrix and return the resulting object, 
     // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
+    if(!matrixRowNumber)
+        throw std::runtime_error("no rows read");
     size_t rows = matrixRowNumber;
     size_t cols = matrixEntries.size() / matrixRowNumber;
     if(rows*cols!=matrixEntries.size())

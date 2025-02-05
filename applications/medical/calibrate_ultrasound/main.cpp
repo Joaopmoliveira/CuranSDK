@@ -3,6 +3,7 @@
 #include "ceres/ceres.h"
 #include "optimization/WireCalibration.h"
 #include "utils/FileStructures.h"
+#include "utils/DateManipulation.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "CalibratePages.h"
@@ -201,18 +202,22 @@ int main(int argc, char* argv[]) {
 	std::cout << "Final: \n" << transformation_matrix << std::endl;
 	std::cout << "(all units in meters)" << std::endl; 
 
-	auto return_current_time_and_date = [](){
-	    auto now = std::chrono::system_clock::now();
-    	auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
-    	std::stringstream ss;
-    	ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
-   		return ss.str();
-	};
+	std::vector<Eigen::Matrix<double,1,4>> line_parameterization;
+	line_parameterization.resize(number_of_strings);
+	size_t offset = 6; 
+	for(size_t i = 0; i < number_of_strings; ++i, offset += 4){
+		Eigen::Matrix<double,1,4> params_wire_i = Eigen::Matrix<double,1,4>::Zero();
+		std::memcpy(params_wire_i.data(),best_run.initial_guess.data()+offset,4*sizeof(double));
+		std::cout << params_wire_i.transpose() << std::endl;
+		line_parameterization.at(i) = params_wire_i;
+	}
 
 	std::printf("\nRememeber that you always need to\nperform the temporal calibration before attempting the\nspacial calibration! Produced JSON file:\n");
 
-	curan::utilities::UltrasoundCalibrationData calibration{return_current_time_and_date(),transformation_matrix,best_run.summary.final_cost};
+	curan::utilities::UltrasoundCalibrationData calibration{curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now()),
+															transformation_matrix,
+															line_parameterization,
+															best_run.summary.final_cost};
 
 	// write prettified JSON to another file
 	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/spatial_calibration.json");

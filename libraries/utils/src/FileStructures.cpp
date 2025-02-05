@@ -41,9 +41,27 @@ namespace curan
             for (Eigen::Index row = 0; row < calibration_matrix.rows(); ++row)
                 for (Eigen::Index col = 0; col < calibration_matrix.cols(); ++col)
                     f_homogeneous_transformation(row, col) = calibration_matrix(row, col);
-        }
 
-        
+            matrix_strm = std::stringstream{};
+            std::string line_params = calibration_data["line_parameterization"];
+            matrix_strm << line_params;
+            auto parameterization_vector = curan::utilities::convert_matrix(matrix_strm, ',');
+            if(parameterization_vector.cols() == 0)
+                throw std::runtime_error("the number of lines cannot be zero");
+
+            if(parameterization_vector.rows() != 1)
+                throw std::runtime_error("the number of rows cannot be larger than 1");
+
+            if(parameterization_vector.cols() % 4)
+                throw std::runtime_error("the number of cols must be a multiple of four");
+
+            size_t num_of_lines =  std::floor(parameterization_vector.cols() / 4.0);
+            size_t offset = 0;
+            f_line_parameterization.resize(num_of_lines);
+            for(size_t i = 0; i < num_of_lines; ++i, offset+=4)
+                f_line_parameterization.at(i) = parameterization_vector.block<1,4>(0,offset);
+            
+        }
 
         std::string UltrasoundCalibrationData::timestamp() const
         {
@@ -60,6 +78,10 @@ namespace curan
             return f_optimization_error;
         }
 
+         std::vector<Eigen::Matrix<double,1,4>> UltrasoundCalibrationData::line_parameterization() const{
+            return f_line_parameterization;
+         }
+
         std::ostream &operator<<(std::ostream &os, const UltrasoundCalibrationData &calib)
         {
 
@@ -70,9 +92,17 @@ namespace curan
             calibration_data["timestamp"] = calib.timestamp();
             calibration_data["homogeneous_transformation"] = optimized_values.str();
             calibration_data["optimization_error"] = calib.optimization_error();
-
+            auto params = calib.line_parameterization();
+            if(params.size()<1)
+                throw std::runtime_error("there must be at least one line to calibrate the system");
+            Eigen::Matrix<double,1,Eigen::Dynamic> flattened_params = Eigen::Matrix<double,1,Eigen::Dynamic>::Zero(1,params.size()*4);
+            size_t offset = 0;
+            for(size_t i = 0; i < params.size(); ++i, offset+=4)
+                flattened_params.block<1,4>(0,offset) = params[i];
+            optimized_values.str("");
+            optimized_values << flattened_params.format(desired_matrix_format()) ;
+            calibration_data["line_parameterization"] = optimized_values.str();
             os << calibration_data;
-
             return os;
         }
 

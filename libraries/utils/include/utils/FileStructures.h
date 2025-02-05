@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include "utils/Reader.h"
 #include <fstream>
+#include <vector>
 
 namespace curan
 {
@@ -15,6 +16,7 @@ namespace curan
         {
             std::string f_timestamp;
             Eigen::Matrix<double, 4, 4> f_homogeneous_transformation;
+            std::vector<Eigen::Matrix<double,1,4>> f_line_parameterization; 
             double f_optimization_error;
 
             void decode(std::istream &instream);
@@ -22,9 +24,11 @@ namespace curan
         public:
             UltrasoundCalibrationData(const std::string &in_timestamp,
                                       const Eigen::Matrix<double, 4, 4> &in_homogeneous_transformation,
+                                      const std::vector<Eigen::Matrix<double,1,4>> &in_parameterization,
                                       const double &in_optimization_error) : f_timestamp{in_timestamp},
                                                                              f_homogeneous_transformation{in_homogeneous_transformation},
-                                                                             f_optimization_error{in_optimization_error}
+                                                                             f_optimization_error{in_optimization_error},
+                                                                             f_line_parameterization{in_parameterization}
             {
             }
 
@@ -35,6 +39,8 @@ namespace curan
             std::string timestamp() const;
 
             Eigen::Matrix<double, 4, 4> homogeneous_transformation() const;
+
+            std::vector<Eigen::Matrix<double,1,4>> line_parameterization() const;
 
             double optimization_error() const;
         };

@@ -56,7 +56,7 @@ int main()
 		DisplayParams param{std::move(context), 2200, 1200};
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		VolumetricMask mask{get_volume()};
+		VolumetricMask mask{get_volume(100)};
 		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);

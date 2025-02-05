@@ -812,7 +812,7 @@ void loader_tutorial() {
   using namespace curan::ui;
   IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
   std::unique_ptr<Context> context = std::make_unique<Context>();
-  ;
+
   DisplayParams param{std::move(context), 2200, 1800};
   param.windowName = "tutorial: loader";
   std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));

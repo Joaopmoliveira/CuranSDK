@@ -1,4 +1,5 @@
 add_subdirectory(calibrate_ultrasound)
+add_subdirectory(extract_intersections_ultrasound)
 add_subdirectory(temporal_calibration)
 add_subdirectory(volumetric_reconstruction)
 add_subdirectory(volumetric_path_planing_dicom_capable)

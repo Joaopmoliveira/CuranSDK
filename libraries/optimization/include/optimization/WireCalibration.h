@@ -58,6 +58,11 @@ namespace curan {
 
             size_t wire_number = 0;
 
+            /*
+            Memory layout of variables 
+            [theta1 theta2 theta3 x y z] [phi1_x phi1_y phi1_z d] [phi2_x phi2_y phi2_z d] ... [phin_x phin_y phin_z d]  
+            */
+
             void  update(const Observation* observation, const T* variables) {
                 wire_number = observation->wire_number;
                 size_t pointer_offset = 0;
