@@ -5,7 +5,6 @@
 #include <map>
 #include <optional>
 #include "definitions/UIdefinitions.h"
-#include "definitions/stb_image.h"
 #include "ImageWrapper.h"
 
 namespace curan {

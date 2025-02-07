@@ -54,7 +54,7 @@ IF (EIGEN3_FOUND AND NOT RBDL_USE_SIMPLE_MATH)
 ENDIF (EIGEN3_FOUND AND NOT RBDL_USE_SIMPLE_MATH)
 
 # Options
-OPTION (RBDL_BUILD_STATIC "Build statically linked library (otherwise dynamiclly linked)" ON)
+OPTION (RBDL_BUILD_STATIC "Build statically linked library (otherwise dynamiclly linked)" OFF)
 OPTION (RBDL_BUILD_TESTS "Build the test executables" OFF)
 OPTION (RBDL_ENABLE_LOGGING "Enable logging (warning: major impact on performance!)" OFF)
 OPTION (RBDL_USE_SIMPLE_MATH "Use slow math instead of the fast Eigen3 library (faster compilation)" OFF)

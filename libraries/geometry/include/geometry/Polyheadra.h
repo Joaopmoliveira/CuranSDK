@@ -1,6 +1,7 @@
 #ifndef POLYHEADER_HEADER_H
 #define POLYHEADER_HEADER_H
 
+#include <Mathematics/Vector2.h>
 #include <Mathematics/IntrConvexMesh3Plane3.h>
 #include <Eigen/Dense>
 

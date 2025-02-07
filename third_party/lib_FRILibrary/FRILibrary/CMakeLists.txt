@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.11)
 
 project(FRILibrary)
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
 add_library (FRILibrary STATIC 
 
 #src/base

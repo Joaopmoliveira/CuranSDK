@@ -1,6 +1,3 @@
-#include <Mathematics/Vector2.h>
-#include <Mathematics/IntrConvexMesh3Plane3.h>
-
 #include "geometry/Polyheadra.h"
 
 namespace curan

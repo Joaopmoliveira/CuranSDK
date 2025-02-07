@@ -3,6 +3,9 @@
 #include "utils/MemoryUtils.h"
 #include <iostream>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "userinterface/widgets/definitions/stb_image.h"
+
 namespace curan {
 namespace ui {
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.24)
 cmake_policy(SET CMP0091 NEW)
 cmake_policy(SET CMP0075 NEW)
 
@@ -8,8 +8,8 @@ if(UNIX)
 endif(UNIX)
 
 if(WIN32)
-  set(VCPKG_TARGET_TRIPLET "x64-windows-static")
-  set(VCPKG_HOST_TRIPLET "x64-windows-static")
+  set(VCPKG_TARGET_TRIPLET "x64-windows-mixed")
+  set(VCPKG_HOST_TRIPLET "x64-windows-mixed")
 endif(WIN32)
 
 set(VCPKG_ROOT "${CMAKE_CURRENT_LIST_DIR}/vcpkg")
@@ -21,7 +21,7 @@ project(Curan)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 if(WIN32)
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif(WIN32)
 
 enable_testing()
@@ -46,12 +46,14 @@ find_package(unofficial-skia CONFIG REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 find_package(Boost COMPONENTS filesystem)
+find_package(Vulkan REQUIRED)
 find_package(vsg CONFIG REQUIRED)
 find_package(vsgXchange CONFIG REQUIRED)
 find_package(vsgImGui CONFIG REQUIRED)
 find_package(pugixml CONFIG REQUIRED)
 find_package(PCL CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
+find_package(rbdl CONFIG REQUIRED)
 
 #Externally provided targets
 add_subdirectory(third_party)
@@ -74,32 +76,32 @@ else(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
 endif(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
 
 #Add resources necessary by the display library
-add_custom_command(OUTPUT resources
-               COMMAND ${CMAKE_COMMAND} -E copy_directory ${original_resource_paths} ${post_build_resource_path} 
-               DEPENDS "${original_resource_paths}"
-               COMMENT "Currently copying the widget files to the correct directories"
-               )
+#add_custom_command(OUTPUT resources
+#               COMMAND ${CMAKE_COMMAND} -E copy_directory ${original_resource_paths} ${post_build_resource_path} 
+#               DEPENDS "${original_resource_paths}"
+#               COMMENT "Currently copying the widget files to the correct directories"
+#               )
 
 # create a target that includes some_file, this gives us a name that we can use later
-add_custom_target(
-  curan_resources
-  DEPENDS resources
-)
+#add_custom_target(
+#  curan_resources
+#  DEPENDS resources
+#)
 
 # Add internal Curan libraries to the list of known targets
-add_subdirectory(libraries)
+#add_subdirectory(libraries)
 
 # Add medical applications
-add_subdirectory(applications)
+#add_subdirectory(applications)
 
 # Most of the time there is no need to compile the tests and the tutorials
 # folder so you can comment out these subfolders from the build directory
 
 # Add medical applications
-add_subdirectory(unittests)
+#add_subdirectory(unittests)
 
 # Add tests for submodules of curan, i.e. utilities, communication, etc...
-add_subdirectory(tests)
+#add_subdirectory(tests)
 
 # Add medical applications
-add_subdirectory(tutorials)
+#add_subdirectory(tutorials)

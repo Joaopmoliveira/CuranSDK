@@ -29,7 +29,7 @@ ELSE()
   SET(OpenIGTLink_PROTOCOL_VERSION "1")
 ENDIF()
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 #-----------------------------------------------------------------------------
 # Configure VideoStreaming
 # Create the link to the VideoStreaming libraries
@@ -45,7 +45,7 @@ OPTION(OpenIGTLink_USE_WEBSOCKET "Build the Websocket." OFF)
 
 #-----------------------------------------------------------------------------
 # OpenIGTLink build configuration options.
-OPTION(BUILD_SHARED_LIBS "Build OpenIGTLink with shared libraries." OFF)
+OPTION(BUILD_SHARED_LIBS "Build OpenIGTLink with shared libraries." ON)
 SET(OpenIGTLink_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
 
 IF(NOT OpenIGTLink_BUILD_SHARED_LIBS)

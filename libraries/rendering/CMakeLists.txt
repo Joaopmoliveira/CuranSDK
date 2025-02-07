@@ -1,6 +1,3 @@
-find_package(vsg )
-find_package(vsgXchange )
-
 add_library(renderable STATIC
 src/Box.cpp
 src/Capsule.cpp
@@ -23,11 +20,10 @@ target_include_directories(renderable
 )
 
 target_link_libraries(renderable PUBLIC
+utils
 vsg::vsg
 vsgXchange::vsgXchange
 vsgImGui::vsgImGui
-utils
 )
 
-target_compile_definitions(renderable PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 target_compile_definitions(renderable PUBLIC NOMINMAX)

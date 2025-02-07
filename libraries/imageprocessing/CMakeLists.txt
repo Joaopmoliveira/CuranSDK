@@ -1,4 +1,8 @@
-add_library(imageprocessing
+find_package(ITK CONFIG REQUIRED)
+
+include(${ITK_USE_FILE})
+
+add_library(imageprocessing STATIC
 src/StudyManager.cpp
 src/VolumeReconstructor.cpp
 src/BoundingBox4Reconstruction.cpp
@@ -16,13 +20,9 @@ src/ArunAlgorithm.cpp
 src/SurfaceRegistration.cpp
 )
 
-find_package(ITK CONFIG REQUIRED)
-
 target_include_directories(imageprocessing
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
-
-include(${ITK_USE_FILE})
 
 target_link_libraries(imageprocessing PUBLIC
 ${ITK_LIBRARIES}
