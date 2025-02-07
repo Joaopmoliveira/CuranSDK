@@ -17,7 +17,7 @@ find_package(pugixml CONFIG REQUIRED)
 add_executable(test_std_cin_limitations test_std_cin_limitations.cpp)
 
 target_link_libraries(test_std_cin_limitations PUBLIC 
-pugixml::shared 
+pugixml::static 
 pugixml::pugixml
 )
 

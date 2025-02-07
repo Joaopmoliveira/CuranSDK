@@ -1,4 +1,4 @@
-add_library(optimization SHARED
+add_library(optimization STATIC
 src/WireCalibration.cpp 
 )
 

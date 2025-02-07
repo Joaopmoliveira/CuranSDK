@@ -8,6 +8,7 @@ if(UNIX)
 endif(UNIX)
 
 if(WIN32)
+  set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_LIST_DIR}/vcpkg_custom_triplet/")
   set(VCPKG_TARGET_TRIPLET "x64-windows-mixed")
   set(VCPKG_HOST_TRIPLET "x64-windows-mixed")
 endif(WIN32)
@@ -76,32 +77,32 @@ else(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
 endif(DEFINED CURAN_PLUS_EXECUTABLE_PATH)
 
 #Add resources necessary by the display library
-#add_custom_command(OUTPUT resources
-#               COMMAND ${CMAKE_COMMAND} -E copy_directory ${original_resource_paths} ${post_build_resource_path} 
-#               DEPENDS "${original_resource_paths}"
-#               COMMENT "Currently copying the widget files to the correct directories"
-#               )
+add_custom_command(OUTPUT resources
+               COMMAND ${CMAKE_COMMAND} -E copy_directory ${original_resource_paths} ${post_build_resource_path} 
+               DEPENDS "${original_resource_paths}"
+               COMMENT "Currently copying the widget files to the correct directories"
+               )
 
 # create a target that includes some_file, this gives us a name that we can use later
-#add_custom_target(
-#  curan_resources
-#  DEPENDS resources
-#)
+add_custom_target(
+  curan_resources
+  DEPENDS resources
+)
 
 # Add internal Curan libraries to the list of known targets
-#add_subdirectory(libraries)
+add_subdirectory(libraries)
 
 # Add medical applications
-#add_subdirectory(applications)
+add_subdirectory(applications)
 
 # Most of the time there is no need to compile the tests and the tutorials
 # folder so you can comment out these subfolders from the build directory
 
 # Add medical applications
-#add_subdirectory(unittests)
+add_subdirectory(unittests)
 
 # Add tests for submodules of curan, i.e. utilities, communication, etc...
-#add_subdirectory(tests)
+add_subdirectory(tests)
 
 # Add medical applications
-#add_subdirectory(tutorials)
+add_subdirectory(tutorials)

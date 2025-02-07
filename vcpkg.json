@@ -1,9 +1,30 @@
 {
   "dependencies": [
-	{
+    "eigen3",
+    "itk",
+    "ceres",
+    "asio",
+    "glfw3",
+    "nlohmann-json",
+    "boost-process",
+    "vsg",
+    "vsgimgui",
+    "pugixml",
+    "pcl",
+    "gtest",
+    "rbdl",
+    {
       "name": "libtorch",
       "default-features": false
+    },
+    {
+      "name": "vsgxchange",
+      "features": [ "assimp" ]
+    },
+    {
+      "name": "skia",
+      "features": [ "vulkan", "icu" ]
     }
   ],
-  "builtin-baseline": "cc25bd979378585e66e40b7107d3badc84b5c134"
+  "builtin-baseline": "7e21420f775f72ae938bdeb5e6068f722088f06a"
 }

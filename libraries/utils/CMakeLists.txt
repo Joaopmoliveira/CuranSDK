@@ -14,7 +14,7 @@ target_include_directories(utils
 
 target_link_libraries(utils PUBLIC
 asio
-pugixml::shared 
+pugixml::static 
 pugixml::pugixml
 nlohmann_json 
 nlohmann_json::nlohmann_json 
