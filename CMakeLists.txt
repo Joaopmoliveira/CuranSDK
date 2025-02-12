@@ -16,11 +16,13 @@ endif(WIN32)
 set(VCPKG_ROOT "${CMAKE_CURRENT_LIST_DIR}/vcpkg")
 set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 
-project(Curan)
 
 #Language definitions used throught the entire project
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
+
+project(Curan)
+
 if(WIN32)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif(WIN32)
@@ -55,6 +57,13 @@ find_package(pugixml CONFIG REQUIRED)
 find_package(PCL CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
 find_package(rbdl CONFIG REQUIRED)
+#find_package(Torch CONFIG REQUIRED)
+#find_package(OpenMP REQUIRED)
+#find_package(LAPACK REQUIRED)
+#find_package(BLAS REQUIRED)
+#find_package(gflags REQUIRED)
+#find_package(glog REQUIRED)
+
 
 #Externally provided targets
 add_subdirectory(third_party)

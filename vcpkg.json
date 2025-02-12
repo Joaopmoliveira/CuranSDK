@@ -14,10 +14,6 @@
     "gtest",
     "rbdl",
     {
-      "name": "libtorch",
-      "default-features": false
-    },
-    {
       "name": "vsgxchange",
       "features": [ "assimp" ]
     },
