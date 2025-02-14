@@ -2,13 +2,18 @@ cmake_minimum_required(VERSION 3.24)
 cmake_policy(SET CMP0091 NEW)
 cmake_policy(SET CMP0075 NEW)
 
+#Language definitions used throught the entire project
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+
+set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_LIST_DIR}/vcpkg_custom_triplet/")
+
 if(UNIX)
-  string(VCPKG_TARGET_TRIPLET "x64-linux")
-  string(VCPKG_HOST_TRIPLET "x64-linux")
+  set(VCPKG_TARGET_TRIPLET "x64-linux-mixed")
+  set(VCPKG_HOST_TRIPLET "x64-linux-mixed")
 endif(UNIX)
 
 if(WIN32)
-  set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_LIST_DIR}/vcpkg_custom_triplet/")
   set(VCPKG_TARGET_TRIPLET "x64-windows-mixed")
   set(VCPKG_HOST_TRIPLET "x64-windows-mixed")
 endif(WIN32)
@@ -17,9 +22,7 @@ set(VCPKG_ROOT "${CMAKE_CURRENT_LIST_DIR}/vcpkg")
 set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 
 
-#Language definitions used throught the entire project
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED YES)
+
 
 project(Curan)
 
@@ -44,19 +47,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 #Find all required third parties (this should be moved elsewhere)
 find_package(asio CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
-find_package(Ceres CONFIG REQUIRED)
-find_package(unofficial-skia CONFIG REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(glfw3 3.3 REQUIRED)
-find_package(Boost COMPONENTS filesystem)
 find_package(Vulkan REQUIRED)
 find_package(vsg CONFIG REQUIRED)
 find_package(vsgXchange CONFIG REQUIRED)
 find_package(vsgImGui CONFIG REQUIRED)
-find_package(pugixml CONFIG REQUIRED)
-find_package(PCL CONFIG REQUIRED)
-find_package(GTest CONFIG REQUIRED)
-find_package(rbdl CONFIG REQUIRED)
+find_package(RBDL CONFIG REQUIRED)
 #find_package(Torch CONFIG REQUIRED)
 #find_package(OpenMP REQUIRED)
 #find_package(LAPACK REQUIRED)
@@ -102,16 +98,16 @@ add_custom_target(
 add_subdirectory(libraries)
 
 # Add medical applications
-add_subdirectory(applications)
+#add_subdirectory(applications)
 
 # Most of the time there is no need to compile the tests and the tutorials
 # folder so you can comment out these subfolders from the build directory
 
 # Add medical applications
-add_subdirectory(unittests)
+#add_subdirectory(unittests)
 
 # Add tests for submodules of curan, i.e. utilities, communication, etc...
 add_subdirectory(tests)
 
 # Add medical applications
-add_subdirectory(tutorials)
+#add_subdirectory(tutorials)

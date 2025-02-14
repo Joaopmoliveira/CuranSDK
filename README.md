@@ -206,6 +206,17 @@ When using VScode to compile the project, if the previous order of the build ins
 the build fails due to incorrect configurations. When you find yourself faced with these problems the simplest solution is to delete the 
 .vscode folder and the build folder and reconfigure the project, this usually solves all the problems. 
 
+# Ninja 
+According to this [link](https://public.kitware.com/Bug/view.php?id=13910) on linux sometimes cmake fails to execute. 
+```bash
+sudo chmod o+r /your/path/to/ninja
+```
+
+to find the path to ninja you can run on your terminal
+``` bash
+which ninja
+```
+
 ## Acknowledgments 
 The volume reconstruction code is essencially a copy of [IGSIO](https://github.com/IGSIO/IGSIO) modified to work with the interal classes and structures of Curan. 
 
