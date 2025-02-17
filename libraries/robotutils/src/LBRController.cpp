@@ -79,7 +79,7 @@ void RobotLBR::command(){
     eigen_state = current_state.converteigen();
     Eigen::MatrixXd task_jacobian = Eigen::MatrixXd::Identity(number_of_joints,number_of_joints);
     eigen_state = std::move(user_data->update(robot_model,std::move(eigen_state),task_jacobian));
-    eigen_state.cmd_tau = add_constraints<number_of_joints>(robot_model,eigen_state.cmd_tau, 0.005);
+    //eigen_state.cmd_tau = add_constraints<number_of_joints>(robot_model,eigen_state.cmd_tau, 0.005);
     current_state.convertFrom(eigen_state);
     atomic_state.store(current_state,std::memory_order_relaxed);
     if (robotState().getClientCommandMode() == KUKA::FRI::TORQUE) {

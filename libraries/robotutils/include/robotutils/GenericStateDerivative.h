@@ -16,18 +16,20 @@ struct LowPassDerivativeFilter{
     Eigen::Matrix<double,state_size,3> deriv_filtered_state;
     bool is_first = true;
 
-    std::tuple<Eigen::Matrix<double,state_size,1>,Eigen::Matrix<double,state_size,1>> update(Eigen::Matrix<double,state_size,1> in_raw_state, double sample_time){
-        return update(in_raw_state,Eigen::Matrix<double,state_size,1>::Zero(),sample_time);
-    }
-
-    std::tuple<Eigen::Matrix<double,state_size,1>,Eigen::Matrix<double,state_size,1>> update(Eigen::Matrix<double,state_size,1> in_raw_state, Eigen::Matrix<double,state_size,1> partial_removal, double sample_time){
+    std::tuple<Eigen::Matrix<double,state_size,1>,Eigen::Matrix<double,state_size,1>> update(Eigen::Matrix<double,state_size,1> in_raw_state, Eigen::Matrix<double,state_size,1> deriv_in_raw_state, double sample_time){
         if(is_first){
             is_first = false;
             raw_state.col(2) = in_raw_state;
             raw_state.col(1) = raw_state.col(2);
             raw_state.col(0) = raw_state.col(2);
+
+            deriv_raw_state.col(2) = deriv_in_raw_state;
+            deriv_raw_state.col(1) = deriv_raw_state.col(2);
+            deriv_raw_state.col(0) = deriv_raw_state.col(2);
+
         } else {
             raw_state.col(2) = in_raw_state;
+            deriv_raw_state.col(2) = deriv_in_raw_state;
         }     
         filtered_state.col(2) = 0.222955 * raw_state.col(2)+
                                 0.445910 * raw_state.col(1)+
@@ -35,7 +37,6 @@ struct LowPassDerivativeFilter{
                                 0.295200 * filtered_state.col(1)+
                                -0.187020 * filtered_state.col(0);
 
-        deriv_raw_state.col(2) = (1.0/sample_time)*(raw_state.col(2)-raw_state.col(1))-partial_removal;
         deriv_filtered_state.col(2) = 0.222955 * deriv_raw_state.col(2)+
                                 0.445910 * deriv_raw_state.col(1)+
                                 0.222955 * deriv_raw_state.col(0)+

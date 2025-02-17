@@ -17,6 +17,8 @@ struct ViewFiltering : public UserData{
     std::array<ripple::Properties, number_of_joints> second_harmonic;
     std::array<ripple::Properties, number_of_joints> third_harmonic;
 
+    curan::robotic::ripple::Damper damper;
+
     LowPassDerivativeFilter<number_of_joints> filtering_mechanism;
     Eigen::Matrix<double,number_of_joints,1> previous_q;
 
