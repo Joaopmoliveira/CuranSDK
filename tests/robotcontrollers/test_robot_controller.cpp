@@ -195,14 +195,18 @@ struct ViewFiltering : public curan::robotic::UserData
         //state.cmd_q = iiwa.joints() + Eigen::Matrix<double,curan::robotic::number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
         vector_type actuation = vector_type::Zero() + 0.6 * (vector_type::Zero() - filtered_torque) - 0.0005 * filtered_torque_derivative;
         
-        state.cmd_q = init_q;
-        state.cmd_q[0] = iiwa.joints()[0]+ (0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
-        state.cmd_tau[0] = actuation[0];
+        //state.cmd_q = init_q;
+        //state.cmd_q = iiwa.joints()+ (0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
+        state.cmd_q = iiwa.joints() + Eigen::Matrix<double, curan::robotic::number_of_joints, 1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
+
+        //state.cmd_tau[0] = actuation[0];
         
         currentTime += iiwa.sample_time();
-        state.user_defined2 = filtered_torque_derivative;
-        state.user_defined4 = -(iiwa.measured_torque()-prev_tau)/iiwa.sample_time();
+        state.user_defined = filtered_torque_derivative;
+        state.user_defined2 = filtered_torque;
+
         prev_tau = iiwa.measured_torque();
+
         for (size_t index = 0; index < curan::robotic::number_of_joints; ++index){
             if (state.cmd_tau[index] > 10.0)
                 state.cmd_tau[index] = 10.0;
@@ -215,8 +219,8 @@ struct ViewFiltering : public curan::robotic::UserData
 
 int main()
 {
-    //std::list<curan::robotic::State> recording_of_states;
-    //std::mutex mut;
+    std::list<curan::robotic::State> recording_of_states;
+    std::mutex mut;
     std::signal(SIGINT, signal_handler);
     {
 
@@ -253,11 +257,11 @@ int main()
 													      if(success) curan::utilities::print<curan::utilities::info>("Connected successefully\n");
 													      else curan::utilities::print<curan::utilities::info>("Failure to connect\n");
                                                           success = app.step();
-                                                          while (success && client)
+                                                          while (client)
                                                           {
                                                               success = app.step();
-                                                              //std::lock_guard<std::mutex> g{mut};
-                                                              //recording_of_states.push_back(client.atomic_acess().load());
+                                                              std::lock_guard<std::mutex> g{mut};
+                                                              recording_of_states.push_back(client.atomic_acess().load());
                                                           }
                                                           app.disconnect();
                                                           curan::utilities::print<curan::utilities::info>("Terminating robot control thread\n");
@@ -278,11 +282,11 @@ int main()
         client.cancel();
     }
     
-    //auto now = std::chrono::system_clock::now();
-    //auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-    //std::string filename{CURAN_COPIED_RESOURCE_PATH "/controller" + std::to_string(UTC) + ".json"};
-    //std::cout << "creating filename with measurments :" << filename << std::endl;
-    //std::ofstream o(filename);
-    //o << recording_of_states;
+    auto now = std::chrono::system_clock::now();
+    auto UTC = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    std::string filename{CURAN_COPIED_RESOURCE_PATH "/controller" + std::to_string(UTC) + ".json"};
+    std::cout << "creating filename with measurments :" << filename << std::endl;
+    std::ofstream o(filename);
+    o << recording_of_states;
     return 0;
 }
