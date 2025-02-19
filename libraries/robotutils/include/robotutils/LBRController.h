@@ -53,11 +53,11 @@ public:
     }
 
     inline operator bool() const {
-        return continue_robot_motion.load(std::memory_order_relaxed); 
+        return continue_robot_motion.load(); 
     }
 
     inline void cancel(){
-        continue_robot_motion.store(false,std::memory_order_relaxed);
+        continue_robot_motion.store(false);
     }
 
 private:
