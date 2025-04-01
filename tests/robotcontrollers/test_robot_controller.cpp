@@ -1,7 +1,7 @@
 #include "robotutils/LBRController.h"
 #include "robotutils/HandGuidance.h"
 #include "robotutils/RippleFilter.h"
-#include "robotutils/GenericStateDerivative.h"
+#include "robotutils/LowPassDerivativeFilter.h"
 
 #include "utils/Logger.h"
 #include "utils/TheadPool.h"
@@ -114,7 +114,7 @@ struct ViewFiltering : public curan::robotic::UserData
 
     bool is_first_loop = true;
 
-    ViewFiltering()
+    ViewFiltering() : filtering_mechanism{500,200}
     {
         for (size_t filter_index = 0; filter_index < curan::robotic::number_of_joints; ++filter_index)
         {
