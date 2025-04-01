@@ -9,6 +9,8 @@ src/ImpedanceController.cpp
 src/CartesianVelocityController.cpp
 src/RippleFilter.cpp
 src/ViewFiltering.cpp
+src/InertiaAwareRippleFilter.cpp
+src/JointImpedanceControl.cpp
 )
 
 target_link_libraries(robotutils 

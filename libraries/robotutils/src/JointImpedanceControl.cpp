@@ -1,4 +1,4 @@
-#include "robotutils/JointImpedanceController.h"
+#include "robotutils/JointImpedanceControl.h"
 
 namespace curan {
 namespace robotic {
@@ -11,12 +11,11 @@ namespace robotic {
         /*
         We remove some energy from the system whilst moving the robot in free space. Thus we guarantee that the system is passive
         */
-        Eigen::Matrix<double,7,1> desired_velocity = Eigen::Matrix<double,7,1>::Ones()*actuation;
+        //Eigen::Matrix<double,7,1> desired_velocity = Eigen::Matrix<double,7,1>::Ones()*actuation;
         
         //state.cmd_tau =  35*(desired_velocity-filtered_velocity);
-        state.cmd_tau =  35*iiwa.mass()*(desired_velocity-filtered_velocity);
-        state.user_defined = filtered_velocity;
-        timer += iiwa.sample_time();
+        state.cmd_tau =  Eigen::Matrix<double,7,1>::Zero();
+        //state.user_defined = filtered_velocity;
 
 
         /*
