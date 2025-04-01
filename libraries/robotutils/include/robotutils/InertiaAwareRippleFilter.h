@@ -35,7 +35,7 @@ namespace massripple{
                 Eigen::Matrix<double,n_joints,1> w = 2*R(dq.array().abs().matrix());
                 Eigen::Matrix<double,n_joints,1> G = Eigen::Matrix<double,n_joints,1>::Zero();
                 for(double& g : G.rowwise()){
-
+                    
                 }
                 double amplitude = G.array().abs().maxCoeff(critical_index);
                 value = std::min((dq[critical_index]*dq[critical_index])/(0.1*0.1),1.0);
