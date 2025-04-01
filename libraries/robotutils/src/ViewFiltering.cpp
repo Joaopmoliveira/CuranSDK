@@ -3,7 +3,7 @@
 namespace curan {
 namespace robotic {
 
-    ViewFiltering::ViewFiltering(){
+    ViewFiltering::ViewFiltering() : filtering_mechanism{500,150} {
         for (size_t filter_index = 0; filter_index < number_of_joints; ++filter_index)
         {
             first_harmonic[filter_index].frequency = (filter_index == 4) ? 320.0 : 320.0;
@@ -22,9 +22,6 @@ namespace robotic {
         state.cmd_tau = vector_type::Zero();
         vector_type raw_filtered_torque = vector_type::Zero();
         vector_type raw_deriv_filtered_torque = vector_type::Zero();
-
-        if(filtering_mechanism.is_first)
-            previous_q = iiwa.joints();
 
         static vector_type init_q = iiwa.joints();
         static vector_type prev_tau = iiwa.measured_torque();
@@ -56,8 +53,6 @@ namespace robotic {
         }
 
         prev_tau = iiwa.measured_torque();
-
-        //const auto& [filtered_torque, filtered_torque_derivative] = filtering_mechanism.update(raw_filtered_torque,partial_derivative_torque,iiwa.sample_time());
         const auto& filtered_torque = filtering_mechanism.update(raw_filtered_torque,iiwa.sample_time());
         //state.cmd_q = iiwa.joints() + Eigen::Matrix<double,curan::robotic::number_of_joints,1>::Constant(0.5 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
         state.cmd_q = init_q;

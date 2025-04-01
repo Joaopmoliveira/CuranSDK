@@ -3,7 +3,7 @@
 
 #include "LBRController.h"
 #include "RippleFilter.h"
-#include "GenericStateDerivative.h"
+#include "LowPassDerivativeFilter.h"
 #include <array>
 
 namespace curan {
