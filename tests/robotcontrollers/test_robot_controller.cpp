@@ -61,14 +61,14 @@ void custom_interface(vsg::CommandBuffer &cb, curan::robotic::RobotLBR &client)
                 //    buffers[index].AddPoint(t, (float)state.user_defined2[index]);
                 //ImPlot::PlotLine(loc.data(), &buffers[index].Data[0].x, &buffers[index].Data[0].y, buffers[index].Data.size(), 0, buffers[index].Offset, 2 * sizeof(float));
     
-                loc = "cmdtau_" + std::to_string(index);
+                loc = "dq_" + std::to_string(index);
                 if(!stop_time)
-                    deriv[index].AddPoint(t, (float)state.cmd_tau[index]);
+                    deriv[index].AddPoint(t, (float)state.user_defined2[index]);
                 ImPlot::PlotLine(loc.data(), &deriv[index].Data[0].x, &deriv[index].Data[0].y, deriv[index].Data.size(), 0, deriv[index].Offset, 2 * sizeof(float));
 
-                loc = "accel_" + std::to_string(index);
+                loc = "fdq_" + std::to_string(index);
                 if(!stop_time)
-                    buffers_tau[index].AddPoint(t, (float)state.ddq[index]);
+                    buffers_tau[index].AddPoint(t, (float)state.user_defined3[index]);
                 ImPlot::PlotLine(loc.data(), &buffers_tau[index].Data[0].x, &buffers_tau[index].Data[0].y, buffers_tau[index].Data.size(), 0, buffers_tau[index].Offset, 2 * sizeof(float));
 
 
@@ -114,7 +114,7 @@ struct ViewFiltering : public curan::robotic::UserData
 
     bool is_first_loop = true;
 
-    ViewFiltering() : filtering_mechanism{500,200}
+    ViewFiltering() : filtering_mechanism{500,20}
     {
         for (size_t filter_index = 0; filter_index < curan::robotic::number_of_joints; ++filter_index)
         {
@@ -218,7 +218,7 @@ struct ViewFiltering : public curan::robotic::UserData
         }
 
         static vector_type prev_filtered_torque = raw_filtered_torque;
-        const auto& deriv_filtered_torque = filtering_mechanism.update(raw_deriv_filtered_torque,iiwa.sample_time());
+        const auto& joint_vels = filtering_mechanism.update(iiwa.velocities(),iiwa.sample_time());
 
         vector_type reference = init_q;
         vector_type impedance_controller = 100.0*(reference-iiwa.joints())-10*iiwa.velocities();
@@ -228,8 +228,8 @@ struct ViewFiltering : public curan::robotic::UserData
         state.cmd_tau = vector_type::Zero();
 
         currentTime += iiwa.sample_time();
-        state.user_defined2 = actuation;
-        state.user_defined3 = iiwa.gravity() + iiwa.coriolis();
+        state.user_defined2 = iiwa.velocities();
+        state.user_defined3 = joint_vels;
         prev_tau = iiwa.measured_torque();
         prev_filtered_torque = raw_filtered_torque;
         for (size_t index = 0; index < curan::robotic::number_of_joints; ++index){
