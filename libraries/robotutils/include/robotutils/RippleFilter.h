@@ -18,9 +18,10 @@ namespace ripple{
 
             template<size_t siz>
             void compute(const Eigen::Matrix<double,siz,1>& dq,double sample_time){
+                const double v_min = 0.05;
                 double max_vel = dq.array().abs().maxCoeff();
-                //value = 0.5-0.5*cos(std::min(3.14159265358979323,std::abs(max_vel)*20.0));
-                value = std::min(std::abs(max_vel)*5,1.0);
+                value = 0.5-0.5*cos((3.14159265358979323/v_min)*std::min(std::abs(max_vel),v_min));
+                //value = std::min(std::abs(max_vel)*5,1.0);
                 damper_derivative = (value-prev_value)/sample_time;
                 prev_value = value;
                 delta = std::abs(max_vel*sample_time);
