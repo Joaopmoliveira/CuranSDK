@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
 	};
 	std::array<initial_guess_and_cost,number_of_initial_guesses> random_solutions_to_test;
 
-	constexpr size_t number_of_strings = 3;
+	constexpr size_t number_of_strings = 4;
 	constexpr size_t number_of_variables = 6 + 4 * number_of_strings;
 
 	curan::optim::WireData optimizationdata;
