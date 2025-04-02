@@ -7,13 +7,16 @@ src/JointVelocityController.cpp
 src/RobotState.cpp
 src/ImpedanceController.cpp
 src/CartesianVelocityController.cpp
+src/RippleFilter.cpp
+src/ViewFiltering.cpp
+src/InertiaAwareRippleFilter.cpp
+src/JointImpedanceControl.cpp
 )
-
-message("MARK--------- RBDL string ${RBDL_LIBRARY}")
 
 target_link_libraries(robotutils 
 PUBLIC
 ${RBDL_LIBRARY}
+utils
 Eigen3::Eigen
 FRILibrary
 gaussianmixture

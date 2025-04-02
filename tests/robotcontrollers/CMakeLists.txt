@@ -207,4 +207,16 @@ communication
 renderable
 )
 
+add_executable(test_robot_controller test_robot_controller.cpp)
+
+target_compile_definitions(test_robot_controller PRIVATE SK_VULKAN)
+target_compile_definitions(test_robot_controller PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_robot_controller PUBLIC
+utils
+robotutils
+communication
+renderable
+)
+
 
