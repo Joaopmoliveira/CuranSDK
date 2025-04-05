@@ -67,53 +67,14 @@ installed.
 (if on linux)
 3.* Install the build tools required for your operating system - Install the lattest build-tools which integrates C++ compilers in your system.
 
-4. To set up the package manager that deals with our third party dependencies go to your command prompt and write
-```sh
-~path >> git clone https://github.com/Joaopmoliveira/CuranSDK.git
-~path >> cd CuranSDK
-~path/CuranSDK >> cd vcpkg
-~path/CuranSDK/vcpkg >> ./vcpkg/bootstrap-vcpkg.bat
-```
-
-5. Now we have to specify a couple of details which are specific to each computer. In modern build systems CMake is the tool for the job.
-We can configure CMake through a file called CMakePresents.json which specifies flags required for proper compilation of the project. s
-
-```
-{
-  "version": 5,
-  "configurePresets": [
-    {
-      "name": "debug",
-      "displayName": "Debug",
-      "generator": "Ninja",
-      "binaryDir": "build/debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "release",
-      "displayName": "Release",
-      "generator": "Ninja",
-      "binaryDir": "build/release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    }
-  ]
-}
-```
-
-Now we could just go to the command line and install the dependencies as in
+4. Go to your command line. There are two present types in Curan "Release" and "Debug". Assuming that you wish to build the project in Release mode write
 
 ```sh
-~path/CuranSDK >> cmake -B build -S . 
-~path/CuranSDK >> cmake --build build
+~path/CuranSDK >> cmake --preset Release
+~path/CuranSDK >> cmake --build --preset Release
 ```
 
-And the project should just compile out of the box (this will take a LOOOOONG TIME to compile 
-because ITK and SKIA are huge). Reserve at least 30Gb of memory for vcpkg to compile all the dependencies.
-
+which should compile the entire project
 
 # Supported operating systems
 
@@ -123,7 +84,7 @@ If you face any problem with vcpkg try to search online for custom solutions for
  The officially supported operating systems are :
 
 1. Windows 
-2. Ubuntu - Linux
+2. Ubuntu - Linux (currently having some problems with ITK)
 
 ## Integration with a proper IDE 
 
@@ -134,68 +95,48 @@ Follow the following steps
 
 2. Second install Vulkan from the website https://vulkan.lunarg.com/sdk/home (this is a graphics API to communicate with the GPU of your computer)
 
-3. Install the lattest version of Mycrosoft Visual Studio - Community Edition which integrates C++ compilers in your system. 
+3. Install the latest version of either Mycrosoft Visual Studio - Community Edition which integrates C++ compilers in your system or the most recent compiler in Linux.
 
 4. Now you can install vscode by downloading it from the website https://code.visualstudio.com/
 
-Once the download is finished you can open the vscode IDE, go to the extensions tab, install the c++ extension from windows, the cmake extension
-and also install the vcpkg extension. Once this is done go to the page of the vcpkg extension and enable it (this should create a folder in your 
-project called .vscode) with a file inside it called settings.json with the following contents
+5. Go through the command line to the project directory and write 
 
-```
-{
-    "cmake.generator": "Ninja",
-    "cmake.configureArgs": [
-        "-DVCPKG_APPLOCAL_DEPS=ON",
-        "-DX_VCPKG_APPLOCAL_DEPS_INSTALL=ON",
-        "-DVCPKG_MANIFEST_MODE=ON",
-        "-DVCPKG_TARGET_TRIPLET=x64-windows-static"
-    ],
-    "vcpkg.general.enable": true,
-    "vcpkg.target.useStaticLib": true,
-    "vcpkg.target.installDependencies": true,
-    "vcpkg.target.preferSystemLibs": false,
-    "vcpkg.target.useManifest": true
-}
+```sh
+~path/CuranSDK >> code .
 ```
 
-Notice that we are forcing the cmake extension to pass the arguments of where vcpkg is installed in the line 
---CMAKE_TOOLCHAIN_FILE: "path to your vcpkg instalation directory"--. 
-This should compile out of the box once all the steps are solved.
+which will open the project and configure things as necessary
 
 ## Integrating Plus directly in the source code
 
 When doing demonstrations for outsiders, or trying to use the software in real world environments, having to deal with manually lauching Plus
 can be a bother. Thus CURAN allows you to attach the root path to the Plus Server so that when you launch the main application, ApplicationLauncher
-plus is automatically launches as well, reducing the ammount of work required by you. This is an optinal behavior, thus if you desire to trigger it,
+plus is automatically launches as well, reducing the amount of work required by you. This is an optinal behavior, thus if you desire to trigger it,
 you must pass to CMAKE the command line option through the CMakePresents.json file in the cache variables.
 
 ```
-{
-  "version": 5,
-  "configurePresets": [
-    {
-      "name": "debug",
-      "displayName": "Debug",
-      "generator": "Ninja",
-      "binaryDir": "build/debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CURAN_PLUS_EXECUTABLE_PATH": "~path_to_plus/bin/PlusServer.exe"
-      }
-    },
-    {
-      "name": "release",
-      "displayName": "Release",
-      "generator": "Ninja",
-      "binaryDir": "build/release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CURAN_PLUS_EXECUTABLE_PATH": "~path_to_plus/bin/PlusServer.exe"
-      }
-    }
-  ]
-}
+...
+        {
+            "name": "Debug",
+            "displayName": "Debug",
+            "generator": "Ninja",
+            "binaryDir": "build/debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CURAN_PLUS_EXECUTABLE_PATH": "your path"
+            }
+        },
+        {
+            "name": "Release",
+            "displayName": "Release",
+            "generator": "Ninja",
+            "binaryDir": "build/release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CURAN_PLUS_EXECUTABLE_PATH": "your path"
+            }
+        }
+...
 ```
 
 Now once you build the executable ApplicationLauncher will deal with the pesky details of launching plus for you.
