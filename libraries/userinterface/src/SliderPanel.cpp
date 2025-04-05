@@ -542,7 +542,7 @@ namespace curan
 					}
 				}
 
-				if (zoom_in && get_hightlight_color() == SkColorSetARGB(255, 125, 0, 0))
+				if (zoom_in && get_hightlight_color() == SkColorSetARGB(255, 125, 0, 0) && interpreter.check(INSIDE_ALLOCATED_AREA))
 					zoom_in.draw(canvas);
 
 				slider_paint.setColor(slider_color);
@@ -591,7 +591,6 @@ namespace curan
 					for (auto &pending : volumetric_mask->callbacks_pressedhighlighted)
 						pending(volumetric_mask, config, highlighted_stroke);
 
-
 				pending_strokes_to_process.clear();
 
 				auto check_inside_fixed_area = [this](double x, double y)
@@ -607,6 +606,7 @@ namespace curan
 				interpreter.process(check_inside_allocated_area, check_inside_fixed_area, sig);
 
 				if (interpreter.check(KEYBOARD_EVENT)){
+					
 					set_current_state(SliderStates::WAITING);
 					auto arg = std::get<curan::ui::Key>(sig);
 					if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS){

@@ -1,1 +1,0 @@
-## This folder is supposed to be used to store temporary training data for neural networks
