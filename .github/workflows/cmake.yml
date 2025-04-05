@@ -1,0 +1,33 @@
+name: CI
+# Workflow file for windows
+on:
+  push:
+    branches:
+      - master
+  pull_request: {}
+
+jobs:
+  Windows:
+    name: build-windows
+    runs-on: [self-hosted, windows]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+      with:
+          submodules: recursive
+
+    - name: Bootstraping vcpkg (windows)
+      run: |
+        cd vcpkg
+        bootstrap-vcpkg.bat
+
+    - name: Running configuration cmake (windows)
+      run: |
+        cd ${{ github.workspace }}
+        cmake --preset Release
+
+
+    - name: Build Solution (windows)
+      run: |
+         cmake --build --preset Release
