@@ -89,8 +89,6 @@ if(!compiled) {
 		float text_offset_y = drawable.centerY() + widget_rect_text.height() / 2.0f;
 				
 		canvas->drawRect(drawable, paint);
-		canvas->drawTextBlob(text, text_offset_x, text_offset_y, paint_text);
-
 		if (icon_data.get() != nullptr) {
 			float image_width = static_cast<float>(icon_data->width());
 			float image_height = static_cast<float>(icon_data->height());
@@ -106,6 +104,9 @@ if(!compiled) {
 
 			SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
 			canvas->drawImageRect(icon_data, current_selected_image_rectangle, opt);
+			canvas->drawTextBlob(text, text_offset_x, current_selected_image_rectangle.bottom(), paint_text);
+		} else {
+			canvas->drawTextBlob(text, text_offset_x, text_offset_y, paint_text);
 		}
 	};
 	return lamb;

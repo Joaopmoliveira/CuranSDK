@@ -21,6 +21,10 @@ enum PanelType
 
 struct Application
 {
+
+    std::shared_ptr<curan::ui::LightWeightPage> volume_loader_page;
+    curan::ui::ItemExplorer* ptr_item_explorer = nullptr;
+
     std::optional<Eigen::Matrix<double, 3, 2>> first_path;
     std::optional<Eigen::Matrix<double, 3, 2>> second_path;
     std::optional<Eigen::Matrix<double, 3, 1>> first_point;

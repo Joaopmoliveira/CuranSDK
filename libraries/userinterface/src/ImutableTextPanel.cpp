@@ -30,8 +30,9 @@ namespace curan
             auto lamb = [this](SkCanvas *canvas)
             {
                 SkAutoCanvasRestore acr(canvas, true);
-                canvas->clipRect(get_position());
-                canvas->translate(fMargin, (float)(fMargin - fPos));
+                auto drawable = get_position();
+                canvas->clipRect(drawable);
+                canvas->translate(drawable.x()+fMargin, (float)(drawable.y()+fMargin - fPos));
                 SkPlainTextEditor::Editor::PaintOpts options;
                 options.fCursor = fTextPos;
                 options.fCursorColor = SkColors::kTransparent;

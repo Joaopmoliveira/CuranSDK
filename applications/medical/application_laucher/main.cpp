@@ -10,6 +10,7 @@
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Overlay.h"
 #include "userinterface/widgets/Loader.h"
+#include "userinterface/widgets/TaskManager.h"
 #include "utils/TheadPool.h"
 #include "utils/Logger.h"
 #include "utils/Overloading.h"
@@ -24,6 +25,8 @@ constexpr auto waiting_color_active = SkColorSetARGB(70, 0, 255, 0);
 constexpr auto waiting_color_inactive = SkColorSetARGB(70, 255, 0, 0);
 
 class Application;
+
+std::atomic<curan::ui::TaskManager*> manager = nullptr;
 
 class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 {
@@ -54,10 +57,16 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 			static std::istream istr(&async_data->plus_buf);
 			if (!ec){
 				std::getline(istr, line);
-				std::cout << "plus >> " << line << std::endl;
+				if(manager) 
+					manager.load()->set_mainbody("plus >> " + line);
+				else 
+					std::cout << "plus >> " << line << std::endl;
 			}
 			if (!async_data->in_use){
-				std::cout << "plus >> stopping......" << line << std::endl;
+				if(manager) 
+					manager.load()->set_mainbody("plus >> stopping..." + line);
+				else 
+					std::cout << "plus >> stopping..." << line << std::endl;
 				return;
 			}
 			if (!ec)
@@ -74,10 +83,12 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 			static std::istream istr(&async_data->child_buf);
 			if (!ec){
 				std::getline(istr, line);
-				std::cout << "child >> " << line << std::endl;
+				if(manager)  manager.load()->set_mainbody("child >> " + line);
+				else std::cout << "child >> " << line << std::endl;
 			}
 			if (!async_data->in_use){
-				std::cout << "child >> stopping......" << line << std::endl;
+				if(manager) manager.load()->set_mainbody("child >> stopping... " + line);
+				else std::cout << "child >> stopping... " << line << std::endl;
 				return;
 			}
 			if (!ec)
@@ -94,9 +105,12 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 																asio_ctx,
 																boost::process::on_exit([async_data = getptr(), in_executable = executable](int exit, const std::error_code &ec_in)
 																						{
-						if(exit)
-            				std::cout << in_executable << " failure\n" << ec_in.message() << std::endl;
+						if(exit){
+							if(manager) manager.load()->set_mainbody("failure\n" + ec_in.message());
+							else std::cout << in_executable << " failure\n" << ec_in.message() << std::endl;
+						}
 						async_data->terminate_all(); }));
+		if(manager) manager.load()->set_appendix("running").set_mainbody("lauching app: "+executable);
 	}
 
 #ifdef CURAN_PLUS_EXECUTABLE_PATH
@@ -110,10 +124,14 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 															   asio_ctx,
 															   boost::process::on_exit([async_data = getptr()](int exit, const std::error_code &ec_in)
 																					   {
-																						   if (exit)
-																							   std::cout << "Plus failure" << ec_in.message() << std::endl;
+																						   if (exit){
+																							if(manager) manager.load()->set_mainbody("Plus failure" + ec_in.message());
+																							else std::cout << "Plus failure" << ec_in.message() << std::endl;
+																						   }
 																						   async_data->terminate_all(); }));
-	}
+
+		 if(manager) manager.load()->set_appendix("running").set_mainbody("lauching plus server");
+	}																		
 #endif
 
 	
@@ -183,6 +201,7 @@ class Application
 	curan::ui::Button *ptr_button3 = nullptr;
 	curan::ui::Button *ptr_button4 = nullptr;
 	curan::ui::Button *ptr_button5 = nullptr;
+	curan::ui::Button *ptr_button6 = nullptr;
 
 	std::shared_ptr<PendinAsyncData> pending_task = nullptr;
 
@@ -220,12 +239,12 @@ public:
 
 	std::unique_ptr<curan::ui::Container> create_main_widget_container()
 	{
-		auto button1 = curan::ui::Button::make("Path Planning", resources);
+		auto button1 = curan::ui::Button::make("Path Planning","medicalviewer.png",resources);
 		ptr_button1 = button1.get();
 		button1->set_click_color(SK_ColorDKGRAY)
 			.set_hover_color(SK_ColorLTGRAY)
 			.set_waiting_color(waiting_color_inactive)
-			.set_size(SkRect::MakeWH(300, 300));
+			.set_size(SkRect::MakeWH(300, 150));
 		button1->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
 			// 1 . check_if_pathplanning_arguments_are_valid();
@@ -237,12 +256,12 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
-		auto button2 = curan::ui::Button::make("Temporal Calibration", resources);
+		auto button2 = curan::ui::Button::make("Temporal Calibration","ultrasound_validation.png", resources);
 		ptr_button2 = button2.get();
 		button2->set_click_color(SK_ColorDKGRAY)
 			.set_hover_color(SK_ColorLTGRAY)
 			.set_waiting_color(waiting_color_inactive)
-			.set_size(SkRect::MakeWH(300, 300));
+			.set_size(SkRect::MakeWH(300, 150));
 		button2->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
 			// 1 . check_if_temporalcalibration_arguments_are_valid();
@@ -254,12 +273,12 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
-		auto button3 = curan::ui::Button::make("Spatial Calibration", resources);
+		auto button3 = curan::ui::Button::make("Spatial Calibration","ultrasound_validation.png", resources);
 		ptr_button3 = button3.get();
 		button3->set_click_color(SK_ColorDKGRAY)
 			.set_hover_color(SK_ColorLTGRAY)
 			.set_waiting_color(waiting_color_inactive)
-			.set_size(SkRect::MakeWH(300, 300));
+			.set_size(SkRect::MakeWH(300, 150));
 		button3->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
 			// 1 . check_if_ultrasoundcalibration_arguments_are_valid();
@@ -271,12 +290,12 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
-		auto button4 = curan::ui::Button::make("Reconstruction", resources);
+		auto button4 = curan::ui::Button::make("Reconstruction","volumereconstruction.png", resources);
 		ptr_button4 = button4.get();
 		button4->set_click_color(SK_ColorDKGRAY)
 			.set_hover_color(SK_ColorLTGRAY)
 			.set_waiting_color(waiting_color_inactive)
-			.set_size(SkRect::MakeWH(300, 300));
+			.set_size(SkRect::MakeWH(300, 150));
 		button4->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
 			// 1 . check_if_realtimereconstructor_arguments_are_valid();
@@ -288,12 +307,30 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
-		auto button5 = curan::ui::Button::make("Neuro Navigation", resources);
+		auto button6 = curan::ui::Button::make("Reconstruction","surfaceconstruction.png", resources);
+		ptr_button6 = button6.get();
+		button6->set_click_color(SK_ColorDKGRAY)
+			.set_hover_color(SK_ColorLTGRAY)
+			.set_waiting_color(waiting_color_inactive)
+			.set_size(SkRect::MakeWH(300, 150));
+		button6->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
+									{
+			// 1 . check_if_realtimereconstructor_arguments_are_valid();
+			if(!launch_all("RealTimeReconstructor")){
+				terminate_all();
+				inbut->set_waiting_color(waiting_color_inactive);
+			}
+			else{
+				inbut->set_waiting_color(waiting_color_active);
+			} });
+
+		auto button5 = curan::ui::Button::make("Neuro Navigation","biopsyviewer.png", resources);
 		ptr_button5 = button5.get();
 		button5->set_click_color(SK_ColorDKGRAY)
 			.set_hover_color(SK_ColorLTGRAY)
 			.set_waiting_color(waiting_color_inactive)
-			.set_size(SkRect::MakeWH(300, 300));
+			.set_font_size(20)
+			.set_size(SkRect::MakeWH(300, 150));
 		button5->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
 			// 1 . check_if_intraoperative_arguments_are_valid();
@@ -305,21 +342,49 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
-		auto image = resources.get_icon("human_robotics_logo.jpeg");
-		std::unique_ptr<curan::ui::Container> widgetcontainer;
-		if (image)
-			widgetcontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL, *image);
-		else
-			widgetcontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
-
+		auto registrationcontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
+		*registrationcontainer << std::move(button4) << std::move(button6);
+		auto widgetcontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
 		*widgetcontainer << std::move(button1)
 						 << std::move(button2)
 						 << std::move(button3)
-						 << std::move(button4)
+						 << std::move(registrationcontainer)
 						 << std::move(button5);
 
-		widgetcontainer->set_color(SK_ColorBLACK);
-		return std::move(widgetcontainer);
+		auto lablogo = resources.get_icon("hrtransparent.png");
+		auto tecnicologo = resources.get_icon("IST_A_RGB_POS.png");
+		if(lablogo && tecnicologo){
+			auto pagelayout = curan::ui::Container::make(curan::ui::Container::ContainerType::VARIABLE_CONTAINER, curan::ui::Container::Arrangement::UNDEFINED);
+			auto logos = curan::ui::Container::make(curan::ui::Container::ContainerType::VARIABLE_CONTAINER, curan::ui::Container::Arrangement::UNDEFINED);
+			auto imagelablogo = curan::ui::ImageDisplay::make();
+			imagelablogo->print_only_image(true)
+					      .update_image(*lablogo);
+			auto imagetecnicologo = curan::ui::ImageDisplay::make();
+			imagetecnicologo->print_only_image(true)
+						  .update_image(*tecnicologo);
+			*pagelayout << std::move(imagelablogo) << std::move(imagetecnicologo) << std::move(widgetcontainer);
+			pagelayout->set_variable_layout({SkRect::MakeXYWH(0,0,0.1,0.1),SkRect::MakeXYWH(0.9,0,0.1,0.1),SkRect::MakeXYWH(0,0.1,1.0,0.9)});
+			pagelayout->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
+
+			auto tasktracker = curan::ui::TaskManager::make("Curan");
+			manager = tasktracker.get();
+			tasktracker->set_height(40).set_appendix("waiting");		
+			auto container_with_task = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
+			*container_with_task << std::move(pagelayout) << std::move(tasktracker);
+			container_with_task->set_divisions({0.0, 0.98, 1.0});
+			return std::move(container_with_task);
+		} else {
+			auto pagelayout = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
+			*pagelayout << std::move(widgetcontainer);
+			pagelayout->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
+			auto tasktracker = curan::ui::TaskManager::make("Curan");
+			manager = tasktracker.get();
+			tasktracker->set_height(40).set_appendix("waiting");		
+			auto container_with_task = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::VERTICAL);
+			*container_with_task << std::move(pagelayout) << std::move(tasktracker);
+			container_with_task->set_divisions({0.0, 0.98, 1.0});
+			return std::move(container_with_task);
+		}
 	}
 
 	bool launch_all(const std::string &executable, bool all = true)
@@ -332,7 +397,11 @@ public:
 
 	void terminate_all()
 	{
-		std::cout << "terminal all called!" << std::endl;
+		if(manager) 
+			manager.load()->set_mainbody("terminate all called!").set_appendix("waiting");
+		else 
+			std::cout << "terminate all called!" << std::endl;
+		
 		if (pending_task)
 			pending_task->terminate_all();
 		pending_task = nullptr;
@@ -362,6 +431,8 @@ public:
 			ptr_button4->set_waiting_color(waiting_color_inactive);
 		if (ptr_button5)
 			ptr_button5->set_waiting_color(waiting_color_inactive);
+		if (ptr_button6)
+			ptr_button6->set_waiting_color(waiting_color_inactive);
 	}
 };
 
@@ -398,13 +469,12 @@ int main()
 		curan::ui::IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
 		std::unique_ptr<curan::ui::Context> context = std::make_unique<curan::ui::Context>();
 		curan::ui::DisplayParams param{std::move(context)};
+		param.windowName = "Curan:1.0.0";
 		std::unique_ptr<curan::ui::Window> viewer = std::make_unique<curan::ui::Window>(std::move(param));
 		Application app{resources};
 		app.get_page()->update_page(viewer.get());
 
 		curan::ui::ConfigDraw config_draw{app.get_page()};
-		config_draw.stack_page->stack(curan::ui::Loader::make("human_robotics_logo.jpeg", resources));
-
 		viewer->set_minimum_size(app.get_page()->minimum_size());
 
 		while (!glfwWindowShouldClose(viewer->window) && signal_untriggered.load(std::memory_order_relaxed))

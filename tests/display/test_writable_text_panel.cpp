@@ -21,7 +21,7 @@ int main(){
         std::unique_ptr<MutatingTextPanel> layer = MutatingTextPanel::make(false,"write for life");
         layer->set_background_color({.0f, .0f, .0f, 1.0f}).set_text_color({1.f,1.f,1.f,1.f}).set_highlighted_color({.2f, .2f, .2f, 1.0f}).set_cursor_color({1.0,0.0,0.0,1.0});
         auto container = Container::make(Container::ContainerType::VARIABLE_CONTAINER, Container::Arrangement::UNDEFINED);
-        container->set_variable_layout({SkRect::MakeLTRB(0.1,0.1,0.9,0.9)});
+        container->set_variable_layout({SkRect::MakeLTRB(0.3,0.1,0.9,0.9)});
         container->set_color(SkColorSetARGB(255,255,255,255));
         auto ptr_layer = layer.get();
         

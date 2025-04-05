@@ -48,6 +48,7 @@ int main()
         std::unique_ptr<Context> context = std::make_unique<Context>();
 
         DisplayParams param{std::move(context), 2200, 1200};
+        param.windowName = "Curan:Trajectory Planner";
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
         std::mutex mut;

@@ -9,6 +9,8 @@
 
 void load_all_files_in_directory(Application &app_data, curan::ui::ConfigDraw *drawing_data, std::atomic<bool> &stop_value, std::mutex &mut)
 {
+    size_t identifier = 0;
+
     std::vector<std::string> uids_to_load = get_representative_uids(app_data.path);
     for (const auto &uid : uids_to_load)
     {
@@ -20,6 +22,13 @@ void load_all_files_in_directory(Application &app_data, curan::ui::ConfigDraw *d
         {
             std::lock_guard<std::mutex> g{mut};
             app_data.loaded.push_back({*image, uid});
+            ImageType::Pointer pointer_to_block_of_memory = *image;
+            ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+            auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
+            auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
+            if(app_data.ptr_item_explorer)
+                app_data.ptr_item_explorer->add(curan::ui::Item{identifier, "vol_" + std::to_string(identifier), buff, extracted_size[0], extracted_size[1]});
+            ++identifier;
         }
         if (stop_value.load())
             return;
@@ -60,6 +69,7 @@ int main()
         std::unique_ptr<Context> context = std::make_unique<Context>();
 
         DisplayParams param{std::move(context), 2200, 1200};
+        param.windowName = "Curan:Trajectory Planner";
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
         std::mutex mut;

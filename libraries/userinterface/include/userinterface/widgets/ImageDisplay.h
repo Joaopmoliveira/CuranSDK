@@ -19,6 +19,7 @@ class ImageDisplay final : public  Drawable, public utilities::Lockable, public 
 	int width = -1;
 	int height = -1;
 	bool compiled = false;
+	bool f_print_only_image = false;
 	std::optional<ImageWrapper> old_image = std::nullopt;
 	std::optional<ImageWrapper>  images_to_render = std::nullopt;
 	std::optional<custom_step> custom_drawing_call = std::nullopt;
@@ -48,6 +49,11 @@ public:
 	ImageDisplay& set_image_size();
 
 	ImageDisplay& set_color_filter(sk_sp<SkColorFilter> filter);
+
+	inline ImageDisplay& print_only_image(bool val){
+		f_print_only_image = val;
+		return *(this);
+	}
 };
 
 }

@@ -353,3 +353,27 @@ PUBLIC
 ${ITK_LIBRARIES}
 userinterface
 )
+
+# ----------------------------------------
+
+add_executable(test_multple_sliderplanes test_multple_sliderplanes.cpp)
+
+target_compile_definitions(test_multple_sliderplanes PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_multple_sliderplanes
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+)
+
+# ----------------------------------------
+
+add_executable(test_implementation_of_task_tracker test_implementation_of_task_tracker.cpp)
+
+target_compile_definitions(test_implementation_of_task_tracker PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_implementation_of_task_tracker
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+)

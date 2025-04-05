@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "the received port is: " << data.port << "\n";
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
 	DisplayParams param{ std::move(context)};
-	param.windowName = "curan: ultrasound calibration";
+	param.windowName = "Curan:Spatial Calibration";
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 

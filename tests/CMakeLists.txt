@@ -1,8 +1,8 @@
 find_package(Vulkan REQUIRED)
 
-#add_subdirectory(utilities)
-#add_subdirectory(communication)
-#add_subdirectory(display)
+add_subdirectory(utilities)
+add_subdirectory(communication)
+add_subdirectory(display)
 #add_subdirectory(imageprocessing)
 #add_subdirectory(optimization)
 #add_subdirectory(rendering)

@@ -30,6 +30,7 @@ int main(int argc, char* argv[]) {
 	
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
 	DisplayParams param{ std::move(context)};
+	param.windowName = "Curan:Temporal Calibration";
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 

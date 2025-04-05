@@ -21,7 +21,8 @@ int main(){
 
         std::unique_ptr<ImutableTextPanel> layer = ImutableTextPanel::make("write for life");
         layer->set_background_color({1.f,1.0f,1.0f,1.0f}).set_text_color({.0f,.0f,.0f,1.0f});
-        auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+        auto container = Container::make(Container::ContainerType::VARIABLE_CONTAINER,Container::Arrangement::UNDEFINED);
+        container->set_variable_layout({SkRect::MakeXYWH(0.2,0,0.6,1)});
         ImutableTextPanel* layer_ptr = layer.get();
         *container << std::move(layer);
 
