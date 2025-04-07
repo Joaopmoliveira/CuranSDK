@@ -12,41 +12,54 @@ namespace massripple{
 
         template<size_t n_joints>
         struct Damper{
-            double value = 0.0; 
-            double delta = 0.0;
-            size_t critical_index = 0;
+            std::array<double,n_joints> values;
+            std::array<double,n_joints> deltas;
+            std::array<double,n_joints> critical_indices;
             
-            Eigen::Matrix<double,n_joints,1> B;
-            Eigen::Matrix<double,n_joints,1> K;
-            Eigen::Matrix<double,n_joints,1> D;
-            Eigen::Matrix<double,n_joints,1> Kt;
+            std::array<double,n_joints> B;
+            std::array<double,n_joints> K;
+            std::array<double,n_joints> D;
+            std::array<double,n_joints> Kt;
             Eigen::Matrix<double,n_joints,1> R;
 
-            Damper(const Eigen::Matrix<double,n_joints,1>& in_B,
-                    const Eigen::Matrix<double,n_joints,1>& in_K,
-                    const Eigen::Matrix<double,n_joints,1>& in_D,
-                    const Eigen::Matrix<double,n_joints,1>& in_Kt,
-                    const Eigen::Matrix<double,n_joints,1>& in_R) : B{in_B}, K{in_K}, D{in_D}, Kt{in_Kt}, R{in_R}
+            Damper(const std::array<double,n_joints>& in_B,
+                    const std::array<double,n_joints>& in_K,
+                    const std::array<double,n_joints>& in_D,
+                    const std::array<double,n_joints>& in_Kt,
+                    const std::array<double,n_joints>& in_R) : B{in_B}, 
+                                                               K{in_K}, 
+                                                               D{in_D}, 
+                                                               Kt{in_Kt}, 
+                                                               R{Eigen::Matrix<double,n_joints,1>::Zero()}
             {
+                for(size_t i = 0; i < n_joints ; ++i)
+                    R(i,i) = in_R[i];
             }
 
 
             void compute(const Eigen::Matrix<double,n_joints,n_joints>& M,const Eigen::Matrix<double,n_joints,1>& dq,double sample_time){
-                Eigen::Matrix<double,n_joints,1> w = 2*R(dq.array().abs().matrix());
+                Eigen::Matrix<double,n_joints,1> w = (2*R.array()*(dq.array().abs())).matrix();
                 Eigen::Matrix<double,n_joints,1> G = Eigen::Matrix<double,n_joints,1>::Zero();
-                for(size_t j = 0; j < n_joints; ++j)
-                    G[j] = Kt[j]/std::sqrt(std::pow(1+Kt[j]+B[j]/M(j,j)-w[j]*w[j]/(K[j]*B[j]),2)+std::pow(w[j]*D[j]/K[j]+w[j]*B[j]*D[j]/(K[j]*M(j,j)),2));
-                G.array().abs().maxCoeff(critical_index);
-                value = std::min((dq[critical_index]*dq[critical_index])/(0.1*0.1),1.0);
-                delta = std::abs(dq[critical_index]*sample_time);
+                for(size_t crit_j = 0; crit_j < n_joints; ++crit_j ){
+                    double largest_G = -1;
+                    for(size_t j = 0; j < n_joints; ++j){
+                        G[j] = Kt[j]/std::sqrt(std::pow(1+Kt[j]+B[j]/M(crit_j,crit_j)-w[j]*w[j]/(K[j]*B[j]),2)+std::pow(w[j]*D[j]/K[j]+w[j]*B[j]*D[j]/(K[j]*M(crit_j,crit_j)),2));
+                        if(G[j]>largest_G){
+                            largest_G = G[j];
+                            critical_indices[crit_j] = j;
+                        }
+                    }
+                    values[crit_j] = std::min((dq[critical_indices[crit_j]]*dq[critical_indices[crit_j]])/(0.1*0.1),1.0);
+                    deltas[crit_j] = std::abs(dq[critical_indices[crit_j]]*sample_time);
+                }
+
             };
 
         };
 
         struct Properties{
             double width;
-            double frequency;
-            Properties(double in_width = 5.0, double in_frequency = 320.0) : width{in_width}, frequency{in_frequency}{};
+            Properties(double in_width = 5.0) : width{in_width}{}
         };
 
         struct Data{
@@ -66,10 +79,10 @@ namespace massripple{
         and the changes due to the scalling function that shuts down the filter
         */
         template<size_t n_joints>
-        double execute(const std::array<Properties,n_joints>& props,const Damper<n_joints>& damper, Data& data){
-            const double A = 2.0 * props[damper.critical_index].width * props[damper.critical_index].frequency * damper.delta;
-            const double B = 4.0 + props[damper.critical_index].frequency * props[damper.critical_index].frequency * damper.delta * damper.delta;
-            double y_f2 = (damper.value/(A+B)) * (A*data.y[2] - A*data.y[0] - (2.0*(B-8.0) * data.y_f[1] + (B-A)*data.y_f[0]) );
+        double execute(const std::array<Properties,n_joints>& props,const Damper<n_joints>& damper, Data& data, size_t joint_index){
+            const double A = 2.0 * props[damper.critical_indices[joint_index]].width*2.0* damper.R[damper.critical_indices[joint_index]]*damper.deltas[joint_index];
+            const double B = 4.0 + 2.0*damper.R[damper.critical_indices[joint_index]]*2.0*damper.R[damper.critical_indices[joint_index]]*damper.deltas[joint_index]*damper.deltas[joint_index];
+            double y_f2 = (damper.values[joint_index]/(A+B)) * (A*data.y[2] - A*data.y[0] - (2.0*(B-8.0) * data.y_f[1] + (B-A)*data.y_f[0]) );
             data.y_f[2] = y_f2;
             return y_f2;
         }
