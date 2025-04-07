@@ -5,6 +5,7 @@
 #include <atomic>
 #include "LightWeightPage.h"
 #include <deque>
+#include "utils/Overloading.h"
 
 namespace curan {
 	namespace ui {
@@ -15,7 +16,8 @@ namespace curan {
 
 		class Page {
 			std::unique_ptr<LightWeightPage> main_page;
-			std::deque<std::unique_ptr<LightWeightPage>> page_stack;
+			using pointer_type = std::variant<std::unique_ptr<LightWeightPage>,std::shared_ptr<LightWeightPage>>;
+			std::deque<pointer_type> page_stack;
 			
 			sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
 			SkPaint bluring_paint;
@@ -36,12 +38,15 @@ namespace curan {
 
 			Page& pop();
 
-			Page& stack(std::unique_ptr<Overlay> overlay);
 			Page& stack(std::unique_ptr<Loader> loader);
-
+			Page& stack(std::unique_ptr<Overlay> overlay);
 			Page& replace_all(std::unique_ptr<Overlay> overlay);
-
 			Page& replace_last(std::unique_ptr<Overlay> overlay);
+
+			/* avoid using these since it makes your own logic and lifetime management harder to follow */
+			Page& stack(std::shared_ptr<LightWeightPage> overlay);
+			Page& replace_all(std::shared_ptr<LightWeightPage> overlay);
+			Page& replace_last(std::shared_ptr<LightWeightPage> overlay);
 
 			Page& clear_overlays();
 
@@ -55,7 +60,7 @@ namespace curan {
 				if (page_stack.empty())
 					main_page->set_dirtyness(var);
 				else
-					page_stack.front()->set_dirtyness(var);
+					std::visit([var](auto&& arg){ arg->set_dirtyness(var); }, page_stack.back());
                 return *(this);
 			}
 

@@ -45,18 +45,18 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 #Find all required third parties (this should be moved elsewhere)
 find_package(asio CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
-#find_package(Ceres CONFIG REQUIRED)
-#find_package(unofficial-skia CONFIG REQUIRED)
+find_package(Ceres CONFIG REQUIRED)
+find_package(unofficial-skia CONFIG REQUIRED)
 find_package(nlohmann_json REQUIRED)
-#find_package(Vulkan REQUIRED)
-#find_package(glfw3 3.3 REQUIRED)
-#find_package(Boost COMPONENTS filesystem)
+find_package(Vulkan REQUIRED)
+find_package(glfw3 3.3 REQUIRED)
+find_package(Boost COMPONENTS filesystem)
 find_package(vsg CONFIG REQUIRED)
 find_package(vsgXchange CONFIG REQUIRED)
 find_package(vsgImGui CONFIG REQUIRED)
 find_package(RBDL CONFIG REQUIRED)
-#find_package(gflags REQUIRED)
-#find_package(glog REQUIRED)
+find_package(gflags REQUIRED)
+find_package(glog REQUIRED)
 
 
 #Externally provided targets
@@ -96,7 +96,7 @@ add_custom_target(
 add_subdirectory(libraries)
 
 # Add medical applications
-#add_subdirectory(applications)
+add_subdirectory(applications)
 
 # Most of the time there is no need to compile the tests and the tutorials
 # folder so you can comment out these subfolders from the build directory

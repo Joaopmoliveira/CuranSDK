@@ -215,7 +215,7 @@ void Application::view_image_simple()
     button5->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                             {
             if(config->stack_page!=nullptr){
-			    config->stack_page->stack(create_volume_loader_page());
+			    config->stack_page->stack(volume_loader_page);
 		    } });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -569,7 +569,7 @@ void Application::view_image_with_point_selection()
     button5->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                             {
             if(config->stack_page!=nullptr){
-			    config->stack_page->stack(create_volume_loader_page());
+			    config->stack_page->stack(volume_loader_page);
 		    } });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -968,6 +968,7 @@ std::unique_ptr<curan::ui::Overlay> Application::create_volume_loader_page()
     using namespace curan::ui;
     using PixelType = unsigned char;
     auto item_explorer = ItemExplorer::make("file_icon.png", resources);
+    ptr_item_explorer = item_explorer.get();
     item_explorer->add_press_call([this](ItemExplorer *widget, Press press, ConfigDraw *draw)
                                   {
             auto highlighted = widget->highlighted();
@@ -982,19 +983,6 @@ std::unique_ptr<curan::ui::Overlay> Application::create_volume_loader_page()
                 point_selection();
             }};
             pool->submit(load_selected_volume); });
-    using ImageType = itk::Image<PixelType, 3>;
-    using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
-    size_t identifier = 0;
-    std::lock_guard<std::mutex> g{mut};
-    for (auto &previews : loaded)
-    {
-        ImageType::Pointer pointer_to_block_of_memory = std::get<0>(previews);
-        ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
-        auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
-        auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
-        item_explorer->add(Item{identifier, "vol_" + std::to_string(identifier), buff, extracted_size[0], extracted_size[1]});
-        ++identifier;
-    }
 
     item_explorer->set_size(SkRect::MakeWH(800, 400));
 
@@ -1110,8 +1098,10 @@ std::unique_ptr<curan::ui::Container> Application::main_page()
     button5->add_press_call([&](Button *button, Press press, ConfigDraw *config)
                             {
             if(config->stack_page!=nullptr){
-			    config->stack_page->stack(create_volume_loader_page());
+			    config->stack_page->stack(volume_loader_page);
 		    } });
+
+    volume_loader_page = create_volume_loader_page()->take_ownership();
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     if (button2.get() != nullptr)

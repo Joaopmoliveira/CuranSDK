@@ -24,6 +24,8 @@ namespace curan {
 			static std::unique_ptr<Overlay> make(std::unique_ptr<Container> contained,SkColor backgroundcolor,bool tight = false);
  			static std::unique_ptr<Overlay> make(std::unique_ptr<Container> contained,post_signal_callback callback,SkColor backgroundcolor,bool tight = false);           
 			std::unique_ptr<LightWeightPage> take_ownership();
+
+			
 		};
 	}
 }

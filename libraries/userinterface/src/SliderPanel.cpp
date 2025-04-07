@@ -542,7 +542,7 @@ namespace curan
 					}
 				}
 
-				if (zoom_in && get_hightlight_color() == SkColorSetARGB(255, 125, 0, 0))
+				if (zoom_in && get_hightlight_color() == SkColorSetARGB(255, 125, 0, 0) && interpreter.check(INSIDE_ALLOCATED_AREA))
 					zoom_in.draw(canvas);
 
 				slider_paint.setColor(slider_color);
@@ -591,7 +591,6 @@ namespace curan
 					for (auto &pending : volumetric_mask->callbacks_pressedhighlighted)
 						pending(volumetric_mask, config, highlighted_stroke);
 
-
 				pending_strokes_to_process.clear();
 
 				auto check_inside_fixed_area = [this](double x, double y)
@@ -607,31 +606,46 @@ namespace curan
 				interpreter.process(check_inside_allocated_area, check_inside_fixed_area, sig);
 
 				if (interpreter.check(KEYBOARD_EVENT)){
+					
 					set_current_state(SliderStates::WAITING);
 					auto arg = std::get<curan::ui::Key>(sig);
-					if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
-					{
+					if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS){
 						if (zoom_in)
 							zoom_in.deactivate();
 						else
 							zoom_in.activate();
-						return true;
 					}
 
-					if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS)
-					{
+					if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS){
 						is_highlighting = !is_highlighting;
-						if (!current_stroke.empty())
-						{
+						if (!current_stroke.empty()){
 							insert_in_map(current_stroke);
 							current_stroke.clear();
 						}
-						return true;
 					}
 					return false;
 				}
 
 				is_pressed = false;
+
+				if (interpreter.check(ENTERED_ALLOCATED_AREA_EVENT))
+				{
+					set_current_state(SliderStates::WAITING);
+					set_hightlight_color(SkColorSetARGB(255, 125, 0, 0));
+					return false;
+				}
+
+				if (interpreter.check(LEFT_ALLOCATED_AREA_EVENT))
+				{
+					set_current_state(SliderStates::WAITING);
+					if (!current_stroke.empty())
+					{
+						insert_in_map(current_stroke);
+						current_stroke.clear();
+					}
+					set_hightlight_color(SK_ColorDKGRAY);
+					return true;
+				}
 
 				if (interpreter.check(OUTSIDE_ALLOCATED_AREA))
 				{
@@ -661,7 +675,9 @@ namespace curan
 				else
 					is_pressed = false;
 				
-				if(interpreter.check(MOUSE_UNCLICK_RIGHT_EVENT | MOUSE_UNCLICK_LEFT_EVENT | LEFT_ALLOCATED_AREA_EVENT)){
+				if( interpreter.check(MOUSE_UNCLICK_RIGHT_EVENT) || 
+					interpreter.check(MOUSE_UNCLICK_LEFT_EVENT ) || 
+					interpreter.check(LEFT_ALLOCATED_AREA_EVENT)){
 					set_current_state(SliderStates::WAITING);
 					insert_in_map(current_stroke);
 					current_stroke.clear();
@@ -705,6 +721,13 @@ namespace curan
 				}
 
 				if(interpreter.status() & ~MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED && interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_MOVE_EVENT | MOUSE_CLICKED_LEFT) ){
+					set_current_state(SliderStates::PRESSED);
+					if (!is_highlighting)
+						current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
+					return true;
+				}
+
+				if(interpreter.status() & ~MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED && interpreter.check(INSIDE_ALLOCATED_AREA | MOUSE_CLICKED_LEFT_EVENT) ){
 					set_current_state(SliderStates::PRESSED);
 					if (!is_highlighting)
 						current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));

@@ -1,4 +1,5 @@
 #include "userinterface/widgets/LightWeightPage.h"
+#include <iostream>
 
 namespace curan {
 namespace ui {
@@ -14,7 +15,7 @@ LightWeightPage::LightWeightPage(std::unique_ptr<Container> contained, SkColor b
 }
 
 LightWeightPage::~LightWeightPage(){
-	
+
 }
 
 std::unique_ptr<LightWeightPage> LightWeightPage::make(std::unique_ptr<Container> contained, SkColor backgroundcolor, bool tight){
@@ -28,14 +29,12 @@ std::unique_ptr<LightWeightPage> LightWeightPage::make(std::unique_ptr<Container
 }
 
 LightWeightPage& LightWeightPage::draw(SkCanvas* canvas){
-	if (is_dirty) {
-		if(is_tight)
-			canvas->drawRoundRect(scene->get_position(),10,10,paint);
+	if(is_tight)
+		canvas->drawRoundRect(scene->get_position(),10,10,paint);
 		
-		canvas->drawColor(backgroundcolor);
-		for (auto& drawcall : compiled_scene.callable_draw)
-			drawcall(canvas);
-	}
+	canvas->drawColor(backgroundcolor);
+	for (auto& drawcall : compiled_scene.callable_draw)
+		drawcall(canvas);
     return *(this);
 }
 

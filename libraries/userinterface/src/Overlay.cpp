@@ -2,6 +2,7 @@
 #include "utils/Overloading.h"
 #include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/widgets/Page.h"
+#include <iostream>
 
 namespace curan {
 namespace ui {

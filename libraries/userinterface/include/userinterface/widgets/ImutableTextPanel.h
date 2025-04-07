@@ -10,6 +10,7 @@
 
 #include <cfloat>
 #include <fstream>
+#include <iostream>
 #include <memory>
 
 namespace curan{
@@ -77,6 +78,14 @@ public:
         return *(this);
     }
 
+    inline ImutableTextPanel &appendtext(const std::string& other){
+        std::lock_guard<std::mutex> g{get_mutex()};
+        SkPlainTextEditor::Editor::TextPosition final_position{0, index};
+        index = (index+1) % 30;
+        fEditor.insert(final_position, other.data(), other.size());
+        return *(this);
+    }
+
 private:
 
     ImutableTextPanel(const std::string& default_text);
@@ -104,6 +113,8 @@ private:
     SkColor4f text_color;
     SkColor4f background_color;
     SkColor4f selection_color;
+
+    size_t index = 0;
 
 };
 

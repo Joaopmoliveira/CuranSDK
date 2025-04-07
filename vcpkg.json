@@ -1,6 +1,7 @@
 {
   "dependencies": [
     "eigen3",
+    "itk",
     "ceres",
     "asio",
     "glfw3",
