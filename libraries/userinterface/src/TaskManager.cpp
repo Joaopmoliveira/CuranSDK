@@ -39,6 +39,7 @@ curan::ui::drawablefunction TaskManager::draw() {
       break;
     }
     SkRect drawable = get_position();
+    std::lock_guard<std::mutex> g{get_mutex()};
     canvas->drawRect(drawable, paint);
     float text_offset_x = drawable.x() + min_padding;
     float text_offset_y = drawable.centerY() + rect_predix.height() / 2.0f;

@@ -184,7 +184,8 @@ public:
 		auto shared_async_resource = std::make_shared<PendinAsyncData>(Private(), asio_ctx, executable, in_parent, all);
 		shared_async_resource->launch_all(executable, all);
 #ifdef CURAN_PLUS_EXECUTABLE_PATH // conditionally compile code with plus process lauching mechanics
-		shared_async_resource->post_async_plus_read();
+		if(all)
+			shared_async_resource->post_async_plus_read();
 #endif
 		shared_async_resource->post_async_read();
 		return shared_async_resource;
