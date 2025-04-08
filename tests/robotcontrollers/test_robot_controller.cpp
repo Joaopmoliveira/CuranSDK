@@ -128,9 +128,9 @@ struct ViewFiltering : public curan::robotic::UserData
         Brotors = matrix_type::Identity();
         Brotors(0,0) = 4.1;
         Brotors(1,1) = 4.1;
-        Brotors(2,2) = 0.5;
-        Brotors(3,3) = 0.5;
-        Brotors(4,4) = 0.5;
+        Brotors(2,2) = 1.5;
+        Brotors(3,3) = 1.5;
+        Brotors(4,4) = 1.5;
         Brotors(5,5) = 0.02;
         Brotors(6,6) = 0.02;
 
@@ -214,7 +214,7 @@ struct ViewFiltering : public curan::robotic::UserData
         vector_type impedance_controller = stiffness*(reference-iiwa.joints())-damping_nullspace*joint_vels;
 
         state.cmd_q = iiwa.joints() + vector_type::Constant(0.25 / 180.0 * M_PI * sin(2 * M_PI * 10 * currentTime));
-        state.cmd_tau = vector_type::Zero();//+KT*(impedance_controller-filtered_torque);
+        state.cmd_tau = impedance_controller+KT*(impedance_controller-filtered_torque);
 
         currentTime += iiwa.sample_time();
         state.user_defined2 = filtered_torque;
