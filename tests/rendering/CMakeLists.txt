@@ -422,4 +422,21 @@ ${OPERATING_SYSTEM_REQUIRMENTS}
 ${ITK_LIBRARIES}
 )
 
+add_executable(test_robot_and_volume_render_app
+test_robot_and_volume_render_app.cpp
+)
+
+target_compile_definitions(test_robot_and_volume_render_app PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_robot_and_volume_render_app PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_robot_and_volume_render_app
+PUBLIC
+vsg::vsg
+vsgXchange::vsgXchange
+renderable
+vsgImGui::vsgImGui
+${OPERATING_SYSTEM_REQUIRMENTS}
+${ITK_LIBRARIES}
+)
+
 

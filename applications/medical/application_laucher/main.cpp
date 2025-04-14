@@ -203,6 +203,7 @@ class Application
 	curan::ui::Button *ptr_button4 = nullptr;
 	curan::ui::Button *ptr_button5 = nullptr;
 	curan::ui::Button *ptr_button6 = nullptr;
+	curan::ui::Button *ptr_button7 = nullptr;
 
 	std::shared_ptr<PendinAsyncData> pending_task = nullptr;
 
@@ -325,6 +326,22 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
+
+		auto button7 = curan::ui::Button::make("Register","pan.png", resources);
+		ptr_button7 = button7.get();
+		button7->set_click_color(SK_ColorDKGRAY)
+				.set_hover_color(SK_ColorLTGRAY)
+				.set_waiting_color(waiting_color_inactive)
+				.set_size(SkRect::MakeWH(300, 150));
+		button7->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config){
+			// 1 . check_if_realtimereconstructor_arguments_are_valid();
+			if(!launch_all("RegistrationApplication")){
+				terminate_all();
+				inbut->set_waiting_color(waiting_color_inactive);
+			} else {
+				inbut->set_waiting_color(waiting_color_active);
+		} });
+
 		auto button5 = curan::ui::Button::make("Neuro Navigation","biopsyviewer.png", resources);
 		ptr_button5 = button5.get();
 		button5->set_click_color(SK_ColorDKGRAY)
@@ -434,6 +451,8 @@ public:
 			ptr_button5->set_waiting_color(waiting_color_inactive);
 		if (ptr_button6)
 			ptr_button6->set_waiting_color(waiting_color_inactive);
+		if (ptr_button7)
+			ptr_button7->set_waiting_color(waiting_color_inactive);
 	}
 };
 

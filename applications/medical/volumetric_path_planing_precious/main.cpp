@@ -86,8 +86,7 @@ int main()
 
         function_value = true;
 
-        if (data_application.final_first_point && data_application.final_second_point && data_application.final_third_point)
-        {
+        if (data_application.final_first_point && data_application.final_second_point && data_application.final_third_point){
             Eigen::Vector3d desired_dir_z = *data_application.final_first_point-*data_application.final_third_point;
             Eigen::Vector3d desired_dir_x = *data_application.final_first_point-*data_application.final_second_point;
             desired_dir_z.normalize();
@@ -107,14 +106,11 @@ int main()
             std::ofstream o(CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json");
             o << trajectory_specification;
             std::cout << trajectory_specification << std::endl;
-        }
-        else
-        {
+        } else {
             std::cout << "the points required to specify the trajectory \nwere not specified, please specify them" << std::endl;
         }
 
-        if (data_application.map[ORIGINAL_VOLUME].get_volume().IsNull())
-        {
+        if (data_application.map[ORIGINAL_VOLUME].get_volume().IsNull()){
             std::cout << "the original volume is null, thus no area is contained in it" << std::endl;
             return 1;
         }

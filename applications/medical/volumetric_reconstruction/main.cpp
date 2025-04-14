@@ -245,6 +245,7 @@ struct ApplicationState
         {
             std::lock_guard<std::mutex> g{mut};
             ImGui::InputText("Filename", &filename);
+            filename = CURAN_COPIED_RESOURCE_PATH "/reconstruction_results.mha";
         }
 
         if (ImGui::Button("Save Volume"))
@@ -857,8 +858,7 @@ int main(int argc, char **argv)
     app_pointer = &application_state;
 
     curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
-    std::cout << "using calibration matrix: \n"
-              << calibration.homogeneous_transformation() << std::endl;
+    std::cout << "using calibration matrix: \n" << calibration.homogeneous_transformation() << std::endl;
     for (Eigen::Index row = 0; row < 4; ++row)
         for (Eigen::Index col = 0; col < 4; ++col)
             application_state.robot_state.calibration_matrix(col, row) = calibration.homogeneous_transformation()(row, col);
