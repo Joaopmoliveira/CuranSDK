@@ -377,3 +377,17 @@ PUBLIC
 ${ITK_LIBRARIES}
 userinterface
 )
+
+
+# ----------------------------------------
+
+add_executable(test_dicom_compliant_display test_dicom_compliant_display.cpp)
+
+target_compile_definitions(test_dicom_compliant_display PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_dicom_compliant_display
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+geometry
+)

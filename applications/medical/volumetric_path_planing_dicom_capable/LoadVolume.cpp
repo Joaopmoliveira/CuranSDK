@@ -1,5 +1,6 @@
 #include "LoadVolume.h"
 #include "itkShiftScaleImageFilter.h"
+#include "itkOrientImageFilter.h"
 
 std::vector<std::string> get_representative_uids(std::string path){
     using NamesGeneratorType = itk::GDCMSeriesFileNames;
@@ -72,9 +73,6 @@ std::optional<ImageType::Pointer> get_representative_series_image(std::string pa
     // string type in order to receive those particular values.
     using MetaDataStringType = itk::MetaDataObject<std::string>;
 
-    // The metadata dictionary is organized as a container with its corresponding
-    // iterators. We can therefore visit all its entries by first getting access to
-    // its Begin() and End() methods.
 
     auto query = [&](const std::string& entryID){
         auto tagItr = dictionary.Find(entryID);
@@ -86,20 +84,19 @@ std::optional<ImageType::Pointer> get_representative_series_image(std::string pa
         }
         MetaDataStringType::ConstPointer entryvalue = dynamic_cast<const MetaDataStringType *>(tagItr->second.GetPointer());
 
-        if (entryvalue){
+        if (entryvalue)
             tagvalue = entryvalue->GetMetaDataObjectValue();
-            std::cout << "Patient's (" << entryID << ") ";
-            std::cout << " is: " << *tagvalue << std::endl;
-        }
-        else
-            std::cout << "Entry was not of string type" << std::endl;
+        //    std::cout << "Patient's (" << entryID << ") ";
+        //    std::cout << " is: " << *tagvalue << std::endl;
+        //}
+        //else
+        //    std::cout << "Entry was not of string type" << std::endl;
         return tagvalue;
     };
 
     auto bits_stored_atribute = query("0028|0101");  //Bits Stored Attribute
 
     using ShiftScaleFilterType = itk::ShiftScaleImageFilter<DICOMImageType, DICOMImageType>;
-    auto shiftFilter = ShiftScaleFilterType::New();
     
     auto compute_conversion = [](const std::string& number_in_string){
         std::optional<int> result = std::nullopt;
@@ -115,7 +112,8 @@ std::optional<ImageType::Pointer> get_representative_series_image(std::string pa
 
     int bits_stored = bits_stored_atribute ? (compute_conversion(*bits_stored_atribute) ?  *compute_conversion(*bits_stored_atribute) : 16) : 16;  //Bits Allocated Attribute
 
-    std::printf("scalling factor is: (%f) with bits stored (%d)\n",std::pow(2,sizeof(PixelType)*8.0-bits_stored),bits_stored);
+    using ShiftScaleFilterType = itk::ShiftScaleImageFilter<DICOMImageType, DICOMImageType>;
+    auto shiftFilter = ShiftScaleFilterType::New();
     
     shiftFilter->SetScale(std::pow(2,sizeof(PixelType)*8.0-bits_stored));
     shiftFilter->SetShift(0);
@@ -201,20 +199,46 @@ std::optional<ImageType::Pointer> load_volume_from_selected_uid(std::string path
         }
         MetaDataStringType::ConstPointer entryvalue = dynamic_cast<const MetaDataStringType *>(tagItr->second.GetPointer());
 
-        if (entryvalue){
+        if (entryvalue)
             tagvalue = entryvalue->GetMetaDataObjectValue();
-            std::cout << "Patient's (" << entryID << ") ";
-            std::cout << " is: " << *tagvalue << std::endl;
-        }
-        else
-            std::cout << "Entry was not of string type" << std::endl;
+        //    std::cout << "Patient's (" << entryID << ") ";
+        //    std::cout << " is: " << *tagvalue << std::endl;
+        //}
+        //else
+        //    std::cout << "Entry was not of string type" << std::endl;
         return tagvalue;
     };
+
+    auto patient_orientation = query("0020|0020");  //Patient Orientation Attribute
+    auto image_laterality = query("0020|0062");  //Image Laterality Attribute
+    auto slice_thickness = query("0018|0050");  //Slice Thickness Attribute
+    auto spacing_between_slices = query("0018|0088");  //Spacing Between Slices Attribute
+    auto image_position = query("0020|0032");  //Image Position (Patient) Attribute
+    auto image_orientation = query("0020|0037");  //Image Orientation (Patient) Attribute
+    auto anatomical_orientation_type = query("0010|2210");  //Anatomical Orientation Type
+    
+
+    auto print_val = [](std::string description,std::optional<std::string> contained){
+        if(contained)
+            std::cout << "the requested atribute (" << description << ") has the value: " << *contained << "\n";
+        else 
+            std::cout << "the requested atribute (" << description << ") has no value\n";
+    };
+
+    print_val("patient_orientation",patient_orientation);
+    print_val("image_laterality",image_laterality);
+    print_val("slice_thickness",slice_thickness);
+    print_val("spacing_between_slices",spacing_between_slices);
+    print_val("image_position",image_position);
+    print_val("image_orientation",image_orientation);
+    print_val("anatomical_orientation_type",anatomical_orientation_type);
+
+    using ShiftScaleFilterType = itk::ShiftScaleImageFilter<DICOMImageType, DICOMImageType>;
+    auto shiftFilter = ShiftScaleFilterType::New();
 
     auto bits_stored_atribute = query("0028|0101");  //Bits Stored Attribute
 
     using ShiftScaleFilterType = itk::ShiftScaleImageFilter<DICOMImageType, DICOMImageType>;
-    auto shiftFilter = ShiftScaleFilterType::New();
     
     auto compute_conversion = [](const std::string& number_in_string){
         std::optional<int> result = std::nullopt;
@@ -230,8 +254,7 @@ std::optional<ImageType::Pointer> load_volume_from_selected_uid(std::string path
 
     int bits_stored = bits_stored_atribute ? (compute_conversion(*bits_stored_atribute) ?  *compute_conversion(*bits_stored_atribute) : 16) : 16;  //Bits Allocated Attribute
 
-    std::printf("scalling factor is: (%f) with bits stored (%d)\n",std::pow(2,sizeof(PixelType)*8.0-bits_stored),bits_stored);
-    
+
     shiftFilter->SetScale(std::pow(2,sizeof(PixelType)*8.0-bits_stored));
     shiftFilter->SetShift(0);
     shiftFilter->SetInput(reader->GetOutput());
@@ -240,15 +263,20 @@ std::optional<ImageType::Pointer> load_volume_from_selected_uid(std::string path
     auto filter = FilterType::New();
     filter->SetInput(shiftFilter->GetOutput());
 
+    itk::OrientImageFilter<ImageType,ImageType>::Pointer orienter =itk::OrientImageFilter<ImageType,ImageType>::New();
+    orienter->UseImageDirectionOn();
+    orienter->SetDesiredCoordinateOrientation(itk::SpatialOrientation::ITK_COORDINATE_ORIENTATION_RAI);
+     
+    orienter->SetInput(filter->GetOutput());
+    
     try
     {
-        filter->Update();
+        orienter->Update();
     }
     catch (const itk::ExceptionObject &ex)
     {
         std::cout << ex << std::endl;
         return std::nullopt;
     }
-
-    return filter->GetOutput();
+    return orienter->GetOutput();
 }

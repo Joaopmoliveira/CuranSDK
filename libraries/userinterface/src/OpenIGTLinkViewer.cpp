@@ -51,7 +51,7 @@ namespace curan
 			}
 		};
 
-		OpenIGTLinkViewer::OpenIGTLinkViewer() : last_pressed_position{-20000.0, -20000.0}
+		OpenIGTLinkViewer::OpenIGTLinkViewer() : last_pressed_position{Press::LEFT,-20000.0, -20000.0}
 		{
 			text_font = SkFont(defaultTypeface(), 10, 1.0f, 0.0f);
 			text_font.setEdging(SkFont::Edging::kAntiAlias);

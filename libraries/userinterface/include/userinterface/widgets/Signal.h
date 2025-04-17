@@ -24,8 +24,12 @@ namespace curan
 			double ypos;
 		};
 
-		struct Press
-		{
+		struct Press{
+			enum click{
+				LEFT,
+				RIGHT
+			};
+			click button;
 			double xpos;
 			double ypos;
 		};
@@ -38,8 +42,12 @@ namespace curan
 			double yoffset;
 		};
 
-		struct Unpress
-		{
+		struct Unpress{
+			enum click{
+				LEFT,
+				RIGHT
+			};
+			click button;
 			double xpos;
 			double ypos;
 		};
@@ -349,16 +357,22 @@ namespace curan
 															shutoff_oneoff_events();
 															allocated_area_logic(std::forward<allocated>(inside_allocated), arg.xpos, arg.ypos);
 															fixed_area_logic(std::forward<fixed>(inside_fixed), arg.xpos, arg.ypos);
-															if (!(current_status & MOUSE_CLICKED_LEFT)){
-																if(current_status & INSIDE_FIXED_AREA)
-																	current_status |= MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED;
-																current_status |= MOUSE_CLICKED_LEFT_EVENT | MOUSE_CLICKED_LEFT;
+															if(arg.button==curan::ui::Press::LEFT){
+																if (!(current_status & MOUSE_CLICKED_LEFT)){
+																	if(current_status & INSIDE_FIXED_AREA)
+																		current_status |= MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED;
+																	current_status |= MOUSE_CLICKED_LEFT_EVENT | MOUSE_CLICKED_LEFT;
+																}
+															} else {
+																if (!(current_status & MOUSE_CLICKED_RIGHT)){
+																	if(current_status & INSIDE_FIXED_AREA)
+																		current_status |= MOUSE_CLICKED_RIGHT_WAS_INSIDE_FIXED;
+																	current_status |= MOUSE_CLICKED_RIGHT_EVENT | MOUSE_CLICKED_RIGHT;
+																}
 															}
-															if (!(current_status & MOUSE_CLICKED_RIGHT)){
-																if(current_status & INSIDE_FIXED_AREA)
-																	current_status |= MOUSE_CLICKED_RIGHT_WAS_INSIDE_FIXED;
-																current_status |= MOUSE_CLICKED_RIGHT_EVENT | MOUSE_CLICKED_RIGHT;
-															}
+
+
+
 															x_last_press = arg.xpos;
 															y_last_press = arg.ypos;
 														},
@@ -374,15 +388,18 @@ namespace curan
 															shutoff_oneoff_events();
 															allocated_area_logic(std::forward<allocated>(inside_allocated), arg.xpos, arg.ypos);
 															fixed_area_logic(std::forward<fixed>(inside_fixed), arg.xpos, arg.ypos);
-															if ((current_status & MOUSE_CLICKED_LEFT))
-															{
-																current_status |= MOUSE_UNCLICK_LEFT_EVENT;
-																current_status &= ~MOUSE_CLICKED_LEFT;
-															}
-															if ((current_status & MOUSE_CLICKED_RIGHT))
-															{
-																current_status |= MOUSE_UNCLICK_RIGHT_EVENT;
-																current_status &= ~MOUSE_CLICKED_RIGHT;
+															if(arg.button==curan::ui::Unpress::LEFT){
+																if ((current_status & MOUSE_CLICKED_LEFT))
+																{
+																	current_status |= MOUSE_UNCLICK_LEFT_EVENT;
+																	current_status &= ~MOUSE_CLICKED_LEFT;
+																}
+															} else {
+																if ((current_status & MOUSE_CLICKED_RIGHT))
+																{
+																	current_status |= MOUSE_UNCLICK_RIGHT_EVENT;
+																	current_status &= ~MOUSE_CLICKED_RIGHT;
+																}
 															}
 															current_status &= ~(MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED | MOUSE_CLICKED_RIGHT_WAS_INSIDE_FIXED);
 														},

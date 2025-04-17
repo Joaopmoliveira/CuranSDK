@@ -26,13 +26,13 @@ namespace curan
 			{
 			case GLFW_PRESS:
 			{
-				Press val{xpos, ypos};
+				Press val{button == GLFW_MOUSE_BUTTON_RIGHT ? Press::RIGHT : Press::LEFT,xpos, ypos};
 				received_signal = val;
 				break;
 			}
 			case GLFW_RELEASE:
 			{
-				Unpress val{xpos, ypos};
+				Unpress val{button == GLFW_MOUSE_BUTTON_RIGHT ? Unpress::RIGHT : Unpress::LEFT,xpos, ypos};
 				received_signal = val;
 				break;
 			}
