@@ -360,6 +360,8 @@ private:
 
     SkPaint highlighted_panel;
 
+    const double buffer_sideways = 10.0;
+
     VolumetricMask *volumetric_mask = nullptr;
     std::vector<std::tuple<std::vector<SkPoint>,SkPath>> cached_polyheader_intersections;
     std::vector<directed_stroke> pending_strokes_to_process;
@@ -398,14 +400,14 @@ private:
     Direction direction = Direction::X;
     SkPaint slider_paint;
 
-	size_t font_size = 15;
-    sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(10, 10, nullptr);
+	size_t font_size = 20;
+    sk_sp<SkImageFilter> imgfilter = SkImageFilters::Blur(20, 20, nullptr);
     SkPaint bluring_paint;
     
-	SkColor options_hover_color;
-	SkColor options_waiting_color;
-	SkColor options_click_color;
-	SkColor options_text_color;
+	SkColor options_hover_color = SK_ColorCYAN;
+	SkColor options_waiting_color = SK_ColorWHITE;
+	SkColor options_click_color = SK_ColorGRAY;
+	SkColor options_text_color= SK_ColorBLACK;
 	SkPaint options_paint;
 	SkPaint options_paint_text;
     //TODO: Add paint and color options to constructor
@@ -972,12 +974,12 @@ SlidingPanel::SlidingPanel(curan::ui::IconResources &other, VolumetricMask *volu
     options_paint.setStyle(SkPaint::kFill_Style);
     options_paint.setAntiAlias(true);
     options_paint.setStrokeWidth(4);
-    options_paint.setColor(SK_ColorWHITE);
+    options_paint.setColor(get_options_waiting_color());
 
     options_paint_text.setStyle(SkPaint::kStroke_Style);
     options_paint_text.setAntiAlias(true);
-    options_paint_text.setStrokeWidth(8);
-    options_paint_text.setColor(SK_ColorBLACK);
+    options_paint_text.setStrokeWidth(2);
+    options_paint_text.setColor(options_text_color);
 
     options = SkSamplingOptions();
 
@@ -1094,9 +1096,10 @@ void SlidingPanel::framebuffer_resize(const SkRect &new_page_size)
             max_width = opt.size.width();        
     }
 
-    double buffer_sideways = 0.0;
+    max_width += buffer_sideways;
+    max_height += buffer_sideways;
 
-    double max_items_per_line = pos.width() / max_width;
+    double max_items_per_line = (reserved_drawing_space.width()-2.0*buffer_sideways) / max_width;
     size_t number_per_line = 1;
 
     number_per_line = std::floor(max_items_per_line);
@@ -1105,18 +1108,20 @@ void SlidingPanel::framebuffer_resize(const SkRect &new_page_size)
         number_per_line = 1;
     }
 
-    double x_location = 0.0;
-    double y_location = 0.0;
+    double in_line_spacing  = (reserved_drawing_space.width()-2.0*buffer_sideways-number_per_line*max_width)/number_per_line;
+
+    double x_location = reserved_drawing_space.fLeft+buffer_sideways;
+    double y_location = reserved_drawing_space.fTop+buffer_sideways;
 
     size_t row_location_index = 0;
 
     for(auto& opt : f_options){
-        opt.absolute_location = SkRect::MakeXYWH(x_location,y_location,max_width,max_height);    
-        x_location += max_width;
+        opt.absolute_location = SkRect::MakeLTRB(x_location,y_location,x_location+max_width,y_location+max_height);    
+        x_location += max_width+in_line_spacing;
         ++row_location_index;
         if(row_location_index > number_per_line){
             y_location += max_height;
-            x_location = 0.0;
+            x_location = reserved_drawing_space.fLeft+buffer_sideways;
         }
     }  
     
@@ -1127,13 +1132,14 @@ curan::ui::drawablefunction SlidingPanel::draw()
 {
     auto lamb = [this](SkCanvas *canvas)
     {
-        if(!compiled){
-            throw std::runtime_error("must compile the SlidingPanel before drawing operations");
-        }
+    if(!compiled){
+        throw std::runtime_error("must compile the SlidingPanel before drawing operations");
+    }
 
-        if (!volumetric_mask->filled())
-            return;
-        auto widget_rect = get_position();
+    if (!volumetric_mask->filled())
+        return;
+    auto widget_rect = get_position();
+    {
         SkAutoCanvasRestore restore{canvas, true};
         highlighted_panel.setColor(get_hightlight_color());
 
@@ -1270,12 +1276,23 @@ curan::ui::drawablefunction SlidingPanel::draw()
         }
 
         canvas->drawRoundRect(dragable, reserved_slider_space.height() / 2.0f, reserved_slider_space.height() / 2.0f, slider_paint);
+    }
         if(is_options){
+            SkAutoCanvasRestore restore{canvas, true};
             //TODO : now I need to blur the background and render the options
             auto image = canvas->getSurface()->makeImageSnapshot();
             canvas->clipRect(get_position());
             canvas->drawImage(image, 0, 0, options, &bluring_paint);
-
+            for(auto& opt : f_options){
+                if(opt.is_clicked)
+                    options_paint.setColor(get_options_click_color());
+                else if(opt.is_hovering)
+                    options_paint.setColor(get_options_hover_color());
+                else 
+                    options_paint.setColor(get_options_waiting_color());
+                canvas->drawRect(opt.absolute_location,options_paint);
+                canvas->drawTextBlob(opt.text,opt.absolute_location.fLeft+buffer_sideways/2.0,opt.absolute_location.fBottom-buffer_sideways/2.0,options_paint_text);
+            }
         }
     };
     return lamb;
@@ -1447,13 +1464,36 @@ curan::ui::callablefunction SlidingPanel::call()
             return false;
         }
 
-        if (interpreter.check(curan::ui::InterpreterStatus::INSIDE_ALLOCATED_AREA | curan::ui::InterpreterStatus::MOUSE_MOVE_EVENT) && is_options)
-        {
+
+        if(is_options && interpreter.status() & ~curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED && 
+            interpreter.check(curan::ui::InterpreterStatus::INSIDE_ALLOCATED_AREA | 
+                                curan::ui::InterpreterStatus::MOUSE_MOVE_EVENT | 
+                                curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT) ){
             for(auto& opt : f_options){
                 if(opt.absolute_location.contains(xpos,ypos)){
                     opt.is_clicked = false;
                     opt.is_hovering = true;
                 }
+            }
+            return true;
+        }
+
+        if(is_options && interpreter.status() & ~curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED && 
+            interpreter.check(curan::ui::InterpreterStatus::INSIDE_ALLOCATED_AREA | 
+                                curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT_EVENT) ){
+                for(auto& opt : f_options){
+                    if(opt.absolute_location.contains(xpos,ypos)){
+                        opt.is_clicked = true;
+                        opt.is_hovering = false;
+                    }
+                }
+            return true;
+        }
+
+        for(auto& opt : f_options){
+            if(opt.absolute_location.contains(xpos,ypos)){
+                opt.is_clicked = false;
+                opt.is_hovering = false;
             }
         }
 
@@ -1527,8 +1567,11 @@ int main() {
         VolumetricMask vol{castfilter->GetOutput()};
 
         std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &vol, Direction::X);
+        image_display_x->push_options({"coronal","axial","saggital"});
         std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &vol, Direction::Y);
+        image_display_y->push_options({"coronal","axial","saggital"});
         std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &vol, Direction::Z);
+        image_display_z->push_options({"coronal","axial","saggital"});
 
 		auto container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
 		*container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
