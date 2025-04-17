@@ -320,10 +320,10 @@ public:
 constexpr size_t size_of_slider_in_height = 30;
 constexpr size_t buffer_around_panel = 8;
 
-class SlidingPanel;
-using optionsselection_event = std::function<void(SlidingPanel*, curan::ui::ConfigDraw*, size_t selected_option)>;
+class DicomViewer;
+using optionsselection_event = std::function<void(DicomViewer*, curan::ui::ConfigDraw*, size_t selected_option)>;
 
-class SlidingPanel final : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<SlidingPanel>
+class DicomViewer final : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<DicomViewer>
 {
 public:
     enum class SliderStates
@@ -443,18 +443,18 @@ private:
 
     image_info extract_slice_from_volume(size_t index);
 
-    SlidingPanel(curan::ui::IconResources &other, VolumetricMask *mask, Direction in_direction);
+    DicomViewer(curan::ui::IconResources &other, VolumetricMask *mask, Direction in_direction);
 
     void insert_in_map(const curan::ui::PointCollection &future_stroke);
 
 public:
-    static std::unique_ptr<SlidingPanel> make(curan::ui::IconResources &other, VolumetricMask *mask, Direction in_direction);
+    static std::unique_ptr<DicomViewer> make(curan::ui::IconResources &other, VolumetricMask *mask, Direction in_direction);
 
-    ~SlidingPanel();
+    ~DicomViewer();
 
     void compile() override;
 
-    inline SlidingPanel & add_overlay_processor(optionsselection_event event_processor){
+    inline DicomViewer & add_overlay_processor(optionsselection_event event_processor){
         callbacks_optionsselection.push_back(event_processor);
         return *(this);
     }
@@ -464,13 +464,13 @@ public:
     void framebuffer_resize(const SkRect &new_page_size) override;
     void internal_framebuffer_recomputation();
 
-    inline SlidingPanel &trigger(float in_current_value)
+    inline DicomViewer &trigger(float in_current_value)
     {
         value_pressed = in_current_value;
         return *(this);
     }
 
-    inline SlidingPanel & push_options(std::vector<std::string> options)
+    inline DicomViewer & push_options(std::vector<std::string> options)
     {
         if(compiled){
             throw std::runtime_error("cannot compile twice");
@@ -495,7 +495,7 @@ public:
         return value_pressed;
     }
 
-    inline SlidingPanel &set_current_value(float in_current_value)
+    inline DicomViewer &set_current_value(float in_current_value)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         if (in_current_value < 0.0)
@@ -519,7 +519,7 @@ public:
         return hover_color;
     }
 
-    inline SlidingPanel &set_hover_color(SkColor color)
+    inline DicomViewer &set_hover_color(SkColor color)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         hover_color = color;
@@ -532,7 +532,7 @@ public:
         return waiting_color;
     }
 
-    inline SlidingPanel &set_waiting_color(SkColor new_waiting_color)
+    inline DicomViewer &set_waiting_color(SkColor new_waiting_color)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         waiting_color = new_waiting_color;
@@ -545,7 +545,7 @@ public:
         return click_color;
     }
 
-    inline SlidingPanel &set_click_color(SkColor new_click_color)
+    inline DicomViewer &set_click_color(SkColor new_click_color)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         click_color = new_click_color;
@@ -558,7 +558,7 @@ public:
         return slider_color;
     }
 
-    inline SlidingPanel &set_hightlight_color(SkColor new_hightlight_color)
+    inline DicomViewer &set_hightlight_color(SkColor new_hightlight_color)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         highlight_color = new_hightlight_color;
@@ -571,7 +571,7 @@ public:
         return highlight_color;
     }
 
-    inline SlidingPanel &set_slider_color(SkColor new_slider_color)
+    inline DicomViewer &set_slider_color(SkColor new_slider_color)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         slider_color = new_slider_color;
@@ -584,14 +584,14 @@ public:
         return current_state;
     }
 
-    inline SlidingPanel &set_current_state(SliderStates state)
+    inline DicomViewer &set_current_state(SliderStates state)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         current_state = state;
         return *(this);
     }
 
-    inline SlidingPanel& set_color_filter(sk_sp<SkColorFilter> filter){
+    inline DicomViewer& set_color_filter(sk_sp<SkColorFilter> filter){
         SkPaint paint;
         paint.setColorFilter(filter);
         std::lock_guard<std::mutex> g(get_mutex());
@@ -599,7 +599,7 @@ public:
         return *(this);
     }
 
-    inline SlidingPanel &set_options_hover_color(SkColor new_hightlight_color)
+    inline DicomViewer &set_options_hover_color(SkColor new_hightlight_color)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         options_hover_color = new_hightlight_color;
@@ -612,7 +612,7 @@ public:
         return options_hover_color;
     }
 
-    inline SlidingPanel &set_options_waiting_color(SkColor new_hightlight_color)
+    inline DicomViewer &set_options_waiting_color(SkColor new_hightlight_color)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         options_waiting_color = new_hightlight_color;
@@ -625,7 +625,7 @@ public:
         return options_waiting_color;
     }
 
-    inline SlidingPanel &set_options_click_color(SkColor new_hightlight_color)
+    inline DicomViewer &set_options_click_color(SkColor new_hightlight_color)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         options_click_color = new_hightlight_color;
@@ -638,7 +638,7 @@ public:
         return options_click_color;
     }
 
-    inline SlidingPanel &set_options_text_color(SkColor new_hightlight_color)
+    inline DicomViewer &set_options_text_color(SkColor new_hightlight_color)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         options_text_color = new_hightlight_color;
@@ -804,7 +804,7 @@ std::optional<curan::ui::Stroke> Mask::draw(SkCanvas *canvas, const SkMatrix &in
     return std::nullopt;
 }
 
-void SlidingPanel::query_if_required(bool force_update)
+void DicomViewer::query_if_required(bool force_update)
 {
     size_t previous = _current_index;
     assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
@@ -823,7 +823,7 @@ void SlidingPanel::query_if_required(bool force_update)
     previous = _current_index;
 }
 
-SlidingPanel::image_info SlidingPanel::extract_slice_from_volume(size_t index)
+DicomViewer::image_info DicomViewer::extract_slice_from_volume(size_t index)
 {
     image_info info;
     assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
@@ -960,7 +960,7 @@ SlidingPanel::image_info SlidingPanel::extract_slice_from_volume(size_t index)
     return info;
 }
 
-SlidingPanel::SlidingPanel(curan::ui::IconResources &other, VolumetricMask *volume_mask, Direction in_direction) : volumetric_mask{volume_mask}, system_icons{other}
+DicomViewer::DicomViewer(curan::ui::IconResources &other, VolumetricMask *volume_mask, Direction in_direction) : volumetric_mask{volume_mask}, system_icons{other}
 {
     set_current_state(SliderStates::WAITING);
     update_volume(volume_mask, in_direction);
@@ -1010,7 +1010,7 @@ SlidingPanel::SlidingPanel(curan::ui::IconResources &other, VolumetricMask *volu
 
 }
 
-void SlidingPanel::insert_in_map(const curan::ui::PointCollection &future_stroke)
+void DicomViewer::insert_in_map(const curan::ui::PointCollection &future_stroke)
 {
     std::lock_guard<std::mutex> g{get_mutex()};
     assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
@@ -1023,17 +1023,17 @@ void SlidingPanel::insert_in_map(const curan::ui::PointCollection &future_stroke
         success = volumetric_mask->try_emplace(direction, current_value, curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
 }
 
-std::unique_ptr<SlidingPanel> SlidingPanel::make(curan::ui::IconResources &other, VolumetricMask *volume_mask, Direction in_direction)
+std::unique_ptr<DicomViewer> DicomViewer::make(curan::ui::IconResources &other, VolumetricMask *volume_mask, Direction in_direction)
 {
-    std::unique_ptr<SlidingPanel> button = std::unique_ptr<SlidingPanel>(new SlidingPanel{other, volume_mask, in_direction});
+    std::unique_ptr<DicomViewer> button = std::unique_ptr<DicomViewer>(new DicomViewer{other, volume_mask, in_direction});
     return button;
 }
 
-SlidingPanel::~SlidingPanel()
+DicomViewer::~DicomViewer()
 {
 }
 
-void SlidingPanel::compile()
+void DicomViewer::compile()
 {
     if(compiled){
         throw std::runtime_error("cannot compile twice");
@@ -1042,7 +1042,7 @@ void SlidingPanel::compile()
     compiled = true;
 }
 
-void SlidingPanel::update_volume(VolumetricMask *volume_mask, Direction in_direction)
+void DicomViewer::update_volume(VolumetricMask *volume_mask, Direction in_direction)
 {
     std::lock_guard<std::mutex> g{get_mutex()};
     assert(volume_mask != nullptr && "volumetric mask must be different from nullptr");
@@ -1057,7 +1057,7 @@ void SlidingPanel::update_volume(VolumetricMask *volume_mask, Direction in_direc
     query_if_required(true);
 }
 
-void SlidingPanel::internal_framebuffer_recomputation(){
+void DicomViewer::internal_framebuffer_recomputation(){
     auto pos = get_position();
     reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft + buffer_around_panel, pos.fTop + buffer_around_panel, pos.fRight, pos.fBottom - size_of_slider_in_height - buffer_around_panel);
     reserved_slider_space = SkRect::MakeLTRB(pos.fLeft + buffer_around_panel, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom - buffer_around_panel);
@@ -1103,7 +1103,7 @@ void SlidingPanel::internal_framebuffer_recomputation(){
     }
 }
 
-void SlidingPanel::framebuffer_resize(const SkRect &new_page_size)
+void DicomViewer::framebuffer_resize(const SkRect &new_page_size)
 {
     auto pos = get_position();
     std::lock_guard<std::mutex> g{get_mutex()};
@@ -1192,12 +1192,12 @@ void SlidingPanel::framebuffer_resize(const SkRect &new_page_size)
     return;
 }
 
-curan::ui::drawablefunction SlidingPanel::draw()
+curan::ui::drawablefunction DicomViewer::draw()
 {
     auto lamb = [this](SkCanvas *canvas)
     {
     if(!compiled){
-        throw std::runtime_error("must compile the SlidingPanel before drawing operations");
+        throw std::runtime_error("must compile the DicomViewer before drawing operations");
     }
 
     if (!volumetric_mask->filled())
@@ -1380,12 +1380,12 @@ curan::ui::drawablefunction SlidingPanel::draw()
     return lamb;
 }
 
-curan::ui::callablefunction SlidingPanel::call()
+curan::ui::callablefunction DicomViewer::call()
 {
     auto lamb = [this](curan::ui::Signal sig, curan::ui::ConfigDraw *config)
     {
         if(!compiled){
-            throw std::runtime_error("must compile the SlidingPanel before call operations");
+            throw std::runtime_error("must compile the DicomViewer before call operations");
         }
 
         for (const auto &highlighted_stroke : pending_strokes_to_process)
@@ -1704,7 +1704,7 @@ int main() {
         
         VolumetricMask vol{castfilter->GetOutput()};
 
-        auto callable = [&](SlidingPanel* panel, curan::ui::ConfigDraw* conf, size_t selected_option){
+        auto callable = [&](DicomViewer* panel, curan::ui::ConfigDraw* conf, size_t selected_option){
             switch(selected_option){
                 case 0:
                     panel->update_volume(&vol,Direction::X);
@@ -1720,11 +1720,11 @@ int main() {
             }
             return;
         };
-        std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &vol, Direction::X);
+        std::unique_ptr<DicomViewer> image_display_x = DicomViewer::make(resources, &vol, Direction::X);
         image_display_x->push_options({"coronal view","axial view","saggital view","zoom","select path"}).add_overlay_processor(callable);
-        std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &vol, Direction::Y);
+        std::unique_ptr<DicomViewer> image_display_y = DicomViewer::make(resources, &vol, Direction::Y);
         image_display_y->push_options({"coronal view","axial view","saggital view","zoom","select path"}).add_overlay_processor(callable);
-        std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &vol, Direction::Z);
+        std::unique_ptr<DicomViewer> image_display_z = DicomViewer::make(resources, &vol, Direction::Z);
         image_display_z->push_options({"coronal view","axial view","saggital view","zoom","select path"}).add_overlay_processor(callable);
 
 		auto container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
