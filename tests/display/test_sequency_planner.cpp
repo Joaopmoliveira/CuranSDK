@@ -690,38 +690,39 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         config_draw->stack_page->stack(success_overlay("target defined",*appdata.resources));
     }
 
+
+
     if(appdata.trajectory_location.main_diagonal_word_coordinates && appdata.trajectory_location.target_world_coordinates){
         curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
 
-        ImageType::IndexType target_local_index;
-        ImageType::PointType itk_target_local_index;
-        itk_target_local_index[0] = (*appdata.trajectory_location.target_world_coordinates)[0];
-        itk_target_local_index[1] = (*appdata.trajectory_location.target_world_coordinates)[1];
-        itk_target_local_index[2] = (*appdata.trajectory_location.target_world_coordinates)[2];
-        vol_mas->get_volume()->TransformPhysicalPointToIndex(itk_target_local_index,target_local_index);
-        target_local_index[0] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
-        target_local_index[1] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1];
-        target_local_index[2] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
-        ImageType::IndexType main_diagonal_local_index;
-        ImageType::PointType itk_main_diagonal_local_index;
-        itk_main_diagonal_local_index[0] = (*appdata.trajectory_location.main_diagonal_word_coordinates)[0];
-        itk_main_diagonal_local_index[1] = (*appdata.trajectory_location.main_diagonal_word_coordinates)[1];
-        itk_main_diagonal_local_index[2] = (*appdata.trajectory_location.main_diagonal_word_coordinates)[2];
-        vol_mas->get_volume()->TransformPhysicalPointToIndex(itk_main_diagonal_local_index,main_diagonal_local_index);
-        main_diagonal_local_index[0] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
-        main_diagonal_local_index[1] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1];
-        main_diagonal_local_index[2] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
-
-        Eigen::Matrix<double,3,1> vector_aligned = *appdata.trajectory_location.target_world_coordinates-*appdata.trajectory_location.main_diagonal_word_coordinates;
+        auto compute = [&](Eigen::Matrix<double,3,1> world_coordinates){
+            ImageType::IndexType point_index;
+            ImageType::PointType point_world_coordinates;     
+            point_world_coordinates[0] = world_coordinates[0];
+            point_world_coordinates[1] = world_coordinates[1];
+            point_world_coordinates[2] = world_coordinates[2];
+            vol_mas->get_volume()->TransformPhysicalPointToIndex(point_world_coordinates,point_index);
+            Eigen::Matrix<double,3,1> normalized_itk_points;
+            normalized_itk_points << point_index[0]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0] 
+                                   , point_index[1]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1] 
+                                   , point_index[2]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
+            return normalized_itk_points;
+        };
+        auto target_local_index = compute(*appdata.trajectory_location.target_world_coordinates);
+        auto main_diagonal_local_index = compute(*appdata.trajectory_location.main_diagonal_word_coordinates);
+       
+        Eigen::Matrix<double,3,1> vector_aligned = target_local_index-main_diagonal_local_index;
         Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-        offset_base_to_Oxy(0,0) = 2;
-        offset_base_to_Oxy(1,1) = 0.5;
-        offset_base_to_Oxy(2,2) = 2;
+        offset_base_to_Oxy(1,3) = 0.5;
         // first we rotate the cube from -1 to +1 into the coordinates from 0 to +1
         geom.transform(offset_base_to_Oxy);
         std::cout << "Piramid:\n" << geom << std::endl << "vector_aligned: " << vector_aligned.norm() << std::endl;
         offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-        offset_base_to_Oxy(1,1) = vector_aligned.norm();
+        
+        offset_base_to_Oxy(0,0) = 2;
+        offset_base_to_Oxy(1,1) = 0.5;
+        offset_base_to_Oxy(2,2) = 2;
+        //offset_base_to_Oxy(1,1) = vector_aligned.norm();
 
             //rotation_and_scalling_matrix(0,0) = ;
             //rotation_and_scalling_matrix(1,1) = length[1];
