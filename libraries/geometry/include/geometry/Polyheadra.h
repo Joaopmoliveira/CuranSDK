@@ -129,6 +129,23 @@ struct Tetrahedron{
     void transform(const Eigen::Matrix<double,4,4>& transf);
 };
 
+struct Piramid{
+    using Rational = gte::BSRational<gte::UIntegerAP32>;
+    gte::ConvexMesh3<Rational> geometry;
+
+    Piramid(Alignemnt align = CENTROID_ALIGNED);
+
+    friend std::ostream& operator<< (std::ostream& os, const Piramid& cube){
+        os << "V = [";
+        for(size_t i = 0; i< cube.geometry.vertices.size(); ++i)
+            os << (double)cube.geometry.vertices[i][0] << " " <<  (double)cube.geometry.vertices[i][1] << " " << (double)cube.geometry.vertices[i][2] << ";\n";
+        os << "];";
+        return os;
+    }
+
+    void transform(const Eigen::Matrix<double,4,4>& transf);
+};
+
 struct Octahedron{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;

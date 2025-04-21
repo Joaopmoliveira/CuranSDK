@@ -34,7 +34,7 @@
 #include "itkScaleTransform.h"
 #include "itkAffineTransform.h"
 #include "itkImageFileWriter.h"
-
+#include "itkOrientImageFilter.h"
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageSeriesReader.h"
@@ -58,8 +58,10 @@ struct ACPCData{
 
 struct TrajectoryConeData{
     bool target_specification = false;
+    curan::ui::Button* target_button = nullptr;
     std::optional<Eigen::Matrix<double,3,1>> target_world_coordinates;
     bool main_diagonal_specification = false;
+    curan::ui::Button* main_diagonal_button = nullptr;
     std::optional<Eigen::Matrix<double,3,1>> main_diagonal_word_coordinates;
     bool entry_specification = false;
     std::optional<Eigen::Matrix<double,3,1>> entry_point_word_coordinates;
@@ -83,6 +85,7 @@ struct Application{
     TrajectoryConeData trajectory_location;
     LayoutType type = LayoutType::THREE;
     std::map<std::string,CachedVolume> volumes;
+    size_t volume_index = 0;
     curan::ui::VolumetricMask* vol_mas = nullptr;
     curan::ui::IconResources* resources = nullptr;
     std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
@@ -98,11 +101,31 @@ enum Strategy{
     CONSERVATIVE,   
 };
 
+std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata);
+std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata);
+std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata);
+std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
+std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
+std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata);
+void ac_pc_midline_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
+void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata);
+void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
+
 struct BoundingBox{
+
+    enum FrameOrientation{
+        RIGHT_HANDED,
+        LEFT_HANDED
+    };
+
     Eigen::Matrix<double,3,1> origin;
     Eigen::Matrix<double,3,3> orientation;
     Eigen::Matrix<double,3,1> size;
     Eigen::Matrix<double,3,1> spacing;
+    FrameOrientation frameorientation = FrameOrientation::RIGHT_HANDED;
 
     BoundingBox(const Eigen::Matrix<double,3,1>& in_origin,const Eigen::Matrix<double,3,1>& along_x,Eigen::Matrix<double,3,1> along_y,Eigen::Matrix<double,3,1> along_z, Eigen::Matrix<double,3,1> in_spacing){
         origin = in_origin;
@@ -121,6 +144,10 @@ struct BoundingBox{
 
         double determinant = orientation.determinant();
         if(determinant< 0.9999 || determinant>1.0001)
+            frameorientation = FrameOrientation::RIGHT_HANDED;
+        else if (-determinant< 0.9999 || -determinant>1.0001)
+            frameorientation = FrameOrientation::LEFT_HANDED;
+        else 
             throw std::runtime_error("failure to generate an ortogonal rotation matrix");
 
         spacing = in_spacing;
@@ -257,8 +284,6 @@ struct BoundingBox{
     }
 };
 
-
-
 std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
 {
     using namespace curan::ui;
@@ -359,7 +384,6 @@ std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,c
     return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
 }
 
-
 std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata)
 {
     using namespace curan::ui;
@@ -368,6 +392,14 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
     item_explorer->add_press_call([&](ItemExplorer *widget, Press press, ConfigDraw *draw){
             auto highlighted = widget->highlighted();
             assert(highlighted.size()==1 && "the size is larger than one");
+            appdata.volume_index = highlighted.back();
+            size_t i = 0;
+            for(auto vol : appdata.volumes){
+                if(i==appdata.volume_index)
+                    appdata.vol_mas->update_volume(vol.second.img);
+                ++i;
+            }
+
     });
     using ImageType = itk::Image<PixelType, 3>;
     using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
@@ -410,8 +442,48 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
     return Overlay::make(std::move(container), SkColorSetARGB(100, 125, 125, 125), true);
 }
 
+void ac_pc_midline_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+    // now we need to convert between itk coordinates and real world coordinates
+    if (!(strokes.point_in_image_coordinates.cols() > 0))
+        throw std::runtime_error("the collumns of the highlighted path must be at least 1");
+
+    if (strokes.point_in_image_coordinates.cols() > 1)
+    {
+        config_draw->stack_page->stack(warning_overlay("must select a single point, not a path",*appdata.resources));
+        return;
+    }
+    ImageType::IndexType local_index;
+    ImageType::PointType itk_point_in_world_coordinates;
+    local_index[0] = strokes.point_in_image_coordinates(0, 0);
+    local_index[1] = strokes.point_in_image_coordinates(1, 0);
+    local_index[2] = strokes.point_in_image_coordinates(2, 0);
+    vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+    Eigen::Matrix<double, 3, 1> word_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
+    word_coordinates(0, 0) = itk_point_in_world_coordinates[0];
+    word_coordinates(1, 0) = itk_point_in_world_coordinates[1];
+    word_coordinates(2, 0) = itk_point_in_world_coordinates[2];
+
+    if(appdata.ac_pc_data.ac_specification){
+        appdata.ac_pc_data.ac_word_coordinates = word_coordinates;
+        appdata.ac_pc_data.ac_specification = false;
+        appdata.ac_pc_data.ac_button->set_waiting_color(SkColorSetARGB(0xFF, 0x0F, 0xFF, 0x0F));
+        config_draw->stack_page->stack(success_overlay("ac point defined",*appdata.resources));
+    }
+
+    if(appdata.ac_pc_data.pc_specification){
+        appdata.ac_pc_data.pc_word_coordinates = word_coordinates;
+        appdata.ac_pc_data.pc_specification = false;
+        appdata.ac_pc_data.pc_button->set_waiting_color(SkColorSetARGB(0xFF, 0x0F, 0xFF, 0x0F));
+        config_draw->stack_page->stack(success_overlay("pc point defined",*appdata.resources));
+    }
+}
+
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata){
     using namespace curan::ui;
+
+    appdata.panel_constructor = select_ac_pc_midline;
+    appdata.volume_callback = ac_pc_midline_point_selection;
+
     auto image_display = create_dicom_viewers(appdata);
     auto layout = Button::make("Layout", *appdata.resources);
     layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -450,105 +522,105 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             return;
         }
         
-        //TODO need to resample volume properly
-        curan::utilities::Job job{"resampling volume", [&](){
-            Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *appdata.ac_pc_data.ac_word_coordinates - *appdata.ac_pc_data.pc_word_coordinates;
-            if (orient_along_ac_pc.norm() < 1e-7)
-            {
-                if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("AC-PC line is singular, try different points",*appdata.resources));
-                return;
+        Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *appdata.ac_pc_data.ac_word_coordinates - *appdata.ac_pc_data.pc_word_coordinates;
+        if (orient_along_ac_pc.norm() < 1e-7){
+            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("AC-PC line is singular, try different points",*appdata.resources));
+            return;
+        }
+        orient_along_ac_pc.normalize(); 
+        Eigen::Matrix<double, 3, 1> y_direction = orient_along_ac_pc;
+
+        ImageType::Pointer input;
+        if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
+            input = search->second.img;
+        else{
+            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
+            return;
+        }
+
+        auto direction = input->GetDirection();
+        Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
+        for (size_t col = 0; col < 3; ++col)
+            for (size_t row = 0; row < 3; ++row)
+                original_eigen_rotation_matrix(row, col) = direction(row, col);
+
+        Eigen::Matrix<double,3,3> eigen_direction;
+        for(size_t i = 0; i < 3; ++i)
+            for(size_t j = 0;  j < 3; ++j)
+                eigen_direction(i,j) = direction(i,j);
+
+
+        Eigen::Matrix<double,3,1> x_direction = original_eigen_rotation_matrix.col(0);
+        Eigen::Matrix<double,3,1> z_direction = x_direction.cross(y_direction);  
+        x_direction = y_direction.cross(z_direction);  
+        x_direction.normalize();
+        std::cout << "projection: " << x_direction.transpose()*y_direction;
+        z_direction = x_direction.cross(y_direction);  
+        z_direction.normalize();
+        if (z_direction.norm() < 1e-7){
+            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("AC-PC line is singular when projected unto the axial plane, try different points",*appdata.resources));
+            return;
+        }
+ 
+        Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
+        eigen_rotation_matrix.col(0) = x_direction;
+        eigen_rotation_matrix.col(1) = y_direction;
+        eigen_rotation_matrix.col(2) = z_direction;
+
+        if(original_eigen_rotation_matrix.determinant()<0.0)
+            original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
+
+        Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
+        ImageType::PointType itk_along_dimension_x;
+        ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
+        input->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
+        Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
+        ImageType::PointType itk_along_dimension_y;
+        ImageType::IndexType index_along_y{{0, (long long)input->GetLargestPossibleRegion().GetSize()[1], 0}};
+        input->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
+        Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
+        ImageType::PointType itk_along_dimension_z;
+        ImageType::IndexType index_along_z{{0, 0, (long long)input->GetLargestPossibleRegion().GetSize()[2]}};
+        input->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
+        Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
+        Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
+
+        BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
+        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
+        using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+        auto filter = FilterType::New();
+
+        using TransformType = itk::IdentityTransform<double, 3>;
+        auto transform = TransformType::New();
+
+        using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
+        auto interpolator = InterpolatorType::New();
+        filter->SetInterpolator(interpolator);
+        filter->SetDefaultPixelValue(0);
+        filter->SetTransform(transform);
+
+        filter->SetInput(input);
+        filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
+        filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
+        filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
+
+        itk::Matrix<double> rotation_matrix;
+        for (size_t col = 0; col < 3; ++col)
+            for (size_t row = 0; row < 3; ++row)
+                rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
+
+        filter->SetOutputDirection(rotation_matrix);
+
+        try{
+            filter->Update();
+            auto output = filter->GetOutput();
+            if (config->stack_page != nullptr) {
+                config->stack_page->replace_last(success_overlay("resampled volume!",*appdata.resources));
             }
-            orient_along_ac_pc.normalize(); //this is the x direction. 
-
-            ImageType::Pointer input;
-            if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
-                input = search->second.img;
-            else{
-                if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
-                return;
-            }
-
-            auto direction = input->GetDirection();
-            Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
-            for (size_t col = 0; col < 3; ++col)
-                for (size_t row = 0; row < 3; ++row)
-                    original_eigen_rotation_matrix(row, col) = direction(row, col);
-
-            Eigen::Matrix<double,3,3> eigen_direction;
-            for(size_t i = 0; i < 3; ++i)
-                for(size_t j = 0;  j < 3; ++j)
-                    eigen_direction(i,j) = direction(i,j);
-            Eigen::Matrix<double,3,1> z_direction = eigen_direction.col(2);
-            Eigen::Matrix<double,3,1> z_direction_unto_ac_pc_plane = z_direction*((orient_along_ac_pc.transpose()*z_direction)/(z_direction.transpose()*z_direction));
-            Eigen::Matrix<double,3,1> new_z_direction = z_direction-z_direction_unto_ac_pc_plane;
-            if (new_z_direction.norm() < 1e-7)
-            {
-                if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("AC-PC line is singular when projected unto the axial plane, try different points",*appdata.resources));
-                return;
-            }
-            new_z_direction.normalize(); //this is the z direction. 
-            Eigen::Matrix<double, 3, 1> new_y_direction = new_z_direction.cross(orient_along_ac_pc);
-
-            Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
-            eigen_rotation_matrix.col(0) = orient_along_ac_pc;
-            eigen_rotation_matrix.col(1) = new_y_direction;
-            eigen_rotation_matrix.col(2) = new_z_direction;
-
-
-            Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
-            ImageType::PointType itk_along_dimension_x;
-            ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
-            input->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
-            Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
-            ImageType::PointType itk_along_dimension_y;
-            ImageType::IndexType index_along_y{{0, (long long)input->GetLargestPossibleRegion().GetSize()[1], 0}};
-            input->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
-            Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
-            ImageType::PointType itk_along_dimension_z;
-            ImageType::IndexType index_along_z{{0, 0, (long long)input->GetLargestPossibleRegion().GetSize()[2]}};
-            input->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
-            Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
-            Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
-
-            BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
-            auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
-            using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
-            auto filter = FilterType::New();
-
-            using TransformType = itk::IdentityTransform<double, 3>;
-            auto transform = TransformType::New();
-
-            using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
-            auto interpolator = InterpolatorType::New();
-            filter->SetInterpolator(interpolator);
-            filter->SetDefaultPixelValue(0);
-            filter->SetTransform(transform);
-
-            filter->SetInput(input);
-            filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
-            filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
-            filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
-
-            itk::Matrix<double> rotation_matrix;
-            for (size_t col = 0; col < 3; ++col)
-                for (size_t row = 0; row < 3; ++row)
-                    rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
-
-            filter->SetOutputDirection(rotation_matrix);
-
-            try{
-                filter->Update();
-                auto output = filter->GetOutput();
-                if (config->stack_page != nullptr) {
-                    config->stack_page->replace_last(success_overlay("resampled volume!",*appdata.resources));
-                }
-                appdata.volumes.emplace("acpc",output);
-            }
-            catch (...){
-                if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC",*appdata.resources));
-            }
-        }};
-        appdata.pool->submit(job);
+            appdata.volumes.emplace("acpc",output);
+        } catch (...){
+            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC",*appdata.resources));
+        }
     });
 
     auto switch_volume = Button::make("Switch Volume", *appdata.resources);
@@ -556,12 +628,19 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     switch_volume->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
+        if(config->stack_page!=nullptr){
+			config->stack_page->stack(create_volume_explorer_page(appdata));
+		}
     });
 
     auto check = Button::make("Check", *appdata.resources);
     check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
     check->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-
+        select_target_and_region_of_entry(appdata);
+        if(appdata.ac_pc_data.ac_word_coordinates && appdata.ac_pc_data.pc_word_coordinates)
+            appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
+        else
+            config->stack_page->replace_last(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
     });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -576,16 +655,16 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     return std::move(container);
 };
 
-void ac_pc_midline_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the collumns of the highlighted path must be at least 1");
 
-    if (strokes.point_in_image_coordinates.cols() > 1)
-    {
+    if (strokes.point_in_image_coordinates.cols() > 1){
         config_draw->stack_page->stack(warning_overlay("must select a single point, not a path",*appdata.resources));
         return;
     }
+
     ImageType::IndexType local_index;
     ImageType::PointType itk_point_in_world_coordinates;
     local_index[0] = strokes.point_in_image_coordinates(0, 0);
@@ -597,23 +676,74 @@ void ac_pc_midline_point_selection(Application& appdata,curan::ui::VolumetricMas
     word_coordinates(1, 0) = itk_point_in_world_coordinates[1];
     word_coordinates(2, 0) = itk_point_in_world_coordinates[2];
 
-    if(appdata.ac_pc_data.ac_specification){
-        appdata.ac_pc_data.ac_word_coordinates = word_coordinates;
-        appdata.ac_pc_data.ac_specification = false;
-        appdata.ac_pc_data.ac_button->set_waiting_color(SkColorSetARGB(0xFF, 0x0F, 0xFF, 0x0F));
-        config_draw->stack_page->stack(success_overlay("ac point defined",*appdata.resources));
+    if(appdata.trajectory_location.main_diagonal_specification){
+        appdata.trajectory_location.main_diagonal_specification = false;
+        appdata.trajectory_location.main_diagonal_word_coordinates = word_coordinates;
+        appdata.trajectory_location.main_diagonal_button->set_waiting_color(SkColorSetARGB(0xFF, 0x0F, 0xFF, 0x0F));
+        config_draw->stack_page->stack(success_overlay("main diagonal defined",*appdata.resources));
     }
 
-    if(appdata.ac_pc_data.pc_specification){
-        appdata.ac_pc_data.pc_word_coordinates = word_coordinates;
-        appdata.ac_pc_data.pc_specification = false;
-        appdata.ac_pc_data.pc_button->set_waiting_color(SkColorSetARGB(0xFF, 0x0F, 0xFF, 0x0F));
-        config_draw->stack_page->stack(success_overlay("pc point defined",*appdata.resources));
+    if(appdata.trajectory_location.target_specification){
+        appdata.trajectory_location.target_specification = false;
+        appdata.trajectory_location.target_world_coordinates = word_coordinates;
+        appdata.trajectory_location.target_button->set_waiting_color(SkColorSetARGB(0xFF, 0x0F, 0xFF, 0x0F));
+        config_draw->stack_page->stack(success_overlay("target defined",*appdata.resources));
     }
+
+    if(appdata.trajectory_location.main_diagonal_word_coordinates && appdata.trajectory_location.target_world_coordinates){
+        curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
+
+        ImageType::IndexType target_local_index;
+        ImageType::PointType itk_target_local_index;
+        itk_target_local_index[0] = (*appdata.trajectory_location.target_world_coordinates)[0];
+        itk_target_local_index[1] = (*appdata.trajectory_location.target_world_coordinates)[1];
+        itk_target_local_index[2] = (*appdata.trajectory_location.target_world_coordinates)[2];
+        vol_mas->get_volume()->TransformPhysicalPointToIndex(itk_target_local_index,target_local_index);
+        target_local_index[0] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
+        target_local_index[1] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1];
+        target_local_index[2] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
+        ImageType::IndexType main_diagonal_local_index;
+        ImageType::PointType itk_main_diagonal_local_index;
+        itk_main_diagonal_local_index[0] = (*appdata.trajectory_location.main_diagonal_word_coordinates)[0];
+        itk_main_diagonal_local_index[1] = (*appdata.trajectory_location.main_diagonal_word_coordinates)[1];
+        itk_main_diagonal_local_index[2] = (*appdata.trajectory_location.main_diagonal_word_coordinates)[2];
+        vol_mas->get_volume()->TransformPhysicalPointToIndex(itk_main_diagonal_local_index,main_diagonal_local_index);
+        main_diagonal_local_index[0] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
+        main_diagonal_local_index[1] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1];
+        main_diagonal_local_index[2] /= (double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
+
+        Eigen::Matrix<double,3,1> vector_aligned = *appdata.trajectory_location.target_world_coordinates-*appdata.trajectory_location.main_diagonal_word_coordinates;
+        Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
+        offset_base_to_Oxy(0,0) = 2;
+        offset_base_to_Oxy(1,1) = 0.5;
+        offset_base_to_Oxy(2,2) = 2;
+        // first we rotate the cube from -1 to +1 into the coordinates from 0 to +1
+        geom.transform(offset_base_to_Oxy);
+        std::cout << "Piramid:\n" << geom << std::endl << "vector_aligned: " << vector_aligned.norm() << std::endl;
+        offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
+        offset_base_to_Oxy(1,1) = vector_aligned.norm();
+
+            //rotation_and_scalling_matrix(0,0) = ;
+            //rotation_and_scalling_matrix(1,1) = length[1];
+
+            //rotation_and_scalling_matrix.block<3,1>(0,3) = origin;
+
+            // now that the cube is between 0 a +1 we can scale it and offset it to be in the coordinates supplied by the user
+            //geom.transform(rotation_and_scalling_matrix);
+
+            //rotation_and_scalling_matrix = Eigen::Matrix<double,4,4>::Identity();
+            //rotation_and_scalling_matrix.block<3,1>(0,3) = origin;
+            
+    }
+
 }
 
 std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata){
     using namespace curan::ui;
+
+    appdata.panel_constructor = select_target_and_region_of_entry;
+    appdata.volume_callback = select_target_and_region_of_entry_point_selection;
+
     auto image_display = create_dicom_viewers(appdata);
     auto layout = Button::make("Layout", *appdata.resources);
     layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -628,8 +758,10 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     definetarget->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.main_diagonal_specification = false;
-        appdata.trajectory_location.target_specification = true;
+        appdata.trajectory_location.target_specification = true;        
     });
+
+    appdata.trajectory_location.target_button = definetarget.get();
 
     auto defineentryregion = Button::make("Define Entry Region", *appdata.resources);
     defineentryregion->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -638,6 +770,8 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.trajectory_location.main_diagonal_specification = true;
         appdata.trajectory_location.target_specification = false;
     });
+
+    appdata.trajectory_location.main_diagonal_button = defineentryregion.get();
 
     auto validadetrajectory = Button::make("Validade Trajectory", *appdata.resources);
     validadetrajectory->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -653,6 +787,9 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;
+        if(config->stack_page!=nullptr){
+			config->stack_page->stack(create_volume_explorer_page(appdata));
+		}
     });
 
     auto check = Button::make("Check", *appdata.resources);
@@ -675,40 +812,24 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     return std::move(container);
 };
 
-void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the collumns of the highlighted path must be at least 1");
 
-    if (strokes.point_in_image_coordinates.cols() > 1)
+    if (config_draw && config_draw->stack_page && strokes.point_in_image_coordinates.cols() > 1)
     {
         config_draw->stack_page->stack(warning_overlay("must select a single point, not a path",*appdata.resources));
         return;
     }
-
-    ImageType::IndexType local_index;
-    ImageType::PointType itk_point_in_world_coordinates;
-    local_index[0] = strokes.point_in_image_coordinates(0, 0);
-    local_index[1] = strokes.point_in_image_coordinates(1, 0);
-    local_index[2] = strokes.point_in_image_coordinates(2, 0);
-    vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
-    Eigen::Matrix<double, 3, 1> word_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
-    word_coordinates(0, 0) = itk_point_in_world_coordinates[0];
-    word_coordinates(1, 0) = itk_point_in_world_coordinates[1];
-    word_coordinates(2, 0) = itk_point_in_world_coordinates[2];
-
-    if(appdata.trajectory_location.main_diagonal_specification){
-        appdata.trajectory_location.main_diagonal_specification = false;
-    }
-
-    if(appdata.trajectory_location.target_specification){
-        appdata.trajectory_location.target_specification = false;
-    }
-
 }
 
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata){
     using namespace curan::ui;
+
+    appdata.panel_constructor = select_roi_for_surgery;
+    appdata.volume_callback = select_roi_for_surgery_point_selection;
+
     auto image_display = create_dicom_viewers(appdata);
     auto layout = Button::make("Layout", *appdata.resources);
     layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -739,23 +860,8 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
     return std::move(container);
 };
 
-void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
-    // now we need to convert between itk coordinates and real world coordinates
-    if (!(strokes.point_in_image_coordinates.cols() > 0))
-        throw std::runtime_error("the collumns of the highlighted path must be at least 1");
-
-    if (config_draw && config_draw->stack_page && strokes.point_in_image_coordinates.cols() > 1)
-    {
-        config_draw->stack_page->stack(warning_overlay("must select a single point, not a path",*appdata.resources));
-        return;
-    }
-}
-
-
 std::unique_ptr<curan::ui::Container> Application::main_page(){
     using namespace curan::ui;
-    panel_constructor = select_ac_pc_midline;
-    volume_callback = ac_pc_midline_point_selection;
     auto container_with_widgets = select_ac_pc_midline(*this);
     std::unique_ptr<MiniPage> minipage = MiniPage::make(std::move(container_with_widgets), SK_ColorBLACK);
     tradable_page = minipage.get();
@@ -799,7 +905,7 @@ int main(int argc, char* argv[]) {
 
     std::printf("\nReading input volume...\n");
     auto fixedImageReader = ImageReaderType::New();
-    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha");
+    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/johndoe.mha");
 
     auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>::New();
     rescale->SetInput(fixedImageReader->GetOutput());
@@ -808,11 +914,18 @@ int main(int argc, char* argv[]) {
 
     auto castfilter = itk::CastImageFilter<itk::Image<double,3>, ImageType>::New();
     castfilter->SetInput(rescale->GetOutput());
-    castfilter->Update();
+
+    itk::OrientImageFilter<ImageType,ImageType>::Pointer orienter =itk::OrientImageFilter<ImageType,ImageType>::New();
+    orienter->UseImageDirectionOn();
+    orienter->SetDesiredCoordinateOrientation(itk::SpatialOrientation::ITK_COORDINATE_ORIENTATION_RAS);
+     
+    orienter->SetInput(castfilter->GetOutput());
+
+    orienter->Update();
     
-    VolumetricMask vol{castfilter->GetOutput()};
+    VolumetricMask vol{orienter->GetOutput()};
     Application appdata{resources,&vol};
-    appdata.volumes.emplace("source",castfilter->GetOutput());
+    appdata.volumes.emplace("source",orienter->GetOutput());
     Page page{appdata.main_page(),SK_ColorBLACK};
 
 	page.update_page(viewer.get());

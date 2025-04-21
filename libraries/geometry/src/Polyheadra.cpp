@@ -473,6 +473,36 @@ namespace curan
                 return geometry;
             }
 
+                        // Platonic solids, all inscribed in a unit sphere centered at
+            // (0,0,0).
+            template <typename Numeric>
+            gte::ConvexMesh3<Numeric> CreatePiramid()
+            {
+                gte::ConvexMesh3<Numeric> geometry;
+                uint32_t const numVertices = 5;
+                uint32_t const numTriangles = 6;
+
+                geometry.triangles.resize(numTriangles);
+                geometry.vertices.resize(numVertices);
+
+                // Pyramid vertices (5 points: apex + 4 base corners)
+                geometry.vertices[0] = { 0.0f,  0.5f,  0.0f}; // Apex (top)
+                geometry.vertices[1] = {-0.5f, -0.5f, -0.5f}; // Base corner 1
+                geometry.vertices[2] = { 0.5f, -0.5f, -0.5f}; // Base corner 2
+                geometry.vertices[3] = { 0.5f,  0.5f, -0.5f}; // Base corner 3
+                geometry.vertices[4] = {-0.5f,  0.5f, -0.5f}; // Base corner 4
+
+                // Define triangles (6 total)
+                geometry.triangles[0] = {0, 1, 2}; // Front face
+                geometry.triangles[1] = {0, 2, 3}; // Right face
+                geometry.triangles[2] = {0, 3, 4}; // Back face
+                geometry.triangles[3] = {0, 4, 1}; // Left face
+                geometry.triangles[4] = {1, 2, 3}; // Base part 1
+                geometry.triangles[5] = {1, 3, 4}; // Base part 2
+
+                return geometry;
+            }
+
             template <typename Numeric>
             gte::ConvexMesh3<Numeric> CreateOctahedron()
             {
@@ -753,6 +783,30 @@ geometry.vertices[1] = { -0.5000  ,  0.3090     ,    0};
         }
 
         void Tetrahedron::transform(const Eigen::Matrix<double, 4, 4> &transf)
+        {
+            for (auto &geom : geometry.vertices)
+            {
+                Eigen::Matrix<double, 4, 1> vertex;
+                vertex << geom[0], geom[1], geom[2], 1.0;
+                auto res = transf * vertex;
+                geom = {res[0], res[1], res[2]};
+            }
+        }
+
+        Piramid::Piramid(Alignemnt align)
+        {
+            Factory factory;
+            geometry = factory.CreatePiramid<Rational>();
+            if (align == Alignemnt::CORNER_ALIGNED)
+            {
+                Eigen::Matrix<double, 4, 4> local_transform = Eigen::Matrix<double, 4, 4>::Identity();
+                Eigen::Matrix<double, 3, 1> offset{0.5, 0.5, 0.5};
+                local_transform.block<3, 1>(0, 3) = offset;
+                transform(local_transform);
+            }
+        }
+
+        void Piramid::transform(const Eigen::Matrix<double, 4, 4> &transf)
         {
             for (auto &geom : geometry.vertices)
             {
