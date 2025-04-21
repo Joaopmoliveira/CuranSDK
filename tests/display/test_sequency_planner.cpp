@@ -85,6 +85,7 @@ struct Application{
     std::map<std::string,CachedVolume> volumes;
     curan::ui::VolumetricMask* vol_mas = nullptr;
     curan::ui::IconResources* resources = nullptr;
+    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
     std::function<std::unique_ptr<curan::ui::Container>(Application&)> panel_constructor;
     std::function<void(Application&,curan::ui::VolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
 
@@ -403,6 +404,10 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
         }
         ++identifier;
     }
+    item_explorer->set_size(SkRect::MakeWH(800, 400));
+    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *container << std::move(item_explorer);
+    return Overlay::make(std::move(container), SkColorSetARGB(100, 125, 125, 125), true);
 }
 
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata){
@@ -454,7 +459,21 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
                 return;
             }
             orient_along_ac_pc.normalize(); //this is the x direction. 
-            auto direction = appdata.vol_mas->get_volume()->GetDirection();
+
+            ImageType::Pointer input;
+            if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
+                input = search->second.img;
+            else{
+                if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
+                return;
+            }
+
+            auto direction = input->GetDirection();
+            Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
+            for (size_t col = 0; col < 3; ++col)
+                for (size_t row = 0; row < 3; ++row)
+                    original_eigen_rotation_matrix(row, col) = direction(row, col);
+
             Eigen::Matrix<double,3,3> eigen_direction;
             for(size_t i = 0; i < 3; ++i)
                 for(size_t j = 0;  j < 3; ++j)
@@ -470,24 +489,11 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             new_z_direction.normalize(); //this is the z direction. 
             Eigen::Matrix<double, 3, 1> new_y_direction = new_z_direction.cross(orient_along_ac_pc);
 
-            ImageType::Pointer input;
-
-            if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
-                input = search->second.img;
-            else{
-                if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
-                return;
-            }
-
             Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
             eigen_rotation_matrix.col(0) = orient_along_ac_pc;
             eigen_rotation_matrix.col(1) = new_y_direction;
             eigen_rotation_matrix.col(2) = new_z_direction;
-            Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
-            auto direction = input->GetDirection();
-            for (size_t col = 0; col < 3; ++col)
-                for (size_t row = 0; row < 3; ++row)
-                    original_eigen_rotation_matrix(row, col) = direction(row, col);
+
 
             Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
             ImageType::PointType itk_along_dimension_x;
@@ -542,6 +548,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
                 if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC",*appdata.resources));
             }
         }};
+        appdata.pool->submit(job);
     });
 
     auto switch_volume = Button::make("Switch Volume", *appdata.resources);
