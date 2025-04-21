@@ -230,16 +230,45 @@ namespace curan
 				};
 			}
 
-			inline void update_volume(ImageType::Pointer in_volume)
+			enum Policy{
+				DISREGARD = 0,
+				UPDATE_POINTS,
+				UPDATE_GEOMETRIES
+			};
+
+			inline void update_volume(ImageType::Pointer in_volume,Policy update_policy = Policy::DISREGARD)
 			{
-				image = in_volume;
-				if(!filled())
-					return;
-				three_dimensional_entities = std::vector<curan::geometry::PolyHeadra>{};
-				ImageType::RegionType inputRegion = image->GetBufferedRegion();
-				masks_x = std::vector<Mask>(inputRegion.GetSize()[Direction::X]);
-				masks_y = std::vector<Mask>(inputRegion.GetSize()[Direction::Y]);
-				masks_z = std::vector<Mask>(inputRegion.GetSize()[Direction::Z]);
+				// TODO need to take into consideration update policy
+				if(update_policy & (UPDATE_POINTS | UPDATE_GEOMETRIES) ){
+
+				} else if(update_policy & UPDATE_POINTS){
+					for(auto& mask : masks_x){ 
+
+					}
+					for(auto& mask : masks_y){
+
+					}
+					for(auto& mask : masks_z){
+
+					}
+				} else if(update_policy & UPDATE_GEOMETRIES){
+					for(auto& dimensional_entities : three_dimensional_entities){
+
+					}
+					ImageType::RegionType inputRegion = in_volume->GetBufferedRegion();
+					masks_x = std::vector<Mask>(inputRegion.GetSize()[Direction::X]);
+					masks_y = std::vector<Mask>(inputRegion.GetSize()[Direction::Y]);
+					masks_z = std::vector<Mask>(inputRegion.GetSize()[Direction::Z]);
+				} else {
+					image = in_volume;
+					if(!filled())
+						return;
+					three_dimensional_entities = std::vector<curan::geometry::PolyHeadra>{};
+					ImageType::RegionType inputRegion = image->GetBufferedRegion();
+					masks_x = std::vector<Mask>(inputRegion.GetSize()[Direction::X]);
+					masks_y = std::vector<Mask>(inputRegion.GetSize()[Direction::Y]);
+					masks_z = std::vector<Mask>(inputRegion.GetSize()[Direction::Z]);
+				}
 			}
 
 			inline ImageType::Pointer get_volume(){

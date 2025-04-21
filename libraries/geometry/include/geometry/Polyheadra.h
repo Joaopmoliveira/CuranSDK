@@ -41,8 +41,6 @@ struct Cube{
 };
 
 
-
-
 struct OpenCylinder{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;

@@ -391,3 +391,16 @@ ${ITK_LIBRARIES}
 userinterface
 geometry
 )
+
+# ----------------------------------------
+
+add_executable(test_sequency_planner test_sequency_planner.cpp)
+
+target_compile_definitions(test_sequency_planner PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_sequency_planner
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+geometry
+)
