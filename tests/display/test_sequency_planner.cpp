@@ -37,6 +37,7 @@
 #include "itkOrientImageFilter.h"
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
+#include "itkLinearIteratorWithIndex.h"
 #include "itkImageSeriesReader.h"
 
 #include <Eigen/Dense>
@@ -91,6 +92,7 @@ struct Application{
     std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
     std::function<std::unique_ptr<curan::ui::Container>(Application&)> panel_constructor;
     std::function<void(Application&,curan::ui::VolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
+    curan::ui::VolumetricMask projected_vol_mas{nullptr};
 
     Application(curan::ui::IconResources & in_resources,curan::ui::VolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
 
@@ -785,7 +787,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;
 
-        if(appdata.trajectory_location.main_diagonal_word_coordinates && appdata.trajectory_location.target_world_coordinates){
+        if(!appdata.trajectory_location.main_diagonal_word_coordinates || !appdata.trajectory_location.target_world_coordinates){
             config->stack_page->stack(warning_overlay("both the target and the entry region must be selected",*appdata.resources));
             return;
         }
@@ -893,10 +895,10 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         try{
             filter->Update();
             auto output = filter->GetOutput();
+            appdata.volumes.emplace("trajectory",output);
             if (config->stack_page != nullptr) {
                 config->stack_page->replace_last(success_overlay("resampled volume!",*appdata.resources));
             }
-            appdata.volumes.emplace("trajectory",output);
         } catch (...){
             if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample trajectory volume",*appdata.resources));
         }
@@ -946,13 +948,109 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
 
 }
 
+ImageType::Pointer allocate_image(Application& appdata){
+  ImageType::Pointer image = ImageType::New();
+  
+  ImageType::SizeType size;
+  size[0] = 256;  // size along X
+  size[1] = 256;  // size along Y 
+  size[2] = 1;   // size along Z
+  
+  ImageType::SpacingType spacing;
+  spacing[0] = 0.5; // mm along X
+  spacing[1] = 0.5; // mm along Y
+  spacing[2] = 1.0; // mm along Z
+  
+  ImageType::PointType origin;
+  origin[0] = 0.0;
+  origin[1] = 0.0;
+  origin[2] = 0.0;
+  
+  ImageType::DirectionType direction;
+  direction.SetIdentity();
+  
+  ImageType::RegionType region;
+  region.SetSize(size);
+  
+  image->SetRegions(region);
+  image->SetSpacing(spacing);
+  image->SetOrigin(origin);
+  image->SetDirection(direction);
+  image->Allocate();
+  image->FillBuffer(0);
+
+  typedef itk::LinearIteratorWithIndex<ImageType> IteratorType;
+  IteratorType it(image, image->GetRequestedRegion());
+
+  Eigen::Matrix<double,3,1> target_index;
+  Eigen::Matrix<double,3,1> current_location_index;
+  Eigen::Matrix<double,3,1> final_location;
+
+  for (it.GoToBegin(); !it.IsAtEnd(); ++it)
+  {
+    const float min_iteratrions = 2.0;
+    const float max_iteratrions = 2048.0;
+
+    float num_iterations = ceil(length((te-t0).xyz)/SampleDensityValue);
+    if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
+    else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
+
+    ImageType::IndexType index = it.GetIndex();
+    current_location_index = target_index;
+    Eigen::Matrix<double,3,1> t = final_location-target_index;
+    double spacing_along_t;
+    t.normalize();
+
+    // Create an index object
+    ImageType::IndexType index;
+    index[0] = 10; // x-coordinate
+    index[1] = 20; // y-coordinate
+    index[2] = 5;  // z-coordinate
+    while(num_iterations>0.0){
+        float alpha = texture(volume, texcoord).r;
+        vec4 color = vec4(alpha, alpha, alpha, alpha * TransparencyValue);
+        float r = color.a;
+        if (r > AlphaFuncValue)
+        {
+            fragColor.rgb = mix(fragColor.rgb, color.rgb, r);
+            fragColor.a += r;
+        }
+
+        if (color.a > fragColor.a)
+        {
+            fragColor = color;
+        }
+
+        texcoord += deltaTexCoord;
+        --num_iterations;
+    }
+    it.Set(0.0);
+  }
+
+
+  return image;
+}
+
 std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata){
     using namespace curan::ui;
 
     appdata.panel_constructor = select_entry_point_and_validate_point_selection;
     appdata.volume_callback = select_entry_point_and_validate;
 
-    auto image_display = create_dicom_viewers(appdata);
+    ImageType::Pointer input;
+    if (auto search = appdata.volumes.find("trajectory"); search != appdata.volumes.end())
+        input = search->second.img;
+    else{
+        throw std::runtime_error("failure due to missing volume");
+    }
+    appdata.vol_mas->update_volume(input);
+    ImageType::Pointer projected_input = ImageType::New();
+
+
+    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+    std::unique_ptr<curan::ui::SlidingPanel> image_displayx = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::X);
+    std::unique_ptr<curan::ui::SlidingPanel> image_displayy = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::X);
+    *container << std::move(image_displayx) << std::move(image_displayy);
 
     auto defineentry = Button::make("Select Entry Point", *appdata.resources);
     defineentry->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -976,7 +1074,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-    *container << std::move(viwers_container) << std::move(image_display);
+    *container << std::move(viwers_container) << std::move(container);
     container->set_divisions({0.0, 0.1, 1.0});
 
     return std::move(container);
