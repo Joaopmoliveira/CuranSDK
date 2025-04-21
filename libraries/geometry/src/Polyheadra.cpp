@@ -486,19 +486,19 @@ namespace curan
                 geometry.vertices.resize(numVertices);
 
                 // Pyramid vertices (5 points: apex + 4 base corners)
-                geometry.vertices[0] = { 0.0f,  0.5f,  0.0f}; // Apex (top)
-                geometry.vertices[1] = {-0.5f, -0.5f, -0.5f}; // Base corner 1
-                geometry.vertices[2] = { 0.5f, -0.5f, -0.5f}; // Base corner 2
-                geometry.vertices[3] = { 0.5f,  0.5f, -0.5f}; // Base corner 3
-                geometry.vertices[4] = {-0.5f,  0.5f, -0.5f}; // Base corner 4
+                geometry.vertices[0] = { 0.0f,     0.0f,    1.0 }; // Apex (top)
+                geometry.vertices[1] = { -1.0, -1.0, 0.0f }; // Base corner 1 (back-left)
+                geometry.vertices[2] = { 1.0, -1.0, 0.0f };  // Base corner 2 (back-right)
+                geometry.vertices[3] = { 1.0,  1.0, 0.0f };  // Base corner 3 (front-right)
+                geometry.vertices[4] = { -1.0,  1.0, 0.0f }; // Base corner 4 (front-left)
 
                 // Define triangles (6 total)
-                geometry.triangles[0] = {0, 1, 2}; // Front face
+                geometry.triangles[0] = {0, 1, 2}; // Back face
                 geometry.triangles[1] = {0, 2, 3}; // Right face
-                geometry.triangles[2] = {0, 3, 4}; // Back face
+                geometry.triangles[2] = {0, 3, 4}; // Front face
                 geometry.triangles[3] = {0, 4, 1}; // Left face
-                geometry.triangles[4] = {1, 2, 3}; // Base part 1
-                geometry.triangles[5] = {1, 3, 4}; // Base part 2
+                geometry.triangles[4] = {1, 3, 2}; // Base triangle 1
+                geometry.triangles[5] = {1, 4, 3}; // Base triangle 2
 
                 return geometry;
             }

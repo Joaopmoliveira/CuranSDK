@@ -299,6 +299,8 @@ namespace curan
 				return three_dimensional_entities;
 			}
 
+			
+
 			template <typename... T>
 			void for_each(const Direction &direction, T &&...u) const
 			{

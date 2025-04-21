@@ -111,6 +111,8 @@ void ac_pc_midline_point_selection(Application& appdata,curan::ui::VolumetricMas
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata);
+void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata);
 void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
@@ -690,8 +692,6 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         config_draw->stack_page->stack(success_overlay("target defined",*appdata.resources));
     }
 
-
-
     if(appdata.trajectory_location.main_diagonal_word_coordinates && appdata.trajectory_location.target_world_coordinates){
         curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
 
@@ -708,33 +708,37 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
                                    , point_index[2]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
             return normalized_itk_points;
         };
-        auto target_local_index = compute(*appdata.trajectory_location.target_world_coordinates);
-        auto main_diagonal_local_index = compute(*appdata.trajectory_location.main_diagonal_word_coordinates);
+        const auto target_local_index = compute(*appdata.trajectory_location.target_world_coordinates);
+        const auto main_diagonal_local_index = compute(*appdata.trajectory_location.main_diagonal_word_coordinates);
        
         Eigen::Matrix<double,3,1> vector_aligned = target_local_index-main_diagonal_local_index;
         Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-        offset_base_to_Oxy(1,3) = 0.5;
-        // first we rotate the cube from -1 to +1 into the coordinates from 0 to +1
+        vector_aligned.normalize();
+        Eigen::Matrix<double,3,1> yAxis(0, 0, 1);
+        Eigen::Matrix<double,3,1> axis = yAxis.cross(vector_aligned);
+        axis.normalize();
+        double angle = std::acos(yAxis.transpose()*vector_aligned);
+        auto final_rotation = Eigen::AngleAxisd(angle, axis).toRotationMatrix();
+        vector_aligned = target_local_index-main_diagonal_local_index;
+        double scaling_along_z = vector_aligned.norm();
+        double scaling_along_x = std::tan(0.349066)*scaling_along_z;
+        offset_base_to_Oxy(0,0) = scaling_along_x;
+        offset_base_to_Oxy(1,1) = scaling_along_x;
+        offset_base_to_Oxy(2,2) = scaling_along_z;
         geom.transform(offset_base_to_Oxy);
-        std::cout << "Piramid:\n" << geom << std::endl << "vector_aligned: " << vector_aligned.norm() << std::endl;
         offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-        
-        offset_base_to_Oxy(0,0) = 2;
-        offset_base_to_Oxy(1,1) = 0.5;
-        offset_base_to_Oxy(2,2) = 2;
-        //offset_base_to_Oxy(1,1) = vector_aligned.norm();
-
-            //rotation_and_scalling_matrix(0,0) = ;
-            //rotation_and_scalling_matrix(1,1) = length[1];
-
-            //rotation_and_scalling_matrix.block<3,1>(0,3) = origin;
-
-            // now that the cube is between 0 a +1 we can scale it and offset it to be in the coordinates supplied by the user
-            //geom.transform(rotation_and_scalling_matrix);
-
-            //rotation_and_scalling_matrix = Eigen::Matrix<double,4,4>::Identity();
-            //rotation_and_scalling_matrix.block<3,1>(0,3) = origin;
-            
+        offset_base_to_Oxy.block<3,3>(0,0) = final_rotation;
+        geom.transform(offset_base_to_Oxy);
+        auto tip = geom.geometry.vertices[0];
+        Eigen::Matrix<double,3,1> translation;
+        translation << (double)tip[0] , (double)tip[1] , (double)tip[2];
+        offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
+        offset_base_to_Oxy.block<3,1>(0,3) = -translation;  
+        geom.transform(offset_base_to_Oxy);
+        offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
+        offset_base_to_Oxy.block<3,1>(0,3) = target_local_index;          
+        geom.transform(offset_base_to_Oxy);
+        appdata.vol_mas->add_geometry(geom);  
     }
 
 }
@@ -780,6 +784,123 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;
+
+        if(appdata.trajectory_location.main_diagonal_word_coordinates && appdata.trajectory_location.target_world_coordinates){
+            config->stack_page->stack(warning_overlay("both the target and the entry region must be selected",*appdata.resources));
+            return;
+        }
+        auto stored_geometries = appdata.vol_mas->geometries();  
+        auto piramid = stored_geometries.front();
+        auto convert_to_eigen = [](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
+            Eigen::Matrix<double,3,1> converted;
+            converted << point[0] , point[1] , point[2];
+            return converted;
+        };
+
+        auto tip = convert_to_eigen(piramid.geometry.vertices[0]);
+        auto base0 = convert_to_eigen(piramid.geometry.vertices[1]);
+        auto base1 = convert_to_eigen(piramid.geometry.vertices[2]);
+        auto base2 = convert_to_eigen(piramid.geometry.vertices[3]);
+        auto base3 = convert_to_eigen(piramid.geometry.vertices[4]);
+
+        auto average = 0.25*base0+0.25*base1+0.25*base2+0.25*base3;
+
+        Eigen::Matrix<double, 3, 1> orient_along_traj = tip-average;
+        if (orient_along_traj.norm() < 1e-7){
+            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
+            return;
+        }
+        orient_along_traj.normalize(); 
+        Eigen::Matrix<double, 3, 1> x_direction = orient_along_traj;
+
+        ImageType::Pointer input;
+        if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
+            input = search->second.img;
+        else{
+            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
+            return;
+        }
+
+        auto direction = input->GetDirection();
+        Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
+        for (size_t col = 0; col < 3; ++col)
+            for (size_t row = 0; row < 3; ++row)
+                original_eigen_rotation_matrix(row, col) = direction(row, col);
+
+        Eigen::Matrix<double,3,3> eigen_direction;
+        for(size_t i = 0; i < 3; ++i)
+            for(size_t j = 0;  j < 3; ++j)
+                eigen_direction(i,j) = direction(i,j);
+
+
+        Eigen::Matrix<double,3,1> y_direction = base3 - base2;
+        Eigen::Matrix<double,3,1> z_direction = base3 - base0;
+        if (z_direction.norm() < 1e-7 || y_direction.norm() < 1e-7){
+            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
+            return;
+        }
+        y_direction.normalize();
+        z_direction.normalize();
+        Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
+        eigen_rotation_matrix.col(0) = x_direction;
+        eigen_rotation_matrix.col(1) = y_direction;
+        eigen_rotation_matrix.col(2) = z_direction;
+
+        if(original_eigen_rotation_matrix.determinant()<0.0)
+            original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
+
+        Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
+        ImageType::PointType itk_along_dimension_x;
+        ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
+        input->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
+        Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
+        ImageType::PointType itk_along_dimension_y;
+        ImageType::IndexType index_along_y{{0, (long long)input->GetLargestPossibleRegion().GetSize()[1], 0}};
+        input->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
+        Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
+        ImageType::PointType itk_along_dimension_z;
+        ImageType::IndexType index_along_z{{0, 0, (long long)input->GetLargestPossibleRegion().GetSize()[2]}};
+        input->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
+        Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
+        Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
+
+        BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
+        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
+        using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+        auto filter = FilterType::New();
+
+        using TransformType = itk::IdentityTransform<double, 3>;
+        auto transform = TransformType::New();
+
+        using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
+        auto interpolator = InterpolatorType::New();
+        filter->SetInterpolator(interpolator);
+        filter->SetDefaultPixelValue(0);
+        filter->SetTransform(transform);
+
+        filter->SetInput(input);
+        filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
+        filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
+        filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
+
+        itk::Matrix<double> rotation_matrix;
+        for (size_t col = 0; col < 3; ++col)
+            for (size_t row = 0; row < 3; ++row)
+                rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
+
+        filter->SetOutputDirection(rotation_matrix);
+
+        try{
+            filter->Update();
+            auto output = filter->GetOutput();
+            if (config->stack_page != nullptr) {
+                config->stack_page->replace_last(success_overlay("resampled volume!",*appdata.resources));
+            }
+            appdata.volumes.emplace("trajectory",output);
+        } catch (...){
+            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample trajectory volume",*appdata.resources));
+        }
+
     });
 
     auto switch_volume = Button::make("Switch Volume", *appdata.resources);
@@ -812,6 +933,54 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 
     return std::move(container);
 };
+
+void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+    // now we need to convert between itk coordinates and real world coordinates
+    if (!(strokes.point_in_image_coordinates.cols() > 0))
+        throw std::runtime_error("the collumns of the highlighted path must be at least 1");
+
+    if (strokes.point_in_image_coordinates.cols() > 1){
+        config_draw->stack_page->stack(warning_overlay("must select a single point, not a path",*appdata.resources));
+        return;
+    }
+
+}
+
+std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata){
+    using namespace curan::ui;
+
+    appdata.panel_constructor = select_entry_point_and_validate_point_selection;
+    appdata.volume_callback = select_entry_point_and_validate;
+
+    auto image_display = create_dicom_viewers(appdata);
+
+    auto defineentry = Button::make("Select Entry Point", *appdata.resources);
+    defineentry->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    defineentry->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        appdata.trajectory_location.entry_specification = true;
+        appdata.trajectory_location.main_diagonal_specification = false;
+        appdata.trajectory_location.target_specification = false;        
+    });
+
+    auto check = Button::make("Check", *appdata.resources);
+    check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    check->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        appdata.trajectory_location.entry_specification = false;
+        appdata.trajectory_location.main_diagonal_specification = false;
+        appdata.trajectory_location.target_specification = false;
+    });
+
+    auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+    *viwers_container << std::move(defineentry) << std::move(check);
+
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
+
+    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *container << std::move(viwers_container) << std::move(image_display);
+    container->set_divisions({0.0, 0.1, 1.0});
+
+    return std::move(container);
+}
 
 void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::VolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
