@@ -4,7 +4,7 @@
 #include "userinterface/widgets/definitions/Interactive.h"
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/TextBlob.h"
-#include "userinterface/widgets/SliderPanel.h"
+#include "userinterface/widgets/DicomDisplay.h"
 #include "userinterface/widgets/MiniPage.h"
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/ItemExplorer.h"
@@ -337,13 +337,12 @@ struct BoundingBox{
         ImageType::IndexType index_along_z{{0, 0, (long long)image->GetLargestPossibleRegion().GetSize()[2]}};
         image->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
         Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
-        Eigen::Matrix<double, 3, 1> spacing{{image->GetSpacing()[0], image->GetSpacing()[1], image->GetSpacing()[2]}};
+        Eigen::Matrix<double, 3, 1> in_spacing{{image->GetSpacing()[0], image->GetSpacing()[1], image->GetSpacing()[2]}};
 
         Eigen::Matrix<double,3,1> in_origin = origin_for_bounding_box;
         Eigen::Matrix<double,3,1> along_x = extrema_along_x_for_bounding_box;
         Eigen::Matrix<double,3,1> along_y = extrema_along_y_for_bounding_box;
         Eigen::Matrix<double,3,1> along_z = extrema_along_z_for_bounding_box;
-        Eigen::Matrix<double,3,1> in_spacing = spacing;
         
         origin = in_origin;
         Eigen::Matrix<double,3,1> direct_x = along_x-in_origin;
@@ -475,7 +474,18 @@ struct BoundingBox{
         //if(debug) std::cout << "\ndebug info: (center_bounding_box)\n" <<  center_bounding_box;
 
         Eigen::Matrix<double,3,3> transformed_rotation;
-        transformed_rotation = orientation*relative_transform;
+
+        switch(frameorientation){
+            case FrameOrientation::RIGHT_HANDED:
+                transformed_rotation = orientation*relative_transform;
+                break;
+            case FrameOrientation::LEFT_HANDED:
+                auto temp = orientation;
+                temp.col(1) = -temp.col(1);
+                transformed_rotation = temp*relative_transform;
+                break;
+        }
+
 
         auto transformed_quatered_bounding_box = transformed_rotation*(1.0/2.0)*transformed_corners_in_pixel_space;
         //if(debug) std::cout << "\ndebug info: (transformed_quatered_bounding_box)\n" <<  transformed_quatered_bounding_box;
@@ -541,22 +551,28 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
     switch(appdata.type){
         case ONE:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::X);
+            auto image_display = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
+            image_display->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             *container << std::move(image_display);
         }
         break;
         case TWO:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_displayx = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::X);
-            std::unique_ptr<curan::ui::SlidingPanel> image_displayy = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::Y);
+            auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
+            image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
+            image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             *container << std::move(image_displayx) << std::move(image_displayy);
         }
         break;
         case THREE:
         {
-            std::unique_ptr<curan::ui::SlidingPanel> image_displayx = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::X);
-            std::unique_ptr<curan::ui::SlidingPanel> image_displayy = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::Y);
-            std::unique_ptr<curan::ui::SlidingPanel> image_displayz = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::Z);
+            auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
+            image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
+            image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            auto image_displayz = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
+            image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             *container << std::move(image_displayx) << std::move(image_displayy) << std::move(image_displayz);
         }
         break;
@@ -792,6 +808,9 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
 
         BoundingBox bounding_box_original_image{input};        
         auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
+        std::cout << "bounding_box_original_image:\n" << bounding_box_original_image << std::endl;
+        std::cout << "output_bounding_box:\n" << output_bounding_box << std::endl;
+        std::cout << "fixed direction expected: " << y_direction.transpose() << std::endl; 
         using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
         auto filter = FilterType::New();
 
@@ -1181,7 +1200,6 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             converted[0] = (double)point[0];
             converted[1] = (double)point[1];
             converted[2] = (double)point[2];
-            converted << point[0] , point[1] , point[2];
             return converted;
         };
 
@@ -1212,6 +1230,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             for(size_t j = 0;  j < 3; ++j)
                 eigen_direction(i,j) = direction(i,j);
 
+
         Eigen::Matrix<double,3,1> x_direction = original_eigen_rotation_matrix.col(0);
         Eigen::Matrix<double,3,1> z_direction = x_direction.cross(y_direction);  
         x_direction = y_direction.cross(z_direction);  
@@ -1235,7 +1254,10 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
 
         BoundingBox bounding_box_original_image{input};    
         auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
-        
+        //auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix * eigen_rotation_matrix.transpose());
+        //auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix*original_eigen_rotation_matrix.transpose());     
+        //auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix.transpose()*original_eigen_rotation_matrix);     original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix
+   
         std::cout << "bounding_box_original_image:\n" << bounding_box_original_image << std::endl;
         std::cout << "output_bounding_box:\n" << output_bounding_box << std::endl;
 
@@ -1339,8 +1361,10 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     appdata.projected_vol_mas.update_volume(projected_input);
 
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    std::unique_ptr<curan::ui::SlidingPanel> image_displayx = curan::ui::SlidingPanel::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
-    std::unique_ptr<curan::ui::SlidingPanel> image_displayy = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::X);
+    auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
+    image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+    auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
+    image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
     *slidercontainer << std::move(image_displayx) << std::move(image_displayy);
 
     auto defineentry = Button::make("Select Entry Point", *appdata.resources);

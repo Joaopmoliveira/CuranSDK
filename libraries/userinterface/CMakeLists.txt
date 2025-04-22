@@ -29,6 +29,7 @@ src/Loader.cpp
 src/RuntimeEffect.cpp
 src/Plotter.cpp
 src/TaskManager.cpp
+src/DicomDisplay.cpp
 )
 
 find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)
