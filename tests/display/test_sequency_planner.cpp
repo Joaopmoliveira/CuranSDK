@@ -37,7 +37,7 @@
 #include "itkOrientImageFilter.h"
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
-#include "itkLinearIteratorWithIndex.h"
+#include "itkImageRegionIteratorWithIndex.h"
 #include "itkImageSeriesReader.h"
 
 #include <Eigen/Dense>
@@ -485,9 +485,6 @@ void ac_pc_midline_point_selection(Application& appdata,curan::ui::VolumetricMas
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata){
     using namespace curan::ui;
 
-    appdata.panel_constructor = select_ac_pc_midline;
-    appdata.volume_callback = ac_pc_midline_point_selection;
-
     auto image_display = create_dicom_viewers(appdata);
     auto layout = Button::make("Layout", *appdata.resources);
     layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -640,7 +637,8 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     auto check = Button::make("Check", *appdata.resources);
     check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
     check->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        select_target_and_region_of_entry(appdata);
+        appdata.panel_constructor = select_target_and_region_of_entry;
+        appdata.volume_callback = select_target_and_region_of_entry_point_selection;
         if(appdata.ac_pc_data.ac_word_coordinates && appdata.ac_pc_data.pc_word_coordinates)
             appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
         else
@@ -747,9 +745,6 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
 
 std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata){
     using namespace curan::ui;
-
-    appdata.panel_constructor = select_target_and_region_of_entry;
-    appdata.volume_callback = select_target_and_region_of_entry_point_selection;
 
     auto image_display = create_dicom_viewers(appdata);
     auto layout = Button::make("Layout", *appdata.resources);
@@ -903,6 +898,9 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample trajectory volume",*appdata.resources));
         }
 
+        appdata.panel_constructor = select_entry_point_and_validate_point_selection;
+        appdata.volume_callback = select_entry_point_and_validate;
+        appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
     });
 
     auto switch_volume = Button::make("Switch Volume", *appdata.resources);
@@ -922,6 +920,11 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;
+
+        if(appdata.trajectory_location.main_diagonal_word_coordinates && appdata.trajectory_location.target_world_coordinates && appdata.trajectory_location.entry_point_word_coordinates)
+            appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
+        else
+            config->stack_page->replace_last(warning_overlay("cannot advance without trajectory specified",*appdata.resources));
     });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -949,82 +952,147 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
 }
 
 ImageType::Pointer allocate_image(Application& appdata){
-  ImageType::Pointer image = ImageType::New();
-  
-  ImageType::SizeType size;
-  size[0] = 256;  // size along X
-  size[1] = 256;  // size along Y 
-  size[2] = 1;   // size along Z
-  
-  ImageType::SpacingType spacing;
-  spacing[0] = 0.5; // mm along X
-  spacing[1] = 0.5; // mm along Y
-  spacing[2] = 1.0; // mm along Z
-  
-  ImageType::PointType origin;
-  origin[0] = 0.0;
-  origin[1] = 0.0;
-  origin[2] = 0.0;
-  
-  ImageType::DirectionType direction;
-  direction.SetIdentity();
-  
-  ImageType::RegionType region;
-  region.SetSize(size);
-  
-  image->SetRegions(region);
-  image->SetSpacing(spacing);
-  image->SetOrigin(origin);
-  image->SetDirection(direction);
-  image->Allocate();
-  image->FillBuffer(0);
 
-  typedef itk::LinearIteratorWithIndex<ImageType> IteratorType;
-  IteratorType it(image, image->GetRequestedRegion());
-
-  Eigen::Matrix<double,3,1> target_index;
-  Eigen::Matrix<double,3,1> current_location_index;
-  Eigen::Matrix<double,3,1> final_location;
-
-  for (it.GoToBegin(); !it.IsAtEnd(); ++it)
-  {
-    const float min_iteratrions = 2.0;
-    const float max_iteratrions = 2048.0;
-
-    float num_iterations = ceil(length((te-t0).xyz)/SampleDensityValue);
-    if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
-    else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
-
-    ImageType::IndexType index = it.GetIndex();
-    current_location_index = target_index;
-    Eigen::Matrix<double,3,1> t = final_location-target_index;
-    double spacing_along_t;
-    t.normalize();
-
-    // Create an index object
-    ImageType::IndexType index;
-    index[0] = 10; // x-coordinate
-    index[1] = 20; // y-coordinate
-    index[2] = 5;  // z-coordinate
-    while(num_iterations>0.0){
-        float alpha = texture(volume, texcoord).r;
-        vec4 color = vec4(alpha, alpha, alpha, alpha * TransparencyValue);
-        float r = color.a;
-        if (r > AlphaFuncValue)
-        {
-            fragColor.rgb = mix(fragColor.rgb, color.rgb, r);
-            fragColor.a += r;
-        }
-
-        if (color.a > fragColor.a)
-        {
-            fragColor = color;
-        }
-
-        texcoord += deltaTexCoord;
-        --num_iterations;
+    ImageType::Pointer input;
+    if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
+        input = search->second.img;
+    else{
+        return nullptr;
     }
-    it.Set(0.0);
+
+    auto stored_geometries = appdata.vol_mas->geometries();  
+    auto piramid = stored_geometries.front();
+    auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
+        auto size = input->GetLargestPossibleRegion().GetSize();
+        Eigen::Matrix<double,3,1> converted;
+        converted << (double)point[0]*((double)size[0]) , (double)point[1]*((double)size[1]) , (double)point[2]*((double)size[2]);
+        return converted;
+    };
+
+    auto tip = convert_to_eigen(piramid.geometry.vertices[0]);
+    auto base0 = convert_to_eigen(piramid.geometry.vertices[1]);
+    auto base1 = convert_to_eigen(piramid.geometry.vertices[2]);
+    auto base2 = convert_to_eigen(piramid.geometry.vertices[3]);
+    auto base3 = convert_to_eigen(piramid.geometry.vertices[4]);
+
+    auto average = 0.25*base0+0.25*base1+0.25*base2+0.25*base3;
+
+    Eigen::Matrix<double, 3, 1> orient_along_traj = tip-average;
+    orient_along_traj.normalize(); 
+    Eigen::Matrix<double, 3, 1> x_direction = orient_along_traj;
+
+    auto direction = input->GetDirection();
+    Eigen::Matrix<double,3,3> eigen_direction;
+    for(size_t i = 0; i < 3; ++i)
+        for(size_t j = 0;  j < 3; ++j)
+            eigen_direction(i,j) = direction(i,j);
+
+
+    Eigen::Matrix<double,3,1> y_direction = base3 - base2;
+    Eigen::Matrix<double,3,1> z_direction = base3 - base0;
+    y_direction.normalize();
+    z_direction.normalize();
+    Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
+    eigen_rotation_matrix.col(0) = x_direction;
+    eigen_rotation_matrix.col(1) = y_direction;
+    eigen_rotation_matrix.col(2) = z_direction;
+
+    ImageType::Pointer image = ImageType::New();
+  
+    ImageType::SizeType size;
+    size[0] = 256;  // size along X
+    size[1] = 256;  // size along Y 
+    size[2] = 1;   // size along Z
+  
+    ImageType::SpacingType spacing;
+    spacing[0] = (base3 - base2).norm()/(double)size[0]; // mm along X
+    spacing[1] = (base3 - base0).norm()/(double)size[1]; // mm along X
+    spacing[2] = 1.0; // mm along Z
+  
+    ImageType::PointType origin;
+    origin[0] = average[0];
+    origin[1] = average[1];
+    origin[2] = average[2];
+  
+    for(size_t i = 0; i < 3; ++i)
+        for(size_t j = 0; j < 3; ++j)
+            direction(i,j) = eigen_rotation_matrix(i,j);
+  
+    ImageType::RegionType region;
+    region.SetSize(size);
+  
+    image->SetRegions(region);
+    image->SetSpacing(spacing);
+    image->SetOrigin(origin);
+    image->SetDirection(direction);
+    image->Allocate();
+    image->FillBuffer(0);
+
+    typedef itk::ImageRegionIteratorWithIndex<ImageType> IteratorType;
+    IteratorType it(image, image->GetRequestedRegion());
+
+    Eigen::Matrix<double,3,1> t0 = tip;
+    Eigen::Matrix<double,3,1> texcoord;
+    Eigen::Matrix<double,3,1> deltaTexCoord;
+    Eigen::Matrix<double,3,1> te;
+
+    ImageType::IndexType tmpindex;
+    tmpindex[0] = 0;
+    tmpindex[1] = 0;
+    tmpindex[2] = 0;
+
+    for (it.GoToBegin(); !it.IsAtEnd(); ++it)
+    {
+        const float min_iteratrions = 2.0;
+        const float max_iteratrions = 1024.0;
+
+        const float TransparencyValue = 0.2;
+        const float AlphaFuncValue = 0.1;
+        const float SampleDensityValue = 0.5;
+        
+
+        float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
+        if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
+        else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
+
+        ImageType::IndexType index = it.GetIndex();
+        te[0] = index[0];
+        te[1] = index[1];
+        te[2] = index[2];
+
+        auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
+            Eigen::Matrix<double,3,1> mixed;
+            mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
+            return mixed;
+        };
+
+        deltaTexCoord = (te-t0)/(num_iterations-1.0);
+        texcoord = t0;
+        Eigen::Matrix<double,4,1> fragColor = Eigen::Matrix<double,4,1>::Zero();
+        while(num_iterations>0.0){
+            texcoord += deltaTexCoord;
+            tmpindex[0] = texcoord[0];
+            tmpindex[1] = texcoord[1];
+            tmpindex[2] = texcoord[2];
+            float alpha = input->GetPixel(tmpindex);
+            Eigen::Matrix<double,4,1> color;
+            color << alpha, alpha, alpha, alpha * TransparencyValue;
+            float r = color[3];
+            if (r > AlphaFuncValue)
+            {
+                fragColor.block<3,1>(0,0) = mix(fragColor, color, r);
+                fragColor[3] += r;
+            }
+
+            if (color[3] > fragColor[3])
+            {
+                fragColor = color;
+            }
+
+            texcoord += deltaTexCoord;
+            --num_iterations;
+        }
+        it.Set(1.0/3.0*(fragColor[0]+fragColor[1]+fragColor[2]));
   }
 
 
@@ -1034,9 +1102,6 @@ ImageType::Pointer allocate_image(Application& appdata){
 std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata){
     using namespace curan::ui;
 
-    appdata.panel_constructor = select_entry_point_and_validate_point_selection;
-    appdata.volume_callback = select_entry_point_and_validate;
-
     ImageType::Pointer input;
     if (auto search = appdata.volumes.find("trajectory"); search != appdata.volumes.end())
         input = search->second.img;
@@ -1044,13 +1109,13 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         throw std::runtime_error("failure due to missing volume");
     }
     appdata.vol_mas->update_volume(input);
-    ImageType::Pointer projected_input = ImageType::New();
+    ImageType::Pointer projected_input = allocate_image(appdata);
+    appdata.projected_vol_mas.update_volume(projected_input);
 
-
-    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    std::unique_ptr<curan::ui::SlidingPanel> image_displayx = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::X);
+    auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+    std::unique_ptr<curan::ui::SlidingPanel> image_displayx = curan::ui::SlidingPanel::make(*appdata.resources, &appdata.projected_vol_mas, Direction::X);
     std::unique_ptr<curan::ui::SlidingPanel> image_displayy = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::X);
-    *container << std::move(image_displayx) << std::move(image_displayy);
+    *slidercontainer << std::move(image_displayx) << std::move(image_displayy);
 
     auto defineentry = Button::make("Select Entry Point", *appdata.resources);
     defineentry->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
@@ -1074,7 +1139,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-    *container << std::move(viwers_container) << std::move(container);
+    *container << std::move(viwers_container) << std::move(slidercontainer);
     container->set_divisions({0.0, 0.1, 1.0});
 
     return std::move(container);
@@ -1094,9 +1159,6 @@ void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::Volu
 
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata){
     using namespace curan::ui;
-
-    appdata.panel_constructor = select_roi_for_surgery;
-    appdata.volume_callback = select_roi_for_surgery_point_selection;
 
     auto image_display = create_dicom_viewers(appdata);
     auto layout = Button::make("Layout", *appdata.resources);
@@ -1130,6 +1192,8 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
 
 std::unique_ptr<curan::ui::Container> Application::main_page(){
     using namespace curan::ui;
+    panel_constructor = select_ac_pc_midline;
+    volume_callback = ac_pc_midline_point_selection;
     auto container_with_widgets = select_ac_pc_midline(*this);
     std::unique_ptr<MiniPage> minipage = MiniPage::make(std::move(container_with_widgets), SK_ColorBLACK);
     tradable_page = minipage.get();
