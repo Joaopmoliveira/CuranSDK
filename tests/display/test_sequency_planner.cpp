@@ -69,6 +69,11 @@ struct TrajectoryConeData{
     curan::geometry::Piramid piramid_world_coordinates;
 };
 
+struct RegionOfInterest{
+    std::vector<curan::ui::directed_stroke> paths;
+    bool is_selecting_path = false;
+};
+
 struct CachedVolume{
     ImageType::Pointer img;
 };
@@ -95,6 +100,7 @@ struct Application{
     std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
     curan::ui::DicomVolumetricMask projected_vol_mas{nullptr};
     std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
+    RegionOfInterest roi;
 
     Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
 
@@ -109,7 +115,7 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata);
 std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata);
 std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
-std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata);
+std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata,curan::ui::DicomVolumetricMask::Policy mask);
 void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
@@ -626,7 +632,7 @@ std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,c
     return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
 }
 
-std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata)
+std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata, curan::ui::DicomVolumetricMask::Policy mask)
 {
     using namespace curan::ui;
     using PixelType = unsigned char;
@@ -638,7 +644,7 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
             size_t i = 0;
             for(auto vol : appdata.volumes){
                 if(i==appdata.volume_index)
-                    appdata.vol_mas->update_volume(vol.second.img);
+                    appdata.vol_mas->update_volume(vol.second.img,mask);
                 ++i;
             }
 
@@ -674,7 +680,7 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
             ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
             auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
             auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
-            item_explorer->add(Item{identifier, vol.first + std::to_string(identifier), buff, extracted_size[0], extracted_size[1]});
+            item_explorer->add(Item{identifier, vol.first, buff, extracted_size[0], extracted_size[1]});
         }
         ++identifier;
     }
@@ -852,7 +858,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::DISREGARD));
 		}
     });
 
@@ -1130,7 +1136,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::DISREGARD));
 		}
     });
 
@@ -1395,6 +1401,11 @@ void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::Dico
         config_draw->stack_page->stack(warning_overlay("must select a single point, not a path",*appdata.resources));
         return;
     }
+
+    if(appdata.roi.is_selecting_path){
+        appdata.roi.is_selecting_path = false;
+        appdata.roi.paths.push_back(strokes);
+    }
 }
 
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata){
@@ -1411,15 +1422,84 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
 
     auto addpath = Button::make("Append Path", *appdata.resources);
     addpath->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    addpath->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        appdata.roi.is_selecting_path = true;
+    });
 
     auto removelast = Button::make("Remove Last Path", *appdata.resources);
     removelast->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    removelast->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        auto copy = appdata.roi.paths;
+        copy.clear();
+        for(size_t i = 0; i <= appdata.roi.paths.size(); ++i)
+            copy.push_back(appdata.roi.paths[i]);
+        appdata.roi.paths = copy;
+    });
 
     auto removeall = Button::make("Remove All Paths", *appdata.resources);
     removeall->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
-
+    removeall->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        appdata.roi.paths.clear();
+    });
+    
     auto addroi = Button::make("Add ROI", *appdata.resources);
     addroi->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    addroi->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        Eigen::Matrix<double,3,Eigen::Dynamic> min_and_max_both_paths = Eigen::Matrix<double,3,Eigen::Dynamic>::Zero(3,appdata.roi.paths.size()*2);
+        size_t col = 0;
+        for(auto path : appdata.roi.paths){
+            Eigen::Matrix<double,3,1> min_coeff_all = path.point_in_image_coordinates.rowwise().minCoeff();
+            Eigen::Matrix<double,3,1> max_coeff_all = path.point_in_image_coordinates.rowwise().maxCoeff();
+            min_and_max_both_paths.col(col) = min_coeff_all;
+            min_and_max_both_paths.col(col+1) = max_coeff_all;
+            col+=2;
+        }
+        Eigen::Matrix<double,3,1> min_coeff_all = min_and_max_both_paths.rowwise().minCoeff();
+        Eigen::Matrix<double,3,1> max_coeff_all = min_and_max_both_paths.rowwise().maxCoeff();
+
+        min_coeff_all[0] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
+        min_coeff_all[1] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1];
+        min_coeff_all[2] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
+    
+        max_coeff_all[0] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
+        max_coeff_all[1] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1];
+        max_coeff_all[2] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
+
+        for(auto& coef : min_coeff_all)
+            coef = std::max(coef,0.0);
+        for(auto& coef : max_coeff_all)
+            coef = std::max(coef,0.0);
+
+        for(auto& coef : min_coeff_all)
+            coef = std::min(coef,1.0);
+        for(auto& coef : max_coeff_all)
+            coef = std::min(coef,1.0);
+
+        Eigen::Matrix<double,3,1> length = max_coeff_all - min_coeff_all;
+        Eigen::Matrix<double,3,1> origin = min_coeff_all;
+
+        curan::geometry::Cube geom{1,1,1};
+
+        Eigen::Matrix<double,4,4> rotation_and_scalling_matrix = Eigen::Matrix<double,4,4>::Identity();
+        rotation_and_scalling_matrix(0,0) = 0.5;
+        rotation_and_scalling_matrix(1,1) = 0.5;
+        rotation_and_scalling_matrix(2,2) = 0.5;
+        rotation_and_scalling_matrix.block<3,1>(0,3) = Eigen::Matrix<double,3,1>::Ones()*0.5;
+        
+        // first we rotate the cube from -1 to +1 into the coordinates from 0 to +1
+        geom.transform(rotation_and_scalling_matrix);
+
+        rotation_and_scalling_matrix = Eigen::Matrix<double,4,4>::Identity();
+        rotation_and_scalling_matrix(0,0) = length[0];
+        rotation_and_scalling_matrix(1,1) = length[1];
+        rotation_and_scalling_matrix(2,2) = length[2];
+        rotation_and_scalling_matrix.block<3,1>(0,3) = origin;
+
+        // now that the cube is between 0 a +1 we can scale it and offset it to be in the coordinates supplied by the user
+        geom.transform(rotation_and_scalling_matrix);
+
+        appdata.vol_mas->add_geometry(geom);
+    });
 
     auto switch_volume = Button::make("Switch Volume", *appdata.resources);
     switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
@@ -1427,7 +1507,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
 		}
     });
 
