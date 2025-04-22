@@ -713,7 +713,6 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         const auto target_local_index = compute(*appdata.trajectory_location.target_world_coordinates);
         const auto main_diagonal_local_index = compute(*appdata.trajectory_location.main_diagonal_word_coordinates);
        
-
         Eigen::Matrix<double,3,1> vector_aligned = target_local_index-main_diagonal_local_index;
         Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
         vector_aligned.normalize();
@@ -970,15 +969,15 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
     local_index[0] = strokes.point_in_image_coordinates(0, 0);
     local_index[1] = strokes.point_in_image_coordinates(1, 0);
     local_index[2] = strokes.point_in_image_coordinates(2, 0);
-    vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
-    Eigen::Matrix<double, 3, 1> word_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
-    word_coordinates(0, 0) = itk_point_in_world_coordinates[0];
-    word_coordinates(1, 0) = itk_point_in_world_coordinates[1];
-    word_coordinates(2, 0) = itk_point_in_world_coordinates[2];
+    appdata.projected_vol_mas.get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+    Eigen::Matrix<double, 3, 1> entry_word_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
+    entry_word_coordinates[0] = itk_point_in_world_coordinates[0];
+    entry_word_coordinates[1] = itk_point_in_world_coordinates[1];
+    entry_word_coordinates[2] = itk_point_in_world_coordinates[2];
 
     if(appdata.trajectory_location.entry_specification){
         appdata.trajectory_location.entry_specification = false;
-        appdata.trajectory_location.entry_point_word_coordinates = word_coordinates;
+        appdata.trajectory_location.entry_point_word_coordinates = entry_word_coordinates;
 
         ImageType::Pointer input;
         if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
@@ -988,25 +987,13 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             return;
         }
 
-        input->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
-        Eigen::Matrix<double, 3, 1> entry_index_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
-        entry_index_coordinates[0] = local_index[0];
-        entry_index_coordinates[1] = local_index[1];
-        entry_index_coordinates[2] = local_index[2];
-
         config_draw->stack_page->stack(success_overlay("entry defined",*appdata.resources));
 
         auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
-            ImageType::IndexType local_index;
-            ImageType::PointType itk_point_in_world_coordinates;
-            itk_point_in_world_coordinates[0] = (double)point[0];
-            itk_point_in_world_coordinates[1] = (double)point[1];
-            itk_point_in_world_coordinates[2] = (double)point[2];
-            input->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
             Eigen::Matrix<double,3,1> converted;
-            converted[0] = local_index[0];
-            converted[1] = local_index[1];
-            converted[2] = local_index[2];
+            converted[0] = (double)point[0];
+            converted[1] = (double)point[1];
+            converted[2] = (double)point[2];
             converted << point[0] , point[1] , point[2];
             return converted;
         };
@@ -1017,7 +1004,9 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
         auto base2 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[3]);
         auto base3 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[4]);
 
-        Eigen::Matrix<double, 3, 1> orient_along_traj = tip-entry_index_coordinates;
+        auto median = (1.0/4.0)*(base0+base1+base2+base3);
+
+        Eigen::Matrix<double, 3, 1> orient_along_traj = tip-entry_word_coordinates;
         if (orient_along_traj.norm() < 1e-7){
             if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
             return;
@@ -1044,7 +1033,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
         z_direction = x_direction.cross(y_direction);
         z_direction.normalize();
 
-        if (y_direction.norm() < 1e-7){
+        if (y_direction.norm() < 1e-7 || z_direction.norm() < 1e-7){
             if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
             return;
         }
@@ -1102,9 +1091,24 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             auto output = filter->GetOutput();
             appdata.vol_mas->update_volume(output);
             curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
-            // now I need the tip and the entry point from world coordinates into local coordinates
-            
-            Eigen::Matrix<double,3,1> vector_aligned = x_direction;
+            auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
+                ImageType::IndexType local_index;
+                ImageType::PointType itk_point_in_world_coordinates;
+                itk_point_in_world_coordinates[0] = point[0];
+                itk_point_in_world_coordinates[1] = point[1];
+                itk_point_in_world_coordinates[2] = point[2];
+                output->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+                auto size = output->GetLargestPossibleRegion().GetSize();
+                Eigen::Matrix<double,3,1> converted;
+                converted[0] = (1.0/size[0])*(double)local_index[0];
+                converted[1] = (1.0/size[1])*(double)local_index[1];
+                converted[2] = (1.0/size[2])*(double)local_index[2];
+                return converted;
+            };
+
+            const auto tip_in_local_coords = convert_to_index_coordinates(tip);
+            const auto entry_in_local_coords = convert_to_index_coordinates(entry_word_coordinates);
+            Eigen::Matrix<double,3,1> vector_aligned = tip_in_local_coords-entry_in_local_coords;
             Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
             vector_aligned.normalize();
             Eigen::Matrix<double,3,1> yAxis(0, 0, 1);
@@ -1112,9 +1116,9 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             axis.normalize();
             double angle = std::acos(yAxis.transpose()*vector_aligned);
             auto final_rotation = Eigen::AngleAxisd(angle, axis).toRotationMatrix();
-            vector_aligned = tip-entry_index_coordinates;
+            vector_aligned = tip_in_local_coords-entry_in_local_coords;
             double scaling_along_z = vector_aligned.norm();
-            double scaling_along_x = std::tan(0.1)*scaling_along_z;
+            double scaling_along_x = std::tan(0.01)*scaling_along_z;
             offset_base_to_Oxy(0,0) = scaling_along_x;
             offset_base_to_Oxy(1,1) = scaling_along_x;
             offset_base_to_Oxy(2,2) = scaling_along_z;
@@ -1129,10 +1133,9 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             offset_base_to_Oxy.block<3,1>(0,3) = -translation;  
             geom.transform(offset_base_to_Oxy);
             offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-            offset_base_to_Oxy.block<3,1>(0,3) = tip;          
+            offset_base_to_Oxy.block<3,1>(0,3) = tip_in_local_coords;    
             geom.transform(offset_base_to_Oxy);
             appdata.vol_mas->add_geometry(geom);  
-            std::cout << "geometry: " << geom << std::endl;
             if (config_draw->stack_page != nullptr) {
                 config_draw->stack_page->replace_last(success_overlay("resampled volume!",*appdata.resources));
             }
