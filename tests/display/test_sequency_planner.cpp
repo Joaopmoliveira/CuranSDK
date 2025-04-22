@@ -107,7 +107,6 @@ enum Strategy{
 
 std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata);
 std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata);
-std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata);
 std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata);

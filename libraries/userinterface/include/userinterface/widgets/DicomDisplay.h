@@ -256,8 +256,9 @@ public:
             return;
         ImageType::RegionType inputRegion = in_volume->GetBufferedRegion();
         std::vector<std::array<double,3>> points_to_store;
-        auto old_size = image->GetLargestPossibleRegion().GetSize();
-		if(update_policy & UPDATE_POINTS){
+
+		if(update_policy & UPDATE_POINTS && image.IsNotNull()){
+            auto old_size = image->GetLargestPossibleRegion().GetSize();
             size_t increment = 0;
 			for(auto& mask : masks_x){ 
                 auto strokes = mask.strokes();
@@ -286,7 +287,7 @@ public:
 			}
 		} 
                 
-        if(update_policy & UPDATE_GEOMETRIES){
+        if(update_policy & UPDATE_GEOMETRIES && image.IsNotNull()){
 			for(auto& dimensional_entities : three_dimensional_entities){
 				for(auto& vertices : dimensional_entities.geometry.vertices){
 					ImageType::IndexType local_index;

@@ -149,6 +149,7 @@ drawablefunction ItemExplorer::draw(){
 			SkRect image_rectangle = SkRect::MakeXYWH(init_x, init_y, scale_factor * image_width, ITEM_IMAGE_HEIGHT * 0.98f);
 			canvas->drawRoundRect(preview_rectangle, 5, 5, paint_image_background);
 			text_paint.setColor(get_text_color());
+			
 			canvas->drawSimpleText(iterator->text.data(),iterator->text.size(),SkTextEncoding::kUTF8,x + (ITEM_PREVIEW_WIDTH - iterator->cached_text_size.width()) / 2.0f,y + (iterator->cached_text_size.height()+ITEM_PREVIEW_HEIGHT - ITEM_IMAGE_HEIGHT)/2.0,font,text_paint);
 
 			SkSamplingOptions options;

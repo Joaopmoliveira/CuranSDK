@@ -5,7 +5,7 @@
 
 namespace curan{
 namespace ui{
-    
+
     size_t DicomVolumetricMask::counter = 0;
     
     DicomVolumetricMask::DicomVolumetricMask(ImageType::Pointer volume) : image{volume}
@@ -155,12 +155,13 @@ namespace ui{
     }
     
     void DicomViewer::query_if_required(bool force_update)
-    {
+    { //TODO
         size_t previous = _current_index;
         assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
         if (!volumetric_mask->filled())
             return;
         _current_index = std::round(current_value * (volumetric_mask->dimension(direction) - 1));
+
         if (force_update)
         {
             background = extract_slice_from_volume(_current_index);
@@ -404,11 +405,9 @@ namespace ui{
         if (!volume_mask->filled())
             return;
         direction = in_direction;
-        ImageType::RegionType inputRegion = volume_mask->get_volume()->GetBufferedRegion();
-        ImageType::SizeType size = inputRegion.GetSize();
-        _current_index = std::floor(current_value * (size[direction] - 1));
+        _current_index = std::round(current_value * (volumetric_mask->dimension(direction) - 1));
         volumetric_mask = volume_mask;
-        dragable_percent_size = 1.0 / size[direction];
+        dragable_percent_size = 1.0 / volumetric_mask->dimension(direction);
         query_if_required(true);
     }
     
@@ -607,6 +606,14 @@ namespace ui{
         if (!volumetric_mask->filled())
             return;
         auto widget_rect = get_position();
+
+        if(chached_pointer!=volumetric_mask->get_volume().GetPointer() || volumetric_mask->geometries().size()!=cached_number_of_geometries) {
+            chached_pointer = volumetric_mask->get_volume().GetPointer();
+            cached_number_of_geometries = volumetric_mask->geometries().size();
+            query_if_required(true);
+            framebuffer_resize(SkRect::MakeWH(0,0));
+        }
+
         bool is_panel_selected = false;
         {
             SkAutoCanvasRestore restore{canvas, true};
