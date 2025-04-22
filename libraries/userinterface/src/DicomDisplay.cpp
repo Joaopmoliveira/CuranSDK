@@ -5,9 +5,10 @@
 
 namespace curan{
 namespace ui{
-    size_t VolumetricMask::counter = 0;
     
-    VolumetricMask::VolumetricMask(ImageType::Pointer volume) : image{volume}
+    size_t DicomVolumetricMask::counter = 0;
+    
+    DicomVolumetricMask::DicomVolumetricMask(ImageType::Pointer volume) : image{volume}
     {
         update_volume(volume);
     }
@@ -310,7 +311,7 @@ namespace ui{
     }
     
     DicomViewer::DicomViewer(curan::ui::IconResources &other, 
-                            VolumetricMask *volume_mask, 
+                            DicomVolumetricMask *volume_mask, 
                             Direction in_direction) : volumetric_mask{volume_mask},
                                                         chached_pointer{volume_mask->get_volume().GetPointer()},
                                                         cached_number_of_geometries{volume_mask->geometries().size()}, 
@@ -377,7 +378,7 @@ namespace ui{
             success = volumetric_mask->try_emplace(direction, current_value, curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
     }
     
-    std::unique_ptr<DicomViewer> DicomViewer::make(curan::ui::IconResources &other, VolumetricMask *volume_mask, Direction in_direction)
+    std::unique_ptr<DicomViewer> DicomViewer::make(curan::ui::IconResources &other, DicomVolumetricMask *volume_mask, Direction in_direction)
     {
         std::unique_ptr<DicomViewer> button = std::unique_ptr<DicomViewer>(new DicomViewer{other, volume_mask, in_direction});
         return button;
@@ -396,7 +397,7 @@ namespace ui{
         compiled = true;
     }
     
-    void DicomViewer::update_volume(VolumetricMask *volume_mask, Direction in_direction)
+    void DicomViewer::update_volume(DicomVolumetricMask *volume_mask, Direction in_direction)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         assert(volume_mask != nullptr && "volumetric mask must be different from nullptr");

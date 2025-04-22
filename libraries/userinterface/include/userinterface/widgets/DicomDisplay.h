@@ -110,10 +110,10 @@ struct directed_stroke
     {}
 };
 
-class VolumetricMask;
-using pressedhighlighted_event = std::function<void(VolumetricMask*, curan::ui::ConfigDraw*, const directed_stroke&)>;
+class DicomVolumetricMask;
+using pressedhighlighted_event = std::function<void(DicomVolumetricMask*, curan::ui::ConfigDraw*, const directed_stroke&)>;
 
-class VolumetricMask
+class DicomVolumetricMask
 {
 
     static size_t counter;
@@ -131,10 +131,10 @@ class VolumetricMask
 public:
     std::list<pressedhighlighted_event> callbacks_pressedhighlighted;
 
-    VolumetricMask(ImageType::Pointer volume);
+    DicomVolumetricMask(ImageType::Pointer volume);
 
-    VolumetricMask(const VolumetricMask &m) = delete;
-    VolumetricMask &operator=(const VolumetricMask &) = delete;
+    DicomVolumetricMask(const DicomVolumetricMask &m) = delete;
+    DicomVolumetricMask &operator=(const DicomVolumetricMask &) = delete;
 
     inline void add_pressedhighlighted_call(pressedhighlighted_event &&call)
     {
@@ -252,6 +252,8 @@ public:
 
     inline void update_volume(ImageType::Pointer in_volume,Policy update_policy = Policy::DISREGARD,std::vector<size_t> identifiers = std::vector<size_t>{})
     {
+        if(in_volume.IsNull())
+            return;
         ImageType::RegionType inputRegion = in_volume->GetBufferedRegion();
         std::vector<std::array<double,3>> points_to_store;
         auto old_size = image->GetLargestPossibleRegion().GetSize();
@@ -304,9 +306,6 @@ public:
         } 
 
         image = in_volume;
-        if(!filled())
-            return;
-
         masks_x = std::vector<DicomMask>(inputRegion.GetSize()[Direction::X]);
         masks_y = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Y]);
         masks_z = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Z]);
@@ -441,7 +440,7 @@ private:
 
     const double buffer_sideways = 30.0;
 
-    VolumetricMask *volumetric_mask = nullptr;
+    DicomVolumetricMask *volumetric_mask = nullptr;
     ImageType* chached_pointer = nullptr;
     size_t cached_number_of_geometries = 0;
     
@@ -523,12 +522,12 @@ private:
 
     image_info extract_slice_from_volume(size_t index);
 
-    DicomViewer(curan::ui::IconResources &other, VolumetricMask *mask, Direction in_direction);
+    DicomViewer(curan::ui::IconResources &other, DicomVolumetricMask *mask, Direction in_direction);
 
     void insert_in_map(const curan::ui::PointCollection &future_stroke);
 
 public:
-    static std::unique_ptr<DicomViewer> make(curan::ui::IconResources &other, VolumetricMask *mask, Direction in_direction);
+    static std::unique_ptr<DicomViewer> make(curan::ui::IconResources &other, DicomVolumetricMask *mask, Direction in_direction);
 
     ~DicomViewer();
 
@@ -539,7 +538,7 @@ public:
         return *(this);
     }
 
-    void update_volume(VolumetricMask *mask, Direction in_direction);
+    void update_volume(DicomVolumetricMask *mask, Direction in_direction);
 
     void framebuffer_resize(const SkRect &new_page_size) override;
     void internal_framebuffer_recomputation();
