@@ -951,7 +951,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
 
 }
 
-ImageType::Pointer allocate_image(Application& appdata){
+ImageType::Pointer allocate_image(Application& appdata,curan::geometry::PolyHeadra piramid){
 
     ImageType::Pointer input;
     if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
@@ -960,8 +960,7 @@ ImageType::Pointer allocate_image(Application& appdata){
         return nullptr;
     }
 
-    auto stored_geometries = appdata.vol_mas->geometries();  
-    auto piramid = stored_geometries.front();
+
     auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
         auto size = input->GetLargestPossibleRegion().GetSize();
         Eigen::Matrix<double,3,1> converted;
@@ -1000,14 +999,16 @@ ImageType::Pointer allocate_image(Application& appdata){
     ImageType::Pointer image = ImageType::New();
   
     ImageType::SizeType size;
-    size[0] = 256;  // size along X
-    size[1] = 256;  // size along Y 
+    size[0] = 64;  // size along X
+    size[1] = 64;  // size along Y 
     size[2] = 1;   // size along Z
+
+    double minspacing = std::min((base3 - base2).norm()/(double)size[0],(base3 - base0).norm()/(double)size[1]);
   
     ImageType::SpacingType spacing;
-    spacing[0] = (base3 - base2).norm()/(double)size[0]; // mm along X
-    spacing[1] = (base3 - base0).norm()/(double)size[1]; // mm along X
-    spacing[2] = 1.0; // mm along Z
+    spacing[0] = minspacing; // mm along X
+    spacing[1] = minspacing; // mm along X
+    spacing[2] = minspacing; // mm along Z
   
     ImageType::PointType origin;
     origin[0] = average[0];
@@ -1041,14 +1042,16 @@ ImageType::Pointer allocate_image(Application& appdata){
     tmpindex[1] = 0;
     tmpindex[2] = 0;
 
+    auto overall_size = input->GetLargestPossibleRegion().GetSize();
+
     for (it.GoToBegin(); !it.IsAtEnd(); ++it)
     {
         const float min_iteratrions = 2.0;
         const float max_iteratrions = 1024.0;
 
-        const float TransparencyValue = 0.2;
+        const float TransparencyValue = 0.02;
         const float AlphaFuncValue = 0.1;
-        const float SampleDensityValue = 0.5;
+        const float SampleDensityValue = 2;
         
 
         float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
@@ -1074,25 +1077,25 @@ ImageType::Pointer allocate_image(Application& appdata){
             tmpindex[0] = texcoord[0];
             tmpindex[1] = texcoord[1];
             tmpindex[2] = texcoord[2];
-            float alpha = input->GetPixel(tmpindex);
+            if(tmpindex[0] < 0 || tmpindex[1] < 0 || tmpindex[2] < 0 || tmpindex[0] >= overall_size[0] || tmpindex[1] >= overall_size[1] || tmpindex[2] >= overall_size[2])
+                break;
+            float alpha = (1.0/255.0)*input->GetPixel(tmpindex);
+            alpha = 1.0-alpha;
             Eigen::Matrix<double,4,1> color;
             color << alpha, alpha, alpha, alpha * TransparencyValue;
             float r = color[3];
-            if (r > AlphaFuncValue)
-            {
+            if (r > AlphaFuncValue){
                 fragColor.block<3,1>(0,0) = mix(fragColor, color, r);
                 fragColor[3] += r;
             }
 
             if (color[3] > fragColor[3])
-            {
                 fragColor = color;
-            }
 
             texcoord += deltaTexCoord;
             --num_iterations;
         }
-        it.Set(1.0/3.0*(fragColor[0]+fragColor[1]+fragColor[2]));
+        it.Set((255.0)*(1.0/3.0)*(fragColor[0]+fragColor[1]+fragColor[2]));
   }
 
 
@@ -1108,12 +1111,28 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     else{
         throw std::runtime_error("failure due to missing volume");
     }
+    auto piramid = appdata.vol_mas->geometries()[0];
+    auto old_image = appdata.vol_mas->get_volume();
+    for(auto& vertices : piramid.geometry.vertices){ 
+        // the geometry is in whatever coordinates the volume mask is, thus we need to convert it to the original volume coordinates
+        ImageType::IndexType local_index;
+        ImageType::PointType itk_point_in_world_coordinates;
+        local_index[0] = old_image->GetLargestPossibleRegion().GetSize()[0]*(double)vertices[0];
+        local_index[1] = old_image->GetLargestPossibleRegion().GetSize()[1]*(double)vertices[1];
+        local_index[2] = old_image->GetLargestPossibleRegion().GetSize()[2]*(double)vertices[2];
+        old_image->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+        input->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+        vertices[0] = local_index[0]*(1.0/input->GetLargestPossibleRegion().GetSize()[0]);
+        vertices[1] = local_index[1]*(1.0/input->GetLargestPossibleRegion().GetSize()[1]);
+        vertices[2] = local_index[2]*(1.0/input->GetLargestPossibleRegion().GetSize()[2]);
+    }
+
     appdata.vol_mas->update_volume(input);
-    ImageType::Pointer projected_input = allocate_image(appdata);
+    ImageType::Pointer projected_input = allocate_image(appdata,piramid);
     appdata.projected_vol_mas.update_volume(projected_input);
 
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    std::unique_ptr<curan::ui::SlidingPanel> image_displayx = curan::ui::SlidingPanel::make(*appdata.resources, &appdata.projected_vol_mas, Direction::X);
+    std::unique_ptr<curan::ui::SlidingPanel> image_displayx = curan::ui::SlidingPanel::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
     std::unique_ptr<curan::ui::SlidingPanel> image_displayy = curan::ui::SlidingPanel::make(*appdata.resources, appdata.vol_mas, Direction::X);
     *slidercontainer << std::move(image_displayx) << std::move(image_displayy);
 

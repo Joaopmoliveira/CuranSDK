@@ -240,7 +240,29 @@ namespace curan
 			{
 				// TODO need to take into consideration update policy
 				if(update_policy & (UPDATE_POINTS | UPDATE_GEOMETRIES) ){
+					for(auto& mask : masks_x){ 
 
+					}
+					for(auto& mask : masks_y){
+
+					}
+					for(auto& mask : masks_z){
+
+					}
+					for(auto& dimensional_entities : three_dimensional_entities){
+						for(auto& vertices : dimensional_entities.geometry.vertices){
+							ImageType::IndexType local_index;
+							ImageType::PointType itk_point_in_world_coordinates;
+							local_index[0] = image->GetLargestPossibleRegion().GetSize()[0]*(double)vertices[0];
+							local_index[1] = image->GetLargestPossibleRegion().GetSize()[1]*(double)vertices[1];
+							local_index[2] = image->GetLargestPossibleRegion().GetSize()[2]*(double)vertices[2];
+							image->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+							in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+							vertices[0] = local_index[0]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[0]);
+							vertices[1] = local_index[1]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[1]);
+							vertices[2] = local_index[2]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[2]);
+						}
+					}
 				} else if(update_policy & UPDATE_POINTS){
 					for(auto& mask : masks_x){ 
 
@@ -253,7 +275,18 @@ namespace curan
 					}
 				} else if(update_policy & UPDATE_GEOMETRIES){
 					for(auto& dimensional_entities : three_dimensional_entities){
-
+						for(auto& vertices : dimensional_entities.geometry.vertices){
+							ImageType::IndexType local_index;
+							ImageType::PointType itk_point_in_world_coordinates;
+							local_index[0] = image->GetLargestPossibleRegion().GetSize()[0]*(double)vertices[0];
+							local_index[1] = image->GetLargestPossibleRegion().GetSize()[1]*(double)vertices[1];
+							local_index[2] = image->GetLargestPossibleRegion().GetSize()[2]*(double)vertices[2];
+							image->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+							in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+							vertices[0] = local_index[0]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[0]);
+							vertices[1] = local_index[1]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[1]);
+							vertices[2] = local_index[2]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[2]);
+						}
 					}
 					ImageType::RegionType inputRegion = in_volume->GetBufferedRegion();
 					masks_x = std::vector<Mask>(inputRegion.GetSize()[Direction::X]);
@@ -295,7 +328,7 @@ namespace curan
 				three_dimensional_entities.emplace_back(std::forward<T>(geometry_to_add));
 			}
 
-			inline const std::vector<curan::geometry::PolyHeadra>& geometries() const{
+			inline std::vector<curan::geometry::PolyHeadra> geometries() const{
 				return three_dimensional_entities;
 			}
 
