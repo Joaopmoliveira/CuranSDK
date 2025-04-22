@@ -493,13 +493,12 @@ namespace ui{
             x_location += max_width+in_line_spacing;
             ++row_location_index;
             if(row_location_index >= number_per_line){
+                row_location_index = 0;
                 y_location += max_height+buffer_sideways;
                 x_location = reserved_drawing_space.fLeft+buffer_sideways;
             }
         }  
-        
         return;
-
     }
     
     void DicomViewer::framebuffer_resize(const SkRect &new_page_size)
@@ -587,6 +586,7 @@ namespace ui{
             x_location += max_width+in_line_spacing;
             ++row_location_index;
             if(row_location_index >= number_per_line){
+                row_location_index = 0;
                 y_location += max_height+buffer_sideways;
                 x_location = reserved_drawing_space.fLeft+buffer_sideways;
             }
