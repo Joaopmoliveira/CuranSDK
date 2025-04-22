@@ -726,7 +726,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
 
     auto image_display = create_dicom_viewers(appdata);
     auto layout = Button::make("Layout", *appdata.resources);
-    layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     layout->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         if(config->stack_page!=nullptr){
 			config->stack_page->stack(layout_overlay(appdata));
@@ -734,7 +734,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     });
 
     auto defineac = Button::make("Locate AC", *appdata.resources);
-    defineac->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    defineac->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     defineac->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.ac_pc_data.ac_specification = true;
         appdata.ac_pc_data.pc_specification = false;
@@ -848,7 +848,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     });
 
     auto switch_volume = Button::make("Switch Volume", *appdata.resources);
-    switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switch_volume->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
@@ -858,7 +858,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     });
 
     auto check = Button::make("Check", *appdata.resources);
-    check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     check->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.panel_constructor = select_target_and_region_of_entry;
         appdata.volume_callback = select_target_and_region_of_entry_point_selection;
@@ -983,7 +983,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 
     auto image_display = create_dicom_viewers(appdata);
     auto layout = Button::make("Layout", *appdata.resources);
-    layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     layout->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         if(config->stack_page!=nullptr){
 			config->stack_page->stack(layout_overlay(appdata));
@@ -991,7 +991,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     });
 
     auto definetarget = Button::make("Define Target", *appdata.resources);
-    definetarget->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    definetarget->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     definetarget->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.main_diagonal_specification = false;
@@ -1001,7 +1001,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     appdata.trajectory_location.target_button = definetarget.get();
 
     auto defineentryregion = Button::make("Define Entry Region", *appdata.resources);
-    defineentryregion->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    defineentryregion->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     defineentryregion->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.main_diagonal_specification = true;
@@ -1011,7 +1011,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     appdata.trajectory_location.main_diagonal_button = defineentryregion.get();
 
     auto validadetrajectory = Button::make("Validade Trajectory", *appdata.resources);
-    validadetrajectory->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    validadetrajectory->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     validadetrajectory->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.main_diagonal_specification = false;
@@ -1125,7 +1125,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     });
 
     auto switch_volume = Button::make("Switch Volume", *appdata.resources);
-    switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switch_volume->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.main_diagonal_specification = false;
@@ -1135,21 +1135,8 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 		}
     });
 
-    auto check = Button::make("Check", *appdata.resources);
-    check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
-    check->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        appdata.trajectory_location.entry_specification = false;
-        appdata.trajectory_location.main_diagonal_specification = false;
-        appdata.trajectory_location.target_specification = false;
-
-        if(appdata.trajectory_location.main_diagonal_word_coordinates && appdata.trajectory_location.target_world_coordinates && appdata.trajectory_location.entry_point_word_coordinates)
-            appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
-        else
-            config->stack_page->replace_last(warning_overlay("cannot advance without trajectory specified",*appdata.resources));
-    });
-
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    *viwers_container << std::move(layout) << std::move(definetarget) << std::move(defineentryregion) << std::move(validadetrajectory) << std::move(switch_volume) << std::move(check);
+    *viwers_container << std::move(layout) << std::move(definetarget) << std::move(defineentryregion) << std::move(validadetrajectory) << std::move(switch_volume);
 
     viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
@@ -1285,12 +1272,11 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
 
         filter->SetOutputDirection(rotation_matrix);
 
-        std::cout << "\nrotation matrix sanity check:\n" << output_bounding_box.orientation << std::endl;
-
         try{
             filter->Update();
             auto output = filter->GetOutput();
             appdata.vol_mas->update_volume(output);
+            appdata.volumes.emplace("alongtrajectory",output);
             curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
             auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
                 ImageType::IndexType local_index;
@@ -1362,13 +1348,12 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
 
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
-    image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
     auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
-    image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+    image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
     *slidercontainer << std::move(image_displayx) << std::move(image_displayy);
 
     auto defineentry = Button::make("Select Entry Point", *appdata.resources);
-    defineentry->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    defineentry->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     defineentry->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.trajectory_location.entry_specification = true;
         appdata.trajectory_location.main_diagonal_specification = false;
@@ -1376,11 +1361,17 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     });
 
     auto check = Button::make("Check", *appdata.resources);
-    check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     check->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;
+        appdata.panel_constructor = select_roi_for_surgery;
+        appdata.volume_callback = select_roi_for_surgery_point_selection;
+        if(appdata.ac_pc_data.ac_word_coordinates && appdata.ac_pc_data.pc_word_coordinates)
+            appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
+        else
+            config->stack_page->replace_last(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
     });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -1412,29 +1403,54 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
 
     auto image_display = create_dicom_viewers(appdata);
     auto layout = Button::make("Layout", *appdata.resources);
-    layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     layout->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         if(config->stack_page!=nullptr){
 			config->stack_page->stack(layout_overlay(appdata));
 		}
     });
 
+    auto addpath = Button::make("Append Path", *appdata.resources);
+    addpath->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+
+    auto removelast = Button::make("Remove Last Path", *appdata.resources);
+    removelast->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+
+    auto removeall = Button::make("Remove All Paths", *appdata.resources);
+    removeall->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+
     auto addroi = Button::make("Add ROI", *appdata.resources);
-    addroi->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    addroi->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
     auto switch_volume = Button::make("Switch Volume", *appdata.resources);
-    switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    switch_volume->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        appdata.ac_pc_data.ac_specification = false;
+        appdata.ac_pc_data.pc_specification = false;
+        if(config->stack_page!=nullptr){
+			config->stack_page->stack(create_volume_explorer_page(appdata));
+		}
+    });
+    
+    auto check = Button::make("Store Trajectory Data", *appdata.resources);
+    check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
-    auto check = Button::make("Check", *appdata.resources);
-    check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    auto roi_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *roi_container << std::move(addpath) << std::move(removelast) << std::move(removeall) << std::move(addroi);
+
+    roi_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    *viwers_container << std::move(layout) << std::move(addroi) << std::move(switch_volume) << std::move(check);
+    *viwers_container << std::move(layout) << std::move(switch_volume) << std::move(check);
 
     viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
+    auto views_and_roi_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+    *views_and_roi_container << std::move(roi_container) << std::move(image_display);
+    views_and_roi_container->set_divisions({0.0, 0.1, 1.0});
+
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-    *container << std::move(viwers_container) << std::move(image_display);
+    *container << std::move(viwers_container) << std::move(views_and_roi_container);
     container->set_divisions({0.0, 0.1, 1.0});
 
     return std::move(container);

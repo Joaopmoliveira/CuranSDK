@@ -54,6 +54,15 @@ public:
         return recorded_strokes.try_emplace(std::forward<T>(u)...);
     }
 
+    template <typename... T>
+    void for_each(T &&...u) const{
+        std::for_each(recorded_strokes.begin(),recorded_strokes.end(),std::forward<T>(u)...);
+    }
+
+    inline const std::unordered_map<size_t, curan::ui::Stroke>& strokes() const {
+        return recorded_strokes;
+    }
+
     inline void erase(std::unordered_map<size_t, curan::ui::Stroke>::iterator it)
     {
         recorded_strokes.erase(it);
@@ -241,73 +250,70 @@ public:
         UPDATE_GEOMETRIES
     };
 
-    inline void update_volume(ImageType::Pointer in_volume,Policy update_policy = Policy::DISREGARD)
+    inline void update_volume(ImageType::Pointer in_volume,Policy update_policy = Policy::DISREGARD,std::vector<size_t> identifiers = std::vector<size_t>{})
     {
-
-				// TODO need to take into consideration update policy
-				if(update_policy & (UPDATE_POINTS | UPDATE_GEOMETRIES) ){
-					for(auto& mask : masks_x){ 
-
-					}
-					for(auto& mask : masks_y){
-
-					}
-					for(auto& mask : masks_z){
-
-					}
-					for(auto& dimensional_entities : three_dimensional_entities){
-						for(auto& vertices : dimensional_entities.geometry.vertices){
-							ImageType::IndexType local_index;
-							ImageType::PointType itk_point_in_world_coordinates;
-							local_index[0] = image->GetLargestPossibleRegion().GetSize()[0]*(double)vertices[0];
-							local_index[1] = image->GetLargestPossibleRegion().GetSize()[1]*(double)vertices[1];
-							local_index[2] = image->GetLargestPossibleRegion().GetSize()[2]*(double)vertices[2];
-							image->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
-							in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
-							vertices[0] = local_index[0]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[0]);
-							vertices[1] = local_index[1]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[1]);
-							vertices[2] = local_index[2]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[2]);
-						}
-					}
-				} else if(update_policy & UPDATE_POINTS){
-					for(auto& mask : masks_x){ 
-
-					}
-					for(auto& mask : masks_y){
-
-					}
-					for(auto& mask : masks_z){
-
-					}
-				} else if(update_policy & UPDATE_GEOMETRIES){
-					for(auto& dimensional_entities : three_dimensional_entities){
-						for(auto& vertices : dimensional_entities.geometry.vertices){
-							ImageType::IndexType local_index;
-							ImageType::PointType itk_point_in_world_coordinates;
-							local_index[0] = image->GetLargestPossibleRegion().GetSize()[0]*(double)vertices[0];
-							local_index[1] = image->GetLargestPossibleRegion().GetSize()[1]*(double)vertices[1];
-							local_index[2] = image->GetLargestPossibleRegion().GetSize()[2]*(double)vertices[2];
-							image->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
-							in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
-							vertices[0] = local_index[0]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[0]);
-							vertices[1] = local_index[1]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[1]);
-							vertices[2] = local_index[2]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[2]);
-						}
-					}
-					ImageType::RegionType inputRegion = in_volume->GetBufferedRegion();
-					masks_x = std::vector<DicomMask>(inputRegion.GetSize()[Direction::X]);
-					masks_y = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Y]);
-					masks_z = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Z]);
-				} else {
-					image = in_volume;
-					if(!filled())
-						return;
-					three_dimensional_entities = std::vector<curan::geometry::PolyHeadra>{};
-					ImageType::RegionType inputRegion = image->GetBufferedRegion();
-					masks_x = std::vector<DicomMask>(inputRegion.GetSize()[Direction::X]);
-					masks_y = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Y]);
-					masks_z = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Z]);
+        ImageType::RegionType inputRegion = in_volume->GetBufferedRegion();
+        std::vector<std::array<double,3>> points_to_store;
+        auto old_size = image->GetLargestPossibleRegion().GetSize();
+		if(update_policy & UPDATE_POINTS){
+            size_t increment = 0;
+			for(auto& mask : masks_x){ 
+                auto strokes = mask.strokes();
+                for(const auto& [key,stroke] : strokes){
+                    std::visit(curan::utilities::overloaded{[&](const curan::ui::Path &path){},	
+                                                            [&](const curan::ui::Point &point) { // (along_dimension ) point.normalized_point.fX point.normalized_point.fY
+                        ImageType::IndexType local_index;
+                        ImageType::PointType itk_point_in_world_coordinates;
+                        local_index[0] =  increment;
+                        local_index[1] =  (int)std::round(point.normalized_point.fX * (old_size[Direction::Y] - 1));
+                        local_index[2] =  (int)std::round(point.normalized_point.fY * (old_size[Direction::Z] - 1));
+                        image->TransformIndexToPhysicalPoint(local_index,itk_point_in_world_coordinates);
+                        in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+                        std::array<double,3> local_normalized_index;
+                        local_normalized_index[0] = local_index[0]/inputRegion.GetSize()[0];
+                        local_normalized_index[1] = local_index[1]/inputRegion.GetSize()[1];
+                        local_normalized_index[2] = local_index[2]/inputRegion.GetSize()[2];
+                        bool isthere = identifiers.size() ? false : true;
+                        for(auto innerkey : identifiers)
+                            if(key == innerkey)
+                                isthere = true;
+                            if(isthere)
+                                points_to_store.push_back(local_normalized_index);
+                        }},stroke);
+                }
+			}
+		} 
+                
+        if(update_policy & UPDATE_GEOMETRIES){
+			for(auto& dimensional_entities : three_dimensional_entities){
+				for(auto& vertices : dimensional_entities.geometry.vertices){
+					ImageType::IndexType local_index;
+					ImageType::PointType itk_point_in_world_coordinates;
+					local_index[0] = image->GetLargestPossibleRegion().GetSize()[0]*(double)vertices[0];
+					local_index[1] = image->GetLargestPossibleRegion().GetSize()[1]*(double)vertices[1];
+					local_index[2] = image->GetLargestPossibleRegion().GetSize()[2]*(double)vertices[2];
+					image->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+					in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+					vertices[0] = local_index[0]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[0]);
+					vertices[1] = local_index[1]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[1]);
+					vertices[2] = local_index[2]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[2]);
 				}
+			}
+		}  else {
+            three_dimensional_entities = std::vector<curan::geometry::PolyHeadra>{};
+        } 
+
+        image = in_volume;
+        if(!filled())
+            return;
+
+        masks_x = std::vector<DicomMask>(inputRegion.GetSize()[Direction::X]);
+        masks_y = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Y]);
+        masks_z = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Z]);
+        SkMatrix mat;
+        mat.setIdentity();
+        for(auto point : points_to_store)
+            try_emplace(Direction::X,point[0],curan::ui::Point{SkPoint::Make(point[1],point[2]), mat});
     }
 
     inline ImageType::Pointer get_volume(){
