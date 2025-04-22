@@ -323,6 +323,56 @@ struct BoundingBox{
         size[2] = vector_along_direction_z.norm()/spacing[2];
     }
 
+    BoundingBox(ImageType::Pointer image){
+        Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{image->GetOrigin()[0], image->GetOrigin()[1], image->GetOrigin()[2]}};
+        ImageType::PointType itk_along_dimension_x;
+        ImageType::IndexType index_along_x{{(long long)image->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
+        image->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
+        Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
+        ImageType::PointType itk_along_dimension_y;
+        ImageType::IndexType index_along_y{{0, (long long)image->GetLargestPossibleRegion().GetSize()[1], 0}};
+        image->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
+        Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
+        ImageType::PointType itk_along_dimension_z;
+        ImageType::IndexType index_along_z{{0, 0, (long long)image->GetLargestPossibleRegion().GetSize()[2]}};
+        image->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
+        Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
+        Eigen::Matrix<double, 3, 1> spacing{{image->GetSpacing()[0], image->GetSpacing()[1], image->GetSpacing()[2]}};
+
+        Eigen::Matrix<double,3,1> in_origin = origin_for_bounding_box;
+        Eigen::Matrix<double,3,1> along_x = extrema_along_x_for_bounding_box;
+        Eigen::Matrix<double,3,1> along_y = extrema_along_y_for_bounding_box;
+        Eigen::Matrix<double,3,1> along_z = extrema_along_z_for_bounding_box;
+        Eigen::Matrix<double,3,1> in_spacing = spacing;
+        
+        origin = in_origin;
+        Eigen::Matrix<double,3,1> direct_x = along_x-in_origin;
+        Eigen::Matrix<double,3,1> vector_along_direction_x = direct_x;
+        Eigen::Matrix<double,3,1> direct_y = along_y-in_origin;
+        Eigen::Matrix<double,3,1> vector_along_direction_y = direct_y;
+        Eigen::Matrix<double,3,1> direct_z = along_z-in_origin;
+        Eigen::Matrix<double,3,1> vector_along_direction_z = direct_z;
+        direct_x.normalize();
+        direct_y.normalize();
+        direct_z.normalize();
+        orientation.col(0) = direct_x;
+        orientation.col(1) = direct_y;
+        orientation.col(2) = direct_z;
+
+        double determinant = orientation.determinant();
+        if(determinant< 0.9999 || determinant>1.0001)
+            frameorientation = FrameOrientation::RIGHT_HANDED;
+        else if (-determinant< 0.9999 || -determinant>1.0001)
+            frameorientation = FrameOrientation::LEFT_HANDED;
+        else 
+            throw std::runtime_error("failure to generate an ortogonal rotation matrix");
+
+        spacing = in_spacing;
+        size[0] = vector_along_direction_x.norm()/spacing[0];
+        size[1] = vector_along_direction_y.norm()/spacing[1];
+        size[2] = vector_along_direction_z.norm()/spacing[2];
+    }
+
     BoundingBox(const BoundingBox& other) : origin{other.origin},orientation{other.orientation},size{other.size},spacing{other.spacing}{};
     
     BoundingBox centered_bounding_box(const Eigen::Matrix<double,3,3>& relative_transform){
@@ -713,22 +763,18 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         }
 
         auto direction = input->GetDirection();
-        Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
-        for (size_t col = 0; col < 3; ++col)
-            for (size_t row = 0; row < 3; ++row)
-                original_eigen_rotation_matrix(row, col) = direction(row, col);
-
         Eigen::Matrix<double,3,3> eigen_direction;
+        Eigen::Matrix<double,3,3> original_eigen_rotation_matrix;
         for(size_t i = 0; i < 3; ++i)
-            for(size_t j = 0;  j < 3; ++j)
+            for(size_t j = 0;  j < 3; ++j){
                 eigen_direction(i,j) = direction(i,j);
-
+                original_eigen_rotation_matrix(i,j) = direction(i,j);
+            }
 
         Eigen::Matrix<double,3,1> x_direction = original_eigen_rotation_matrix.col(0);
         Eigen::Matrix<double,3,1> z_direction = x_direction.cross(y_direction);  
         x_direction = y_direction.cross(z_direction);  
         x_direction.normalize();
-        std::cout << "projection: " << x_direction.transpose()*y_direction;
         z_direction = x_direction.cross(y_direction);  
         z_direction.normalize();
         if (z_direction.norm() < 1e-7){
@@ -744,22 +790,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         if(original_eigen_rotation_matrix.determinant()<0.0)
             original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
 
-        Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
-        ImageType::PointType itk_along_dimension_x;
-        ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
-        input->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
-        Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
-        ImageType::PointType itk_along_dimension_y;
-        ImageType::IndexType index_along_y{{0, (long long)input->GetLargestPossibleRegion().GetSize()[1], 0}};
-        input->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
-        Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
-        ImageType::PointType itk_along_dimension_z;
-        ImageType::IndexType index_along_z{{0, 0, (long long)input->GetLargestPossibleRegion().GetSize()[2]}};
-        input->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
-        Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
-        Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
-
-        BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
+        BoundingBox bounding_box_original_image{input};        
         auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
         using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
         auto filter = FilterType::New();
@@ -1031,22 +1062,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         if(original_eigen_rotation_matrix.determinant()<0.0)
             original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
 
-        Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
-        ImageType::PointType itk_along_dimension_x;
-        ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
-        input->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
-        Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
-        ImageType::PointType itk_along_dimension_y;
-        ImageType::IndexType index_along_y{{0, (long long)input->GetLargestPossibleRegion().GetSize()[1], 0}};
-        input->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
-        Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
-        ImageType::PointType itk_along_dimension_z;
-        ImageType::IndexType index_along_z{{0, 0, (long long)input->GetLargestPossibleRegion().GetSize()[2]}};
-        input->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
-        Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
-        Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
-
-        BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
+        BoundingBox bounding_box_original_image{input};    
         auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
         using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
         auto filter = FilterType::New();
@@ -1177,8 +1193,10 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
 
         auto median = (1.0/4.0)*(base0+base1+base2+base3);
 
-        const Eigen::Matrix<double, 3, 1> x_direction = (tip-entry_word_coordinates).normalized();
-        if (x_direction.norm() < 1e-7){
+        std::cout << "tip: [" << tip.transpose() << "]" << "\n entry_word_coordinates: [" << entry_word_coordinates.transpose() << "]" << std::endl;
+
+        const Eigen::Matrix<double, 3, 1> y_direction = (tip-entry_word_coordinates).normalized();
+        if (y_direction.norm() < 1e-7){
             if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
             return;
         }
@@ -1194,12 +1212,11 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             for(size_t j = 0;  j < 3; ++j)
                 eigen_direction(i,j) = direction(i,j);
 
-        Eigen::Matrix<double,3,1> y_direction = base3 - base2;
-        Eigen::Matrix<double,3,1> z_direction = x_direction.cross(y_direction);
-        z_direction.normalize();
-        y_direction = z_direction.cross(x_direction);
-        y_direction.normalize();
-        z_direction = x_direction.cross(y_direction);
+        Eigen::Matrix<double,3,1> x_direction = original_eigen_rotation_matrix.col(0);
+        Eigen::Matrix<double,3,1> z_direction = x_direction.cross(y_direction);  
+        x_direction = y_direction.cross(z_direction);  
+        x_direction.normalize();
+        z_direction = x_direction.cross(y_direction);  
         z_direction.normalize();
 
         if (y_direction.norm() < 1e-7 || z_direction.norm() < 1e-7){
@@ -1211,25 +1228,12 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
         eigen_rotation_matrix.col(1) = y_direction;
         eigen_rotation_matrix.col(2) = z_direction;
 
+        std::cout << "target eigen_rotation_matrix:\n" << eigen_rotation_matrix << std::endl; 
+
         if(original_eigen_rotation_matrix.determinant()<0.0)
             original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
 
-        Eigen::Matrix<double, 3, 1> origin_for_bounding_box{{input->GetOrigin()[0], input->GetOrigin()[1], input->GetOrigin()[2]}};
-        ImageType::PointType itk_along_dimension_x;
-        ImageType::IndexType index_along_x{{(long long)input->GetLargestPossibleRegion().GetSize()[0], 0, 0}};
-        input->TransformIndexToPhysicalPoint(index_along_x, itk_along_dimension_x);
-        Eigen::Matrix<double, 3, 1> extrema_along_x_for_bounding_box{{itk_along_dimension_x[0], itk_along_dimension_x[1], itk_along_dimension_x[2]}};
-        ImageType::PointType itk_along_dimension_y;
-        ImageType::IndexType index_along_y{{0, (long long)input->GetLargestPossibleRegion().GetSize()[1], 0}};
-        input->TransformIndexToPhysicalPoint(index_along_y, itk_along_dimension_y);
-        Eigen::Matrix<double, 3, 1> extrema_along_y_for_bounding_box{{itk_along_dimension_y[0], itk_along_dimension_y[1], itk_along_dimension_y[2]}};
-        ImageType::PointType itk_along_dimension_z;
-        ImageType::IndexType index_along_z{{0, 0, (long long)input->GetLargestPossibleRegion().GetSize()[2]}};
-        input->TransformIndexToPhysicalPoint(index_along_z, itk_along_dimension_z);
-        Eigen::Matrix<double, 3, 1> extrema_along_z_for_bounding_box{{itk_along_dimension_z[0], itk_along_dimension_z[1], itk_along_dimension_z[2]}};
-        Eigen::Matrix<double, 3, 1> spacing{{input->GetSpacing()[0], input->GetSpacing()[1], input->GetSpacing()[2]}};
-
-        BoundingBox bounding_box_original_image{origin_for_bounding_box, extrema_along_x_for_bounding_box, extrema_along_y_for_bounding_box, extrema_along_z_for_bounding_box, spacing};
+        BoundingBox bounding_box_original_image{input};    
         auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
         
         std::cout << "bounding_box_original_image:\n" << bounding_box_original_image << std::endl;
