@@ -1046,6 +1046,11 @@ ImageType::Pointer allocate_image(Application& appdata,curan::geometry::PolyHead
 
     for (it.GoToBegin(); !it.IsAtEnd(); ++it)
     {
+        ImageType::IndexType index = it.GetIndex();
+        te[0] = index[0];
+        te[1] = index[1];
+        te[2] = index[2];
+
         const float min_iteratrions = 2.0;
         const float max_iteratrions = 1024.0;
 
@@ -1058,11 +1063,6 @@ ImageType::Pointer allocate_image(Application& appdata,curan::geometry::PolyHead
         if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
         else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
 
-        ImageType::IndexType index = it.GetIndex();
-        te[0] = index[0];
-        te[1] = index[1];
-        te[2] = index[2];
-
         auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
             Eigen::Matrix<double,3,1> mixed;
             mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
@@ -1072,14 +1072,19 @@ ImageType::Pointer allocate_image(Application& appdata,curan::geometry::PolyHead
         deltaTexCoord = (te-t0)/(num_iterations-1.0);
         texcoord = t0;
         Eigen::Matrix<double,4,1> fragColor = Eigen::Matrix<double,4,1>::Zero();
+        tmpindex[0] = texcoord[0];
+        tmpindex[1] = texcoord[1];
+        tmpindex[2] = texcoord[2];
+        float alpha = (1.0/255.0)*input->GetPixel(tmpindex);
+        fragColor << alpha, alpha, alpha, alpha * TransparencyValue;
         while(num_iterations>0.0){
-            texcoord += deltaTexCoord;
             tmpindex[0] = texcoord[0];
             tmpindex[1] = texcoord[1];
             tmpindex[2] = texcoord[2];
-            if(tmpindex[0] < 0 || tmpindex[1] < 0 || tmpindex[2] < 0 || tmpindex[0] >= overall_size[0] || tmpindex[1] >= overall_size[1] || tmpindex[2] >= overall_size[2])
+            if(tmpindex[0] < 0                || tmpindex[1] < 0                || tmpindex[2] < 0 || 
+               tmpindex[0] >= overall_size[0] || tmpindex[1] >= overall_size[1] || tmpindex[2] >= overall_size[2])
                 break;
-            float alpha = (1.0/255.0)*input->GetPixel(tmpindex);
+            alpha = (1.0/255.0)*input->GetPixel(tmpindex);
             alpha = 1.0-alpha;
             Eigen::Matrix<double,4,1> color;
             color << alpha, alpha, alpha, alpha * TransparencyValue;
