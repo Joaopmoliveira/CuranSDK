@@ -750,7 +750,6 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
             local_index[1] = vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1]*(double)geom.geometry.vertices[i][1];
             local_index[2] = vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2]*(double)geom.geometry.vertices[i][2];
             vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
-            Eigen::Matrix<double, 3, 1> word_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
             appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][0] = itk_point_in_world_coordinates[0];
             appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][1] = itk_point_in_world_coordinates[1];
             appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][2] = itk_point_in_world_coordinates[2];
@@ -978,14 +977,36 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
     word_coordinates(2, 0) = itk_point_in_world_coordinates[2];
 
     if(appdata.trajectory_location.entry_specification){
-        std::cout << "entry_specification entering!\n";
         appdata.trajectory_location.entry_specification = false;
         appdata.trajectory_location.entry_point_word_coordinates = word_coordinates;
 
+        ImageType::Pointer input;
+        if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
+            input = search->second.img;
+        else{
+            if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
+            return;
+        }
+
+        input->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+        Eigen::Matrix<double, 3, 1> entry_index_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
+        entry_index_coordinates[0] = local_index[0];
+        entry_index_coordinates[1] = local_index[1];
+        entry_index_coordinates[2] = local_index[2];
+
         config_draw->stack_page->stack(success_overlay("entry defined",*appdata.resources));
 
-        auto convert_to_eigen = [](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
+        auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
+            ImageType::IndexType local_index;
+            ImageType::PointType itk_point_in_world_coordinates;
+            itk_point_in_world_coordinates[0] = (double)point[0];
+            itk_point_in_world_coordinates[1] = (double)point[1];
+            itk_point_in_world_coordinates[2] = (double)point[2];
+            input->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
             Eigen::Matrix<double,3,1> converted;
+            converted[0] = local_index[0];
+            converted[1] = local_index[1];
+            converted[2] = local_index[2];
             converted << point[0] , point[1] , point[2];
             return converted;
         };
@@ -996,21 +1017,13 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
         auto base2 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[3]);
         auto base3 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[4]);
 
-        Eigen::Matrix<double, 3, 1> orient_along_traj = tip-word_coordinates;
+        Eigen::Matrix<double, 3, 1> orient_along_traj = tip-entry_index_coordinates;
         if (orient_along_traj.norm() < 1e-7){
             if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
             return;
         }
         orient_along_traj.normalize(); 
         Eigen::Matrix<double, 3, 1> x_direction = orient_along_traj;
-
-        ImageType::Pointer input;
-        if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
-            input = search->second.img;
-        else{
-            if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
-            return;
-        }
 
         auto direction = input->GetDirection();
         Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
@@ -1085,11 +1098,12 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
         filter->SetOutputDirection(rotation_matrix);
 
         try{
-            std::cout << "entry_specification filter update!\n";
             filter->Update();
             auto output = filter->GetOutput();
             appdata.vol_mas->update_volume(output);
             curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
+            // now I need the tip and the entry point from world coordinates into local coordinates
+            
             Eigen::Matrix<double,3,1> vector_aligned = x_direction;
             Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
             vector_aligned.normalize();
@@ -1098,9 +1112,9 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             axis.normalize();
             double angle = std::acos(yAxis.transpose()*vector_aligned);
             auto final_rotation = Eigen::AngleAxisd(angle, axis).toRotationMatrix();
-            vector_aligned = tip-word_coordinates;
+            vector_aligned = tip-entry_index_coordinates;
             double scaling_along_z = vector_aligned.norm();
-            double scaling_along_x = std::tan(0.5)*scaling_along_z;
+            double scaling_along_x = std::tan(0.1)*scaling_along_z;
             offset_base_to_Oxy(0,0) = scaling_along_x;
             offset_base_to_Oxy(1,1) = scaling_along_x;
             offset_base_to_Oxy(2,2) = scaling_along_z;
@@ -1118,6 +1132,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             offset_base_to_Oxy.block<3,1>(0,3) = tip;          
             geom.transform(offset_base_to_Oxy);
             appdata.vol_mas->add_geometry(geom);  
+            std::cout << "geometry: " << geom << std::endl;
             if (config_draw->stack_page != nullptr) {
                 config_draw->stack_page->replace_last(success_overlay("resampled volume!",*appdata.resources));
             }
@@ -1314,7 +1329,6 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         appdata.trajectory_location.entry_specification = true;
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;    
-        std::cout << "entry_specification requested!\n";   
     });
 
     auto check = Button::make("Check", *appdata.resources);

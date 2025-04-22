@@ -427,6 +427,9 @@ namespace curan
 			SkPaint highlighted_panel;
 
 			VolumetricMask *volumetric_mask = nullptr;
+			ImageType* chached_pointer = nullptr;
+			size_t cached_number_of_geometries = 0;
+
 			std::vector<std::tuple<std::vector<SkPoint>,SkPath>> cached_polyheader_intersections;
 			std::vector<directed_stroke> pending_strokes_to_process;
 			curan::ui::PointCollection current_stroke;

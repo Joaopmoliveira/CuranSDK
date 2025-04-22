@@ -309,7 +309,7 @@ namespace curan
 			return info;
 		}
 
-		SlidingPanel::SlidingPanel(curan::ui::IconResources &other, VolumetricMask *volume_mask, Direction in_direction) : volumetric_mask{volume_mask}, system_icons{other}
+		SlidingPanel::SlidingPanel(curan::ui::IconResources &other, VolumetricMask *volume_mask, Direction in_direction) : volumetric_mask{volume_mask},chached_pointer{volume_mask->get_volume().GetPointer()},cached_number_of_geometries{volume_mask->geometries().size()}, system_icons{other}
 		{
 			set_current_state(SliderStates::WAITING);
 			update_volume(volume_mask, in_direction);
@@ -387,7 +387,7 @@ namespace curan
 			query_if_required(true);
 		}
 
-		void SlidingPanel::framebuffer_resize(const SkRect &new_page_size)
+		void SlidingPanel::framebuffer_resize(const SkRect &)
 		{
 			auto pos = get_position();
 			std::lock_guard<std::mutex> g{get_mutex()};
@@ -467,7 +467,7 @@ namespace curan
 					SkPaint paint_cached_paths;
 					paint_cached_paths.setAntiAlias(true);
 					paint_cached_paths.setStyle(SkPaint::kStrokeAndFill_Style);
-					paint_cached_paths.setColor(SkColorSetARGB(0xF0, 0xFF, 0x00, 0x00));
+					paint_cached_paths.setColor(SkColorSetARGB(0x0F, 0xFF, 0x00, 0x00));
 					auto paint_cached_paths_outline = paint_cached_paths;
 					paint_cached_paths_outline.setColor(SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));
 					paint_cached_paths_outline.setStyle(SkPaint::kStroke_Style);
@@ -602,7 +602,13 @@ namespace curan
 					return get_position().contains(x, y);
 				};
 
-
+				if(chached_pointer!=volumetric_mask->get_volume().GetPointer() || volumetric_mask->geometries().size()!=cached_number_of_geometries) {
+					chached_pointer = volumetric_mask->get_volume().GetPointer();
+					cached_number_of_geometries = volumetric_mask->geometries().size();
+					query_if_required(true);
+					framebuffer_resize(SkRect::MakeWH(0,0));
+				}
+				
 				interpreter.process(check_inside_allocated_area, check_inside_fixed_area, sig);
 
 				if (interpreter.check(KEYBOARD_EVENT)){

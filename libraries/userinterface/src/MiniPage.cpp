@@ -23,7 +23,6 @@ void MiniPage::compile(){
 void MiniPage::construct(std::unique_ptr<Container> container,SkColor background){
     std::lock_guard<std::mutex> g{get_mutex()};
     replacement_main_page = std::move(LightWeightPage::make(std::move(container),background));
-    replacement_main_page->propagate_size_change(get_position());
 }
 
 MiniPage::~MiniPage(){
@@ -33,6 +32,11 @@ MiniPage::~MiniPage(){
 drawablefunction MiniPage::draw(){
     auto lamb = [this](SkCanvas* canvas) {
         std::lock_guard<std::mutex> g{get_mutex()};
+		if(replacement_main_page){
+			main_page = std::move(replacement_main_page);
+			main_page->propagate_size_change(get_position());
+			replacement_main_page = nullptr;
+		}
         main_page->draw(canvas);
     };
     return lamb;
@@ -74,6 +78,7 @@ callablefunction MiniPage::call(){
         std::lock_guard<std::mutex> g{get_mutex()};
 		if(replacement_main_page){
 			main_page = std::move(replacement_main_page);
+			main_page->propagate_size_change(get_position());
 			replacement_main_page = nullptr;
 		}
 		return interacted;
