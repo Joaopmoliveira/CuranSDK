@@ -637,7 +637,7 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
     using namespace curan::ui;
     using PixelType = unsigned char;
     auto item_explorer = ItemExplorer::make("file_icon.png", *appdata.resources);
-    item_explorer->add_press_call([&](ItemExplorer *widget, Press press, ConfigDraw *draw){
+    item_explorer->add_press_call([&,mask](ItemExplorer *widget, Press press, ConfigDraw *draw){
             auto highlighted = widget->highlighted();
             assert(highlighted.size()==1 && "the size is larger than one");
             appdata.volume_index = highlighted.back();
@@ -1396,15 +1396,10 @@ void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::Dico
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the collumns of the highlighted path must be at least 1");
 
-    if (config_draw && config_draw->stack_page && strokes.point_in_image_coordinates.cols() > 1)
-    {
-        config_draw->stack_page->stack(warning_overlay("must select a single point, not a path",*appdata.resources));
-        return;
-    }
-
     if(appdata.roi.is_selecting_path){
         appdata.roi.is_selecting_path = false;
         appdata.roi.paths.push_back(strokes);
+        config_draw->stack_page->stack(success_overlay("added path",*appdata.resources));
     }
 }
 
@@ -1499,6 +1494,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         geom.transform(rotation_and_scalling_matrix);
 
         appdata.vol_mas->add_geometry(geom);
+        appdata.roi.paths.clear();
     });
 
     auto switch_volume = Button::make("Switch Volume", *appdata.resources);
