@@ -269,18 +269,18 @@ ImageType::Pointer allocate_image(Application& appdata){
         auto compute_dist_and_index = [&](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
             Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
             const int offsets[7][3] = {
-                {0, 0, 0},  // offsets[0]
-                {1, 0, 0},  // offsets[1]
-                {0, 1, 0},  // offsets[2]
-                {0, 0, 1},  // offsets[3]
-                {-1, 0, 0},  // offsets[4]
-                {0, -1, 0},  // offsets[5]
-                {0, 0, -1}   // offsets[6]
+                {0, 0, 0},
+                {1, 0, 0},
+                {0, 1, 0},
+                {0, 0, 1},
+                {-1, 0, 0}, 
+                {0, -1, 0},
+                {0, 0, -1}
             };
             ImageType::IndexType indec;
-            indec[0] = std::floor(texcoord[0])+offsets[neighboorsindex][0];
-            indec[1] = std::floor(texcoord[1])+offsets[neighboorsindex][1];
-            indec[2] = std::floor(texcoord[2])+offsets[neighboorsindex][2];
+            indec[0] = std::round(texcoord[0])+offsets[neighboorsindex][0];
+            indec[1] = std::round(texcoord[1])+offsets[neighboorsindex][1];
+            indec[2] = std::round(texcoord[2])+offsets[neighboorsindex][2];
             tmp_to_compute_distance[0] = indec[0];
             tmp_to_compute_distance[1] = indec[1];
             tmp_to_compute_distance[2] = indec[2];
