@@ -236,8 +236,8 @@ ImageType::Pointer allocate_image(Application& appdata){
         const float min_iteratrions = 2.0;
         const float max_iteratrions = 1024.0;
 
-        const float TransparencyValue = 0.02;
-        const float AlphaFuncValue = 0.025;
+        const float TransparencyValue = 0.01;
+        const float AlphaFuncValue = 0.01;
         const float SampleDensityValue = 1;
         
 
