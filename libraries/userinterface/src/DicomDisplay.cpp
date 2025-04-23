@@ -617,6 +617,7 @@ namespace ui{
         bool is_panel_selected = false;
         {
             SkAutoCanvasRestore restore{canvas, true};
+            canvas->clipRect(get_position());
             highlighted_panel.setColor(get_hightlight_color());
     
             canvas->drawRect(reserved_total_space, background_paint);

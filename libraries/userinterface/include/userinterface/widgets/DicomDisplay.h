@@ -250,7 +250,7 @@ public:
         UPDATE_GEOMETRIES
     };
 
-    inline void update_volume(ImageType::Pointer in_volume,Policy update_policy = Policy::DISREGARD,std::vector<size_t> identifiers = std::vector<size_t>{})
+    inline void update_volume(ImageType::Pointer in_volume,int update_policy = Policy::DISREGARD,std::vector<size_t> identifiers = std::vector<size_t>{})
     {
         if(in_volume.IsNull())
             return;

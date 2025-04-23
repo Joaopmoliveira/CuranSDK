@@ -115,7 +115,7 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata);
 std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata);
 std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
-std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata,curan::ui::DicomVolumetricMask::Policy mask);
+std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata,int mask);
 void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
@@ -216,13 +216,16 @@ ImageType::Pointer allocate_image(Application& appdata){
     Eigen::Matrix<double,3,1> deltaTexCoord;
     Eigen::Matrix<double,3,1> te;
 
-    ImageType::IndexType tmpindex;
-    tmpindex[0] = 0;
-    tmpindex[1] = 0;
-    tmpindex[2] = 0;
-
+    std::array<std::tuple<ImageType::IndexType,double>,7> neighboors;
+    
     auto overall_size = input->GetLargestPossibleRegion().GetSize();
-
+    auto check_pixel_inside = [&](auto tempindex){
+        if(tempindex[0] < 0                || tempindex[1] < 0                || tempindex[2] < 0 || 
+            tempindex[0] >= overall_size[0] || tempindex[1] >= overall_size[1] || tempindex[2] >= overall_size[2])
+             return false;
+        else 
+            return true;
+    };
     for (it.GoToBegin(); !it.IsAtEnd(); ++it)
     {
         ImageType::IndexType index = it.GetIndex();
@@ -235,7 +238,7 @@ ImageType::Pointer allocate_image(Application& appdata){
 
         const float TransparencyValue = 0.02;
         const float AlphaFuncValue = 0.025;
-        const float SampleDensityValue = 0.05;
+        const float SampleDensityValue = 1;
         
 
         float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
@@ -251,26 +254,71 @@ ImageType::Pointer allocate_image(Application& appdata){
         deltaTexCoord = (te-t0)/(num_iterations-1.0);
         texcoord = t0;
         Eigen::Matrix<double,4,1> fragColor = Eigen::Matrix<double,4,1>::Zero();
-        tmpindex[0] = texcoord[0];
-        tmpindex[1] = texcoord[1];
-        tmpindex[2] = texcoord[2];
-        float alpha = (1.0/255.0)*input->GetPixel(tmpindex);
-        fragColor << alpha, alpha, alpha, alpha * TransparencyValue;
-        while(num_iterations>0.0){
+        
+        float alpha = 0.0;
+        {
+            ImageType::IndexType tmpindex;
             tmpindex[0] = texcoord[0];
             tmpindex[1] = texcoord[1];
             tmpindex[2] = texcoord[2];
-            if(tmpindex[0] < 0                || tmpindex[1] < 0                || tmpindex[2] < 0 || 
-               tmpindex[0] >= overall_size[0] || tmpindex[1] >= overall_size[1] || tmpindex[2] >= overall_size[2])
-                break;
             alpha = (1.0/255.0)*input->GetPixel(tmpindex);
-            //alpha = 1.0-alpha;
+        }
+
+        fragColor << alpha, alpha, alpha, alpha * TransparencyValue;
+
+        auto compute_dist_and_index = [&](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
+            Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
+            const int offsets[7][3] = {
+                {0, 0, 0},  // offsets[0]
+                {1, 0, 0},  // offsets[1]
+                {0, 1, 0},  // offsets[2]
+                {0, 0, 1},  // offsets[3]
+                {-1, 0, 0},  // offsets[4]
+                {0, -1, 0},  // offsets[5]
+                {0, 0, -1}   // offsets[6]
+            };
+            ImageType::IndexType indec;
+            indec[0] = std::floor(texcoord[0])+offsets[neighboorsindex][0];
+            indec[1] = std::floor(texcoord[1])+offsets[neighboorsindex][1];
+            indec[2] = std::floor(texcoord[2])+offsets[neighboorsindex][2];
+            tmp_to_compute_distance[0] = indec[0];
+            tmp_to_compute_distance[1] = indec[1];
+            tmp_to_compute_distance[2] = indec[2];
+            return std::tuple<ImageType::IndexType,double>(indec,(tmp_to_compute_distance-decimal_coordinates).norm());
+        };
+
+        while(num_iterations>0.0){
+            neighboors[0] = compute_dist_and_index(0,texcoord);
+            neighboors[1] = compute_dist_and_index(1,texcoord);
+            neighboors[2] = compute_dist_and_index(2,texcoord);
+            neighboors[3] = compute_dist_and_index(3,texcoord);
+            neighboors[4] = compute_dist_and_index(4,texcoord);
+            neighboors[5] = compute_dist_and_index(5,texcoord);
+            neighboors[6] = compute_dist_and_index(6,texcoord);
+
+            size_t number_of_found_pixels = 0;
+            double sum_of_dist = 0.0;
+            std::vector<std::tuple<double,double>> neighboors_residue;
+            for(const auto& [tmpindex,dist] : neighboors)
+                if(check_pixel_inside(tmpindex)){
+                    ++number_of_found_pixels;
+                    sum_of_dist += dist;
+                    neighboors_residue.push_back({(1.0/255.0)*input->GetPixel(tmpindex),dist});
+                }
+            if(number_of_found_pixels==0)
+                break;
+
+            alpha = 0.0;
+            for(const auto& [alpha_val,dist] : neighboors_residue )
+                alpha += (dist/sum_of_dist)*alpha_val;
+
             Eigen::Matrix<double,4,1> color;
             color << alpha, alpha, alpha, alpha * TransparencyValue;
-            float r = color[3];
-            if (r > AlphaFuncValue){
-                fragColor.block<3,1>(0,0) = mix(fragColor, color, r);
-                fragColor[3] += r;
+            //TODO modify mix_factor according to distance to center
+            float mix_factor = color[3];
+            if (mix_factor > AlphaFuncValue){
+                fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
+                fragColor[3] += color[3];
             }
 
             if (color[3] > fragColor[3])
@@ -379,10 +427,10 @@ struct BoundingBox{
 
     BoundingBox(const BoundingBox& other) : origin{other.origin},orientation{other.orientation},size{other.size},spacing{other.spacing}{};
     
-    BoundingBox centered_bounding_box(const Eigen::Matrix<double,3,3>& relative_transform){
+    BoundingBox centered_bounding_box(const Eigen::Matrix<double,3,3>& desired_orientation){
 
         //if(debug) std::cout << "\ndebug info: (relative_transform)\n" <<  relative_transform;
-
+        
         Eigen::Matrix<double,3,8> corners_in_rotated_space;
         corners_in_rotated_space.col(0)[0] = 0;
         corners_in_rotated_space.col(0)[1] = 0;
@@ -418,21 +466,25 @@ struct BoundingBox{
 
         //if(debug) std::cout << "\ndebug info: (corners_in_rotated_space)\n" <<  corners_in_rotated_space;
 
-        Eigen::Matrix<double,3,8> transformed_corners_in_rotated_space;
-        for(size_t col = 0; col < static_cast<size_t>(transformed_corners_in_rotated_space.cols()); ++col)
-            transformed_corners_in_rotated_space.col(col) = relative_transform.transpose()*corners_in_rotated_space.col(col);
+        Eigen::Matrix<double,3,8> transformed_corners_in_world_space;
+        for(size_t col = 0; col < static_cast<size_t>(transformed_corners_in_world_space.cols()); ++col)
+            transformed_corners_in_world_space.col(col) = orientation*corners_in_rotated_space.col(col)+origin;
 
+        Eigen::Matrix<double,3,8> transformed_corners_aligned_with_desired_orientation;
+        for(size_t col = 0; col < static_cast<size_t>(transformed_corners_in_world_space.cols()); ++col)
+            transformed_corners_aligned_with_desired_orientation.col(col) = desired_orientation.transpose()*transformed_corners_in_world_space.col(col);
+            
         //if(debug) std::cout << "\ndebug info: (transformed_corners_in_rotated_space)\n" <<  transformed_corners_in_rotated_space;
 
-        Eigen::Matrix<double,3,1> minimum = transformed_corners_in_rotated_space.rowwise().minCoeff();
+        Eigen::Matrix<double,3,1> minimum = transformed_corners_aligned_with_desired_orientation.rowwise().minCoeff();
 
         //if(debug) std::cout << "\ndebug info: (minimum)\n" <<  transformed_corners_in_rotated_space.rowwise().minCoeff();
 
-        transformed_corners_in_rotated_space.colwise() -=minimum;
+        transformed_corners_aligned_with_desired_orientation.colwise() -=minimum;
 
         //if(debug) std::cout << "\ndebug info: (transformed_corners_in_rotated_space)\n" <<  transformed_corners_in_rotated_space;
 
-        Eigen::Matrix<double,3,1> unrounded_transformed_size = transformed_corners_in_rotated_space.rowwise().maxCoeff();
+        Eigen::Matrix<double,3,1> unrounded_transformed_size = transformed_corners_aligned_with_desired_orientation.rowwise().maxCoeff();
 
         //if(debug) std::cout << "\ndebug info: (unrounded_transformed_size)\n" <<  unrounded_transformed_size;
 
@@ -482,37 +534,29 @@ struct BoundingBox{
 
         switch(frameorientation){
             case FrameOrientation::RIGHT_HANDED:
-                transformed_rotation = orientation*relative_transform;
+                transformed_rotation = desired_orientation;
+                std::cout << "right handed:" << std::endl;
                 break;
             case FrameOrientation::LEFT_HANDED:
-                auto temp = orientation;
-                temp.col(1) = -temp.col(1);
-                transformed_rotation = temp*relative_transform;
+                transformed_rotation = desired_orientation;
+                std::cout << "left handed:" << std::endl;
                 break;
         }
 
 
-        auto transformed_quatered_bounding_box = transformed_rotation*(1.0/2.0)*transformed_corners_in_pixel_space;
+        auto transformed_quatered_bounding_box = desired_orientation*(1.0/2.0)*transformed_corners_in_pixel_space;
         //if(debug) std::cout << "\ndebug info: (transformed_quatered_bounding_box)\n" <<  transformed_quatered_bounding_box;
         Eigen::Matrix<double,3,1> transformed_center_bounding_box = transformed_quatered_bounding_box.col(1)+transformed_quatered_bounding_box.col(2)+transformed_quatered_bounding_box.col(3);
         //if(debug) std::cout << "\ndebug info: (transformed_center_bounding_box)\n" <<  transformed_center_bounding_box;
-        Eigen::Matrix<double,3,4> transformed_corners_in_world_space;
-        transformed_corners_in_world_space.col(0) = origin+center_bounding_box-transformed_center_bounding_box;
-        transformed_corners_in_world_space.col(1) = transformed_corners_in_world_space.col(0)+transformed_rotation*transformed_corners_in_pixel_space.col(1);
-        transformed_corners_in_world_space.col(2) = transformed_corners_in_world_space.col(0)+transformed_rotation*transformed_corners_in_pixel_space.col(2);
-        transformed_corners_in_world_space.col(3) = transformed_corners_in_world_space.col(0)+transformed_rotation*transformed_corners_in_pixel_space.col(3);
+        Eigen::Matrix<double,3,4> transformed_corners_of_rotated_box_in_world_space;
+        transformed_corners_of_rotated_box_in_world_space.col(0) = origin+center_bounding_box-transformed_center_bounding_box;
+        transformed_corners_of_rotated_box_in_world_space.col(1) = transformed_corners_of_rotated_box_in_world_space.col(0)+desired_orientation*transformed_corners_in_pixel_space.col(1);
+        transformed_corners_of_rotated_box_in_world_space.col(2) = transformed_corners_of_rotated_box_in_world_space.col(0)+desired_orientation*transformed_corners_in_pixel_space.col(2);
+        transformed_corners_of_rotated_box_in_world_space.col(3) = transformed_corners_of_rotated_box_in_world_space.col(0)+desired_orientation*transformed_corners_in_pixel_space.col(3);
 
         //if(debug) std::cout << "\ndebug info: (transformed_corners_in_world_space)\n" <<  transformed_corners_in_world_space;
 
-        Eigen::Matrix<double,3,4> corners_in_world_space;
-        corners_in_world_space.col(0) = origin;
-        corners_in_world_space.col(1) = corners_in_world_space.col(0)+orientation*corners_in_rotated_space.col(1);
-        corners_in_world_space.col(2) = corners_in_world_space.col(0)+orientation*corners_in_rotated_space.col(2);
-        corners_in_world_space.col(3) = corners_in_world_space.col(0)+orientation*corners_in_rotated_space.col(3);
-
-        //if(debug) std::cout << "\ndebug info: (corners_in_world_space)\n" <<  corners_in_world_space;
-
-        return BoundingBox{transformed_corners_in_world_space.col(0),transformed_corners_in_world_space.col(1),transformed_corners_in_world_space.col(2),transformed_corners_in_world_space.col(3),transformed_spacing};
+        return BoundingBox{transformed_corners_of_rotated_box_in_world_space.col(0),transformed_corners_of_rotated_box_in_world_space.col(1),transformed_corners_of_rotated_box_in_world_space.col(2),transformed_corners_of_rotated_box_in_world_space.col(3),transformed_spacing};
     }
 };
 
@@ -632,7 +676,7 @@ std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,c
     return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
 }
 
-std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata, curan::ui::DicomVolumetricMask::Policy mask)
+std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata, int mask)
 {
     using namespace curan::ui;
     using PixelType = unsigned char;
@@ -811,11 +855,13 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         if(original_eigen_rotation_matrix.determinant()<0.0)
             original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
 
+        std::cout << "tip: [" << (*appdata.ac_pc_data.ac_word_coordinates).transpose() << "]" << "\n entry_word_coordinates: [" << (*appdata.ac_pc_data.pc_word_coordinates).transpose() << "]" << std::endl;
+        std::cout << "expected orientation:" << eigen_rotation_matrix << std::endl;
         BoundingBox bounding_box_original_image{input};        
-        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
+        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
         std::cout << "bounding_box_original_image:\n" << bounding_box_original_image << std::endl;
         std::cout << "output_bounding_box:\n" << output_bounding_box << std::endl;
-        std::cout << "fixed direction expected: " << y_direction.transpose() << std::endl; 
+        
         using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
         auto filter = FilterType::New();
 
@@ -858,7 +904,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::DISREGARD));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS));
 		}
     });
 
@@ -1087,7 +1133,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
 
         BoundingBox bounding_box_original_image{input};    
-        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
+        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
         using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
         auto filter = FilterType::New();
 
@@ -1136,7 +1182,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::DISREGARD));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS));
 		}
     });
 
@@ -1245,7 +1291,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
 
         BoundingBox bounding_box_original_image{input};    
-        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix);
+        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
         //auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix * eigen_rotation_matrix.transpose());
         //auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix*original_eigen_rotation_matrix.transpose());     
         //auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix.transpose()*original_eigen_rotation_matrix);     original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix
@@ -1348,12 +1394,18 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         throw std::runtime_error("failure due to missing volume");
     }
     appdata.vol_mas->update_volume(input);
-    ImageType::Pointer projected_input = allocate_image(appdata);
-    appdata.projected_vol_mas.update_volume(projected_input);
+    try{
+        ImageType::Pointer projected_input = allocate_image(appdata);
+        appdata.projected_vol_mas.update_volume(projected_input);
+    } catch(...){
+        std::cout << "failure allocating image" << std::endl;
+        throw std::runtime_error("failure");
+    }
+
 
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
-    auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
+    auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
     image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
     *slidercontainer << std::move(image_displayx) << std::move(image_displayy);
 
@@ -1503,7 +1555,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES | curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS));
 		}
     });
 
