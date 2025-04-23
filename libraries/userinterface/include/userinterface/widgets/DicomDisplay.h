@@ -263,8 +263,8 @@ public:
 			for(auto& mask : masks_x){ 
                 auto strokes = mask.strokes();
                 for(const auto& [key,stroke] : strokes){
-                    std::visit(curan::utilities::overloaded{[&](const curan::ui::Path &path){},	
-                                                            [&](const curan::ui::Point &point) { // (along_dimension ) point.normalized_point.fX point.normalized_point.fY
+                    std::visit(curan::utilities::overloaded{[&](const curan::ui::Path &path){},	//paths are basically meaningless
+                                                            [&](const curan::ui::Point &point) { 
                         ImageType::IndexType local_index;
                         ImageType::PointType itk_point_in_world_coordinates;
                         local_index[0] =  increment;
