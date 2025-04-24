@@ -48,6 +48,39 @@ constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
 
+template <typename TImage,typename InclusionPolicy>
+std::tuple<typename TImage::Pointer,itk::Image<unsigned char,3>::Pointer> DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
+{
+    typename TImage::Pointer output = TImage::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    auto mask = itk::Image<unsigned char,3>::New();
+    mask->SetRegions(input->GetLargestPossibleRegion());
+    mask->SetDirection(input->GetDirection());
+    mask->SetSpacing(input->GetSpacing());
+    mask->SetOrigin(input->GetOrigin());
+    mask->Allocate();
+
+    itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<itk::Image<unsigned char,3>> maskIterator(mask, mask->GetLargestPossibleRegion());
+
+    for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator,++maskIterator ){
+        if(inclusion_policy((double)(inputIterator.GetIndex()[0]),(double)(inputIterator.GetIndex()[1]),(double)(inputIterator.GetIndex()[2]))){
+            outputIterator.Set(inputIterator.Get());
+            maskIterator.Set(255);
+        }else{
+            outputIterator.Set(0);
+            maskIterator.Set(0);
+        }
+    }
+    return {output,mask};
+}
+
 struct ACPCData{
     bool ac_specification = false;
     curan::ui::Button* ac_button = nullptr;
@@ -140,20 +173,7 @@ ImageType::Pointer allocate_image(Application& appdata){
         converted << (double)point[0] , (double)point[1], (double)point[2];
         return converted;
     };
-
-    auto convert_to_eigen_in_image_coordinates = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
-        ImageType::IndexType local_index;
-        ImageType::PointType itk_point_in_world_coordinates;
-        itk_point_in_world_coordinates[0] = (double)point[0];
-        itk_point_in_world_coordinates[1] = (double)point[1];
-        itk_point_in_world_coordinates[2] = (double)point[2];
-        input->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
-        Eigen::Matrix<double,3,1> converted;
-        converted << (double)local_index[0] , (double)local_index[1], (double)local_index[2];
-        return converted;
-    };
-
-    auto tip_image_coordinates = convert_to_eigen_in_image_coordinates(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[0]);
+    
     auto base0 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[1]);
     auto base1 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[2]);
     auto base2 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[3]);
@@ -168,7 +188,7 @@ ImageType::Pointer allocate_image(Application& appdata){
     eigen_rotation_matrix.col(1) = y_direction;
     eigen_rotation_matrix.col(2) = z_direction;
 
-    ImageType::Pointer image = ImageType::New();
+    ImageType::Pointer projectionimage = ImageType::New();
   
     ImageType::SizeType size;
     size[0] = 256;  // size along X
@@ -193,24 +213,23 @@ ImageType::Pointer allocate_image(Application& appdata){
     ImageType::RegionType region;
     region.SetSize(size);
   
-    image->SetRegions(region);
-    image->SetSpacing(spacing);
-    image->SetOrigin(origin);
-    image->SetDirection(direction);
-    image->Allocate();
-    image->FillBuffer(0);
+    projectionimage->SetRegions(region);
+    projectionimage->SetSpacing(spacing);
+    projectionimage->SetOrigin(origin);
+    projectionimage->SetDirection(direction);
+    projectionimage->Allocate();
+    projectionimage->FillBuffer(0);
 
     typedef itk::ImageRegionIteratorWithIndex<ImageType> IteratorType;
-    IteratorType it(image, image->GetRequestedRegion());
+    IteratorType it(projectionimage, projectionimage->GetRequestedRegion());
 
-    const Eigen::Matrix<double,3,1> t0 = tip_image_coordinates;
+    const Eigen::Matrix<double,3,1> t0 = *appdata.trajectory_location.target_world_coordinates;
     Eigen::Matrix<double,3,1> texcoord;
-    Eigen::Matrix<double,3,1> deltaTexCoord;
-    Eigen::Matrix<double,3,1> te;
-
+    
     std::array<std::tuple<ImageType::IndexType,double>,7> neighboors;
     
     auto overall_size = input->GetLargestPossibleRegion().GetSize();
+
     auto check_pixel_inside = [&](auto tempindex){
         if(tempindex[0] < 0                || tempindex[1] < 0                || tempindex[2] < 0 || 
             tempindex[0] >= overall_size[0] || tempindex[1] >= overall_size[1] || tempindex[2] >= overall_size[2])
@@ -218,20 +237,33 @@ ImageType::Pointer allocate_image(Application& appdata){
         else 
             return true;
     };
+    ImageType::PointType pos;
+    float initial_alpha = 0.0;
+    {
+        ImageType::IndexType tmpindex;
+        pos[0] = t0[0];
+        pos[1] = t0[1];
+        pos[2] = t0[2];         
+        input->TransformPhysicalPointToIndex(pos,tmpindex);
+        if(!check_pixel_inside(tmpindex))
+            throw std::runtime_error("failure");
+        initial_alpha = (1.0/255.0)*input->GetPixel(tmpindex);
+    }
+
     for (it.GoToBegin(); !it.IsAtEnd(); ++it)
     {
-        te[0] = it.GetIndex()[0];
-        te[1] = it.GetIndex()[1];
-        te[2] = it.GetIndex()[2];
+        ImageType::PointType pos;
+        projectionimage->TransformIndexToPhysicalPoint(it.GetIndex(),pos);
+
+        const Eigen::Matrix<double,3,1> te{pos[0],pos[1],pos[2]};
 
         const float min_iteratrions = 2.0;
         const float max_iteratrions = 1024.0;
 
         const float TransparencyValue = 0.01;
         const float AlphaFuncValue = 0.01;
-        const float SampleDensityValue = 1;
+        const float SampleDensityValue = 0.1;
         
-
         float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
         if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
         else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
@@ -242,19 +274,13 @@ ImageType::Pointer allocate_image(Application& appdata){
             return mixed;
         };
 
-        deltaTexCoord = (te-t0)/(num_iterations-1.0);
-        texcoord = t0;  
-        float alpha = 0.0;
-        {
-            ImageType::IndexType tmpindex;
-            tmpindex[0] = std::round(texcoord[0]);
-            tmpindex[1] = std::round(texcoord[1]);
-            tmpindex[2] = std::round(texcoord[2]);
-            alpha = (1.0/255.0)*input->GetPixel(tmpindex);
-        }
-        Eigen::Matrix<double,4,1> fragColor{alpha, alpha, alpha, alpha * TransparencyValue};
 
-        auto compute_dist_and_index = [&](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
+        const Eigen::Matrix<double,3,1> deltaTexCoord = (te-t0)/(num_iterations-1.0);
+        texcoord = t0;  
+        
+        Eigen::Matrix<double,4,1> fragColor{initial_alpha, initial_alpha, initial_alpha, initial_alpha * TransparencyValue};
+
+        auto compute_dist_and_index = [](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
             Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
             const int offsets[7][3] = {
                 {0, 0, 0},
@@ -266,28 +292,38 @@ ImageType::Pointer allocate_image(Application& appdata){
                 {0, 0, -1}
             };
             ImageType::IndexType indec;
-            indec[0] = std::round(texcoord[0])+offsets[neighboorsindex][0];
-            indec[1] = std::round(texcoord[1])+offsets[neighboorsindex][1];
-            indec[2] = std::round(texcoord[2])+offsets[neighboorsindex][2];
+            indec[0] = std::round(decimal_coordinates[0])+offsets[neighboorsindex][0];
+            indec[1] = std::round(decimal_coordinates[1])+offsets[neighboorsindex][1];
+            indec[2] = std::round(decimal_coordinates[2])+offsets[neighboorsindex][2];
             tmp_to_compute_distance[0] = indec[0];
             tmp_to_compute_distance[1] = indec[1];
             tmp_to_compute_distance[2] = indec[2];
-            return std::tuple<ImageType::IndexType,double>(indec,(tmp_to_compute_distance-decimal_coordinates).norm());
+            return std::tuple<ImageType::IndexType,double>(indec,(tmp_to_compute_distance-decimal_coordinates).norm()+1e-5);
         };
 
         while(num_iterations>0.0){
-            neighboors[0] = compute_dist_and_index(0,texcoord);
-            neighboors[1] = compute_dist_and_index(1,texcoord);
-            neighboors[2] = compute_dist_and_index(2,texcoord);
-            neighboors[3] = compute_dist_and_index(3,texcoord);
-            neighboors[4] = compute_dist_and_index(4,texcoord);
-            neighboors[5] = compute_dist_and_index(5,texcoord);
-            neighboors[6] = compute_dist_and_index(6,texcoord);
+            ImageType::IndexType current_index_on_input;
+            pos[0] = texcoord[0];
+            pos[1] = texcoord[1];
+            pos[2] = texcoord[2];         
+            input->TransformPhysicalPointToIndex(pos,current_index_on_input);
+            Eigen::Vector3d eigenized_index_on_input;
+            eigenized_index_on_input[0] = current_index_on_input[0];
+            eigenized_index_on_input[1] = current_index_on_input[1];
+            eigenized_index_on_input[2] = current_index_on_input[2];
+
+            neighboors[0] = compute_dist_and_index(0,eigenized_index_on_input);
+            neighboors[1] = compute_dist_and_index(1,eigenized_index_on_input);
+            neighboors[2] = compute_dist_and_index(2,eigenized_index_on_input);
+            neighboors[3] = compute_dist_and_index(3,eigenized_index_on_input);
+            neighboors[4] = compute_dist_and_index(4,eigenized_index_on_input);
+            neighboors[5] = compute_dist_and_index(5,eigenized_index_on_input);
+            neighboors[6] = compute_dist_and_index(6,eigenized_index_on_input);
 
             size_t number_of_found_pixels = 0;
             double sum_of_dist = 0.0;
             std::vector<std::tuple<double,double>> neighboors_residue;
-            for(size_t in = 0; in < neighboors.size() ; ++in){
+            for(size_t in = 0; in < 1 ; ++in){
                 const auto& [tmpindex,dist] = neighboors[in];
                 if(check_pixel_inside(tmpindex)){
                     ++number_of_found_pixels;
@@ -298,7 +334,7 @@ ImageType::Pointer allocate_image(Application& appdata){
             if(number_of_found_pixels==0)
                 break;
 
-            alpha = 0.0;
+            double alpha = 0.0;
             for(const auto& [alpha_val,dist] : neighboors_residue )
                 alpha += (dist/sum_of_dist)*alpha_val;
 
@@ -306,10 +342,10 @@ ImageType::Pointer allocate_image(Application& appdata){
             float mix_factor = color[3];
             if (mix_factor > AlphaFuncValue){
                 fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
-                fragColor[3] += color[3];
+                fragColor[3] += mix_factor;
             }
 
-            if (color[3] > fragColor[3])
+            if (mix_factor > fragColor[3])
                 fragColor = color;
 
             texcoord += deltaTexCoord;
@@ -317,9 +353,7 @@ ImageType::Pointer allocate_image(Application& appdata){
         }
         it.Set(255.0*fragColor[0]);
   }
-
-
-  return image;
+  return projectionimage;
 }
 
 struct BoundingBox{
@@ -770,7 +804,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     appdata.ac_pc_data.ac_button = defineac.get();
 
     auto definepc = Button::make("Locate PC", *appdata.resources);
-    definepc->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    definepc->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     definepc->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = true;
@@ -779,7 +813,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     appdata.ac_pc_data.pc_button = definepc.get();
 
     auto resample = Button::make("Resample Volume", *appdata.resources);
-    resample->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 100));
+    resample->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     resample->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
@@ -791,7 +825,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         
         Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *appdata.ac_pc_data.ac_word_coordinates - *appdata.ac_pc_data.pc_word_coordinates;
         if (orient_along_ac_pc.norm() < 1e-7){
-            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("AC-PC line is singular, try different points",*appdata.resources));
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("AC-PC line is singular, try different points",*appdata.resources));
             return;
         }
         orient_along_ac_pc.normalize(); 
@@ -801,7 +835,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
             input = search->second.img;
         else{
-            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
             return;
         }
 
@@ -821,7 +855,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         z_direction = x_direction.cross(y_direction);  
         z_direction.normalize();
         if (z_direction.norm() < 1e-7){
-            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("AC-PC line is singular when projected unto the axial plane, try different points",*appdata.resources));
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("AC-PC line is singular when projected unto the axial plane, try different points",*appdata.resources));
             return;
         }
  
@@ -867,11 +901,11 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             filter->Update();
             auto output = filter->GetOutput();
             if (config->stack_page != nullptr) {
-                config->stack_page->replace_last(success_overlay("resampled volume!",*appdata.resources));
+                config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
             }
             appdata.volumes.emplace("acpc",output);
         } catch (...){
-            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample volume to AC-PC",*appdata.resources));
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("failed to resample volume to AC-PC",*appdata.resources));
         }
     });
 
@@ -881,7 +915,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
 		}
     });
 
@@ -893,7 +927,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         if(appdata.ac_pc_data.ac_word_coordinates && appdata.ac_pc_data.pc_word_coordinates)
             appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
         else
-            config->stack_page->replace_last(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
+            config->stack_page->stack(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
     });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -939,6 +973,16 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
     if(appdata.trajectory_location.target_specification){
         appdata.trajectory_location.target_specification = false;
         appdata.trajectory_location.target_world_coordinates = word_coordinates;
+        ImageType::Pointer input;
+        if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end()){
+            input = search->second.img;
+            ImageType::IndexType local_index;
+            ImageType::PointType itk_point_in_world_coordinates;
+            itk_point_in_world_coordinates[0] = word_coordinates[0];
+            itk_point_in_world_coordinates[1] = word_coordinates[1];
+            itk_point_in_world_coordinates[2] = word_coordinates[2];
+            input->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+        }
         appdata.trajectory_location.target_button->set_waiting_color(SkColorSetARGB(0xFF, 0x0F, 0xFF, 0x0F));
         config_draw->stack_page->stack(success_overlay("target defined",*appdata.resources));
     }
@@ -959,10 +1003,11 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
                                    , point_index[2]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
             return normalized_itk_points;
         };
-        const auto target_local_index = compute(*appdata.trajectory_location.target_world_coordinates);
-        const auto main_diagonal_local_index = compute(*appdata.trajectory_location.main_diagonal_word_coordinates);
 
-        Eigen::Matrix<double,3,1> vector_aligned = target_local_index-main_diagonal_local_index;
+        const auto target_world_index = *appdata.trajectory_location.target_world_coordinates;
+        const auto main_diagonal_world_index = *appdata.trajectory_location.main_diagonal_word_coordinates;
+
+        Eigen::Matrix<double,3,1> vector_aligned = target_world_index-main_diagonal_world_index;
         double scale = vector_aligned.norm();
         Eigen::Vector3d z_direction = vector_aligned.normalized();
         Eigen::Vector3d x_direction = z_direction;
@@ -972,10 +1017,11 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         x_direction = y_direction.cross(z_direction);
         double base_width = std::tan(0.349066)*scale;
 
-        Eigen::Vector3d b0 = main_diagonal_local_index - base_width*y_direction -  base_width*x_direction;
-        Eigen::Vector3d b1 = main_diagonal_local_index + base_width*y_direction -  base_width*x_direction;
-        Eigen::Vector3d b2 = main_diagonal_local_index + base_width*y_direction +  base_width*x_direction;
-        Eigen::Vector3d b3 = main_diagonal_local_index - base_width*y_direction +  base_width*x_direction;
+        Eigen::Vector3d b0 = compute(main_diagonal_world_index - base_width*y_direction -  base_width*x_direction);
+        Eigen::Vector3d b1 = compute(main_diagonal_world_index + base_width*y_direction -  base_width*x_direction);
+        Eigen::Vector3d b2 = compute(main_diagonal_world_index + base_width*y_direction +  base_width*x_direction);
+        Eigen::Vector3d b3 = compute(main_diagonal_world_index - base_width*y_direction +  base_width*x_direction);
+        Eigen::Vector3d target_local_index = compute(target_world_index);
 
         geom.geometry.vertices[0][0] = target_local_index[0];
         geom.geometry.vertices[0][1] = target_local_index[1];
@@ -996,35 +1042,6 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         geom.geometry.vertices[4][0] = b3[0];
         geom.geometry.vertices[4][1] = b3[1];
         geom.geometry.vertices[4][2] = b3[2];
-
-        /*
-        Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-        vector_aligned.normalize();
-        Eigen::Matrix<double,3,1> yAxis(0, 0, 1);
-        Eigen::Matrix<double,3,1> axis = yAxis.cross(vector_aligned);
-        axis.normalize();
-        double angle = std::acos(yAxis.transpose()*vector_aligned);
-        auto final_rotation = Eigen::AngleAxisd(angle, axis).toRotationMatrix();
-        vector_aligned = target_local_index-main_diagonal_local_index;
-        double scaling_along_z = vector_aligned.norm();
-        double scaling_along_x = std::tan(0.349066)*scaling_along_z;
-        offset_base_to_Oxy(0,0) = scaling_along_x;
-        offset_base_to_Oxy(1,1) = scaling_along_x;
-        offset_base_to_Oxy(2,2) = scaling_along_z;
-        geom.transform(offset_base_to_Oxy);
-        offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-        offset_base_to_Oxy.block<3,3>(0,0) = final_rotation;
-        geom.transform(offset_base_to_Oxy);
-        auto tip = geom.geometry.vertices[0];
-        Eigen::Matrix<double,3,1> translation;
-        translation << (double)tip[0] , (double)tip[1] , (double)tip[2];
-        offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-        offset_base_to_Oxy.block<3,1>(0,3) = -translation;  
-        geom.transform(offset_base_to_Oxy);
-        offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-        offset_base_to_Oxy.block<3,1>(0,3) = target_local_index;          
-        geom.transform(offset_base_to_Oxy);
-        */
 
         appdata.vol_mas->add_geometry(geom);  
         
@@ -1101,7 +1118,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 
         Eigen::Matrix<double, 3, 1> orient_along_traj = tip-average;
         if (orient_along_traj.norm() < 1e-7){
-            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("Geometry is compromised",*appdata.resources));
             return;
         }
         orient_along_traj.normalize(); 
@@ -1111,7 +1128,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
             input = search->second.img;
         else{
-            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
             return;
         }
 
@@ -1160,7 +1177,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
                 config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
             }
         } catch (...){
-            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample trajectory volume",*appdata.resources));
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("failed to resample trajectory volume",*appdata.resources));
         }
 
         appdata.panel_constructor = select_entry_point_and_validate_point_selection;
@@ -1176,7 +1193,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
 		}
     });
 
@@ -1222,7 +1239,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
         if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
             input = search->second.img;
         else{
-            if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("could not find source dicom image",*appdata.resources));
+            if (config_draw->stack_page != nullptr) config_draw->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
             return;
         }
 
@@ -1288,7 +1305,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
         try{
             filter->Update();
             auto output = filter->GetOutput();
-            appdata.vol_mas->update_volume(output);
+            appdata.vol_mas->update_volume(output,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
             appdata.volumes.emplace("alongtrajectory",output);
             curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
 
@@ -1338,10 +1355,10 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             geom.transform(offset_base_to_Oxy);
             appdata.vol_mas->add_geometry(geom);  
             if (config_draw->stack_page != nullptr) {
-                config_draw->stack_page->replace_last(success_overlay("resampled volume!",*appdata.resources));
+                config_draw->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
             }
         } catch (...){
-            if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("failed to resample trajectory volume",*appdata.resources));
+            if (config_draw->stack_page != nullptr) config_draw->stack_page->stack(warning_overlay("failed to resample trajectory volume",*appdata.resources));
         }
     }
 }
@@ -1356,7 +1373,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     else{
         throw std::runtime_error("failure due to missing volume");
     }
-    appdata.vol_mas->update_volume(input);
+    appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
     try{
         ImageType::Pointer projected_input = allocate_image(appdata);
         appdata.projected_vol_mas.update_volume(projected_input);
@@ -1390,7 +1407,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         if(appdata.ac_pc_data.ac_word_coordinates && appdata.ac_pc_data.pc_word_coordinates)
             appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
         else
-            config->stack_page->replace_last(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
+            config->stack_page->stack(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
     });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -1517,7 +1534,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES | curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
 		}
     });
 

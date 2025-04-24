@@ -640,7 +640,7 @@ namespace ui{
                 SkPaint paint_cached_paths;
                 paint_cached_paths.setAntiAlias(true);
                 paint_cached_paths.setStyle(SkPaint::kStrokeAndFill_Style);
-                paint_cached_paths.setColor(SkColorSetARGB(100, 0xFF, 0x00, 0x00));
+                paint_cached_paths.setColor(SkColorSetARGB(0x0F, 0xFF, 0x00, 0x00));
                 auto paint_cached_paths_outline = paint_cached_paths;
                 paint_cached_paths_outline.setColor(SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));
                 paint_cached_paths_outline.setStyle(SkPaint::kStroke_Style);
