@@ -11,6 +11,7 @@ add_subdirectory(image_cropper)
 add_subdirectory(needle_validator)
 add_subdirectory(surface_based_extraction)
 add_subdirectory(robot_and_needle_with_ct)
+add_subdirectory(surgical_planning)
 
 if(WAS_PLUS_SPECIFIED)
 	add_subdirectory(data_replayer_for_videos)

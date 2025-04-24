@@ -4,8 +4,6 @@ include(${ITK_USE_FILE})
 
 add_executable(SurgicalPlanning
 main.cpp 
-BoundingBox.cpp
-UserInterface.cpp
 )
 
 target_compile_definitions(SurgicalPlanning PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")

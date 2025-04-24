@@ -136,6 +136,12 @@ ImageType::Pointer allocate_image(Application& appdata){
     }
 
     auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
+        Eigen::Matrix<double,3,1> converted;
+        converted << (double)point[0] , (double)point[1], (double)point[2];
+        return converted;
+    };
+
+    auto convert_to_eigen_in_image_coordinates = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
         ImageType::IndexType local_index;
         ImageType::PointType itk_point_in_world_coordinates;
         itk_point_in_world_coordinates[0] = (double)point[0];
@@ -147,29 +153,16 @@ ImageType::Pointer allocate_image(Application& appdata){
         return converted;
     };
 
-    auto tip = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[0]);
+    auto tip_image_coordinates = convert_to_eigen_in_image_coordinates(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[0]);
     auto base0 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[1]);
     auto base1 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[2]);
     auto base2 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[3]);
     auto base3 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[4]);
 
-    auto average = 0.25*base0+0.25*base1+0.25*base2+0.25*base3;
-
-    Eigen::Matrix<double, 3, 1> orient_along_traj = tip-average;
-    orient_along_traj.normalize(); 
-    Eigen::Matrix<double, 3, 1> x_direction = orient_along_traj;
-
-    auto direction = input->GetDirection();
-    Eigen::Matrix<double,3,3> eigen_direction;
-    for(size_t i = 0; i < 3; ++i)
-        for(size_t j = 0;  j < 3; ++j)
-            eigen_direction(i,j) = direction(i,j);
-
-
-    Eigen::Matrix<double,3,1> y_direction = base3 - base2;
-    Eigen::Matrix<double,3,1> z_direction = base3 - base0;
-    y_direction.normalize();
-    z_direction.normalize();
+    Eigen::Matrix<double,3,1> x_direction = (base1 - base0).normalized();
+    Eigen::Matrix<double,3,1> y_direction = (base3 - base0).normalized();
+    Eigen::Matrix<double, 3, 1> z_direction = x_direction.cross(y_direction);
+    
     Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
     eigen_rotation_matrix.col(0) = x_direction;
     eigen_rotation_matrix.col(1) = y_direction;
@@ -182,18 +175,17 @@ ImageType::Pointer allocate_image(Application& appdata){
     size[1] = 256;  // size along Y 
     size[2] = 1;   // size along Z
 
-    double minspacing = std::min((base3 - base2).norm()/(double)size[0],(base3 - base0).norm()/(double)size[1]);
-  
     ImageType::SpacingType spacing;
-    spacing[0] = minspacing; // mm along X
-    spacing[1] = minspacing; // mm along X
-    spacing[2] = minspacing; // mm along Z
+    spacing[0] = (base1 - base0).norm()/(double)size[0]; // mm along X
+    spacing[1] = (base3 - base0).norm()/(double)size[1]; // mm along X
+    spacing[2] = 1.0; // mm along Z
   
     ImageType::PointType origin;
-    origin[0] = average[0];
-    origin[1] = average[1];
-    origin[2] = average[2];
+    origin[0] = base0[0];
+    origin[1] = base0[1];
+    origin[2] = base0[2];
   
+    auto direction = input->GetDirection();
     for(size_t i = 0; i < 3; ++i)
         for(size_t j = 0; j < 3; ++j)
             direction(i,j) = eigen_rotation_matrix(i,j);
@@ -211,7 +203,7 @@ ImageType::Pointer allocate_image(Application& appdata){
     typedef itk::ImageRegionIteratorWithIndex<ImageType> IteratorType;
     IteratorType it(image, image->GetRequestedRegion());
 
-    Eigen::Matrix<double,3,1> t0 = tip;
+    const Eigen::Matrix<double,3,1> t0 = tip_image_coordinates;
     Eigen::Matrix<double,3,1> texcoord;
     Eigen::Matrix<double,3,1> deltaTexCoord;
     Eigen::Matrix<double,3,1> te;
@@ -228,10 +220,9 @@ ImageType::Pointer allocate_image(Application& appdata){
     };
     for (it.GoToBegin(); !it.IsAtEnd(); ++it)
     {
-        ImageType::IndexType index = it.GetIndex();
-        te[0] = index[0];
-        te[1] = index[1];
-        te[2] = index[2];
+        te[0] = it.GetIndex()[0];
+        te[1] = it.GetIndex()[1];
+        te[2] = it.GetIndex()[2];
 
         const float min_iteratrions = 2.0;
         const float max_iteratrions = 1024.0;
@@ -252,19 +243,16 @@ ImageType::Pointer allocate_image(Application& appdata){
         };
 
         deltaTexCoord = (te-t0)/(num_iterations-1.0);
-        texcoord = t0;
-        Eigen::Matrix<double,4,1> fragColor = Eigen::Matrix<double,4,1>::Zero();
-        
+        texcoord = t0;  
         float alpha = 0.0;
         {
             ImageType::IndexType tmpindex;
-            tmpindex[0] = texcoord[0];
-            tmpindex[1] = texcoord[1];
-            tmpindex[2] = texcoord[2];
+            tmpindex[0] = std::round(texcoord[0]);
+            tmpindex[1] = std::round(texcoord[1]);
+            tmpindex[2] = std::round(texcoord[2]);
             alpha = (1.0/255.0)*input->GetPixel(tmpindex);
         }
-
-        fragColor << alpha, alpha, alpha, alpha * TransparencyValue;
+        Eigen::Matrix<double,4,1> fragColor{alpha, alpha, alpha, alpha * TransparencyValue};
 
         auto compute_dist_and_index = [&](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
             Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
@@ -299,12 +287,14 @@ ImageType::Pointer allocate_image(Application& appdata){
             size_t number_of_found_pixels = 0;
             double sum_of_dist = 0.0;
             std::vector<std::tuple<double,double>> neighboors_residue;
-            for(const auto& [tmpindex,dist] : neighboors)
+            for(size_t in = 0; in < neighboors.size() ; ++in){
+                const auto& [tmpindex,dist] = neighboors[in];
                 if(check_pixel_inside(tmpindex)){
                     ++number_of_found_pixels;
                     sum_of_dist += dist;
                     neighboors_residue.push_back({(1.0/255.0)*input->GetPixel(tmpindex),dist});
                 }
+            }
             if(number_of_found_pixels==0)
                 break;
 
@@ -312,9 +302,7 @@ ImageType::Pointer allocate_image(Application& appdata){
             for(const auto& [alpha_val,dist] : neighboors_residue )
                 alpha += (dist/sum_of_dist)*alpha_val;
 
-            Eigen::Matrix<double,4,1> color;
-            color << alpha, alpha, alpha, alpha * TransparencyValue;
-            //TODO modify mix_factor according to distance to center
+            Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, alpha * TransparencyValue};
             float mix_factor = color[3];
             if (mix_factor > AlphaFuncValue){
                 fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
@@ -532,17 +520,7 @@ struct BoundingBox{
 
         Eigen::Matrix<double,3,3> transformed_rotation;
 
-        switch(frameorientation){
-            case FrameOrientation::RIGHT_HANDED:
-                transformed_rotation = desired_orientation;
-                std::cout << "right handed:" << std::endl;
-                break;
-            case FrameOrientation::LEFT_HANDED:
-                transformed_rotation = desired_orientation;
-                std::cout << "left handed:" << std::endl;
-                break;
-        }
-
+        transformed_rotation = desired_orientation;
 
         auto transformed_quatered_bounding_box = desired_orientation*(1.0/2.0)*transformed_corners_in_pixel_space;
         //if(debug) std::cout << "\ndebug info: (transformed_quatered_bounding_box)\n" <<  transformed_quatered_bounding_box;
@@ -560,14 +538,14 @@ struct BoundingBox{
     }
 };
 
-std::ostream& operator<<(std::ostream& os, const BoundingBox& dt)
-{
-    os << "\norigin: " << dt.origin.transpose()<< std::endl;
-    os << "\nsize: " << dt.size.transpose()<< std::endl;
-    os << "\nspacing: " << dt.spacing.transpose()<< std::endl;
-    os << "\norientation: \n" << dt.orientation<< std::endl;
-    return os;
-}
+//std::ostream& operator<<(std::ostream& os, const BoundingBox& dt)
+//{
+//    os << "\norigin: " << dt.origin.transpose()<< std::endl;
+//    os << "\nsize: " << dt.size.transpose()<< std::endl;
+//    os << "\nspacing: " << dt.spacing.transpose()<< std::endl;
+//    os << "\norientation: \n" << dt.orientation<< std::endl;
+//    return os;
+//}
 
 
 std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
@@ -852,15 +830,12 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         eigen_rotation_matrix.col(1) = y_direction;
         eigen_rotation_matrix.col(2) = z_direction;
 
-        if(original_eigen_rotation_matrix.determinant()<0.0)
-            original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
-
-        std::cout << "tip: [" << (*appdata.ac_pc_data.ac_word_coordinates).transpose() << "]" << "\n entry_word_coordinates: [" << (*appdata.ac_pc_data.pc_word_coordinates).transpose() << "]" << std::endl;
-        std::cout << "expected orientation:" << eigen_rotation_matrix << std::endl;
+        //std::cout << "tip: [" << (*appdata.ac_pc_data.ac_word_coordinates).transpose() << "]" << "\n entry_word_coordinates: [" << (*appdata.ac_pc_data.pc_word_coordinates).transpose() << "]" << std::endl;
+        //std::cout << "expected orientation:" << eigen_rotation_matrix << std::endl;
         BoundingBox bounding_box_original_image{input};        
         auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
-        std::cout << "bounding_box_original_image:\n" << bounding_box_original_image << std::endl;
-        std::cout << "output_bounding_box:\n" << output_bounding_box << std::endl;
+        //std::cout << "bounding_box_original_image:\n" << bounding_box_original_image << std::endl;
+        //std::cout << "output_bounding_box:\n" << output_bounding_box << std::endl;
         
         using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
         auto filter = FilterType::New();
@@ -884,6 +859,8 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             for (size_t row = 0; row < 3; ++row)
                 rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
 
+        if(output_bounding_box.orientation.determinant() < 0.999 ||  output_bounding_box.orientation.determinant() > 1.001)
+            throw std::runtime_error("matrix must be rotation");
         filter->SetOutputDirection(rotation_matrix);
 
         try{
@@ -984,8 +961,43 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         };
         const auto target_local_index = compute(*appdata.trajectory_location.target_world_coordinates);
         const auto main_diagonal_local_index = compute(*appdata.trajectory_location.main_diagonal_word_coordinates);
-       
+
         Eigen::Matrix<double,3,1> vector_aligned = target_local_index-main_diagonal_local_index;
+        double scale = vector_aligned.norm();
+        Eigen::Vector3d z_direction = vector_aligned.normalized();
+        Eigen::Vector3d x_direction = z_direction;
+        x_direction[0] -= 10.0;
+        x_direction.normalize();
+        Eigen::Vector3d y_direction = (z_direction.cross(x_direction)).normalized();
+        x_direction = y_direction.cross(z_direction);
+        double base_width = std::tan(0.349066)*scale;
+
+        Eigen::Vector3d b0 = main_diagonal_local_index - base_width*y_direction -  base_width*x_direction;
+        Eigen::Vector3d b1 = main_diagonal_local_index + base_width*y_direction -  base_width*x_direction;
+        Eigen::Vector3d b2 = main_diagonal_local_index + base_width*y_direction +  base_width*x_direction;
+        Eigen::Vector3d b3 = main_diagonal_local_index - base_width*y_direction +  base_width*x_direction;
+
+        geom.geometry.vertices[0][0] = target_local_index[0];
+        geom.geometry.vertices[0][1] = target_local_index[1];
+        geom.geometry.vertices[0][2] = target_local_index[2];
+
+        geom.geometry.vertices[1][0] = b0[0];
+        geom.geometry.vertices[1][1] = b0[1];
+        geom.geometry.vertices[1][2] = b0[2];
+
+        geom.geometry.vertices[2][0] = b1[0];
+        geom.geometry.vertices[2][1] = b1[1];
+        geom.geometry.vertices[2][2] = b1[2];
+
+        geom.geometry.vertices[3][0] = b2[0];
+        geom.geometry.vertices[3][1] = b2[1];
+        geom.geometry.vertices[3][2] = b2[2];
+
+        geom.geometry.vertices[4][0] = b3[0];
+        geom.geometry.vertices[4][1] = b3[1];
+        geom.geometry.vertices[4][2] = b3[2];
+
+        /*
         Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
         vector_aligned.normalize();
         Eigen::Matrix<double,3,1> yAxis(0, 0, 1);
@@ -1012,6 +1024,8 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
         offset_base_to_Oxy.block<3,1>(0,3) = target_local_index;          
         geom.transform(offset_base_to_Oxy);
+        */
+
         appdata.vol_mas->add_geometry(geom);  
         
         for(size_t i = 0; i < geom.geometry.vertices.size(); ++i){
@@ -1072,20 +1086,17 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             config->stack_page->stack(warning_overlay("both the target and the entry region must be selected",*appdata.resources));
             return;
         }
-        auto stored_geometries = appdata.vol_mas->geometries();  
-        auto piramid = stored_geometries.front();
         auto convert_to_eigen = [](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
             Eigen::Matrix<double,3,1> converted;
             converted << point[0] , point[1] , point[2];
             return converted;
         };
 
-        auto tip = convert_to_eigen(piramid.geometry.vertices[0]);
-        auto base0 = convert_to_eigen(piramid.geometry.vertices[1]);
-        auto base1 = convert_to_eigen(piramid.geometry.vertices[2]);
-        auto base2 = convert_to_eigen(piramid.geometry.vertices[3]);
-        auto base3 = convert_to_eigen(piramid.geometry.vertices[4]);
-
+        auto tip = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[0]);
+        auto base0 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[1]);
+        auto base1 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[2]);
+        auto base2 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[3]);
+        auto base3 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[4]);
         auto average = 0.25*base0+0.25*base1+0.25*base2+0.25*base3;
 
         Eigen::Matrix<double, 3, 1> orient_along_traj = tip-average;
@@ -1094,7 +1105,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             return;
         }
         orient_along_traj.normalize(); 
-        Eigen::Matrix<double, 3, 1> x_direction = orient_along_traj;
+        const Eigen::Matrix<double, 3, 1> z_direction = orient_along_traj;
 
         ImageType::Pointer input;
         if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
@@ -1104,33 +1115,14 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             return;
         }
 
-        auto direction = input->GetDirection();
-        Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
-        for (size_t col = 0; col < 3; ++col)
-            for (size_t row = 0; row < 3; ++row)
-                original_eigen_rotation_matrix(row, col) = direction(row, col);
-
-        Eigen::Matrix<double,3,3> eigen_direction;
-        for(size_t i = 0; i < 3; ++i)
-            for(size_t j = 0;  j < 3; ++j)
-                eigen_direction(i,j) = direction(i,j);
-
-
-        Eigen::Matrix<double,3,1> y_direction = base3 - base2;
-        Eigen::Matrix<double,3,1> z_direction = base3 - base0;
-        if (z_direction.norm() < 1e-7 || y_direction.norm() < 1e-7){
-            if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
-            return;
-        }
-        y_direction.normalize();
-        z_direction.normalize();
+        Eigen::Matrix<double,3,1> y_direction = (base1 - base0).normalized();
+        Eigen::Matrix<double,3,1> x_direction = y_direction.cross(z_direction);
+        x_direction.normalize();
+        y_direction = z_direction.cross(x_direction);
         Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
         eigen_rotation_matrix.col(0) = x_direction;
         eigen_rotation_matrix.col(1) = y_direction;
         eigen_rotation_matrix.col(2) = z_direction;
-
-        if(original_eigen_rotation_matrix.determinant()<0.0)
-            original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
 
         BoundingBox bounding_box_original_image{input};    
         auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
@@ -1156,6 +1148,8 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             for (size_t row = 0; row < 3; ++row)
                 rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
 
+        if(output_bounding_box.orientation.determinant() < 0.999 ||  output_bounding_box.orientation.determinant() > 1.001)
+            throw std::runtime_error("matrix must be rotation");
         filter->SetOutputDirection(rotation_matrix);
 
         try{
@@ -1163,7 +1157,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             auto output = filter->GetOutput();
             appdata.volumes.emplace("trajectory",output);
             if (config->stack_page != nullptr) {
-                config->stack_page->replace_last(success_overlay("resampled volume!",*appdata.resources));
+                config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
             }
         } catch (...){
             if (config->stack_page != nullptr) config->stack_page->replace_last(warning_overlay("failed to resample trajectory volume",*appdata.resources));
@@ -1201,27 +1195,28 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
-        throw std::runtime_error("the collumns of the highlighted path must be at least 1");
+        throw std::runtime_error("the columns of the highlighted path must be at least 1");
 
     if (strokes.point_in_image_coordinates.cols() > 1){
         config_draw->stack_page->stack(warning_overlay("must select a single point, not a path",*appdata.resources));
         return;
     }
 
-    ImageType::IndexType local_index;
-    ImageType::PointType itk_point_in_world_coordinates;
-    local_index[0] = strokes.point_in_image_coordinates(0, 0);
-    local_index[1] = strokes.point_in_image_coordinates(1, 0);
-    local_index[2] = strokes.point_in_image_coordinates(2, 0);
-    appdata.projected_vol_mas.get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
-    Eigen::Matrix<double, 3, 1> entry_word_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
-    entry_word_coordinates[0] = itk_point_in_world_coordinates[0];
-    entry_word_coordinates[1] = itk_point_in_world_coordinates[1];
-    entry_word_coordinates[2] = itk_point_in_world_coordinates[2];
-
     if(appdata.trajectory_location.entry_specification){
         appdata.trajectory_location.entry_specification = false;
-        appdata.trajectory_location.entry_point_word_coordinates = entry_word_coordinates;
+        {
+            ImageType::IndexType local_index;
+            ImageType::PointType itk_point_in_world_coordinates;
+            local_index[0] = strokes.point_in_image_coordinates(0, 0);
+            local_index[1] = strokes.point_in_image_coordinates(1, 0);
+            local_index[2] = strokes.point_in_image_coordinates(2, 0);
+            vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+            Eigen::Matrix<double, 3, 1> entry_word_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
+            entry_word_coordinates[0] = itk_point_in_world_coordinates[0];
+            entry_word_coordinates[1] = itk_point_in_world_coordinates[1];
+            entry_word_coordinates[2] = itk_point_in_world_coordinates[2];
+            appdata.trajectory_location.entry_point_word_coordinates = entry_word_coordinates;
+        }
 
         ImageType::Pointer input;
         if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
@@ -1240,64 +1235,29 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             converted[2] = (double)point[2];
             return converted;
         };
-
-        auto tip = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[0]);
+        
+        Eigen::Matrix<double,3,1> z_direction = (*appdata.trajectory_location.target_world_coordinates-*appdata.trajectory_location.entry_point_word_coordinates).normalized();
         auto base0 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[1]);
         auto base1 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[2]);
-        auto base2 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[3]);
-        auto base3 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[4]);
 
-        auto median = (1.0/4.0)*(base0+base1+base2+base3);
-
-        std::cout << "tip: [" << tip.transpose() << "]" << "\n entry_word_coordinates: [" << entry_word_coordinates.transpose() << "]" << std::endl;
-
-        const Eigen::Matrix<double, 3, 1> y_direction = (tip-entry_word_coordinates).normalized();
-        if (y_direction.norm() < 1e-7){
-            if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
-            return;
-        }
-
-        auto direction = input->GetDirection();
-        Eigen::Matrix<double, 3, 3> original_eigen_rotation_matrix;
-        for (size_t col = 0; col < 3; ++col)
-            for (size_t row = 0; row < 3; ++row)
-                original_eigen_rotation_matrix(row, col) = direction(row, col);
-
-        Eigen::Matrix<double,3,3> eigen_direction;
-        for(size_t i = 0; i < 3; ++i)
-            for(size_t j = 0;  j < 3; ++j)
-                eigen_direction(i,j) = direction(i,j);
-
-
-        Eigen::Matrix<double,3,1> x_direction = original_eigen_rotation_matrix.col(0);
-        Eigen::Matrix<double,3,1> z_direction = x_direction.cross(y_direction);  
-        x_direction = y_direction.cross(z_direction);  
+        Eigen::Matrix<double,3,1> x_direction = (base1-base0).normalized();
+        Eigen::Matrix<double,3,1> y_direction = (z_direction.cross(x_direction)).normalized();
+        x_direction = y_direction.cross(z_direction);
+        y_direction = z_direction.cross(x_direction);
         x_direction.normalize();
-        z_direction = x_direction.cross(y_direction);  
-        z_direction.normalize();
+        y_direction.normalize();
 
-        if (y_direction.norm() < 1e-7 || z_direction.norm() < 1e-7){
-            if (config_draw->stack_page != nullptr) config_draw->stack_page->replace_last(warning_overlay("Geometry is compromised",*appdata.resources));
-            return;
-        }
         Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
         eigen_rotation_matrix.col(0) = x_direction;
         eigen_rotation_matrix.col(1) = y_direction;
         eigen_rotation_matrix.col(2) = z_direction;
+        double det = eigen_rotation_matrix.determinant();
 
-        std::cout << "target eigen_rotation_matrix:\n" << eigen_rotation_matrix << std::endl; 
-
-        if(original_eigen_rotation_matrix.determinant()<0.0)
-            original_eigen_rotation_matrix.col(1) = -original_eigen_rotation_matrix.col(1);
+        if(eigen_rotation_matrix.determinant()<0.999 || eigen_rotation_matrix.determinant()>1.0001)
+            throw std::runtime_error("determinant is improper");
 
         BoundingBox bounding_box_original_image{input};    
         auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
-        //auto output_bounding_box = bounding_box_original_image.centered_bounding_box(original_eigen_rotation_matrix * eigen_rotation_matrix.transpose());
-        //auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix*original_eigen_rotation_matrix.transpose());     
-        //auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix.transpose()*original_eigen_rotation_matrix);     original_eigen_rotation_matrix.transpose() * eigen_rotation_matrix
-   
-        std::cout << "bounding_box_original_image:\n" << bounding_box_original_image << std::endl;
-        std::cout << "output_bounding_box:\n" << output_bounding_box << std::endl;
 
         using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
         auto filter = FilterType::New();
@@ -1321,6 +1281,8 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             for (size_t row = 0; row < 3; ++row)
                 rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
 
+        if(output_bounding_box.orientation.determinant() < 0.999 ||  output_bounding_box.orientation.determinant() > 1.001)
+            throw std::runtime_error("matrix must be rotation");
         filter->SetOutputDirection(rotation_matrix);
 
         try{
@@ -1329,14 +1291,15 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             appdata.vol_mas->update_volume(output);
             appdata.volumes.emplace("alongtrajectory",output);
             curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
+
             auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
                 ImageType::IndexType local_index;
                 ImageType::PointType itk_point_in_world_coordinates;
                 itk_point_in_world_coordinates[0] = point[0];
                 itk_point_in_world_coordinates[1] = point[1];
                 itk_point_in_world_coordinates[2] = point[2];
-                output->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
-                auto size = output->GetLargestPossibleRegion().GetSize();
+                appdata.vol_mas->get_volume()->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+                auto size = appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize();
                 Eigen::Matrix<double,3,1> converted;
                 converted[0] = (1.0/size[0])*(double)local_index[0];
                 converted[1] = (1.0/size[1])*(double)local_index[1];
@@ -1344,8 +1307,8 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
                 return converted;
             };
 
-            const auto tip_in_local_coords = convert_to_index_coordinates(tip);
-            const auto entry_in_local_coords = convert_to_index_coordinates(entry_word_coordinates);
+            const auto tip_in_local_coords = convert_to_index_coordinates(*appdata.trajectory_location.target_world_coordinates);
+            const auto entry_in_local_coords = convert_to_index_coordinates(*appdata.trajectory_location.entry_point_word_coordinates);
             Eigen::Matrix<double,3,1> vector_aligned = tip_in_local_coords-entry_in_local_coords;
             Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
             vector_aligned.normalize();
@@ -1356,7 +1319,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             auto final_rotation = Eigen::AngleAxisd(angle, axis).toRotationMatrix();
             vector_aligned = tip_in_local_coords-entry_in_local_coords;
             double scaling_along_z = vector_aligned.norm();
-            double scaling_along_x = std::tan(0.01)*scaling_along_z;
+            double scaling_along_x = std::tan(0.05)*scaling_along_z;
             offset_base_to_Oxy(0,0) = scaling_along_x;
             offset_base_to_Oxy(1,1) = scaling_along_x;
             offset_base_to_Oxy(2,2) = scaling_along_z;
@@ -1402,10 +1365,9 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         throw std::runtime_error("failure");
     }
 
-
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
-    auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
+    auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
     image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
     *slidercontainer << std::move(image_displayx) << std::move(image_displayy);
 

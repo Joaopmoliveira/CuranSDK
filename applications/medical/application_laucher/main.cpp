@@ -250,7 +250,7 @@ public:
 		button1->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
 			// 1 . check_if_pathplanning_arguments_are_valid();
-			if(!launch_all("VolumetricPathPlanning",false)){
+			if(!launch_all("SurgicalPlanning",false)){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
 			}

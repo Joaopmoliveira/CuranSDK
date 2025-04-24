@@ -863,6 +863,9 @@ int main(int argc, char **argv)
         for (Eigen::Index col = 0; col < 4; ++col)
             application_state.robot_state.calibration_matrix(col, row) = calibration.homogeneous_transformation()(row, col);
 
+    //TODO: need to consider trajectory data
+    //curan::utilities::TrajectorySpecificationData trajectory_data{CURAN_COPIED_RESOURCE_PATH};
+
     std::filesystem::path robot_path = CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/arm.json";
     curan::renderable::SequencialLinks::Info create_info;
     create_info.convetion = vsg::CoordinateConvention::Y_UP;
