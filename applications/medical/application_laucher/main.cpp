@@ -292,7 +292,7 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
-		auto button4 = curan::ui::Button::make("Reconstruction","volumereconstruction.png", resources);
+		auto button4 = curan::ui::Button::make("Volume Scanning","volumereconstruction.png", resources);
 		ptr_button4 = button4.get();
 		button4->set_click_color(SK_ColorDKGRAY)
 			.set_hover_color(SK_ColorLTGRAY)
@@ -309,7 +309,7 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
-		auto button6 = curan::ui::Button::make("Reconstruction","surfaceconstruction.png", resources);
+		auto button6 = curan::ui::Button::make("Surface Scanning","surfaceconstruction.png", resources);
 		ptr_button6 = button6.get();
 		button6->set_click_color(SK_ColorDKGRAY)
 			.set_hover_color(SK_ColorLTGRAY)
@@ -318,7 +318,7 @@ public:
 		button6->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 									{
 			// 1 . check_if_realtimereconstructor_arguments_are_valid();
-			if(!launch_all("RealTimeReconstructor")){
+			if(!launch_all("SurfaceExtraction")){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
 			}

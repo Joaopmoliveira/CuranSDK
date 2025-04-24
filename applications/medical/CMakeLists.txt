@@ -1,18 +1,9 @@
 add_subdirectory(calibrate_ultrasound)
-add_subdirectory(extract_intersections_ultrasound)
 add_subdirectory(temporal_calibration)
 add_subdirectory(volumetric_reconstruction)
 add_subdirectory(intraoperative_navigation)
 add_subdirectory(application_laucher)
-add_subdirectory(usdifferencemean)
-add_subdirectory(image_cropper)
-add_subdirectory(needle_validator)
 add_subdirectory(surface_based_extraction)
 add_subdirectory(robot_and_needle_with_ct)
 add_subdirectory(surgical_planning)
-
-if(WAS_PLUS_SPECIFIED)
-	add_subdirectory(data_replayer_for_videos)
-endif()
-
 
