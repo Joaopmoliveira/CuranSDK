@@ -249,7 +249,7 @@ void append_desired_trajectory_data(RobotState &state)
     vectorized_eigen_entry.block<3,1>(0,0) = trajectory_data.entry();
     desired_target_point.block<3,1>(0,0) = trajectory_data.target();
 
-    auto registration_matrix = append_ct_registered_volume_to_scene(state, trajectory_data.path_to_image());
+    auto registration_matrix = append_ct_registered_volume_to_scene(state, trajectory_data.path_to_original_image());
 
     curan::renderable::Sphere::Info infosphere;
     infosphere.builder = vsg::Builder::create();

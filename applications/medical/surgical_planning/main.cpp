@@ -16,6 +16,8 @@
 #include <functional>
 #include "utils/Job.h"
 #include "utils/TheadPool.h"
+#include "utils/FileStructures.h"
+#include "utils/DateManipulation.h"
 
 #include "userinterface/widgets/Drawable.h"
 #include "utils/Lockable.h"
@@ -1613,7 +1615,7 @@ try{
 
     std::printf("\nReading input volume...\n");
     auto fixedImageReader = ImageReaderType::New();
-    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha");
+    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/johndoe.mha");
 
     auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>::New();
     rescale->SetInput(fixedImageReader->GetOutput());
@@ -1719,12 +1721,6 @@ try{
                 for(size_t j = 0; j < 3; ++j)
                     direction(i,j) = eigen_rotation_matrix(i,j);
 
-            std::cout << "added geometry with: " << std::endl;
-            std::cout << "----> size: " << size[0] << " " << size[1]<< " " << size[2] << std::endl;
-            std::cout << "----> spacing: " << spacing[0]<< " " << spacing[1]<< " " << spacing[2] << std::endl;
-            std::cout << "----> origin: " << origin[0]<< " " << origin[1]<< " " << origin[2] << std::endl;
-            std::cout << "----> orientation: \n" << eigen_rotation_matrix << std::endl;
-
             ImageType::RegionType region;
             region.SetSize(size);
           
@@ -1755,6 +1751,26 @@ try{
         return is_inside;
     };
 
+    Eigen::Matrix<double,3,3> desired_orientation;
+    Eigen::Vector3d z_dir = (*appdata.trajectory_location.entry_point_word_coordinates-*appdata.trajectory_location.entry_point_word_coordinates).normalized();
+    Eigen::Vector3d x_dir = z_dir;
+    x_dir[0] -= 10.0;
+    x_dir.normalize();
+    Eigen::Vector3d y_dir = z_dir.cross(x_dir);
+    x_dir = y_dir.cross(z_dir);
+    desired_orientation.col(0) = x_dir;
+    desired_orientation.col(1) = y_dir;
+    desired_orientation.col(2) = z_dir;
+    
+    auto date = curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now());
+    curan::utilities::TrajectorySpecificationData specification{date,
+        *appdata.trajectory_location.entry_point_word_coordinates,
+        *appdata.trajectory_location.entry_point_word_coordinates,
+        desired_orientation,
+        CURAN_COPIED_RESOURCE_PATH"/original_volume.mha",
+        CURAN_COPIED_RESOURCE_PATH"/masked_volume.mha"
+        };
+
     auto [masked_output_image,mask_to_use] = DeepCopyWithInclusionPolicy<ImageType>(evaluate_if_pixel_inside_mask,orienter->GetOutput());
 
     {
@@ -1777,6 +1793,11 @@ try{
         writer->SetInput(mask_to_use);
         writer->Update();
     }
+
+    // write prettified JSON to another file
+	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
+	o << specification;
+	std::cout << specification << std::endl;
     
     return 0;
 }

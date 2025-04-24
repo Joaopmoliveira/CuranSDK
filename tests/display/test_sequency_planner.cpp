@@ -23,6 +23,7 @@
 #include "userinterface/widgets/ImageWrapper.h"
 #include "userinterface/widgets/ComputeImageBounds.h"
 #include "utils/Overloading.h"
+#include "utils/FileStructures.h"
 
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkCastImageFilter.h"

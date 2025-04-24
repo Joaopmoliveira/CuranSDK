@@ -126,7 +126,8 @@ namespace curan
             Eigen::Matrix<double, 3, 1> f_target;
             Eigen::Matrix<double, 3, 1> f_entrypoint;
             Eigen::Matrix<double, 3, 3> f_desired_orientation;
-            std::string f_path_to_image;
+            std::string f_path_to_original_image;
+            std::string f_path_to_masked_image;
 
             void decode(std::istream &instream);
 
@@ -135,11 +136,14 @@ namespace curan
                                         const Eigen::Matrix<double, 3, 1> &in_target,
                                         const Eigen::Matrix<double, 3, 1> &in_entrypoint,
                                         const Eigen::Matrix<double,3,3>& in_desired_orientation,
-                                        const std::string &in_path_to_image) : f_timestamp{in_timestamp},
+                                        const std::string &in_path_to_original_image,
+                                        const std::string &in_path_to_masked_image) : f_timestamp{in_timestamp},
                                                                                f_target{in_target},
                                                                                f_entrypoint{in_entrypoint},
                                                                                f_desired_orientation{in_desired_orientation},
-                                                                               f_path_to_image{in_path_to_image}
+                                                                               f_path_to_original_image{in_path_to_original_image},
+                                                                               f_path_to_masked_image{in_path_to_masked_image}
+
             {
             }
 
@@ -155,7 +159,9 @@ namespace curan
 
             Eigen::Matrix<double, 3, 3> desired_direction() const;
 
-            std::string path_to_image() const;
+            std::string path_to_original_image() const;
+
+            std::string path_to_masked_image() const;
         };
 
         std::ostream &operator<<(std::ostream &os, const TrajectorySpecificationData &calib);

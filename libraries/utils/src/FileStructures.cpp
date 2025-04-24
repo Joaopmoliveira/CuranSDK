@@ -294,7 +294,8 @@ namespace curan
                 f_target[i] = eigen_target(i, 0);
                 f_entrypoint[i] = eigen_entry(i, 0);
             }
-            f_path_to_image = trajectory_data["moving_image_directory"];
+            f_path_to_original_image = trajectory_data["original_moving_image_path"];
+            f_path_to_masked_image = trajectory_data["masked_moving_image_path"];
             f_desired_orientation = eigen_desired_direction;
         }
 
@@ -313,9 +314,12 @@ namespace curan
             return f_entrypoint;
         }
 
-        std::string TrajectorySpecificationData::path_to_image() const
-        {
-            return f_path_to_image;
+        std::string TrajectorySpecificationData::path_to_original_image() const{
+            return f_path_to_original_image;
+        }
+
+        std::string TrajectorySpecificationData::path_to_masked_image() const {
+            return f_path_to_masked_image;
         }
 
         Eigen::Matrix<double, 3, 3> TrajectorySpecificationData::desired_direction() const
@@ -325,7 +329,6 @@ namespace curan
 
         std::ostream &operator<<(std::ostream &os, const TrajectorySpecificationData &calib)
         {
-
             nlohmann::json calibration_data;
             calibration_data["timestamp"] = calib.timestamp();
             {
@@ -333,20 +336,18 @@ namespace curan
                 optimized_values << calib.target().format(desired_matrix_format()) << std::endl;
                 calibration_data["target"] = optimized_values.str();
             }
-
             {
                 std::stringstream optimized_values;
                 optimized_values << calib.entry().format(desired_matrix_format()) << std::endl;
                 calibration_data["entry"] = optimized_values.str();
             }
-    
             {
                 std::stringstream optimized_values;
                 optimized_values << calib.desired_direction().format(desired_matrix_format()) << std::endl;
                 calibration_data["desired_direction"] = optimized_values.str();
             }
-            calibration_data["moving_image_directory"] = calib.path_to_image();
-
+            calibration_data["original_moving_image_path"] = calib.path_to_original_image();
+            calibration_data["masked_moving_image_path"] = calib.path_to_masked_image();
             os << calibration_data;
             return os;
         }
