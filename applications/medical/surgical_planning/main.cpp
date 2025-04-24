@@ -48,6 +48,39 @@ constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
 
+template <typename TImage,typename InclusionPolicy>
+std::tuple<typename TImage::Pointer,itk::Image<unsigned char,3>::Pointer> DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
+{
+    typename TImage::Pointer output = TImage::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    auto mask = itk::Image<unsigned char,3>::New();
+    mask->SetRegions(input->GetLargestPossibleRegion());
+    mask->SetDirection(input->GetDirection());
+    mask->SetSpacing(input->GetSpacing());
+    mask->SetOrigin(input->GetOrigin());
+    mask->Allocate();
+
+    itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<itk::Image<unsigned char,3>> maskIterator(mask, mask->GetLargestPossibleRegion());
+
+    for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator,++maskIterator ){
+        if(inclusion_policy((double)(inputIterator.GetIndex()[0]),(double)(inputIterator.GetIndex()[1]),(double)(inputIterator.GetIndex()[2]))){
+            outputIterator.Set(inputIterator.Get());
+            maskIterator.Set(255);
+        }else{
+            outputIterator.Set(0);
+            maskIterator.Set(0);
+        }
+    }
+    return {output,mask};
+}
+
 struct ACPCData{
     bool ac_specification = false;
     curan::ui::Button* ac_button = nullptr;
@@ -1596,6 +1629,7 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
 
 
 int main(int argc, char* argv[]) {
+try{
 	using namespace curan::ui;
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
 	DisplayParams param{ std::move(context)};
@@ -1657,5 +1691,84 @@ int main(int argc, char* argv[]) {
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
-	return 0;
+
+
+    auto geometries = appdata.vol_mas->geometries();
+
+    std::vector<std::array<double, 6>> internals;
+    internals.reserve(geometries.size());
+    for (const auto &geom : geometries)
+    {
+        std::array<double, 6> boundaries;
+        boundaries[0] = std::numeric_limits<double>::max();  // min x - 0
+        boundaries[1] = std::numeric_limits<double>::max();  // min y - 1
+        boundaries[2] = std::numeric_limits<double>::max();  // min z - 2
+        boundaries[3] = -std::numeric_limits<double>::max(); // max x - 3
+        boundaries[4] = -std::numeric_limits<double>::max(); // max y - 4
+        boundaries[5] = -std::numeric_limits<double>::max(); // max z - 5
+        for (const auto &vert : geom.geometry.vertices){
+            boundaries[0] = std::min((double)vert[0], boundaries[0]);
+            boundaries[1] = std::min((double)vert[1], boundaries[1]); //
+            boundaries[2] = std::min((double)vert[2], boundaries[2]);
+            boundaries[3] = std::max((double)vert[0], boundaries[3]);
+            boundaries[4] = std::max((double)vert[1], boundaries[4]); //
+            boundaries[5] = std::max((double)vert[2], boundaries[5]);
+        }
+        boundaries[0] *= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
+        boundaries[1] *= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1]; //
+        boundaries[2] *= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
+        boundaries[3] *= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
+        boundaries[4] *= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1]; //
+        boundaries[5] *= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
+        internals.push_back(boundaries);
+    }
+
+
+    auto evaluate_if_pixel_inside_mask = [&](double in_x, double in_y, double in_z)
+    {
+        for (const auto &boundary : internals){
+            if ((in_x > boundary[0] && in_x < boundary[3]) && 
+                (in_y > boundary[1] && in_y < boundary[4]) &&
+                (in_z > boundary[2] && in_z < boundary[5])){
+                    return true;
+                }
+                
+        }
+        return false;
+    };
+
+    auto [masked_output_image,mask_to_use] = DeepCopyWithInclusionPolicy<ImageType>(evaluate_if_pixel_inside_mask,appdata.vol_mas->get_volume());
+
+    {
+        auto writer = itk::ImageFileWriter<ImageType>::New();
+        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/original_volume.mha");
+        writer->SetInput(data_application.map[ORIGINAL_VOLUME].get_volume());
+        writer->Update();
+    }
+
+    {
+        auto writer = itk::ImageFileWriter<ImageType>::New();
+        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/masked_volume.mha");
+        writer->SetInput(masked_output_image);
+        writer->Update();
+    }
+
+    {
+        auto writer = itk::ImageFileWriter<itk::Image<unsigned char,3>>::New();
+        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/mask.mha");
+        writer->SetInput(mask_to_use);
+        writer->Update();
+    }
+
+    return 0;
+}
+catch (const std::exception &e)
+{
+    std::cout << "Exception thrown:" << e.what() << "\n";
+}
+catch (...)
+{
+    std::cout << "Failed to create window for unknown reason\n";
+    return 1;
+}
 }
