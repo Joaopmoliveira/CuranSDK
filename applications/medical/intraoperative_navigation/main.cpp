@@ -3,16 +3,13 @@
 #include "utils/Reader.h"
 #include "utils/FileStructures.h"
 
-int main()
-{
-    try
-    {
+int main(){
+    try{
         curan::utilities::TrajectorySpecificationData trajectory_data{CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json"};
         Eigen::Matrix<double, 3, 1> desired_direction = trajectory_data.target()-trajectory_data.entry();
         desired_direction.normalize();
 
         curan::utilities::NeedleCalibrationData needle_calibration_data{CURAN_COPIED_RESOURCE_PATH"/needle_calibration.json"}; 
-
         curan::utilities::RegistrationData registration_data{CURAN_COPIED_RESOURCE_PATH"/registration.json"};
 
         using namespace curan::ui;
