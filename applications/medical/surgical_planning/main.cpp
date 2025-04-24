@@ -1687,7 +1687,7 @@ try{
 
     for (const auto &geom : geometries){
         if(geom.geometry.vertices.size()==8){
-            ImageType::Pointer image = ImageType::New();
+            ImageType::Pointer geometry_as_image = ImageType::New();
 
             auto origin_index = convert(geom.geometry.vertices[0]);
             auto x_dir_index = convert(geom.geometry.vertices[1]);
@@ -1695,9 +1695,9 @@ try{
             auto z_dir_index = convert(geom.geometry.vertices[4]);
 
             ImageType::SizeType size;
-            size[0] = 1;  // size along X
-            size[1] = 1;  // size along Y 
-            size[2] = 1;   // size along Z
+            size[0] = 10;  // size along X
+            size[1] = 10;  // size along Y 
+            size[2] = 10;   // size along Z
         
             ImageType::SpacingType spacing;
             spacing[0] = (x_dir_index - origin_index).norm()/(double)size[0]; // mm along X
@@ -1714,22 +1714,28 @@ try{
             eigen_rotation_matrix.col(1) = (y_dir_index - origin_index).normalized();
             eigen_rotation_matrix.col(2) = (z_dir_index - origin_index).normalized();
 
-            auto direction = image->GetDirection();
+            auto direction = geometry_as_image->GetDirection();
             for(size_t i = 0; i < 3; ++i)
                 for(size_t j = 0; j < 3; ++j)
                     direction(i,j) = eigen_rotation_matrix(i,j);
-          
+
+            std::cout << "added geometry with: " << std::endl;
+            std::cout << "----> size: " << size[0] << " " << size[1]<< " " << size[2] << std::endl;
+            std::cout << "----> spacing: " << spacing[0]<< " " << spacing[1]<< " " << spacing[2] << std::endl;
+            std::cout << "----> origin: " << origin[0]<< " " << origin[1]<< " " << origin[2] << std::endl;
+            std::cout << "----> orientation: \n" << eigen_rotation_matrix << std::endl;
+
             ImageType::RegionType region;
             region.SetSize(size);
           
-            image->SetRegions(region);
-            image->SetSpacing(spacing);
-            image->SetOrigin(origin);
-            image->SetDirection(direction);
-            image->Allocate();
-            image->FillBuffer(0);
+            geometry_as_image->SetRegions(region);
+            geometry_as_image->SetSpacing(spacing);
+            geometry_as_image->SetOrigin(origin);
+            geometry_as_image->SetDirection(direction);
+            geometry_as_image->Allocate();
+            geometry_as_image->FillBuffer(0);
 
-            internals.push_back(image);
+            internals.push_back(geometry_as_image);
         }
     }
 
@@ -1743,11 +1749,8 @@ try{
             ptr->TransformIndexToPhysicalPoint(ind,world);
             boundary->TransformPhysicalPointToIndex(world,local_ind);
             auto size = boundary->GetLargestPossibleRegion().GetSize();
-            if ((local_ind[0] > 0 && local_ind[0] < size[0]) && 
-                (local_ind[1] > 0 && local_ind[1] < size[1]) &&
-                (local_ind[2] > 0 && local_ind[2] < size[2])){
-                    is_inside = true;
-                }
+            if ((local_ind[0] >= 0 && local_ind[0] < size[0]) && (local_ind[1] >= 0 && local_ind[1] < size[1]) && (local_ind[2] >= 0 && local_ind[2] < size[2]))
+                is_inside = true;
         }
         return is_inside;
     };
