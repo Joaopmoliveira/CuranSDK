@@ -70,7 +70,7 @@ std::tuple<typename TImage::Pointer,itk::Image<unsigned char,3>::Pointer> DeepCo
     itk::ImageRegionIterator<itk::Image<unsigned char,3>> maskIterator(mask, mask->GetLargestPossibleRegion());
 
     for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator,++maskIterator ){
-        if(inclusion_policy(inputIterator.GetIndex(),input){
+        if(inclusion_policy(inputIterator.GetIndex(),input)){
             outputIterator.Set(inputIterator.Get());
             maskIterator.Set(255);
         }else{
