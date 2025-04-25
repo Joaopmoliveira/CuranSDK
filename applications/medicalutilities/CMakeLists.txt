@@ -2,6 +2,7 @@ add_subdirectory(extract_intersections_ultrasound)
 add_subdirectory(usdifferencemean)
 add_subdirectory(image_cropper)
 add_subdirectory(needle_validator)
+add_subdirectory(iterative_volumetric_reconstruction)
 
 if(WAS_PLUS_SPECIFIED)
 	add_subdirectory(data_replayer_for_videos)

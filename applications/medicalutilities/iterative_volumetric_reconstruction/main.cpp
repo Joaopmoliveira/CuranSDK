@@ -49,8 +49,57 @@ And it outputs
 
 */
 
+
+
+
+void convert_robot_confi(const curan::robotic::RobotModel<curan::robotic::number_of_joints>& robot,igtl::Matrix4x4& matrix)
+{
+	matrix[0][0] = robot.rotation()(0,0);
+	matrix[1][0] = robot.rotation()(1,0);
+	matrix[2][0] = robot.rotation()(2,0);
+
+	matrix[0][1] = robot.rotation()(0,1);
+	matrix[1][1] = robot.rotation()(1,1);
+	matrix[2][1] = robot.rotation()(2,1);
+
+	matrix[0][2] = robot.rotation()(0,2);
+	matrix[1][2] = robot.rotation()(1,2);
+	matrix[2][2] = robot.rotation()(2,2);
+
+	matrix[3][0] = 0.0;
+	matrix[3][1] = 0.0;
+	matrix[3][2] = 0.0;
+	matrix[3][3] = 1.0;
+
+	matrix[0][3] = robot.translation()[0]*1.0e3;
+	matrix[1][3] = robot.translation()[1]*1.0e3;
+	matrix[2][3] = robot.translation()[2]*1.0e3;
+	return;
+}
+
 using OutputPixelType = unsigned char;
 using OutputImageType = itk::Image<OutputPixelType, 3>;
+
+using PixelType = float;
+using ImageType = itk::Image<PixelType, 3>;
+
+ImageType::Pointer DeepCopyWithInclusionPolicy(ImageType::Pointer input)
+{
+    ImageType::Pointer output = ImageType::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    itk::ImageRegionConstIteratorWithIndex<ImageType> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<ImageType> outputIterator(output, output->GetLargestPossibleRegion());
+
+    for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator)
+            outputIterator.Set(inputIterator.Get());
+    
+    return output;
+}
 
 constexpr bool display_ultrasound_with_plus_homogeneous_data = false;
 
@@ -145,7 +194,8 @@ public:
 enum WindowSpecification
 {
     ROI_SPECIFICATION,
-    VOLUME_RECONSTRUCTION
+    VOLUME_RECONSTRUCTION,
+    REGISTRATION
 };
 
 struct ApplicationState
@@ -161,6 +211,7 @@ struct ApplicationState
     std::shared_ptr<curan::utilities::ThreadPool> pool;
     RobotState robot_state;
     std::string filename{CURAN_COPIED_RESOURCE_PATH "/reconstruction_results.mha"};
+    ImageType::Pointer scanned_volume = nullptr;
 
     ApplicationState(curan::renderable::Window &wind) : robot_state{wind}
     {
@@ -175,6 +226,12 @@ struct ApplicationState
 
     void showMainWindow()
     {
+        static bool first_time = true;
+        if(first_time){
+            ImGui::SetNextWindowSize(ImVec2{400,400},ImGuiCond_Always);
+            first_time = false;
+        }
+        
         ImGui::Begin("Volume Reconstruction", NULL, ImGuiWindowFlags_MenuBar);
         if (ImGui::BeginMenuBar())
         {
@@ -200,6 +257,16 @@ struct ApplicationState
                     else
                         specification = VOLUME_RECONSTRUCTION;
                 }
+                if (ImGui::MenuItem("Registration", "Ctrl+F"))
+                {
+                    if (operation_in_progress && specification != REGISTRATION)
+                    {
+                        std::lock_guard<std::mutex> g{mut};
+                        show_error = true;
+                    }
+                    else
+                        specification = REGISTRATION;
+                }
                 ImGui::EndMenu();
             }
             ImGui::EndMenuBar();
@@ -213,23 +280,39 @@ struct ApplicationState
         }
         if (local_copy)
             ImGui::ProgressBar(-1.0f * ImGui::GetTime());
-        ImGui::Dummy(padding);
-        ImGui::SameLine();
-        ImGui::TextWrapped("You can select a region of interest and then inject B-Scans into the volume. You always need to specify the bounding box before reconstruction"); // Display some text (you can use a format strings too)
-        ImGui::Dummy(padding);
-        ImGui::SameLine();
+
 
         switch (specification)
         {
         case ROI_SPECIFICATION:
+            ImGui::Dummy(padding);
+            ImGui::SameLine();
+            ImGui::TextWrapped("Please start selecting your region of interest. Once the robot is in place, press the storing button."); // Display some text (you can use a format strings too)
+            ImGui::Dummy(padding);
+            ImGui::SameLine();
             showRegionOfInterestWindow();
             break;
         case VOLUME_RECONSTRUCTION:
-        default:
+            ImGui::Dummy(padding);
+            ImGui::SameLine();
+            ImGui::TextWrapped("Upon termination of your scanning routine, click the save button to store the volume for registration purpouses."); // Display some text (you can use a format strings too)
+            ImGui::Dummy(padding);
+            ImGui::SameLine();
             showReconstructionWindow();
             break;
+        default:
+            ImGui::Dummy(padding);
+            ImGui::SameLine();
+            ImGui::TextWrapped("Registration between pre-operative volume and scanned volume."); // Display some text (you can use a format strings too)
+            ImGui::Dummy(padding);
+            ImGui::SameLine();
+            showRegistrationWindow();
+            break;
         }
+        if (ImGui::Button("Center Camera"))
+        {
 
+        }
         ImGui::Dummy(padding);
         ImGui::SameLine();
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -237,6 +320,32 @@ struct ApplicationState
         showOverlayErrorWindow();
         showOverlaySuccessWindow();
     }
+
+    void showRegistrationWindow()
+    {
+        ImGui::Dummy(padding);
+        if (ImGui::Button("Start Registration"))
+        {
+            {
+                std::lock_guard<std::mutex> g{mut};
+                operation_in_progress = true;
+                operation_description = "saving volumetric reconstruction";
+                robot_state.inject_frame(RobotState::InjectVolumeStatus::FREEZE_VOLUME);
+            }
+            pool->submit(curan::utilities::Job{"solve registration", [this](){
+                                                   
+                std::this_thread::sleep_for(std::chrono::seconds(10));
+
+                                                   {
+                                                       std::lock_guard<std::mutex> g{mut};
+                                                       success_description = "solved registration problem";
+                                                       operation_in_progress = false;
+                                                       show_sucess = true;
+                                                       robot_state.inject_frame(RobotState::InjectVolumeStatus::INJECT_FRAME);
+                                                   }
+                                               }});
+        }
+    };
 
     void showReconstructionWindow()
     {
@@ -340,8 +449,18 @@ struct ApplicationState
                                                        writer->SetFileName(filename);
                                                    }
                                                    writer->SetInput(importFilter->GetOutput());
-                                                   writer->Update();
-
+                                                   try{
+                                                    writer->Update();
+                                                    scanned_volume = DeepCopyWithInclusionPolicy(importFilter->GetOutput());
+                                                   } catch(...){
+                                                    std::lock_guard<std::mutex> g{mut};
+                                                    success_description = "failed to store/record the volume";
+                                                    operation_in_progress = false;
+                                                    show_error = true;
+                                                    robot_state.inject_frame(RobotState::InjectVolumeStatus::INJECT_FRAME);
+                                                    return;
+                                                   }
+                                                
                                                    {
                                                        std::lock_guard<std::mutex> g{mut};
                                                        success_description = "saved volume information";
@@ -550,7 +669,7 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
         std::cout << "creating bounding box texture\n";
         curan::renderable::Box::Info infobox;
         infobox.builder = vsg::Builder::create();
-        infobox.geomInfo.color = vsg::vec4(1.0, 0.0, 0.0, 1.0);
+        infobox.geomInfo.color = vsg::vec4(0.0, 0.0, 0.0, 1.0);
         infobox.geomInfo.dx = vsg::vec3(1.0f, 0.0, 0.0);
         infobox.geomInfo.dy = vsg::vec3(0.0, 1.0f, 0.0);
         infobox.geomInfo.dz = vsg::vec3(0.0, 0.0, 1.0f);
@@ -728,6 +847,7 @@ bool process_message(RobotState &state, size_t protocol_defined_val, std::error_
     return false;
 }
 
+/*
 std::ofstream &get_file_handle()
 {
     static bool initializing = true;
@@ -742,7 +862,7 @@ std::ofstream &get_file_handle()
     }
     initializing = false;
     return out;
-}
+}*/
 
 bool process_joint_message(RobotState &state, const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
 {
@@ -763,8 +883,8 @@ bool process_joint_message(RobotState &state, const size_t &protocol_defined_val
     robot_model.update(internal_state);
     auto transform = robot_model.homogenenous_transformation();
     Eigen::Matrix<double,4,4> transform_imposed_by_plus_because_of_obscure_reaons = Eigen::Matrix<double,4,4>::Identity();
-    transform_imposed_by_plus_because_of_obscure_reaons(0,3) = 0.1925;
-    transform_imposed_by_plus_because_of_obscure_reaons(1,3) = 0.2125;
+    transform_imposed_by_plus_because_of_obscure_reaons(0,3) = 0;
+    transform_imposed_by_plus_because_of_obscure_reaons(1,3) = 0;
     transform_imposed_by_plus_because_of_obscure_reaons(2,3) = 0;
 
     transform = (transform*transform_imposed_by_plus_because_of_obscure_reaons).eval();
@@ -784,44 +904,74 @@ bool process_joint_message(RobotState &state, const size_t &protocol_defined_val
     return false;
 }
 
+
 int communication(RobotState &state, asio::io_context &context)
 {
-    asio::ip::tcp::resolver resolver(context);
-    auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(context, resolver.resolve("localhost", std::to_string(18944)));
+    igtl::TimeStamp::Pointer ts;
+    ts = igtl::TimeStamp::New();
+    curan::robotic::State current_state;
+    Eigen::Matrix<double,7,1> offsets = {0,1,0,-1,0,0,0};
+    curan::robotic::RobotModel<curan::robotic::number_of_joints> robot_model{CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_mass_data.json",
+                                                                            CURAN_COPIED_RESOURCE_PATH"/models/lbrmed/robot_kinematic_limits.json"};
+    double time = 0.0;
+    while(state){
+        std::shared_ptr<curan::communication::FRIMessage> message = std::shared_ptr<curan::communication::FRIMessage>(new curan::communication::FRIMessage());
+        static auto raw_data = std::vector<uint8_t>(400 * 400, 0);
+        for (auto &dat : raw_data)
+            dat = rand();
+          
+        igtl::TimeStamp::Pointer ts;
+        ts = igtl::TimeStamp::New();
+          
+        int size[] = {400, 400, 1};
+        float spacing[] = {1.0, 1.0, 5.0};
+        int svsize[] = {400, 400, 1};
+        int svoffset[] = {0, 0, 0};
+        int scalarType = igtl::ImageMessage::TYPE_UINT8;
 
-    auto lam = [&](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val)
-    {
-        try
-        {
-            if (process_message(state, protocol_defined_val, er, val) || state)
-                context.stop();
+        for (size_t i = 0; i < current_state.q.size(); ++i){
+            current_state.q[i] = 0.4*std::sin(time)+offsets[i];
+            message->angles[i] = current_state.q[i];
         }
-        catch (...)
-        {
-            std::cout << "Exception was thrown\n";
-        }
-    };
-    client->connect(lam);
-    std::cout << "connecting to client\n";
+        current_state.differential(current_state);
+        
+        robot_model.update(current_state);
 
-    asio::ip::tcp::resolver fri_resolver(context);
-    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context, fri_resolver.resolve("localhost", std::to_string(50010)));
+        ts->GetTime();
+          
+        igtl::ImageMessage::Pointer imgMsg = igtl::ImageMessage::New();
+        imgMsg->SetDimensions(size);
+        imgMsg->SetSpacing(spacing);
+        imgMsg->SetScalarType(scalarType);
+        imgMsg->SetDeviceName("ImagerClient");
+        imgMsg->SetSubVolume(svsize, svoffset);
+        imgMsg->AllocateScalars();
 
-    auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
-    {
-        try
-        {
-            if (process_joint_message(state, protocol_defined_val, er, message))
-                context.stop();
-        }
-        catch (...)
-        {
-            std::cout << "Exception was thrown\n";
-        }
-    };
-    fri_client->connect(lam_fri);
+        std::memcpy(imgMsg->GetScalarPointer(), raw_data.data(), raw_data.size());
+        igtl::Matrix4x4 matrix;
+        convert_robot_confi(robot_model,matrix);			
+        imgMsg->SetMatrix(matrix);
+        imgMsg->Pack();
+          
+        igtl::MessageHeader::Pointer header_to_receive = igtl::MessageHeader::New();
+        header_to_receive->InitPack();
+        std::memcpy(header_to_receive->GetPackPointer(), imgMsg->GetPackPointer(),
+                        header_to_receive->GetPackSize());
+          
+        header_to_receive->Unpack();
+        igtl::MessageBase::Pointer message_to_receive = igtl::MessageBase::New();
+        message_to_receive->SetMessageHeader(header_to_receive);
+        message_to_receive->AllocatePack();
+        std::memcpy(message_to_receive->GetPackBodyPointer(),
+                    imgMsg->GetPackBodyPointer(), imgMsg->GetPackBodySize());
+          
+        std::error_code er{};
+        process_message(state, 0, er, message_to_receive);
+        process_joint_message(state, 0, er, message);
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        time += 1e-3*std::chrono::milliseconds(16).count();
+    }
 
-    context.run();
     if(!state.window_pointer.erase("ultrasound"))
         std::cout << "could not erase ultrasound from image\n";
     std::cout << "stopped connecting to client\n";
@@ -857,12 +1007,13 @@ int main(int argc, char **argv)
     ApplicationState application_state{window};
     app_pointer = &application_state;
 
-    curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
-    std::cout << "using calibration matrix: \n" << calibration.homogeneous_transformation() << std::endl;
+    auto homogenenous_transform = Eigen::Matrix<double,4,4>::Identity();
+
+    //curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
+    //std::cout << "using calibration matrix: \n" << calibration.homogeneous_transformation() << std::endl;
     for (Eigen::Index row = 0; row < 4; ++row)
         for (Eigen::Index col = 0; col < 4; ++col)
-            application_state.robot_state.calibration_matrix(col, row) = calibration.homogeneous_transformation()(row, col);
-
+            application_state.robot_state.calibration_matrix(col, row) = homogenenous_transform(row, col);
     //TODO: need to consider trajectory data
     //curan::utilities::TrajectorySpecificationData trajectory_data{CURAN_COPIED_RESOURCE_PATH};
 
@@ -874,21 +1025,19 @@ int main(int argc, char **argv)
     application_state.robot_state.robot = curan::renderable::SequencialLinks::make(create_info);
     window << application_state.robot_state.robot;
 
-    application_state.pool->submit(curan::utilities::Job{"communication with robot", [&]()
-                                                         { communication(application_state.robot_state, context); }});
-    application_state.pool->submit(curan::utilities::Job{"reconstruct volume", [&]()
-                                                         {
-                                                             auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(8);
-                                                             while (!context.stopped())
-                                                             {
-                                                                 if (application_state.robot_state.inject_frame() && application_state.robot_state.integrated_volume.get() != nullptr)
+    application_state.robot_state(true);
+
+    application_state.pool->submit("communication with robot", [&](){ communication(application_state.robot_state, context); });
+    application_state.pool->submit("reconstruct volume", [&](){
+        auto reconstruction_thread_pool = curan::utilities::ThreadPool::create(8);
+        while (application_state.robot_state)
+            if (application_state.robot_state.inject_frame() && application_state.robot_state.integrated_volume.get() != nullptr)
                                                                      application_state.robot_state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->multithreaded_update(reconstruction_thread_pool);
-                                                             }
-                                                         }});
+    });
 
     window.run();
-    context.stop();
-    get_file_handle().close();
+    application_state.robot_state(false);
+    //get_file_handle().close();
     std::cout << "closed file handle";
     return 0;
 }

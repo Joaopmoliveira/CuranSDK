@@ -78,6 +78,7 @@ Window::Window(Info& info) : number_of_images{5} {
     viewportState = vsg::ViewportState::create(window->extent2D());
     camera = vsg::Camera::create(perspective, lookAt, viewportState);
 
+
     // The commandGraph will contain a 2 stage renderGraph 1) 3D scene 2) ImGui (by default also includes clear depth buffers)
     commandGraph = vsg::CommandGraph::create(window);
     auto renderGraph = vsg::RenderGraph::create(window);

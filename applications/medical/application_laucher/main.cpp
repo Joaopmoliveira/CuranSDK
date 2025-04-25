@@ -13,6 +13,7 @@
 #include "userinterface/widgets/TaskManager.h"
 #include "utils/TheadPool.h"
 #include "utils/Logger.h"
+#include "utils/FileStructures.h"
 #include "utils/Overloading.h"
 #include <variant>
 #include <csignal>
@@ -195,6 +196,28 @@ public:
 
 size_t PendinAsyncData::identifier = 0;
 
+std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources)
+{
+    using namespace curan::ui;
+    auto warn = Button::make(" ", "warning.png", resources);
+    warn->set_click_color(SK_AlphaTRANSPARENT)
+        .set_hover_color(SK_AlphaTRANSPARENT)
+        .set_waiting_color(SK_AlphaTRANSPARENT)
+        .set_size(SkRect::MakeWH(400, 200));
+
+    auto button = Button::make(warning, resources);
+    button->set_click_color(SK_AlphaTRANSPARENT)
+        .set_hover_color(SK_AlphaTRANSPARENT)
+        .set_waiting_color(SK_AlphaTRANSPARENT)
+        .set_size(SkRect::MakeWH(200, 50));
+
+    auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *viwers_container << std::move(warn) << std::move(button);
+    viwers_container->set_color(SK_ColorTRANSPARENT).set_divisions({0.0, .8, 1.0});
+
+    return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
+}
+
 class Application
 {
 	curan::ui::Button *ptr_button1 = nullptr;
@@ -249,7 +272,6 @@ public:
 			.set_size(SkRect::MakeWH(300, 150));
 		button1->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
-			// 1 . check_if_pathplanning_arguments_are_valid();
 			if(!launch_all("SurgicalPlanning",false)){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
@@ -300,7 +322,20 @@ public:
 			.set_size(SkRect::MakeWH(300, 150));
 		button4->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
-			// 1 . check_if_realtimereconstructor_arguments_are_valid();
+			try{
+				curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("Ultrasound calibration not available",resources));
+				return;
+			}
+
+			try{
+				curan::utilities::TrajectorySpecificationData trajectory_data{CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("Pre-operative image not available",resources));
+				return;
+			}
+
 			if(!launch_all("RealTimeReconstructor")){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
@@ -318,6 +353,21 @@ public:
 		button6->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 									{
 			// 1 . check_if_realtimereconstructor_arguments_are_valid();
+			try{
+				curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("Ultrasound calibration not available",resources));
+				return;
+			}
+
+
+			try{
+				curan::utilities::TrajectorySpecificationData trajectory_data{CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("Pre-operative image not available",resources));
+				return;
+			}
+
 			if(!launch_all("SurfaceExtraction")){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
@@ -325,22 +375,6 @@ public:
 			else{
 				inbut->set_waiting_color(waiting_color_active);
 			} });
-
-
-		auto button7 = curan::ui::Button::make("Register","pan.png", resources);
-		ptr_button7 = button7.get();
-		button7->set_click_color(SK_ColorDKGRAY)
-				.set_hover_color(SK_ColorLTGRAY)
-				.set_waiting_color(waiting_color_inactive)
-				.set_size(SkRect::MakeWH(300, 150));
-		button7->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config){
-			// 1 . check_if_realtimereconstructor_arguments_are_valid();
-			if(!launch_all("RegistrationApplication")){
-				terminate_all();
-				inbut->set_waiting_color(waiting_color_inactive);
-			} else {
-				inbut->set_waiting_color(waiting_color_active);
-		} });
 
 		auto button5 = curan::ui::Button::make("Neuro Navigation","biopsyviewer.png", resources);
 		ptr_button5 = button5.get();
@@ -351,7 +385,27 @@ public:
 			.set_size(SkRect::MakeWH(300, 150));
 		button5->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
-			// 1 . check_if_intraoperative_arguments_are_valid();
+			try{
+				curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("Ultrasound calibration not available",resources));
+				return;
+			}
+
+			try{
+				curan::utilities::TrajectorySpecificationData trajectory_data{CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("Pre-operative image not available",resources));
+				return;
+			}
+
+			try{
+				curan::utilities::RegistrationData trajectory_data{CURAN_COPIED_RESOURCE_PATH "/registration_specification.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("Intra-operative Navigation not available",resources));
+				return;
+			}
+
 			if(!launch_all("InteroperativeNavigation")){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
