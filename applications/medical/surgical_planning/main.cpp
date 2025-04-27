@@ -1045,7 +1045,7 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         geom.geometry.vertices[4][1] = b3[1];
         geom.geometry.vertices[4][2] = b3[2];
 
-        appdata.vol_mas->add_geometry(geom);  
+        appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));  
         
         for(size_t i = 0; i < geom.geometry.vertices.size(); ++i){
             ImageType::IndexType local_index;
@@ -1355,7 +1355,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
             offset_base_to_Oxy.block<3,1>(0,3) = tip_in_local_coords;    
             geom.transform(offset_base_to_Oxy);
-            appdata.vol_mas->add_geometry(geom);  
+            appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0x00, 0xFF, 0x00));  
             if (config_draw->stack_page != nullptr) {
                 config_draw->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
             }
@@ -1526,7 +1526,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         // now that the cube is between 0 a +1 we can scale it and offset it to be in the coordinates supplied by the user
         geom.transform(rotation_and_scalling_matrix);
 
-        appdata.vol_mas->add_geometry(geom);
+        appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0x00, 0x00, 0xFF));
         appdata.roi.paths.clear();
     });
 
@@ -1615,7 +1615,7 @@ try{
 
     std::printf("\nReading input volume...\n");
     auto fixedImageReader = ImageReaderType::New();
-    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/johndoe.mha");
+    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha");
 
     auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>::New();
     rescale->SetInput(fixedImageReader->GetOutput());
@@ -1687,7 +1687,7 @@ try{
         return data;
     };
 
-    for (const auto &geom : geometries){
+    for (const auto &[geom,color] : geometries){
         if(geom.geometry.vertices.size()==8){
             ImageType::Pointer geometry_as_image = ImageType::New();
 
