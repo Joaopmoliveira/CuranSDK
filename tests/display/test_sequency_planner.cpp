@@ -16,6 +16,8 @@
 #include <functional>
 #include "utils/Job.h"
 #include "utils/TheadPool.h"
+#include "utils/FileStructures.h"
+#include "utils/DateManipulation.h"
 
 #include "userinterface/widgets/Drawable.h"
 #include "utils/Lockable.h"
@@ -23,7 +25,6 @@
 #include "userinterface/widgets/ImageWrapper.h"
 #include "userinterface/widgets/ComputeImageBounds.h"
 #include "utils/Overloading.h"
-#include "utils/FileStructures.h"
 
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkCastImageFilter.h"
@@ -71,7 +72,7 @@ std::tuple<typename TImage::Pointer,itk::Image<unsigned char,3>::Pointer> DeepCo
     itk::ImageRegionIterator<itk::Image<unsigned char,3>> maskIterator(mask, mask->GetLargestPossibleRegion());
 
     for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator,++maskIterator ){
-        if(inclusion_policy((double)(inputIterator.GetIndex()[0]),(double)(inputIterator.GetIndex()[1]),(double)(inputIterator.GetIndex()[2]))){
+        if(inclusion_policy(inputIterator.GetIndex(),input)){
             outputIterator.Set(inputIterator.Get());
             maskIterator.Set(255);
         }else{
@@ -1044,7 +1045,7 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         geom.geometry.vertices[4][1] = b3[1];
         geom.geometry.vertices[4][2] = b3[2];
 
-        appdata.vol_mas->add_geometry(geom);  
+        appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));  
         
         for(size_t i = 0; i < geom.geometry.vertices.size(); ++i){
             ImageType::IndexType local_index;
@@ -1354,7 +1355,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
             offset_base_to_Oxy.block<3,1>(0,3) = tip_in_local_coords;    
             geom.transform(offset_base_to_Oxy);
-            appdata.vol_mas->add_geometry(geom);  
+            appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0x00, 0xFF, 0x00));  
             if (config_draw->stack_page != nullptr) {
                 config_draw->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
             }
@@ -1525,7 +1526,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         // now that the cube is between 0 a +1 we can scale it and offset it to be in the coordinates supplied by the user
         geom.transform(rotation_and_scalling_matrix);
 
-        appdata.vol_mas->add_geometry(geom);
+        appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0x00, 0x00, 0xFF));
         appdata.roi.paths.clear();
     });
 

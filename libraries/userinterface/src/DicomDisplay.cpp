@@ -227,8 +227,8 @@ namespace ui{
         The geometries are normalized in volume coordinates, thus we must
         convert them into world coordinates
         */
-        cached_polyheader_intersections = std::vector<std::tuple<std::vector<SkPoint>, SkPath>>{};
-        for (const auto &cliped_path : volumetric_mask->geometries())
+        cached_polyheader_intersections = std::vector<std::tuple<std::vector<SkPoint>, SkPath,SkColor>>{};
+        for (const auto &[cliped_path,color] : volumetric_mask->geometries())
         {
             std::vector<SkPoint> points_in_path;
     
@@ -305,7 +305,7 @@ namespace ui{
                 polygon_intersection.lineTo(point);
             polygon_intersection.close();
     
-            cached_polyheader_intersections.push_back(std::make_tuple(points_in_path, polygon_intersection));
+            cached_polyheader_intersections.push_back(std::make_tuple(points_in_path, polygon_intersection,color));
         }
     
         return info;
@@ -445,7 +445,7 @@ namespace ui{
         volumetric_mask->for_each(direction, [&](DicomMask &mask)
                                   { mask.container_resized(inverse_homogenenous_transformation); });
     
-        for (auto &[normalized_path, cached_path] : cached_polyheader_intersections)
+        for (auto &[normalized_path, cached_path,color] : cached_polyheader_intersections)
         {
             std::vector<SkPoint> transformed_points = normalized_path;
             inverse_homogenenous_transformation.mapPoints(transformed_points.data(), transformed_points.size());
@@ -537,7 +537,7 @@ namespace ui{
         volumetric_mask->for_each(direction, [&](DicomMask &mask)
                                   { mask.container_resized(inverse_homogenenous_transformation); });
     
-        for (auto &[normalized_path, cached_path] : cached_polyheader_intersections)
+        for (auto &[normalized_path, cached_path,color] : cached_polyheader_intersections)
         {
             std::vector<SkPoint> transformed_points = normalized_path;
             inverse_homogenenous_transformation.mapPoints(transformed_points.data(), transformed_points.size());
@@ -646,9 +646,10 @@ namespace ui{
                 paint_cached_paths_outline.setStyle(SkPaint::kStroke_Style);
                 std::lock_guard<std::mutex> g{get_mutex()};
     
-                for (const auto &[normalized_path, cached_path] : cached_polyheader_intersections)
+                for (const auto &[normalized_path, cached_path,color] : cached_polyheader_intersections)
                 {
-                    canvas->drawPath(cached_path, paint_cached_paths);
+                    //canvas->drawPath(cached_path, paint_cached_paths);
+                    paint_cached_paths_outline.setColor(color);
                     canvas->drawPath(cached_path, paint_cached_paths_outline);
                 }
     

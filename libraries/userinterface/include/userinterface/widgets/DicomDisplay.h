@@ -125,7 +125,7 @@ class DicomVolumetricMask
     std::vector<DicomMask> masks_y;
     std::vector<DicomMask> masks_z;
 
-    std::vector<curan::geometry::PolyHeadra> three_dimensional_entities;
+    std::vector<std::tuple<curan::geometry::PolyHeadra,SkColor>> three_dimensional_entities;
 
     ImageType::Pointer image;
 public:
@@ -288,8 +288,8 @@ public:
 		} 
                 
         if((update_policy & UPDATE_GEOMETRIES) && image.IsNotNull()){
-			for(auto& dimensional_entities : three_dimensional_entities){
-				for(auto& vertices : dimensional_entities.geometry.vertices){
+			for(auto& [dimensional_entities,color] : three_dimensional_entities){
+				for(auto& vertices: dimensional_entities.geometry.vertices){
 					ImageType::IndexType local_index;
 					ImageType::PointType itk_point_in_world_coordinates;
 					local_index[0] = image->GetLargestPossibleRegion().GetSize()[0]*(double)vertices[0];
@@ -303,7 +303,7 @@ public:
 				}
 			}
 		}  else {
-            three_dimensional_entities = std::vector<curan::geometry::PolyHeadra>{};
+            three_dimensional_entities = std::vector<std::tuple<curan::geometry::PolyHeadra,SkColor>>{};
         } 
 
         image = in_volume;
@@ -336,11 +336,11 @@ public:
     }
 
     template<typename T>
-    void add_geometry(T&& geometry_to_add){
-        three_dimensional_entities.emplace_back(std::forward<T>(geometry_to_add));
+    void add_geometry(T&& geometry_to_add,SkColor color){
+        three_dimensional_entities.emplace_back(std::make_tuple(std::forward<T>(geometry_to_add),color));
     }
 
-    inline const std::vector<curan::geometry::PolyHeadra>& geometries() const{
+    inline const std::vector<std::tuple<curan::geometry::PolyHeadra,SkColor>>& geometries() const{
         return three_dimensional_entities;
     }
 
@@ -445,7 +445,7 @@ private:
     ImageType* chached_pointer = nullptr;
     size_t cached_number_of_geometries = 0;
     
-    std::vector<std::tuple<std::vector<SkPoint>,SkPath>> cached_polyheader_intersections;
+    std::vector<std::tuple<std::vector<SkPoint>,SkPath,SkColor>> cached_polyheader_intersections;
     std::vector<directed_stroke> pending_strokes_to_process;
     curan::ui::PointCollection current_stroke;
 
