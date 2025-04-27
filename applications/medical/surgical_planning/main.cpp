@@ -1606,7 +1606,7 @@ int main(int argc, char* argv[]) {
 try{
 	using namespace curan::ui;
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
-	DisplayParams param{ std::move(context)};
+	DisplayParams param{ std::move(context),2000,1000};
 	param.windowName = "Curan:Path Planner";
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
@@ -1750,6 +1750,9 @@ try{
         }
         return is_inside;
     };
+
+    if(!appdata.trajectory_location.entry_point_word_coordinates || !appdata.trajectory_location.entry_point_word_coordinates)
+        return 1;
 
     Eigen::Matrix<double,3,3> desired_orientation;
     Eigen::Vector3d z_dir = (*appdata.trajectory_location.entry_point_word_coordinates-*appdata.trajectory_location.entry_point_word_coordinates).normalized();

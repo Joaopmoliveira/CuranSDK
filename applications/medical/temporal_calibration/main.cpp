@@ -28,8 +28,8 @@ calibration
 int main(int argc, char* argv[]) {
 	using namespace curan::ui;
 	
-	std::unique_ptr<Context> context = std::make_unique<Context>();;
-	DisplayParams param{ std::move(context)};
+	std::unique_ptr<Context> context = std::make_unique<Context>();
+	DisplayParams param{ std::move(context),2000,1000};
 	param.windowName = "Curan:Temporal Calibration";
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};

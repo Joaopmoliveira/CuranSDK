@@ -38,12 +38,14 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 	std::string executable_name = ">>"; 
 
 	std::unique_ptr<boost::process::child> child_process;
+	boost::process::group grou;
 	std::error_code child_ec;
 	boost::process::async_pipe child_out;
 	boost::asio::streambuf child_buf;
 
 #ifdef CURAN_PLUS_EXECUTABLE_PATH // conditionally compile code with plus process lauching mechanics
 	std::unique_ptr<boost::process::child> plus_process;
+	boost::process::group plus_grou;
 	boost::asio::streambuf plus_buf;
 	std::error_code plus_ec;
 	boost::process::async_pipe plus_out;
@@ -57,6 +59,8 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 		auto plus_asyn_read_callback = [async_data = getptr()](const boost::system::error_code &ec, std::size_t size)
 		{
 			static std::string line;
+			if(!(async_data->plus_out.is_open()))
+				return;
 			static std::istream istr(&async_data->plus_buf);
 			if (!ec){
 				std::getline(istr, line);
@@ -83,6 +87,8 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 		auto child_async_read_callback = [async_data = getptr()](const boost::system::error_code &ec, std::size_t size)
 		{
 			static std::string line;
+			if(!(async_data->child_out.is_open()))
+				return;
 			static std::istream istr(&async_data->child_buf);
 			if (!ec){
 				std::getline(istr, line);
@@ -100,24 +106,25 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 		boost::asio::async_read_until(child_out,child_buf,'\n',child_async_read_callback);
 	}
 
-	void launch_child(const std::string &executable)
+	void async_launch_child(const std::string &executable)
 	{
 		child_process = std::make_unique<boost::process::child>(std::string{CURAN_BINARY_LOCATION "/"} + executable + std::string{CURAN_BINARY_SUFFIX},
 																boost::process::std_out > child_out,
 																child_ec,
 																asio_ctx,
+																grou,
 																boost::process::on_exit([async_data = getptr(), in_executable = executable_name](int exit, const std::error_code &ec_in)
 																						{
 						if(exit){
-							if(manager) manager.load()->set_mainbody(in_executable+"failure\n" + ec_in.message());
+							if(manager) {manager.load()->set_mainbody(in_executable+"failure\n" + ec_in.message()); std::cout << in_executable << " failure\n" << ec_in.message() << std::endl;}
 							else std::cout << in_executable << " failure\n" << ec_in.message() << std::endl;
 						}
-						async_data->terminate_all(); }));
+						async_data->async_terminate_all(); }));
 		if(manager) manager.load()->set_appendix("running").set_mainbody("lauching app: "+executable);
 	}
 
 #ifdef CURAN_PLUS_EXECUTABLE_PATH
-	void launch_plus()
+	void async_launch_plus()
 	{
 		plus_process = std::make_unique<boost::process::child>(CURAN_PLUS_EXECUTABLE_PATH,
 															   std::string{"--config-file="} + std::string{CURAN_COPIED_RESOURCE_PATH "/plus_config/plus_spacial_calib_robot_xml/robot_image.xml"},
@@ -125,28 +132,29 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 															   boost::process::std_out > plus_out,
 															   plus_ec,
 															   asio_ctx,
+															   plus_grou,
 															   boost::process::on_exit([async_data = getptr()](int exit, const std::error_code &ec_in)
 																					   {
 																						   if (exit){
-																							if(manager) manager.load()->set_mainbody("Plus failure" + ec_in.message());
+																							if(manager) {manager.load()->set_mainbody("Plus failure" + ec_in.message()); std::cout << "Plus failure" << ec_in.message() << std::endl;}
 																							else std::cout << "Plus failure" << ec_in.message() << std::endl;
 																						   }
-																						   async_data->terminate_all(); }));
+																						   async_data->async_terminate_all(); }));
 
 		 if(manager) manager.load()->set_appendix("running").set_mainbody("lauching plus server");
 	}																		
 #endif
 
 	
-	bool launch_all(const std::string &executable, bool all = true)
+	bool async_launch_all(const std::string &executable, bool all = true)
 	{
 		if (in_use)
 			return false;
 		in_use = true;
-		launch_child(executable);
+		async_launch_child(executable);
 #ifdef CURAN_PLUS_EXECUTABLE_PATH
 		if (all)
-			launch_plus();
+		async_launch_plus();
 #endif
 		return true;
 	}
@@ -176,7 +184,7 @@ public:
 
 	~PendinAsyncData()
 	{
-		terminate_all();
+		async_terminate_all();
 	}
 
 	std::shared_ptr<PendinAsyncData> getptr()
@@ -187,7 +195,7 @@ public:
 	static std::shared_ptr<PendinAsyncData> make(boost::asio::io_context &asio_ctx, const std::string &executable, Application *in_parent, bool all = true)
 	{
 		auto shared_async_resource = std::make_shared<PendinAsyncData>(Private(), asio_ctx, executable, in_parent, all);
-		shared_async_resource->launch_all(executable, all);
+		shared_async_resource->async_launch_all(executable, all);
 #ifdef CURAN_PLUS_EXECUTABLE_PATH // conditionally compile code with plus process lauching mechanics
 		if(all)
 			shared_async_resource->post_async_plus_read();
@@ -195,7 +203,7 @@ public:
 		shared_async_resource->post_async_read();
 		return shared_async_resource;
 	}
-	void terminate_all();
+	void async_terminate_all();
 };
 
 size_t PendinAsyncData::identifier = 0;
@@ -230,19 +238,22 @@ class Application
 	curan::ui::Button *ptr_button4 = nullptr;
 	curan::ui::Button *ptr_button5 = nullptr;
 	curan::ui::Button *ptr_button6 = nullptr;
-	curan::ui::Button *ptr_button7 = nullptr;
+	
 
 	std::shared_ptr<PendinAsyncData> pending_task = nullptr;
 
 	boost::asio::io_context asio_ctx;
+	boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work;
 	std::shared_ptr<curan::utilities::ThreadPool> pool;
 
 	curan::ui::IconResources &resources;
 
 	std::unique_ptr<curan::ui::Page> page = nullptr;
+	bool fterminated = false;
+	bool frequest_terminated = false;
 
 public:
-	Application(curan::ui::IconResources &in_resources) : resources{in_resources}
+	Application(curan::ui::IconResources &in_resources) : resources{in_resources},asio_ctx{},work{boost::asio::make_work_guard(asio_ctx)}
 	{
 		page = std::make_unique<curan::ui::Page>(create_main_widget_container(), SK_ColorBLACK);
 		pool = curan::utilities::ThreadPool::create(1);
@@ -250,8 +261,8 @@ public:
 										   {
 											   try
 											   {
-												   auto work = boost::asio::make_work_guard(asio_ctx);
 												   asio_ctx.run();
+												   fterminated = true;
 											   }
 											   catch (...)
 											   {
@@ -263,7 +274,16 @@ public:
 	~Application()
 	{
 		terminate_all();
-		asio_ctx.stop();
+		reset_work();
+	}
+
+	void reset_work(){
+		work.reset();
+		frequest_terminated = true;
+	}
+
+	bool terminated(){
+		return fterminated;
 	}
 
 	std::unique_ptr<curan::ui::Container> create_main_widget_container()
@@ -348,13 +368,13 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
-		auto button6 = curan::ui::Button::make("Surface Scanning","surfaceconstruction.png", resources);
-		ptr_button6 = button6.get();
-		button6->set_click_color(SK_ColorDKGRAY)
+		auto button5 = curan::ui::Button::make("Surface Scanning","surfaceconstruction.png", resources);
+		ptr_button5 = button5.get();
+		button5->set_click_color(SK_ColorDKGRAY)
 			.set_hover_color(SK_ColorLTGRAY)
 			.set_waiting_color(waiting_color_inactive)
 			.set_size(SkRect::MakeWH(300, 150));
-		button6->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
+		button5->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 									{
 			// 1 . check_if_realtimereconstructor_arguments_are_valid();
 			try{
@@ -380,14 +400,14 @@ public:
 				inbut->set_waiting_color(waiting_color_active);
 			} });
 
-		auto button5 = curan::ui::Button::make("Neuro Navigation","biopsyviewer.png", resources);
-		ptr_button5 = button5.get();
-		button5->set_click_color(SK_ColorDKGRAY)
+		auto button6 = curan::ui::Button::make("Neuro Navigation","biopsyviewer.png", resources);
+		ptr_button6 = button6.get();
+		button6->set_click_color(SK_ColorDKGRAY)
 			.set_hover_color(SK_ColorLTGRAY)
 			.set_waiting_color(waiting_color_inactive)
 			.set_font_size(20)
 			.set_size(SkRect::MakeWH(300, 150));
-		button5->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
+		button6->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
 								{
 			try{
 				curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
@@ -410,7 +430,7 @@ public:
 				return;
 			}
 
-			if(!launch_all("InteroperativeNavigation")){
+			if(!launch_all("InteroperativeNavigation",false)){
 				terminate_all();
 				inbut->set_waiting_color(waiting_color_inactive);
 			}
@@ -419,13 +439,13 @@ public:
 			} });
 
 		auto registrationcontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
-		*registrationcontainer << std::move(button4) << std::move(button6);
+		*registrationcontainer << std::move(button4) << std::move(button5);
 		auto widgetcontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
 		*widgetcontainer << std::move(button1)
 						 << std::move(button2)
 						 << std::move(button3)
 						 << std::move(registrationcontainer)
-						 << std::move(button5);
+						 << std::move(button6);
 
 		auto lablogo = resources.get_icon("hrtransparent.png");
 		auto tecnicologo = resources.get_icon("IST_A_RGB_POS.png");
@@ -473,15 +493,17 @@ public:
 
 	void terminate_all()
 	{
-		if(manager) 
-			manager.load()->set_mainbody("terminate all called!").set_appendix("waiting");
-		else 
-			std::cout << "terminate all called!" << std::endl;
-		
-		if (pending_task)
-			pending_task->terminate_all();
-		pending_task = nullptr;
-		termination_widget_logic();
+		if (pending_task){
+			if(manager) {
+				std::cout << "terminate all called!" << std::endl;
+				manager.load()->set_mainbody("terminate all called!").set_appendix("waiting");
+			}
+			else 
+				std::cout << "terminate all called!" << std::endl;
+			pending_task->async_terminate_all();
+			pending_task = nullptr;
+			termination_widget_logic();
+		}
 	}
 
 	curan::ui::Page *get_page()
@@ -509,33 +531,47 @@ public:
 			ptr_button5->set_waiting_color(waiting_color_inactive);
 		if (ptr_button6)
 			ptr_button6->set_waiting_color(waiting_color_inactive);
-		if (ptr_button7)
-			ptr_button7->set_waiting_color(waiting_color_inactive);
 	}
 };
 
 std::atomic<bool> signal_untriggered = true;
 
-void PendinAsyncData::terminate_all()
+void PendinAsyncData::async_terminate_all()
 {
 	if (!in_use)
 		return;
 	in_use = false;
-	if (child_process)
-		child_process->terminate();
+	if (child_process){
+		
+		std::cout << "requested child termination" << std::endl;
+		std::error_code ec;
+		grou.terminate(ec);
+		if(ec){
+			std::cout << "termination message : " << ec.message();
+		}
+		grou.join();
+	}
+
 	child_process = nullptr;
-	child_out.async_close();
+
 #ifdef CURAN_PLUS_EXECUTABLE_PATH // conditionally compile code with plus process lauching mechanics
-	if (plus_process)
-		plus_process->terminate();
+	if (plus_process){
+		std::cout << "requested plus termination" << std::endl;
+		std::error_code ec;
+		plus_grou.terminate(ec);
+		if(ec){
+			std::cout << "termination message : " << ec.message();
+		}
+		plus_grou.join();
+	}
+
 	plus_process = nullptr;
-	plus_out.async_close();
 #endif
 	parent->warn_terminate_all();
+	parent = nullptr;
 }
 
-void signal_handler(int signal)
-{
+void signal_handler(int signal){
 	signal_untriggered.store(false, std::memory_order_relaxed);
 }
 
@@ -546,17 +582,21 @@ int main()
 		std::signal(SIGINT, signal_handler);
 		curan::ui::IconResources resources{CURAN_COPIED_RESOURCE_PATH "/images"};
 		std::unique_ptr<curan::ui::Context> context = std::make_unique<curan::ui::Context>();
-		curan::ui::DisplayParams param{std::move(context)};
+		curan::ui::DisplayParams param{std::move(context),2000,1000};
 		param.windowName = "Curan:1.0.0";
 		std::unique_ptr<curan::ui::Window> viewer = std::make_unique<curan::ui::Window>(std::move(param));
 		Application app{resources};
-		app.get_page()->update_page(viewer.get());
-
 		curan::ui::ConfigDraw config_draw{app.get_page()};
 		viewer->set_minimum_size(app.get_page()->minimum_size());
-
-		while (!glfwWindowShouldClose(viewer->window) && signal_untriggered.load(std::memory_order_relaxed))
+		app.get_page()->update_page(viewer.get());
+		bool request_made = false;
+		while (!glfwWindowShouldClose(viewer->window) && signal_untriggered.load(std::memory_order_relaxed) || !app.terminated())
 		{
+			if(glfwWindowShouldClose(viewer->window) && !request_made){
+				app.reset_work();
+				config_draw.stack_page->stack(warning_overlay("terminating application",resources));
+				request_made = true;
+			}
 			auto start = std::chrono::high_resolution_clock::now();
 			SkSurface *pointer_to_surface = viewer->getBackbufferSurface();
 

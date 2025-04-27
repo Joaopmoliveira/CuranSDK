@@ -805,7 +805,7 @@ int communication(RobotState &state, asio::io_context &context)
     std::cout << "connecting to client\n";
 
     asio::ip::tcp::resolver fri_resolver(context);
-    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context, fri_resolver.resolve("localhost", std::to_string(50010)));
+    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context, fri_resolver.resolve("172.31.1.148", std::to_string(50010)));
 
     auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
     {

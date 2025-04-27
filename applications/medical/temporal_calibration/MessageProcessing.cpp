@@ -363,12 +363,12 @@ int NormalizeData(ProcessingMessage* processor) {
     }
 
     //Output do sinal de vídeo
-    std::cout << std::endl;
-    std::cout << "---------------------------------------" << std::endl;
-    std::cout << "Video signal:" << std::endl;
-    for (const auto& signal : video_signals) {
-        std::cout << signal << std::endl;
-    }   
+    //std::cout << std::endl;
+    //std::cout << "---------------------------------------" << std::endl;
+    //std::cout << "Video signal:" << std::endl;
+    //for (const auto& signal : video_signals) {
+    //    std::cout << signal << std::endl;
+    //}   
 
     //Normaliza o sinal de vídeo
     auto mean2 = mean(video_signals);
@@ -378,6 +378,7 @@ int NormalizeData(ProcessingMessage* processor) {
     }
 
     //Output dos sinais normalizados
+    /*
     std::cout << std::endl;
     std::cout << "---------------------------------------" << std::endl;
     std::cout << "Normalized position signal:"<<std::endl;
@@ -390,7 +391,7 @@ int NormalizeData(ProcessingMessage* processor) {
     std::cout << "Normalized video signal:"<<std::endl;
     for (double value : processor->normalized_video_signal) {
         std::cout << value << " ";
-    }
+    }*/
     return 0;
 }
 
