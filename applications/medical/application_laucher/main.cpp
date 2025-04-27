@@ -35,6 +35,8 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 	volatile bool in_use = false;
 	boost::asio::io_context &asio_ctx;
 
+	std::string executable_name = ">>"; 
+
 	std::unique_ptr<boost::process::child> child_process;
 	std::error_code child_ec;
 	boost::process::async_pipe child_out;
@@ -84,12 +86,12 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 			static std::istream istr(&async_data->child_buf);
 			if (!ec){
 				std::getline(istr, line);
-				if(manager)  manager.load()->set_mainbody("child >> " + line);
-				else std::cout << "child >> " << line << std::endl;
+				if(manager)  manager.load()->set_mainbody(async_data->executable_name + line);
+				else std::cout << async_data->executable_name << line << std::endl;
 			}
 			if (!async_data->in_use){
-				if(manager) manager.load()->set_mainbody("child >> stopping... " + line);
-				else std::cout << "child >> stopping... " << line << std::endl;
+				if(manager) manager.load()->set_mainbody(async_data->executable_name + " stopping... " + line);
+				else std::cout << async_data->executable_name << " stopping... " << line << std::endl;
 				return;
 			}
 			if (!ec)
@@ -104,10 +106,10 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 																boost::process::std_out > child_out,
 																child_ec,
 																asio_ctx,
-																boost::process::on_exit([async_data = getptr(), in_executable = executable](int exit, const std::error_code &ec_in)
+																boost::process::on_exit([async_data = getptr(), in_executable = executable_name](int exit, const std::error_code &ec_in)
 																						{
 						if(exit){
-							if(manager) manager.load()->set_mainbody("failure\n" + ec_in.message());
+							if(manager) manager.load()->set_mainbody(in_executable+"failure\n" + ec_in.message());
 							else std::cout << in_executable << " failure\n" << ec_in.message() << std::endl;
 						}
 						async_data->terminate_all(); }));
@@ -155,15 +157,17 @@ class PendinAsyncData : public std::enable_shared_from_this<PendinAsyncData>
 
 public:
 #ifdef CURAN_PLUS_EXECUTABLE_PATH // conditionally compile code with plus process lauching mechanics
-	PendinAsyncData(Private, boost::asio::io_context &in_asio_ctx, const std::string &executable, Application *in_parent, bool all = true) : child_out{in_asio_ctx}, plus_out{in_asio_ctx}, asio_ctx{in_asio_ctx}, parent{in_parent}
+	PendinAsyncData(Private, boost::asio::io_context &in_asio_ctx, const std::string &executable, Application *in_parent, bool all = true) : executable_name{executable} , child_out{in_asio_ctx}, plus_out{in_asio_ctx}, asio_ctx{in_asio_ctx}, parent{in_parent}
 	{
+		executable_name = executable + " >> ";
 		++identifier;
 		if (!parent)
 			throw std::runtime_error("parent must be specified");
 	}
 #else
-	PendinAsyncData(Private, boost::asio::io_context &in_asio_ctx, const std::string &executable, Application *in_parent, bool all = true) : asio_ctx{in_asio_ctx}, child_out{in_asio_ctx}, parent{in_parent}
+	PendinAsyncData(Private, boost::asio::io_context &in_asio_ctx, const std::string &executable, Application *in_parent, bool all = true) : executable_name{executable} , asio_ctx{in_asio_ctx}, child_out{in_asio_ctx}, parent{in_parent}
 	{
+		executable_name = executable + " >> ";
 		++identifier;
 		if (!parent)
 			throw std::runtime_error("parent must be specified");
