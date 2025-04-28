@@ -35,7 +35,9 @@ int main(int argc, char **argv)
 
         std::printf("\nReading input volume...\n");
         auto fixedImageReader = itk::ImageFileReader<itk::Image<double, 3>>::New();
-        fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH "/precious_phantom/precious_phantom.mha");
+        //fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH "/precious_phantom/precious_phantom.mha");
+        fixedImageReader->SetFileName("C:/Dev/CuranSDK/build/release/bin/resources/original_volume.mha");
+        
 
         // Rescale and cast the volume to use with the correct MaskPixelType (0-255)
         auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double, 3>, itk::Image<double, 3>>::New();

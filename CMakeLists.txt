@@ -105,7 +105,7 @@ add_subdirectory(applications)
 #add_subdirectory(unittests)
 
 # Add tests for submodules of curan, i.e. utilities, communication, etc...
-#add_subdirectory(tests)
+add_subdirectory(tests)
 
 # Add medical applications
 #add_subdirectory(tutorials)

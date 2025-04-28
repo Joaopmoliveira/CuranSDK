@@ -1736,12 +1736,12 @@ try{
     }
 
 
-    auto evaluate_if_pixel_inside_mask = [&](ImageType::IndexType ind,ImageType::Pointer ptr)
+    auto evaluate_if_pixel_inside_mask = [&](itk::Image<double,3>::IndexType ind,itk::Image<double,3>::Pointer ptr)
     {
         bool is_inside = internals.size() > 0 ? false : true ;
         for (const auto &boundary : internals){
-            ImageType::PointType world;
-            ImageType::IndexType local_ind;
+            itk::Image<double,3>::PointType world;
+            itk::Image<double,3>::IndexType local_ind;
             ptr->TransformIndexToPhysicalPoint(ind,world);
             boundary->TransformPhysicalPointToIndex(world,local_ind);
             auto size = boundary->GetLargestPossibleRegion().GetSize();
@@ -1774,17 +1774,17 @@ try{
         CURAN_COPIED_RESOURCE_PATH"/masked_volume.mha"
         };
 
-    auto [masked_output_image,mask_to_use] = DeepCopyWithInclusionPolicy<ImageType>(evaluate_if_pixel_inside_mask,orienter->GetOutput());
+    auto [masked_output_image,mask_to_use] = DeepCopyWithInclusionPolicy<itk::Image<double,3>>(evaluate_if_pixel_inside_mask,rescale->GetOutput());
 
     {
-        auto writer = itk::ImageFileWriter<ImageType>::New();
+        auto writer = itk::ImageFileWriter<itk::Image<double,3>>::New();
         writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/original_volume.mha");
-        writer->SetInput(orienter->GetOutput());
+        writer->SetInput(rescale->GetOutput());
         writer->Update();
     }
 
     {
-        auto writer = itk::ImageFileWriter<ImageType>::New();
+        auto writer = itk::ImageFileWriter<itk::Image<double,3>>::New();
         writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/masked_volume.mha");
         writer->SetInput(masked_output_image);
         writer->Update();

@@ -1062,21 +1062,16 @@ int main(int argc, char *argv[]) {
   auto image_reader_fixed = itk::ImageFileReader<itk::Image<float, 3>>::New();
   image_reader_fixed->SetFileName(argv[1]);
   update_ikt_filter(image_reader_fixed);
-  auto [point_cloud_fixed, mask_fixed_image] =
-      extract_point_cloud(image_reader_fixed->GetOutput(),
-                          ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
+  auto [point_cloud_fixed, mask_fixed_image] = extract_point_cloud(image_reader_fixed->GetOutput(),ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
   auto [transformation_acording_to_pca_fixed, tmp_fixed_point_set] =
-      recentered_data(point_cloud_fixed);
+  recentered_data(point_cloud_fixed);
   auto fixed_point_set = tmp_fixed_point_set;
 
   auto image_reader_moving = itk::ImageFileReader<itk::Image<float, 3>>::New();
   image_reader_moving->SetFileName(argv[2]);
   update_ikt_filter(image_reader_moving);
-  auto [point_cloud_moving, mask_moving_image] =
-      extract_point_cloud(image_reader_moving->GetOutput(),
-                          ExtractionSurfaceInfo<true>{3, 0.8, "moving", 5, 5});
-  auto [transformation_acording_to_pca_moving, tmp_moving_point_set] =
-      recentered_data(point_cloud_moving);
+  auto [point_cloud_moving, mask_moving_image] = extract_point_cloud(image_reader_moving->GetOutput(),ExtractionSurfaceInfo<true>{3, 0.8, "moving", 5, 5});
+  auto [transformation_acording_to_pca_moving, tmp_moving_point_set] = recentered_data(point_cloud_moving);
   auto moving_point_set = tmp_moving_point_set;
 
   std::vector<Eigen::Matrix<double, 4, 4>> initial_guesses_icp;

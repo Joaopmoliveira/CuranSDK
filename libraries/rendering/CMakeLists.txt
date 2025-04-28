@@ -13,6 +13,7 @@ src/Volume.cpp
 src/ImGUIInterface.cpp
 src/Arrow.cpp
 src/Mesh.cpp
+src/VolumeIntegratedShaders.cpp
 )
 
 target_include_directories(renderable
