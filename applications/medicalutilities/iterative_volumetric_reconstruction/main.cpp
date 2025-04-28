@@ -50,9 +50,6 @@ And it outputs
 
 */
 
-
-
-
 void convert_robot_confi(const curan::robotic::RobotModel<curan::robotic::number_of_joints>& robot,igtl::Matrix4x4& matrix)
 {
 	matrix[0][0] = robot.rotation()(0,0);
