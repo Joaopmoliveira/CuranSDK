@@ -209,6 +209,7 @@ void append_desired_trajectory_data(RobotState &state)
     infosphere.stateInfo.blending = true;
 
     { // we define a point for the entry of the brain
+        infosphere.geomInfo.color = vsg::vec4(0.0, 1.0, 0.0, 1.0);
         auto entry_point = curan::renderable::Sphere::make(infosphere);
         auto entry_point_in_world_coordiantes = registration_matrix*vectorized_eigen_entry;
         entry_point->cast<curan::renderable::Sphere>()->update_transform(vsg::translate(entry_point_in_world_coordiantes[0],entry_point_in_world_coordiantes[1],entry_point_in_world_coordiantes[2]));
@@ -216,6 +217,7 @@ void append_desired_trajectory_data(RobotState &state)
     }
 
     { // we define a point for the target of the brain
+        infosphere.geomInfo.color = vsg::vec4(0.0, 0.0, 1.0, 1.0);
         auto target = curan::renderable::Sphere::make(infosphere);
         auto target_point_in_world_coordiantes = registration_matrix*desired_target_point;
         target->cast<curan::renderable::Sphere>()->update_transform(vsg::translate(target_point_in_world_coordiantes[0],target_point_in_world_coordiantes[1],target_point_in_world_coordiantes[2]));
