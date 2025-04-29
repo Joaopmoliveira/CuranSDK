@@ -10,7 +10,7 @@ int main(){
         desired_direction.normalize();
 
         curan::utilities::NeedleCalibrationData needle_calibration_data{CURAN_COPIED_RESOURCE_PATH"/needle_calibration.json"}; 
-        curan::utilities::RegistrationData registration_data{CURAN_COPIED_RESOURCE_PATH"/registration.json"};
+        curan::utilities::RegistrationData registration_data{CURAN_COPIED_RESOURCE_PATH"/registration_specification.json"};
 
         using namespace curan::ui;
         std::unique_ptr<Context> context = std::make_unique<Context>();

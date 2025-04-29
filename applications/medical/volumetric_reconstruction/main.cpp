@@ -1167,7 +1167,7 @@ Eigen::Matrix<double, 1, 9> get_error(Eigen::Matrix<double, 4, 4> moving_to_fixe
     }
   }
 
-Eigen::Matrix<double,4,4> main_solve_registration(ImageType::Pointer fixed_volume,ImageType::Pointer moving_volume){
+std::tuple<Eigen::Matrix<double,4,4>,double> main_solve_registration(ImageType::Pointer fixed_volume,ImageType::Pointer moving_volume){
   auto [point_cloud_fixed, mask_fixed_image] = extract_point_cloud(fixed_volume,ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
   auto [transformation_acording_to_pca_fixed, tmp_fixed_point_set] = recentered_data(point_cloud_fixed);
   auto fixed_point_set = tmp_fixed_point_set;
@@ -1368,7 +1368,7 @@ Eigen::Matrix<double,4,4> main_solve_registration(ImageType::Pointer fixed_volum
             << get_error(transformation_acording_to_pca_fixed*best_transformation_icp*transformation_acording_to_pca_moving.inverse())
             << "\n\n\n";
 
-  return transformation_acording_to_pca_fixed*best_transformation_mi.inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse();
+  return std::make_tuple(transformation_acording_to_pca_fixed*best_transformation_mi.inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse(),cost);
 }
 
 
@@ -1487,6 +1487,8 @@ struct ApplicationState
     ImageType::Pointer masked_moving_volume = nullptr;
     ImageType::Pointer original_moving_volume = nullptr;
     Eigen::Matrix<double,4,4> transformation_to_sensor_base;
+    Eigen::Matrix<double,4,4> registration_solution;
+    double final_cost = 1000000.0;
 
     ApplicationState(curan::renderable::Window &wind) : robot_state{wind}
     {
@@ -1498,6 +1500,7 @@ struct ApplicationState
         */
         pool = curan::utilities::ThreadPool::create(3);
         transformation_to_sensor_base = Eigen::Matrix<double,4,4>::Identity();
+        registration_solution = Eigen::Matrix<double,4,4>::Identity();
     }
 
     void showMainWindow()
@@ -1608,9 +1611,15 @@ struct ApplicationState
                 operation_description = "saving volumetric reconstruction";
                 robot_state.inject_frame(RobotState::InjectVolumeStatus::FREEZE_VOLUME);
             }
-            pool->submit("solve registration", [this](){                         
-                auto transform_moving_to_fixed = main_solve_registration(scanned_volume,masked_moving_volume);
-                auto proper_transform = transform_moving_to_fixed * transformation_to_sensor_base;
+            pool->submit("solve registration", [this](){       
+                const auto& [local_registration_solution, cost] = main_solve_registration(scanned_volume,masked_moving_volume);
+                final_cost = cost;
+                registration_solution = local_registration_solution;
+                registration_solution(0,3)*= 1e-3;
+                registration_solution(1,3)*= 1e-3;
+                registration_solution(2,3)*= 1e-3;          
+                std::cout << "Estimated solution is:" << registration_solution << std::endl;   
+                auto proper_transform = registration_solution * transformation_to_sensor_base;
                 auto vsg_transformation_to_sensor_base = vsg::translate(0.0, 0.0, 0.0);
                 for(size_t r = 0; r < 4; ++r)
                     for(size_t c = 0; c < 4; ++c) 
@@ -2329,6 +2338,13 @@ int main(int argc, char **argv)
 
     window.run();
     context.stop();
+    curan::utilities::RegistrationData registration_data{curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now()),
+                                                        application_state.registration_solution,
+                                                        application_state.final_cost,
+                                                        curan::utilities::Type::VOLUME};
     application_state.robot_state(false);
+	  std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/registration_specification.json");
+	  o << registration_data;
+	  std::cout << registration_data << std::endl;
     return 0;
 }
