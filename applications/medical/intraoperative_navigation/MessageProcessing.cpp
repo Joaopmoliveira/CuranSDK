@@ -1,6 +1,20 @@
 #include "MessageProcessing.h"
 #include <nlohmann/json.hpp>
 #include "utils/Reader.h"
+#include "robotutils/RobotModel.h"
+
+void obtain_rot_matrix_by_angles(Eigen::Matrix<double, 3, 3> &R_matrix, Eigen::Matrix<double, 3, 1> &rotaton_angles)
+{
+    typedef double T;
+
+    auto a = rotaton_angles[0];
+    auto b = rotaton_angles[1];
+    auto c = rotaton_angles[2];
+
+    R_matrix << cos(b) * cos(c), sin(a) * sin(b) * cos(c) - cos(a) * sin(c), cos(a) * sin(b) * cos(c) + sin(a) * sin(c),
+        cos(b) * sin(c), sin(a) * sin(b) * sin(c) + cos(a) * cos(c), cos(a) * sin(b) * sin(c) - sin(a) * cos(c),
+        -sin(b), sin(a) * cos(b), cos(a) * cos(b);
+}
 
 void exclude_row_matrix(Eigen::MatrixXd &matrix, size_t row_to_remove)
 {
@@ -117,12 +131,13 @@ int sgn(T val)
     return (T(0) < val) - (val < T(0));
 }
 
-InputImageType::Pointer resampler(InputImageType::Pointer volume, Eigen::Matrix<double, 3, 1> &needle_tip, Eigen::Matrix<double, 3, 3> &R_ImageToWorld, double &image_size, double &image_spacing)
+OutputImageType::Pointer resampler(InputImageType::Pointer volume, Eigen::Matrix<double, 3, 1> &needle_tip, Eigen::Matrix<double, 3, 3> &R_ImageToWorld, double &image_size, double &image_spacing)
 {
-    using FilterType = itk::ResampleImageFilter<InputImageType, InputImageType>;
+    using FilterType = itk::ResampleImageFilter<InputImageType, OutputImageType>;
     auto filter = FilterType::New();
 
     using InterpolatorType = itk::LinearInterpolateImageFunction<InputImageType, double>;
+    // using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<InputImageType, double>;
     auto interpolator = InterpolatorType::New();
     filter->SetInterpolator(interpolator);
     filter->SetDefaultPixelValue(0);
@@ -210,9 +225,18 @@ InputImageType::Pointer resampler(InputImageType::Pointer volume, Eigen::Matrix<
     return filter->GetOutput();
 }
 
-ProcessingMessage::ProcessingMessage(curan::ui::ImageDisplay *in_processed_viwer, InputImageType::Pointer in_volume) : processed_viwer{in_processed_viwer},
-                                                                                                                       volume{in_volume}
+ProcessingMessage::ProcessingMessage(const ProcessingMessageInfo& info) :
+                                        processed_viwer{info.f_in_processed_viwer},
+                                        volume{info.f_in_volume},
+                                        target{info.f_target},
+                                        entry_point{info.f_entry_point},
+                                        desired_rotation{info.f_desired_rotation},
+                                        registration{info.f_registration},
+                                        needle_calibration{info.f_needle_calibration}
+
 {
+    shared_pool = curan::utilities::ThreadPool::create(1); 
+
     auto volume_size = volume->GetLargestPossibleRegion().GetSize();
     auto volume_spacing = volume->GetSpacing();
 
@@ -224,76 +248,54 @@ ProcessingMessage::ProcessingMessage(curan::ui::ImageDisplay *in_processed_viwer
     volume_size_transformed_to_minimun_spacing[2] = (volume_size[2] * volume_spacing[2]) / image_spacing;
 
     image_size = std::sqrt(std::pow(volume_size_transformed_to_minimun_spacing[0], 2) + std::pow(volume_size_transformed_to_minimun_spacing[1], 2) + std::pow(volume_size_transformed_to_minimun_spacing[2], 2));
-
-    Eigen::Matrix<double, 3, 1> desired_direction = target - entry_point;
-    desired_direction.normalize();
-
-    auto temporary = desired_direction;
-
-    if (abs(temporary[0]) > 1e-4)
-        temporary << -desired_direction[0], desired_direction[1], desired_direction[2];
-    else if (abs(temporary[1]) > 1e-4)
-        temporary << desired_direction[0], -desired_direction[1], desired_direction[2];
-    else if (abs(temporary[2]) > 1e-4)
-        temporary << desired_direction[0], desired_direction[1], -desired_direction[2];
-    else
-        throw std::runtime_error("failed to compute desired direction");
-
-    temporary.normalize();
-    Eigen::Matrix<double, 3, 1> perpendicular_to_desired = temporary - (temporary.transpose() * desired_direction) * desired_direction;
-    perpendicular_to_desired.normalize();
-    Eigen::Matrix<double, 3, 1> perpecdicular_to_both = perpendicular_to_desired.cross(desired_direction);
-
-    desired_rotation.col(2) = desired_direction;
-    desired_rotation.col(1) = perpendicular_to_desired;
-    desired_rotation.col(0) = perpecdicular_to_both;
 }
 
-bool process_transform_message(ProcessingMessage *processor, igtl::MessageBase::Pointer val)
+bool ProcessingMessage::process_joint_message(const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
 {
-    igtl::TransformMessage::Pointer transform_message = igtl::TransformMessage::New();
-    transform_message->Copy(val);
-    int c = transform_message->Unpack(1);
-    if (!(c & igtl::MessageHeader::UNPACK_BODY))
-        return false; // failed to unpack message, therefore returning without doing anything
+    static curan::robotic::RobotModel<7> robot_model{CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_mass_data.json", CURAN_COPIED_RESOURCE_PATH "/models/lbrmed/robot_kinematic_limits.json"};
+    constexpr auto sample_time = std::chrono::milliseconds(1);
 
-    Eigen::Matrix<double, 4, 4> robot_to_world = Eigen::Matrix<double, 4, 4>::Identity();
-    igtl::Matrix4x4 local_mat;
-    transform_message->GetMatrix(local_mat);
-    for (size_t cols = 0; cols < 4; ++cols)
-        for (size_t lines = 0; lines < 4; ++lines)
-            robot_to_world(lines, cols) = local_mat[lines][cols];
+    static curan::robotic::State internal_state;
+    internal_state.sampleTime = sample_time.count();
+    double time = 0;
 
-    auto needle_to_world = robot_to_world * processor->needle_calibration;
+    internal_state.q = message->angles;
+
+    robot_model.update(internal_state);
+    auto robot_to_world = robot_model.homogenenous_transformation();
+    robot_to_world(0,3) *= 1e3;
+    robot_to_world(1,3) *= 1e3;
+    robot_to_world(2,3) *= 1e3;
+    auto needle_to_world = robot_to_world * needle_calibration;
 
     Eigen::Matrix<double, 3, 1> needle_tip = needle_to_world.block<3, 1>(0, 3);
     Eigen::Matrix<double, 3, 3> R_ImageToWorld = needle_to_world.block<3, 3>(0, 0);
-    auto world_frame_difference_error = processor->desired_rotation.col(2) - R_ImageToWorld.col(2);
+    auto world_frame_difference_error = desired_rotation.col(2) - R_ImageToWorld.col(2);
 
-    double phy = world_frame_difference_error.transpose() * processor->desired_rotation.col(0);
-    double theta = world_frame_difference_error.transpose() * processor->desired_rotation.col(1);
+    double phy = world_frame_difference_error.transpose() * desired_rotation.col(0);
+    double theta = world_frame_difference_error.transpose() * desired_rotation.col(1);
 
-    InputImageType::Pointer slice = resampler(processor->volume, needle_tip, R_ImageToWorld, processor->image_size, processor->image_spacing);
-    InputImageType::IndexType coordinate_of_needle_in_image_position;
-    InputImageType::PointType needle_tip_ikt_coordinates{{needle_tip[0], needle_tip[1], needle_tip[2]}};
+    OutputImageType::Pointer slice = resampler(volume, needle_tip, R_ImageToWorld, image_size, image_spacing);
+    OutputImageType::IndexType coordinate_of_needle_in_image_position;
+    OutputImageType::PointType needle_tip_ikt_coordinates{{needle_tip[0], needle_tip[1], needle_tip[2]}};
     slice->TransformPhysicalPointToIndex(needle_tip_ikt_coordinates, coordinate_of_needle_in_image_position);
-    InputImageType::SizeType size_itk = slice->GetLargestPossibleRegion().GetSize();
+    OutputImageType::SizeType size_itk = slice->GetLargestPossibleRegion().GetSize();
     auto buff = curan::utilities::CaptureBuffer::make_shared(slice->GetBufferPointer(), slice->GetPixelContainer()->Size() * sizeof(OutputPixelType), slice);
     curan::ui::ImageWrapper wrapper{buff, size_itk[0], size_itk[1]};
 
-    auto inner_projection = R_ImageToWorld.col(2).transpose() * processor->desired_rotation.col(2);
-    auto projected_unto_plane = ((needle_tip - processor->target) * R_ImageToWorld.col(2).transpose());
-    auto d = (std::abs(inner_projection(0, 0)) > 1e-5) ? projected_unto_plane(0, 0) / (inner_projection(0, 0)) : 100000.0;
+    auto inner_projection = R_ImageToWorld.col(2).transpose()*desired_rotation.col(2);
+    auto projected_unto_plane = ((needle_tip-target)*R_ImageToWorld.col(2).transpose());
+    auto d = (std::abs(inner_projection(0,0))>1e-5) ? projected_unto_plane(0,0)/(inner_projection(0,0)) : 100000.0;
 
-    Eigen::Matrix<double, 3, 1> real_intersection = processor->target + processor->desired_rotation.col(2) * d;
-    InputImageType::IndexType index_coordinate_of_perfect_traject_in_needle_plane;
-    InputImageType::PointType coordinate_of_perfect_traject_in_needle_plane{{real_intersection[0], real_intersection[1], real_intersection[2]}};
-    slice->TransformPhysicalPointToIndex(coordinate_of_perfect_traject_in_needle_plane, index_coordinate_of_perfect_traject_in_needle_plane);
+    Eigen::Matrix<double,3,1> real_intersection = target+desired_rotation.col(2)*d;
+    OutputImageType::IndexType index_coordinate_of_perfect_traject_in_needle_plane;
+    OutputImageType::PointType coordinate_of_perfect_traject_in_needle_plane{{real_intersection[0], real_intersection[1], real_intersection[2]}};
+    slice->TransformPhysicalPointToIndex(coordinate_of_perfect_traject_in_needle_plane,index_coordinate_of_perfect_traject_in_needle_plane);
 
     auto custimized_drawing = [=](SkCanvas *canvas, SkRect image_area, SkRect content_area)
     {
-        auto surface_height = content_area.height();
-        auto surface_width = content_area.width();
+        auto surface_height = canvas->getSurface()->height();
+        auto surface_width = canvas->getSurface()->width();
 
         SkPaint greenPaint;
         greenPaint.setAntiAlias(true);
@@ -302,76 +304,53 @@ bool process_transform_message(ProcessingMessage *processor, igtl::MessageBase::
         SkPaint redPaint;
         redPaint.setAntiAlias(true);
         redPaint.setColor(SK_ColorRED);
+        int x_image_coordinates = surface_width / 2.0 - index_coordinate_of_perfect_traject_in_needle_plane[0];
+        int y_image_coordinates = surface_height / 2.0 - index_coordinate_of_perfect_traject_in_needle_plane[1];
+        canvas->drawImage(wrapper.image, x_image_coordinates, y_image_coordinates);
+        canvas->drawCircle(SkPoint::Make(x_image_coordinates+coordinate_of_needle_in_image_position[0], y_image_coordinates+coordinate_of_needle_in_image_position[1]), 10, greenPaint); 
+        canvas->drawCircle(SkPoint::Make(surface_width / 2.0, surface_height / 2.0), 10, redPaint); 
 
-        canvas->drawImage(wrapper.image, surface_width / 2.0 - coordinate_of_needle_in_image_position[0], surface_height / 2.0 - coordinate_of_needle_in_image_position[1]);
-        canvas->drawCircle(SkPoint::Make(surface_width / 2.0, surface_height / 2.0), 10, greenPaint);
 
         Level level;
-        double bubble_position = (surface_width - 60.0) / 2.0 * (1 + theta) + 30.0;
-        level.draw(canvas, bubble_position, Level::LevelOrientation::horizontal);
+        double bubble_position = (surface_width-60.0) / 2.0 * ( 1 + theta)+30.0;
+        level.draw(canvas,bubble_position,Level::LevelOrientation::horizontal);
 
         Level levelvert;
-        double bubble_position_vert = (surface_height - 60.0) / 2.0 * (1 + phy) + 30.0;
-        levelvert.draw(canvas, bubble_position_vert, Level::LevelOrientation::vertical);
+        double bubble_position_vert = (surface_height-60.0) / 2.0 * ( 1 + phy)+30.0;
+        levelvert.draw(canvas,bubble_position_vert,Level::LevelOrientation::vertical);
 
-        auto error = (processor->target - needle_tip).norm();
+        auto error = (target-needle_tip).norm();
         greenPaint.setStroke(true);
         const SkScalar intervals[] = {10.0f, 5.0f, 2.0f, 5.0f};
         size_t count = sizeof(intervals) / sizeof(intervals[0]);
         greenPaint.setPathEffect(SkDashPathEffect::Make(intervals, count, 0.0f));
-        canvas->drawCircle(SkPoint::Make(surface_width / 2.0, surface_height / 2.0), error, greenPaint);
-
-        canvas->drawCircle(SkPoint::Make(surface_width / 2.0 - coordinate_of_needle_in_image_position[0] + index_coordinate_of_perfect_traject_in_needle_plane[0], surface_height / 2.0 - coordinate_of_needle_in_image_position[1] + index_coordinate_of_perfect_traject_in_needle_plane[1]), 10, redPaint);
-    };
-
-    processor->processed_viwer->update_batch(custimized_drawing, wrapper);
-
-    return true;
-}
-
-std::map<std::string, std::function<bool(ProcessingMessage *, igtl::MessageBase::Pointer val)>> openigtlink_callbacks{
-    {"TRANSFORM", process_transform_message}};
-
-bool ProcessingMessage::process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val)
-{
-    assert(val.IsNotNull());
-    if (er)
-    {
-        return true;
-    }
-    if (auto search = openigtlink_callbacks.find(val->GetMessageType()); search != openigtlink_callbacks.end())
-        search->second(this, val);
-    else
-        std::cout << "No functionality for function received\n";
+        canvas->drawCircle(SkPoint::Make(x_image_coordinates+coordinate_of_needle_in_image_position[0], y_image_coordinates+coordinate_of_needle_in_image_position[1]), error, greenPaint); 
+        std::cout << "error is: " << error << std::endl;
+};
+    processed_viwer->update_batch(custimized_drawing, wrapper);
     return false;
 }
 
 void ProcessingMessage::communicate()
 {
+    std::cout << "lauching communication" << std::endl;
     using namespace curan::communication;
     button->set_waiting_color(SK_ColorGREEN);
     io_context.restart();
-    asio::ip::tcp::resolver resolver(io_context);
-    auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(io_context, resolver.resolve("localhost", std::to_string(port)));
-    connection_status.set(true);
-
-    auto lam = [this](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val)
-    {
-        try
-        {
-            if (process_message(protocol_defined_val, er, val))
-            {
-                connection_status.set(false);
-                attempt_stop();
-            }
-        }
-        catch (...)
-        {
-            std::cout << "Exception was thrown\n";
+    asio::ip::tcp::resolver fri_resolver(io_context);
+    auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(io_context, fri_resolver.resolve("172.31.1.148", std::to_string(50010)));
+    auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message){
+        try{
+          process_joint_message(protocol_defined_val, er, message);      
+        } catch (...) {
+            std::cout << "Exception \"process_joint_message\" was thrown" << std::endl;
         }
     };
-    client->connect(lam);
+    fri_client->connect(lam_fri);
+    std::cout << "io context running" << std::endl;
+    connection_status = true;
     io_context.run();
+    connection_status = false;
     button->set_waiting_color(SK_ColorRED);
     return;
 }

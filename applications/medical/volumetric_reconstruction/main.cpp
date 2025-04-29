@@ -360,13 +360,13 @@ Eigen::Matrix<double, 1, 9> get_error(Eigen::Matrix<double, 4, 4> moving_to_fixe
       {
         auto writer = itk::ImageFileWriter<itk::Image<float, 3>>::New();
         writer->SetInput(resampleFilter->GetOutput());
-        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_processed.mha");
+        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/"+info.appendix + "_processed.mha");
         update_ikt_filter(writer);
       }
       {
         auto writer = itk::ImageFileWriter<itk::Image<float, 3>>::New();
         writer->SetInput(resampleFilter->GetOutput());
-        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_bluered.mha");
+        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/"+info.appendix + "_bluered.mha");
         update_ikt_filter(writer);
       }
     } else
@@ -443,7 +443,7 @@ Eigen::Matrix<double, 1, 9> get_error(Eigen::Matrix<double, 4, 4> moving_to_fixe
     if constexpr (is_in_debug) {
       auto writer = itk::ImageFileWriter<itk::Image<unsigned char, 3>>::New();
       writer->SetInput(final_binary_threshold->GetOutput());
-      writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_processed_filtered.mha");
+      writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/"+info.appendix + "_processed_filtered.mha");
       update_ikt_filter(writer);
     } else
       update_ikt_filter(final_binary_threshold);
@@ -546,7 +546,7 @@ Eigen::Matrix<double, 1, 9> get_error(Eigen::Matrix<double, 4, 4> moving_to_fixe
       if constexpr (is_in_debug) {
         auto writer = itk::ImageFileWriter<itk::Image<unsigned char, 3>>::New();
         writer->SetInput(image_to_fill);
-        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_filled_mask.mha");
+        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/"+info.appendix + "_filled_mask.mha");
         update_ikt_filter(writer);
       }
     }
@@ -560,7 +560,7 @@ Eigen::Matrix<double, 1, 9> get_error(Eigen::Matrix<double, 4, 4> moving_to_fixe
     if constexpr (is_in_debug) {
       using WriterType = itk::MeshFileWriter<itk::Mesh<double>>;
       auto writer = WriterType::New();
-      writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_point_cloud.obj");
+      writer->SetFileName(CURAN_COPIED_RESOURCE_PATH"/"+info.appendix + "_point_cloud.obj");
       writer->SetInput(meshSource->GetOutput());
       update_ikt_filter(writer);
     }
@@ -1271,8 +1271,6 @@ std::tuple<Eigen::Matrix<double,4,4>,double> main_solve_registration(ImageType::
                               convergence_window_size.size() *
                               piramid_sizes.size() * bluering_sizes.size();
 
-  std::cout << "total permutations: " << total_permutations << std::endl;
-
   std::vector<std::tuple<double, Eigen::Matrix<double, 4, 4>>> full_runs;
 
   auto transformed_mask_fixed_image = itk::ImageMaskSpatialObject<3>::New();
@@ -1362,12 +1360,13 @@ std::tuple<Eigen::Matrix<double,4,4>,double> main_solve_registration(ImageType::
   const double pi = std::atan(1) * 4;
   auto [cost, best_transformation_mi] = full_runs[0];
 
+  /*
   std::cout << "\n error with MI:"
             << get_error(transformation_acording_to_pca_fixed*best_transformation_mi.inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse());
   std::cout << "\n error with ICP:"
             << get_error(transformation_acording_to_pca_fixed*best_transformation_icp*transformation_acording_to_pca_moving.inverse())
             << "\n\n\n";
-
+  */
   return std::make_tuple(transformation_acording_to_pca_fixed*best_transformation_mi.inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse(),cost);
 }
 

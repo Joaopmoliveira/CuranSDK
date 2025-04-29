@@ -1751,11 +1751,13 @@ try{
         return is_inside;
     };
 
-    if(!appdata.trajectory_location.entry_point_word_coordinates || !appdata.trajectory_location.entry_point_word_coordinates)
+    if(!appdata.trajectory_location.entry_point_word_coordinates || !appdata.trajectory_location.target_world_coordinates){
+        std::cout << "Terminating due to unspecified target and entry point" << std::endl;
         return 1;
+    }
 
     Eigen::Matrix<double,3,3> desired_orientation;
-    Eigen::Vector3d z_dir = (*appdata.trajectory_location.entry_point_word_coordinates-*appdata.trajectory_location.entry_point_word_coordinates).normalized();
+    Eigen::Vector3d z_dir = (*appdata.trajectory_location.target_world_coordinates-*appdata.trajectory_location.entry_point_word_coordinates).normalized();
     Eigen::Vector3d x_dir = z_dir;
     x_dir[0] -= 10.0;
     x_dir.normalize();
@@ -1764,10 +1766,12 @@ try{
     desired_orientation.col(0) = x_dir;
     desired_orientation.col(1) = y_dir;
     desired_orientation.col(2) = z_dir;
+
+    std::cout << "desired_orientation:\n" << desired_orientation << std::endl;
     
     auto date = curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now());
     curan::utilities::TrajectorySpecificationData specification{date,
-        *appdata.trajectory_location.entry_point_word_coordinates,
+        *appdata.trajectory_location.target_world_coordinates,
         *appdata.trajectory_location.entry_point_word_coordinates,
         desired_orientation,
         CURAN_COPIED_RESOURCE_PATH"/original_volume.mha",
@@ -1800,7 +1804,7 @@ try{
     // write prettified JSON to another file
 	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
 	o << specification;
-	std::cout << specification << std::endl;
+	//std::cout << specification << std::endl;
     
     return 0;
 }

@@ -17,4 +17,5 @@ ${ITK_LIBRARIES}
 imageprocessing
 userinterface
 communication
+robotutils
 )

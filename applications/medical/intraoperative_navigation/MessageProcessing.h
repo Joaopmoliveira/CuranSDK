@@ -19,24 +19,33 @@
 
 #include "communication/Client.h"
 #include "communication/Server.h"
-#include "communication/ProtoIGTL.h"
+#include "communication/ProtoFRI.h"
 
+struct ProcessingMessageInfo{
+	curan::ui::ImageDisplay * f_in_processed_viwer;
+	InputImageType::Pointer f_in_volume;
+	Eigen::Matrix<double, 3, 1> f_target;
+	Eigen::Matrix<double, 3, 1> f_entry_point;
+	Eigen::Matrix<double, 3, 3> f_desired_rotation;
 
+	Eigen::Matrix<double, 4, 4> f_registration;
+	Eigen::Matrix<double, 4, 4> f_needle_calibration;
+};
 
 struct ProcessingMessage
 {
 	curan::ui::ImageDisplay *processed_viwer = nullptr;
-	curan::utilities::Flag connection_status;
+	std::atomic<bool> connection_status = false;
 	curan::ui::Button *button;
 	asio::io_context io_context;
 	InputImageType::Pointer volume;
 
-	Eigen::Matrix<double, 3, 1> target;
-	Eigen::Matrix<double, 3, 1> entry_point;
-	Eigen::Matrix<double, 3, 3> desired_rotation;
+	const Eigen::Matrix<double, 3, 1> target;
+	const Eigen::Matrix<double, 3, 1> entry_point;
+	const Eigen::Matrix<double, 3, 3> desired_rotation;
 
-	Eigen::Matrix<double, 4, 4> registration;
-	Eigen::Matrix<double, 4, 4> needle_calibration;
+	const Eigen::Matrix<double, 4, 4> registration;
+	const Eigen::Matrix<double, 4, 4> needle_calibration;
 
 	std::shared_ptr<curan::utilities::ThreadPool> shared_pool;
 
@@ -45,9 +54,9 @@ struct ProcessingMessage
 
 	short port = 10000;
 
-	ProcessingMessage(curan::ui::ImageDisplay *in_processed_viwer, InputImageType::Pointer in_volume);
+	ProcessingMessage(const ProcessingMessageInfo& info);
 
-	bool process_message(size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val);
+	bool process_joint_message(const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message);
 
 	void communicate();
 
