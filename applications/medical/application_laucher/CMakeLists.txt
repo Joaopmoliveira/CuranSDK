@@ -5,6 +5,7 @@ include(${ITK_USE_FILE})
 
 add_executable(ApplicationLauncher
 main.cpp
+ApplicationData.cpp
 )
 
 if(WAS_PLUS_SPECIFIED)

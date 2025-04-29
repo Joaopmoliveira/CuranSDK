@@ -318,14 +318,10 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
   };
   
   template <bool is_in_debug>
-  std::tuple<itk::Mesh<double>::Pointer,
-             itk::ImageMaskSpatialObject<3>::ImageType::Pointer>
-  extract_point_cloud(itk::Image<float, 3>::Pointer image,
-                      const ExtractionSurfaceInfo<is_in_debug> &info) {
+  std::tuple<itk::Mesh<double>::Pointer,itk::ImageMaskSpatialObject<3>::ImageType::Pointer> extract_point_cloud(itk::Image<float, 3>::Pointer image, const ExtractionSurfaceInfo<is_in_debug> &info) {
     auto image_to_fill = itk::ImageMaskSpatialObject<3>::ImageType::New();
   
-    auto bluring = itk::BinomialBlurImageFilter<itk::Image<float, 3>,
-                                                itk::Image<float, 3>>::New();
+    auto bluring = itk::BinomialBlurImageFilter<itk::Image<float, 3>,itk::Image<float, 3>>::New();
     bluring->SetInput(image);
     bluring->SetRepetitions(10);
   
@@ -341,12 +337,9 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
     physicalspace[2] = input_size[2] * input_spacing[2];
   
     auto output_size = input_size;
-    output_size[0] =
-        (size_t)std::floor((1.0 / info.reduction_factor) * output_size[0]);
-    output_size[1] =
-        (size_t)std::floor((1.0 / info.reduction_factor) * output_size[1]);
-    output_size[2] =
-        (size_t)std::floor((1.0 / info.reduction_factor) * output_size[2]);
+    output_size[0] = (size_t)std::floor((1.0 / info.reduction_factor) * output_size[0]);
+    output_size[1] = (size_t)std::floor((1.0 / info.reduction_factor) * output_size[1]);
+    output_size[2] = (size_t)std::floor((1.0 / info.reduction_factor) * output_size[2]);
   
     auto output_spacing = input_spacing;
     output_spacing[0] = physicalspace[0] / output_size[0];
@@ -1270,11 +1263,11 @@ Eigen::Matrix<double,4,4> main_solve_registration(ImageType::Pointer fixed_volum
   constexpr size_t local_permut = 1;
 
   std::vector<size_t> bin_numbers{100};
-  std::vector<double> percentage_numbers{1.0, 0.9, 0.8, 0.6, 0.5, 0.4, 0.3};
+  std::vector<double> percentage_numbers{0.5};
   std::vector<double> relative_scales{1000.0};
   std::vector<double> learning_rate{.1};
-  std::vector<double> relaxation_factor{0.7};
-  std::vector<size_t> optimization_iterations{100, 300, 500, 750, 1000};
+  std::vector<double> relaxation_factor{0.8};
+  std::vector<size_t> optimization_iterations{300};
   std::vector<size_t> convergence_window_size{40};
 
   std::array<std::array<size_t, size_info>, local_permut> piramid_sizes{
@@ -1741,10 +1734,16 @@ struct ApplicationState
                                                        std::lock_guard<std::mutex> g{mut};
                                                        writer->SetFileName(filename);
                                                    }
-                                                   writer->SetInput(importFilter->GetOutput());
+                                                   
+                                                   using RescaleType = itk::RescaleIntensityImageFilter<itk::Image<float, 3>, itk::Image<float, 3>>;
+                                                   auto rescale = RescaleType::New();
+                                                   rescale->SetInput(importFilter->GetOutput());
+                                                   rescale->SetOutputMinimum(0.0);
+                                                   rescale->SetOutputMaximum(1.0);
+                                                   writer->SetInput(rescale->GetOutput());
                                                    try{
                                                     writer->Update();
-                                                    scanned_volume = DeepCopy(importFilter->GetOutput());
+                                                    scanned_volume = DeepCopy(rescale->GetOutput());
                                                    } catch(...){
                                                     std::lock_guard<std::mutex> g{mut};
                                                     success_description = "failed to store/record the volume";
@@ -2260,7 +2259,7 @@ int main(int argc, char **argv)
     info.full_screen = false;
     info.is_debug = false;
     info.screen_number = 0;
-    info.title = "Volume Reconstructor";
+    info.title = "Curan: Volume Reconstructor";
     info.imgui_interface = ui_interface;
     curan::renderable::Window::WindowSize size{2000, 1800};
     info.window_size = size;
