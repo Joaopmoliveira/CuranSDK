@@ -253,8 +253,7 @@ void update_ikt_filter(T &filter) {
     return T_rotation_extra;
   };
   
-  Eigen::Matrix<double, 1, 9>
-get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
+Eigen::Matrix<double, 1, 9> get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
     Eigen::Matrix<double, 3, 9> ct_points;
     ct_points << 51.0910, 45.7005, 18.7328, -26.3736, -53.1790, -53.1238,
         -38.7812, 5.9589, -26.4164, 80.3660, 128.6975, 156.8359, 158.2443,
@@ -267,13 +266,10 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
         -9.55646, 3.30793, 50.3275, 16.0374, 31.3693, 8.2447, -2.56189, -5.17164,
         11.5598, 26.49, 36.5624, 10.8589, 2.87831;
   
-    Eigen::Matrix<double, 3, 9> moved =
-        (moving_to_fixed.block<3, 3>(0, 0) * ct_points).colwise() +
-        moving_to_fixed.block<3, 1>(0, 3);
+    Eigen::Matrix<double, 3, 9> moved = (moving_to_fixed.block<3, 3>(0, 0) * ct_points).colwise() + moving_to_fixed.block<3, 1>(0, 3);
   
     Eigen::Matrix<double, 3, 9> error = world_points - moved;
-    Eigen::Array<double, 1, 9> rooted =
-        error.array().square().colwise().sum().sqrt();
+    Eigen::Array<double, 1, 9> rooted = error.array().square().colwise().sum().sqrt();
     return rooted.matrix();
   }
   
@@ -364,13 +360,13 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
       {
         auto writer = itk::ImageFileWriter<itk::Image<float, 3>>::New();
         writer->SetInput(resampleFilter->GetOutput());
-        writer->SetFileName(info.appendix + "_processed.mha");
+        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_processed.mha");
         update_ikt_filter(writer);
       }
       {
         auto writer = itk::ImageFileWriter<itk::Image<float, 3>>::New();
         writer->SetInput(resampleFilter->GetOutput());
-        writer->SetFileName(info.appendix + "_bluered.mha");
+        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_bluered.mha");
         update_ikt_filter(writer);
       }
     } else
@@ -447,7 +443,7 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
     if constexpr (is_in_debug) {
       auto writer = itk::ImageFileWriter<itk::Image<unsigned char, 3>>::New();
       writer->SetInput(final_binary_threshold->GetOutput());
-      writer->SetFileName(info.appendix + "_processed_filtered.mha");
+      writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_processed_filtered.mha");
       update_ikt_filter(writer);
     } else
       update_ikt_filter(final_binary_threshold);
@@ -550,7 +546,7 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
       if constexpr (is_in_debug) {
         auto writer = itk::ImageFileWriter<itk::Image<unsigned char, 3>>::New();
         writer->SetInput(image_to_fill);
-        writer->SetFileName(info.appendix + "_filled_mask.mha");
+        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_filled_mask.mha");
         update_ikt_filter(writer);
       }
     }
@@ -564,7 +560,7 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
     if constexpr (is_in_debug) {
       using WriterType = itk::MeshFileWriter<itk::Mesh<double>>;
       auto writer = WriterType::New();
-      writer->SetFileName(info.appendix + "_point_cloud.obj");
+      writer->SetFileName(CURAN_COPIED_RESOURCE_PATH+info.appendix + "_point_cloud.obj");
       writer->SetInput(meshSource->GetOutput());
       update_ikt_filter(writer);
     }
@@ -1126,9 +1122,7 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
   }
   
   template <typename PixelType>
-  double evaluate_mi_with_both_images(
-      const info_solve_registration<PixelType> &info_registration,
-      size_t bin_numbers) {
+  double evaluate_mi_with_both_images(const info_solve_registration<PixelType> &info_registration, size_t bin_numbers) {
     using RegistrationPixelType = PixelType;
     constexpr unsigned int Dimension = 3;
     using ImageType = itk::Image<PixelType, Dimension>;
@@ -1172,9 +1166,6 @@ get_error(Eigen::Matrix<double, 4, 4> moving_to_fixed) {
       return 100.0;
     }
   }
-
-  ImageType::Pointer scanned_volume = nullptr;
-  ImageType::Pointer masked_moving_volume = nullptr;
 
 Eigen::Matrix<double,4,4> main_solve_registration(ImageType::Pointer fixed_volume,ImageType::Pointer moving_volume){
   auto [point_cloud_fixed, mask_fixed_image] = extract_point_cloud(fixed_volume,ExtractionSurfaceInfo<true>{3, 0.95, "fixed", 5, 5});
@@ -1220,10 +1211,8 @@ Eigen::Matrix<double,4,4> main_solve_registration(ImageType::Pointer fixed_volum
     best_transformation_icp = best_icp_transform;
   }
 
-  Eigen::Matrix<double, 4, 4> Timage_origin_fixed =
-      Eigen::Matrix<double, 4, 4>::Identity();
-  Eigen::Matrix<double, 4, 4> Timage_origin_moving =
-      Eigen::Matrix<double, 4, 4>::Identity();
+  Eigen::Matrix<double, 4, 4> Timage_origin_fixed = Eigen::Matrix<double, 4, 4>::Identity();
+  Eigen::Matrix<double, 4, 4> Timage_origin_moving = Eigen::Matrix<double, 4, 4>::Identity();
   for (size_t row = 0; row < 3; ++row) {
     Timage_origin_fixed(row, 3) = fixed_volume->GetOrigin()[row];
     Timage_origin_moving(row, 3) = moving_volume->GetOrigin()[row];
@@ -1374,14 +1363,9 @@ Eigen::Matrix<double,4,4> main_solve_registration(ImageType::Pointer fixed_volum
   auto [cost, best_transformation_mi] = full_runs[0];
 
   std::cout << "\n error with MI:"
-            << get_error(transformation_acording_to_pca_fixed *
-                         best_transformation_mi.inverse() *
-                         best_transformation_icp *
-                         transformation_acording_to_pca_moving.inverse());
+            << get_error(transformation_acording_to_pca_fixed*best_transformation_mi.inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse());
   std::cout << "\n error with ICP:"
-            << get_error(transformation_acording_to_pca_fixed *
-                         best_transformation_icp *
-                         transformation_acording_to_pca_moving.inverse())
+            << get_error(transformation_acording_to_pca_fixed*best_transformation_icp*transformation_acording_to_pca_moving.inverse())
             << "\n\n\n";
 
   return transformation_acording_to_pca_fixed*best_transformation_mi.inverse()*best_transformation_icp*transformation_acording_to_pca_moving.inverse();
@@ -1502,6 +1486,7 @@ struct ApplicationState
     ImageType::Pointer scanned_volume = nullptr;
     ImageType::Pointer masked_moving_volume = nullptr;
     ImageType::Pointer original_moving_volume = nullptr;
+    Eigen::Matrix<double,4,4> transformation_to_sensor_base;
 
     ApplicationState(curan::renderable::Window &wind) : robot_state{wind}
     {
@@ -1512,6 +1497,7 @@ struct ApplicationState
         3) Another to process the UI tasks in sequence
         */
         pool = curan::utilities::ThreadPool::create(3);
+        transformation_to_sensor_base = Eigen::Matrix<double,4,4>::Identity();
     }
 
     void showMainWindow()
@@ -1623,7 +1609,13 @@ struct ApplicationState
                 robot_state.inject_frame(RobotState::InjectVolumeStatus::FREEZE_VOLUME);
             }
             pool->submit("solve registration", [this](){                         
-                auto transform_moving_to_fixed = main_solve_registration(masked_moving_volume,scanned_volume);
+                auto transform_moving_to_fixed = main_solve_registration(scanned_volume,masked_moving_volume);
+                auto proper_transform = transform_moving_to_fixed * transformation_to_sensor_base;
+                auto vsg_transformation_to_sensor_base = vsg::translate(0.0, 0.0, 0.0);
+                for(size_t r = 0; r < 4; ++r)
+                    for(size_t c = 0; c < 4; ++c) 
+                        vsg_transformation_to_sensor_base(c, r) = proper_transform(r, c);
+                robot_state.moving_volume->update_transform(vsg_transformation_to_sensor_base);
                 {
                     std::lock_guard<std::mutex> g{mut};
                     success_description = "solved registration problem";
@@ -1940,8 +1932,10 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
     igtl::ImageMessage::Pointer message_body = igtl::ImageMessage::New();
     message_body->Copy(val);
     int c = message_body->Unpack(1);
-    if (!(c & igtl::MessageHeader::UNPACK_BODY))
-        return false; // failed to unpack message, therefore returning without doing anything
+    if (!(c & igtl::MessageHeader::UNPACK_BODY)){
+      std::cout << "failed to unpack body" << std::endl;
+      return true; // failed to unpack message, therefore returning without doing anything
+    }
     if (state.dynamic_texture.get() == nullptr)
     {
         std::cout << "creating dynamic texture\n";
@@ -2004,126 +1998,126 @@ bool process_image_message(RobotState &state, igtl::MessageBase::Pointer val)
     };
 
     if (state.dynamic_texture.get() != nullptr)
-        state.dynamic_texture.cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
+      state.dynamic_texture.cast<curan::renderable::DynamicTexture>()->update_texture(updateBaseTexture);
 
-    igtl::Matrix4x4 image_transform;
-    message_body->GetMatrix(image_transform);
-    vsg::dmat4 homogeneous_transformation;
-    for (size_t row = 0; row < 4; ++row)
-        for (size_t col = 0; col < 4; ++col)
-            homogeneous_transformation(col, row) = image_transform[row][col];
+igtl::Matrix4x4 image_transform;
+message_body->GetMatrix(image_transform);
+vsg::dmat4 homogeneous_transformation;
+for (size_t row = 0; row < 4; ++row)
+    for (size_t col = 0; col < 4; ++col)
+        homogeneous_transformation(col, row) = image_transform[row][col];
 
-    homogeneous_transformation(3, 0) *= 1e-3;
-    homogeneous_transformation(3, 1) *= 1e-3;
-    homogeneous_transformation(3, 2) *= 1e-3;
+homogeneous_transformation(3, 0) *= 1e-3;
+homogeneous_transformation(3, 1) *= 1e-3;
+homogeneous_transformation(3, 2) *= 1e-3;
 
-    auto product = homogeneous_transformation * state.calibration_matrix;
+auto product = homogeneous_transformation * state.calibration_matrix;
 
-    if constexpr (display_ultrasound_with_plus_homogeneous_data)
+if constexpr (display_ultrasound_with_plus_homogeneous_data)
+{
+    if (state.dynamic_texture.get() != nullptr)
+        state.dynamic_texture.cast<curan::renderable::DynamicTexture>()->update_transform(product);
+}
+
+OutputImageType::Pointer image_to_render;
+curan::image::igtl2ITK_im_convert(message_body, image_to_render);
+const itk::SpacePrecisionType spacing[3] = {0.00018867924, 0.00018867924, 0.00018867924};
+image_to_render->SetSpacing(spacing);
+
+itk::Matrix<double, 3, 3> itk_matrix;
+for (size_t col = 0; col < 3; ++col)
+    for (size_t row = 0; row < 3; ++row)
+        itk_matrix(row, col) = product(col, row);
+
+image_to_render->SetDirection(itk_matrix);
+auto origin = image_to_render->GetOrigin();
+origin[0] = product(3, 0);
+origin[1] = product(3, 1);
+origin[2] = product(3, 2);
+image_to_render->SetOrigin(origin);
+
+static size_t counter = 0;
+constexpr size_t update_rate = 2;
+++counter;
+
+if (state.record_frames() && (counter % update_rate == 0))
+{
+    state.box_class.add_frame(image_to_render);
+    state.box_class.update();
+}
+
+auto caixa = state.box_class.get_final_volume_vertices();
+vsg::dmat4 transform_matrix;
+
+for (size_t col = 0; col < 3; ++col)
+    for (size_t row = 0; row < 3; ++row)
+        transform_matrix(col, row) = image_to_render->GetDirection()[row][col];
+
+transform_matrix(3, 0) = image_to_render->GetOrigin()[0];
+transform_matrix(3, 1) = image_to_render->GetOrigin()[1];
+transform_matrix(3, 2) = image_to_render->GetOrigin()[2];
+
+vsg::dmat3 rotation_0_1;
+
+vsg::dmat4 box_transform_matrix = vsg::translate(0.0, 0.0, 0.0);
+
+for (size_t col = 0; col < 3; ++col)
+    for (size_t row = 0; row < 3; ++row)
     {
-        if (state.dynamic_texture.get() != nullptr)
-            state.dynamic_texture.cast<curan::renderable::DynamicTexture>()->update_transform(product);
+        box_transform_matrix(col, row) = caixa.axis[col][row];
+        rotation_0_1(col, row) = box_transform_matrix(col, row);
     }
 
-    OutputImageType::Pointer image_to_render;
-    curan::image::igtl2ITK_im_convert(message_body, image_to_render);
-    const itk::SpacePrecisionType spacing[3] = {0.00018867924, 0.00018867924, 0.00018867924};
-    image_to_render->SetSpacing(spacing);
+vsg::dvec3 position_of_center_in_global_frame;
+position_of_center_in_global_frame[0] = caixa.center[0];
+position_of_center_in_global_frame[1] = caixa.center[1];
+position_of_center_in_global_frame[2] = caixa.center[2];
 
-    itk::Matrix<double, 3, 3> itk_matrix;
-    for (size_t col = 0; col < 3; ++col)
-        for (size_t row = 0; row < 3; ++row)
-            itk_matrix(row, col) = product(col, row);
+vsg::dvec3 position_in_local_box_frame;
+position_in_local_box_frame[0] = caixa.extent[0];
+position_in_local_box_frame[1] = caixa.extent[1];
+position_in_local_box_frame[2] = caixa.extent[2];
 
-    image_to_render->SetDirection(itk_matrix);
-    auto origin = image_to_render->GetOrigin();
-    origin[0] = product(3, 0);
-    origin[1] = product(3, 1);
-    origin[2] = product(3, 2);
-    image_to_render->SetOrigin(origin);
+auto global_corner_position = position_of_center_in_global_frame - rotation_0_1 * position_in_local_box_frame;
 
-    static size_t counter = 0;
-    constexpr size_t update_rate = 2;
-    ++counter;
+box_transform_matrix(3, 0) = global_corner_position[0];
+box_transform_matrix(3, 1) = global_corner_position[1];
+box_transform_matrix(3, 2) = global_corner_position[2];
+box_transform_matrix(3, 3) = 1;
 
-    if (state.record_frames() && (counter % update_rate == 0))
-    {
-        state.box_class.add_frame(image_to_render);
-        state.box_class.update();
-    }
+state.rendered_box->cast<curan::renderable::Box>()->set_scale(caixa.extent[0] * 2, caixa.extent[1] * 2, caixa.extent[2] * 2);
+state.rendered_box->update_transform(box_transform_matrix);
 
-    auto caixa = state.box_class.get_final_volume_vertices();
-    vsg::dmat4 transform_matrix;
+if (state.generate_volume())
+{
+    state.inject_frame(RobotState::InjectVolumeStatus::FREEZE_VOLUME);
+    state.window_pointer.erase("reconstructor");
 
-    for (size_t col = 0; col < 3; ++col)
-        for (size_t row = 0; row < 3; ++row)
-            transform_matrix(col, row) = image_to_render->GetDirection()[row][col];
+    int clip_origin_x = (int)0;
+    int clip_origin_y = (int)0;
+    int x, y, z;
+    message_body->GetDimensions(x, y, z);
 
-    transform_matrix(3, 0) = image_to_render->GetOrigin()[0];
-    transform_matrix(3, 1) = image_to_render->GetOrigin()[1];
-    transform_matrix(3, 2) = image_to_render->GetOrigin()[2];
+    state.integrated_volume = curan::image::IntegratedReconstructor::make(state.integrated_volume_create_info);
+    state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE).set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
+    state.window_pointer << state.integrated_volume;
 
-    vsg::dmat3 rotation_0_1;
+    curan::image::Clipping desired_clip;
+    desired_clip.clipRectangleOrigin[0] = clip_origin_x;
+    desired_clip.clipRectangleOrigin[1] = clip_origin_y;
+    desired_clip.clipRectangleSize[0] = x;
+    desired_clip.clipRectangleSize[1] = y - 15;
+    state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_clipping(desired_clip);
 
-    vsg::dmat4 box_transform_matrix = vsg::translate(0.0, 0.0, 0.0);
+    state.generate_volume(RobotState::GenerateStatus::ALREADY_GENERATED);
+    state.inject_frame(RobotState::InjectVolumeStatus::INJECT_FRAME);
+}
 
-    for (size_t col = 0; col < 3; ++col)
-        for (size_t row = 0; row < 3; ++row)
-        {
-            box_transform_matrix(col, row) = caixa.axis[col][row];
-            rotation_0_1(col, row) = box_transform_matrix(col, row);
-        }
-
-    vsg::dvec3 position_of_center_in_global_frame;
-    position_of_center_in_global_frame[0] = caixa.center[0];
-    position_of_center_in_global_frame[1] = caixa.center[1];
-    position_of_center_in_global_frame[2] = caixa.center[2];
-
-    vsg::dvec3 position_in_local_box_frame;
-    position_in_local_box_frame[0] = caixa.extent[0];
-    position_in_local_box_frame[1] = caixa.extent[1];
-    position_in_local_box_frame[2] = caixa.extent[2];
-
-    auto global_corner_position = position_of_center_in_global_frame - rotation_0_1 * position_in_local_box_frame;
-
-    box_transform_matrix(3, 0) = global_corner_position[0];
-    box_transform_matrix(3, 1) = global_corner_position[1];
-    box_transform_matrix(3, 2) = global_corner_position[2];
-    box_transform_matrix(3, 3) = 1;
-
-    state.rendered_box->cast<curan::renderable::Box>()->set_scale(caixa.extent[0] * 2, caixa.extent[1] * 2, caixa.extent[2] * 2);
-    state.rendered_box->update_transform(box_transform_matrix);
-
-    if (state.generate_volume())
-    {
-        state.inject_frame(RobotState::InjectVolumeStatus::FREEZE_VOLUME);
-        state.window_pointer.erase("reconstructor");
-
-        int clip_origin_x = (int)0;
-        int clip_origin_y = (int)0;
-        int x, y, z;
-        message_body->GetDimensions(x, y, z);
-
-        state.integrated_volume = curan::image::IntegratedReconstructor::make(state.integrated_volume_create_info);
-        state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_compound(curan::image::reconstruction::Compounding::LATEST_COMPOUNDING_MODE).set_interpolation(curan::image::reconstruction::Interpolation::NEAREST_NEIGHBOR_INTERPOLATION);
-        state.window_pointer << state.integrated_volume;
-
-        curan::image::Clipping desired_clip;
-        desired_clip.clipRectangleOrigin[0] = clip_origin_x;
-        desired_clip.clipRectangleOrigin[1] = clip_origin_y;
-        desired_clip.clipRectangleSize[0] = x;
-        desired_clip.clipRectangleSize[1] = y - 15;
-        state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->set_clipping(desired_clip);
-
-        state.generate_volume(RobotState::GenerateStatus::ALREADY_GENERATED);
-        state.inject_frame(RobotState::InjectVolumeStatus::INJECT_FRAME);
-    }
-
-    if (state.integrated_volume.get() != nullptr && state.inject_frame())
-    {
-        state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(image_to_render);
-    }
-    return true;
+if (state.integrated_volume.get() != nullptr && state.inject_frame())
+{
+    state.integrated_volume->cast<curan::image::IntegratedReconstructor>()->add_frame(image_to_render);
+}
+return true;
 }
 
 std::map<std::string, std::function<bool(RobotState &state, igtl::MessageBase::Pointer val)>> openigtlink_callbacks{
@@ -2131,12 +2125,15 @@ std::map<std::string, std::function<bool(RobotState &state, igtl::MessageBase::P
 
 bool process_message(RobotState &state, size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val)
 {
-    assert(val.IsNotNull());
-    if (er)
-        return true;
+    if(val.IsNull())
+      throw std::runtime_error("failure of communication");
+    if (er){
+      std::cout << "error detected: " << er.message() << std::endl;
+      return true;
+    }
     if (auto search = openigtlink_callbacks.find(val->GetMessageType()); search != openigtlink_callbacks.end())
         search->second(state, val);
-    return false;
+    return true;
 }
 
 //std::ofstream &get_file_handle()
@@ -2200,16 +2197,11 @@ int communication(RobotState &state, asio::io_context &context)
     asio::ip::tcp::resolver resolver(context);
     auto client = curan::communication::Client<curan::communication::protocols::igtlink>::make(context, resolver.resolve("localhost", std::to_string(18944)));
 
-    auto lam = [&](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val)
-    {
-        try
-        {
-            if (process_message(state, protocol_defined_val, er, val) || state)
-                context.stop();
-        }
-        catch (...)
-        {
-            std::cout << "Exception was thrown\n";
+    auto lam = [&](size_t protocol_defined_val, std::error_code er, igtl::MessageBase::Pointer val){
+        try{
+          process_message(state, protocol_defined_val, er, val);
+        } catch (...) {
+            std::cout << "Exception \"process_message\" was thrown" << std::endl;
         }
     };
     client->connect(lam);
@@ -2218,16 +2210,11 @@ int communication(RobotState &state, asio::io_context &context)
     asio::ip::tcp::resolver fri_resolver(context);
     auto fri_client = curan::communication::Client<curan::communication::protocols::fri>::make(context, fri_resolver.resolve("172.31.1.148", std::to_string(50010)));
 
-    auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message)
-    {
-        try
-        {
-            if (process_joint_message(state, protocol_defined_val, er, message))
-                context.stop();
-        }
-        catch (...)
-        {
-            std::cout << "Exception was thrown\n";
+    auto lam_fri = [&](const size_t &protocol_defined_val, const std::error_code &er, std::shared_ptr<curan::communication::FRIMessage> message){
+        try{
+          process_joint_message(state, protocol_defined_val, er, message);      
+        } catch (...) {
+            std::cout << "Exception \"process_joint_message\" was thrown" << std::endl;
         }
     };
     fri_client->connect(lam_fri);
@@ -2271,10 +2258,10 @@ int main(int argc, char **argv)
     auto homogenenous_transform = Eigen::Matrix<double,4,4>::Identity();
 
     curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
-    //std::cout << "using calibration matrix: \n" << calibration.homogeneous_transformation() << std::endl;
+    std::cout << "using calibration matrix: \n" << calibration.homogeneous_transformation() << std::endl;
     for (Eigen::Index row = 0; row < 4; ++row)
         for (Eigen::Index col = 0; col < 4; ++col)
-            application_state.robot_state.calibration_matrix(col, row) = homogenenous_transform(row, col);
+            application_state.robot_state.calibration_matrix(col, row) = calibration.homogeneous_transformation()(row, col);
 
     curan::utilities::TrajectorySpecificationData trajectory_data{CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json"};
     {
@@ -2314,23 +2301,22 @@ int main(int argc, char **argv)
     auto volume = curan::renderable::Volume::make(volumeinfo);
     window << volume;
 
-    Eigen::Matrix<double,4,4> transformation_to_sensor_base = Eigen::Matrix<double,4,4>::Identity();
-    transformation_to_sensor_base(0,3) = application_state.original_moving_volume->GetOrigin()[0]*1e-3;
-    transformation_to_sensor_base(1,3) = application_state.original_moving_volume->GetOrigin()[1]*1e-3;
-    transformation_to_sensor_base(2,3) = application_state.original_moving_volume->GetOrigin()[2]*1e-3;
+    application_state.transformation_to_sensor_base(0,3) = application_state.original_moving_volume->GetOrigin()[0]*1e-3;
+    application_state.transformation_to_sensor_base(1,3) = application_state.original_moving_volume->GetOrigin()[1]*1e-3;
+    application_state.transformation_to_sensor_base(2,3) = application_state.original_moving_volume->GetOrigin()[2]*1e-3;
 
     auto direction = application_state.original_moving_volume->GetDirection();
     for(size_t r = 0; r < 3; ++r)
         for(size_t c = 0; c < 3; ++c)
-            transformation_to_sensor_base(r,c) = direction(r,c);
+        application_state.transformation_to_sensor_base(r,c) = direction(r,c);
 
     auto vsg_transformation_to_sensor_base = vsg::translate(0.0, 0.0, 0.0);
     for(size_t r = 0; r < 4; ++r)
         for(size_t c = 0; c < 4; ++c) 
-            vsg_transformation_to_sensor_base(c, r) = transformation_to_sensor_base(r, c);
+            vsg_transformation_to_sensor_base(c, r) = application_state.transformation_to_sensor_base(r, c);
     volume->update_transform(vsg_transformation_to_sensor_base);
     volume->cast<curan::renderable::Volume>()->update_volume([moving_volume = application_state.original_moving_volume](vsg::floatArray3D &image) {updateBaseTexture3D<itk::Image<float, 3>>(image,moving_volume);});
-
+    application_state.robot_state.moving_volume = volume->cast<curan::renderable::Volume>();
     application_state.robot_state(true);
 
     application_state.pool->submit("communication with robot", [&](){ communication(application_state.robot_state, context); });
@@ -2342,6 +2328,7 @@ int main(int argc, char **argv)
     });
 
     window.run();
+    context.stop();
     application_state.robot_state(false);
     return 0;
 }

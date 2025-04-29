@@ -12,13 +12,12 @@ static std::atomic<curan::ui::TaskManager*> manager = nullptr;
 			std::istream istr(&async_data->plus_buf);
 			if (!ec){
 				std::getline(istr, line);
+                std::cout << "plus >> " << line << std::endl;
 				if(manager) 
-					manager.load()->set_mainbody("plus >> " + line);
-				else 
-					std::cout << "plus >> " << line << std::endl;
+                    manager.load()->set_mainbody("plus >> " + line);
 			} else {
+                std::cout << "plus >> stopping... " << line << std::endl;
                 if(manager) manager.load()->set_mainbody("plus >> stopping... " + line);
-				else std::cout << "plus >> stopping... " << line << std::endl;   
             }
 			if (!ec)
 				async_data->post_async_plus_read();
@@ -37,11 +36,11 @@ static std::atomic<curan::ui::TaskManager*> manager = nullptr;
 			std::istream istr(&async_data->child_buf);
 			if (!ec){
 				std::getline(istr, line);
+                std::cout << async_data->executable_name << line << std::endl;
 				if(manager)  manager.load()->set_mainbody(async_data->executable_name + line);
-				else std::cout << async_data->executable_name << line << std::endl;
 			} else {
+                std::cout << async_data->executable_name << " stopping... " << line << std::endl;   
                 if(manager) manager.load()->set_mainbody(async_data->executable_name + " stopping... " + line);
-				else std::cout << async_data->executable_name << " stopping... " << line << std::endl;   
             }
 			if (!ec)
 				async_data->post_async_read();
