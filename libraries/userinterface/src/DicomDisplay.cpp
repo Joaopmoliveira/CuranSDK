@@ -829,20 +829,12 @@ namespace ui{
                 
                 set_current_state(SliderStates::WAITING);
                 auto arg = std::get<curan::ui::Key>(sig);
-                if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS){
-                    if (zoom_in)
-                        zoom_in.deactivate();
-                    else
-                        zoom_in.activate();
-                }
-    
-                if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS){
-                    is_highlighting = !is_highlighting;
-                    if (!current_stroke.empty()){
-                        insert_in_map(current_stroke);
-                        current_stroke.clear();
-                    }
-                }
+                if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
+                    change_zoom();
+                
+                if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS)
+                    change_path_selection();
+                
                 return false;
             }
     

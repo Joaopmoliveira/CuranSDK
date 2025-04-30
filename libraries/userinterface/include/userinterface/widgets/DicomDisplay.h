@@ -544,6 +544,21 @@ public:
     void framebuffer_resize(const SkRect &new_page_size) override;
     void internal_framebuffer_recomputation();
 
+    inline void change_zoom(){
+        if (zoom_in)
+            zoom_in.deactivate();
+        else
+            zoom_in.activate();
+    }
+
+    inline void change_path_selection(){
+        is_highlighting = !is_highlighting;
+        if (!current_stroke.empty()){
+            insert_in_map(current_stroke);
+            current_stroke.clear();
+        }
+    }
+
     inline DicomViewer &trigger(float in_current_value)
     {
         value_pressed = in_current_value;

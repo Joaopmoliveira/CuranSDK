@@ -611,11 +611,33 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
 std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata){
     using namespace curan::ui;
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+    auto overlay_lambda = [&](DicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
+        switch(selected_option){
+            case 0:
+                viewer->update_volume(appdata.vol_mas, Direction::X);
+            break;
+            case 1:
+                viewer->update_volume(appdata.vol_mas, Direction::Y);
+            break;
+            case 2:
+                viewer->update_volume(appdata.vol_mas, Direction::Z);
+            break;
+            case 3:
+                viewer->change_zoom();
+            break;
+            case 4:
+                viewer->change_path_selection();
+            break;
+            default:
+            break;
+        }
+    };
     switch(appdata.type){
         case ONE:
         {
             auto image_display = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
             image_display->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            image_display->add_overlay_processor(overlay_lambda);
             *container << std::move(image_display);
         }
         break;
@@ -623,8 +645,10 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
         {
             auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
             image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            image_displayx->add_overlay_processor(overlay_lambda);
             auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
             image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            image_displayy->add_overlay_processor(overlay_lambda);
             *container << std::move(image_displayx) << std::move(image_displayy);
         }
         break;
@@ -632,10 +656,13 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
         {
             auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
             image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            image_displayx->add_overlay_processor(overlay_lambda);
             auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
             image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            image_displayy->add_overlay_processor(overlay_lambda);
             auto image_displayz = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
             image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            image_displayz->add_overlay_processor(overlay_lambda);
             *container << std::move(image_displayx) << std::move(image_displayy) << std::move(image_displayz);
         }
         break;
@@ -1387,7 +1414,25 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
     auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
-    image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+    image_displayy->push_options({"coronal view","axial view","saggital view","zoom"});
+    image_displayy->add_overlay_processor([&](DicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
+        switch(selected_option){
+            case 0:
+                viewer->update_volume(appdata.vol_mas, Direction::X);
+            break;
+            case 1:
+                viewer->update_volume(appdata.vol_mas, Direction::Y);
+            break;
+            case 2:
+                viewer->update_volume(appdata.vol_mas, Direction::Z);
+            break;
+            case 3:
+                viewer->change_zoom();
+            break;
+            default:
+            break;
+        }
+    });
     *slidercontainer << std::move(image_displayx) << std::move(image_displayy);
 
     auto defineentry = Button::make("Select Entry Point", *appdata.resources);

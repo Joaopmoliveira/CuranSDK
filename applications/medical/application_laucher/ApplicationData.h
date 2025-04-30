@@ -100,6 +100,7 @@ class Application
 	curan::ui::Button *ptr_button4 = nullptr;
 	curan::ui::Button *ptr_button5 = nullptr;
 	curan::ui::Button *ptr_button6 = nullptr;
+	curan::ui::Button *ptr_button7 = nullptr;
 	
 	std::shared_ptr<PendinAsyncData> pending_task = nullptr;
 

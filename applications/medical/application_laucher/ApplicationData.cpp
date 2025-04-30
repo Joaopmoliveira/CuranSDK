@@ -352,14 +352,48 @@ std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,c
             launch_all("InteroperativeNavigation",false);
 		});
 
+		auto button7 = curan::ui::Button::make("3D Neuro Navigation","biopsyviewer.png", resources);
+		ptr_button7 = button7.get();
+		button7->set_click_color(SK_ColorDKGRAY)
+			.set_hover_color(SK_ColorLTGRAY)
+			.set_waiting_color(waiting_color_inactive)
+			.set_font_size(20)
+			.set_size(SkRect::MakeWH(300, 150));
+		button7->add_press_call([&](curan::ui::Button *inbut, curan::ui::Press pres, curan::ui::ConfigDraw *config)
+								{
+			try{
+				curan::utilities::UltrasoundCalibrationData calibration{CURAN_COPIED_RESOURCE_PATH "/spatial_calibration.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("Ultrasound calibration not available",resources));
+				return;
+			}
+
+			try{
+				curan::utilities::TrajectorySpecificationData trajectory_data{CURAN_COPIED_RESOURCE_PATH "/trajectory_specification.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("Pre-operative image not available",resources));
+				return;
+			}
+
+			try{
+				curan::utilities::RegistrationData trajectory_data{CURAN_COPIED_RESOURCE_PATH "/registration_specification.json"};
+			} catch(...){
+				config->stack_page->stack(warning_overlay("3D Intra-operative Navigation not available",resources));
+				return;
+			}
+            launch_all("RealTimeNavigation3D",false);
+		});
+
 		auto registrationcontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
 		*registrationcontainer << std::move(button4) << std::move(button5);
+		auto navigationcontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::VERTICAL);
+		*navigationcontainer << std::move(button6) << std::move(button7);
 		auto widgetcontainer = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER, curan::ui::Container::Arrangement::HORIZONTAL);
 		*widgetcontainer << std::move(button1)
 						 << std::move(button2)
 						 << std::move(button3)
 						 << std::move(registrationcontainer)
-						 << std::move(button6);
+						 << std::move(navigationcontainer);
 
 		auto lablogo = resources.get_icon("hrtransparent.png");
 		auto tecnicologo = resources.get_icon("IST_A_RGB_POS.png");
@@ -441,5 +475,7 @@ std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,c
 			ptr_button5->set_waiting_color(waiting_color_inactive);
 		if (ptr_button6)
 			ptr_button6->set_waiting_color(waiting_color_inactive);
+		if (ptr_button7)
+			ptr_button7->set_waiting_color(waiting_color_inactive);
 	}
 
