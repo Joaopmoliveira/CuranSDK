@@ -67,7 +67,7 @@ installed.
 (if on linux)
 3.* Install the build tools required for your operating system - Install the lattest build-tools which integrates C++ compilers in your system.
 
-4. Go to your command line. There are two present types in Curan "Release" and "Debug". Assuming that you wish to build the project in Release mode write
+4. (CMake 3.19 or higher required) Go to your command line. There are two present types in Curan "Release" and "Debug". Assuming that you wish to build the project in Release mode write
 
 ```sh
 ~path/CuranSDK >> cmake --preset Release
