@@ -30,13 +30,6 @@ enum MaskUsed
     DIRTY
 };
 
-enum Direction
-{
-    X = 0,
-    Y = 1,
-    Z = 2
-};
-
 class DicomMask
 {
     MaskUsed _mask_flag;

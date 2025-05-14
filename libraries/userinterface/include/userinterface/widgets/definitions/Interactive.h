@@ -104,15 +104,27 @@ struct Path{
 
 using Stroke = std::variant<Point,Path>;
 
+enum Direction
+{
+	X = 0,
+	Y = 1,
+	Z = 2
+};
+
+
+
 struct directed_stroke
 {	
     Eigen::Matrix<double,3,Eigen::Dynamic> point_in_image_coordinates;
     std::optional<std::array<double,3>> point; 
     curan::ui::Stroke stroke;
+	Direction direction;
 
     directed_stroke(const Eigen::Matrix<double,3,Eigen::Dynamic>& in_points_in_image_coordinates, 
-        curan::ui::Stroke in_stroke) :  point_in_image_coordinates{in_points_in_image_coordinates},
-                                                stroke{in_stroke}
+        curan::ui::Stroke in_stroke,
+		Direction in_direction = Direction::Z) :  point_in_image_coordinates{in_points_in_image_coordinates},
+                                                stroke{in_stroke},
+												direction{in_direction}
     {}
 };
 

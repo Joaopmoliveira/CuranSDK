@@ -122,6 +122,9 @@ enum LayoutType{
 
 struct Application;
 
+using RGBAPixelType = itk::RGBAPixel<unsigned char>;
+using RGBImageType = itk::Image<RGBAPixelType, 3>;
+
 struct Application{
     curan::ui::MiniPage* tradable_page = nullptr;
     ACPCData ac_pc_data;
@@ -134,8 +137,8 @@ struct Application{
     std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
     std::function<std::unique_ptr<curan::ui::Container>(Application&)> panel_constructor;
     std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
-    curan::ui::DicomVolumetricMask projected_vol_mas{nullptr};
-    std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
+    curan::ui::VolumetricMask<RGBImageType> projected_vol_mas{nullptr};
+    std::function<void(Application&,curan::ui::VolumetricMask<RGBImageType>*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
     RegionOfInterest roi;
 
     Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
@@ -156,17 +159,16 @@ void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetr
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata);
-void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricMask<RGBImageType> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata);
 void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
 
-ImageType::Pointer allocate_image(Application& appdata){
+RGBImageType::Pointer allocate_image(Application& appdata){
 
-    const std::vector<std::tuple<std::array<double,2>,std::array<double,3>>> color_ranges = {{{0,0.1095*255},{100,149,237}},
-                                                                                            {{0.1095*255,0.243995834196*255},{28,28,28}},
-                                                                                            {{0.243995834196*255,255},{255,160,122}}}; 
+    const std::vector<std::tuple<std::array<double,4>,std::array<double,3>>> color_ranges = {{{0.02,0.04,0.05,0.08},{(1.0/255.0)*100,(1.0/255.0)*149,(1.0/255.0)*237}},
+                                                                                            {{0.27,0.40,0.99,1.0},{(1.0/255.0)*255,(1.0/255.0)*40,(1.0/255.0)*0}}}; 
 
     ImageType::Pointer input;
     if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
@@ -195,19 +197,19 @@ ImageType::Pointer allocate_image(Application& appdata){
     eigen_rotation_matrix.col(1) = y_direction;
     eigen_rotation_matrix.col(2) = z_direction;
 
-    ImageType::Pointer projectionimage = ImageType::New();
+    RGBImageType::Pointer projectionimage = RGBImageType::New();
   
-    ImageType::SizeType size;
+    RGBImageType::SizeType size;
     size[0] = 256;  // size along X
     size[1] = 256;  // size along Y 
     size[2] = 1;   // size along Z
 
-    ImageType::SpacingType spacing;
+    RGBImageType::SpacingType spacing;
     spacing[0] = (base1 - base0).norm()/(double)size[0]; // mm along X
     spacing[1] = (base3 - base0).norm()/(double)size[1]; // mm along X
     spacing[2] = 1.0; // mm along Z
   
-    ImageType::PointType origin;
+    RGBImageType::PointType origin;
     origin[0] = base0[0];
     origin[1] = base0[1];
     origin[2] = base0[2];
@@ -217,7 +219,7 @@ ImageType::Pointer allocate_image(Application& appdata){
         for(size_t j = 0; j < 3; ++j)
             direction(i,j) = eigen_rotation_matrix(i,j);
   
-    ImageType::RegionType region;
+    RGBImageType::RegionType region;
     region.SetSize(size);
   
     projectionimage->SetRegions(region);
@@ -225,9 +227,9 @@ ImageType::Pointer allocate_image(Application& appdata){
     projectionimage->SetOrigin(origin);
     projectionimage->SetDirection(direction);
     projectionimage->Allocate();
-    projectionimage->FillBuffer(0);
+    projectionimage->FillBuffer(itk::RGBAPixel<unsigned char>{});
 
-    typedef itk::ImageRegionIteratorWithIndex<ImageType> IteratorType;
+    typedef itk::ImageRegionIteratorWithIndex<RGBImageType> IteratorType;
     IteratorType it(projectionimage, projectionimage->GetRequestedRegion());
 
     const Eigen::Matrix<double,3,1> t0 = *appdata.trajectory_location.target_world_coordinates;
@@ -267,7 +269,7 @@ ImageType::Pointer allocate_image(Application& appdata){
         const float min_iteratrions = 2.0;
         const float max_iteratrions = 1024.0;
 
-        const float TransparencyValue = 0.01;
+        const float TransparencyValue = 0.05;
         const float AlphaFuncValue = 0.01;
         const float SampleDensityValue = 0.1;
         
@@ -344,9 +346,26 @@ ImageType::Pointer allocate_image(Application& appdata){
             double alpha = 0.0;
             for(const auto& [alpha_val,dist] : neighboors_residue )
                 alpha += (dist/sum_of_dist)*alpha_val;
-
+            
+            //Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, std::min(std::abs(0.19-alpha),1.0) * TransparencyValue};
             Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, alpha * TransparencyValue};
-            float mix_factor = std::min(std::abs(0.19-color[3]),1.0);
+            for(const auto [alpha_range,alpha_color] : color_ranges){
+                if( alpha_range[0]<alpha && alpha_range[3] > alpha ){
+                    if(alpha<alpha_range[1]){
+                        auto mix = (alpha-alpha_range[0])/(alpha_range[1]-alpha_range[0]);
+                        color = Eigen::Matrix<double,4,1>{(1-mix)*alpha+mix*alpha_color[0], (1-mix)*alpha+mix*alpha_color[1], (1-mix)*alpha+mix*alpha_color[2], 0.5*mix};
+                    } else if(alpha>alpha_range[2]){
+                        auto mix = (alpha_range[3]-alpha)/(alpha_range[3]-alpha_range[2]);
+                        color = Eigen::Matrix<double,4,1>{(1-mix)*alpha+mix*alpha_color[0], (1-mix)*alpha+mix*alpha_color[1],(1-mix)*alpha+ mix*alpha_color[2], 0.5*mix};
+                    }  else {
+                        color = Eigen::Matrix<double,4,1>{alpha_color[0], alpha_color[1],alpha_color[2], 0.5};
+                    }
+                    break;
+                }
+            }
+
+            //float mix_factor = std::min(std::abs(0.19-color[3]),1.0);
+            float mix_factor = color[3];
             if (mix_factor > AlphaFuncValue){
                 fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
                 fragColor[3] += mix_factor;
@@ -358,7 +377,12 @@ ImageType::Pointer allocate_image(Application& appdata){
             texcoord += deltaTexCoord;
             --num_iterations;
         }
-        it.Set(255.0*fragColor[0]);
+        itk::RGBAPixel<unsigned char> tosetpixel;
+        tosetpixel[0] = (int) 255.0*fragColor[0];
+        tosetpixel[1] = (int) 255.0*fragColor[1];
+        tosetpixel[2] = (int) 255.0*fragColor[2];
+        tosetpixel[3] = 255;
+        it.Set(tosetpixel);
   }
   return projectionimage;
 }
@@ -1243,7 +1267,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     return std::move(container);
 };
 
-void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricMask<RGBImageType> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the columns of the highlighted path must be at least 1");
@@ -1408,8 +1432,24 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         throw std::runtime_error("failure due to missing volume");
     }
     appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+    
     try{
-        ImageType::Pointer projected_input = allocate_image(appdata);
+        auto projected_input = allocate_image(appdata);
+        /*
+        using WriterType = itk::ImageFileWriter<RGBImageType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("C:/Dev/CuranSDK/build/release/image.png");
+        writer->SetInput(projected_input);
+
+        try
+        {
+             writer->Update();
+        }
+        catch (const itk::ExceptionObject & error)
+        {
+            std::cerr << "Error: " << error << std::endl;
+        }*/
+
         appdata.projected_vol_mas.update_volume(projected_input);
     } catch(...){
         std::cout << "failure allocating image" << std::endl;
@@ -1417,7 +1457,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     }
 
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
+    auto image_displayx = curan::ui::TwoDimensionalViewer<RGBImageType>::make(*appdata.resources, &appdata.projected_vol_mas);
     auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
     image_displayy->push_options({"coronal view","axial view","saggital view","zoom"});
     image_displayy->add_overlay_processor([&](DicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
@@ -1626,7 +1666,7 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
     vol_mas->add_pressedhighlighted_call([this](DicomVolumetricMask *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
         volume_callback(*this,vol_mas,config_draw,strokes);
     });
-    projected_vol_mas.add_pressedhighlighted_call([this](DicomVolumetricMask *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
+    projected_vol_mas.add_pressedhighlighted_call([this](curan::ui::VolumetricMask<RGBImageType> *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
         projected_volume_callback(*this,vol_mas,config_draw,strokes);
     });
     return std::move(minimage_container);

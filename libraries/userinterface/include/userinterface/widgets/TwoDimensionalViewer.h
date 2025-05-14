@@ -27,26 +27,18 @@ namespace ui{
 using stroke_added_callback = std::function<curan::ui::Stroke(void)>;
 using clicked_highlighted_stroke_callback = std::function<curan::ui::Stroke(void)>;
 
-enum ItkMaskUsed
-{
-    CLEAN = 0,
-    DIRTY
-};
-
 class ItkMask
 {
-    ItkMaskUsed _mask_flag;
     std::unordered_map<size_t, curan::ui::Stroke> recorded_strokes;
 
 public:
-    ItkMask() : _mask_flag{ItkMaskUsed::CLEAN} {}
+    ItkMask(){}
     ItkMask(const ItkMask &m) = delete;
     ItkMask &operator=(const ItkMask &) = delete;
 
     template <typename... T>
     std::pair<std::unordered_map<size_t, curan::ui::Stroke>::iterator, bool> try_emplace(T &&...u)
     {
-        _mask_flag = ItkMaskUsed::DIRTY;
         return recorded_strokes.try_emplace(std::forward<T>(u)...);
     }
 
@@ -65,11 +57,6 @@ public:
 
     void container_resized(const SkMatrix &inverse_homogenenous_transformation);
 
-    inline operator bool() const
-    {
-        return _mask_flag;
-    }
-
     inline void reset(){
         recorded_strokes = std::unordered_map<size_t, curan::ui::Stroke>{};
     }
@@ -84,8 +71,6 @@ template <typename T>
 struct is_rgb_pixel<itk::RGBAPixel<T>> : std::true_type {};
 template <typename T>
 struct is_rgb_pixel<itk::RGBPixel<T>> : std::true_type {};
-
-constexpr unsigned int Dimension = 3;
 
 template<typename imagetype>
 class VolumetricMask;
@@ -142,14 +127,13 @@ public:
     }
 };
 
-static size_t size_of_slider_in_height = 30;
-static size_t buffer_around_panel = 8;
-
-
 template<typename imagetype>
 class TwoDimensionalViewer final : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<typename TwoDimensionalViewer<imagetype>>
 {
 public:
+
+    const size_t size_of_slider_in_height = 30;
+    const size_t buffer_around_panel = 8;
 
     using optionsselection_event = std::function<void(TwoDimensionalViewer<imagetype>*, curan::ui::ConfigDraw*, size_t selected_option)>;
 
@@ -247,7 +231,7 @@ private:
         imagetype::IndexType image_coordinates;
         imagetype::PointType world_coordinates;
         imagetype::PixelType value;
-        bool is_outside = false;;
+        bool is_outside = false;
     };
     
     CurrentLocationDicom current_mouse_location;
@@ -259,6 +243,7 @@ private:
         image_info info;
         assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
         if constexpr (is_rgb_pixel<typename imagetype::PixelType>::value){
+            std::printf("extracting rgba slice\n");
             typename imagetype::Pointer pointer_to_block_of_memory = volumetric_mask->get_volume();
             typename imagetype::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
             auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(typename imagetype::PixelType), pointer_to_block_of_memory);
@@ -731,7 +716,7 @@ public:
                 std::string pixel_value;
                 if(!current_mouse_location.is_outside){
                     if constexpr (is_rgb_pixel<typename imagetype::PixelType>::value){
-                        pixel_value = "Pixel value: (" + std::to_string(current_mouse_location.value[0]) + "," + std::to_string(current_mouse_location.value[1]) + "," + std::to_string(current_mouse_location.value[2])+")";
+                        pixel_value = "Pixel value: (" + std::to_string(current_mouse_location.value[0]) + "," + std::to_string(current_mouse_location.value[1]) + "," + std::to_string(current_mouse_location.value[2])+"," + std::to_string(current_mouse_location.value[3])+")";
                     } else {
                         pixel_value = "Pixel value: " + std::to_string(current_mouse_location.value);
                     }

@@ -32,13 +32,6 @@ namespace curan
 			DIRTY
 		};
 
-		enum Direction
-		{
-			X = 0,
-			Y = 1,
-			Z = 2
-		};
-
 		class Mask
 		{
 			MaskUsed _mask_flag;
