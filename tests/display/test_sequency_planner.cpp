@@ -6,6 +6,7 @@
 #include "userinterface/widgets/TextBlob.h"
 #include "userinterface/widgets/DicomDisplay.h"
 #include "userinterface/widgets/MiniPage.h"
+#include "userinterface/widgets/TwoDimensionalViewer.h"
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/ItemExplorer.h"
 #include "userinterface/widgets/Overlay.h"
@@ -162,6 +163,10 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
 
 
 ImageType::Pointer allocate_image(Application& appdata){
+
+    const std::vector<std::tuple<std::array<double,2>,std::array<double,3>>> color_ranges = {{{0,0.1095*255},{100,149,237}},
+                                                                                            {{0.1095*255,0.243995834196*255},{28,28,28}},
+                                                                                            {{0.243995834196*255,255},{255,160,122}}}; 
 
     ImageType::Pointer input;
     if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
@@ -341,7 +346,7 @@ ImageType::Pointer allocate_image(Application& appdata){
                 alpha += (dist/sum_of_dist)*alpha_val;
 
             Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, alpha * TransparencyValue};
-            float mix_factor = color[3];
+            float mix_factor = std::min(std::abs(0.19-color[3]),1.0);
             if (mix_factor > AlphaFuncValue){
                 fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
                 fragColor[3] += mix_factor;

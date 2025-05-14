@@ -4,6 +4,7 @@
 #include "UIdefinitions.h"
 #include <variant>
 #include <vector>
+#include <Eigen/Dense>
 
 namespace curan{
 namespace ui{
@@ -102,6 +103,18 @@ struct Path{
 };
 
 using Stroke = std::variant<Point,Path>;
+
+struct directed_stroke
+{	
+    Eigen::Matrix<double,3,Eigen::Dynamic> point_in_image_coordinates;
+    std::optional<std::array<double,3>> point; 
+    curan::ui::Stroke stroke;
+
+    directed_stroke(const Eigen::Matrix<double,3,Eigen::Dynamic>& in_points_in_image_coordinates, 
+        curan::ui::Stroke in_stroke) :  point_in_image_coordinates{in_points_in_image_coordinates},
+                                                stroke{in_stroke}
+    {}
+};
 
 sk_sp<SkFontMgr> fontMgr();
 

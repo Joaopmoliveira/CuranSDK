@@ -95,21 +95,6 @@ public:
 
 constexpr unsigned int Dimension = 3;
 
-struct directed_stroke
-{	
-    Eigen::Matrix<double,3,Eigen::Dynamic> point_in_image_coordinates;
-    std::optional<std::array<double,3>> point; 
-    curan::ui::Stroke stroke;
-    Direction direction;
-
-    directed_stroke(const Eigen::Matrix<double,3,Eigen::Dynamic>& in_points_in_image_coordinates, 
-        curan::ui::Stroke in_stroke , 
-                    Direction in_direction) :  point_in_image_coordinates{in_points_in_image_coordinates},
-                                                stroke{in_stroke},
-                                                direction{in_direction}
-    {}
-};
-
 class DicomVolumetricMask;
 using pressedhighlighted_event = std::function<void(DicomVolumetricMask*, curan::ui::ConfigDraw*, const directed_stroke&)>;
 

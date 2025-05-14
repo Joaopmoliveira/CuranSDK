@@ -404,3 +404,16 @@ ${ITK_LIBRARIES}
 userinterface
 geometry
 )
+
+# ----------------------------------------
+
+add_executable(test_itk_plotter test_itk_plotter.cpp)
+
+target_compile_definitions(test_itk_plotter PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_itk_plotter
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+geometry
+)
