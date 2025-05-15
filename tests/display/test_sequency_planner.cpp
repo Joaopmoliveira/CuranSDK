@@ -26,6 +26,7 @@
 #include "userinterface/widgets/ImageWrapper.h"
 #include "userinterface/widgets/ComputeImageBounds.h"
 #include "utils/Overloading.h"
+#include "utils/TheadPool.h"
 
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkCastImageFilter.h"
@@ -42,6 +43,8 @@
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkImageSeriesReader.h"
+
+#include "imageprocessing/SplicingTools.h"
 
 #include <Eigen/Dense>
 
@@ -134,7 +137,7 @@ struct Application{
     size_t volume_index = 0;
     curan::ui::DicomVolumetricMask* vol_mas = nullptr;
     curan::ui::IconResources* resources = nullptr;
-    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
+    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(8);
     std::function<std::unique_ptr<curan::ui::Container>(Application&)> panel_constructor;
     std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
     curan::ui::VolumetricMask<RGBImageType> projected_vol_mas{nullptr};
@@ -164,6 +167,165 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
 void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
+
+void inject(RGBImageType::Pointer projectionimage, ImageType::Pointer volume, const Eigen::Matrix<double,3,1>& t0, std::array<int,6> range){
+    const std::vector<std::tuple<std::array<double,4>,std::array<double,3>>> color_ranges = {{{0.02,0.04,0.05,0.08},{(1.0/255.0)*100,(1.0/255.0)*149,(1.0/255.0)*237}},
+                                                                                            {{0.27,0.40,0.99,1.0},{(1.0/255.0)*255,(1.0/255.0)*40,(1.0/255.0)*0}}}; 
+
+    auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
+        Eigen::Matrix<double,3,1> mixed;
+        mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
+        return mixed;
+    };
+
+    auto compute_dist_and_index = [](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
+        Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
+        const int offsets[7][3] = {
+            {0, 0, 0},
+            {1, 0, 0},
+            {0, 1, 0},
+            {0, 0, 1},
+            {-1, 0, 0}, 
+            {0, -1, 0},
+            {0, 0, -1}
+        };
+        ImageType::IndexType indec;
+        indec[0] = std::round(decimal_coordinates[0])+offsets[neighboorsindex][0];
+        indec[1] = std::round(decimal_coordinates[1])+offsets[neighboorsindex][1];
+        indec[2] = std::round(decimal_coordinates[2])+offsets[neighboorsindex][2];
+        tmp_to_compute_distance[0] = indec[0];
+        tmp_to_compute_distance[1] = indec[1];
+        tmp_to_compute_distance[2] = indec[2];
+        return std::tuple<ImageType::IndexType,double>(indec,(tmp_to_compute_distance-decimal_coordinates).norm()+1e-5);
+    };
+
+    auto overall_size = volume->GetLargestPossibleRegion().GetSize();
+
+    auto check_pixel_inside = [&](auto tempindex){
+        if(tempindex[0] < 0                || tempindex[1] < 0                || tempindex[2] < 0 || 
+            tempindex[0] >= overall_size[0] || tempindex[1] >= overall_size[1] || tempindex[2] >= overall_size[2])
+             return false;
+        else 
+            return true;
+    };
+
+    Eigen::Matrix<double,3,1> texcoord;
+    float initial_alpha = 0.0;
+    {
+        ImageType::PointType pos;
+        ImageType::IndexType tmpindex;
+        pos[0] = t0[0];
+        pos[1] = t0[1];
+        pos[2] = t0[2];         
+        volume->TransformPhysicalPointToIndex(pos,tmpindex);
+        if(!check_pixel_inside(tmpindex))
+            throw std::runtime_error("failure");
+        initial_alpha = (1.0/255.0)*volume->GetPixel(tmpindex);
+    }
+
+    std::array<std::tuple<ImageType::IndexType,double>,7> neighboors;
+	for (int idZ = range[4]; idZ <= range[5]; idZ++)
+	{
+		for (int idY = range[2]; idY <= range[3]; idY++)
+		{
+			for (int idX = range[0]; idX <= range[1]; idX++)
+			{
+                ImageType::PointType pos;
+                RGBImageType::IndexType index_projection{idX,idY,idZ};
+                projectionimage->TransformIndexToPhysicalPoint(index_projection,pos); 
+
+                const Eigen::Matrix<double,3,1> te{pos[0],pos[1],pos[2]};
+
+                const float min_iteratrions = 2.0;
+                const float max_iteratrions = 1024.0;
+
+                const float TransparencyValue = 0.05;
+                const float AlphaFuncValue = 0.01;
+                const float SampleDensityValue = 0.1;
+        
+                float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
+                if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
+                else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
+
+                const Eigen::Matrix<double,3,1> deltaTexCoord = (te-t0)/(num_iterations-1.0);
+                texcoord = t0;  
+        
+                Eigen::Matrix<double,4,1> fragColor{initial_alpha, initial_alpha, initial_alpha, initial_alpha * TransparencyValue};
+
+                while(num_iterations>0.0){
+                    ImageType::IndexType current_index_on_input;
+                    pos[0] = texcoord[0];
+                    pos[1] = texcoord[1];
+                    pos[2] = texcoord[2];         
+                    volume->TransformPhysicalPointToIndex(pos,current_index_on_input);
+                    Eigen::Vector3d eigenized_index_on_input;
+                    eigenized_index_on_input[0] = current_index_on_input[0];
+                    eigenized_index_on_input[1] = current_index_on_input[1];
+                    eigenized_index_on_input[2] = current_index_on_input[2];
+
+                    neighboors[0] = compute_dist_and_index(0,eigenized_index_on_input);
+                    neighboors[1] = compute_dist_and_index(1,eigenized_index_on_input);
+                    neighboors[2] = compute_dist_and_index(2,eigenized_index_on_input);
+                    neighboors[3] = compute_dist_and_index(3,eigenized_index_on_input);
+                    neighboors[4] = compute_dist_and_index(4,eigenized_index_on_input);
+                    neighboors[5] = compute_dist_and_index(5,eigenized_index_on_input);
+                    neighboors[6] = compute_dist_and_index(6,eigenized_index_on_input);
+
+                    size_t number_of_found_pixels = 0;
+                    double sum_of_dist = 0.0;
+                    std::vector<std::tuple<double,double>> neighboors_residue;
+                    for(size_t in = 0; in < 1 ; ++in){
+                        const auto& [tmpindex,dist] = neighboors[in];
+                        if(check_pixel_inside(tmpindex)){
+                            ++number_of_found_pixels;
+                            sum_of_dist += dist;
+                            neighboors_residue.push_back({(1.0/255.0)*volume->GetPixel(tmpindex),dist});
+                        }
+                    }
+                    if(number_of_found_pixels==0)
+                        break;
+
+                    double alpha = 0.0;
+                    for(const auto& [alpha_val,dist] : neighboors_residue )
+                        alpha += (dist/sum_of_dist)*alpha_val;
+
+                    Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, alpha * TransparencyValue};
+                    for(const auto [alpha_range,alpha_color] : color_ranges){
+                        if( alpha_range[0]<alpha && alpha_range[3] > alpha ){
+                            if(alpha<alpha_range[1]){
+                                auto mix = (alpha-alpha_range[0])/(alpha_range[1]-alpha_range[0]);
+                                color = Eigen::Matrix<double,4,1>{(1-mix)*alpha+mix*alpha_color[0], (1-mix)*alpha+mix*alpha_color[1], (1-mix)*alpha+mix*alpha_color[2], 0.5*mix};
+                            } else if(alpha>alpha_range[2]){
+                                auto mix = (alpha_range[3]-alpha)/(alpha_range[3]-alpha_range[2]);
+                                color = Eigen::Matrix<double,4,1>{(1-mix)*alpha+mix*alpha_color[0], (1-mix)*alpha+mix*alpha_color[1],(1-mix)*alpha+ mix*alpha_color[2], 0.5*mix};
+                            }  else {
+                                color = Eigen::Matrix<double,4,1>{alpha_color[0], alpha_color[1],alpha_color[2], 0.5};
+                            }
+                            break;
+                        }
+                    }
+                    float mix_factor = color[3];
+                    if (mix_factor > AlphaFuncValue){
+                        fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
+                        fragColor[3] += mix_factor;
+                    }
+
+                    if (mix_factor > fragColor[3])
+                        fragColor = color;
+
+                    texcoord += deltaTexCoord;
+                    --num_iterations;
+                }
+                itk::RGBAPixel<unsigned char> tosetpixel;
+                tosetpixel[0] = (int) 255.0*fragColor[0];
+                tosetpixel[1] = (int) 255.0*fragColor[1];
+                tosetpixel[2] = (int) 255.0*fragColor[2];
+                tosetpixel[3] = 255;
+                projectionimage->SetPixel(index_projection,tosetpixel);
+            }
+        }
+    }
+}
 
 RGBImageType::Pointer allocate_image(Application& appdata){
 
@@ -200,7 +362,7 @@ RGBImageType::Pointer allocate_image(Application& appdata){
     RGBImageType::Pointer projectionimage = RGBImageType::New();
   
     RGBImageType::SizeType size;
-    size[0] = 256;  // size along X
+    size[0] = 256;  // size along X 256 512
     size[1] = 256;  // size along Y 
     size[2] = 1;   // size along Z
 
@@ -233,157 +395,41 @@ RGBImageType::Pointer allocate_image(Application& appdata){
     IteratorType it(projectionimage, projectionimage->GetRequestedRegion());
 
     const Eigen::Matrix<double,3,1> t0 = *appdata.trajectory_location.target_world_coordinates;
-    Eigen::Matrix<double,3,1> texcoord;
     
-    std::array<std::tuple<ImageType::IndexType,double>,7> neighboors;
-    
-    auto overall_size = input->GetLargestPossibleRegion().GetSize();
 
-    auto check_pixel_inside = [&](auto tempindex){
-        if(tempindex[0] < 0                || tempindex[1] < 0                || tempindex[2] < 0 || 
-            tempindex[0] >= overall_size[0] || tempindex[1] >= overall_size[1] || tempindex[2] >= overall_size[2])
-             return false;
-        else 
-            return true;
-    };
-    ImageType::PointType pos;
-    float initial_alpha = 0.0;
-    {
-        ImageType::IndexType tmpindex;
-        pos[0] = t0[0];
-        pos[1] = t0[1];
-        pos[2] = t0[2];         
-        input->TransformPhysicalPointToIndex(pos,tmpindex);
-        if(!check_pixel_inside(tmpindex))
-            throw std::runtime_error("failure");
-        initial_alpha = (1.0/255.0)*input->GetPixel(tmpindex);
-    }
+    int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
+    inputFrameExtentForCurrentThread[1] = size[0]-1;
+	inputFrameExtentForCurrentThread[3] = size[1]-1;
+    std::vector<std::array<int,6>> block_divisions;
+	block_divisions.resize(appdata.pool->size());
+	if(!curan::image::splice_input_extent(block_divisions,inputFrameExtentForCurrentThread))
+		throw std::runtime_error("failure to execute slicing of input image");
 
-    for (it.GoToBegin(); !it.IsAtEnd(); ++it)
-    {
-        ImageType::PointType pos;
-        projectionimage->TransformIndexToPhysicalPoint(it.GetIndex(),pos);
-
-        const Eigen::Matrix<double,3,1> te{pos[0],pos[1],pos[2]};
-
-        const float min_iteratrions = 2.0;
-        const float max_iteratrions = 1024.0;
-
-        const float TransparencyValue = 0.05;
-        const float AlphaFuncValue = 0.01;
-        const float SampleDensityValue = 0.1;
-        
-        float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
-        if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
-        else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
-
-        auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
-            Eigen::Matrix<double,3,1> mixed;
-            mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
-            return mixed;
-        };
-
-
-        const Eigen::Matrix<double,3,1> deltaTexCoord = (te-t0)/(num_iterations-1.0);
-        texcoord = t0;  
-        
-        Eigen::Matrix<double,4,1> fragColor{initial_alpha, initial_alpha, initial_alpha, initial_alpha * TransparencyValue};
-
-        auto compute_dist_and_index = [](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
-            Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
-            const int offsets[7][3] = {
-                {0, 0, 0},
-                {1, 0, 0},
-                {0, 1, 0},
-                {0, 0, 1},
-                {-1, 0, 0}, 
-                {0, -1, 0},
-                {0, 0, -1}
-            };
-            ImageType::IndexType indec;
-            indec[0] = std::round(decimal_coordinates[0])+offsets[neighboorsindex][0];
-            indec[1] = std::round(decimal_coordinates[1])+offsets[neighboorsindex][1];
-            indec[2] = std::round(decimal_coordinates[2])+offsets[neighboorsindex][2];
-            tmp_to_compute_distance[0] = indec[0];
-            tmp_to_compute_distance[1] = indec[1];
-            tmp_to_compute_distance[2] = indec[2];
-            return std::tuple<ImageType::IndexType,double>(indec,(tmp_to_compute_distance-decimal_coordinates).norm()+1e-5);
-        };
-
-        while(num_iterations>0.0){
-            ImageType::IndexType current_index_on_input;
-            pos[0] = texcoord[0];
-            pos[1] = texcoord[1];
-            pos[2] = texcoord[2];         
-            input->TransformPhysicalPointToIndex(pos,current_index_on_input);
-            Eigen::Vector3d eigenized_index_on_input;
-            eigenized_index_on_input[0] = current_index_on_input[0];
-            eigenized_index_on_input[1] = current_index_on_input[1];
-            eigenized_index_on_input[2] = current_index_on_input[2];
-
-            neighboors[0] = compute_dist_and_index(0,eigenized_index_on_input);
-            neighboors[1] = compute_dist_and_index(1,eigenized_index_on_input);
-            neighboors[2] = compute_dist_and_index(2,eigenized_index_on_input);
-            neighboors[3] = compute_dist_and_index(3,eigenized_index_on_input);
-            neighboors[4] = compute_dist_and_index(4,eigenized_index_on_input);
-            neighboors[5] = compute_dist_and_index(5,eigenized_index_on_input);
-            neighboors[6] = compute_dist_and_index(6,eigenized_index_on_input);
-
-            size_t number_of_found_pixels = 0;
-            double sum_of_dist = 0.0;
-            std::vector<std::tuple<double,double>> neighboors_residue;
-            for(size_t in = 0; in < 1 ; ++in){
-                const auto& [tmpindex,dist] = neighboors[in];
-                if(check_pixel_inside(tmpindex)){
-                    ++number_of_found_pixels;
-                    sum_of_dist += dist;
-                    neighboors_residue.push_back({(1.0/255.0)*input->GetPixel(tmpindex),dist});
-                }
-            }
-            if(number_of_found_pixels==0)
-                break;
-
-            double alpha = 0.0;
-            for(const auto& [alpha_val,dist] : neighboors_residue )
-                alpha += (dist/sum_of_dist)*alpha_val;
-            
-            //Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, std::min(std::abs(0.19-alpha),1.0) * TransparencyValue};
-            Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, alpha * TransparencyValue};
-            for(const auto [alpha_range,alpha_color] : color_ranges){
-                if( alpha_range[0]<alpha && alpha_range[3] > alpha ){
-                    if(alpha<alpha_range[1]){
-                        auto mix = (alpha-alpha_range[0])/(alpha_range[1]-alpha_range[0]);
-                        color = Eigen::Matrix<double,4,1>{(1-mix)*alpha+mix*alpha_color[0], (1-mix)*alpha+mix*alpha_color[1], (1-mix)*alpha+mix*alpha_color[2], 0.5*mix};
-                    } else if(alpha>alpha_range[2]){
-                        auto mix = (alpha_range[3]-alpha)/(alpha_range[3]-alpha_range[2]);
-                        color = Eigen::Matrix<double,4,1>{(1-mix)*alpha+mix*alpha_color[0], (1-mix)*alpha+mix*alpha_color[1],(1-mix)*alpha+ mix*alpha_color[2], 0.5*mix};
-                    }  else {
-                        color = Eigen::Matrix<double,4,1>{alpha_color[0], alpha_color[1],alpha_color[2], 0.5};
-                    }
-                    break;
-                }
-            }
-
-            //float mix_factor = std::min(std::abs(0.19-color[3]),1.0);
-            float mix_factor = color[3];
-            if (mix_factor > AlphaFuncValue){
-                fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
-                fragColor[3] += mix_factor;
-            }
-
-            if (mix_factor > fragColor[3])
-                fragColor = color;
-
-            texcoord += deltaTexCoord;
-            --num_iterations;
-        }
-        itk::RGBAPixel<unsigned char> tosetpixel;
-        tosetpixel[0] = (int) 255.0*fragColor[0];
-        tosetpixel[1] = (int) 255.0*fragColor[1];
-        tosetpixel[2] = (int) 255.0*fragColor[2];
-        tosetpixel[3] = 255;
-        it.Set(tosetpixel);
-  }
+	std::condition_variable cv;
+	std::mutex local_mut;
+	std::unique_lock<std::mutex> unique_{local_mut};
+	int executed = 0;
+	size_t index = 0;
+	for(const auto& range : block_divisions){
+		++index;
+		appdata.pool->submit("volume projection",[index,range,t0,&executed,&local_mut,&cv,projectionimage,input](){
+		    size_t local_index = index;
+		    try{
+			    std::array<int,6> this_thread_extent = range;
+		        inject(projectionimage,input,t0,range);
+			    {
+				    std::lock_guard<std::mutex> g{local_mut};
+				    ++executed;
+				    //std::printf("finished patch of work: %d (to do: %d)\n",executed,(int)block_divisions.size());
+			    }
+			    cv.notify_one();
+		    } catch(std::exception & e){
+			    std::cout << "exception was thrown in index :" << local_index << " with error message: " << e.what() << std::endl;
+		    }
+	    });
+	}
+	//this blocks until all threads have processed their corresponding block that they need to process
+	cv.wait(unique_,[&](){ return executed==block_divisions.size();});
   return projectionimage;
 }
 

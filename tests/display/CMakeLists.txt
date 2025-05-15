@@ -403,6 +403,7 @@ PUBLIC
 ${ITK_LIBRARIES}
 userinterface
 geometry
+imageprocessing
 )
 
 # ----------------------------------------
