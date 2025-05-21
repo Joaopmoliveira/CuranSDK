@@ -63,7 +63,7 @@ struct OpenCylinder{
     void transform(const Eigen::Matrix<double,4,4>& transf);
 };
 
-/*
+
 
 struct ClosedCylinder{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
@@ -79,7 +79,7 @@ struct ClosedCylinder{
         return os;
     }
 };
-
+/*
 struct Sphere{
     using Rational = gte::BSRational<gte::UIntegerAP32>;
     gte::ConvexMesh3<Rational> geometry;

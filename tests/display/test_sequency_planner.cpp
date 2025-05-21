@@ -237,11 +237,11 @@ void inject(RGBImageType::Pointer projectionimage, ImageType::Pointer volume, co
                 const Eigen::Matrix<double,3,1> te{pos[0],pos[1],pos[2]};
 
                 const float min_iteratrions = 2.0;
-                const float max_iteratrions = 1024.0;
+                const float max_iteratrions = 4048.0;
 
                 const float TransparencyValue = 0.05;
                 const float AlphaFuncValue = 0.01;
-                const float SampleDensityValue = 0.1;
+                const float SampleDensityValue = 0.01;
         
                 float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
                 if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
@@ -289,7 +289,7 @@ void inject(RGBImageType::Pointer projectionimage, ImageType::Pointer volume, co
                     for(const auto& [alpha_val,dist] : neighboors_residue )
                         alpha += (dist/sum_of_dist)*alpha_val;
 
-                    Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, alpha * TransparencyValue};
+                    Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, 0.0};
                     for(const auto [alpha_range,alpha_color] : color_ranges){
                         if( alpha_range[0]<alpha && alpha_range[3] > alpha ){
                             if(alpha<alpha_range[1]){
@@ -412,7 +412,7 @@ RGBImageType::Pointer allocate_image(Application& appdata){
 	size_t index = 0;
 	for(const auto& range : block_divisions){
 		++index;
-		appdata.pool->submit("volume projection",[index,range,t0,&executed,&local_mut,&cv,projectionimage,input](){
+		appdata.pool->submit("volume projection",[index,range,t0,&executed,&local_mut,&cv,projectionimage,input,block_divisions](){
 		    size_t local_index = index;
 		    try{
 			    std::array<int,6> this_thread_extent = range;
