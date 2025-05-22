@@ -320,6 +320,15 @@ namespace ui{
                                                         cached_number_of_geometries{volume_mask->geometries().size()}, 
                                                         system_icons{other}
     {
+
+        cached_sum_of_geometries = 0.0;
+        for(const auto& [key,geomdata] : volume_mask->geometries()){
+            const auto& [geom,color] = geomdata;
+            for(const auto& ver : geom.geometry.vertices){
+                cached_sum_of_geometries += (double)ver[0] + (double)ver[1] + (double)ver[2];
+            }
+        }
+
         set_current_state(SliderStates::WAITING);
         update_volume(volume_mask, in_direction);
     
@@ -609,11 +618,39 @@ namespace ui{
             return;
         auto widget_rect = get_position();
 
-        if(chached_pointer!=volumetric_mask->get_volume().GetPointer() || volumetric_mask->geometries().size()!=cached_number_of_geometries) {
+        if(chached_pointer!=volumetric_mask->get_volume().GetPointer()) {
             chached_pointer = volumetric_mask->get_volume().GetPointer();
             cached_number_of_geometries = volumetric_mask->geometries().size();
+            cached_sum_of_geometries = 0.0;
+            for(const auto& [key,geomdata] : volumetric_mask->geometries()){
+                const auto& [geom,color] = geomdata;
+                for(const auto& ver : geom.geometry.vertices)
+                    cached_sum_of_geometries += (double)ver[0] + (double)ver[1] + (double)ver[2];
+            }
             query_if_required(true);
             framebuffer_resize(SkRect::MakeWH(0,0));
+        }  else if(volumetric_mask->geometries().size()!=cached_number_of_geometries) {
+            cached_number_of_geometries = volumetric_mask->geometries().size();
+            cached_sum_of_geometries = 0.0;
+            for(const auto& [key,geomdata] : volumetric_mask->geometries()){
+                const auto& [geom,color] = geomdata;
+                for(const auto& ver : geom.geometry.vertices)
+                    cached_sum_of_geometries += (double)ver[0] + (double)ver[1] + (double)ver[2];
+            }
+            query_if_required(true);
+            framebuffer_resize(SkRect::MakeWH(0,0));
+        } else {
+            double sum_of_geometries = 0.0;
+            for(const auto& [key,geomdata] : volumetric_mask->geometries()){
+                const auto& [geom,color] = geomdata;
+                for(const auto& ver : geom.geometry.vertices)
+                    sum_of_geometries += (double)ver[0] + (double)ver[1] + (double)ver[2];
+            }
+            if(std::abs(sum_of_geometries-cached_sum_of_geometries) > 0.000001){
+                cached_sum_of_geometries = sum_of_geometries;
+                query_if_required(true);
+                framebuffer_resize(SkRect::MakeWH(0,0));
+            }
         }
 
         bool is_panel_selected = false;

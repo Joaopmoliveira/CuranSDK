@@ -444,6 +444,7 @@ private:
     DicomVolumetricMask *volumetric_mask = nullptr;
     ImageType* chached_pointer = nullptr;
     size_t cached_number_of_geometries = 0;
+    double cached_sum_of_geometries = 0.0;
     
     std::vector<std::tuple<std::vector<SkPoint>,SkPath,SkColor>> cached_polyheader_intersections;
     std::vector<directed_stroke> pending_strokes_to_process;
