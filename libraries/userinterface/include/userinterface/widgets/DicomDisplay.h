@@ -13,6 +13,7 @@
 #include "userinterface/widgets/IconResources.h"
 #include <algorithm>
 #include <vector>
+#include <map>
 #include "utils/Overloading.h"
 #include "utils/SafeQueue.h"
 #include "geometry/Polyheadra.h"
@@ -95,6 +96,7 @@ class DicomVolumetricMask
 {
 
     static size_t counter;
+    static size_t identifier;
 
     using PixelType = unsigned char;
     using ImageType = itk::Image<PixelType, Dimension>;
@@ -103,7 +105,7 @@ class DicomVolumetricMask
     std::vector<DicomMask> masks_y;
     std::vector<DicomMask> masks_z;
 
-    std::vector<std::tuple<curan::geometry::PolyHeadra,SkColor>> three_dimensional_entities;
+    std::map<std::string,std::tuple<curan::geometry::PolyHeadra,SkColor>> three_dimensional_entities;
 
     ImageType::Pointer image;
 public:
@@ -266,7 +268,8 @@ public:
 		} 
                 
         if((update_policy & UPDATE_GEOMETRIES) && image.IsNotNull()){
-			for(auto& [dimensional_entities,color] : three_dimensional_entities){
+			for(auto& [key,geom] : three_dimensional_entities){
+                auto& [dimensional_entities,color] = geom;
 				for(auto& vertices: dimensional_entities.geometry.vertices){
 					ImageType::IndexType local_index;
 					ImageType::PointType itk_point_in_world_coordinates;
@@ -281,7 +284,7 @@ public:
 				}
 			}
 		}  else {
-            three_dimensional_entities = std::vector<std::tuple<curan::geometry::PolyHeadra,SkColor>>{};
+            three_dimensional_entities = std::map<std::string,std::tuple<curan::geometry::PolyHeadra,SkColor>>{};
         } 
 
         image = in_volume;
@@ -314,11 +317,14 @@ public:
     }
 
     template<typename T>
-    void add_geometry(T&& geometry_to_add,SkColor color){
-        three_dimensional_entities.emplace_back(std::make_tuple(std::forward<T>(geometry_to_add),color));
+    [[nodiscard]] std::optional<std::string> add_geometry(T&& geometry_to_add,SkColor color){
+        ++identifier;
+        std::string str_ident = "geometry"+std::to_string(identifier);
+        auto retu = three_dimensional_entities.try_emplace(str_ident,std::make_tuple(std::forward<T>(geometry_to_add),color));
+        return retu.second ? std::optional<std::string>{str_ident} : std::nullopt;
     }
 
-    inline const std::vector<std::tuple<curan::geometry::PolyHeadra,SkColor>>& geometries() const{
+    inline const std::map<std::string,std::tuple<curan::geometry::PolyHeadra,SkColor>>& geometries() const{
         return three_dimensional_entities;
     }
 

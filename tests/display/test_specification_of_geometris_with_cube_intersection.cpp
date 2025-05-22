@@ -1,4 +1,3 @@
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/Window.h"

@@ -166,6 +166,7 @@ struct Factory {
     return geometry;
   }
 
+
   template <typename Numeric>
   gte::ConvexMesh3<Numeric> CreateCylinderClosed(uint32_t numAxisSamples,
                                                  uint32_t numRadialSamples,
@@ -754,6 +755,15 @@ void OpenCylinder::transform(const Eigen::Matrix<double, 4, 4> &transf) {
 ClosedCylinder::ClosedCylinder(uint32_t numAxisSamples, uint32_t numRadialSamples, float radius, float height){ 
     Factory factory; 
     geometry = factory.CreateCylinderClosed<Rational>(numAxisSamples,numRadialSamples,radius,height);
+}
+
+void ClosedCylinder::transform(const Eigen::Matrix<double, 4, 4> &transf) {
+  for (auto &geom : geometry.vertices) {
+    Eigen::Matrix<double, 4, 1> vertex;
+    vertex << geom[0], geom[1], geom[2], 1.0;
+    auto res = transf * vertex;
+    geom = {res[0], res[1], res[2]};
+  }
 }
 
 /*

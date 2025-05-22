@@ -7,6 +7,7 @@ namespace curan{
 namespace ui{
 
     size_t DicomVolumetricMask::counter = 0;
+    size_t DicomVolumetricMask::identifier = 0;
     
     DicomVolumetricMask::DicomVolumetricMask(ImageType::Pointer volume) : image{volume}
     {
@@ -228,8 +229,9 @@ namespace ui{
         convert them into world coordinates
         */
         cached_polyheader_intersections = std::vector<std::tuple<std::vector<SkPoint>, SkPath,SkColor>>{};
-        for (const auto &[cliped_path,color] : volumetric_mask->geometries())
+        for (const auto &[key,geomdata] : volumetric_mask->geometries())
         {
+            const auto &[cliped_path,color] = geomdata;
             std::vector<SkPoint> points_in_path;
     
             Eigen::Matrix<double, 3, 1> normal{0.0, 0.0, 0.0};

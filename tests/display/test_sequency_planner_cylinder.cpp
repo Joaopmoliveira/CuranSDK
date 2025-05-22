@@ -6,6 +6,7 @@
 #include "userinterface/widgets/TextBlob.h"
 #include "userinterface/widgets/DicomDisplay.h"
 #include "userinterface/widgets/MiniPage.h"
+#include "userinterface/widgets/TwoDimensionalViewer.h"
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/ItemExplorer.h"
 #include "userinterface/widgets/Overlay.h"
@@ -25,6 +26,7 @@
 #include "userinterface/widgets/ImageWrapper.h"
 #include "userinterface/widgets/ComputeImageBounds.h"
 #include "utils/Overloading.h"
+#include "utils/TheadPool.h"
 
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkCastImageFilter.h"
@@ -41,6 +43,8 @@
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkImageSeriesReader.h"
+
+#include "imageprocessing/SplicingTools.h"
 
 #include <Eigen/Dense>
 
@@ -121,6 +125,9 @@ enum LayoutType{
 
 struct Application;
 
+using RGBAPixelType = itk::RGBAPixel<unsigned char>;
+using RGBImageType = itk::Image<RGBAPixelType, 3>;
+
 struct Application{
     curan::ui::MiniPage* tradable_page = nullptr;
     ACPCData ac_pc_data;
@@ -130,18 +137,12 @@ struct Application{
     size_t volume_index = 0;
     curan::ui::DicomVolumetricMask* vol_mas = nullptr;
     curan::ui::IconResources* resources = nullptr;
-    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
+    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(8);
     std::function<std::unique_ptr<curan::ui::Container>(Application&)> panel_constructor;
     std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
-    curan::ui::DicomVolumetricMask projected_vol_mas{nullptr};
-    std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
+    curan::ui::VolumetricMask<RGBImageType> projected_vol_mas{nullptr};
+    std::function<void(Application&,curan::ui::VolumetricMask<RGBImageType>*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
     RegionOfInterest roi;
-
-    std::string trajectory_identifier;
-
-    std::string projected_path_x;
-    std::string projected_path_y;
-    std::string projected_path_z;
 
     Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
 
@@ -161,13 +162,175 @@ void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetr
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata);
-void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricMask<RGBImageType> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata);
 void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
 
-ImageType::Pointer allocate_image(Application& appdata){
+void inject(RGBImageType::Pointer projectionimage, ImageType::Pointer volume, const Eigen::Matrix<double,3,1>& t0, std::array<int,6> range){
+    const std::vector<std::tuple<std::array<double,4>,std::array<double,3>>> color_ranges = {{{0.02,0.04,0.05,0.08},{(1.0/255.0)*100,(1.0/255.0)*149,(1.0/255.0)*237}},
+                                                                                            {{0.27,0.40,0.99,1.0},{(1.0/255.0)*255,(1.0/255.0)*40,(1.0/255.0)*0}}}; 
+
+    auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
+        Eigen::Matrix<double,3,1> mixed;
+        mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
+        return mixed;
+    };
+
+    auto compute_dist_and_index = [](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
+        Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
+        const int offsets[7][3] = {
+            {0, 0, 0},
+            {1, 0, 0},
+            {0, 1, 0},
+            {0, 0, 1},
+            {-1, 0, 0}, 
+            {0, -1, 0},
+            {0, 0, -1}
+        };
+        ImageType::IndexType indec;
+        indec[0] = std::round(decimal_coordinates[0])+offsets[neighboorsindex][0];
+        indec[1] = std::round(decimal_coordinates[1])+offsets[neighboorsindex][1];
+        indec[2] = std::round(decimal_coordinates[2])+offsets[neighboorsindex][2];
+        tmp_to_compute_distance[0] = indec[0];
+        tmp_to_compute_distance[1] = indec[1];
+        tmp_to_compute_distance[2] = indec[2];
+        return std::tuple<ImageType::IndexType,double>(indec,(tmp_to_compute_distance-decimal_coordinates).norm()+1e-5);
+    };
+
+    auto overall_size = volume->GetLargestPossibleRegion().GetSize();
+
+    auto check_pixel_inside = [&](auto tempindex){
+        if(tempindex[0] < 0                || tempindex[1] < 0                || tempindex[2] < 0 || 
+            tempindex[0] >= overall_size[0] || tempindex[1] >= overall_size[1] || tempindex[2] >= overall_size[2])
+             return false;
+        else 
+            return true;
+    };
+
+    Eigen::Matrix<double,3,1> texcoord;
+    float initial_alpha = 0.0;
+    {
+        ImageType::PointType pos;
+        ImageType::IndexType tmpindex;
+        pos[0] = t0[0];
+        pos[1] = t0[1];
+        pos[2] = t0[2];         
+        volume->TransformPhysicalPointToIndex(pos,tmpindex);
+        if(!check_pixel_inside(tmpindex))
+            throw std::runtime_error("failure");
+        initial_alpha = (1.0/255.0)*volume->GetPixel(tmpindex);
+    }
+
+    std::array<std::tuple<ImageType::IndexType,double>,7> neighboors;
+	for (int idZ = range[4]; idZ <= range[5]; idZ++)
+	{
+		for (int idY = range[2]; idY <= range[3]; idY++)
+		{
+			for (int idX = range[0]; idX <= range[1]; idX++)
+			{
+                ImageType::PointType pos;
+                RGBImageType::IndexType index_projection{idX,idY,idZ};
+                projectionimage->TransformIndexToPhysicalPoint(index_projection,pos); 
+
+                const Eigen::Matrix<double,3,1> te{pos[0],pos[1],pos[2]};
+
+                const float min_iteratrions = 2.0;
+                const float max_iteratrions = 4048.0;
+
+                const float TransparencyValue = 0.05;
+                const float AlphaFuncValue = 0.01;
+                const float SampleDensityValue = 0.01;
+        
+                float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
+                if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
+                else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
+
+                const Eigen::Matrix<double,3,1> deltaTexCoord = (te-t0)/(num_iterations-1.0);
+                texcoord = t0;  
+        
+                Eigen::Matrix<double,4,1> fragColor{initial_alpha, initial_alpha, initial_alpha, initial_alpha * TransparencyValue};
+
+                while(num_iterations>0.0){
+                    ImageType::IndexType current_index_on_input;
+                    pos[0] = texcoord[0];
+                    pos[1] = texcoord[1];
+                    pos[2] = texcoord[2];         
+                    volume->TransformPhysicalPointToIndex(pos,current_index_on_input);
+                    Eigen::Vector3d eigenized_index_on_input;
+                    eigenized_index_on_input[0] = current_index_on_input[0];
+                    eigenized_index_on_input[1] = current_index_on_input[1];
+                    eigenized_index_on_input[2] = current_index_on_input[2];
+
+                    neighboors[0] = compute_dist_and_index(0,eigenized_index_on_input);
+                    neighboors[1] = compute_dist_and_index(1,eigenized_index_on_input);
+                    neighboors[2] = compute_dist_and_index(2,eigenized_index_on_input);
+                    neighboors[3] = compute_dist_and_index(3,eigenized_index_on_input);
+                    neighboors[4] = compute_dist_and_index(4,eigenized_index_on_input);
+                    neighboors[5] = compute_dist_and_index(5,eigenized_index_on_input);
+                    neighboors[6] = compute_dist_and_index(6,eigenized_index_on_input);
+
+                    size_t number_of_found_pixels = 0;
+                    double sum_of_dist = 0.0;
+                    std::vector<std::tuple<double,double>> neighboors_residue;
+                    for(size_t in = 0; in < 1 ; ++in){
+                        const auto& [tmpindex,dist] = neighboors[in];
+                        if(check_pixel_inside(tmpindex)){
+                            ++number_of_found_pixels;
+                            sum_of_dist += dist;
+                            neighboors_residue.push_back({(1.0/255.0)*volume->GetPixel(tmpindex),dist});
+                        }
+                    }
+                    if(number_of_found_pixels==0)
+                        break;
+
+                    double alpha = 0.0;
+                    for(const auto& [alpha_val,dist] : neighboors_residue )
+                        alpha += (dist/sum_of_dist)*alpha_val;
+
+                    Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, 0.0};
+                    for(const auto [alpha_range,alpha_color] : color_ranges){
+                        if( alpha_range[0]<alpha && alpha_range[3] > alpha ){
+                            if(alpha<alpha_range[1]){
+                                auto mix = (alpha-alpha_range[0])/(alpha_range[1]-alpha_range[0]);
+                                color = Eigen::Matrix<double,4,1>{(1-mix)*alpha+mix*alpha_color[0], (1-mix)*alpha+mix*alpha_color[1], (1-mix)*alpha+mix*alpha_color[2], 0.5*mix};
+                            } else if(alpha>alpha_range[2]){
+                                auto mix = (alpha_range[3]-alpha)/(alpha_range[3]-alpha_range[2]);
+                                color = Eigen::Matrix<double,4,1>{(1-mix)*alpha+mix*alpha_color[0], (1-mix)*alpha+mix*alpha_color[1],(1-mix)*alpha+ mix*alpha_color[2], 0.5*mix};
+                            }  else {
+                                color = Eigen::Matrix<double,4,1>{alpha_color[0], alpha_color[1],alpha_color[2], 0.5};
+                            }
+                            break;
+                        }
+                    }
+                    float mix_factor = color[3];
+                    if (mix_factor > AlphaFuncValue){
+                        fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
+                        fragColor[3] += mix_factor;
+                    }
+
+                    if (mix_factor > fragColor[3])
+                        fragColor = color;
+
+                    texcoord += deltaTexCoord;
+                    --num_iterations;
+                }
+                itk::RGBAPixel<unsigned char> tosetpixel;
+                tosetpixel[0] = (int) 255.0*fragColor[0];
+                tosetpixel[1] = (int) 255.0*fragColor[1];
+                tosetpixel[2] = (int) 255.0*fragColor[2];
+                tosetpixel[3] = 255;
+                projectionimage->SetPixel(index_projection,tosetpixel);
+            }
+        }
+    }
+}
+
+RGBImageType::Pointer allocate_image(Application& appdata){
+
+    const std::vector<std::tuple<std::array<double,4>,std::array<double,3>>> color_ranges = {{{0.02,0.04,0.05,0.08},{(1.0/255.0)*100,(1.0/255.0)*149,(1.0/255.0)*237}},
+                                                                                            {{0.27,0.40,0.99,1.0},{(1.0/255.0)*255,(1.0/255.0)*40,(1.0/255.0)*0}}}; 
 
     ImageType::Pointer input;
     if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
@@ -196,19 +359,19 @@ ImageType::Pointer allocate_image(Application& appdata){
     eigen_rotation_matrix.col(1) = y_direction;
     eigen_rotation_matrix.col(2) = z_direction;
 
-    ImageType::Pointer projectionimage = ImageType::New();
+    RGBImageType::Pointer projectionimage = RGBImageType::New();
   
-    ImageType::SizeType size;
-    size[0] = 256;  // size along X
+    RGBImageType::SizeType size;
+    size[0] = 256;  // size along X 256 512
     size[1] = 256;  // size along Y 
     size[2] = 1;   // size along Z
 
-    ImageType::SpacingType spacing;
+    RGBImageType::SpacingType spacing;
     spacing[0] = (base1 - base0).norm()/(double)size[0]; // mm along X
     spacing[1] = (base3 - base0).norm()/(double)size[1]; // mm along X
     spacing[2] = 1.0; // mm along Z
   
-    ImageType::PointType origin;
+    RGBImageType::PointType origin;
     origin[0] = base0[0];
     origin[1] = base0[1];
     origin[2] = base0[2];
@@ -218,7 +381,7 @@ ImageType::Pointer allocate_image(Application& appdata){
         for(size_t j = 0; j < 3; ++j)
             direction(i,j) = eigen_rotation_matrix(i,j);
   
-    ImageType::RegionType region;
+    RGBImageType::RegionType region;
     region.SetSize(size);
   
     projectionimage->SetRegions(region);
@@ -226,141 +389,47 @@ ImageType::Pointer allocate_image(Application& appdata){
     projectionimage->SetOrigin(origin);
     projectionimage->SetDirection(direction);
     projectionimage->Allocate();
-    projectionimage->FillBuffer(0);
+    projectionimage->FillBuffer(itk::RGBAPixel<unsigned char>{});
 
-    typedef itk::ImageRegionIteratorWithIndex<ImageType> IteratorType;
+    typedef itk::ImageRegionIteratorWithIndex<RGBImageType> IteratorType;
     IteratorType it(projectionimage, projectionimage->GetRequestedRegion());
 
     const Eigen::Matrix<double,3,1> t0 = *appdata.trajectory_location.target_world_coordinates;
-    Eigen::Matrix<double,3,1> texcoord;
     
-    std::array<std::tuple<ImageType::IndexType,double>,7> neighboors;
-    
-    auto overall_size = input->GetLargestPossibleRegion().GetSize();
 
-    auto check_pixel_inside = [&](auto tempindex){
-        if(tempindex[0] < 0                || tempindex[1] < 0                || tempindex[2] < 0 || 
-            tempindex[0] >= overall_size[0] || tempindex[1] >= overall_size[1] || tempindex[2] >= overall_size[2])
-             return false;
-        else 
-            return true;
-    };
-    ImageType::PointType pos;
-    float initial_alpha = 0.0;
-    {
-        ImageType::IndexType tmpindex;
-        pos[0] = t0[0];
-        pos[1] = t0[1];
-        pos[2] = t0[2];         
-        input->TransformPhysicalPointToIndex(pos,tmpindex);
-        if(!check_pixel_inside(tmpindex))
-            throw std::runtime_error("failure");
-        initial_alpha = (1.0/255.0)*input->GetPixel(tmpindex);
-    }
+    int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
+    inputFrameExtentForCurrentThread[1] = size[0]-1;
+	inputFrameExtentForCurrentThread[3] = size[1]-1;
+    std::vector<std::array<int,6>> block_divisions;
+	block_divisions.resize(appdata.pool->size());
+	if(!curan::image::splice_input_extent(block_divisions,inputFrameExtentForCurrentThread))
+		throw std::runtime_error("failure to execute slicing of input image");
 
-    for (it.GoToBegin(); !it.IsAtEnd(); ++it)
-    {
-        ImageType::PointType pos;
-        projectionimage->TransformIndexToPhysicalPoint(it.GetIndex(),pos);
-
-        const Eigen::Matrix<double,3,1> te{pos[0],pos[1],pos[2]};
-
-        const float min_iteratrions = 2.0;
-        const float max_iteratrions = 1024.0;
-
-        const float TransparencyValue = 0.01;
-        const float AlphaFuncValue = 0.01;
-        const float SampleDensityValue = 0.1;
-        
-        float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
-        if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
-        else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
-
-        auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
-            Eigen::Matrix<double,3,1> mixed;
-            mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
-            return mixed;
-        };
-
-
-        const Eigen::Matrix<double,3,1> deltaTexCoord = (te-t0)/(num_iterations-1.0);
-        texcoord = t0;  
-        
-        Eigen::Matrix<double,4,1> fragColor{initial_alpha, initial_alpha, initial_alpha, initial_alpha * TransparencyValue};
-
-        auto compute_dist_and_index = [](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
-            Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
-            const int offsets[7][3] = {
-                {0, 0, 0},
-                {1, 0, 0},
-                {0, 1, 0},
-                {0, 0, 1},
-                {-1, 0, 0}, 
-                {0, -1, 0},
-                {0, 0, -1}
-            };
-            ImageType::IndexType indec;
-            indec[0] = std::round(decimal_coordinates[0])+offsets[neighboorsindex][0];
-            indec[1] = std::round(decimal_coordinates[1])+offsets[neighboorsindex][1];
-            indec[2] = std::round(decimal_coordinates[2])+offsets[neighboorsindex][2];
-            tmp_to_compute_distance[0] = indec[0];
-            tmp_to_compute_distance[1] = indec[1];
-            tmp_to_compute_distance[2] = indec[2];
-            return std::tuple<ImageType::IndexType,double>(indec,(tmp_to_compute_distance-decimal_coordinates).norm()+1e-5);
-        };
-
-        while(num_iterations>0.0){
-            ImageType::IndexType current_index_on_input;
-            pos[0] = texcoord[0];
-            pos[1] = texcoord[1];
-            pos[2] = texcoord[2];         
-            input->TransformPhysicalPointToIndex(pos,current_index_on_input);
-            Eigen::Vector3d eigenized_index_on_input;
-            eigenized_index_on_input[0] = current_index_on_input[0];
-            eigenized_index_on_input[1] = current_index_on_input[1];
-            eigenized_index_on_input[2] = current_index_on_input[2];
-
-            neighboors[0] = compute_dist_and_index(0,eigenized_index_on_input);
-            neighboors[1] = compute_dist_and_index(1,eigenized_index_on_input);
-            neighboors[2] = compute_dist_and_index(2,eigenized_index_on_input);
-            neighboors[3] = compute_dist_and_index(3,eigenized_index_on_input);
-            neighboors[4] = compute_dist_and_index(4,eigenized_index_on_input);
-            neighboors[5] = compute_dist_and_index(5,eigenized_index_on_input);
-            neighboors[6] = compute_dist_and_index(6,eigenized_index_on_input);
-
-            size_t number_of_found_pixels = 0;
-            double sum_of_dist = 0.0;
-            std::vector<std::tuple<double,double>> neighboors_residue;
-            for(size_t in = 0; in < 1 ; ++in){
-                const auto& [tmpindex,dist] = neighboors[in];
-                if(check_pixel_inside(tmpindex)){
-                    ++number_of_found_pixels;
-                    sum_of_dist += dist;
-                    neighboors_residue.push_back({(1.0/255.0)*input->GetPixel(tmpindex),dist});
-                }
-            }
-            if(number_of_found_pixels==0)
-                break;
-
-            double alpha = 0.0;
-            for(const auto& [alpha_val,dist] : neighboors_residue )
-                alpha += (dist/sum_of_dist)*alpha_val;
-
-            Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, alpha * TransparencyValue};
-            float mix_factor = color[3];
-            if (mix_factor > AlphaFuncValue){
-                fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
-                fragColor[3] += mix_factor;
-            }
-
-            if (mix_factor > fragColor[3])
-                fragColor = color;
-
-            texcoord += deltaTexCoord;
-            --num_iterations;
-        }
-        it.Set(255.0*fragColor[0]);
-  }
+	std::condition_variable cv;
+	std::mutex local_mut;
+	std::unique_lock<std::mutex> unique_{local_mut};
+	int executed = 0;
+	size_t index = 0;
+	for(const auto& range : block_divisions){
+		++index;
+		appdata.pool->submit("volume projection",[index,range,t0,&executed,&local_mut,&cv,projectionimage,input,block_divisions](){
+		    size_t local_index = index;
+		    try{
+			    std::array<int,6> this_thread_extent = range;
+		        inject(projectionimage,input,t0,range);
+			    {
+				    std::lock_guard<std::mutex> g{local_mut};
+				    ++executed;
+				    //std::printf("finished patch of work: %d (to do: %d)\n",executed,(int)block_divisions.size());
+			    }
+			    cv.notify_one();
+		    } catch(std::exception & e){
+			    std::cout << "exception was thrown in index :" << local_index << " with error message: " << e.what() << std::endl;
+		    }
+	    });
+	}
+	//this blocks until all threads have processed their corresponding block that they need to process
+	cv.wait(unique_,[&](){ return executed==block_divisions.size();});
   return projectionimage;
 }
 
@@ -725,6 +794,38 @@ std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,c
 
 std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata, int mask)
 {
+
+    auto generate_geometry = [](ImageType::Pointer img,Eigen::Matrix<double,3,1> target, Eigen::Matrix<double,3,1> entry){
+        auto spacing = img->GetSpacing();
+        auto size = img->GetLargestPossibleRegion().GetSize();
+
+        Eigen::Matrix<double,3,1> vector_aligned = target-entry;
+        Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
+
+        // 3 mm to normalized coordinates output_bounding_box.spacing 
+        float size_in_pixels = 1.5/(0.3333*(spacing[0]+spacing[1]+spacing[2]));
+        float radius_in_normalized = size_in_pixels/(0.3333*(size[0]+size[1]+size[2]));
+        float trajectory_length = vector_aligned.norm();
+        curan::geometry::ClosedCylinder geom{2,100,radius_in_normalized,trajectory_length};
+
+        vector_aligned.normalize();
+        Eigen::Matrix<double,3,1> yAxis(0, 0, 1);
+        Eigen::Matrix<double,3,1> axis = yAxis.cross(vector_aligned);
+        axis.normalize();
+        double angle = std::acos(yAxis.transpose()*vector_aligned);
+        auto final_rotation = Eigen::AngleAxisd(angle, axis).toRotationMatrix();
+        offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
+        offset_base_to_Oxy(2,3) = -trajectory_length/2.0;  
+        geom.transform(offset_base_to_Oxy);
+        offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
+        offset_base_to_Oxy.block<3,3>(0,0) = final_rotation;
+        geom.transform(offset_base_to_Oxy);
+        offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
+        offset_base_to_Oxy.block<3,1>(0,3) = target;    
+        geom.transform(offset_base_to_Oxy);
+        return geom;
+    };
+
     using namespace curan::ui;
     using PixelType = unsigned char;
     auto item_explorer = ItemExplorer::make("file_icon.png", *appdata.resources);
@@ -734,8 +835,20 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
             appdata.volume_index = highlighted.back();
             size_t i = 0;
             for(auto vol : appdata.volumes){
-                if(i==appdata.volume_index)
+                if(i==appdata.volume_index){ if(true){
                     appdata.vol_mas->update_volume(vol.second.img,mask);
+                    auto geoms = appdata.vol_mas->geometries();
+
+                    //new need the x projection;
+
+                    //the y projection
+
+                    //the z projection
+
+                    //appdata.vol_mas->add_geometry();
+                } else
+                    appdata.vol_mas->update_volume(vol.second.img,mask);
+                }
                 ++i;
             }
 
@@ -1244,7 +1357,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     return std::move(container);
 };
 
-void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricMask<RGBImageType> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the columns of the highlighted path must be at least 1");
@@ -1405,8 +1518,24 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         throw std::runtime_error("failure due to missing volume");
     }
     appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+    
     try{
-        ImageType::Pointer projected_input = allocate_image(appdata);
+        auto projected_input = allocate_image(appdata);
+        /*
+        using WriterType = itk::ImageFileWriter<RGBImageType>;
+        auto writer = WriterType::New();
+        writer->SetFileName("C:/Dev/CuranSDK/build/release/image.png");
+        writer->SetInput(projected_input);
+
+        try
+        {
+             writer->Update();
+        }
+        catch (const itk::ExceptionObject & error)
+        {
+            std::cerr << "Error: " << error << std::endl;
+        }*/
+
         appdata.projected_vol_mas.update_volume(projected_input);
     } catch(...){
         std::cout << "failure allocating image" << std::endl;
@@ -1414,7 +1543,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     }
 
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
+    auto image_displayx = curan::ui::TwoDimensionalViewer<RGBImageType>::make(*appdata.resources, &appdata.projected_vol_mas);
     auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
     image_displayy->push_options({"coronal view","axial view","saggital view","zoom"});
     image_displayy->add_overlay_processor([&](DicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
@@ -1623,7 +1752,7 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
     vol_mas->add_pressedhighlighted_call([this](DicomVolumetricMask *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
         volume_callback(*this,vol_mas,config_draw,strokes);
     });
-    projected_vol_mas.add_pressedhighlighted_call([this](DicomVolumetricMask *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
+    projected_vol_mas.add_pressedhighlighted_call([this](curan::ui::VolumetricMask<RGBImageType> *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
         projected_volume_callback(*this,vol_mas,config_draw,strokes);
     });
     return std::move(minimage_container);
@@ -1650,10 +1779,9 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
 
 
 int main(int argc, char* argv[]) {
-try{
 	using namespace curan::ui;
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
-	DisplayParams param{ std::move(context),2000,1000};
+	DisplayParams param{ std::move(context)};
 	param.windowName = "Curan:Path Planner";
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
@@ -1662,7 +1790,7 @@ try{
 
     std::printf("\nReading input volume...\n");
     auto fixedImageReader = ImageReaderType::New();
-    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha");
+    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/johndoe.mha");
 
     auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>::New();
     rescale->SetInput(fixedImageReader->GetOutput());
@@ -1712,157 +1840,5 @@ try{
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
-
-
-    auto geometries = appdata.vol_mas->geometries();
-
-    std::vector<ImageType::Pointer> internals;
-    auto size = appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize();
-    internals.reserve(geometries.size());
-
-    auto convert = [&](gte::Vector3<curan::geometry::Piramid::Rational> vertex){
-        ImageType::IndexType itk_ind;
-        itk_ind[0] = size[0]*(double)vertex[0];
-        itk_ind[1] = size[1]*(double)vertex[1];
-        itk_ind[2] = size[2]*(double)vertex[2];
-        ImageType::PointType point;
-        appdata.vol_mas->get_volume()->TransformIndexToPhysicalPoint(itk_ind,point);
-        Eigen::Vector3d data;
-        data[0] = point[0];
-        data[1] = point[1];
-        data[2] = point[2];
-        return data;
-    };
-
-    for (const auto &[key,geomdata] : geometries){
-        const auto &[geom,color] = geomdata;
-        if(geom.geometry.vertices.size()==8){
-            ImageType::Pointer geometry_as_image = ImageType::New();
-
-            auto origin_index = convert(geom.geometry.vertices[0]);
-            auto x_dir_index = convert(geom.geometry.vertices[1]);
-            auto y_dir_index = convert(geom.geometry.vertices[2]);
-            auto z_dir_index = convert(geom.geometry.vertices[4]);
-
-            ImageType::SizeType size;
-            size[0] = 10;  // size along X
-            size[1] = 10;  // size along Y 
-            size[2] = 10;   // size along Z
-        
-            ImageType::SpacingType spacing;
-            spacing[0] = (x_dir_index - origin_index).norm()/(double)size[0]; // mm along X
-            spacing[1] = (y_dir_index - origin_index).norm()/(double)size[1]; // mm along X
-            spacing[2] = (z_dir_index - origin_index).norm()/(double)size[2]; // mm along X
-          
-            ImageType::PointType origin;
-            origin[0] = origin_index[0];
-            origin[1] = origin_index[1];
-            origin[2] = origin_index[2];
-
-            Eigen::Matrix<double,3,3> eigen_rotation_matrix;
-            eigen_rotation_matrix.col(0) = (x_dir_index - origin_index).normalized();
-            eigen_rotation_matrix.col(1) = (y_dir_index - origin_index).normalized();
-            eigen_rotation_matrix.col(2) = (z_dir_index - origin_index).normalized();
-
-            auto direction = geometry_as_image->GetDirection();
-            for(size_t i = 0; i < 3; ++i)
-                for(size_t j = 0; j < 3; ++j)
-                    direction(i,j) = eigen_rotation_matrix(i,j);
-
-            ImageType::RegionType region;
-            region.SetSize(size);
-          
-            geometry_as_image->SetRegions(region);
-            geometry_as_image->SetSpacing(spacing);
-            geometry_as_image->SetOrigin(origin);
-            geometry_as_image->SetDirection(direction);
-            geometry_as_image->Allocate();
-            geometry_as_image->FillBuffer(0);
-
-            internals.push_back(geometry_as_image);
-        }
-    }
-
-
-    auto evaluate_if_pixel_inside_mask = [&](itk::Image<double,3>::IndexType ind,itk::Image<double,3>::Pointer ptr)
-    {
-        bool is_inside = internals.size() > 0 ? false : true ;
-        for (const auto &boundary : internals){
-            itk::Image<double,3>::PointType world;
-            itk::Image<double,3>::IndexType local_ind;
-            ptr->TransformIndexToPhysicalPoint(ind,world);
-            boundary->TransformPhysicalPointToIndex(world,local_ind);
-            auto size = boundary->GetLargestPossibleRegion().GetSize();
-            if ((local_ind[0] >= 0 && local_ind[0] < size[0]) && (local_ind[1] >= 0 && local_ind[1] < size[1]) && (local_ind[2] >= 0 && local_ind[2] < size[2]))
-                is_inside = true;
-        }
-        return is_inside;
-    };
-
-    if(!appdata.trajectory_location.entry_point_word_coordinates || !appdata.trajectory_location.target_world_coordinates){
-        std::cout << "Terminating due to unspecified target and entry point" << std::endl;
-        return 1;
-    }
-
-    Eigen::Matrix<double,3,3> desired_orientation;
-    Eigen::Vector3d z_dir = (*appdata.trajectory_location.target_world_coordinates-*appdata.trajectory_location.entry_point_word_coordinates).normalized();
-    Eigen::Vector3d x_dir = z_dir;
-    x_dir[0] -= 10.0;
-    x_dir.normalize();
-    Eigen::Vector3d y_dir = z_dir.cross(x_dir);
-    x_dir = y_dir.cross(z_dir);
-    desired_orientation.col(0) = x_dir;
-    desired_orientation.col(1) = y_dir;
-    desired_orientation.col(2) = z_dir;
-
-    std::cout << "desired_orientation:\n" << desired_orientation << std::endl;
-    
-    auto date = curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now());
-    curan::utilities::TrajectorySpecificationData specification{date,
-        *appdata.trajectory_location.target_world_coordinates,
-        *appdata.trajectory_location.entry_point_word_coordinates,
-        desired_orientation,
-        CURAN_COPIED_RESOURCE_PATH"/original_volume.mha",
-        CURAN_COPIED_RESOURCE_PATH"/masked_volume.mha"
-        };
-
-    auto [masked_output_image,mask_to_use] = DeepCopyWithInclusionPolicy<itk::Image<double,3>>(evaluate_if_pixel_inside_mask,rescale->GetOutput());
-
-    {
-        auto writer = itk::ImageFileWriter<itk::Image<double,3>>::New();
-        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/original_volume.mha");
-        writer->SetInput(rescale->GetOutput());
-        writer->Update();
-    }
-
-    {
-        auto writer = itk::ImageFileWriter<itk::Image<double,3>>::New();
-        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/masked_volume.mha");
-        writer->SetInput(masked_output_image);
-        writer->Update();
-    }
-
-    {
-        auto writer = itk::ImageFileWriter<itk::Image<unsigned char,3>>::New();
-        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/mask.mha");
-        writer->SetInput(mask_to_use);
-        writer->Update();
-    }
-
-    // write prettified JSON to another file
-	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
-	o << specification;
-	//std::cout << specification << std::endl;
-    
-    return 0;
-}
-catch (const std::exception &e)
-{
-    std::cout << "Exception thrown:" << e.what() << "\n";
-}
-catch (...)
-{
-    std::cout << "Failed to create window for unknown reason\n";
-    return 1;
-}
+	return 0;
 }

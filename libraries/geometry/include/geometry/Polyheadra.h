@@ -78,6 +78,9 @@ struct ClosedCylinder{
         os << "];";
         return os;
     }
+
+    void transform(const Eigen::Matrix<double,4,4>& transf);
+
 };
 /*
 struct Sphere{

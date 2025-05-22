@@ -408,6 +408,21 @@ imageprocessing
 
 # ----------------------------------------
 
+add_executable(test_sequency_planner_cylinder test_sequency_planner_cylinder.cpp)
+
+target_compile_definitions(test_sequency_planner_cylinder PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_sequency_planner_cylinder
+PUBLIC
+${ITK_LIBRARIES}
+userinterface
+geometry
+imageprocessing
+)
+
+
+# ----------------------------------------
+
 add_executable(test_itk_plotter test_itk_plotter.cpp)
 
 target_compile_definitions(test_itk_plotter PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")

@@ -29,13 +29,6 @@ enum MaskUsed
     DIRTY
 };
 
-enum Direction
-{
-    X = 0,
-    Y = 1,
-    Z = 2
-};
-
 class Mask
 {
     MaskUsed _mask_flag;
@@ -83,11 +76,11 @@ struct directed_stroke
     Eigen::Matrix<double,3,Eigen::Dynamic> point_in_image_coordinates;
     std::optional<std::array<double,3>> point; 
     curan::ui::Stroke stroke;
-    Direction direction;
+    curan::ui::Direction direction;
 
     directed_stroke(const Eigen::Matrix<double,3,Eigen::Dynamic>& in_points_in_image_coordinates, 
         curan::ui::Stroke in_stroke , 
-                    Direction in_direction) :  point_in_image_coordinates{in_points_in_image_coordinates},
+                    curan::ui::Direction in_direction) :  point_in_image_coordinates{in_points_in_image_coordinates},
                                                 stroke{in_stroke},
                                                 direction{in_direction}
     {}
@@ -129,12 +122,12 @@ public:
     }
 
     template <typename... T>
-    bool try_emplace(const Direction &direction, const float &along_dimension, T &&...u)
+    bool try_emplace(const curan::ui::Direction &direction, const float &along_dimension, T &&...u)
     {
         assert(along_dimension >= 0 && along_dimension <= 1 && "the received size is not between 0 and 1");
         switch (direction)
         {
-        case Direction::X:
+        case curan::ui::Direction::X:
         {
             auto _current_index_x = std::round(along_dimension * (masks_x.size() - 1));
             auto [iterator_to_inserted_object,insertion_successeful] = masks_x[_current_index_x].try_emplace(counter, std::forward<T>(u)...);
@@ -166,7 +159,7 @@ public:
                 masks_x[_current_index_x].erase(iterator_to_inserted_object);
             return insertion_successeful;
         }
-        case Direction::Y:
+        case curan::ui::Direction::Y:
         {
             auto _current_index_y = std::round(along_dimension * (masks_y.size() - 1));
             auto [iterator_to_inserted_object,insertion_successeful] = masks_y[_current_index_y].try_emplace(counter, std::forward<T>(u)...);
@@ -194,7 +187,7 @@ public:
                 masks_y[_current_index_y].erase(iterator_to_inserted_object);
             return insertion_successeful;
         }
-        case Direction::Z:
+        case curan::ui::Direction::Z:
         {
             auto _current_index_z = std::round(along_dimension * (masks_z.size() - 1));
             auto [iterator_to_inserted_object,insertion_successeful] = masks_z[_current_index_z].try_emplace(counter, std::forward<T>(u)...);
@@ -234,24 +227,24 @@ public:
             return;
         three_dimensional_entities = std::vector<curan::geometry::PolyHeadra>{};
         ImageType::RegionType inputRegion = image->GetBufferedRegion();
-        masks_x = std::vector<Mask>(inputRegion.GetSize()[Direction::X]);
-        masks_y = std::vector<Mask>(inputRegion.GetSize()[Direction::Y]);
-        masks_z = std::vector<Mask>(inputRegion.GetSize()[Direction::Z]);
+        masks_x = std::vector<Mask>(inputRegion.GetSize()[curan::ui::Direction::X]);
+        masks_y = std::vector<Mask>(inputRegion.GetSize()[curan::ui::Direction::Y]);
+        masks_z = std::vector<Mask>(inputRegion.GetSize()[curan::ui::Direction::Z]);
     }
 
     inline ImageType::Pointer get_volume(){
         return image;
     }
 
-    inline size_t dimension(const Direction &direction) const
+    inline size_t dimension(const curan::ui::Direction &direction) const
     {
         switch (direction)
         {
-        case Direction::X:
+        case curan::ui::Direction::X:
             return masks_x.size();
-        case Direction::Y:
+        case curan::ui::Direction::Y:
             return masks_y.size();
-        case Direction::Z:
+        case curan::ui::Direction::Z:
             return masks_z.size();
         default:
             throw std::runtime_error("accessing direction with no meaning");
@@ -268,48 +261,48 @@ public:
     }
 
     template <typename... T>
-    void for_each(const Direction &direction, T &&...u) const
+    void for_each(const curan::ui::Direction &direction, T &&...u) const
     {
         switch (direction)
         {
-        case Direction::X:
+        case curan::ui::Direction::X:
             std::for_each(masks_x.begin(), masks_x.end(), std::forward<T>(u)...);
             break;
-        case Direction::Y:
+        case curan::ui::Direction::Y:
             std::for_each(masks_y.begin(), masks_y.end(), std::forward<T>(u)...);
             break;
-        case Direction::Z:
+        case curan::ui::Direction::Z:
             std::for_each(masks_z.begin(), masks_z.end(), std::forward<T>(u)...);
             break;
         };
     }
 
     template <typename... T>
-    void for_each(const Direction &direction, T &&...u)
+    void for_each(const curan::ui::Direction &direction, T &&...u)
     {
         switch (direction)
         {
-        case Direction::X:
+        case curan::ui::Direction::X:
             std::for_each(masks_x.begin(), masks_x.end(), std::forward<T>(u)...);
             break;
-        case Direction::Y:
+        case curan::ui::Direction::Y:
             std::for_each(masks_y.begin(), masks_y.end(), std::forward<T>(u)...);
             break;
-        case Direction::Z:
+        case curan::ui::Direction::Z:
             std::for_each(masks_z.begin(), masks_z.end(), std::forward<T>(u)...);
             break;
         };
     }
 
-    inline Mask & current_mask(const Direction &direction, const size_t &along_dimension)
+    inline Mask & current_mask(const curan::ui::Direction &direction, const size_t &along_dimension)
     {
         assert(along_dimension >= 0 && along_dimension <= masks_x.size() - 1 && "the received size is not between 0 and 1");
         switch (direction){
-        case Direction::X:
+        case curan::ui::Direction::X:
         return masks_x[along_dimension];
-        case Direction::Y:
+        case curan::ui::Direction::Y:
         return masks_y[along_dimension];
-        case Direction::Z:
+        case curan::ui::Direction::Z:
         return masks_z[along_dimension];
         default : 
         throw std::runtime_error("incorrect mask direction selected");
@@ -399,7 +392,7 @@ private:
     SkColor highlight_color = SK_ColorGRAY;
 
     SliderStates current_state = SliderStates::WAITING;
-    Direction direction = Direction::X;
+    curan::ui::Direction direction = curan::ui::Direction::X;
     SkPaint slider_paint;
 
 	size_t font_size = 20;
@@ -443,12 +436,12 @@ private:
 
     image_info extract_slice_from_volume(size_t index);
 
-    DicomViewer(curan::ui::IconResources &other, VolumetricMask *mask, Direction in_direction);
+    DicomViewer(curan::ui::IconResources &other, VolumetricMask *mask, curan::ui::Direction in_direction);
 
     void insert_in_map(const curan::ui::PointCollection &future_stroke);
 
 public:
-    static std::unique_ptr<DicomViewer> make(curan::ui::IconResources &other, VolumetricMask *mask, Direction in_direction);
+    static std::unique_ptr<DicomViewer> make(curan::ui::IconResources &other, VolumetricMask *mask, curan::ui::Direction in_direction);
 
     ~DicomViewer();
 
@@ -459,7 +452,7 @@ public:
         return *(this);
     }
 
-    void update_volume(VolumetricMask *mask, Direction in_direction);
+    void update_volume(VolumetricMask *mask, curan::ui::Direction in_direction);
 
     void framebuffer_resize(const SkRect &new_page_size) override;
     void internal_framebuffer_recomputation();
@@ -855,17 +848,17 @@ DicomViewer::image_info DicomViewer::extract_slice_from_volume(size_t index)
 
     switch (direction)
     {
-    case Direction::X:
+    case curan::ui::Direction::X:
         info.image = curan::ui::ImageWrapper{buff, extracted_size[1], extracted_size[2]};
         info.width_spacing = spacing[1];
         info.height_spacing = spacing[2];
         break;
-    case Direction::Y:
+    case curan::ui::Direction::Y:
         info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[2]};
         info.width_spacing = spacing[0];
         info.height_spacing = spacing[2];
         break;
-    case Direction::Z:
+    case curan::ui::Direction::Z:
         info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[1]};
         info.width_spacing = spacing[0];
         info.height_spacing = spacing[1];
@@ -902,13 +895,13 @@ DicomViewer::image_info DicomViewer::extract_slice_from_volume(size_t index)
 
             switch (direction)
             {
-            case Direction::X:
+            case curan::ui::Direction::X:
                 points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[1], (*possible_cliped_polygon).col(0)[2]));
                 break;
-            case Direction::Y:
+            case curan::ui::Direction::Y:
                 points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[2]));
                 break;
-            case Direction::Z:
+            case curan::ui::Direction::Z:
                 points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[1]));
                 break;
             }
@@ -918,13 +911,13 @@ DicomViewer::image_info DicomViewer::extract_slice_from_volume(size_t index)
 
         switch (direction)
         {
-        case Direction::X:
+        case curan::ui::Direction::X:
             points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[1], (*possible_cliped_polygon).col(0)[2]));
             break;
-        case Direction::Y:
+        case curan::ui::Direction::Y:
             points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[2]));
             break;
-        case Direction::Z:
+        case curan::ui::Direction::Z:
             points_in_path.push_back(SkPoint::Make((*possible_cliped_polygon).col(0)[0], (*possible_cliped_polygon).col(0)[1]));
             break;
         }
@@ -933,13 +926,13 @@ DicomViewer::image_info DicomViewer::extract_slice_from_volume(size_t index)
         {
             switch (direction)
             {
-            case Direction::X:
+            case curan::ui::Direction::X:
                 points_in_path.push_back(SkPoint::Make(cliped_polygon[1], cliped_polygon[2]));
                 break;
-            case Direction::Y:
+            case curan::ui::Direction::Y:
                 points_in_path.push_back(SkPoint::Make(cliped_polygon[0], cliped_polygon[2]));
                 break;
-            case Direction::Z:
+            case curan::ui::Direction::Z:
                 points_in_path.push_back(SkPoint::Make(cliped_polygon[0], cliped_polygon[1]));
                 break;
             }
@@ -960,7 +953,7 @@ DicomViewer::image_info DicomViewer::extract_slice_from_volume(size_t index)
     return info;
 }
 
-DicomViewer::DicomViewer(curan::ui::IconResources &other, VolumetricMask *volume_mask, Direction in_direction) : volumetric_mask{volume_mask}, system_icons{other}
+DicomViewer::DicomViewer(curan::ui::IconResources &other, VolumetricMask *volume_mask, curan::ui::Direction in_direction) : volumetric_mask{volume_mask}, system_icons{other}
 {
     set_current_state(SliderStates::WAITING);
     update_volume(volume_mask, in_direction);
@@ -1023,7 +1016,7 @@ void DicomViewer::insert_in_map(const curan::ui::PointCollection &future_stroke)
         success = volumetric_mask->try_emplace(direction, current_value, curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
 }
 
-std::unique_ptr<DicomViewer> DicomViewer::make(curan::ui::IconResources &other, VolumetricMask *volume_mask, Direction in_direction)
+std::unique_ptr<DicomViewer> DicomViewer::make(curan::ui::IconResources &other, VolumetricMask *volume_mask, curan::ui::Direction in_direction)
 {
     std::unique_ptr<DicomViewer> button = std::unique_ptr<DicomViewer>(new DicomViewer{other, volume_mask, in_direction});
     return button;
@@ -1042,7 +1035,7 @@ void DicomViewer::compile()
     compiled = true;
 }
 
-void DicomViewer::update_volume(VolumetricMask *volume_mask, Direction in_direction)
+void DicomViewer::update_volume(VolumetricMask *volume_mask, curan::ui::Direction in_direction)
 {
     std::lock_guard<std::mutex> g{get_mutex()};
     assert(volume_mask != nullptr && "volumetric mask must be different from nullptr");
@@ -1251,24 +1244,24 @@ curan::ui::drawablefunction DicomViewer::draw()
                                                             point_in_itk_coordinates = Eigen::Matrix<double, 3,Eigen::Dynamic>::Zero(3,path.normalized_recorded_points.size());
                                                             switch (direction)
                                                             {
-                                                            case Direction::X:
+                                                            case curan::ui::Direction::X:
                                                                 for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
                                                                     point_in_itk_coordinates(0,col) =  _current_index;
-                                                                    point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::Y) - 1));
-                                                                    point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                                                                    point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(curan::ui::Direction::Y) - 1));
+                                                                    point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(curan::ui::Direction::Z) - 1));
                                                                 }
                                                             break;
-                                                            case Direction::Y:
+                                                            case curan::ui::Direction::Y:
                                                                 for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
-                                                                    point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::X) - 1));
+                                                                    point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(curan::ui::Direction::X) - 1));
                                                                     point_in_itk_coordinates(1,col) =  _current_index;
-                                                                    point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                                                                    point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(curan::ui::Direction::Z) - 1));
                                                                 }
                                                             break;
-                                                            case Direction::Z:
+                                                            case curan::ui::Direction::Z:
                                                                 for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
-                                                                    point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::X) - 1));
-                                                                    point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Y) - 1));
+                                                                    point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(curan::ui::Direction::X) - 1));
+                                                                    point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(curan::ui::Direction::Y) - 1));
                                                                     point_in_itk_coordinates(2,col) = _current_index;
                                                                 }
                                                             break;
@@ -1279,21 +1272,21 @@ curan::ui::drawablefunction DicomViewer::draw()
                                                             point_in_itk_coordinates = Eigen::Matrix<double, 3,Eigen::Dynamic>::Zero(3,1);
                                                             switch (direction)
                                                             {
-                                                            case Direction::X:
+                                                            case curan::ui::Direction::X:
                                                             {
                                                                 point_in_itk_coordinates(0,0) = _current_index;
-                                                                point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::Y) - 1));
-                                                                point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                                                                point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(curan::ui::Direction::Y) - 1));
+                                                                point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(curan::ui::Direction::Z) - 1));
                                                             }
                                                             break;
-                                                            case Direction::Y:
-                                                                point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
+                                                            case curan::ui::Direction::Y:
+                                                                point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(curan::ui::Direction::X) - 1));
                                                                 point_in_itk_coordinates(1,0) = _current_index;
-                                                                point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                                                                point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(curan::ui::Direction::Z) - 1));
                                                             break;
-                                                            case Direction::Z:
-                                                                point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
-                                                                point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Y) - 1));
+                                                            case curan::ui::Direction::Z:
+                                                                point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(curan::ui::Direction::X) - 1));
+                                                                point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(curan::ui::Direction::Y) - 1));
                                                                 point_in_itk_coordinates(2,0) = _current_index;
                                                             break;
                                                             }
@@ -1444,19 +1437,19 @@ curan::ui::callablefunction DicomViewer::call()
             auto point = homogenenous_transformation.mapPoint(SkPoint::Make(xpos,ypos));
             switch (direction)
             {
-            case Direction::X:
+            case curan::ui::Direction::X:
                 current_mouse_location.image_coordinates[0] =  _current_index;
-                current_mouse_location.image_coordinates[1] =  (int)std::round(point.fX * (volumetric_mask->dimension(Direction::Y) - 1));
-                current_mouse_location.image_coordinates[2] =  (int)std::round(point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                current_mouse_location.image_coordinates[1] =  (int)std::round(point.fX * (volumetric_mask->dimension(curan::ui::Direction::Y) - 1));
+                current_mouse_location.image_coordinates[2] =  (int)std::round(point.fY * (volumetric_mask->dimension(curan::ui::Direction::Z) - 1));
             break;
-            case Direction::Y:
-                current_mouse_location.image_coordinates[0] =  (int)std::round(point.fX * (volumetric_mask->dimension(Direction::X) - 1));
+            case curan::ui::Direction::Y:
+                current_mouse_location.image_coordinates[0] =  (int)std::round(point.fX * (volumetric_mask->dimension(curan::ui::Direction::X) - 1));
                 current_mouse_location.image_coordinates[1] =  _current_index;
-                current_mouse_location.image_coordinates[2] =  (int)std::round(point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                current_mouse_location.image_coordinates[2] =  (int)std::round(point.fY * (volumetric_mask->dimension(curan::ui::Direction::Z) - 1));
             break;
-            case Direction::Z:
-                current_mouse_location.image_coordinates[0] =  (int)std::round(point.fX * (volumetric_mask->dimension(Direction::X) - 1));
-                current_mouse_location.image_coordinates[1] =  (int)std::round(point.fY * (volumetric_mask->dimension(Direction::Y) - 1));
+            case curan::ui::Direction::Z:
+                current_mouse_location.image_coordinates[0] =  (int)std::round(point.fX * (volumetric_mask->dimension(curan::ui::Direction::X) - 1));
+                current_mouse_location.image_coordinates[1] =  (int)std::round(point.fY * (volumetric_mask->dimension(curan::ui::Direction::Y) - 1));
                 current_mouse_location.image_coordinates[2] = _current_index;
             break;
             }
@@ -1707,24 +1700,24 @@ int main() {
         auto callable = [&](DicomViewer* panel, curan::ui::ConfigDraw* conf, size_t selected_option){
             switch(selected_option){
                 case 0:
-                    panel->update_volume(&vol,Direction::X);
+                    panel->update_volume(&vol,curan::ui::Direction::X);
                     break;
                 case 1:
-                    panel->update_volume(&vol,Direction::Y);
+                    panel->update_volume(&vol,curan::ui::Direction::Y);
                     break;
                 case 2:
-                    panel->update_volume(&vol,Direction::Z);
+                    panel->update_volume(&vol,curan::ui::Direction::Z);
                     break;
                 default:
                     break;
             }
             return;
         };
-        std::unique_ptr<DicomViewer> image_display_x = DicomViewer::make(resources, &vol, Direction::X);
+        std::unique_ptr<DicomViewer> image_display_x = DicomViewer::make(resources, &vol, curan::ui::Direction::X);
         image_display_x->push_options({"coronal view","axial view","saggital view","zoom","select path"}).add_overlay_processor(callable);
-        std::unique_ptr<DicomViewer> image_display_y = DicomViewer::make(resources, &vol, Direction::Y);
+        std::unique_ptr<DicomViewer> image_display_y = DicomViewer::make(resources, &vol, curan::ui::Direction::Y);
         image_display_y->push_options({"coronal view","axial view","saggital view","zoom","select path"}).add_overlay_processor(callable);
-        std::unique_ptr<DicomViewer> image_display_z = DicomViewer::make(resources, &vol, Direction::Z);
+        std::unique_ptr<DicomViewer> image_display_z = DicomViewer::make(resources, &vol, curan::ui::Direction::Z);
         image_display_z->push_options({"coronal view","axial view","saggital view","zoom","select path"}).add_overlay_processor(callable);
 
 		auto container = curan::ui::Container::make(curan::ui::Container::ContainerType::LINEAR_CONTAINER,curan::ui::Container::Arrangement::HORIZONTAL);
