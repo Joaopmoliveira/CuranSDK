@@ -273,14 +273,15 @@ public:
 				for(auto& vertices: dimensional_entities.geometry.vertices){
 					ImageType::IndexType local_index;
 					ImageType::PointType itk_point_in_world_coordinates;
-					local_index[0] = image->GetLargestPossibleRegion().GetSize()[0]*(double)vertices[0];
-					local_index[1] = image->GetLargestPossibleRegion().GetSize()[1]*(double)vertices[1];
-					local_index[2] = image->GetLargestPossibleRegion().GetSize()[2]*(double)vertices[2];
+                    auto size = image->GetLargestPossibleRegion().GetSize();
+					local_index[0] = size[0]*(double)vertices[0];
+					local_index[1] = size[1]*(double)vertices[1];
+					local_index[2] = size[2]*(double)vertices[2];
 					image->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
 					in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
-					vertices[0] = local_index[0]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[0]);
-					vertices[1] = local_index[1]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[1]);
-					vertices[2] = local_index[2]*(1.0/in_volume->GetLargestPossibleRegion().GetSize()[2]);
+					vertices[0] = local_index[0]*(1.0/size[0]);
+					vertices[1] = local_index[1]*(1.0/size[1]);
+					vertices[2] = local_index[2]*(1.0/size[2]);
 				}
 			}
 		}  else {
@@ -322,6 +323,20 @@ public:
         std::string str_ident = "geometry"+std::to_string(identifier);
         auto retu = three_dimensional_entities.try_emplace(str_ident,std::make_tuple(std::forward<T>(geometry_to_add),color));
         return retu.second ? std::optional<std::string>{str_ident} : std::nullopt;
+    }
+
+    bool delete_geometry(std::string to_delete){
+        bool deleted = false;
+        for (auto it = three_dimensional_entities.begin(); it != three_dimensional_entities.end();){
+            if (!(it->first.compare(to_delete))){
+                deleted = true;
+                it = three_dimensional_entities.erase(it);
+                break;
+            }
+            else
+                ++it;
+        }
+        return deleted;
     }
 
     inline const std::map<std::string,std::tuple<curan::geometry::PolyHeadra,SkColor>>& geometries() const{

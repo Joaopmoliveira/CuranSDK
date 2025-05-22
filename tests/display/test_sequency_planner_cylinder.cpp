@@ -144,6 +144,9 @@ struct Application{
     std::function<void(Application&,curan::ui::VolumetricMask<RGBImageType>*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
     RegionOfInterest roi;
 
+    std::string trajectory_identifier;
+    std::string piramid_identifier;
+
     Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
 
     std::unique_ptr<curan::ui::Container> main_page();
@@ -1191,14 +1194,19 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         geom.geometry.vertices[4][1] = b3[1];
         geom.geometry.vertices[4][2] = b3[2];
 
-        appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));  
-        
+        bool was_deleted = appdata.vol_mas->delete_geometry(appdata.piramid_identifier);
+        std::cout << (was_deleted ? "geometry was previously present\n" : "geometry was previously not present\n");
+        auto was_added = appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));   
+        if(was_added){
+            appdata.piramid_identifier = *was_added;
+        }
         for(size_t i = 0; i < geom.geometry.vertices.size(); ++i){
             ImageType::IndexType local_index;
             ImageType::PointType itk_point_in_world_coordinates;
-            local_index[0] = vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0]*(double)geom.geometry.vertices[i][0];
-            local_index[1] = vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1]*(double)geom.geometry.vertices[i][1];
-            local_index[2] = vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2]*(double)geom.geometry.vertices[i][2];
+            auto size = vol_mas->get_volume()->GetLargestPossibleRegion().GetSize();
+            local_index[0] = size[0]*(double)geom.geometry.vertices[i][0];
+            local_index[1] = size[1]*(double)geom.geometry.vertices[i][1];
+            local_index[2] = size[2]*(double)geom.geometry.vertices[i][2];
             vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
             appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][0] = itk_point_in_world_coordinates[0];
             appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][1] = itk_point_in_world_coordinates[1];
@@ -1497,7 +1505,14 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
             offset_base_to_Oxy.block<3,1>(0,3) = tip_in_local_coords;    
             geom.transform(offset_base_to_Oxy);
-            appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0x00, 0xFF, 0x00));  
+
+            bool was_deleted = appdata.vol_mas->delete_geometry(appdata.trajectory_identifier);
+            std::cout << (was_deleted ? "geometry was previously present\n" : "geometry was previously not present\n");
+            auto was_added = appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0x00, 0xFF, 0x00));  
+            if(was_added){
+                appdata.trajectory_identifier = *was_added;
+                std::cout << "geometry added";
+            }
             if (config_draw->stack_page != nullptr) {
                 config_draw->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
             }
