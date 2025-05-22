@@ -279,6 +279,7 @@ public:
 					local_index[2] = size[2]*(double)vertices[2];
 					image->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
 					in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
+                    size = in_volume->GetLargestPossibleRegion().GetSize();
 					vertices[0] = local_index[0]*(1.0/size[0]);
 					vertices[1] = local_index[1]*(1.0/size[1]);
 					vertices[2] = local_index[2]*(1.0/size[2]);
