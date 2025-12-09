@@ -4,7 +4,7 @@
 #include "userinterface/widgets/IconResources.h"
 #include "userinterface/widgets/definitions/Interactive.h"
 #include "userinterface/widgets/Button.h"
-#include "userinterface/widgets/SliderPanel.h"
+#include "userinterface/widgets/DicomDisplay.h"
 #include "userinterface/widgets/Container.h"
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Drawable.h"
@@ -25,7 +25,7 @@
 #include "itkExtractImageFilter.h"
 #include "itkImage.h"
 #include "itkImageFileReader.h"
-
+#include "itkOrientImageFilter.h"
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageSeriesReader.h"
@@ -76,9 +76,16 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
 
 	reader->SetFileNames(fileNames);
 
-	using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
+	using OrienterType = itk::OrientImageFilter<DICOMImageType, DICOMImageType>;
+	auto orienter = OrienterType::New();
+	orienter->UseImageDirectionOn(); // Use direction cosines from DICOM
+
+	orienter->SetDesiredCoordinateOrientation(
+		itk::SpatialOrientation::ITK_COORDINATE_ORIENTATION_RAS);
+	orienter->SetInput(reader->GetOutput());
+    using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
 	auto rescale = RescaleType::New();
-	rescale->SetInput(reader->GetOutput());
+	rescale->SetInput(orienter->GetOutput()); // Use oriented image
 	rescale->SetOutputMinimum(0);
 	rescale->SetOutputMaximum(itk::NumericTraits<PixelType>::max());
 
@@ -89,6 +96,12 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
 	try
 	{
 		filter->Update();
+		
+		// Print orientation information for debugging
+		auto orientedImage = orienter->GetOutput();
+		std::cout << "Image Direction: " << orientedImage->GetDirection() << std::endl;
+		std::cout << "Image Origin: " << orientedImage->GetOrigin() << std::endl;
+		std::cout << "Image Spacing: " << orientedImage->GetSpacing() << std::endl;
 	}
 	catch (const itk::ExceptionObject &ex)
 	{
@@ -114,10 +127,10 @@ int main()
 		if (!volume)
 			return 1;
 
-		VolumetricMask mask{*volume};
+		DicomVolumetricMask mask{*volume};
 		curan::geometry::ClosedCylinder cube{2,100,1.0,1.0};
-		mask.add_geometry(cube);
-		std::unique_ptr<curan::ui::SlidingPanel> image_display = curan::ui::SlidingPanel::make(resources, &mask, curan::ui::Direction::Z);
+		auto geometry_name = mask.add_geometry(cube,SK_ColorCYAN);
+		std::unique_ptr<curan::ui::DicomViewer> image_display = curan::ui::DicomViewer::make(resources, &mask, curan::ui::Direction::X);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);

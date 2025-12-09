@@ -435,7 +435,7 @@ geometry
 )
 
 
-add_executable(test_dicom_compliant_render test_dicom_complient_render.cpp)
+add_executable(test_dicom_compliant_render test_dicom_compliant_render.cpp)
 
 target_compile_definitions(test_dicom_compliant_render PRIVATE vsgXchange_FOUND)
 target_compile_definitions(test_dicom_compliant_render PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")

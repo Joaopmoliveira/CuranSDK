@@ -106,9 +106,12 @@ using Stroke = std::variant<Point,Path>;
 
 enum Direction
 {
-	X = 0,
-	Y = 1,
-	Z = 2
+	X = 0, // saggital
+	SAGGITAL = 0,
+	Y = 1, // coronal
+	CORONAL,
+	Z = 2, // axial
+	AXIAL,
 };
 
 
