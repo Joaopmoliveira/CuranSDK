@@ -231,19 +231,19 @@ namespace ui{
         cached_polyheader_intersections = std::vector<std::tuple<std::vector<SkPoint>, SkPath,SkColor>>{};
         for (const auto &[key,geomdata] : volumetric_mask->geometries())
         {
-            const auto &[cliped_path,color] = geomdata;
+            const auto &[geomtry_to_intersect,color] = geomdata;
             std::vector<SkPoint> points_in_path;
 
             auto voldirection = volumetric_mask->get_volume()->GetDirection();
             auto size = volumetric_mask->get_volume()->GetLargestPossibleRegion().GetSize();
-            ImageType::PointType vol_center;
+            ImageType::PointType vol_slice_center;
             ImageType::IndexType index{{(size_t)(size[0]*0.5), (size_t)(size[1]*0.5), (size_t)(size[2]*0.5)}};
             index[direction] = size[direction]*current_value;
-            volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(index, vol_center);
+            volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(index, vol_slice_center);
             Eigen::Matrix<double, 3, 1> normal{voldirection(0,direction),voldirection(1,direction),voldirection(2,direction)};
-            Eigen::Matrix<double, 3, 1> origin{vol_center[0], vol_center[1], vol_center[2]};
+            Eigen::Matrix<double, 3, 1> origin{vol_slice_center[0], vol_slice_center[1], vol_slice_center[2]};
     
-            auto possible_cliped_polygon = curan::geometry::clip_with_plane(cliped_path, normal, origin);
+            auto possible_cliped_polygon = curan::geometry::clip_with_plane(geomtry_to_intersect, normal, origin);
             if (!possible_cliped_polygon)
             {
                 continue;
@@ -255,9 +255,9 @@ namespace ui{
             }
             Eigen::Matrix<double,3,Eigen::Dynamic> staged_copy = *possible_cliped_polygon;
             for(size_t i = 0; i< staged_copy.cols(); ++i){
-                ImageType::PointType vol_center{{staged_copy.col(i)[0],staged_copy.col(i)[1],staged_copy.col(i)[2]}};
+                ImageType::PointType physical_intersection_point{{staged_copy.col(i)[0],staged_copy.col(i)[1],staged_copy.col(i)[2]}};
                 ImageType::IndexType index;    
-                volumetric_mask->get_volume()->TransformPhysicalPointToIndex(vol_center,index);
+                volumetric_mask->get_volume()->TransformPhysicalPointToIndex(physical_intersection_point,index);
                 auto size = volumetric_mask->get_volume()->GetLargestPossibleRegion().GetSize();
                 staged_copy.col(i)[0] = index[0]/(double)size[0];
                 staged_copy.col(i)[1] = index[1]/(double)size[1];
@@ -311,7 +311,7 @@ namespace ui{
                     points_in_path.push_back(SkPoint::Make(cliped_polygon[0], cliped_polygon[1]));
                     break;
                 }
-            }
+            } // the points here are in normalized image units, now we need to ask skia to transform they to whaver coordinates they should be rendered on screen
     
             std::vector<SkPoint> transformed_points = points_in_path;
     

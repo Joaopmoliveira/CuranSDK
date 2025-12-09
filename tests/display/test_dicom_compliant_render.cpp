@@ -130,7 +130,7 @@ int main()
 		DicomVolumetricMask mask{*volume};
 		curan::geometry::ClosedCylinder cube{2,100,1.0,1.0};
 		auto geometry_name = mask.add_geometry(cube,SK_ColorCYAN);
-		std::unique_ptr<curan::ui::DicomViewer> image_display = curan::ui::DicomViewer::make(resources, &mask, curan::ui::Direction::Y);
+		std::unique_ptr<curan::ui::DicomViewer> image_display = curan::ui::DicomViewer::make(resources, &mask, curan::ui::Direction::Z);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);
