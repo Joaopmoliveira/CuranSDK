@@ -174,6 +174,23 @@ namespace ui{
         }
         previous = _current_index;
     }
+
+    DicomViewer& DicomViewer::update_custom_drawingcall(custom_step call) {
+        std::lock_guard<std::mutex> g{ get_mutex() };
+        custom_drawing_call = call;
+        return *(this);
+    }
+
+    DicomViewer& DicomViewer::clear_custom_drawingcall() {
+        std::lock_guard<std::mutex> g{ get_mutex() };
+        custom_drawing_call = std::nullopt;
+        return *(this);
+    }
+
+    std::optional<custom_step> DicomViewer::get_custom_drawingcall() {
+        std::lock_guard<std::mutex> g{ get_mutex() };
+        return custom_drawing_call;
+    }
     
     DicomViewer::image_info DicomViewer::extract_slice_from_volume(size_t index)
     {
@@ -200,6 +217,7 @@ namespace ui{
         extract_filter->UpdateLargestPossibleRegion();
     
         ImageType::Pointer pointer_to_block_of_memory = extract_filter->GetOutput();
+        info.physical_image = pointer_to_block_of_memory;
         ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
         auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
     
@@ -686,7 +704,7 @@ namespace ui{
                     canvas->drawImageRect(image_display_surface, background_rect, opt, &(*paint_compliant_filtered_image));
                 else
                     canvas->drawImageRect(image_display_surface, background_rect, opt);
-            }
+            } 
             canvas->drawPoints(SkCanvas::PointMode::kPoints_PointMode, current_stroke.transformed_recorded_points.size(), current_stroke.transformed_recorded_points.data(), paint_stroke);
             {
                 is_panel_selected = get_hightlight_color() == SkColorSetARGB(255, 125, 0, 0);

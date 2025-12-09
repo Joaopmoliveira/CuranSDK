@@ -380,9 +380,14 @@ constexpr size_t buffer_around_panel = 8;
 
 class DicomViewer;
 using optionsselection_event = std::function<void(DicomViewer*, curan::ui::ConfigDraw*, size_t selected_option)>;
+using custom_step = std::function<void(SkCanvas*, SkRect, SkRect)>;
 
 class DicomViewer final : public curan::ui::Drawable, public curan::utilities::Lockable, public curan::ui::SignalProcessor<DicomViewer>
 {
+    using PixelType = unsigned char;
+
+    using ImageType = itk::Image<PixelType, Dimension>;
+    using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
 public:
     enum class SliderStates
     {
@@ -395,16 +400,12 @@ public:
     struct image_info
     {
         std::optional<curan::ui::ImageWrapper> image;
+        ImageType::Pointer physical_image;
         double width_spacing = 1;
         double height_spacing = 1;
     };
 
 private:
-    using PixelType = unsigned char;
-
-    using ImageType = itk::Image<PixelType, Dimension>;
-    using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
-
     ExtractFilterType::Pointer extract_filter;
 
     SkRect reserved_slider_space;
@@ -439,6 +440,14 @@ private:
     SkFont text_font;
 
     image_info background;
+    /*
+    This is a client side image that is drawn after the backgroud image (or you could call it the clip between the volume and the viweing plane) is rendered. 
+    What is the purpose? Sometimes we want to render two images that belong 
+    to the same physical entity, e.g., a medical volume, hence we can provide a customized call for the client to 
+    append their second image. What information does the client need to crop the images? Well we can provide them with
+    a couple of geometric related parameters
+    */
+    std::optional<custom_step> custom_drawing_call = std::nullopt;
 
     bool is_pressed = false;
     bool is_highlighting = false;
@@ -515,6 +524,12 @@ public:
     ~DicomViewer();
 
     void compile() override;
+
+	DicomViewer& update_custom_drawingcall(custom_step call);
+
+	DicomViewer& clear_custom_drawingcall();
+
+    std::optional<custom_step> get_custom_drawingcall();
 
     inline DicomViewer & add_overlay_processor(optionsselection_event event_processor){
         callbacks_optionsselection.push_back(event_processor);
