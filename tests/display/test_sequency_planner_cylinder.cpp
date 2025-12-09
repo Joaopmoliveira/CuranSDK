@@ -331,10 +331,6 @@ void inject(RGBImageType::Pointer projectionimage, ImageType::Pointer volume, co
 }
 
 RGBImageType::Pointer allocate_image(Application& appdata){
-
-    const std::vector<std::tuple<std::array<double,4>,std::array<double,3>>> color_ranges = {{{0.02,0.04,0.05,0.08},{(1.0/255.0)*100,(1.0/255.0)*149,(1.0/255.0)*237}},
-                                                                                            {{0.27,0.40,0.99,1.0},{(1.0/255.0)*255,(1.0/255.0)*40,(1.0/255.0)*0}}}; 
-
     ImageType::Pointer input;
     if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
         input = search->second.img;
@@ -399,7 +395,6 @@ RGBImageType::Pointer allocate_image(Application& appdata){
 
     const Eigen::Matrix<double,3,1> t0 = *appdata.trajectory_location.target_world_coordinates;
     
-
     int inputFrameExtentForCurrentThread[6] = { 0, 0, 0, 0, 0, 0 };
     inputFrameExtentForCurrentThread[1] = size[0]-1;
 	inputFrameExtentForCurrentThread[3] = size[1]-1;
@@ -1141,24 +1136,10 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
     if(appdata.trajectory_location.main_diagonal_word_coordinates && appdata.trajectory_location.target_world_coordinates){
         curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
 
-        auto compute = [&](Eigen::Matrix<double,3,1> world_coordinates){
-            ImageType::IndexType point_index;
-            ImageType::PointType point_world_coordinates;     
-            point_world_coordinates[0] = world_coordinates[0];
-            point_world_coordinates[1] = world_coordinates[1];
-            point_world_coordinates[2] = world_coordinates[2];
-            vol_mas->get_volume()->TransformPhysicalPointToIndex(point_world_coordinates,point_index);
-            Eigen::Matrix<double,3,1> normalized_itk_points;
-            normalized_itk_points << point_index[0]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0] 
-                                   , point_index[1]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1] 
-                                   , point_index[2]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
-            return normalized_itk_points;
-        };
+        const auto target_world = *appdata.trajectory_location.target_world_coordinates;
+        const auto main_diagonal_world = *appdata.trajectory_location.main_diagonal_word_coordinates;
 
-        const auto target_world_index = *appdata.trajectory_location.target_world_coordinates;
-        const auto main_diagonal_world_index = *appdata.trajectory_location.main_diagonal_word_coordinates;
-
-        Eigen::Matrix<double,3,1> vector_aligned = target_world_index-main_diagonal_world_index;
+        Eigen::Matrix<double,3,1> vector_aligned = target_world-main_diagonal_world;
         double scale = vector_aligned.norm();
         Eigen::Vector3d z_direction = vector_aligned.normalized();
         Eigen::Vector3d x_direction = z_direction;
@@ -1168,11 +1149,11 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         x_direction = y_direction.cross(z_direction);
         double base_width = std::tan(0.349066)*scale;
 
-        Eigen::Vector3d b0 = compute(main_diagonal_world_index - base_width*y_direction -  base_width*x_direction);
-        Eigen::Vector3d b1 = compute(main_diagonal_world_index + base_width*y_direction -  base_width*x_direction);
-        Eigen::Vector3d b2 = compute(main_diagonal_world_index + base_width*y_direction +  base_width*x_direction);
-        Eigen::Vector3d b3 = compute(main_diagonal_world_index - base_width*y_direction +  base_width*x_direction);
-        Eigen::Vector3d target_local_index = compute(target_world_index);
+        Eigen::Vector3d b0 = main_diagonal_world - base_width*y_direction -  base_width*x_direction;
+        Eigen::Vector3d b1 = main_diagonal_world + base_width*y_direction -  base_width*x_direction;
+        Eigen::Vector3d b2 = main_diagonal_world + base_width*y_direction +  base_width*x_direction;
+        Eigen::Vector3d b3 = main_diagonal_world - base_width*y_direction +  base_width*x_direction;
+        Eigen::Vector3d target_local_index = target_world;
 
         geom.geometry.vertices[0][0] = target_local_index[0];
         geom.geometry.vertices[0][1] = target_local_index[1];
@@ -1194,8 +1175,7 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         geom.geometry.vertices[4][1] = b3[1];
         geom.geometry.vertices[4][2] = b3[2];
 
-        bool was_deleted = appdata.vol_mas->delete_geometry(appdata.piramid_identifier);
-        std::cout << (was_deleted ? "geometry was previously present\n" : "geometry was previously not present\n");
+        appdata.vol_mas->delete_geometry(appdata.piramid_identifier);
         auto was_added = appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));   
         if(was_added){
             appdata.piramid_identifier = *was_added;
@@ -1464,31 +1444,14 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             appdata.vol_mas->update_volume(output,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
             appdata.volumes.emplace("alongtrajectory",output);
 
-            auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
-                ImageType::IndexType local_index;
-                ImageType::PointType itk_point_in_world_coordinates;
-                itk_point_in_world_coordinates[0] = point[0];
-                itk_point_in_world_coordinates[1] = point[1];
-                itk_point_in_world_coordinates[2] = point[2];
-                appdata.vol_mas->get_volume()->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
-                auto size = appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize();
-                Eigen::Matrix<double,3,1> converted;
-                converted[0] = (1.0/size[0])*(double)local_index[0];
-                converted[1] = (1.0/size[1])*(double)local_index[1];
-                converted[2] = (1.0/size[2])*(double)local_index[2];
-                return converted;
-            };
-
-            const auto tip_in_local_coords = convert_to_index_coordinates(*appdata.trajectory_location.target_world_coordinates);
-            const auto entry_in_local_coords = convert_to_index_coordinates(*appdata.trajectory_location.entry_point_word_coordinates);
-            Eigen::Matrix<double,3,1> vector_aligned = tip_in_local_coords-entry_in_local_coords;
+            const auto tip_in_world = *appdata.trajectory_location.target_world_coordinates;
+            const auto entry_in_world = *appdata.trajectory_location.entry_point_word_coordinates;
+            Eigen::Matrix<double,3,1> vector_aligned = tip_in_world-entry_in_world;
             Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
 
             // 3 mm to normalized coordinates output_bounding_box.spacing 
-            float size_in_pixels = 1.5/(0.3333*(output_bounding_box.spacing[0]+output_bounding_box.spacing[1]+output_bounding_box.spacing[2]));
-            float radius_in_normalized = size_in_pixels/(0.3333*(output_bounding_box.size[0]+output_bounding_box.size[1]+output_bounding_box.size[2]));
             float trajectory_length = vector_aligned.norm();
-            curan::geometry::ClosedCylinder geom{2,100,radius_in_normalized,trajectory_length};
+            curan::geometry::ClosedCylinder geom{2,100,3,trajectory_length};
 
             vector_aligned.normalize();
             Eigen::Matrix<double,3,1> yAxis(0, 0, 1);
@@ -1503,15 +1466,13 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::VolumetricM
             offset_base_to_Oxy.block<3,3>(0,0) = final_rotation;
             geom.transform(offset_base_to_Oxy);
             offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-            offset_base_to_Oxy.block<3,1>(0,3) = tip_in_local_coords;    
+            offset_base_to_Oxy.block<3,1>(0,3) = tip_in_world;    
             geom.transform(offset_base_to_Oxy);
 
-            bool was_deleted = appdata.vol_mas->delete_geometry(appdata.trajectory_identifier);
-            std::cout << (was_deleted ? "geometry was previously present\n" : "geometry was previously not present\n");
+            appdata.vol_mas->delete_geometry(appdata.trajectory_identifier);
             auto was_added = appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0x00, 0xFF, 0x00));  
             if(was_added){
                 appdata.trajectory_identifier = *was_added;
-                std::cout << "geometry added";
             }
             if (config_draw->stack_page != nullptr) {
                 config_draw->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
@@ -1676,23 +1637,17 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         Eigen::Matrix<double,3,1> min_coeff_all = min_and_max_both_paths.rowwise().minCoeff();
         Eigen::Matrix<double,3,1> max_coeff_all = min_and_max_both_paths.rowwise().maxCoeff();
 
-        min_coeff_all[0] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
-        min_coeff_all[1] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1];
-        min_coeff_all[2] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
-    
-        max_coeff_all[0] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0];
-        max_coeff_all[1] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1];
-        max_coeff_all[2] /= appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
+        auto size = appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize();
 
         for(auto& coef : min_coeff_all)
             coef = std::max(coef,0.0);
         for(auto& coef : max_coeff_all)
             coef = std::max(coef,0.0);
 
-        for(auto& coef : min_coeff_all)
-            coef = std::min(coef,1.0);
-        for(auto& coef : max_coeff_all)
-            coef = std::min(coef,1.0);
+        for(size_t i = 0; i<3; ++i){
+            min_coeff_all[i] = std::min(min_coeff_all[i],(double)size[i]);
+            max_coeff_all[i] = std::min(max_coeff_all[i],(double)size[i]);
+        }
 
         Eigen::Matrix<double,3,1> length = max_coeff_all - min_coeff_all;
         Eigen::Matrix<double,3,1> origin = min_coeff_all;
@@ -1845,8 +1800,9 @@ int main(int argc, char* argv[]) {
 		}
 		page.draw(canvas);
 		auto signals = viewer->process_pending_signals();
-		if (!signals.empty())
-			page.propagate_signal(signals.back(), &config);
+        for(auto&& sig : signals)
+            page.propagate_signal(signals.back(), &config);
+			
 		glfwPollEvents();
 
 		bool val = viewer->swapBuffers();

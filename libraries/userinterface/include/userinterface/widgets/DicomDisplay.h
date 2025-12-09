@@ -267,27 +267,8 @@ public:
 			}
 		} 
                 
-        if((update_policy & UPDATE_GEOMETRIES) && image.IsNotNull()){
-			for(auto& [key,geom] : three_dimensional_entities){
-                auto& [dimensional_entities,color] = geom;
-				for(auto& vertices: dimensional_entities.geometry.vertices){
-					ImageType::IndexType local_index;
-					ImageType::PointType itk_point_in_world_coordinates;
-                    auto size = image->GetLargestPossibleRegion().GetSize();
-					local_index[0] = size[0]*(double)vertices[0];
-					local_index[1] = size[1]*(double)vertices[1];
-					local_index[2] = size[2]*(double)vertices[2];
-					image->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
-					in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
-                    size = in_volume->GetLargestPossibleRegion().GetSize();
-					vertices[0] = local_index[0]*(1.0/size[0]);
-					vertices[1] = local_index[1]*(1.0/size[1]);
-					vertices[2] = local_index[2]*(1.0/size[2]);
-				}
-			}
-		}  else {
+        if(! ((update_policy & UPDATE_GEOMETRIES) && image.IsNotNull()))
             three_dimensional_entities = std::map<std::string,std::tuple<curan::geometry::PolyHeadra,SkColor>>{};
-        } 
 
         image = in_volume;
         masks_x = std::vector<DicomMask>(inputRegion.GetSize()[Direction::X]);

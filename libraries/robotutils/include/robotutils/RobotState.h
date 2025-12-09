@@ -127,6 +127,8 @@ std::ostream& operator<<(std::ostream& os, const State& cont);
 
 std::ostream& operator<<(std::ostream& os, const std::list<State>& cont);
 
+std::istream& operator>>(std::istream& os, std::list<State>& cont);
+
 }
 }
 

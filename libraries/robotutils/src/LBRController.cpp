@@ -1,4 +1,5 @@
 #include "robotutils/LBRController.h"
+#include "utils/Reader.h"
 
 namespace curan {
 namespace robotic {
@@ -190,5 +191,122 @@ std::ostream& operator<<(std::ostream& os, const std::list<State>& cont)
     os << measurments.dump();
     return os;
 } 
+
+std::istream& operator>>(std::istream& os, std::list<State>& cont)
+{
+    std::string cache;
+    nlohmann::json measurments = nlohmann::json::parse(os);
+    cache = measurments["q"];
+    std::stringstream ss;
+    ss.str(cache);
+    auto readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_q = readmat;
+    cache = measurments["dq"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_dq = readmat;
+    cache = measurments["ddq"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_ddq = readmat;
+    cache = measurments["cmd_q"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_q = readmat;
+    cache = measurments["cmd_tau"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_cmd_tau = readmat;
+    cache = measurments["tau"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau = readmat;
+    cache = measurments["gravity"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_gravity = readmat;
+    cache = measurments["coriolis"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_coriolis = readmat;
+    cache = measurments["tau_ext"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_tau_ext = readmat;
+    cache = measurments["translation"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,3,Eigen::Dynamic> arr_translation = readmat;
+    cache = measurments["rotation"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,9,Eigen::Dynamic> arr_rotation = readmat;
+    cache = measurments["jacobians"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints*6,Eigen::Dynamic> arr_jacobian = readmat;
+    cache = measurments["massmatrix"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints*number_of_joints,Eigen::Dynamic> arr_massmatrix = readmat;
+    cache = measurments["userdef"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined = readmat;
+    cache = measurments["userdef2"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined_2 = readmat;
+    cache = measurments["userdef3"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined_3 = readmat;
+    cache = measurments["userdef4"];
+    ss.clear();
+    ss.str(cache);
+    readmat = curan::utilities::convert_matrix(ss);
+    Eigen::Matrix<double,number_of_joints,Eigen::Dynamic> arr_user_defined_4 = readmat;
+    
+    for(size_t i=0; i < (int)readmat.cols(); ++i){
+        curan::robotic::State state_i;
+        state_i.q = curan::robotic::convert<double,number_of_joints>(arr_q.col(i));
+        state_i.dq = curan::robotic::convert<double,number_of_joints>(arr_dq.col(i));
+        state_i.ddq = curan::robotic::convert<double,number_of_joints>(arr_ddq.col(i));
+        state_i.cmd_q = curan::robotic::convert<double,number_of_joints>(arr_cmd_q.col(i));
+        state_i.cmd_tau = curan::robotic::convert<double,number_of_joints>(arr_cmd_tau.col(i));
+        state_i.tau = curan::robotic::convert<double,number_of_joints>(arr_tau.col(i));
+        state_i.gravity = curan::robotic::convert<double,number_of_joints>(arr_gravity.col(i));
+        state_i.coriolis = curan::robotic::convert<double,number_of_joints>(arr_coriolis.col(i));
+        state_i.tau_ext = curan::robotic::convert<double,number_of_joints>(arr_tau_ext.col(i));
+        state_i.translation = curan::robotic::convert<double,3>(arr_translation.col(i));
+        state_i.user_defined = curan::robotic::convert<double,number_of_joints>(arr_user_defined.col(i));
+        state_i.user_defined2 = curan::robotic::convert<double,number_of_joints>(arr_user_defined_2.col(i));
+        state_i.user_defined3 = curan::robotic::convert<double,number_of_joints>(arr_user_defined_3.col(i));
+        state_i.user_defined4 = curan::robotic::convert<double,number_of_joints>(arr_user_defined_4.col(i));
+        cont.push_back(state_i);
+
+        //state_i.rotation = arr_rotation.col(i); TODO these are left for later since I don't currently have much utility for them
+        //state_i.jacobian = arr_jacobian.col(i);
+        //state_i.massmatrix = arr_massmatrix.col(i);
+    }
+
+    return os;
+} 
+
 }
 }

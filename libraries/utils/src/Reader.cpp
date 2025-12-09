@@ -24,14 +24,25 @@ Eigen::MatrixXd convert_matrix(std::stringstream& data, char separation_char)
     bool should_initialize = true;
     size_t previous_num_cols = 0;
     auto tmp = data.str();
-    getline(data, matrixRowString);
-    do{
+    std::string cpy;
+    std::unique_copy(tmp.begin(), tmp.end(), std::back_insert_iterator<std::string>(cpy),
+                    [](char &x, char &y) {
+                        return iswspace(x) && iswspace(y);
+                    });
+    data.str(cpy);
+    
+    while(!data.eof()){
+        getline(data, matrixRowString);
         if(matrixRowString.size()<1)
-            break;
+            continue;
         size_t num_cols = 0;
         std::stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
-        while (getline(matrixRowStringStream, matrixEntry, separation_char)) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
+        while (!matrixRowStringStream.eof()) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
         {
+            getline(matrixRowStringStream, matrixEntry, separation_char);
+            if(!matrixEntry.size()){
+                continue;
+            }
             matrixEntries.push_back(stod(matrixEntry));   //here we convert the string to double and fill in the row vector storing all the matrix entries
             ++num_cols;
         }
@@ -44,7 +55,7 @@ Eigen::MatrixXd convert_matrix(std::stringstream& data, char separation_char)
         }
             
         matrixRowNumber++; //update the row numbers
-    } while(getline(data, matrixRowString));
+    } 
 
     // here we convet the vector variable into the matrix and return the resulting object, 
     // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;

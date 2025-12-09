@@ -233,11 +233,15 @@ namespace ui{
         {
             const auto &[cliped_path,color] = geomdata;
             std::vector<SkPoint> points_in_path;
-    
-            Eigen::Matrix<double, 3, 1> normal{0.0, 0.0, 0.0};
-            Eigen::Matrix<double, 3, 1> origin{0.5, 0.5, 0.5};
-            origin[direction] = current_value;
-            normal[direction] = 1.0;
+
+            auto voldirection = volumetric_mask->get_volume()->GetDirection();
+            auto size = volumetric_mask->get_volume()->GetLargestPossibleRegion().GetSize();
+            ImageType::PointType vol_center;
+            ImageType::IndexType index{{(size_t)(size[0]*0.5), (size_t)(size[1]*0.5), (size_t)(size[2]*0.5)}};
+            index[direction] = size[direction]*current_value;
+            volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(index, vol_center);
+            Eigen::Matrix<double, 3, 1> normal{voldirection(0,direction),voldirection(1,direction),voldirection(2,direction)};
+            Eigen::Matrix<double, 3, 1> origin{vol_center[0], vol_center[1], vol_center[2]};
     
             auto possible_cliped_polygon = curan::geometry::clip_with_plane(cliped_path, normal, origin);
             if (!possible_cliped_polygon)
@@ -249,6 +253,17 @@ namespace ui{
             {
                 continue;
             }
+            Eigen::Matrix<double,3,Eigen::Dynamic> staged_copy = *possible_cliped_polygon;
+            for(size_t i = 0; i< staged_copy.cols(); ++i){
+                ImageType::PointType vol_center{{staged_copy.col(i)[0],staged_copy.col(i)[1],staged_copy.col(i)[2]}};
+                ImageType::IndexType index;    
+                volumetric_mask->get_volume()->TransformPhysicalPointToIndex(vol_center,index);
+                auto size = volumetric_mask->get_volume()->GetLargestPossibleRegion().GetSize();
+                staged_copy.col(i)[0] = index[0]/(double)size[0];
+                staged_copy.col(i)[1] = index[1]/(double)size[1];
+                staged_copy.col(i)[2] = index[2]/(double)size[2];
+            }
+            possible_cliped_polygon = staged_copy;
     
             if ((*possible_cliped_polygon).cols() < 2)
             {
@@ -858,6 +873,12 @@ namespace ui{
             if(chached_pointer!=volumetric_mask->get_volume().GetPointer() || volumetric_mask->geometries().size()!=cached_number_of_geometries) {
                 chached_pointer = volumetric_mask->get_volume().GetPointer();
                 cached_number_of_geometries = volumetric_mask->geometries().size();
+                cached_sum_of_geometries = 0.0;
+                for(const auto& [key,geomdata] : volumetric_mask->geometries()){
+                    const auto& [geom,color] = geomdata;
+                    for(const auto& ver : geom.geometry.vertices)
+                        cached_sum_of_geometries += (double)ver[0] + (double)ver[1] + (double)ver[2];
+                }
                 query_if_required(true);
                 framebuffer_resize(SkRect::MakeWH(0,0));
             }

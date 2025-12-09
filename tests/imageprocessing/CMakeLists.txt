@@ -194,5 +194,3 @@ PUBLIC
 imageprocessing
 ${ITK_LIBRARIES}
 )
-
-

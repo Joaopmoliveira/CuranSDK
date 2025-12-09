@@ -3,7 +3,7 @@ add_subdirectory(usdifferencemean)
 add_subdirectory(image_cropper)
 add_subdirectory(needle_validator)
 add_subdirectory(iterative_volumetric_reconstruction)
-
+add_subdirectory(replay_robot_trajectory)
 if(WAS_PLUS_SPECIFIED)
 	add_subdirectory(data_replayer_for_videos)
 endif()
