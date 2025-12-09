@@ -123,14 +123,14 @@ int main()
 		DisplayParams param{std::move(context), 2200, 1200};
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 
-		auto volume = get_volume(CURAN_COPIED_RESOURCE_PATH "/dicom_sample/mri_brain");
+		auto volume = get_volume(CURAN_COPIED_RESOURCE_PATH "/dicom_sample/ST983524");
 		if (!volume)
 			return 1;
 
 		DicomVolumetricMask mask{*volume};
 		curan::geometry::ClosedCylinder cube{2,100,1.0,1.0};
 		auto geometry_name = mask.add_geometry(cube,SK_ColorCYAN);
-		std::unique_ptr<curan::ui::DicomViewer> image_display = curan::ui::DicomViewer::make(resources, &mask, curan::ui::Direction::X);
+		std::unique_ptr<curan::ui::DicomViewer> image_display = curan::ui::DicomViewer::make(resources, &mask, curan::ui::Direction::Y);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);
