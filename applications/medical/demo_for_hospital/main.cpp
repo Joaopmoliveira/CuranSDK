@@ -119,6 +119,11 @@ enum LayoutType{
     THREE
 };
 
+enum ViewType{
+    CT,
+    MRI,
+}
+
 struct Application;
 
 struct Application{
@@ -126,6 +131,7 @@ struct Application{
     ACPCData ac_pc_data;
     TrajectoryConeData trajectory_location;
     LayoutType type = LayoutType::THREE;
+    ViewType viewtype = ViewType::CT;
     std::map<std::string,CachedVolume> volumes;
     size_t volume_index = 0;
     curan::ui::DicomVolumetricMask* vol_mas = nullptr;
@@ -157,6 +163,10 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
 std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata,int mask);
+
+void perform_registration_page(Application& appdata);
+
+
 void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
@@ -166,6 +176,36 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
 void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
+
+std::unique_ptr<curan::ui::Container> perform_registration_page(Application& appdata){
+    using namespace curan::ui;
+
+    auto image_display = create_dicom_viewers(appdata);
+    auto layout = Button::make("Layout", *appdata.resources);
+    layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    layout->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        if(config->stack_page!=nullptr){
+			config->stack_page->stack(layout_overlay(appdata));
+		}
+    });
+
+    auto defineac = Button::make("Register CT-MRI", *appdata.resources);
+    defineac->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+
+    auto defineac = Button::make("Switch view to MRI", *appdata.resources);
+    defineac->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+
+    auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+    *viwers_container << std::move(layout) << std::move(defineac) << std::move(definepc) << std::move(resample) << std::move(switch_volume) << std::move(check);
+
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
+
+    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *container << std::move(viwers_container) << std::move(image_display);
+    container->set_divisions({0.0, 0.1, 1.0});
+
+    return std::move(container);
+};
 
 ImageType::Pointer allocate_image(Application& appdata){
 
@@ -580,16 +620,6 @@ struct BoundingBox{
     }
 };
 
-//std::ostream& operator<<(std::ostream& os, const BoundingBox& dt)
-//{
-//    os << "\norigin: " << dt.origin.transpose()<< std::endl;
-//    os << "\nsize: " << dt.size.transpose()<< std::endl;
-//    os << "\nspacing: " << dt.spacing.transpose()<< std::endl;
-//    os << "\norientation: \n" << dt.orientation<< std::endl;
-//    return os;
-//}
-
-
 std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
 {
     using namespace curan::ui;
@@ -614,7 +644,7 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
     return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
 }
 
-std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata){
+std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata, ){
     using namespace curan::ui;
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     auto overlay_lambda = [&](DicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
