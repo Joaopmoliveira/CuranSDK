@@ -226,8 +226,8 @@ public:
 
     enum Policy{
         DISREGARD = 0,
-        UPDATE_POINTS,
-        UPDATE_GEOMETRIES
+        UPDATE_POINTS=2,
+        UPDATE_GEOMETRIES = 4
     };
 
     inline void update_volume(ImageType::Pointer in_volume,int update_policy = Policy::DISREGARD,std::vector<size_t> identifiers = std::vector<size_t>{})
@@ -267,7 +267,7 @@ public:
 			}
 		} 
                 
-        if(! ((update_policy & UPDATE_GEOMETRIES) && image.IsNotNull()))
+        if(!(update_policy & UPDATE_GEOMETRIES))
             three_dimensional_entities = std::map<std::string,std::tuple<curan::geometry::PolyHeadra,SkColor>>{};
 
         image = in_volume;

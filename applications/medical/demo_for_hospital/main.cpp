@@ -122,7 +122,7 @@ enum LayoutType{
 enum ViewType{
     CT,
     MRI,
-}
+};
 
 struct Application;
 
@@ -192,7 +192,7 @@ std::unique_ptr<curan::ui::Container> perform_registration_page(Application& app
     auto defineac = Button::make("Register CT-MRI", *appdata.resources);
     defineac->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
-    auto defineac = Button::make("Switch view to MRI", *appdata.resources);
+    auto defineac = Button::make("Check Fusion Quality", *appdata.resources);
     defineac->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -1716,6 +1716,7 @@ try{
     DicomVolumetricMask vol{orienter->GetOutput()};
     Application appdata{resources,&vol};
     appdata.volumes.emplace("source",orienter->GetOutput());
+    appdata.volumes.emplace("mrisource",orienter->GetOutput());
     Page page{appdata.main_page(),SK_ColorBLACK};
 
 	page.update_page(viewer.get());

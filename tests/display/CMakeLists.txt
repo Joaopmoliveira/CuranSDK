@@ -445,3 +445,15 @@ PUBLIC
 imageprocessing
 ${ITK_LIBRARIES}
 )
+
+
+add_executable(test_dicom_compliant_with_known_shapes test_dicom_render_with_known_shapes.cpp)
+
+target_compile_definitions(test_dicom_compliant_with_known_shapes PRIVATE vsgXchange_FOUND)
+target_compile_definitions(test_dicom_compliant_with_known_shapes PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+
+target_link_libraries(test_dicom_compliant_with_known_shapes
+PUBLIC
+imageprocessing
+${ITK_LIBRARIES}
+)
