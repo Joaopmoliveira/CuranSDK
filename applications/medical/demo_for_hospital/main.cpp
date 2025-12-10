@@ -44,7 +44,7 @@
 
 #include <Eigen/Dense>
 
-using DicomPixelType = unsigned short;
+using DicomPixelType = double;
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
@@ -92,6 +92,8 @@ struct ACPCData{
     std::optional<Eigen::Matrix<double,3,1>> pc_word_coordinates;
 };
 
+const std::array<std::string,4> mapped_volumes = {"source","acpc","trajectory","alongtrajectory"};
+
 struct TrajectoryConeData{
     bool target_specification = false;
     curan::ui::Button* target_button = nullptr;
@@ -120,8 +122,8 @@ enum LayoutType{
 };
 
 enum ViewType{
-    CT,
-    MRI,
+    CT_VIEW,
+    MRI_VIEW
 };
 
 struct Application;
@@ -131,8 +133,10 @@ struct Application{
     ACPCData ac_pc_data;
     TrajectoryConeData trajectory_location;
     LayoutType type = LayoutType::THREE;
-    ViewType viewtype = ViewType::CT;
-    std::map<std::string,CachedVolume> volumes;
+    ViewType modalitytype = ViewType::CT_VIEW;
+    std::map<std::string,CachedVolume> ct_volumes;
+    std::map<std::string,CachedVolume> mri_volumes;
+    size_t current_mapped_volume = 0;
     size_t volume_index = 0;
     curan::ui::DicomVolumetricMask* vol_mas = nullptr;
     curan::ui::IconResources* resources = nullptr;
@@ -163,10 +167,6 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
 std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata,int mask);
-
-void perform_registration_page(Application& appdata);
-
-
 void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
@@ -177,44 +177,19 @@ void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::Dico
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
 
-std::unique_ptr<curan::ui::Container> perform_registration_page(Application& appdata){
-    using namespace curan::ui;
-
-    auto image_display = create_dicom_viewers(appdata);
-    auto layout = Button::make("Layout", *appdata.resources);
-    layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
-    layout->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        if(config->stack_page!=nullptr){
-			config->stack_page->stack(layout_overlay(appdata));
-		}
-    });
-
-    auto defineac = Button::make("Register CT-MRI", *appdata.resources);
-    defineac->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
-
-    auto defineac = Button::make("Check Fusion Quality", *appdata.resources);
-    defineac->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
-
-    auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    *viwers_container << std::move(layout) << std::move(defineac) << std::move(definepc) << std::move(resample) << std::move(switch_volume) << std::move(check);
-
-    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
-
-    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
-    *container << std::move(viwers_container) << std::move(image_display);
-    container->set_divisions({0.0, 0.1, 1.0});
-
-    return std::move(container);
-};
-
 ImageType::Pointer allocate_image(Application& appdata){
 
     ImageType::Pointer input;
-    if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
+    auto& volumes = appdata.ct_volumes;
+    if(appdata.modalitytype != ViewType::CT_VIEW)
+        volumes = appdata.mri_volumes;
+
+    if (auto search = volumes.find("source"); search != volumes.end())
         input = search->second.img;
     else{
         return nullptr;
     }
+
 
     auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
         Eigen::Matrix<double,3,1> converted;
@@ -620,6 +595,16 @@ struct BoundingBox{
     }
 };
 
+//std::ostream& operator<<(std::ostream& os, const BoundingBox& dt)
+//{
+//    os << "\norigin: " << dt.origin.transpose()<< std::endl;
+//    os << "\nsize: " << dt.size.transpose()<< std::endl;
+//    os << "\nspacing: " << dt.spacing.transpose()<< std::endl;
+//    os << "\norientation: \n" << dt.orientation<< std::endl;
+//    return os;
+//}
+
+
 std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
 {
     using namespace curan::ui;
@@ -644,7 +629,7 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
     return Overlay::make(std::move(viwers_container), SkColorSetARGB(10, 125, 125, 125), true);
 }
 
-std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata, ){
+std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata){
     using namespace curan::ui;
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     auto overlay_lambda = [&](DicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
@@ -763,17 +748,36 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
             assert(highlighted.size()==1 && "the size is larger than one");
             appdata.volume_index = highlighted.back();
             size_t i = 0;
-            for(auto vol : appdata.volumes){
-                if(i==appdata.volume_index)
-                    appdata.vol_mas->update_volume(vol.second.img,mask);
-                ++i;
+
+            if(appdata.modalitytype == ViewType::CT_VIEW){
+                for(auto vol : appdata.ct_volumes){
+                    if(i==appdata.volume_index){
+                        appdata.current_mapped_volume = i;
+                        appdata.vol_mas->update_volume(vol.second.img,mask);
+                    }
+
+                    ++i;
+                }
+            } else {
+                for(auto vol : appdata.mri_volumes){
+                    if(i==appdata.volume_index){
+                        appdata.current_mapped_volume = i;
+                        appdata.vol_mas->update_volume(vol.second.img,mask);
+                    }
+                    ++i;
+                }
             }
+
+
 
     });
     using ImageType = itk::Image<PixelType, 3>;
     using ExtractFilterType = itk::ExtractImageFilter<ImageType, ImageType>;
     size_t identifier = 0;
-    for (auto &vol : appdata.volumes)
+    auto volumes = &appdata.ct_volumes;
+    if(appdata.modalitytype != ViewType::CT_VIEW)
+        volumes = &appdata.mri_volumes;
+    for (auto &vol : *volumes)
     {
         if (vol.second.img.IsNotNull())
         {
@@ -889,92 +893,105 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         }
         
         Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *appdata.ac_pc_data.ac_word_coordinates - *appdata.ac_pc_data.pc_word_coordinates;
-        if (orient_along_ac_pc.norm() < 1e-7){
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("AC-PC line is singular, try different points",*appdata.resources));
+        if (orient_along_ac_pc.norm() < 1e-7)
+            config->stack_page->stack(warning_overlay("AC-PC line is singular, try different points",*appdata.resources));
             return;
-        }
         orient_along_ac_pc.normalize(); 
         Eigen::Matrix<double, 3, 1> y_direction = orient_along_ac_pc;
 
-        ImageType::Pointer input;
-        if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
-            input = search->second.img;
-        else{
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
-            return;
-        }
-
-        auto direction = input->GetDirection();
-        Eigen::Matrix<double,3,3> eigen_direction;
-        Eigen::Matrix<double,3,3> original_eigen_rotation_matrix;
-        for(size_t i = 0; i < 3; ++i)
-            for(size_t j = 0;  j < 3; ++j){
-                eigen_direction(i,j) = direction(i,j);
-                original_eigen_rotation_matrix(i,j) = direction(i,j);
+        auto resampler_utility = [&](auto& volumes){
+            ImageType::Pointer input;
+            if (auto search = volumes.find("source"); search != volumes.end())
+                input = search->second.img;
+            else{
+                return std::make_tuple(false,"could not find source dicom image",ImageType::Pointer());
             }
 
-        Eigen::Matrix<double,3,1> x_direction = original_eigen_rotation_matrix.col(0);
-        Eigen::Matrix<double,3,1> z_direction = x_direction.cross(y_direction);  
-        x_direction = y_direction.cross(z_direction);  
-        x_direction.normalize();
-        z_direction = x_direction.cross(y_direction);  
-        z_direction.normalize();
-        if (z_direction.norm() < 1e-7){
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("AC-PC line is singular when projected unto the axial plane, try different points",*appdata.resources));
-            return;
-        }
- 
-        Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
-        eigen_rotation_matrix.col(0) = x_direction;
-        eigen_rotation_matrix.col(1) = y_direction;
-        eigen_rotation_matrix.col(2) = z_direction;
+            auto direction = input->GetDirection();
+            Eigen::Matrix<double,3,3> eigen_direction;
+            Eigen::Matrix<double,3,3> original_eigen_rotation_matrix;
+            for(size_t i = 0; i < 3; ++i)
+                for(size_t j = 0;  j < 3; ++j){
+                    eigen_direction(i,j) = direction(i,j);
+                    original_eigen_rotation_matrix(i,j) = direction(i,j);
+                }
 
-        //std::cout << "tip: [" << (*appdata.ac_pc_data.ac_word_coordinates).transpose() << "]" << "\n entry_word_coordinates: [" << (*appdata.ac_pc_data.pc_word_coordinates).transpose() << "]" << std::endl;
-        //std::cout << "expected orientation:" << eigen_rotation_matrix << std::endl;
-        BoundingBox bounding_box_original_image{input};        
-        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
-        //std::cout << "bounding_box_original_image:\n" << bounding_box_original_image << std::endl;
-        //std::cout << "output_bounding_box:\n" << output_bounding_box << std::endl;
-        
-        using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
-        auto filter = FilterType::New();
+            Eigen::Matrix<double,3,1> x_direction = original_eigen_rotation_matrix.col(0);
+            Eigen::Matrix<double,3,1> z_direction = x_direction.cross(y_direction);  
+            x_direction = y_direction.cross(z_direction);  
+            x_direction.normalize();
+            z_direction = x_direction.cross(y_direction);  
+            z_direction.normalize();
+            if (z_direction.norm() < 1e-7)
+                return std::make_tuple(false,"AC-PC line is singular when projected unto the axial plane, try different points",ImageType::Pointer());
 
-        using TransformType = itk::IdentityTransform<double, 3>;
-        auto transform = TransformType::New();
+            Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
+            eigen_rotation_matrix.col(0) = x_direction;
+            eigen_rotation_matrix.col(1) = y_direction;
+            eigen_rotation_matrix.col(2) = z_direction;
 
-        using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
-        auto interpolator = InterpolatorType::New();
-        filter->SetInterpolator(interpolator);
-        filter->SetDefaultPixelValue(0);
-        filter->SetTransform(transform);
+            BoundingBox bounding_box_original_image{input};        
+            auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
+            
+            using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+            auto filter = FilterType::New();
 
-        filter->SetInput(input);
-        filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
-        filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
-        filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
+            using TransformType = itk::IdentityTransform<double, 3>;
+            auto transform = TransformType::New();
 
-        itk::Matrix<double> rotation_matrix;
-        for (size_t col = 0; col < 3; ++col)
-            for (size_t row = 0; row < 3; ++row)
-                rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
+            using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
+            auto interpolator = InterpolatorType::New();
+            filter->SetInterpolator(interpolator);
+            filter->SetDefaultPixelValue(0);
+            filter->SetTransform(transform);
 
-        if(output_bounding_box.orientation.determinant() < 0.999 ||  output_bounding_box.orientation.determinant() > 1.001)
-            throw std::runtime_error("matrix must be rotation");
-        filter->SetOutputDirection(rotation_matrix);
+            filter->SetInput(input);
+            filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
+            filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
+            filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
 
-        try{
-            filter->Update();
-            auto output = filter->GetOutput();
+            itk::Matrix<double> rotation_matrix;
+            for (size_t col = 0; col < 3; ++col)
+                for (size_t row = 0; row < 3; ++row)
+                    rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
+
+            if(output_bounding_box.orientation.determinant() < 0.999 ||  output_bounding_box.orientation.determinant() > 1.001)
+                return std::make_tuple(false,"matrix must be rotation (ortogonal)",ImageType::Pointer());
+                
+            filter->SetOutputDirection(rotation_matrix);
+
+            try{
+                filter->Update();
+                auto output = filter->GetOutput();
+                return std::make_tuple(true,"success",output);
+            } catch (...){
+                return std::make_tuple(false,"resampling filter has failed",ImageType::Pointer());
+            }
+
+        };
+        auto [resampling_flag_ct,error_description_ct,output_ct] = resampler_utility(appdata.ct_volumes);
+        if(!resampling_flag_ct){
             if (config->stack_page != nullptr) {
-                config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
+                config->stack_page->stack(warning_overlay("CT: "+error_description_ct,*appdata.resources));
             }
-            appdata.volumes.emplace("acpc",output);
-        } catch (...){
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("failed to resample volume to AC-PC",*appdata.resources));
+            return; 
+        }
+        auto [resampling_flag_mri,error_description_mri,output_mri] = resampler_utility(appdata.ct_volumes);
+        if(!resampling_flag_mri){
+            if (config->stack_page != nullptr) {
+                config->stack_page->stack(warning_overlay("MRI: "+error_description_mri,*appdata.resources));
+            }
+            return; 
+        }
+        appdata.ct_volumes.emplace("acpc",output_ct);
+        appdata.mri_volumes.emplace("acpc",output_mri);
+        
+        if (config->stack_page != nullptr) {
+            config->stack_page->stack(success_overlay("pc point defined",*appdata.resources)); 
         }
     });
 
-    auto switch_volume = Button::make("Switch Volume", *appdata.resources);
+    auto switch_volume = Button::make("Switch Alignment", *appdata.resources); 
     switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switch_volume->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.ac_pc_data.ac_specification = false;
@@ -984,7 +1001,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
 		}
     });
 
-    auto check = Button::make("Check", *appdata.resources);
+    auto check = Button::make("Trajectory Planning", *appdata.resources);
     check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     check->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.panel_constructor = select_target_and_region_of_entry;
@@ -994,9 +1011,12 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         else
             config->stack_page->stack(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
     });
+    const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
+    auto switchto = Button::make(displaystring, *appdata.resources);
+    switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    *viwers_container << std::move(layout) << std::move(defineac) << std::move(definepc) << std::move(resample) << std::move(switch_volume) << std::move(check);
+    *viwers_container << std::move(layout) << std::move(defineac) << std::move(definepc) << std::move(resample) << std::move(switch_volume) << std::move(switchto) << std::move(check);
 
     viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
@@ -1039,7 +1059,12 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         appdata.trajectory_location.target_specification = false;
         appdata.trajectory_location.target_world_coordinates = word_coordinates;
         ImageType::Pointer input;
-        if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end()){
+
+        auto& volumes = appdata.ct_volumes;
+        if(appdata.modalitytype != ViewType::CT_VIEW)
+            volumes = appdata.mri_volumes;
+
+        if (auto search = volumes.find("source"); search != volumes.end()){
             input = search->second.img;
             ImageType::IndexType local_index;
             ImageType::PointType itk_point_in_world_coordinates;
@@ -1190,7 +1215,10 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         const Eigen::Matrix<double, 3, 1> z_direction = orient_along_traj;
 
         ImageType::Pointer input;
-        if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
+        auto& volumes = appdata.ct_volumes;
+        if(appdata.modalitytype != ViewType::CT_VIEW)
+            volumes = appdata.mri_volumes;
+        if (auto search = volumes.find("source"); search != volumes.end())
             input = search->second.img;
         else{
             if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
@@ -1251,7 +1279,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
     });
 
-    auto switch_volume = Button::make("Switch Volume", *appdata.resources);
+    auto switch_volume = Button::make("Switch Alignment", *appdata.resources);
     switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switch_volume->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.trajectory_location.entry_specification = false;
@@ -1261,9 +1289,12 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
 		}
     });
+    const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
+    auto switchto = Button::make(displaystring, *appdata.resources);
+    switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    *viwers_container << std::move(layout) << std::move(definetarget) << std::move(defineentryregion) << std::move(validadetrajectory) << std::move(switch_volume);
+    *viwers_container << std::move(layout) << std::move(definetarget) << std::move(defineentryregion) << std::move(validadetrajectory) << std::move(switchto) << std::move(switch_volume);
 
     viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
@@ -1301,7 +1332,10 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
         }
 
         ImageType::Pointer input;
-        if (auto search = appdata.volumes.find("source"); search != appdata.volumes.end())
+        auto& volumes = appdata.ct_volumes;
+        if(appdata.modalitytype != ViewType::CT_VIEW)
+            volumes = appdata.mri_volumes;
+        if (auto search = volumes.find("source"); search != volumes.end())
             input = search->second.img;
         else{
             if (config_draw->stack_page != nullptr) config_draw->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
@@ -1371,6 +1405,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             filter->Update();
             auto output = filter->GetOutput();
             appdata.vol_mas->update_volume(output,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            //this is tricky, I need to update both the ct and the MRI volume...
             appdata.volumes.emplace("alongtrajectory",output);
 
             auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
@@ -1607,7 +1642,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         appdata.roi.paths.clear();
     });
 
-    auto switch_volume = Button::make("Switch Volume", *appdata.resources);
+    auto switch_volume = Button::make("Switch Alignment", *appdata.resources);
     switch_volume->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switch_volume->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.ac_pc_data.ac_specification = false;
@@ -1616,6 +1651,10 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
 			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
 		}
     });
+
+    const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
+    auto switchto = Button::make(displaystring, *appdata.resources);
+    switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
     auto check = Button::make("Store Trajectory Data", *appdata.resources);
     check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
@@ -1626,7 +1665,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
     roi_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    *viwers_container << std::move(layout) << std::move(switch_volume) << std::move(check);
+    *viwers_container << std::move(layout) << std::move(switch_volume) << std::move(switchto) << std::move(check);
 
     viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
@@ -1679,19 +1718,126 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
 #include <thread>
 
 
+using PixelType = unsigned char;
+using ImageType = itk::Image<PixelType, Dimension>;
+using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
+
+std::optional<ImageType::Pointer> get_volume(std::string path)
+{
+	using ReaderType = itk::ImageSeriesReader<DICOMImageType>;
+	auto reader = ReaderType::New();
+
+	using ImageIOType = itk::GDCMImageIO;
+	auto dicomIO = ImageIOType::New();
+
+	reader->SetImageIO(dicomIO);
+
+	using NamesGeneratorType = itk::GDCMSeriesFileNames;
+	auto nameGenerator = NamesGeneratorType::New();
+
+	nameGenerator->SetUseSeriesDetails(true);
+	nameGenerator->AddSeriesRestriction("0008|0021");
+
+	nameGenerator->SetDirectory(path);
+
+	using SeriesIdContainer = std::vector<std::string>;
+
+	const SeriesIdContainer &seriesUID = nameGenerator->GetSeriesUIDs();
+
+	auto seriesItr = seriesUID.begin();
+	auto seriesEnd = seriesUID.end();
+	while (seriesItr != seriesEnd)
+	{
+		std::cout << seriesItr->c_str() << std::endl;
+		++seriesItr;
+	}
+
+	std::string seriesIdentifier;
+	seriesIdentifier = seriesUID.begin()->c_str();
+
+	using FileNamesContainer = std::vector<std::string>;
+	FileNamesContainer fileNames;
+
+	fileNames = nameGenerator->GetFileNames(seriesIdentifier);
+
+	reader->SetFileNames(fileNames);
+
+	using OrienterType = itk::OrientImageFilter<DICOMImageType, DICOMImageType>;
+	auto orienter = OrienterType::New();
+	orienter->UseImageDirectionOn(); // Use direction cosines from DICOM
+
+	orienter->SetDesiredCoordinateOrientation(
+		itk::SpatialOrientation::ITK_COORDINATE_ORIENTATION_RAS);
+	orienter->SetInput(reader->GetOutput());
+    using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
+	auto rescale = RescaleType::New();
+	rescale->SetInput(orienter->GetOutput()); // Use oriented image
+	rescale->SetOutputMinimum(0);
+	rescale->SetOutputMaximum(itk::NumericTraits<PixelType>::max());
+
+	using FilterType = itk::CastImageFilter<DICOMImageType, ImageType>;
+	auto filter = FilterType::New();
+	filter->SetInput(rescale->GetOutput());
+
+	try
+	{
+		filter->Update();
+		
+		// Print orientation information for debugging
+		auto orientedImage = orienter->GetOutput();
+		std::cout << "Image Direction: " << orientedImage->GetDirection() << std::endl;
+		std::cout << "Image Origin: " << orientedImage->GetOrigin() << std::endl;
+		std::cout << "Image Spacing: " << orientedImage->GetSpacing() << std::endl;
+	}
+	catch (const itk::ExceptionObject &ex)
+	{
+		std::cout << ex << std::endl;
+		return std::nullopt;
+	}
+
+	return filter->GetOutput();
+}
+
+
 int main(int argc, char* argv[]) {
 try{
 	using namespace curan::ui;
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
 	DisplayParams param{ std::move(context),2000,1000};
-	param.windowName = "Curan:Path Planner";
+	param.windowName = "Curan:Santa Maria Demo";
 	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
 	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
-    using ImageReaderType = itk::ImageFileReader<itk::Image<double,3>>;
-
     std::printf("\nReading input volume...\n");
+    auto fixed_volume =  get_volume("C:/Users/joaom/Downloads/dicom_herculano/2905417-SOUZA^NELSON OL_MPIO DE^^^/20250505-TC do cr_nio/202-Cranio Osso");
+    std::printf("\nReading input volume...\n");
+    auto moving_volume =  get_volume("C:/Users/joaom/Downloads/dicom_herculano/2905417-SOUZA^NELSON OL_MPIO DE^^^/20250501-TC do cr_nio/36985-MPR SAGITAL");
+    
+    if(!fixed_volume || ! moving_volume)
+    {
+        std::printf("failed to read moving or fixed volume");
+        return 1;
+    }
+
+    auto castfilter = itk::CastImageFilter<ImageType,itk::Image<double,3>>::New();
+    castfilter->SetInput(*fixed_volume);
+
+    auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>::New();
+    rescale->SetInput(castfilter->GetOutput());
+    rescale->SetOutputMinimum(0);
+    rescale->SetOutputMaximum(255.0);
+
+    try{
+        rescale->Update();
+    }catch (...){
+        std::cout << "improperly consumed the input volume";
+        return 1;
+    }
+
+    /*
+    using ImageReaderType = itk::ImageFileReader<itk::Image<double,3>>;
     auto fixedImageReader = ImageReaderType::New();
+
     fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha");
 
     auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>::New();
@@ -1713,10 +1859,13 @@ try{
         std::cout << "improperly consumed the input volume";
         return 1;
     }
-    DicomVolumetricMask vol{orienter->GetOutput()};
+    */
+
+
+    DicomVolumetricMask vol{*fixed_volume};
     Application appdata{resources,&vol};
-    appdata.volumes.emplace("source",orienter->GetOutput());
-    appdata.volumes.emplace("mrisource",orienter->GetOutput());
+    appdata.ct_volumes.emplace("source",*fixed_volume);
+    appdata.mri_volumes.emplace("source",*moving_volume);
     Page page{appdata.main_page(),SK_ColorBLACK};
 
 	page.update_page(viewer.get());

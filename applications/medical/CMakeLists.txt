@@ -6,4 +6,4 @@ add_subdirectory(application_laucher)
 add_subdirectory(surface_based_extraction)
 add_subdirectory(robot_and_needle_with_ct)
 add_subdirectory(surgical_planning)
-
+add_subdirectory(demo_for_hospital)
