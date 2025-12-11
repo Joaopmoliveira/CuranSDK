@@ -834,7 +834,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation\n");
+        std::printf("switch representation %s\n",appdata.current_volume);
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
@@ -1079,7 +1079,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation\n");
+        std::printf("switch representation %s\n",appdata.current_volume);
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
@@ -1188,12 +1188,6 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         Eigen::Vector3d b3 = main_diagonal_world_index - base_width*y_direction +  base_width*x_direction;
         Eigen::Vector3d target_local_index = target_world_index;
 
-        std::printf("target: [%.2f %.2f %.2f]\n",target_local_index[0],target_local_index[1],target_local_index[2]);
-        std::printf("b0: [%.2f %.2f %.2f]\n",b0[0],b0[1],b0[2]);
-        std::printf("b1: [%.2f %.2f %.2f]\n",b1[0],b1[1],b1[2]);
-        std::printf("b2: [%.2f %.2f %.2f]\n",b2[0],b2[1],b2[2]);
-        std::printf("b3: [%.2f %.2f %.2f]\n",b3[0],b3[1],b3[2]);
-
         geom.geometry.vertices[0][0] = target_local_index[0];
         geom.geometry.vertices[0][1] = target_local_index[1];
         geom.geometry.vertices[0][2] = target_local_index[2];
@@ -1217,15 +1211,9 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         appdata.vol_mas->add_geometry(geom,SK_ColorCYAN);  
         
         for(size_t i = 0; i < geom.geometry.vertices.size(); ++i){
-            ImageType::IndexType local_index;
-            ImageType::PointType itk_point_in_world_coordinates;
-            local_index[0] = vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0]*(double)geom.geometry.vertices[i][0];
-            local_index[1] = vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1]*(double)geom.geometry.vertices[i][1];
-            local_index[2] = vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2]*(double)geom.geometry.vertices[i][2];
-            vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
-            appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][0] = itk_point_in_world_coordinates[0];
-            appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][1] = itk_point_in_world_coordinates[1];
-            appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][2] = itk_point_in_world_coordinates[2];
+            appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][0] = (double)geom.geometry.vertices[i][0];
+            appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][1] = (double)geom.geometry.vertices[i][1];
+            appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][2] = (double)geom.geometry.vertices[i][2];
         }
     }
 
@@ -1263,7 +1251,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 
     appdata.trajectory_location.main_diagonal_button = defineentryregion.get();
 
-    auto validadetrajectory = Button::make("Validade Trajectory", *appdata.resources);
+    auto validadetrajectory = Button::make("Validate Trajectory", *appdata.resources);
     validadetrajectory->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     validadetrajectory->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.trajectory_location.entry_specification = false;
@@ -1368,6 +1356,15 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("MRI: "+error_description_mri,*appdata.resources));
             return;
         }
+
+        std::cout << "[ct_output] Image Direction: " << ct_output->GetDirection() << std::endl;
+        std::cout << "[ct_output] Image Origin: " << ct_output->GetOrigin() << std::endl;
+        std::cout << "[ct_output] Image Spacing: " << ct_output->GetSpacing() << std::endl;
+
+        std::cout << "[mri_input] Image Direction: " << mri_input->GetDirection() << std::endl;
+        std::cout << "[mri_input] Image Origin: " << mri_input->GetOrigin() << std::endl;
+        std::cout << "[mri_input] Image Spacing: " << mri_input->GetSpacing() << std::endl;
+
         appdata.ct_volumes.emplace("trajectory",ct_output);
         appdata.mri_volumes.emplace("trajectory",mri_output);
         if (config->stack_page != nullptr) 
@@ -1392,7 +1389,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation\n");
+        std::printf("switch representation %s\n",appdata.current_volume);
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
@@ -1448,21 +1445,13 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             local_index[0] = strokes.point_in_image_coordinates(0, 0);
             local_index[1] = strokes.point_in_image_coordinates(1, 0);
             local_index[2] = strokes.point_in_image_coordinates(2, 0);
-            std::printf("strokes.point_in_image_coordinates [%llu %llu %llu]\n",local_index[0],local_index[1],local_index[2]);
 
-            auto volu = vol_mas->get_volume();
-            // Print orientation information for debugging
-            std::cout << "[volu] Image Direction: " << volu->GetDirection() << std::endl;
-            std::cout << "[volu] Image Origin: " << volu->GetOrigin() << std::endl;
-            std::cout << "[volu] Image Spacing: " << volu->GetSpacing() << std::endl;
-
-            volu->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+            vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
             Eigen::Matrix<double, 3, 1> entry_word_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
             entry_word_coordinates[0] = itk_point_in_world_coordinates[0];
             entry_word_coordinates[1] = itk_point_in_world_coordinates[1];
             entry_word_coordinates[2] = itk_point_in_world_coordinates[2];
             appdata.trajectory_location.entry_point_word_coordinates = entry_word_coordinates;
-            std::printf("strokes.entry_point_word_coordinates [%.2f %.2f %.2f]\n",entry_word_coordinates[0],entry_word_coordinates[1],entry_word_coordinates[2]);
         }
 
         ImageType::Pointer ct_input;
@@ -1594,14 +1583,9 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             };
             auto target_world_coordinates = *appdata.trajectory_location.target_world_coordinates;
             auto entry_point_word_coordinates = *appdata.trajectory_location.entry_point_word_coordinates;
-            std::printf("world tip_in_local_coords [%.2f %.2f %.2f]\n",target_world_coordinates[0],target_world_coordinates[1],target_world_coordinates[2]);
-            std::printf("world entry_in_local_coords [%.2f %.2f %.2f]\n",entry_point_word_coordinates[0],entry_point_word_coordinates[1],entry_point_word_coordinates[2]);
             const auto [tip_in_local_coords,pixel_tip_coordinates] = convert_to_index_coordinates(target_world_coordinates);
             const auto [entry_in_local_coords,entry_coordinates] = convert_to_index_coordinates(entry_point_word_coordinates);
-            std::printf("normalized tip_in_local_coords [%.2f %.2f %.2f]\n",tip_in_local_coords[0],tip_in_local_coords[1],tip_in_local_coords[2]);
-            std::printf("normalized entry_in_local_coords [%.2f %.2f %.2f]\n",entry_in_local_coords[0],entry_in_local_coords[1],entry_in_local_coords[2]);
-            std::printf("pixel pixel_tip_coordinates [%d %d %d]\n",pixel_tip_coordinates[0],pixel_tip_coordinates[1],pixel_tip_coordinates[2]);
-            std::printf("pixel entry_coordinates [%d %d %d]\n",entry_coordinates[0],entry_coordinates[1],entry_coordinates[2]);
+
             Eigen::Matrix<double,3,1> vector_aligned = tip_in_local_coords-entry_in_local_coords;
             Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
 
@@ -1609,14 +1593,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             float size_in_mm = 1.5/(0.3333*(output_bounding_box.spacing[0]+output_bounding_box.spacing[1]+output_bounding_box.spacing[2]));
             float radius_in_normalized =  size_in_mm/(0.3333*(output_bounding_box.size[0]+output_bounding_box.size[1]+output_bounding_box.size[2]));
             float trajectory_length = vector_aligned.norm();
-            std::printf("trajectory_length %.2f\n",trajectory_length);
             curan::geometry::ClosedCylinder geom{2,100,radius_in_normalized,trajectory_length};
-            std::printf("\n\n Original coordiantes expected!: \n\n");
-            for(auto vert : geom.geometry.vertices){
-                Eigen::Matrix<double, 3, 1> vertex;
-                vertex << vert[0], vert[1], vert[2];
-                std::printf("[%.2f %.2f %.2f]\n",(double)vertex[0],(double)vertex[1],(double)vertex[2]);
-            }
             vector_aligned.normalize();
             Eigen::Matrix<double,3,1> yAxis(0, 0, 1);
             Eigen::Matrix<double,3,1> axis = yAxis.cross(vector_aligned);
@@ -1632,37 +1609,25 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
             offset_base_to_Oxy.block<3,1>(0,3) = tip_in_local_coords; 
             geom.transform(offset_base_to_Oxy);
-            std::printf("\n\n Normalized coordiantes expected!: \n\n");
-            for(auto vert : geom.geometry.vertices){
-                Eigen::Matrix<double, 3, 1> vertex;
-                vertex << vert[0], vert[1], vert[2];
-                std::printf("[%.2f %.2f %.2f]\n",(double)vertex[0],(double)vertex[1],(double)vertex[2]);
-            }
             //ok here is the magic, so this transforms the geometry to be correctly aligned inside the cranium in normalized coordiantes right?
             // so what we need to do is to do is to then transform these local coordinates to world coordinates through  
             Eigen::Matrix<double,4,4> local_to_world = Eigen::Matrix<double,4,4>::Identity();
-            auto direction = image_in_focus->GetDirection();
-            auto spacing = image_in_focus->GetSpacing();
-            auto origin = image_in_focus->GetOrigin();
             auto size = image_in_focus->GetLargestPossibleRegion().GetSize();
+            auto spacing = image_in_focus->GetSpacing();
+            local_to_world(0,0) = spacing[0]*size[0];
+            local_to_world(1,1) = spacing[1]*size[1];
+            local_to_world(2,2) = spacing[2]*size[2];
+            geom.transform(local_to_world);
+            local_to_world = Eigen::Matrix<double,4,4>::Identity();
+            auto direction = image_in_focus->GetDirection();
+            auto origin = image_in_focus->GetOrigin();
             for(size_t i = 0; i < 3; ++i)
                 for(size_t j = 0; j < 3; ++j)
                     local_to_world(i,j) = direction(i,j);
-            local_to_world(0,0) *= spacing[0]*size[0];
-            local_to_world(1,1) *= spacing[1]*size[1];
-            local_to_world(2,2) *= spacing[2]*size[2];
             local_to_world(0,3) = origin[0];
             local_to_world(1,3) = origin[1];
             local_to_world(2,3) = origin[2];
-
             geom.transform(local_to_world);
-
-            std::printf("\n\n World coordiantes expected!: \n\n");
-            for(auto vert : geom.geometry.vertices){
-                Eigen::Matrix<double, 3, 1> vertex;
-                vertex << vert[0], vert[1], vert[2];
-                std::printf("[%.2f %.2f %.2f]\n",(double)vertex[0],(double)vertex[1],(double)vertex[2]);
-            }
             appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0x00, 0xFF, 0x00));  
             if (config_draw->stack_page != nullptr) {
                 config_draw->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
@@ -1678,16 +1643,16 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     using namespace curan::ui;
 
     ImageType::Pointer ct_input;
-    if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
+    if (auto search = appdata.ct_volumes.find("trajectory"); search != appdata.ct_volumes.end())
         ct_input = search->second.img;
     else
-        return nullptr;
+        throw std::runtime_error("failure due to missing volume");
 
     ImageType::Pointer mri_input;
-    if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
+    if (auto search = appdata.mri_volumes.find("trajectory"); search != appdata.mri_volumes.end())
         mri_input = search->second.img;
     else
-        return nullptr;
+       throw std::runtime_error("failure due to missing volume");
 
     if(appdata.modalitytype == ViewType::CT_VIEW)
         appdata.vol_mas->update_volume(ct_input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
@@ -1696,6 +1661,16 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     try{
         ImageType::Pointer ct_projected_input = allocate_image(appdata,ct_input);
         ImageType::Pointer mri_projected_input = allocate_image(appdata,mri_input);
+
+        std::cout << "[ct_projected_input] Image Direction: " << ct_projected_input->GetDirection() << std::endl;
+        std::cout << "[ct_projected_input] Image Origin: " << ct_projected_input->GetOrigin() << std::endl;
+        std::cout << "[ct_projected_input] Image Spacing: " << ct_projected_input->GetSpacing() << std::endl;
+
+        std::cout << "[mri_projected_input] Image Direction: " << mri_projected_input->GetDirection() << std::endl;
+        std::cout << "[mri_projected_input] Image Origin: " << mri_projected_input->GetOrigin() << std::endl;
+        std::cout << "[mri_projected_input] Image Spacing: " << mri_projected_input->GetSpacing() << std::endl;
+
+
         appdata.ct_volumes.emplace("tmp_proj",CachedVolume{ct_projected_input,false});
         appdata.mri_volumes.emplace("tmp_proj",CachedVolume{mri_projected_input,false});
         if(appdata.modalitytype == ViewType::CT_VIEW)
@@ -1886,7 +1861,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation\n");
+        std::printf("switch representation %s\n",appdata.current_volume);
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
@@ -1904,7 +1879,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
             ImageType::Pointer input;
             if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
                 input = search->second.img;
-            else{
+            else{   
                 std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
