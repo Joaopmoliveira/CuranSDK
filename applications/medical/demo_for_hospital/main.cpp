@@ -1081,7 +1081,6 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         std::printf("switch representation\n");
         // so first I need to check which modality we are currently under
-        std::printf("the map to query is: %s",appdata.current_volume);
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
             if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
@@ -1170,28 +1169,8 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
     if(appdata.trajectory_location.main_diagonal_word_coordinates && appdata.trajectory_location.target_world_coordinates){
         curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
 
-        auto compute = [&](Eigen::Matrix<double,3,1> world_coordinates){
-            return world_coordinates;
-            /*
-            ImageType::IndexType point_index;
-            ImageType::PointType point_world_coordinates;     
-            point_world_coordinates[0] = world_coordinates[0];
-            point_world_coordinates[1] = world_coordinates[1];
-            point_world_coordinates[2] = world_coordinates[2];
-            vol_mas->get_volume()->TransformPhysicalPointToIndex(point_world_coordinates,point_index);
-            Eigen::Matrix<double,3,1> normalized_itk_points;
-            normalized_itk_points << point_index[0]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[0] 
-                                   , point_index[1]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1] 
-                                   , point_index[2]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
-            return normalized_itk_points;
-            */
-        };
-
         const auto target_world_index = *appdata.trajectory_location.target_world_coordinates;
         const auto main_diagonal_world_index = *appdata.trajectory_location.main_diagonal_word_coordinates;
-
-        std::printf("\ntarget_world_index: [%.2f %.2f %.2f]\n",target_world_index[0],target_world_index[1],target_world_index[2]);
-        std::printf("main_diagonal_world_index: [%.2f %.2f %.2f]\n",main_diagonal_world_index[0],main_diagonal_world_index[1],main_diagonal_world_index[2]);
 
         Eigen::Matrix<double,3,1> vector_aligned = target_world_index-main_diagonal_world_index;
         double scale = vector_aligned.norm();
@@ -1203,11 +1182,11 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         x_direction = y_direction.cross(z_direction);
         double base_width = std::tan(0.349066)*scale;
 
-        Eigen::Vector3d b0 = compute(main_diagonal_world_index - base_width*y_direction -  base_width*x_direction);
-        Eigen::Vector3d b1 = compute(main_diagonal_world_index + base_width*y_direction -  base_width*x_direction);
-        Eigen::Vector3d b2 = compute(main_diagonal_world_index + base_width*y_direction +  base_width*x_direction);
-        Eigen::Vector3d b3 = compute(main_diagonal_world_index - base_width*y_direction +  base_width*x_direction);
-        Eigen::Vector3d target_local_index = compute(target_world_index);
+        Eigen::Vector3d b0 = main_diagonal_world_index - base_width*y_direction -  base_width*x_direction;
+        Eigen::Vector3d b1 = main_diagonal_world_index + base_width*y_direction -  base_width*x_direction;
+        Eigen::Vector3d b2 = main_diagonal_world_index + base_width*y_direction +  base_width*x_direction;
+        Eigen::Vector3d b3 = main_diagonal_world_index - base_width*y_direction +  base_width*x_direction;
+        Eigen::Vector3d target_local_index = target_world_index;
 
         std::printf("target: [%.2f %.2f %.2f]\n",target_local_index[0],target_local_index[1],target_local_index[2]);
         std::printf("b0: [%.2f %.2f %.2f]\n",b0[0],b0[1],b0[2]);
@@ -1332,7 +1311,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             return;
         }
 
-        auto resampler = [&](ImageType::Pointer input){
+        auto resampler = [&](ImageType::Pointer volinput){
             Eigen::Matrix<double,3,1> y_direction = (base1 - base0).normalized();
             Eigen::Matrix<double,3,1> x_direction = y_direction.cross(z_direction);
             x_direction.normalize();
@@ -1342,7 +1321,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             eigen_rotation_matrix.col(1) = y_direction;
             eigen_rotation_matrix.col(2) = z_direction;
 
-            BoundingBox bounding_box_original_image{input};    
+            BoundingBox bounding_box_original_image{volinput};    
             auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
             using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
             auto filter = FilterType::New();
@@ -1356,7 +1335,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             filter->SetDefaultPixelValue(0);
             filter->SetTransform(transform);
 
-            filter->SetInput(input);
+            filter->SetInput(volinput);
             filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
             filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
             filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
@@ -1380,14 +1359,17 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 
         };
         auto [flag_ct,error_description_ct,ct_output] = resampler(ct_input);
-        if(!flag_ct)
+        if(!flag_ct){
             if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("CT: "+error_description_ct,*appdata.resources));
+            return;
+        }
         auto [flag_mri,error_description_mri,mri_output] = resampler(mri_input);
-        if(!flag_mri)
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("CT: "+error_description_mri,*appdata.resources));
-
+        if(!flag_mri){
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("MRI: "+error_description_mri,*appdata.resources));
+            return;
+        }
         appdata.ct_volumes.emplace("trajectory",ct_output);
-        appdata.ct_volumes.emplace("trajectory",mri_output);
+        appdata.mri_volumes.emplace("trajectory",mri_output);
         if (config->stack_page != nullptr) 
             config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
         appdata.panel_constructor = select_entry_point_and_validate_point_selection;
@@ -1466,12 +1448,21 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             local_index[0] = strokes.point_in_image_coordinates(0, 0);
             local_index[1] = strokes.point_in_image_coordinates(1, 0);
             local_index[2] = strokes.point_in_image_coordinates(2, 0);
-            vol_mas->get_volume()->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
+            std::printf("strokes.point_in_image_coordinates [%llu %llu %llu]\n",local_index[0],local_index[1],local_index[2]);
+
+            auto volu = vol_mas->get_volume();
+            // Print orientation information for debugging
+            std::cout << "[volu] Image Direction: " << volu->GetDirection() << std::endl;
+            std::cout << "[volu] Image Origin: " << volu->GetOrigin() << std::endl;
+            std::cout << "[volu] Image Spacing: " << volu->GetSpacing() << std::endl;
+
+            volu->TransformIndexToPhysicalPoint(local_index, itk_point_in_world_coordinates);
             Eigen::Matrix<double, 3, 1> entry_word_coordinates = Eigen::Matrix<double, 3, 1>::Zero();
             entry_word_coordinates[0] = itk_point_in_world_coordinates[0];
             entry_word_coordinates[1] = itk_point_in_world_coordinates[1];
             entry_word_coordinates[2] = itk_point_in_world_coordinates[2];
             appdata.trajectory_location.entry_point_word_coordinates = entry_word_coordinates;
+            std::printf("strokes.entry_point_word_coordinates [%.2f %.2f %.2f]\n",entry_word_coordinates[0],entry_word_coordinates[1],entry_word_coordinates[2]);
         }
 
         ImageType::Pointer ct_input;
@@ -1584,11 +1575,8 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
                 image_in_focus = mri_output;
             
             appdata.vol_mas->update_volume(image_in_focus,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
-
-            
-            //this is tricky, I need to update both the ct and the MRI volume...
             appdata.ct_volumes.emplace("alongtrajectory",CachedVolume{ct_output});
-            appdata.ct_volumes.emplace("alongtrajectory",CachedVolume{mri_output});
+            appdata.mri_volumes.emplace("alongtrajectory",CachedVolume{mri_output});
 
             auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
                 ImageType::IndexType local_index;
@@ -1602,13 +1590,18 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
                 converted[0] = (1.0/size[0])*(double)local_index[0];
                 converted[1] = (1.0/size[1])*(double)local_index[1];
                 converted[2] = (1.0/size[2])*(double)local_index[2];
-                return converted;
+                return std::make_tuple(converted,local_index);
             };
-
-            const auto tip_in_local_coords = convert_to_index_coordinates(*appdata.trajectory_location.target_world_coordinates);
-            const auto entry_in_local_coords = convert_to_index_coordinates(*appdata.trajectory_location.entry_point_word_coordinates);
+            auto target_world_coordinates = *appdata.trajectory_location.target_world_coordinates;
+            auto entry_point_word_coordinates = *appdata.trajectory_location.entry_point_word_coordinates;
+            std::printf("world tip_in_local_coords [%.2f %.2f %.2f]\n",target_world_coordinates[0],target_world_coordinates[1],target_world_coordinates[2]);
+            std::printf("world entry_in_local_coords [%.2f %.2f %.2f]\n",entry_point_word_coordinates[0],entry_point_word_coordinates[1],entry_point_word_coordinates[2]);
+            const auto [tip_in_local_coords,pixel_tip_coordinates] = convert_to_index_coordinates(target_world_coordinates);
+            const auto [entry_in_local_coords,entry_coordinates] = convert_to_index_coordinates(entry_point_word_coordinates);
             std::printf("normalized tip_in_local_coords [%.2f %.2f %.2f]\n",tip_in_local_coords[0],tip_in_local_coords[1],tip_in_local_coords[2]);
             std::printf("normalized entry_in_local_coords [%.2f %.2f %.2f]\n",entry_in_local_coords[0],entry_in_local_coords[1],entry_in_local_coords[2]);
+            std::printf("pixel pixel_tip_coordinates [%d %d %d]\n",pixel_tip_coordinates[0],pixel_tip_coordinates[1],pixel_tip_coordinates[2]);
+            std::printf("pixel entry_coordinates [%d %d %d]\n",entry_coordinates[0],entry_coordinates[1],entry_coordinates[2]);
             Eigen::Matrix<double,3,1> vector_aligned = tip_in_local_coords-entry_in_local_coords;
             Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
 
@@ -1709,8 +1702,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
             appdata.projected_vol_mas.update_volume(ct_projected_input);
         else 
             appdata.projected_vol_mas.update_volume(mri_projected_input);
-        
-        
+        std::printf("added projection!\n");
     } catch(...){
         std::cout << "failure allocating image" << std::endl;
         throw std::runtime_error("failure");
