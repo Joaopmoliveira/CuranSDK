@@ -582,15 +582,6 @@ struct BoundingBox{
     }
 };
 
-//std::ostream& operator<<(std::ostream& os, const BoundingBox& dt)
-//{
-//    os << "\norigin: " << dt.origin.transpose()<< std::endl;
-//    os << "\nsize: " << dt.size.transpose()<< std::endl;
-//    os << "\nspacing: " << dt.spacing.transpose()<< std::endl;
-//    os << "\norientation: \n" << dt.orientation<< std::endl;
-//    return os;
-//}
-
 
 std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
 {
@@ -834,7 +825,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation %s\n",appdata.current_volume);
+        std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
@@ -846,7 +837,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
                 return;
             }
             std::printf("updating to mri volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
@@ -858,10 +849,10 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
                 return;
             }
             std::printf("updating to ct volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
-        std::printf("done switch representation %s\n",appdata.current_volume);
+        std::printf("done switch representation %s\n",appdata.current_volume.c_str());
     });
 
     auto fixregistration = Button::make("Fix Registration", *appdata.resources);
@@ -1084,7 +1075,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation %s\n",appdata.current_volume);
+        std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
@@ -1111,7 +1102,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
-        std::printf("done switch representation %s\n",appdata.current_volume);
+        std::printf("done switch representation %s\n",appdata.current_volume.c_str());
     });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -1367,14 +1358,6 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             return;
         }
 
-        std::cout << "[ct_output] Image Direction: " << ct_output->GetDirection() << std::endl;
-        std::cout << "[ct_output] Image Origin: " << ct_output->GetOrigin() << std::endl;
-        std::cout << "[ct_output] Image Spacing: " << ct_output->GetSpacing() << std::endl;
-
-        std::cout << "[mri_input] Image Direction: " << mri_input->GetDirection() << std::endl;
-        std::cout << "[mri_input] Image Origin: " << mri_input->GetOrigin() << std::endl;
-        std::cout << "[mri_input] Image Spacing: " << mri_input->GetSpacing() << std::endl;
-
         appdata.ct_volumes.emplace("trajectory",ct_output);
         appdata.mri_volumes.emplace("trajectory",mri_output);
         if (config->stack_page != nullptr) 
@@ -1399,7 +1382,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation %s\n",appdata.current_volume);
+        std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
@@ -1411,7 +1394,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
                 return;
             }
             std::printf("updating to mri volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
@@ -1423,10 +1406,10 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
                 return;
             }
             std::printf("updating to ct volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
-        std::printf("done switch representation %s\n",appdata.current_volume);
+        std::printf("done switch representation %s\n",appdata.current_volume.c_str());
     });
 
 
@@ -1677,15 +1660,6 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         ImageType::Pointer ct_projected_input = allocate_image(appdata,ct_input);
         ImageType::Pointer mri_projected_input = allocate_image(appdata,mri_input);
 
-        std::cout << "[ct_projected_input] Image Direction: " << ct_projected_input->GetDirection() << std::endl;
-        std::cout << "[ct_projected_input] Image Origin: " << ct_projected_input->GetOrigin() << std::endl;
-        std::cout << "[ct_projected_input] Image Spacing: " << ct_projected_input->GetSpacing() << std::endl;
-
-        std::cout << "[mri_projected_input] Image Direction: " << mri_projected_input->GetDirection() << std::endl;
-        std::cout << "[mri_projected_input] Image Origin: " << mri_projected_input->GetOrigin() << std::endl;
-        std::cout << "[mri_projected_input] Image Spacing: " << mri_projected_input->GetSpacing() << std::endl;
-
-
         appdata.ct_volumes.emplace("tmp_proj",CachedVolume{ct_projected_input,false});
         appdata.mri_volumes.emplace("tmp_proj",CachedVolume{mri_projected_input,false});
         if(appdata.modalitytype == ViewType::CT_VIEW)
@@ -1876,7 +1850,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation %s\n",appdata.current_volume);
+        std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
@@ -1888,7 +1862,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
                 return;
             }
             std::printf("updating to mri volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
@@ -1900,10 +1874,10 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
                 return;
             }
             std::printf("updating to ct volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
-        std::printf("done switch representation %s\n",appdata.current_volume);
+        std::printf("done switch representation %s\n",appdata.current_volume.c_str());
     });
 
     auto check = Button::make("Store Trajectory Data", *appdata.resources);

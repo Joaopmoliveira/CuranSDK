@@ -253,10 +253,10 @@ public:
                         image->TransformIndexToPhysicalPoint(local_index,itk_point_in_world_coordinates);
                         in_volume->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
                         std::array<double,3> local_normalized_index;
-                        local_normalized_index[0] = local_index[0]/inputRegion.GetSize()[0];
-                        local_normalized_index[1] = local_index[1]/inputRegion.GetSize()[1];
-                        local_normalized_index[2] = local_index[2]/inputRegion.GetSize()[2];
-                        bool are_there_constraints = identifiers.size() ? false : true;
+                        local_normalized_index[0] = local_index[0]/(double)inputRegion.GetSize()[0];
+                        local_normalized_index[1] = local_index[1]/(double)inputRegion.GetSize()[1];
+                        local_normalized_index[2] = local_index[2]/(double)inputRegion.GetSize()[2];
+                        bool are_there_constraints = identifiers.size();
                         if(are_there_constraints){
                             for(auto innerkey : identifiers)
                                 if(key == innerkey)
