@@ -829,7 +829,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         std::printf("switch representation\n");
         // so first I need to check which modality we are currently under
-        if(appdata.modalitytype= ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
+        if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
             if (auto search = appdata.mri_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.mri_volumes.end())
                 input = search->second.img;
@@ -1070,7 +1070,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         std::printf("switch representation\n");
         // so first I need to check which modality we are currently under
-        if(appdata.modalitytype= ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
+        if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
             if (auto search = appdata.mri_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.mri_volumes.end())
                 input = search->second.img;
@@ -1388,7 +1388,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         std::printf("switch representation\n");
         // so first I need to check which modality we are currently under
-        if(appdata.modalitytype= ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
+        if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
             if (auto search = appdata.mri_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.mri_volumes.end())
                 input = search->second.img;
@@ -1828,7 +1828,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         std::printf("switch representation\n");
         // so first I need to check which modality we are currently under
-        if(appdata.modalitytype= ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
+        if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
             if (auto search = appdata.mri_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.mri_volumes.end())
                 input = search->second.img;
