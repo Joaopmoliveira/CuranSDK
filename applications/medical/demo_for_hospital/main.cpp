@@ -773,7 +773,7 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
         if(cached_volume.is_visible){
             if (cached_volume.img.IsNotNull())
             {
-                auto itk_pointer = vol.second.img;
+                auto itk_pointer = cached_volume.img;
                 auto extract_filter = ExtractFilterType::New();
                 extract_filter->SetDirectionCollapseToSubmatrix();
                 extract_filter->SetInput(itk_pointer);
