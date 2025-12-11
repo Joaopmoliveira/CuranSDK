@@ -1203,6 +1203,12 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         Eigen::Vector3d b3 = compute(main_diagonal_world_index - base_width*y_direction +  base_width*x_direction);
         Eigen::Vector3d target_local_index = compute(target_world_index);
 
+        std::printf("target: [%.2f %.2f %.2f]\n",target_local_index[0],target_local_index[1],target_local_index[2]);
+        std::printf("b0: [%.2f %.2f %.2f]\n",b0[0],b0[1],b0[2]);
+        std::printf("b1: [%.2f %.2f %.2f]\n",b1[0],b1[1],b1[2]);
+        std::printf("b2: [%.2f %.2f %.2f]\n",b2[0],b2[1],b2[2]);
+        std::printf("b3: [%.2f %.2f %.2f]\n",b3[0],b3[1],b3[2]);
+
         geom.geometry.vertices[0][0] = target_local_index[0];
         geom.geometry.vertices[0][1] = target_local_index[1];
         geom.geometry.vertices[0][2] = target_local_index[2];
@@ -1223,7 +1229,7 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         geom.geometry.vertices[4][1] = b3[1];
         geom.geometry.vertices[4][2] = b3[2];
 
-        appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00));  
+        appdata.vol_mas->add_geometry(geom,SK_ColorCYAN);  
         
         for(size_t i = 0; i < geom.geometry.vertices.size(); ++i){
             ImageType::IndexType local_index;
