@@ -1002,6 +1002,9 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        
+    });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *viwers_container << std::move(layout) << std::move(defineac) << std::move(definepc) << std::move(resample) << std::move(switch_volume) << std::move(switchto) << std::move(check);
@@ -1295,6 +1298,10 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+
+    });
+
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *viwers_container << std::move(layout) << std::move(definetarget) << std::move(defineentryregion) << std::move(validadetrajectory) << std::move(switchto) << std::move(switch_volume);
@@ -1709,6 +1716,9 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
     const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        
+    });
 
     auto check = Button::make("Store Trajectory Data", *appdata.resources);
     check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
