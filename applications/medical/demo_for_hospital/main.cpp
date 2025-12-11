@@ -92,8 +92,6 @@ struct ACPCData{
     std::optional<Eigen::Matrix<double,3,1>> pc_word_coordinates;
 };
 
-const std::array<std::string,4> mapped_volumes = {"source","acpc","trajectory","alongtrajectory"};
-
 struct TrajectoryConeData{
     bool target_specification = false;
     curan::ui::Button* target_button = nullptr;
@@ -137,7 +135,7 @@ struct Application{
     ViewType modalitytype = ViewType::CT_VIEW;
     std::map<std::string,CachedVolume> ct_volumes;
     std::map<std::string,CachedVolume> mri_volumes;
-    size_t volume_index = 0;
+    std::string current_volume = "source";
     curan::ui::DicomVolumetricMask* vol_mas = nullptr;
     curan::ui::IconResources* resources = nullptr;
     std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
@@ -735,26 +733,33 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
     item_explorer->add_press_call([&,mask](ItemExplorer *widget, Press press, ConfigDraw *draw){
             auto highlighted = widget->highlighted();
             assert(highlighted.size()==1 && "the size is larger than one");
-            appdata.volume_index = highlighted.back();
+            size_t volume_index = highlighted.back();
+            
             size_t i = 0;
 
             if(appdata.modalitytype == ViewType::CT_VIEW){
-                for(auto vol : appdata.ct_volumes){
-                    if(i==appdata.volume_index){
-                        appdata.vol_mas->update_volume(vol.second.img,mask);
+                for(auto& [volume_description,cached_entry] : appdata.ct_volumes){
+                    if(cached_entry.is_visible){
+                        if(i==volume_index){
+                            appdata.vol_mas->update_volume(cached_entry.img,mask);
+                            appdata.current_volume = volume_description;
+                        }
+                        ++i;
                     }
-                    ++i;
                 }
             } else {
-                for(auto vol : appdata.mri_volumes){
-                    if(i==appdata.volume_index ){
-                        appdata.vol_mas->update_volume(vol.second.img,mask);
+                for(auto& [volume_description,cached_entry] : appdata.mri_volumes){
+                    if(cached_entry.is_visible){
+                        if(i==volume_index ){
+                            appdata.vol_mas->update_volume(cached_entry.img,mask);
+                            appdata.current_volume = volume_description;
+                        }
+                        ++i;
                     }
-                    ++i;
                 }
             }
 
-
+            std::printf("new volume index is: %s\n",appdata.current_volume.c_str());
 
     });
     using ImageType = itk::Image<PixelType, 3>;
@@ -763,37 +768,39 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
     auto volumes = &appdata.ct_volumes;
     if(appdata.modalitytype != ViewType::CT_VIEW)
         volumes = &appdata.mri_volumes;
-    for (auto &vol : *volumes)
+    for (auto &[description,cached_volume] : *volumes)
     {
-        if (vol.second.img.IsNotNull())
-        {
-            auto itk_pointer = vol.second.img;
-            auto extract_filter = ExtractFilterType::New();
-            extract_filter->SetDirectionCollapseToSubmatrix();
-            extract_filter->SetInput(itk_pointer);
+        if(cached_volume.is_visible){
+            if (cached_volume.img.IsNotNull())
+            {
+                auto itk_pointer = vol.second.img;
+                auto extract_filter = ExtractFilterType::New();
+                extract_filter->SetDirectionCollapseToSubmatrix();
+                extract_filter->SetInput(itk_pointer);
 
-            ImageType::RegionType inputRegion = itk_pointer->GetBufferedRegion();
-            ImageType::SpacingType spacing = itk_pointer->GetSpacing();
-            ImageType::SizeType size = inputRegion.GetSize();
+                ImageType::RegionType inputRegion = itk_pointer->GetBufferedRegion();
+                ImageType::SpacingType spacing = itk_pointer->GetSpacing();
+                ImageType::SizeType size = inputRegion.GetSize();
 
-            auto copy_size = size;
-            size[Direction::Z] = 1;
+                auto copy_size = size;
+                size[Direction::Z] = 1;
 
-            ImageType::IndexType start = inputRegion.GetIndex();
-            start[Direction::Z] = std::floor(copy_size[Direction::Z] / 2.0);
-            ImageType::RegionType desiredRegion;
-            desiredRegion.SetSize(size);
-            desiredRegion.SetIndex(start);
-            extract_filter->SetExtractionRegion(desiredRegion);
-            extract_filter->UpdateLargestPossibleRegion();
+                ImageType::IndexType start = inputRegion.GetIndex();
+                start[Direction::Z] = std::floor(copy_size[Direction::Z] / 2.0);
+                ImageType::RegionType desiredRegion;
+                desiredRegion.SetSize(size);
+                desiredRegion.SetIndex(start);
+                extract_filter->SetExtractionRegion(desiredRegion);
+                extract_filter->UpdateLargestPossibleRegion();
 
-            ImageType::Pointer pointer_to_block_of_memory = extract_filter->GetOutput();
-            ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
-            auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
-            auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
-            item_explorer->add(Item{identifier, vol.first, buff, extracted_size[0], extracted_size[1]});
+                ImageType::Pointer pointer_to_block_of_memory = extract_filter->GetOutput();
+                ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+                auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
+                auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
+                item_explorer->add(Item{identifier, description, buff, extracted_size[0], extracted_size[1]});
+            }
+            ++identifier;
         }
-        ++identifier;
     }
     item_explorer->set_size(SkRect::MakeWH(800, 400));
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
@@ -831,7 +838,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
-            if (auto search = appdata.mri_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.mri_volumes.end())
+            if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
                 input = search->second.img;
             else{
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
@@ -841,7 +848,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
-            if (auto search = appdata.ct_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.ct_volumes.end())
+            if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
                 input = search->second.img;
             else{
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
@@ -939,16 +946,17 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     resample->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
-
+        std::printf("Resampling volume...\n");
         if(!appdata.ac_pc_data.ac_word_coordinates || !appdata.ac_pc_data.pc_word_coordinates){
             config->stack_page->stack(warning_overlay("must define AC-PC midline before resampling",*appdata.resources));
             return;
         }
-        
+        // this vector specified the normal of the coronal plane which corresponds to the xs
         Eigen::Matrix<double, 3, 1> orient_along_ac_pc = *appdata.ac_pc_data.ac_word_coordinates - *appdata.ac_pc_data.pc_word_coordinates;
-        if (orient_along_ac_pc.norm() < 1e-7)
+        if (orient_along_ac_pc.norm() < 1e-7){
             config->stack_page->stack(warning_overlay("AC-PC line is singular, try different points",*appdata.resources));
             return;
+        }
         orient_along_ac_pc.normalize(); 
         Eigen::Matrix<double, 3, 1> y_direction = orient_along_ac_pc;
 
@@ -969,7 +977,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
                     original_eigen_rotation_matrix(i,j) = direction(i,j);
                 }
 
-            Eigen::Matrix<double,3,1> x_direction = original_eigen_rotation_matrix.col(0);
+            Eigen::Matrix<double,3,1> x_direction = -original_eigen_rotation_matrix.col(0);
             Eigen::Matrix<double,3,1> z_direction = x_direction.cross(y_direction);  
             x_direction = y_direction.cross(z_direction);  
             x_direction.normalize();
@@ -982,6 +990,9 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             eigen_rotation_matrix.col(0) = x_direction;
             eigen_rotation_matrix.col(1) = y_direction;
             eigen_rotation_matrix.col(2) = z_direction;
+
+            std::cout << "original orientation:\n" << original_eigen_rotation_matrix << std::endl;
+            std::cout << "modified orientation:\n" << eigen_rotation_matrix << std::endl;
 
             BoundingBox bounding_box_original_image{input};        
             auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
@@ -1029,7 +1040,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             }
             return; 
         }
-        auto [resampling_flag_mri,error_description_mri,output_mri] = resampler_utility(appdata.ct_volumes);
+        auto [resampling_flag_mri,error_description_mri,output_mri] = resampler_utility(appdata.mri_volumes);
         if(!resampling_flag_mri){
             if (config->stack_page != nullptr) {
                 config->stack_page->stack(warning_overlay("MRI: "+error_description_mri,*appdata.resources));
@@ -1070,9 +1081,10 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         std::printf("switch representation\n");
         // so first I need to check which modality we are currently under
+        std::printf("the map to query is: %s",appdata.current_volume);
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
-            if (auto search = appdata.mri_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.mri_volumes.end())
+            if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
                 input = search->second.img;
             else{
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
@@ -1082,7 +1094,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
-            if (auto search = appdata.ct_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.ct_volumes.end())
+            if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
                 input = search->second.img;
             else{
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
@@ -1390,7 +1402,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
-            if (auto search = appdata.mri_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.mri_volumes.end())
+            if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
                 input = search->second.img;
             else{
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
@@ -1400,7 +1412,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
-            if (auto search = appdata.ct_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.ct_volumes.end())
+            if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
                 input = search->second.img;
             else{
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
@@ -1830,7 +1842,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
-            if (auto search = appdata.mri_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.mri_volumes.end())
+            if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
                 input = search->second.img;
             else{
                 std::printf("did not find the volume\n");
@@ -1842,7 +1854,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
-            if (auto search = appdata.ct_volumes.find(mapped_volumes[appdata.volume_index]); search != appdata.ct_volumes.end())
+            if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
                 input = search->second.img;
             else{
                 std::printf("did not find the volume\n");
@@ -1923,7 +1935,7 @@ using PixelType = unsigned char;
 using ImageType = itk::Image<PixelType, Dimension>;
 using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
 
-std::optional<ImageType::Pointer> get_volume(std::string path)
+std::optional<ImageType::Pointer> get_volume(std::string path, std::string identifier)
 {
 	using ReaderType = itk::ImageSeriesReader<DICOMImageType>;
 	auto reader = ReaderType::New();
@@ -1944,17 +1956,22 @@ std::optional<ImageType::Pointer> get_volume(std::string path)
 	using SeriesIdContainer = std::vector<std::string>;
 
 	const SeriesIdContainer &seriesUID = nameGenerator->GetSeriesUIDs();
-
+    std::string seriesIdentifier;
 	auto seriesItr = seriesUID.begin();
 	auto seriesEnd = seriesUID.end();
-	while (seriesItr != seriesEnd)
+	bool found = false;
+    while (seriesItr != seriesEnd)
 	{
-		std::cout << seriesItr->c_str() << std::endl;
+        if(identifier.compare(std::string(seriesItr->c_str()))==0){
+            seriesIdentifier = std::string(seriesItr->c_str());
+            found = true;
+        }
+		//std::cout << seriesItr->c_str() << std::endl;
 		++seriesItr;
 	}
 
-	std::string seriesIdentifier;
-	seriesIdentifier = seriesUID.begin()->c_str();
+    if(!found)
+        return std::nullopt;
 
 	using FileNamesContainer = std::vector<std::string>;
 	FileNamesContainer fileNames;
@@ -2010,15 +2027,16 @@ try{
 	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
     std::printf("\nReading input volume...\n");
-    auto fixed_volume =  get_volume("C:/Users/joaom/Downloads/dicom_herculano/2905417-SOUZA^NELSON OL_MPIO DE^^^/20250505-TC do cr_nio/202-Cranio Osso");
+    auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
     std::printf("\nReading input volume...\n");
-    auto moving_volume =  get_volume("C:/Users/joaom/Downloads/dicom_herculano/2905417-SOUZA^NELSON OL_MPIO DE^^^/20250501-TC do cr_nio/36985-MPR SAGITAL");
+    auto moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
     
     if(!fixed_volume || ! moving_volume)
     {
         std::printf("failed to read moving or fixed volume");
         return 1;
     }
+    std::printf("found all moving and fixed volumes");
 
     auto castfilter = itk::CastImageFilter<ImageType,itk::Image<double,3>>::New();
     castfilter->SetInput(*fixed_volume);
