@@ -1171,6 +1171,8 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
 
         auto compute = [&](Eigen::Matrix<double,3,1> world_coordinates){
+            return world_coordinates;
+            /*
             ImageType::IndexType point_index;
             ImageType::PointType point_world_coordinates;     
             point_world_coordinates[0] = world_coordinates[0];
@@ -1182,10 +1184,14 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
                                    , point_index[1]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[1] 
                                    , point_index[2]/(double)vol_mas->get_volume()->GetLargestPossibleRegion().GetSize()[2];
             return normalized_itk_points;
+            */
         };
 
         const auto target_world_index = *appdata.trajectory_location.target_world_coordinates;
         const auto main_diagonal_world_index = *appdata.trajectory_location.main_diagonal_word_coordinates;
+
+        std::printf("\ntarget_world_index: [%.2f %.2f %.2f]\n",target_world_index[0],target_world_index[1],target_world_index[2]);
+        std::printf("main_diagonal_world_index: [%.2f %.2f %.2f]\n",main_diagonal_world_index[0],main_diagonal_world_index[1],main_diagonal_world_index[2]);
 
         Eigen::Matrix<double,3,1> vector_aligned = target_world_index-main_diagonal_world_index;
         double scale = vector_aligned.norm();
@@ -1571,10 +1577,15 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             return;
         }
         try{
+            ImageType::Pointer image_in_focus;
             if(appdata.modalitytype == ViewType::CT_VIEW)
-                appdata.vol_mas->update_volume(ct_output,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+                image_in_focus = ct_output;
             else
-                appdata.vol_mas->update_volume(mri_output,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+                image_in_focus = mri_output;
+            
+            appdata.vol_mas->update_volume(image_in_focus,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+
+            
             //this is tricky, I need to update both the ct and the MRI volume...
             appdata.ct_volumes.emplace("alongtrajectory",CachedVolume{ct_output});
             appdata.ct_volumes.emplace("alongtrajectory",CachedVolume{mri_output});
@@ -1596,21 +1607,29 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
 
             const auto tip_in_local_coords = convert_to_index_coordinates(*appdata.trajectory_location.target_world_coordinates);
             const auto entry_in_local_coords = convert_to_index_coordinates(*appdata.trajectory_location.entry_point_word_coordinates);
+            std::printf("normalized tip_in_local_coords [%.2f %.2f %.2f]\n",tip_in_local_coords[0],tip_in_local_coords[1],tip_in_local_coords[2]);
+            std::printf("normalized entry_in_local_coords [%.2f %.2f %.2f]\n",entry_in_local_coords[0],entry_in_local_coords[1],entry_in_local_coords[2]);
             Eigen::Matrix<double,3,1> vector_aligned = tip_in_local_coords-entry_in_local_coords;
             Eigen::Matrix<double,4,4> offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
 
             // 3 mm to normalized coordinates output_bounding_box.spacing 
-            float size_in_pixels = 1.5/(0.3333*(output_bounding_box.spacing[0]+output_bounding_box.spacing[1]+output_bounding_box.spacing[2]));
-            float radius_in_normalized = size_in_pixels/(0.3333*(output_bounding_box.size[0]+output_bounding_box.size[1]+output_bounding_box.size[2]));
+            float size_in_mm = 1.5/(0.3333*(output_bounding_box.spacing[0]+output_bounding_box.spacing[1]+output_bounding_box.spacing[2]));
+            float radius_in_normalized =  size_in_mm/(0.3333*(output_bounding_box.size[0]+output_bounding_box.size[1]+output_bounding_box.size[2]));
             float trajectory_length = vector_aligned.norm();
+            std::printf("trajectory_length %.2f\n",trajectory_length);
             curan::geometry::ClosedCylinder geom{2,100,radius_in_normalized,trajectory_length};
-
+            std::printf("\n\n Original coordiantes expected!: \n\n");
+            for(auto vert : geom.geometry.vertices){
+                Eigen::Matrix<double, 3, 1> vertex;
+                vertex << vert[0], vert[1], vert[2];
+                std::printf("[%.2f %.2f %.2f]\n",(double)vertex[0],(double)vertex[1],(double)vertex[2]);
+            }
             vector_aligned.normalize();
             Eigen::Matrix<double,3,1> yAxis(0, 0, 1);
             Eigen::Matrix<double,3,1> axis = yAxis.cross(vector_aligned);
             axis.normalize();
             double angle = std::acos(yAxis.transpose()*vector_aligned);
-            auto final_rotation = Eigen::AngleAxisd(angle, axis).toRotationMatrix();
+            auto final_rotation = Eigen::AngleAxisd(angle, axis).toRotationMatrix(); // 
             offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
             offset_base_to_Oxy(2,3) = -trajectory_length/2.0;  
             geom.transform(offset_base_to_Oxy);
@@ -1618,8 +1637,39 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             offset_base_to_Oxy.block<3,3>(0,0) = final_rotation;
             geom.transform(offset_base_to_Oxy);
             offset_base_to_Oxy = Eigen::Matrix<double,4,4>::Identity();
-            offset_base_to_Oxy.block<3,1>(0,3) = tip_in_local_coords;    
+            offset_base_to_Oxy.block<3,1>(0,3) = tip_in_local_coords; 
             geom.transform(offset_base_to_Oxy);
+            std::printf("\n\n Normalized coordiantes expected!: \n\n");
+            for(auto vert : geom.geometry.vertices){
+                Eigen::Matrix<double, 3, 1> vertex;
+                vertex << vert[0], vert[1], vert[2];
+                std::printf("[%.2f %.2f %.2f]\n",(double)vertex[0],(double)vertex[1],(double)vertex[2]);
+            }
+            //ok here is the magic, so this transforms the geometry to be correctly aligned inside the cranium in normalized coordiantes right?
+            // so what we need to do is to do is to then transform these local coordinates to world coordinates through  
+            Eigen::Matrix<double,4,4> local_to_world = Eigen::Matrix<double,4,4>::Identity();
+            auto direction = image_in_focus->GetDirection();
+            auto spacing = image_in_focus->GetSpacing();
+            auto origin = image_in_focus->GetOrigin();
+            auto size = image_in_focus->GetLargestPossibleRegion().GetSize();
+            for(size_t i = 0; i < 3; ++i)
+                for(size_t j = 0; j < 3; ++j)
+                    local_to_world(i,j) = direction(i,j);
+            local_to_world(0,0) *= spacing[0]*size[0];
+            local_to_world(1,1) *= spacing[1]*size[1];
+            local_to_world(2,2) *= spacing[2]*size[2];
+            local_to_world(0,3) = origin[0];
+            local_to_world(1,3) = origin[1];
+            local_to_world(2,3) = origin[2];
+
+            geom.transform(local_to_world);
+
+            std::printf("\n\n World coordiantes expected!: \n\n");
+            for(auto vert : geom.geometry.vertices){
+                Eigen::Matrix<double, 3, 1> vertex;
+                vertex << vert[0], vert[1], vert[2];
+                std::printf("[%.2f %.2f %.2f]\n",(double)vertex[0],(double)vertex[1],(double)vertex[2]);
+            }
             appdata.vol_mas->add_geometry(geom,SkColorSetARGB(0xFF, 0x00, 0xFF, 0x00));  
             if (config_draw->stack_page != nullptr) {
                 config_draw->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
