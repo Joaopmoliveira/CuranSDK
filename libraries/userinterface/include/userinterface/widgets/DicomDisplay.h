@@ -365,7 +365,7 @@ public:
             ++increment;
 			}
 		} 
-                
+        std::printf("adress in_volume %llu address old_image %llu\n",(size_t)in_volume.get(),(size_t)image.get());   
         image = in_volume;
         masks_x = std::vector<DicomMask>(inputRegion.GetSize()[Direction::X]);
         masks_y = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Y]);

@@ -136,6 +136,8 @@ struct Application{
     std::map<std::string,CachedVolume> ct_volumes;
     std::map<std::string,CachedVolume> mri_volumes;
     std::string current_volume = "source";
+    bool registration_complete = false;
+    Eigen::Matrix<double,4,4> registration_fixed_to_moving = Eigen::Matrix<double,4,4>::Identity();
     curan::ui::DicomVolumetricMask* vol_mas = nullptr;
     curan::ui::IconResources* resources = nullptr;
     std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
@@ -813,13 +815,15 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
 
     auto registervolumes = Button::make("Register Volumes", *appdata.resources);
     registervolumes->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    registervolumes->add_press_call([&](Button *button, Press press, ConfigDraw *config){
 
+    });
+    
     auto validate_checkered = Button::make("Validate Checkered Overlap", *appdata.resources); 
     validate_checkered->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
     auto validate_blending = Button::make("Validate Blending", *appdata.resources);
     validate_blending->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
-
 
     const std::string displaystring = (appdata.modalitytype == ViewType::CT_VIEW) ? "Switch to MRI" : "Switch to CT" ;
     auto switchto = Button::make(displaystring, *appdata.resources);
@@ -828,28 +832,28 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
         std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
-            ImageType::Pointer input;
+            ImageType::Pointer localinput;
             if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
-                input = search->second.img;
+                localinput = search->second.img;
             else{
                 std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
             std::printf("updating to mri volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.vol_mas->update_volume(localinput,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
-            ImageType::Pointer input;
+            ImageType::Pointer localinput;
             if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
-                input = search->second.img;
+                localinput = search->second.img;
             else{   
                 std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
             std::printf("updating to ct volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.vol_mas->update_volume(localinput,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
         std::printf("done switch representation %s\n",appdata.current_volume.c_str());
@@ -857,7 +861,15 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
 
     auto fixregistration = Button::make("Fix Registration", *appdata.resources);
     fixregistration->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
-
+    fixregistration->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        if(!appdata.registration_complete){
+            config->stack_page->stack(warning_overlay("cannot advance without registration",*appdata.resources));
+            return;
+        }
+        appdata.panel_constructor = select_ac_pc_midline;
+        appdata.volume_callback  = ac_pc_midline_point_selection;
+        appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
+    });
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *viwers_container << std::move(layout) << std::move(registervolumes) << std::move(validate_checkered) << std::move(validate_blending) << std::move(switchto) << std::move(fixregistration);
 
@@ -1078,28 +1090,28 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
-            ImageType::Pointer input;
+            ImageType::Pointer localinput;
             if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
-                input = search->second.img;
+                localinput = search->second.img;
             else{
                 std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
             std::printf("updating to mri volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.vol_mas->update_volume(localinput,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
-            ImageType::Pointer input;
+            ImageType::Pointer localinput;
             if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
-                input = search->second.img;
+                localinput = search->second.img;
             else{   
                 std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
             std::printf("updating to ct volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.vol_mas->update_volume(localinput,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
         std::printf("done switch representation %s\n",appdata.current_volume.c_str());
@@ -1118,6 +1130,14 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
 };
 
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+
+    for(auto& [description,cached] : appdata.ct_volumes){
+        std::printf("pointer way before [ct]: %llu\n",(size_t)cached.img.get());
+    }
+    for(auto& [description,cached] : appdata.mri_volumes){
+        std::printf("pointer way before [mri]: %llu\n",(size_t)cached.img.get());
+    }
+
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the collumns of the highlighted path must be at least 1");
@@ -1148,21 +1168,6 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
     if(appdata.trajectory_location.target_specification){
         appdata.trajectory_location.target_specification = false;
         appdata.trajectory_location.target_world_coordinates = word_coordinates;
-        ImageType::Pointer input;
-
-        auto& volumes = appdata.ct_volumes;
-        if(appdata.modalitytype != ViewType::CT_VIEW)
-            volumes = appdata.mri_volumes;
-
-        if (auto search = volumes.find("source"); search != volumes.end()){
-            input = search->second.img;
-            ImageType::IndexType local_index;
-            ImageType::PointType itk_point_in_world_coordinates;
-            itk_point_in_world_coordinates[0] = word_coordinates[0];
-            itk_point_in_world_coordinates[1] = word_coordinates[1];
-            itk_point_in_world_coordinates[2] = word_coordinates[2];
-            input->TransformPhysicalPointToIndex(itk_point_in_world_coordinates,local_index);
-        }
         appdata.trajectory_location.target_button->set_waiting_color(SkColorSetARGB(0xFF, 0x0F, 0xFF, 0x0F));
         config_draw->stack_page->stack(success_overlay("target defined",*appdata.resources));
     }
@@ -1209,8 +1214,22 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         geom.geometry.vertices[4][1] = b3[1];
         geom.geometry.vertices[4][2] = b3[2];
 
+        for(auto& [description,cached] : appdata.ct_volumes){
+            std::printf("pointer before [ct]: %llu\n",(size_t)cached.img.get());
+        }
+        for(auto& [description,cached] : appdata.mri_volumes){
+            std::printf("pointer before [mri]: %llu\n",(size_t)cached.img.get());
+        }
+
         appdata.vol_mas->add_geometry(geom,SK_ColorCYAN);  
-        
+    
+        for(auto& [description,cached] : appdata.ct_volumes){
+            std::printf("pointer after [ct]: %llu\n",(size_t)cached.img.get());
+        }
+        for(auto& [description,cached] : appdata.mri_volumes){
+            std::printf("pointer after [mri]: %llu\n",(size_t)cached.img.get());
+        }
+
         for(size_t i = 0; i < geom.geometry.vertices.size(); ++i){
             appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][0] = (double)geom.geometry.vertices[i][0];
             appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[i][1] = (double)geom.geometry.vertices[i][1];
@@ -1385,28 +1404,28 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
-            ImageType::Pointer input;
+            ImageType::Pointer localinput;
             if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
-                input = search->second.img;
+                localinput = search->second.img;
             else{
                 std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
             std::printf("updating to mri volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.vol_mas->update_volume(localinput,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
-            ImageType::Pointer input;
+            ImageType::Pointer localinput;
             if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
-                input = search->second.img;
+                localinput = search->second.img;
             else{   
                 std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
             std::printf("updating to ct volume\n");
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.vol_mas->update_volume(localinput,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
         std::printf("done switch representation %s\n",appdata.current_volume.c_str());
@@ -1660,8 +1679,8 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         ImageType::Pointer ct_projected_input = allocate_image(appdata,ct_input);
         ImageType::Pointer mri_projected_input = allocate_image(appdata,mri_input);
 
-        appdata.ct_volumes.emplace("tmp_proj",CachedVolume{ct_projected_input,false});
-        appdata.mri_volumes.emplace("tmp_proj",CachedVolume{mri_projected_input,false});
+        //appdata.ct_volumes.emplace("tmp_proj",CachedVolume{ct_projected_input,false});
+        //appdata.mri_volumes.emplace("tmp_proj",CachedVolume{mri_projected_input,false});
         if(appdata.modalitytype == ViewType::CT_VIEW)
             appdata.projected_vol_mas.update_volume(ct_projected_input);
         else 
@@ -1906,9 +1925,8 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
 
 std::unique_ptr<curan::ui::Container> Application::main_page(){
     using namespace curan::ui;
-    panel_constructor = select_ac_pc_midline;
-    volume_callback = ac_pc_midline_point_selection;
-    auto container_with_widgets = select_ac_pc_midline(*this);
+    panel_constructor = select_registration_mri_ct;
+    auto container_with_widgets = panel_constructor(*this);
     std::unique_ptr<MiniPage> minipage = MiniPage::make(std::move(container_with_widgets), SK_ColorBLACK);
     tradable_page = minipage.get();
     auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
