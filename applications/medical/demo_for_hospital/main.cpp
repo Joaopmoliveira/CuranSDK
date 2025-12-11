@@ -1259,19 +1259,23 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             try{
                 filter->Update();
                 ImageType::Pointer output = filter->GetOutput();
-                if (config->stack_page != nullptr) {
-                    config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
-                }
+                return std::make_tuple(true,std::string{"resampled volume!"},output);
             } catch (...){
-                if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("failed to resample trajectory volume",*appdata.resources));
+                return std::make_tuple(false,std::string{"failed to resample trajectory volume"},ImageType::Pointer());
             }
 
         };
         auto [flag_ct,error_description_ct,ct_output] = resampler(ct_input);
+        if(!flag_ct)
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("CT: "+error_description_ct,*appdata.resources));
         auto [flag_mri,error_description_mri,mri_output] = resampler(mri_input);
-        appdata.ct_volumes.emplace("trajectory",output);
+        if(!flag_mri)
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("CT: "+error_description_mri,*appdata.resources));
 
-
+        appdata.ct_volumes.emplace("trajectory",ct_output);
+        appdata.ct_volumes.emplace("trajectory",mri_output);
+        if (config->stack_page != nullptr) 
+            config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
         appdata.panel_constructor = select_entry_point_and_validate_point_selection;
         appdata.volume_callback = std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)>{};
         appdata.projected_volume_callback = select_entry_point_and_validate;
@@ -1330,17 +1334,22 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             appdata.trajectory_location.entry_point_word_coordinates = entry_word_coordinates;
         }
 
-        ImageType::Pointer input;
-        auto& volumes = appdata.ct_volumes;
-        if(appdata.modalitytype != ViewType::CT_VIEW)
-            volumes = appdata.mri_volumes;
-        if (auto search = volumes.find("source"); search != volumes.end())
-            input = search->second.img;
+        ImageType::Pointer ct_input;
+        if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
+            ct_input = search->second.img;
         else{
             if (config_draw->stack_page != nullptr) config_draw->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
             return;
         }
 
+        ImageType::Pointer mri_input;
+        if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
+            mri_input = search->second.img;
+        else{
+            if (config_draw->stack_page != nullptr) config_draw->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
+            return;
+        }
+        ImageType::Pointer input = (appdata.modalitytype == ViewType::CT_VIEW) ? ct_input : mri_input;
         config_draw->stack_page->stack(success_overlay("entry defined",*appdata.resources));
 
         auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
@@ -1371,41 +1380,70 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
         if(eigen_rotation_matrix.determinant()<0.999 || eigen_rotation_matrix.determinant()>1.0001)
             throw std::runtime_error("determinant is improper");
 
+
+
         BoundingBox bounding_box_original_image{input};    
         auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
-
-        using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
-        auto filter = FilterType::New();
-
-        using TransformType = itk::IdentityTransform<double, 3>;
-        auto transform = TransformType::New();
-
-        using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
-        auto interpolator = InterpolatorType::New();
-        filter->SetInterpolator(interpolator);
-        filter->SetDefaultPixelValue(0);
-        filter->SetTransform(transform);
-
-        filter->SetInput(input);
-        filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
-        filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
-        filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
-
-        itk::Matrix<double> rotation_matrix;
-        for (size_t col = 0; col < 3; ++col)
-            for (size_t row = 0; row < 3; ++row)
-                rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
-
         if(output_bounding_box.orientation.determinant() < 0.999 ||  output_bounding_box.orientation.determinant() > 1.001)
             throw std::runtime_error("matrix must be rotation");
-        filter->SetOutputDirection(rotation_matrix);
 
+        auto resamplervolume = [&](auto inputvol){
+            using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+            auto filter = FilterType::New();
+
+            using TransformType = itk::IdentityTransform<double, 3>;
+            auto transform = TransformType::New();
+
+            using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
+            auto interpolator = InterpolatorType::New();
+            filter->SetInterpolator(interpolator);
+            filter->SetDefaultPixelValue(0);
+            filter->SetTransform(transform);
+
+            filter->SetInput(inputvol);
+            filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
+            filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
+            filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
+
+            itk::Matrix<double> rotation_matrix;
+            for (size_t col = 0; col < 3; ++col)
+                for (size_t row = 0; row < 3; ++row)
+                    rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
+
+
+            filter->SetOutputDirection(rotation_matrix);
+
+            try{
+                filter->Update();
+                ImageType::Pointer output = filter->GetOutput();
+                return std::make_tuple(true,output);
+            } catch (...){
+                return std::make_tuple(false,ImageType::Pointer());
+            }
+        };
+
+        auto [flag_ct,ct_output] = resamplervolume(ct_input);
+        auto [flag_mri,mri_output] = resamplervolume(mri_input);
+
+        if(!flag_ct){
+            if (config_draw->stack_page != nullptr) 
+                config_draw->stack_page->stack(warning_overlay("CT: failed to resample trajectory volume",*appdata.resources));
+            return;
+        }
+
+        if(!flag_mri){
+            if (config_draw->stack_page != nullptr) 
+                config_draw->stack_page->stack(warning_overlay("MRI: failed to resample trajectory volume",*appdata.resources));
+            return;
+        }
         try{
-            filter->Update();
-            auto output = filter->GetOutput();
-            appdata.vol_mas->update_volume(output,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            if(appdata.modalitytype == ViewType::CT_VIEW)
+                appdata.vol_mas->update_volume(ct_output,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            else
+                appdata.vol_mas->update_volume(mri_output,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
             //this is tricky, I need to update both the ct and the MRI volume...
-            appdata.volumes.emplace("alongtrajectory",output);
+            appdata.ct_volumes.emplace("alongtrajectory",CachedVolume{ct_output});
+            appdata.ct_volumes.emplace("alongtrajectory",CachedVolume{mri_output});
 
             auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
                 ImageType::IndexType local_index;
@@ -1689,7 +1727,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
     *views_and_roi_container << std::move(roi_container) << std::move(image_display);
     views_and_roi_container->set_divisions({0.0, 0.1, 1.0});
 
-    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);select_entry_point_and_validate_point_selection
+    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
     *container << std::move(viwers_container) << std::move(views_and_roi_container);
     container->set_divisions({0.0, 0.1, 1.0});
 
@@ -1849,34 +1887,6 @@ try{
         std::cout << "improperly consumed the input volume";
         return 1;
     }
-
-    /*
-    using ImageReaderType = itk::ImageFileReader<itk::Image<double,3>>;
-    auto fixedImageReader = ImageReaderType::New();
-
-    fixedImageReader->SetFileName(CURAN_COPIED_RESOURCE_PATH"/precious_phantom/precious_phantom.mha");
-
-    auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>::New();
-    rescale->SetInput(fixedImageReader->GetOutput());
-    rescale->SetOutputMinimum(0);
-    rescale->SetOutputMaximum(255.0);
-
-    auto castfilter = itk::CastImageFilter<itk::Image<double,3>, ImageType>::New();
-    castfilter->SetInput(rescale->GetOutput());
-
-    itk::OrientImageFilter<ImageType,ImageType>::Pointer orienter =itk::OrientImageFilter<ImageType,ImageType>::New();
-    orienter->UseImageDirectionOn();
-    orienter->SetDesiredCoordinateOrientation(itk::SpatialOrientation::ITK_COORDINATE_ORIENTATION_RAS);
-     
-    orienter->SetInput(castfilter->GetOutput());
-    try{
-        orienter->Update();
-    }catch (...){
-        std::cout << "improperly consumed the input volume";
-        return 1;
-    }
-    */
-
 
     DicomVolumetricMask vol{*fixed_volume};
     Application appdata{resources,&vol};
