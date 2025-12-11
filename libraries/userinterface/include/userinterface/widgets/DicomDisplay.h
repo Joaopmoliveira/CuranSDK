@@ -234,7 +234,7 @@ public:
     {
         if(in_volume.IsNull())
             return;
-        ImageType::RegionType inputRegion = in_volume->GetBufferedRegion();
+        ImageType::RegionType inputRegion = in_volume->GetLargestPossibleRegion();
         std::vector<std::array<double,3>> points_to_store;
 
 		if((update_policy & UPDATE_POINTS) && image.IsNotNull()){
@@ -256,14 +256,17 @@ public:
                         local_normalized_index[0] = local_index[0]/inputRegion.GetSize()[0];
                         local_normalized_index[1] = local_index[1]/inputRegion.GetSize()[1];
                         local_normalized_index[2] = local_index[2]/inputRegion.GetSize()[2];
-                        bool isthere = identifiers.size() ? false : true;
-                        for(auto innerkey : identifiers)
-                            if(key == innerkey)
-                                isthere = true;
-                            if(isthere)
-                                points_to_store.push_back(local_normalized_index);
+                        bool are_there_constraints = identifiers.size() ? false : true;
+                        if(are_there_constraints){
+                            for(auto innerkey : identifiers)
+                                if(key == innerkey)
+                                    points_to_store.push_back(local_normalized_index);
+                        } else {
+                            points_to_store.push_back(local_normalized_index);
+                        }      
                         }},stroke);
                 }
+            ++increment;
 			}
 		} 
                 

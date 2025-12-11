@@ -830,7 +830,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
     validate_blending->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
 
-    const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
+    const std::string displaystring = (appdata.modalitytype == ViewType::CT_VIEW) ? "Switch to MRI" : "Switch to CT" ;
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
@@ -841,22 +841,27 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
             if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
                 input = search->second.img;
             else{
+                std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
+            std::printf("updating to mri volume\n");
             appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
             if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
                 input = search->second.img;
-            else{
+            else{   
+                std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
+            std::printf("updating to ct volume\n");
             appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
+        std::printf("done switch representation %s\n",appdata.current_volume);
     });
 
     auto fixregistration = Button::make("Fix Registration", *appdata.resources);
@@ -1075,7 +1080,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         else
             config->stack_page->stack(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
     });
-    const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
+    const std::string displaystring = (appdata.modalitytype == ViewType::CT_VIEW) ? "Switch to MRI" : "Switch to CT" ;
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
@@ -1086,22 +1091,27 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
                 input = search->second.img;
             else{
+                std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            std::printf("updating to mri volume\n");
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
             if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
                 input = search->second.img;
-            else{
+            else{   
+                std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
-            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            std::printf("updating to ct volume\n");
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
+        std::printf("done switch representation %s\n",appdata.current_volume);
     });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -1385,7 +1395,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
 		}
     });
-    const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
+    const std::string displaystring = (appdata.modalitytype == ViewType::CT_VIEW) ? "Switch to MRI" : "Switch to CT" ;
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
@@ -1396,22 +1406,27 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
                 input = search->second.img;
             else{
+                std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
+            std::printf("updating to mri volume\n");
             appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
             ImageType::Pointer input;
             if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
                 input = search->second.img;
-            else{
+            else{   
+                std::printf("did not find the volume\n");
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
+            std::printf("updating to ct volume\n");
             appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
+        std::printf("done switch representation %s\n",appdata.current_volume);
     });
 
 
@@ -1857,7 +1872,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
 		}
     });
 
-    const std::string displaystring = appdata.modalitytype == ViewType::CT_VIEW ? "Switch to MRI" : "Switch to CT" ;
+    const std::string displaystring = (appdata.modalitytype == ViewType::CT_VIEW) ? "Switch to MRI" : "Switch to CT" ;
     auto switchto = Button::make(displaystring, *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
@@ -1888,6 +1903,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
             appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
+        std::printf("done switch representation %s\n",appdata.current_volume);
     });
 
     auto check = Button::make("Store Trajectory Data", *appdata.resources);
