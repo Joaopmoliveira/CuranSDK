@@ -125,6 +125,102 @@ public:
         return image.IsNotNull();
     }
 
+    template<typename... T>
+    bool try_replace(size_t previous_tag,const Direction &direction, const float &along_dimension, T &&...u)
+    {
+        assert(along_dimension >= 0 && along_dimension <= 1 && "the received size is not between 0 and 1");
+        switch (direction)
+        {
+        case Direction::X:
+        {
+            auto _current_index_x = std::round(along_dimension * (masks_x.size() - 1));
+            auto [iterator_to_inserted_object,insertion_successeful] = masks_x[_current_index_x].try_emplace(previous_tag, std::forward<T>(u)...);
+            /*
+            We have inserted the object inside the set of masks, thus we need to query if the insertion on the other masks is also, sucessefull
+            if true then we can 
+            */
+            bool erase = true;
+            if (insertion_successeful)
+            {
+                std::visit(curan::utilities::overloaded{[&](const curan::ui::Path &path)
+                                                        {
+                                                            erase = false;
+                                                        },						  //        x                    y                          z
+                                                        [&](const curan::ui::Point &point) { // (along_dimension ) point.normalized_point.fX point.normalized_point.fY
+                                                            if (point.normalized_point.fX >= 0 && point.normalized_point.fX <= 1 && point.normalized_point.fY >= 0 && point.normalized_point.fY <= 1)
+                                                            {
+                                                                erase = false;
+                                                                auto _current_index_y = std::round(point.normalized_point.fX * (masks_y.size() - 1));
+                                                                masks_y[_current_index_y].try_emplace(previous_tag, curan::ui::Point{SkPoint::Make(along_dimension, point.normalized_point.fY)});
+                                                                auto _current_index_z = std::round(point.normalized_point.fY * (masks_z.size() - 1));
+                                                                masks_z[_current_index_z].try_emplace(previous_tag, curan::ui::Point{SkPoint::Make(along_dimension, point.normalized_point.fX)});
+                                                            }
+                                                        }},
+                           iterator_to_inserted_object->second);
+            }
+            if (erase)
+                masks_x[_current_index_x].erase(iterator_to_inserted_object);
+            return insertion_successeful;
+        }
+        case Direction::Y:
+        {
+            auto _current_index_y = std::round(along_dimension * (masks_y.size() - 1));
+            auto [iterator_to_inserted_object,insertion_successeful] = masks_y[_current_index_y].try_emplace(previous_tag, std::forward<T>(u)...);
+            bool erase = true;
+            if (insertion_successeful)
+            {
+                std::visit(curan::utilities::overloaded{[&](const curan::ui::Path &path)
+                                                        {
+                                                            erase = false;
+                                                        },						  //        x                          y                          z
+                                                        [&](const curan::ui::Point &point) { //  point.normalized_point.fX (along_dimension )   point.normalized_point.fY
+                                                            if (point.normalized_point.fX >= 0 && point.normalized_point.fX <= 1 && point.normalized_point.fY >= 0 && point.normalized_point.fY <= 1)
+                                                            {
+                                                                erase = false;
+                                                                auto _current_index_x = std::round(point.normalized_point.fX * (masks_x.size() - 1));
+                                                                masks_x[_current_index_x].try_emplace(previous_tag, curan::ui::Point{SkPoint::Make(along_dimension, point.normalized_point.fY)});
+                                                                auto _current_index_z = std::round(point.normalized_point.fY * (masks_z.size() - 1));
+                                                                masks_z[_current_index_z].try_emplace(previous_tag, curan::ui::Point{SkPoint::Make(point.normalized_point.fX, along_dimension)});
+                                                            }
+                                                        }},
+                           iterator_to_inserted_object->second);
+            }
+            if (erase)
+                masks_y[_current_index_y].erase(iterator_to_inserted_object);
+            return insertion_successeful;
+        }
+        case Direction::Z:
+        {
+            auto _current_index_z = std::round(along_dimension * (masks_z.size() - 1));
+            auto [iterator_to_inserted_object,insertion_successeful] = masks_z[_current_index_z].try_emplace(previous_tag, std::forward<T>(u)...);
+            bool erase = true;
+            if (insertion_successeful)
+            {
+                std::visit(curan::utilities::overloaded{[&](const curan::ui::Path &path)
+                                                        {
+                                                            erase = false;
+                                                        },						  //        x                            y                          z
+                                                        [&](const curan::ui::Point &point) { // point.normalized_point.fX point.normalized_point.fY (along_dimension )
+                                                            if (point.normalized_point.fX >= 0 && point.normalized_point.fX <= 1 && point.normalized_point.fY >= 0 && point.normalized_point.fY <= 1)
+                                                            {
+                                                                erase = false;
+                                                                auto _current_index_x = std::round(point.normalized_point.fX * (masks_x.size() - 1));
+                                                                masks_x[_current_index_x].try_emplace(previous_tag, curan::ui::Point{SkPoint::Make(point.normalized_point.fY, along_dimension)});
+                                                                auto _current_index_y = std::round(point.normalized_point.fY * (masks_y.size() - 1));
+                                                                masks_y[_current_index_y].try_emplace(previous_tag, curan::ui::Point{SkPoint::Make(point.normalized_point.fX, along_dimension)});
+                                                            }
+                                                        }},
+                           iterator_to_inserted_object->second);
+            }
+            if (erase)
+                masks_z[_current_index_z].erase(iterator_to_inserted_object);
+            return insertion_successeful;
+        }
+        default:
+            throw std::runtime_error("incorrect mask direction selected");
+        };
+    }
+
     template <typename... T>
     bool try_emplace(const Direction &direction, const float &along_dimension, T &&...u)
     {
@@ -235,7 +331,7 @@ public:
         if(in_volume.IsNull())
             return;
         ImageType::RegionType inputRegion = in_volume->GetLargestPossibleRegion();
-        std::vector<std::array<double,3>> points_to_store;
+        std::vector<std::tuple<size_t,std::array<double,3>>> points_to_store;
 
 		if((update_policy & UPDATE_POINTS) && image.IsNotNull()){
             auto old_size = image->GetLargestPossibleRegion().GetSize();
@@ -260,9 +356,9 @@ public:
                         if(are_there_constraints){
                             for(auto innerkey : identifiers)
                                 if(key == innerkey)
-                                    points_to_store.push_back(local_normalized_index);
+                                    points_to_store.push_back(std::make_tuple(key,local_normalized_index));
                         } else {
-                            points_to_store.push_back(local_normalized_index);
+                            points_to_store.push_back(std::make_tuple(key,local_normalized_index));
                         }      
                         }},stroke);
                 }
@@ -270,17 +366,17 @@ public:
 			}
 		} 
                 
-        if(!(update_policy & UPDATE_GEOMETRIES))
-            three_dimensional_entities = std::map<std::string,std::tuple<curan::geometry::PolyHeadra,SkColor>>{};
-
         image = in_volume;
         masks_x = std::vector<DicomMask>(inputRegion.GetSize()[Direction::X]);
         masks_y = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Y]);
         masks_z = std::vector<DicomMask>(inputRegion.GetSize()[Direction::Z]);
         SkMatrix mat;
         mat.setIdentity();
-        for(auto point : points_to_store)
-            try_emplace(Direction::X,point[0],curan::ui::Point{SkPoint::Make(point[1],point[2]), mat});
+        for(auto& [tag,point] : points_to_store)
+            try_replace(tag,Direction::X,point[0],curan::ui::Point{SkPoint::Make(point[1],point[2]), mat});
+
+        if(!(update_policy & UPDATE_GEOMETRIES))
+            three_dimensional_entities = std::map<std::string,std::tuple<curan::geometry::PolyHeadra,SkColor>>{};
     }
 
     inline ImageType::Pointer get_volume(){
