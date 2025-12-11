@@ -113,6 +113,7 @@ struct RegionOfInterest{
 
 struct CachedVolume{
     ImageType::Pointer img;
+    bool is_visible = true;
 };
 
 enum LayoutType{
@@ -177,20 +178,7 @@ void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::Dico
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
 
-ImageType::Pointer allocate_image(Application& appdata){
-
-    ImageType::Pointer input;
-    auto& volumes = appdata.ct_volumes;
-    if(appdata.modalitytype != ViewType::CT_VIEW)
-        volumes = appdata.mri_volumes;
-
-    if (auto search = volumes.find("source"); search != volumes.end())
-        input = search->second.img;
-    else{
-        return nullptr;
-    }
-
-
+ImageType::Pointer allocate_image(Application& appdata,ImageType::Pointer input){
     auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
         Eigen::Matrix<double,3,1> converted;
         converted << (double)point[0] , (double)point[1], (double)point[2];
@@ -904,7 +892,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             if (auto search = volumes.find("source"); search != volumes.end())
                 input = search->second.img;
             else{
-                return std::make_tuple(false,"could not find source dicom image",ImageType::Pointer());
+                return std::make_tuple(false,std::string{"could not find source dicom image"},ImageType::Pointer());
             }
 
             auto direction = input->GetDirection();
@@ -923,7 +911,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             z_direction = x_direction.cross(y_direction);  
             z_direction.normalize();
             if (z_direction.norm() < 1e-7)
-                return std::make_tuple(false,"AC-PC line is singular when projected unto the axial plane, try different points",ImageType::Pointer());
+                return std::make_tuple(false,std::string{"AC-PC line is singular when projected unto the axial plane, try different points"},ImageType::Pointer());
 
             Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
             eigen_rotation_matrix.col(0) = x_direction;
@@ -956,16 +944,16 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
                     rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
 
             if(output_bounding_box.orientation.determinant() < 0.999 ||  output_bounding_box.orientation.determinant() > 1.001)
-                return std::make_tuple(false,"matrix must be rotation (ortogonal)",ImageType::Pointer());
+                return std::make_tuple(false,std::string{"matrix must be rotation (ortogonal)"},ImageType::Pointer());
                 
             filter->SetOutputDirection(rotation_matrix);
 
             try{
                 filter->Update();
-                auto output = filter->GetOutput();
-                return std::make_tuple(true,"success",output);
+                ImageType::Pointer output = filter->GetOutput();
+                return std::make_tuple(true,std::string{"success"},output);
             } catch (...){
-                return std::make_tuple(false,"resampling filter has failed",ImageType::Pointer());
+                return std::make_tuple(false,std::string{"resampling filter has failed"},ImageType::Pointer());
             }
 
         };
@@ -1024,7 +1012,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     *container << std::move(viwers_container) << std::move(image_display);
     container->set_divisions({0.0, 0.1, 1.0});
 
-    return std::move(container);
+    return container;
 };
 
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
@@ -1214,64 +1202,75 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         orient_along_traj.normalize(); 
         const Eigen::Matrix<double, 3, 1> z_direction = orient_along_traj;
 
-        ImageType::Pointer input;
-        auto& volumes = appdata.ct_volumes;
-        if(appdata.modalitytype != ViewType::CT_VIEW)
-            volumes = appdata.mri_volumes;
-        if (auto search = volumes.find("source"); search != volumes.end())
-            input = search->second.img;
+        ImageType::Pointer ct_input;
+        if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
+            ct_input = search->second.img;
         else{
             if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
             return;
         }
 
-        Eigen::Matrix<double,3,1> y_direction = (base1 - base0).normalized();
-        Eigen::Matrix<double,3,1> x_direction = y_direction.cross(z_direction);
-        x_direction.normalize();
-        y_direction = z_direction.cross(x_direction);
-        Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
-        eigen_rotation_matrix.col(0) = x_direction;
-        eigen_rotation_matrix.col(1) = y_direction;
-        eigen_rotation_matrix.col(2) = z_direction;
-
-        BoundingBox bounding_box_original_image{input};    
-        auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
-        using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
-        auto filter = FilterType::New();
-
-        using TransformType = itk::IdentityTransform<double, 3>;
-        auto transform = TransformType::New();
-
-        using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
-        auto interpolator = InterpolatorType::New();
-        filter->SetInterpolator(interpolator);
-        filter->SetDefaultPixelValue(0);
-        filter->SetTransform(transform);
-
-        filter->SetInput(input);
-        filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
-        filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
-        filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
-
-        itk::Matrix<double> rotation_matrix;
-        for (size_t col = 0; col < 3; ++col)
-            for (size_t row = 0; row < 3; ++row)
-                rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
-
-        if(output_bounding_box.orientation.determinant() < 0.999 ||  output_bounding_box.orientation.determinant() > 1.001)
-            throw std::runtime_error("matrix must be rotation");
-        filter->SetOutputDirection(rotation_matrix);
-
-        try{
-            filter->Update();
-            auto output = filter->GetOutput();
-            appdata.volumes.emplace("trajectory",output);
-            if (config->stack_page != nullptr) {
-                config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
-            }
-        } catch (...){
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("failed to resample trajectory volume",*appdata.resources));
+        ImageType::Pointer mri_input;
+        if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
+            mri_input = search->second.img;
+        else{
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find source dicom image",*appdata.resources));
+            return;
         }
+
+        auto resampler = [&](ImageType::Pointer input){
+            Eigen::Matrix<double,3,1> y_direction = (base1 - base0).normalized();
+            Eigen::Matrix<double,3,1> x_direction = y_direction.cross(z_direction);
+            x_direction.normalize();
+            y_direction = z_direction.cross(x_direction);
+            Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
+            eigen_rotation_matrix.col(0) = x_direction;
+            eigen_rotation_matrix.col(1) = y_direction;
+            eigen_rotation_matrix.col(2) = z_direction;
+
+            BoundingBox bounding_box_original_image{input};    
+            auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
+            using FilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+            auto filter = FilterType::New();
+
+            using TransformType = itk::IdentityTransform<double, 3>;
+            auto transform = TransformType::New();
+
+            using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
+            auto interpolator = InterpolatorType::New();
+            filter->SetInterpolator(interpolator);
+            filter->SetDefaultPixelValue(0);
+            filter->SetTransform(transform);
+
+            filter->SetInput(input);
+            filter->SetOutputOrigin(itk::Point<double>{{output_bounding_box.origin[0], output_bounding_box.origin[1], output_bounding_box.origin[2]}});
+            filter->SetOutputSpacing(ImageType::SpacingType{{output_bounding_box.spacing[0], output_bounding_box.spacing[1], output_bounding_box.spacing[2]}});
+            filter->SetSize(itk::Size<3>{{(size_t)output_bounding_box.size[0], (size_t)output_bounding_box.size[1], (size_t)output_bounding_box.size[2]}});
+
+            itk::Matrix<double> rotation_matrix;
+            for (size_t col = 0; col < 3; ++col)
+                for (size_t row = 0; row < 3; ++row)
+                    rotation_matrix(row, col) = output_bounding_box.orientation(row, col);
+
+            if(output_bounding_box.orientation.determinant() < 0.999 ||  output_bounding_box.orientation.determinant() > 1.001)
+                throw std::runtime_error("matrix must be rotation");
+            filter->SetOutputDirection(rotation_matrix);
+
+            try{
+                filter->Update();
+                ImageType::Pointer output = filter->GetOutput();
+                if (config->stack_page != nullptr) {
+                    config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
+                }
+            } catch (...){
+                if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("failed to resample trajectory volume",*appdata.resources));
+            }
+
+        };
+        auto [flag_ct,error_description_ct,ct_output] = resampler(ct_input);
+        auto [flag_mri,error_description_mri,mri_output] = resampler(mri_input);
+        appdata.ct_volumes.emplace("trajectory",output);
+
 
         appdata.panel_constructor = select_entry_point_and_validate_point_selection;
         appdata.volume_callback = std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)>{};
@@ -1463,16 +1462,33 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
 std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata){
     using namespace curan::ui;
 
-    ImageType::Pointer input;
-    if (auto search = appdata.volumes.find("trajectory"); search != appdata.volumes.end())
-        input = search->second.img;
-    else{
-        throw std::runtime_error("failure due to missing volume");
-    }
-    appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+    ImageType::Pointer ct_input;
+    if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
+        ct_input = search->second.img;
+    else
+        return nullptr;
+
+    ImageType::Pointer mri_input;
+    if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
+        mri_input = search->second.img;
+    else
+        return nullptr;
+
+    if(appdata.modalitytype == ViewType::CT_VIEW)
+        appdata.vol_mas->update_volume(ct_input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+    else 
+        appdata.vol_mas->update_volume(mri_input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
     try{
-        ImageType::Pointer projected_input = allocate_image(appdata);
-        appdata.projected_vol_mas.update_volume(projected_input);
+        ImageType::Pointer ct_projected_input = allocate_image(appdata,ct_input);
+        ImageType::Pointer mri_projected_input = allocate_image(appdata,mri_input);
+        appdata.ct_volumes.emplace("tmp_proj",CachedVolume{ct_projected_input,false});
+        appdata.mri_volumes.emplace("tmp_proj",CachedVolume{mri_projected_input,false});
+        if(appdata.modalitytype == ViewType::CT_VIEW)
+            appdata.projected_vol_mas.update_volume(ct_projected_input);
+        else 
+            appdata.projected_vol_mas.update_volume(mri_projected_input);
+        
+        
     } catch(...){
         std::cout << "failure allocating image" << std::endl;
         throw std::runtime_error("failure");
@@ -1673,7 +1689,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
     *views_and_roi_container << std::move(roi_container) << std::move(image_display);
     views_and_roi_container->set_divisions({0.0, 0.1, 1.0});
 
-    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);select_entry_point_and_validate_point_selection
     *container << std::move(viwers_container) << std::move(views_and_roi_container);
     container->set_divisions({0.0, 0.1, 1.0});
 
