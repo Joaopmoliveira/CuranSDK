@@ -213,8 +213,10 @@ public:
     using Pointer = itk::SmartPointer<Self>;
     itkNewMacro(Self);
 
+    double m_LastMetricValue;
+
 protected:
-    RegistrationInterfaceCommand() = default;
+    RegistrationInterfaceCommand() { m_LastMetricValue = 0.0; };
 
 public:
     using RegistrationType = TRegistration;
@@ -242,7 +244,20 @@ public:
 
     void Execute(const itk::Object *, const itk::EventObject &) override
     {
+        auto optimizer = static_cast<OptimizerPointer>(object);
+        if (!itk::IterationEvent().CheckEvent(&event))
+        {
             return;
+        }
+        double currentValue = optimizer->GetValue();
+        // Only print out when the Metric value changes
+        if (itk::Math::abs(m_LastMetricValue - currentValue) > 1e-7)
+        {
+            std::cout << optimizer->GetCurrentIteration() << "   ";
+            std::cout << currentValue << "   ";
+            std::cout << optimizer->GetCurrentPosition() << std::endl;
+            m_LastMetricValue = currentValue;
+        }
     }
 
     Application* ptr = nullptr;
@@ -2448,7 +2463,7 @@ try{
 			std::cout << "failed to swap buffers\n";
         auto async_job = appdata.sync_tasks_with_screen_queue.try_pop();
         if(async_job)
-            async_job();
+            (*async_job)();
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
