@@ -163,7 +163,7 @@ struct Application{
     ViewType modalitytype = ViewType::CT_VIEW;
     std::map<std::string,CachedVolume> ct_volumes;
     std::map<std::string,CachedVolume> mri_volumes;
-    std::string current_volume = "source";
+    std::string current_volume = "raw";
     bool registration_complete = false;
     Eigen::Matrix<double,4,4> registration_fixed_to_moving = Eigen::Matrix<double,4,4>::Identity();
     curan::ui::DicomVolumetricMask* vol_mas = nullptr;
@@ -1111,7 +1111,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
         DICOMImageType::Pointer ct_input_converted;
         {
             ImageType::Pointer ct_input;
-            if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
+            if (auto search = appdata.ct_volumes.find("raw"); search != appdata.ct_volumes.end())
                 ct_input = search->second.img;
             else{
                 if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find CT source dicom image",*appdata.resources));
@@ -1137,7 +1137,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
         DICOMImageType::Pointer mri_input_converted;
         {
             ImageType::Pointer mri_input;
-            if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
+            if (auto search = appdata.mri_volumes.find("raw"); search != appdata.mri_volumes.end())
                 mri_input = search->second.img;
             else{
                 if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find MRI source dicom image",*appdata.resources));
@@ -1162,7 +1162,29 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
 
         appdata.pool->submit("",[&, fixed_image = ct_input_converted, moving_image = mri_input_converted ](){
             auto [resampled_output,checked_overlap_output] = solve_registration(fixed_image,moving_image,appdata);
-            std::printf("finished registration!!!!!!!!\n");
+            appdata.sync_tasks_with_screen_queue.push(curan::utilities::Job{"emplace volumes in maps",[&,fixed_image = fixed_image, moving_image = resampled_output ](){
+
+                ImageType::Pointer fixed_image;
+                if (auto search = appdata.ct_volumes.find("raw"); search != appdata.ct_volumes.end())
+                    fixed_image = search->second.img;
+                else{
+                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find CT source dicom image",*appdata.resources));
+                    return;
+                }
+
+                appdata.ct_volumes.emplace("source",fixed_image);
+                appdata.mri_volumes.emplace("source",moving_image);
+                appdata.current_volume = "source";
+
+                if(appdata.modalitytype == ViewType::CT_VIEW){
+                    appdata.vol_mas->update_volume(fixed_image);
+                } else {
+                    appdata.vol_mas->update_volume(moving_image);
+                }
+
+                config->stack_page->stack(success_overlay("registration complete!",*appdata.resources));
+
+            }});
         });
 
     });
@@ -1210,10 +1232,16 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
     auto fixregistration = Button::make("Fix Registration", *appdata.resources);
     fixregistration->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     fixregistration->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        if(!appdata.registration_complete){
-            config->stack_page->stack(warning_overlay("cannot advance without registration",*appdata.resources));
+        if (auto search = appdata.mri_volumes.find("source"); search == appdata.mri_volumes.end()){
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("cannot advance without registration",*appdata.resources));
             return;
         }
+
+        if (auto search = appdata.ct_volumes.find("source"); search == appdata.ct_volumes.end()){
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("cannot advance without registration",*appdata.resources));
+            return;
+        }
+
         appdata.panel_constructor = select_ac_pc_midline;
         appdata.volume_callback  = ac_pc_midline_point_selection;
         appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
@@ -2396,7 +2424,7 @@ std::optional<ImageType::Pointer> get_volume(std::string path, std::string ident
 }
 
 template<typename Image>
-auto missalign(Image image, std::array<double,3> in_translation, double angle_offset){
+typename Image::Pointer missalign(typename Image::Pointer image, std::array<double,3> in_translation, double angle_offset){
     using TransformType = itk::VersorRigid3DTransform<double>;
     auto groundTruthTransform = TransformType::New();
 
@@ -2420,7 +2448,7 @@ auto missalign(Image image, std::array<double,3> in_translation, double angle_of
     translation[2] = in_translation[2];  // mm
     groundTruthTransform->SetTranslation(translation);
 
-    using ResampleFilterType = itk::ResampleImageFilter<Image, Image>;
+    using ResampleFilterType = itk::ResampleImageFilter<Image,Image>;
     auto resampler = ResampleFilterType::New();
 
     resampler->SetInput(image); // original moving image
@@ -2433,7 +2461,7 @@ auto missalign(Image image, std::array<double,3> in_translation, double angle_of
     resampler->SetDefaultPixelValue(0);
     resampler->Update();
 
-    Image::Pointer artificiallyMisalignedImage = resampler->GetOutput();
+    typename Image::Pointer artificiallyMisalignedImage = resampler->GetOutput();
     return artificiallyMisalignedImage;
 }
 
@@ -2575,15 +2603,17 @@ int main(int argc, char* argv[]) {
         std::printf("\nReading input volume...\n");
         auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
         std::printf("\nReading input volume...\n");
-        auto moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
-        auto moving_volume = missalign<ImageType>(moving_volume,std::array<double,3>{5.0,-3.0,8.0}, 12);
-
-        if(!fixed_volume || ! moving_volume)
+        auto optional_moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
+        
+        if(!fixed_volume || ! optional_moving_volume)
         {
-            std::printf("failed to read moving or fixed volume");
+            std::printf("failed to read moving or fixed volume\n");
             return 1;
         }
-        std::printf("found all moving and fixed volumes");
+        std::array<double,3> spacing{5.0,-3.0,8.0};
+        auto moving_volume = missalign<ImageType>(*optional_moving_volume,spacing, 12);
+
+        std::printf("found all moving and fixed volumes\n");
 
         auto castfilter = itk::CastImageFilter<ImageType,itk::Image<double,3>>::New();
         castfilter->SetInput(*fixed_volume);
@@ -2602,8 +2632,8 @@ int main(int argc, char* argv[]) {
 
         DicomVolumetricMask vol{*fixed_volume};
         Application appdata{resources,&vol};
-        appdata.ct_volumes.emplace("source",*fixed_volume);
-        appdata.mri_volumes.emplace("source",*moving_volume);
+        appdata.ct_volumes.emplace("raw",*fixed_volume);
+        appdata.mri_volumes.emplace("raw",moving_volume);
         Page page{appdata.main_page(),SK_ColorBLACK};
 
         page.update_page(viewer.get());
