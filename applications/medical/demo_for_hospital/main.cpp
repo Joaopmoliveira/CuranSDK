@@ -43,12 +43,275 @@
 #include "itkImageSeriesReader.h"
 
 #include <Eigen/Dense>
+#include "itkCheckerBoardImageFilter.h"
 
 using DicomPixelType = double;
 using PixelType = unsigned char;
 constexpr unsigned int Dimension = 3;
 using ImageType = itk::Image<PixelType, Dimension>;
 using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
+
+#include "itkVersorRigid3DTransform.h"
+#include "itkImageRegistrationMethodv4.h"
+#include "itkRegularStepGradientDescentOptimizerv4.h"
+#include "itkEuler3DTransform.h"
+#include "itkCenteredTransformInitializer.h"
+
+template <typename TImage>
+typename TImage::Pointer DeepCopy(typename TImage::Pointer input)
+{
+    typename TImage::Pointer output = TImage::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+
+    for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator ){
+        outputIterator.Set(inputIterator.Get());
+    }
+    return output;
+}
+
+template <typename TRegistration>
+class RegistrationInterfaceCommand : public itk::Command {
+public:
+    using Self = RegistrationInterfaceCommand;
+    using Superclass = itk::Command;
+    using Pointer = itk::SmartPointer<Self>;
+    itkNewMacro(Self);
+
+protected:
+    RegistrationInterfaceCommand() = default;
+
+public:
+    using RegistrationType = TRegistration;
+    using RegistrationPointer = RegistrationType *;
+    using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+    using OptimizerPointer = OptimizerType *;
+
+    void Execute(itk::Object *object, const itk::EventObject &event) override {
+        if (!(itk::MultiResolutionIterationEvent().CheckEvent(&event))) {
+            return;
+        }
+
+        auto registration = static_cast<RegistrationPointer>(object);
+        auto optimizer = static_cast<OptimizerPointer>(registration->GetModifiableOptimizer());
+        if (registration->GetCurrentLevel() == 0) {
+            optimizer->SetLearningRate(0.1);
+            optimizer->SetMinimumStepLength(0.1);
+            optimizer->SetMaximumStepSizeInPhysicalUnits(0.2);
+        } else {
+            optimizer->SetLearningRate(optimizer->GetCurrentStepLength());
+            optimizer->SetMinimumStepLength(optimizer->GetMinimumStepLength() * 0.2);
+            optimizer->SetMaximumStepSizeInPhysicalUnits(optimizer->GetMaximumStepSizeInPhysicalUnits() * 0.2);
+        }
+    }
+
+    DICOMImageType::Pointer f_fixed;
+    DICOMImageType::Pointer f_moving;
+
+    void set(DICOMImageType::Pointer fixed,DICOMImageType::Pointer moving){
+        f_fixed = fixed;
+        f_moving = DeepCopy<DICOMImageType>(moving);
+    };
+
+    ImageType::Pointer resampler(const DICOMImageType::Pointer volume,const Eigen::Matrix<double, 3, 1> &target, const Eigen::Matrix<double, 3, 1> &needle_tip,const Eigen::Matrix<double, 3, 3> &R_ImageToWorld, double &image_size, double &image_spacing)
+    {
+        using FilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
+        auto filter = FilterType::New();
+
+        using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
+        // using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<InputImageType, double>;
+        auto interpolator = InterpolatorType::New();
+        filter->SetInterpolator(interpolator);
+        filter->SetDefaultPixelValue(0);
+
+        filter->SetInput(volume);
+
+        itk::Vector<double, 3> spacing;
+        spacing[0] = image_spacing;
+        spacing[1] = image_spacing;
+        spacing[2] = image_spacing;
+        filter->SetOutputSpacing(spacing);
+
+        itk::Size<3> size;
+        size[0] = image_size;
+        size[1] = image_size;
+        size[2] = 1;
+        filter->SetSize(size);
+
+        Eigen::Vector4d origin_corner_image_frame = Eigen::Vector4d::Ones();
+        origin_corner_image_frame[0] = -image_spacing*image_size*0.5;
+        origin_corner_image_frame[1] = -image_spacing*image_size*0.5;
+        origin_corner_image_frame[2] = (needle_tip-target).transpose()*R_ImageToWorld.col(2);
+
+        Eigen::Matrix<double,4,4> image_frame_transform = Eigen::Matrix<double,4,4>::Identity();
+        image_frame_transform.block<3,3>(0,0) = R_ImageToWorld;
+        image_frame_transform(0,3) = target[0];
+        image_frame_transform(1,3) = target[1];
+        image_frame_transform(2,3) = target[2];
+
+        Eigen::Vector4d origin_corner_world_frame = image_frame_transform*origin_corner_image_frame;
+
+        itk::Point<double, 3> origin;
+        origin[0] = origin_corner_world_frame[0];
+        origin[1] = origin_corner_world_frame[1];
+        origin[2] = origin_corner_world_frame[2];
+        filter->SetOutputOrigin(origin);
+
+        itk::Matrix<double> image_direction;
+        for (size_t row = 0; row < 3; ++row)
+            for (size_t col = 0; col < 3; ++col)
+                image_direction(col, row) = R_ImageToWorld(col, row);
+
+        filter->SetOutputDirection(image_direction);
+
+        using TransformType = itk::IdentityTransform<double, 3>;
+        auto transform = TransformType::New();
+        filter->SetTransform(transform);
+
+        try
+        {
+            filter->Update();
+        }
+        catch (const itk::ExceptionObject &e)
+        {
+            std::string result = "Failure to update the filter" + std::string{e.what()};
+            std::cout << result;
+        }
+
+        return filter->GetOutput();
+    }
+
+};
+
+void solve_registration(DICOMImageType::Pointer fixed_image,DICOMImageType::Pointer moving_image) {
+    using ImageRegistrationType = DicomPixelType;
+    using TransformType = itk::VersorRigid3DTransform<double>;
+    using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
+    using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
+    using MetricType = itk::MattesMutualInformationImageToImageMetricv4<DICOMImageType,DICOMImageType>;
+    using RegistrationType =  itk::ImageRegistrationMethodv4<DICOMImageType,DICOMImageType,TransformType>;
+
+    auto metric = MetricType::New();
+    auto optimizer = OptimizerType::New();
+    auto registration = RegistrationType::New();
+    typename InterpolatorType::Pointer interpolator_moving = InterpolatorType::New();
+    typename InterpolatorType::Pointer interpolator_fixed = InterpolatorType::New();
+
+    registration->SetMetric(metric);
+    registration->SetOptimizer(optimizer);
+
+    metric->SetNumberOfHistogramBins(24);
+
+    metric->SetUseMovingImageGradientFilter(false);
+    metric->SetUseFixedImageGradientFilter(false);
+
+    metric->SetMovingInterpolator(interpolator_moving);
+    metric->SetFixedInterpolator(interpolator_fixed);
+
+    auto transform = TransformType::New();
+
+    using TransformInitializerType = itk::CenteredTransformInitializer<TransformType,DICOMImageType,DICOMImageType>;
+    auto initializer = TransformInitializerType::New();
+    initializer->SetTransform(transform);
+    initializer->SetFixedImage(fixed_image);
+    initializer->SetMovingImage(moving_image);
+    initializer->MomentsOn();
+    initializer->InitializeTransform();
+
+    registration->SetFixedImage(fixed_image);
+    registration->SetMovingImage(moving_image);
+    registration->SetInitialTransform(transform);
+
+    using OptimizerScalesType = OptimizerType::ScalesType;
+    OptimizerScalesType optimizerScales(transform->GetNumberOfParameters());
+
+    optimizerScales[0] = 1.0;
+    optimizerScales[1] = 1.0;
+    optimizerScales[2] = 1.0;
+    optimizerScales[3] = 1.0 / 1000;
+    optimizerScales[4] = 1.0 / 1000;
+    optimizerScales[5] = 1.0 / 1000;
+
+    optimizer->SetScales(optimizerScales);
+
+    optimizer->SetNumberOfIterations(300);
+
+    optimizer->SetLearningRate(8.0);
+    optimizer->SetMinimumStepLength(0.0001);
+    optimizer->SetReturnBestParametersAndValue(true);
+    optimizer->SetRelaxationFactor(0.5);
+
+    typename RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
+    shrinkFactorsPerLevel.SetSize(Dimension);
+    typename RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
+    smoothingSigmasPerLevel.SetSize(Dimension);
+    std::array<size_t,Dimension> piramid_sizes{3,1,0};
+    std::array<size_t,Dimension> bluering_sizes{3,1,0};
+    for (size_t i = 0; i < Dimension; ++i) {
+        shrinkFactorsPerLevel[i] = piramid_sizes[i];
+        smoothingSigmasPerLevel[i] = bluering_sizes[i];
+    }
+
+    registration->SetNumberOfLevels(Dimension);
+    registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
+    registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
+
+    typename RegistrationType::MetricSamplingStrategyEnum samplingStrategy = RegistrationType::MetricSamplingStrategyEnum::RANDOM;
+    registration->MetricSamplingReinitializeSeed(1234);
+    registration->SetMetricSamplingStrategy(samplingStrategy);
+    registration->SetMetricSamplingPercentage(0.2);
+
+
+    registration->InPlaceOn();
+
+    using CommandType = RegistrationInterfaceCommand<RegistrationType>;
+    auto command = CommandType::New();
+    registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
+
+    try {
+        registration->Update();
+    } catch (const itk::ExceptionObject &err) {
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err << std::endl;
+    }
+    using ResampleFilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
+    auto finalTransform = registration->GetOutput()->Get();
+    auto resample = ResampleFilterType::New();
+    
+    resample->SetTransform(finalTransform);
+    resample->SetInput(moving_image);
+    
+    resample->SetSize(fixed_image->GetLargestPossibleRegion().GetSize());
+    resample->SetOutputOrigin(fixed_image->GetOrigin());
+    resample->SetOutputSpacing(fixed_image->GetSpacing());
+    resample->SetOutputDirection(fixed_image->GetDirection());
+    resample->SetDefaultPixelValue(0);
+    
+    using CastFilterType = itk::CastImageFilter<DICOMImageType, ImageType>;
+    
+    auto caster = CastFilterType::New();
+    caster->SetInput(resample->GetOutput());
+    caster->Update();
+    ImageType::Pointer resampled_output = caster->GetOutput();
+    
+    using CheckerBoardFilterType = itk::CheckerBoardImageFilter<DICOMImageType>;
+    
+    auto checker = CheckerBoardFilterType::New();
+    
+    checker->SetInput1(fixed_image);
+    checker->SetInput2(resample->GetOutput());
+    caster = CastFilterType::New();
+    caster->SetInput(checker->GetOutput());
+    caster->Update();
+
+    ImageType::Pointer checked_overlap_output = caster->GetOutput();
+}
 
 template <typename TImage,typename InclusionPolicy>
 std::tuple<typename TImage::Pointer,itk::Image<unsigned char,3>::Pointer> DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
@@ -147,11 +410,9 @@ struct Application{
     std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
     RegionOfInterest roi;
 
-    std::string trajectory_identifier;
-
-    std::string projected_path_x;
-    std::string projected_path_y;
-    std::string projected_path_z;
+    //we need to read these when doing the registration pipeline. The point is that the optimizer runs, queries the current location of the slices in the fixed volume
+    //computes the intersection with the reoriented image, and then updates the overlays
+    std::vector<curan::ui::DicomViewer*> viewers;
 
     Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
 
@@ -591,17 +852,17 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
     auto single_view_layout = Button::make(" ", "layout1x1.png", *appdata.resources);
     single_view_layout->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
     single_view_layout->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-    { appdata.type = LayoutType::ONE; appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); });
+    { appdata.type = LayoutType::ONE; appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); });
 
     auto double_view_layout = Button::make(" ", "layout1x2.png", *appdata.resources);
     double_view_layout->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
     double_view_layout->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-    { appdata.type = LayoutType::TWO; appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); });
+    { appdata.type = LayoutType::TWO; appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); });
 
     auto triple_view_layout = Button::make(" ", "layout1x3.png", *appdata.resources);
     triple_view_layout->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
     triple_view_layout->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-    { appdata.type = LayoutType::THREE; appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); });
+    { appdata.type = LayoutType::THREE; appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *viwers_container << std::move(single_view_layout) << std::move(double_view_layout) << std::move(triple_view_layout);
@@ -639,6 +900,7 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
             auto image_display = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
             image_display->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_display->add_overlay_processor(overlay_lambda);
+            appdata.viewers.push_back(image_display.get());
             *container << std::move(image_display);
         }
         break;
@@ -650,6 +912,8 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
             auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
             image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayy->add_overlay_processor(overlay_lambda);
+            appdata.viewers.push_back(image_displayx.get());
+            appdata.viewers.push_back(image_displayy.get());
             *container << std::move(image_displayx) << std::move(image_displayy);
         }
         break;
@@ -664,6 +928,9 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
             auto image_displayz = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
             image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayz->add_overlay_processor(overlay_lambda);
+            appdata.viewers.push_back(image_displayx.get());
+            appdata.viewers.push_back(image_displayy.get());
+            appdata.viewers.push_back(image_displayz.get());
             *container << std::move(image_displayx) << std::move(image_displayy) << std::move(image_displayz);
         }
         break;
@@ -818,7 +1085,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
     registervolumes->add_press_call([&](Button *button, Press press, ConfigDraw *config){
 
     });
-    
+
     auto validate_checkered = Button::make("Validate Checkered Overlap", *appdata.resources); 
     validate_checkered->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
 
