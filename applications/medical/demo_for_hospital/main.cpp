@@ -2446,6 +2446,9 @@ try{
 		bool val = viewer->swapBuffers();
 		if (!val)
 			std::cout << "failed to swap buffers\n";
+        auto async_job = appdata.sync_tasks_with_screen_queue.try_pop();
+        if(async_job)
+            async_job();
 		auto end = std::chrono::high_resolution_clock::now();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
 	}
