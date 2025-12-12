@@ -225,10 +225,12 @@ public:
 
     void Execute(itk::Object * caller, const itk::EventObject & event) override   {
         Execute((const itk::Object *)caller, event);
+        std::printf("!\n");
     }
 
-    void  Execute(const itk::Object * object, const itk::EventObject & event) override
+    void Execute(const itk::Object * object, const itk::EventObject & event) override
     {
+        std::printf(".\n");
         auto optimizer = static_cast<const OptimizerType *>(object);
         if (!itk::IterationEvent().CheckEvent(&event))
         {
@@ -387,7 +389,7 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
     shrinkFactorsPerLevel.SetSize(Dimension);
     typename RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
     smoothingSigmasPerLevel.SetSize(Dimension);
-    std::array<size_t,Dimension> piramid_sizes{3,1,0};
+    std::array<size_t,Dimension> piramid_sizes{4,2,1};
     std::array<size_t,Dimension> bluering_sizes{3,1,0};
     for (size_t i = 0; i < Dimension; ++i) {
         shrinkFactorsPerLevel[i] = piramid_sizes[i];
@@ -2399,8 +2401,55 @@ std::optional<ImageType::Pointer> get_volume(std::string path, std::string ident
 	return filter->GetOutput();
 }
 
-
 int main(int argc, char* argv[]) {
+    std::printf("\nReading input volume...\n");
+    auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
+    std::printf("\nReading input volume...\n");
+    auto moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
+
+    if(!fixed_volume || ! moving_volume)
+    {
+        std::printf("failed to read moving or fixed volume");
+        return 1;
+    }
+
+    DICOMImageType::Pointer ct_input_converted;
+    {
+        using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
+        auto filter = FilterType::New();
+        filter->SetInput(*fixed_volume);
+
+        try {
+            filter->Update();
+        } catch (const itk::ExceptionObject &err) {
+            return 1;
+        }
+
+        ct_input_converted = filter->GetOutput();
+
+    }
+    DICOMImageType::Pointer mri_input_converted;
+    {
+        using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
+        auto filter = FilterType::New();
+        filter->SetInput(*moving_volume);
+        try {
+            filter->Update();
+        } catch (const itk::ExceptionObject &err) {
+            return 1;
+        }
+        mri_input_converted = filter->GetOutput();
+    }
+    using namespace curan::ui;
+    IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
+    Application appdata{resources,nullptr};
+    auto [resampled_output,checked_overlap_output] = solve_registration(ct_input_converted,mri_input_converted,appdata);
+    std::printf("finished registration!!!!!!!!\n");
+
+    return 0;
+};
+
+int notmain(int argc, char* argv[]) {
 try{
 	using namespace curan::ui;
 	std::unique_ptr<Context> context = std::make_unique<Context>();;
