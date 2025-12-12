@@ -222,29 +222,14 @@ public:
     using RegistrationType = TRegistration;
     using RegistrationPointer = RegistrationType *;
     using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
-    using OptimizerPointer = OptimizerType *;
 
-    void Execute(itk::Object *object, const itk::EventObject &event) override {
-        if (!(itk::MultiResolutionIterationEvent().CheckEvent(&event))) {
-            return;
-        }
-
-        auto registration = static_cast<RegistrationPointer>(object);
-        auto optimizer = static_cast<OptimizerPointer>(registration->GetModifiableOptimizer());
-        if (registration->GetCurrentLevel() == 0) {
-            optimizer->SetLearningRate(0.1);
-            optimizer->SetMinimumStepLength(0.1);
-            optimizer->SetMaximumStepSizeInPhysicalUnits(0.2);
-        } else {
-            optimizer->SetLearningRate(optimizer->GetCurrentStepLength());
-            optimizer->SetMinimumStepLength(optimizer->GetMinimumStepLength() * 0.2);
-            optimizer->SetMaximumStepSizeInPhysicalUnits(optimizer->GetMaximumStepSizeInPhysicalUnits() * 0.2);
-        }
+    void Execute(itk::Object * caller, const itk::EventObject & event) override   {
+        Execute((const itk::Object *)caller, event);
     }
 
-    void Execute(const itk::Object *, const itk::EventObject &) override
+    void  Execute(const itk::Object * object, const itk::EventObject & event) override
     {
-        auto optimizer = static_cast<OptimizerPointer>(object);
+        auto optimizer = static_cast<const OptimizerType *>(object);
         if (!itk::IterationEvent().CheckEvent(&event))
         {
             return;
@@ -424,12 +409,14 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
     using CommandType = RegistrationInterfaceCommand<RegistrationType>;
     auto command = CommandType::New();
     registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
+    command->set(fixed_image,moving_image,appdata);
 
     try {
         registration->Update();
     } catch (const itk::ExceptionObject &err) {
         std::cout << "ExceptionObject caught !" << std::endl;
         std::cout << err << std::endl;
+        return std::make_tuple(ImageType::Pointer(),ImageType::Pointer());
     }
     using ResampleFilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
     auto finalTransform = registration->GetOutput()->Get();
@@ -448,7 +435,16 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
     
     auto caster = CastFilterType::New();
     caster->SetInput(resample->GetOutput());
-    caster->Update();
+
+    try {
+        caster->Update();
+    } catch (const itk::ExceptionObject &err) {
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err << std::endl;
+        return std::make_tuple(ImageType::Pointer(),ImageType::Pointer());
+    }
+
+    
     ImageType::Pointer resampled_output = caster->GetOutput();
     
     using CheckerBoardFilterType = itk::CheckerBoardImageFilter<DICOMImageType>;
@@ -459,7 +455,13 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
     checker->SetInput2(resample->GetOutput());
     caster = CastFilterType::New();
     caster->SetInput(checker->GetOutput());
-    caster->Update();
+    try {
+        caster->Update();
+    } catch (const itk::ExceptionObject &err) {
+        std::cout << "ExceptionObject caught !" << std::endl;
+        std::cout << err << std::endl;
+        return std::make_tuple(ImageType::Pointer(),ImageType::Pointer());
+    }
 
     ImageType::Pointer checked_overlap_output = caster->GetOutput();
     return std::make_tuple(resampled_output,checked_overlap_output);
