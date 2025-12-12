@@ -225,17 +225,11 @@ public:
 
     void Execute(itk::Object * caller, const itk::EventObject & event) override   {
         Execute((const itk::Object *)caller, event);
-        std::printf("!\n");
     }
 
     void Execute(const itk::Object * object, const itk::EventObject & event) override
     {
-        std::printf(".\n");
         auto optimizer = static_cast<const OptimizerType *>(object);
-        if (!itk::IterationEvent().CheckEvent(&event))
-        {
-            return;
-        }
         double currentValue = optimizer->GetValue();
         // Only print out when the Metric value changes
         if (itk::Math::abs(m_LastMetricValue - currentValue) > 1e-7)
@@ -410,7 +404,7 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
 
     using CommandType = RegistrationInterfaceCommand<RegistrationType>;
     auto command = CommandType::New();
-    registration->AddObserver(itk::MultiResolutionIterationEvent(), command);
+    optimizer->AddObserver(itk::IterationEvent(), command);
     command->set(fixed_image,moving_image,appdata);
 
     try {
@@ -2401,7 +2395,49 @@ std::optional<ImageType::Pointer> get_volume(std::string path, std::string ident
 	return filter->GetOutput();
 }
 
-int main(int argc, char* argv[]) {
+template<typename Image>
+auto missalign(Image image, std::array<double,3> in_translation, double angle_offset){
+    using TransformType = itk::VersorRigid3DTransform<double>;
+    auto groundTruthTransform = TransformType::New();
+
+    // Set rotation angle
+    TransformType::VersorType rotation;
+    {
+        itk::Vector<double,3> axis;
+        axis[0] = 0.0;
+        axis[1] = 1.0;  // rotate around Y-axis
+        axis[2] = 0.0;
+
+        double angleInRadians = itk::Math::pi / angle_offset; // 15 degrees
+        rotation.Set(axis, angleInRadians);
+    }
+    groundTruthTransform->SetRotation(rotation);
+
+    // Set translation
+    TransformType::OutputVectorType translation;
+    translation[0] = in_translation[0];  // mm
+    translation[1] = in_translation[1];  // mm
+    translation[2] = in_translation[2];  // mm
+    groundTruthTransform->SetTranslation(translation);
+
+    using ResampleFilterType = itk::ResampleImageFilter<Image, Image>;
+    auto resampler = ResampleFilterType::New();
+
+    resampler->SetInput(image); // original moving image
+    resampler->SetTransform(groundTruthTransform);
+
+    resampler->SetSize(image->GetLargestPossibleRegion().GetSize());
+    resampler->SetOutputOrigin(image->GetOrigin());
+    resampler->SetOutputSpacing(image->GetSpacing());
+    resampler->SetOutputDirection(image->GetDirection());
+    resampler->SetDefaultPixelValue(0);
+    resampler->Update();
+
+    Image::Pointer artificiallyMisalignedImage = resampler->GetOutput();
+    return artificiallyMisalignedImage;
+}
+
+int notmain(int argc, char* argv[]) {
     std::printf("\nReading input volume...\n");
     auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
     std::printf("\nReading input volume...\n");
@@ -2443,232 +2479,312 @@ int main(int argc, char* argv[]) {
     using namespace curan::ui;
     IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
     Application appdata{resources,nullptr};
-    auto [resampled_output,checked_overlap_output] = solve_registration(ct_input_converted,mri_input_converted,appdata);
+
+    using TransformType = itk::VersorRigid3DTransform<double>;
+    auto groundTruthTransform = TransformType::New();
+
+    // Set rotation angle
+    TransformType::VersorType rotation;
+    {
+        itk::Vector<double,3> axis;
+        axis[0] = 0.0;
+        axis[1] = 1.0;  // rotate around Y-axis
+        axis[2] = 0.0;
+
+        double angleInRadians = itk::Math::pi / 12.0; // 15 degrees
+        rotation.Set(axis, angleInRadians);
+    }
+    groundTruthTransform->SetRotation(rotation);
+
+    // Set translation
+    TransformType::OutputVectorType translation;
+    translation[0] = 5.0;  // mm
+    translation[1] = -3.0;
+    translation[2] = 8.0;
+    groundTruthTransform->SetTranslation(translation);
+
+    using ResampleFilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
+    auto resampler = ResampleFilterType::New();
+
+    resampler->SetInput(mri_input_converted); // original moving image
+    resampler->SetTransform(groundTruthTransform);
+
+    resampler->SetSize(mri_input_converted->GetLargestPossibleRegion().GetSize());
+    resampler->SetOutputOrigin(mri_input_converted->GetOrigin());
+    resampler->SetOutputSpacing(mri_input_converted->GetSpacing());
+    resampler->SetOutputDirection(mri_input_converted->GetDirection());
+    resampler->SetDefaultPixelValue(0);
+    resampler->Update();
+
+    DICOMImageType::Pointer artificiallyMisalignedImage = resampler->GetOutput();
+
+    auto [resampled_output,checked_overlap_output] = solve_registration(ct_input_converted,artificiallyMisalignedImage,appdata);
     std::printf("finished registration!!!!!!!!\n");
+
+    {
+        itk::ImageFileWriter<DICOMImageType>::Pointer warpedImageWriter;
+        warpedImageWriter = itk::ImageFileWriter<DICOMImageType>::New();
+        warpedImageWriter->SetInput(ct_input_converted);
+        warpedImageWriter->SetFileName("fixed.mha");
+        try{
+            warpedImageWriter->Update();
+        } catch (const itk::ExceptionObject & excp){
+            std::cerr << excp << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+
+    {
+        itk::ImageFileWriter<DICOMImageType>::Pointer warpedImageWriter;
+        warpedImageWriter = itk::ImageFileWriter<DICOMImageType>::New();
+        warpedImageWriter->SetInput(artificiallyMisalignedImage);
+        warpedImageWriter->SetFileName("moving.mha");
+        try{
+            warpedImageWriter->Update();
+        } catch (const itk::ExceptionObject & excp){
+            std::cerr << excp << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+
+    {
+        itk::ImageFileWriter<ImageType>::Pointer warpedImageWriter;
+        warpedImageWriter = itk::ImageFileWriter<ImageType>::New();
+        warpedImageWriter->SetInput(resampled_output);
+        warpedImageWriter->SetFileName("moving_overlayed.mha");
+        try{
+            warpedImageWriter->Update();
+        } catch (const itk::ExceptionObject & excp){
+            std::cerr << excp << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
 
     return 0;
 };
 
-int notmain(int argc, char* argv[]) {
-try{
-	using namespace curan::ui;
-	std::unique_ptr<Context> context = std::make_unique<Context>();;
-	DisplayParams param{ std::move(context),2000,1000};
-	param.windowName = "Curan:Santa Maria Demo";
-	std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
-	IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
-
-    std::printf("\nReading input volume...\n");
-    auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
-    std::printf("\nReading input volume...\n");
-    auto moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
-    
-    if(!fixed_volume || ! moving_volume)
-    {
-        std::printf("failed to read moving or fixed volume");
-        return 1;
-    }
-    std::printf("found all moving and fixed volumes");
-
-    auto castfilter = itk::CastImageFilter<ImageType,itk::Image<double,3>>::New();
-    castfilter->SetInput(*fixed_volume);
-
-    auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>::New();
-    rescale->SetInput(castfilter->GetOutput());
-    rescale->SetOutputMinimum(0);
-    rescale->SetOutputMaximum(255.0);
-
+int main(int argc, char* argv[]) {
     try{
-        rescale->Update();
-    }catch (...){
-        std::cout << "improperly consumed the input volume";
-        return 1;
-    }
+        using namespace curan::ui;
+        std::unique_ptr<Context> context = std::make_unique<Context>();;
+        DisplayParams param{ std::move(context),2000,1000};
+        param.windowName = "Curan:Santa Maria Demo";
+        std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
+        IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
-    DicomVolumetricMask vol{*fixed_volume};
-    Application appdata{resources,&vol};
-    appdata.ct_volumes.emplace("source",*fixed_volume);
-    appdata.mri_volumes.emplace("source",*moving_volume);
-    Page page{appdata.main_page(),SK_ColorBLACK};
+        std::printf("\nReading input volume...\n");
+        auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
+        std::printf("\nReading input volume...\n");
+        auto moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
+        auto moving_volume = missalign<ImageType>(moving_volume,std::array<double,3>{5.0,-3.0,8.0}, 12);
 
-	page.update_page(viewer.get());
-
-	ConfigDraw config{&page};
-
-	while (!glfwWindowShouldClose(viewer->window)) {
-		auto start = std::chrono::high_resolution_clock::now();
-		SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
-		SkCanvas* canvas = pointer_to_surface->getCanvas();
-		if (viewer->was_updated()) {
-	    	page.update_page(viewer.get());
-			viewer->update_processed();
-		}
-		page.draw(canvas);
-		auto signals = viewer->process_pending_signals();
-		if (!signals.empty())
-			page.propagate_signal(signals.back(), &config);
-		glfwPollEvents();
-
-		bool val = viewer->swapBuffers();
-		if (!val)
-			std::cout << "failed to swap buffers\n";
-        auto async_job = appdata.sync_tasks_with_screen_queue.try_pop();
-        if(async_job)
-            (*async_job)();
-		auto end = std::chrono::high_resolution_clock::now();
-		std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-	}
-
-
-    auto geometries = appdata.vol_mas->geometries();
-
-    std::vector<ImageType::Pointer> internals;
-    auto size = appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize();
-    internals.reserve(geometries.size());
-
-    auto convert = [&](gte::Vector3<curan::geometry::Piramid::Rational> vertex){
-        ImageType::IndexType itk_ind;
-        itk_ind[0] = size[0]*(double)vertex[0];
-        itk_ind[1] = size[1]*(double)vertex[1];
-        itk_ind[2] = size[2]*(double)vertex[2];
-        ImageType::PointType point;
-        appdata.vol_mas->get_volume()->TransformIndexToPhysicalPoint(itk_ind,point);
-        Eigen::Vector3d data;
-        data[0] = point[0];
-        data[1] = point[1];
-        data[2] = point[2];
-        return data;
-    };
-
-    for (const auto &[key,geomdata] : geometries){
-        const auto &[geom,color] = geomdata;
-        if(geom.geometry.vertices.size()==8){
-            ImageType::Pointer geometry_as_image = ImageType::New();
-
-            auto origin_index = convert(geom.geometry.vertices[0]);
-            auto x_dir_index = convert(geom.geometry.vertices[1]);
-            auto y_dir_index = convert(geom.geometry.vertices[2]);
-            auto z_dir_index = convert(geom.geometry.vertices[4]);
-
-            ImageType::SizeType size;
-            size[0] = 10;  // size along X
-            size[1] = 10;  // size along Y 
-            size[2] = 10;   // size along Z
-        
-            ImageType::SpacingType spacing;
-            spacing[0] = (x_dir_index - origin_index).norm()/(double)size[0]; // mm along X
-            spacing[1] = (y_dir_index - origin_index).norm()/(double)size[1]; // mm along X
-            spacing[2] = (z_dir_index - origin_index).norm()/(double)size[2]; // mm along X
-          
-            ImageType::PointType origin;
-            origin[0] = origin_index[0];
-            origin[1] = origin_index[1];
-            origin[2] = origin_index[2];
-
-            Eigen::Matrix<double,3,3> eigen_rotation_matrix;
-            eigen_rotation_matrix.col(0) = (x_dir_index - origin_index).normalized();
-            eigen_rotation_matrix.col(1) = (y_dir_index - origin_index).normalized();
-            eigen_rotation_matrix.col(2) = (z_dir_index - origin_index).normalized();
-
-            auto direction = geometry_as_image->GetDirection();
-            for(size_t i = 0; i < 3; ++i)
-                for(size_t j = 0; j < 3; ++j)
-                    direction(i,j) = eigen_rotation_matrix(i,j);
-
-            ImageType::RegionType region;
-            region.SetSize(size);
-          
-            geometry_as_image->SetRegions(region);
-            geometry_as_image->SetSpacing(spacing);
-            geometry_as_image->SetOrigin(origin);
-            geometry_as_image->SetDirection(direction);
-            geometry_as_image->Allocate();
-            geometry_as_image->FillBuffer(0);
-
-            internals.push_back(geometry_as_image);
+        if(!fixed_volume || ! moving_volume)
+        {
+            std::printf("failed to read moving or fixed volume");
+            return 1;
         }
-    }
+        std::printf("found all moving and fixed volumes");
 
+        auto castfilter = itk::CastImageFilter<ImageType,itk::Image<double,3>>::New();
+        castfilter->SetInput(*fixed_volume);
 
-    auto evaluate_if_pixel_inside_mask = [&](itk::Image<double,3>::IndexType ind,itk::Image<double,3>::Pointer ptr)
-    {
-        bool is_inside = internals.size() > 0 ? false : true ;
-        for (const auto &boundary : internals){
-            itk::Image<double,3>::PointType world;
-            itk::Image<double,3>::IndexType local_ind;
-            ptr->TransformIndexToPhysicalPoint(ind,world);
-            boundary->TransformPhysicalPointToIndex(world,local_ind);
-            auto size = boundary->GetLargestPossibleRegion().GetSize();
-            if ((local_ind[0] >= 0 && local_ind[0] < size[0]) && (local_ind[1] >= 0 && local_ind[1] < size[1]) && (local_ind[2] >= 0 && local_ind[2] < size[2]))
-                is_inside = true;
+        auto rescale = itk::RescaleIntensityImageFilter<itk::Image<double,3>, itk::Image<double,3>>::New();
+        rescale->SetInput(castfilter->GetOutput());
+        rescale->SetOutputMinimum(0);
+        rescale->SetOutputMaximum(255.0);
+
+        try{
+            rescale->Update();
+        }catch (...){
+            std::cout << "improperly consumed the input volume";
+            return 1;
         }
-        return is_inside;
-    };
 
-    if(!appdata.trajectory_location.entry_point_word_coordinates || !appdata.trajectory_location.target_world_coordinates){
-        std::cout << "Terminating due to unspecified target and entry point" << std::endl;
-        return 1;
-    }
+        DicomVolumetricMask vol{*fixed_volume};
+        Application appdata{resources,&vol};
+        appdata.ct_volumes.emplace("source",*fixed_volume);
+        appdata.mri_volumes.emplace("source",*moving_volume);
+        Page page{appdata.main_page(),SK_ColorBLACK};
 
-    Eigen::Matrix<double,3,3> desired_orientation;
-    Eigen::Vector3d z_dir = (*appdata.trajectory_location.target_world_coordinates-*appdata.trajectory_location.entry_point_word_coordinates).normalized();
-    Eigen::Vector3d x_dir = z_dir;
-    x_dir[0] -= 10.0;
-    x_dir.normalize();
-    Eigen::Vector3d y_dir = z_dir.cross(x_dir);
-    x_dir = y_dir.cross(z_dir);
-    desired_orientation.col(0) = x_dir;
-    desired_orientation.col(1) = y_dir;
-    desired_orientation.col(2) = z_dir;
+        page.update_page(viewer.get());
 
-    std::cout << "desired_orientation:\n" << desired_orientation << std::endl;
-    
-    auto date = curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now());
-    curan::utilities::TrajectorySpecificationData specification{date,
-        *appdata.trajectory_location.target_world_coordinates,
-        *appdata.trajectory_location.entry_point_word_coordinates,
-        desired_orientation,
-        CURAN_COPIED_RESOURCE_PATH"/original_volume.mha",
-        CURAN_COPIED_RESOURCE_PATH"/masked_volume.mha"
+        ConfigDraw config{&page};
+
+        while (!glfwWindowShouldClose(viewer->window)) {
+            auto start = std::chrono::high_resolution_clock::now();
+            SkSurface* pointer_to_surface = viewer->getBackbufferSurface();
+            SkCanvas* canvas = pointer_to_surface->getCanvas();
+            if (viewer->was_updated()) {
+                page.update_page(viewer.get());
+                viewer->update_processed();
+            }
+            page.draw(canvas);
+            auto signals = viewer->process_pending_signals();
+            if (!signals.empty())
+                page.propagate_signal(signals.back(), &config);
+            glfwPollEvents();
+
+            bool val = viewer->swapBuffers();
+            if (!val)
+                std::cout << "failed to swap buffers\n";
+            auto async_job = appdata.sync_tasks_with_screen_queue.try_pop();
+            if(async_job)
+                (*async_job)();
+            auto end = std::chrono::high_resolution_clock::now();
+            std::this_thread::sleep_for(std::chrono::milliseconds(16) - std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
+        }
+
+
+        auto geometries = appdata.vol_mas->geometries();
+
+        std::vector<ImageType::Pointer> internals;
+        auto size = appdata.vol_mas->get_volume()->GetLargestPossibleRegion().GetSize();
+        internals.reserve(geometries.size());
+
+        auto convert = [&](gte::Vector3<curan::geometry::Piramid::Rational> vertex){
+            ImageType::IndexType itk_ind;
+            itk_ind[0] = size[0]*(double)vertex[0];
+            itk_ind[1] = size[1]*(double)vertex[1];
+            itk_ind[2] = size[2]*(double)vertex[2];
+            ImageType::PointType point;
+            appdata.vol_mas->get_volume()->TransformIndexToPhysicalPoint(itk_ind,point);
+            Eigen::Vector3d data;
+            data[0] = point[0];
+            data[1] = point[1];
+            data[2] = point[2];
+            return data;
         };
 
-    auto [masked_output_image,mask_to_use] = DeepCopyWithInclusionPolicy<itk::Image<double,3>>(evaluate_if_pixel_inside_mask,rescale->GetOutput());
+        for (const auto &[key,geomdata] : geometries){
+            const auto &[geom,color] = geomdata;
+            if(geom.geometry.vertices.size()==8){
+                ImageType::Pointer geometry_as_image = ImageType::New();
 
-    {
-        auto writer = itk::ImageFileWriter<itk::Image<double,3>>::New();
-        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/original_volume.mha");
-        writer->SetInput(rescale->GetOutput());
-        writer->Update();
+                auto origin_index = convert(geom.geometry.vertices[0]);
+                auto x_dir_index = convert(geom.geometry.vertices[1]);
+                auto y_dir_index = convert(geom.geometry.vertices[2]);
+                auto z_dir_index = convert(geom.geometry.vertices[4]);
+
+                ImageType::SizeType size;
+                size[0] = 10;  // size along X
+                size[1] = 10;  // size along Y 
+                size[2] = 10;   // size along Z
+            
+                ImageType::SpacingType spacing;
+                spacing[0] = (x_dir_index - origin_index).norm()/(double)size[0]; // mm along X
+                spacing[1] = (y_dir_index - origin_index).norm()/(double)size[1]; // mm along X
+                spacing[2] = (z_dir_index - origin_index).norm()/(double)size[2]; // mm along X
+            
+                ImageType::PointType origin;
+                origin[0] = origin_index[0];
+                origin[1] = origin_index[1];
+                origin[2] = origin_index[2];
+
+                Eigen::Matrix<double,3,3> eigen_rotation_matrix;
+                eigen_rotation_matrix.col(0) = (x_dir_index - origin_index).normalized();
+                eigen_rotation_matrix.col(1) = (y_dir_index - origin_index).normalized();
+                eigen_rotation_matrix.col(2) = (z_dir_index - origin_index).normalized();
+
+                auto direction = geometry_as_image->GetDirection();
+                for(size_t i = 0; i < 3; ++i)
+                    for(size_t j = 0; j < 3; ++j)
+                        direction(i,j) = eigen_rotation_matrix(i,j);
+
+                ImageType::RegionType region;
+                region.SetSize(size);
+            
+                geometry_as_image->SetRegions(region);
+                geometry_as_image->SetSpacing(spacing);
+                geometry_as_image->SetOrigin(origin);
+                geometry_as_image->SetDirection(direction);
+                geometry_as_image->Allocate();
+                geometry_as_image->FillBuffer(0);
+
+                internals.push_back(geometry_as_image);
+            }
+        }
+
+
+        auto evaluate_if_pixel_inside_mask = [&](itk::Image<double,3>::IndexType ind,itk::Image<double,3>::Pointer ptr)
+        {
+            bool is_inside = internals.size() > 0 ? false : true ;
+            for (const auto &boundary : internals){
+                itk::Image<double,3>::PointType world;
+                itk::Image<double,3>::IndexType local_ind;
+                ptr->TransformIndexToPhysicalPoint(ind,world);
+                boundary->TransformPhysicalPointToIndex(world,local_ind);
+                auto size = boundary->GetLargestPossibleRegion().GetSize();
+                if ((local_ind[0] >= 0 && local_ind[0] < size[0]) && (local_ind[1] >= 0 && local_ind[1] < size[1]) && (local_ind[2] >= 0 && local_ind[2] < size[2]))
+                    is_inside = true;
+            }
+            return is_inside;
+        };
+
+        if(!appdata.trajectory_location.entry_point_word_coordinates || !appdata.trajectory_location.target_world_coordinates){
+            std::cout << "Terminating due to unspecified target and entry point" << std::endl;
+            return 1;
+        }
+
+        Eigen::Matrix<double,3,3> desired_orientation;
+        Eigen::Vector3d z_dir = (*appdata.trajectory_location.target_world_coordinates-*appdata.trajectory_location.entry_point_word_coordinates).normalized();
+        Eigen::Vector3d x_dir = z_dir;
+        x_dir[0] -= 10.0;
+        x_dir.normalize();
+        Eigen::Vector3d y_dir = z_dir.cross(x_dir);
+        x_dir = y_dir.cross(z_dir);
+        desired_orientation.col(0) = x_dir;
+        desired_orientation.col(1) = y_dir;
+        desired_orientation.col(2) = z_dir;
+
+        std::cout << "desired_orientation:\n" << desired_orientation << std::endl;
+        
+        auto date = curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now());
+        curan::utilities::TrajectorySpecificationData specification{date,
+            *appdata.trajectory_location.target_world_coordinates,
+            *appdata.trajectory_location.entry_point_word_coordinates,
+            desired_orientation,
+            CURAN_COPIED_RESOURCE_PATH"/original_volume.mha",
+            CURAN_COPIED_RESOURCE_PATH"/masked_volume.mha"
+            };
+
+        auto [masked_output_image,mask_to_use] = DeepCopyWithInclusionPolicy<itk::Image<double,3>>(evaluate_if_pixel_inside_mask,rescale->GetOutput());
+
+        {
+            auto writer = itk::ImageFileWriter<itk::Image<double,3>>::New();
+            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/original_volume.mha");
+            writer->SetInput(rescale->GetOutput());
+            writer->Update();
+        }
+
+        {
+            auto writer = itk::ImageFileWriter<itk::Image<double,3>>::New();
+            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/masked_volume.mha");
+            writer->SetInput(masked_output_image);
+            writer->Update();
+        }
+
+        {
+            auto writer = itk::ImageFileWriter<itk::Image<unsigned char,3>>::New();
+            writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/mask.mha");
+            writer->SetInput(mask_to_use);
+            writer->Update();
+        }
+
+        // write prettified JSON to another file
+        std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
+        o << specification;
+        //std::cout << specification << std::endl;
+        
+        return 0;
     }
-
+    catch (const std::exception &e)
     {
-        auto writer = itk::ImageFileWriter<itk::Image<double,3>>::New();
-        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/masked_volume.mha");
-        writer->SetInput(masked_output_image);
-        writer->Update();
+        std::cout << "Exception thrown:" << e.what() << "\n";
     }
-
+    catch (...)
     {
-        auto writer = itk::ImageFileWriter<itk::Image<unsigned char,3>>::New();
-        writer->SetFileName(CURAN_COPIED_RESOURCE_PATH "/mask.mha");
-        writer->SetInput(mask_to_use);
-        writer->Update();
+        std::cout << "Failed to create window for unknown reason\n";
+        return 1;
     }
-
-    // write prettified JSON to another file
-	std::ofstream o(CURAN_COPIED_RESOURCE_PATH"/trajectory_specification.json");
-	o << specification;
-	//std::cout << specification << std::endl;
-    
     return 0;
-}
-catch (const std::exception &e)
-{
-    std::cout << "Exception thrown:" << e.what() << "\n";
-}
-catch (...)
-{
-    std::cout << "Failed to create window for unknown reason\n";
-    return 1;
-}
 }
