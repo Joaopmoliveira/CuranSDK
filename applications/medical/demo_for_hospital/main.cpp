@@ -76,6 +76,134 @@ typename TImage::Pointer DeepCopy(typename TImage::Pointer input)
     return output;
 }
 
+template <typename TImage,typename InclusionPolicy>
+std::tuple<typename TImage::Pointer,itk::Image<unsigned char,3>::Pointer> DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
+{
+    typename TImage::Pointer output = TImage::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    auto mask = itk::Image<unsigned char,3>::New();
+    mask->SetRegions(input->GetLargestPossibleRegion());
+    mask->SetDirection(input->GetDirection());
+    mask->SetSpacing(input->GetSpacing());
+    mask->SetOrigin(input->GetOrigin());
+    mask->Allocate();
+
+    itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<itk::Image<unsigned char,3>> maskIterator(mask, mask->GetLargestPossibleRegion());
+
+    for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator,++maskIterator ){
+        if(inclusion_policy(inputIterator.GetIndex(),input)){
+            outputIterator.Set(inputIterator.Get());
+            maskIterator.Set(255);
+        }else{
+            outputIterator.Set(0);
+            maskIterator.Set(0);
+        }
+    }
+    return {output,mask};
+}
+
+struct ACPCData{
+    bool ac_specification = false;
+    curan::ui::Button* ac_button = nullptr;
+    std::optional<Eigen::Matrix<double,3,1>> ac_word_coordinates;
+    bool pc_specification = false;
+    curan::ui::Button* pc_button = nullptr;
+    std::optional<Eigen::Matrix<double,3,1>> pc_word_coordinates;
+};
+
+struct TrajectoryConeData{
+    bool target_specification = false;
+    curan::ui::Button* target_button = nullptr;
+    std::optional<Eigen::Matrix<double,3,1>> target_world_coordinates;
+    bool main_diagonal_specification = false;
+    curan::ui::Button* main_diagonal_button = nullptr;
+    std::optional<Eigen::Matrix<double,3,1>> main_diagonal_word_coordinates;
+    bool entry_specification = false;
+    std::optional<Eigen::Matrix<double,3,1>> entry_point_word_coordinates;
+    curan::geometry::Piramid piramid_world_coordinates;
+};
+
+struct RegionOfInterest{
+    std::vector<curan::ui::directed_stroke> paths;
+    bool is_selecting_path = false;
+};
+
+struct CachedVolume{
+    ImageType::Pointer img;
+    bool is_visible = true;
+};
+
+enum LayoutType{
+    ONE,
+    TWO,
+    THREE
+};
+
+enum ViewType{
+    CT_VIEW,
+    MRI_VIEW
+};
+
+
+
+struct Application;
+
+struct Application{
+    curan::ui::MiniPage* tradable_page = nullptr;
+    ACPCData ac_pc_data;
+    TrajectoryConeData trajectory_location;
+    LayoutType type = LayoutType::THREE;
+    ViewType modalitytype = ViewType::CT_VIEW;
+    std::map<std::string,CachedVolume> ct_volumes;
+    std::map<std::string,CachedVolume> mri_volumes;
+    std::string current_volume = "source";
+    bool registration_complete = false;
+    Eigen::Matrix<double,4,4> registration_fixed_to_moving = Eigen::Matrix<double,4,4>::Identity();
+    curan::ui::DicomVolumetricMask* vol_mas = nullptr;
+    curan::ui::IconResources* resources = nullptr;
+    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
+    std::function<std::unique_ptr<curan::ui::Container>(Application&)> panel_constructor;
+    std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
+    curan::ui::DicomVolumetricMask projected_vol_mas{nullptr};
+    std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
+    RegionOfInterest roi;
+
+    //we need to read these when doing the registration pipeline. The point is that the optimizer runs, queries the current location of the slices in the fixed volume
+    //computes the intersection with the reoriented image, and then updates the overlays
+    std::vector<curan::ui::DicomViewer*> viewers;
+
+    Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
+
+    std::unique_ptr<curan::ui::Container> main_page();
+};
+
+enum Strategy{
+    CONSERVATIVE,   
+};
+
+std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata);
+std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata);
+std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
+std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
+std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata,int mask);
+std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& appdata);
+
+void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
+void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata);
+void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata);
+void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
+
 template <typename TRegistration>
 class RegistrationInterfaceCommand : public itk::Command {
 public:
@@ -111,12 +239,19 @@ public:
         }
     }
 
-    DICOMImageType::Pointer f_fixed;
-    DICOMImageType::Pointer f_moving;
+    void Execute(const itk::Object *, const itk::EventObject &) override
+    {
+            return;
+    }
 
-    void set(DICOMImageType::Pointer fixed,DICOMImageType::Pointer moving){
+    Application* ptr = nullptr;
+    DICOMImageType::Pointer fixed;
+    DICOMImageType::Pointer moving;
+
+    void set(DICOMImageType::Pointer fixed,DICOMImageType::Pointer moving,Application& appdata){
         f_fixed = fixed;
         f_moving = DeepCopy<DICOMImageType>(moving);
+        ptr = &appdata;
     };
 
     ImageType::Pointer resampler(const DICOMImageType::Pointer volume,const Eigen::Matrix<double, 3, 1> &target, const Eigen::Matrix<double, 3, 1> &needle_tip,const Eigen::Matrix<double, 3, 3> &R_ImageToWorld, double &image_size, double &image_spacing)
@@ -189,7 +324,7 @@ public:
 
 };
 
-void solve_registration(DICOMImageType::Pointer fixed_image,DICOMImageType::Pointer moving_image) {
+std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageType::Pointer fixed_image,DICOMImageType::Pointer moving_image, Application& appdata) {
     using ImageRegistrationType = DicomPixelType;
     using TransformType = itk::VersorRigid3DTransform<double>;
     using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
@@ -311,133 +446,8 @@ void solve_registration(DICOMImageType::Pointer fixed_image,DICOMImageType::Poin
     caster->Update();
 
     ImageType::Pointer checked_overlap_output = caster->GetOutput();
+    return std::make_tuple(resampled_output,checked_overlap_output);
 }
-
-template <typename TImage,typename InclusionPolicy>
-std::tuple<typename TImage::Pointer,itk::Image<unsigned char,3>::Pointer> DeepCopyWithInclusionPolicy(InclusionPolicy&& inclusion_policy,typename TImage::Pointer input)
-{
-    typename TImage::Pointer output = TImage::New();
-    output->SetRegions(input->GetLargestPossibleRegion());
-    output->SetDirection(input->GetDirection());
-    output->SetSpacing(input->GetSpacing());
-    output->SetOrigin(input->GetOrigin());
-    output->Allocate();
-
-    auto mask = itk::Image<unsigned char,3>::New();
-    mask->SetRegions(input->GetLargestPossibleRegion());
-    mask->SetDirection(input->GetDirection());
-    mask->SetSpacing(input->GetSpacing());
-    mask->SetOrigin(input->GetOrigin());
-    mask->Allocate();
-
-    itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
-    itk::ImageRegionIterator<TImage> outputIterator(output, output->GetLargestPossibleRegion());
-    itk::ImageRegionIterator<itk::Image<unsigned char,3>> maskIterator(mask, mask->GetLargestPossibleRegion());
-
-    for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator,++maskIterator ){
-        if(inclusion_policy(inputIterator.GetIndex(),input)){
-            outputIterator.Set(inputIterator.Get());
-            maskIterator.Set(255);
-        }else{
-            outputIterator.Set(0);
-            maskIterator.Set(0);
-        }
-    }
-    return {output,mask};
-}
-
-struct ACPCData{
-    bool ac_specification = false;
-    curan::ui::Button* ac_button = nullptr;
-    std::optional<Eigen::Matrix<double,3,1>> ac_word_coordinates;
-    bool pc_specification = false;
-    curan::ui::Button* pc_button = nullptr;
-    std::optional<Eigen::Matrix<double,3,1>> pc_word_coordinates;
-};
-
-struct TrajectoryConeData{
-    bool target_specification = false;
-    curan::ui::Button* target_button = nullptr;
-    std::optional<Eigen::Matrix<double,3,1>> target_world_coordinates;
-    bool main_diagonal_specification = false;
-    curan::ui::Button* main_diagonal_button = nullptr;
-    std::optional<Eigen::Matrix<double,3,1>> main_diagonal_word_coordinates;
-    bool entry_specification = false;
-    std::optional<Eigen::Matrix<double,3,1>> entry_point_word_coordinates;
-    curan::geometry::Piramid piramid_world_coordinates;
-};
-
-struct RegionOfInterest{
-    std::vector<curan::ui::directed_stroke> paths;
-    bool is_selecting_path = false;
-};
-
-struct CachedVolume{
-    ImageType::Pointer img;
-    bool is_visible = true;
-};
-
-enum LayoutType{
-    ONE,
-    TWO,
-    THREE
-};
-
-enum ViewType{
-    CT_VIEW,
-    MRI_VIEW
-};
-
-struct Application;
-
-struct Application{
-    curan::ui::MiniPage* tradable_page = nullptr;
-    ACPCData ac_pc_data;
-    TrajectoryConeData trajectory_location;
-    LayoutType type = LayoutType::THREE;
-    ViewType modalitytype = ViewType::CT_VIEW;
-    std::map<std::string,CachedVolume> ct_volumes;
-    std::map<std::string,CachedVolume> mri_volumes;
-    std::string current_volume = "source";
-    bool registration_complete = false;
-    Eigen::Matrix<double,4,4> registration_fixed_to_moving = Eigen::Matrix<double,4,4>::Identity();
-    curan::ui::DicomVolumetricMask* vol_mas = nullptr;
-    curan::ui::IconResources* resources = nullptr;
-    std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
-    std::function<std::unique_ptr<curan::ui::Container>(Application&)> panel_constructor;
-    std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
-    curan::ui::DicomVolumetricMask projected_vol_mas{nullptr};
-    std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
-    RegionOfInterest roi;
-
-    //we need to read these when doing the registration pipeline. The point is that the optimizer runs, queries the current location of the slices in the fixed volume
-    //computes the intersection with the reoriented image, and then updates the overlays
-    std::vector<curan::ui::DicomViewer*> viewers;
-
-    Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
-
-    std::unique_ptr<curan::ui::Container> main_page();
-};
-
-enum Strategy{
-    CONSERVATIVE,   
-};
-
-std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata);
-std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata);
-std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
-std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
-std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata,int mask);
-std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& appdata);
-
-void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
-std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
-void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
-std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata);
-void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
-std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata);
-void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
-std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
 
 ImageType::Pointer allocate_image(Application& appdata,ImageType::Pointer input){
@@ -1083,7 +1093,29 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
     auto registervolumes = Button::make("Register Volumes", *appdata.resources);
     registervolumes->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     registervolumes->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        std::printf("solving registration problem\n");
+        
+        ImageType::Pointer ct_input;
+        if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
+            ct_input = search->second.img;
+        else{
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find CT source dicom image",*appdata.resources));
+            return;
+        }
 
+        ImageType::Pointer mri_input;
+        if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
+            mri_input = search->second.img;
+        else{
+            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find MRI source dicom image",*appdata.resources));
+            return;
+        }
+
+        if (config->stack_page != nullptr) config->stack_page->stack(success_overlay("starting registration",*appdata.resources));
+
+        appdata.pool->submit("",[appdat = &appdata, fixed_image = ct_input, moving_image = mri_input ](){
+            auto [resampled_output,checked_overlap_output] = solve_registration(fixed_image,moving_image,appdat);
+        });
     });
 
     auto validate_checkered = Button::make("Validate Checkered Overlap", *appdata.resources); 
