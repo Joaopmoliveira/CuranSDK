@@ -177,6 +177,7 @@ struct Application{
 
     //we need to read these when doing the registration pipeline. The point is that the optimizer runs, queries the current location of the slices in the fixed volume
     //computes the intersection with the reoriented image, and then updates the overlays
+    std::mutex mut;
     std::vector<curan::ui::DicomViewer*> viewers;
 
     Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
@@ -875,17 +876,32 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
     auto single_view_layout = Button::make(" ", "layout1x1.png", *appdata.resources);
     single_view_layout->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
     single_view_layout->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-    { appdata.type = LayoutType::ONE; appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); });
+    { 
+        appdata.type = LayoutType::ONE; 
+        std::lock_guard<std::mutex> g{appdata.mut};
+        appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; 
+        appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); 
+    });
 
     auto double_view_layout = Button::make(" ", "layout1x2.png", *appdata.resources);
     double_view_layout->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
     double_view_layout->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-    { appdata.type = LayoutType::TWO; appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); });
+    { 
+        appdata.type = LayoutType::TWO; 
+        std::lock_guard<std::mutex> g{appdata.mut};
+        appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; 
+        appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); 
+    });
 
     auto triple_view_layout = Button::make(" ", "layout1x3.png", *appdata.resources);
     triple_view_layout->set_click_color(SK_ColorGRAY).set_hover_color(SK_ColorLTGRAY).set_waiting_color(SK_ColorDKGRAY).set_size(SkRect::MakeWH(200, 200));
     triple_view_layout->add_press_call([&](Button *button, Press press, ConfigDraw *config)
-    { appdata.type = LayoutType::THREE; appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); });
+    { 
+        appdata.type = LayoutType::THREE; 
+        std::lock_guard<std::mutex> g{appdata.mut};
+        appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; 
+        appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); 
+    });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
     *viwers_container << std::move(single_view_layout) << std::move(double_view_layout) << std::move(triple_view_layout);
@@ -1159,10 +1175,9 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
 
         if (config->stack_page != nullptr) config->stack_page->stack(success_overlay("starting registration",*appdata.resources));
 
-        appdata.pool->submit("",[&, fixed_image = ct_input_converted, moving_image = mri_input_converted ](){
+        appdata.pool->submit("",[&, configlocal = config,  fixed_image = ct_input_converted, moving_image = mri_input_converted ](){
             auto [resampled_output,checked_overlap_output] = solve_registration(fixed_image,moving_image,appdata);
-            appdata.sync_tasks_with_screen_queue.push(curan::utilities::Job{"emplace volumes in maps",[&,fixed_image = fixed_image, moving_image = resampled_output ](){
-
+            appdata.sync_tasks_with_screen_queue.push(curan::utilities::Job{"emplace volumes in maps",[&, config = configlocal,fixed_image = fixed_image, moving_image = resampled_output ](){
                 ImageType::Pointer fixed_image;
                 if (auto search = appdata.ct_volumes.find("raw"); search != appdata.ct_volumes.end())
                     fixed_image = search->second.img;
@@ -1170,7 +1185,6 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
                     if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find CT source dicom image",*appdata.resources));
                     return;
                 }
-
                 appdata.ct_volumes.emplace("source",fixed_image);
                 appdata.mri_volumes.emplace("source",moving_image);
                 appdata.current_volume = "source";
@@ -1180,9 +1194,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
                 } else {
                     appdata.vol_mas->update_volume(moving_image);
                 }
-
                 config->stack_page->stack(success_overlay("registration complete!",*appdata.resources));
-
             }});
         });
 
