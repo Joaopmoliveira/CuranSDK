@@ -164,7 +164,6 @@ struct Application{
     std::map<std::string,CachedVolume> ct_volumes;
     std::map<std::string,CachedVolume> mri_volumes;
     std::string current_volume = "raw";
-    bool registration_complete = false;
     Eigen::Matrix<double,4,4> registration_fixed_to_moving = Eigen::Matrix<double,4,4>::Identity();
     curan::ui::DicomVolumetricMask* vol_mas = nullptr;
     curan::ui::IconResources* resources = nullptr;
