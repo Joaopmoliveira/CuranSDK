@@ -253,8 +253,9 @@ public:
                 ptr->is_update_in_progress = true;
 
                 for(auto viewer : ptr->viewers){
+                    // now I need to query for the current size of the dicom viewer (notice that this entire code only works because the resampled image is exactly on top of the )
                     auto fixed_slice_physical = viewer->physical_viewed_image();
-                    // now I need to query for the current size of the dicom viewer
+                    
                     using FilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
                     auto resample = FilterType::New();
 
@@ -280,7 +281,7 @@ public:
                         return;
                     }
 
-                    auto buff = curan::utilities::CaptureBuffer::make_shared(caster->GetBufferPointer(),caster->GetOutput()->GetPixelContainer()->Size()*sizeof(char),caster->GetOutput());
+                    auto buff = curan::utilities::CaptureBuffer::make_shared(caster->GetOutput()->GetBufferPointer(),caster->GetOutput()->GetPixelContainer()->Size()*sizeof(char),caster->GetOutput());
     		        curan::ui::ImageWrapper wrapper{buff,caster->GetOutput()->GetLargestPossibleRegion().GetSize()[0],caster->GetOutput()->GetLargestPossibleRegion().GetSize()[1]};
                     viewer->update_custom_drawingcall([=](SkCanvas* canvas, SkRect image_rec, SkRect widget_rec){
                         SkPaint paint_square;
@@ -291,7 +292,7 @@ public:
                         canvas->drawRect(image_rec,paint_square);
                         SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
                         SkPaint imagePaint;
-                        imagePaint.setAlphaf(0.2f);   // 0.0 = fully transparent, 1.0 = opaque
+                        imagePaint.setAlphaf(0.5f);   // 0.0 = fully transparent, 1.0 = opaque
                         canvas->drawImageRect(wrapper.image, image_rec, opt,&imagePaint);
                     });
                 }
