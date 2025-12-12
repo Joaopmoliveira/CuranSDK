@@ -637,6 +637,11 @@ public:
 
     void update_volume(DicomVolumetricMask *mask, Direction in_direction);
 
+    inline Direction get_direction() {
+        std::lock_guard<std::mutex> g{get_mutex()};
+        return direction;
+    }
+    
     void framebuffer_resize(const SkRect &new_page_size) override;
     void internal_framebuffer_recomputation();
 
@@ -653,6 +658,11 @@ public:
             insert_in_map(current_stroke);
             current_stroke.clear();
         }
+    }
+
+    inline ImageType::Pointer physical_viewed_image(){
+        std::lock_guard<std::mutex> g{get_mutex()};
+        return  background.physical_image;
     }
 
     inline DicomViewer &trigger(float in_current_value)

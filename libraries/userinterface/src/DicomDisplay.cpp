@@ -704,6 +704,9 @@ namespace ui{
                     canvas->drawImageRect(image_display_surface, background_rect, opt, &(*paint_compliant_filtered_image));
                 else
                     canvas->drawImageRect(image_display_surface, background_rect, opt);
+                auto call = get_custom_drawingcall();
+                if(call)
+                    (*call)(canvas,background_rect,widget_rect);
             } 
             canvas->drawPoints(SkCanvas::PointMode::kPoints_PointMode, current_stroke.transformed_recorded_points.size(), current_stroke.transformed_recorded_points.data(), paint_stroke);
             {

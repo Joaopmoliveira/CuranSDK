@@ -214,6 +214,10 @@ public:
     itkNewMacro(Self);
 
     double m_LastMetricValue;
+    Application* ptr = nullptr;
+    DICOMImageType::Pointer f_fixed;
+    DICOMImageType::Pointer f_moving;
+
 
 protected:
     RegistrationInterfaceCommand() { m_LastMetricValue = 0.0; };
@@ -230,94 +234,70 @@ public:
     void Execute(const itk::Object * object, const itk::EventObject & event) override
     {
         auto optimizer = static_cast<const OptimizerType *>(object);
+        if(!optimizer) return;
+
         double currentValue = optimizer->GetValue();
         // Only print out when the Metric value changes
         if (itk::Math::abs(m_LastMetricValue - currentValue) > 1e-7)
         {
             std::cout << optimizer->GetCurrentIteration() << "   ";
             std::cout << currentValue << "   ";
-            std::cout << optimizer->GetCurrentPosition() << std::endl;
+            std::cout << optimizer->GetCurrentPosition() << "\n";
             m_LastMetricValue = currentValue;
+
+            auto registration = dynamic_cast<RegistrationPointer>(optimizer->GetOwner());
+            if(!registration) return;
+
+            auto currentTransform = registration->GetModifiableTransform();  // <-- THE KEY LINE
+
+            if(ptr){
+                std::lock_guard<std::mutex> g{ptr->mut};
+                for(auto viewer : ptr->viewers){
+                    auto fixed_slice_physical = viewer->physical_viewed_image();
+                    // now I need to query for the current size of the dicom viewer
+                    using FilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
+                    auto resample = FilterType::New();
+
+                    using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
+                    resample->SetInput(f_moving);
+
+                    resample->SetTransform(currentTransform);
+                    resample->SetSize(fixed_slice_physical->GetLargestPossibleRegion().GetSize());
+                    resample->SetOutputOrigin(fixed_slice_physical->GetOrigin());
+                    resample->SetOutputSpacing(fixed_slice_physical->GetSpacing());
+                    resample->SetOutputDirection(fixed_slice_physical->GetDirection());
+                    resample->SetDefaultPixelValue(0);
+
+                    try{
+                        resample->Update();
+                    } catch(...){
+                        std::printf("failed to resample volume");
+                        return;
+                    }
+                    auto buff = curan::utilities::CaptureBuffer::make_shared(resample->GetOutput()->GetBufferPointer(),resample->GetOutput()->GetPixelContainer()->Size()*sizeof(char),resample->GetOutput());
+    		        curan::ui::ImageWrapper wrapper{buff,resample->GetOutput()->GetLargestPossibleRegion().GetSize()[0],resample->GetOutput()->GetLargestPossibleRegion().GetSize()[1]};
+                    viewer->update_custom_drawingcall([=](SkCanvas* canvas, SkRect image_rec, SkRect widget_rec){
+                        SkPaint paint_square;
+                        paint_square.setStyle(SkPaint::kStroke_Style);
+                        paint_square.setAntiAlias(true);
+                        paint_square.setStrokeWidth(4);
+                        paint_square.setColor(SK_ColorGREEN);
+                        canvas->drawRect(image_rec,paint_square);
+                        SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
+                        canvas->drawImageRect(wrapper, image_rec, opt);
+                    });
+
+                }
+            }
         }
     }
 
-    Application* ptr = nullptr;
-    DICOMImageType::Pointer f_fixed;
-    DICOMImageType::Pointer f_moving;
 
     void set(DICOMImageType::Pointer fixed,DICOMImageType::Pointer moving,Application& appdata){
         f_fixed = fixed;
         f_moving = DeepCopy<DICOMImageType>(moving);
         ptr = &appdata;
     };
-
-    ImageType::Pointer resampler(const DICOMImageType::Pointer volume,const Eigen::Matrix<double, 3, 1> &target, const Eigen::Matrix<double, 3, 1> &needle_tip,const Eigen::Matrix<double, 3, 3> &R_ImageToWorld, double &image_size, double &image_spacing)
-    {
-        using FilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
-        auto filter = FilterType::New();
-
-        using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
-        // using InterpolatorType = itk::NearestNeighborInterpolateImageFunction<InputImageType, double>;
-        auto interpolator = InterpolatorType::New();
-        filter->SetInterpolator(interpolator);
-        filter->SetDefaultPixelValue(0);
-
-        filter->SetInput(volume);
-
-        itk::Vector<double, 3> spacing;
-        spacing[0] = image_spacing;
-        spacing[1] = image_spacing;
-        spacing[2] = image_spacing;
-        filter->SetOutputSpacing(spacing);
-
-        itk::Size<3> size;
-        size[0] = image_size;
-        size[1] = image_size;
-        size[2] = 1;
-        filter->SetSize(size);
-
-        Eigen::Vector4d origin_corner_image_frame = Eigen::Vector4d::Ones();
-        origin_corner_image_frame[0] = -image_spacing*image_size*0.5;
-        origin_corner_image_frame[1] = -image_spacing*image_size*0.5;
-        origin_corner_image_frame[2] = (needle_tip-target).transpose()*R_ImageToWorld.col(2);
-
-        Eigen::Matrix<double,4,4> image_frame_transform = Eigen::Matrix<double,4,4>::Identity();
-        image_frame_transform.block<3,3>(0,0) = R_ImageToWorld;
-        image_frame_transform(0,3) = target[0];
-        image_frame_transform(1,3) = target[1];
-        image_frame_transform(2,3) = target[2];
-
-        Eigen::Vector4d origin_corner_world_frame = image_frame_transform*origin_corner_image_frame;
-
-        itk::Point<double, 3> origin;
-        origin[0] = origin_corner_world_frame[0];
-        origin[1] = origin_corner_world_frame[1];
-        origin[2] = origin_corner_world_frame[2];
-        filter->SetOutputOrigin(origin);
-
-        itk::Matrix<double> image_direction;
-        for (size_t row = 0; row < 3; ++row)
-            for (size_t col = 0; col < 3; ++col)
-                image_direction(col, row) = R_ImageToWorld(col, row);
-
-        filter->SetOutputDirection(image_direction);
-
-        using TransformType = itk::IdentityTransform<double, 3>;
-        auto transform = TransformType::New();
-        filter->SetTransform(transform);
-
-        try
-        {
-            filter->Update();
-        }
-        catch (const itk::ExceptionObject &e)
-        {
-            std::string result = "Failure to update the filter" + std::string{e.what()};
-            std::cout << result;
-        }
-
-        return filter->GetOutput();
-    }
 
 };
 
@@ -939,6 +919,7 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
             auto image_display = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
             image_display->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_display->add_overlay_processor(overlay_lambda);
+            std::lock_guard<std::mutex> g{appdata.mut};
             appdata.viewers.push_back(image_display.get());
             *container << std::move(image_display);
         }
@@ -951,6 +932,7 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
             auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
             image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayy->add_overlay_processor(overlay_lambda);
+            std::lock_guard<std::mutex> g{appdata.mut};
             appdata.viewers.push_back(image_displayx.get());
             appdata.viewers.push_back(image_displayy.get());
             *container << std::move(image_displayx) << std::move(image_displayy);
@@ -967,6 +949,7 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
             auto image_displayz = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
             image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayz->add_overlay_processor(overlay_lambda);
+            std::lock_guard<std::mutex> g{appdata.mut};
             appdata.viewers.push_back(image_displayx.get());
             appdata.viewers.push_back(image_displayy.get());
             appdata.viewers.push_back(image_displayz.get());
