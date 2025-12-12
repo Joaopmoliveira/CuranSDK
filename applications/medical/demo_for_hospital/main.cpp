@@ -251,17 +251,15 @@ public:
                 if(ptr->is_update_in_progress)
                     return;
                 ptr->is_update_in_progress = true;
-
+                std::printf("\n");
                 for(auto viewer : ptr->viewers){
-                    // now I need to query for the current size of the dicom viewer (notice that this entire code only works because the resampled image is exactly on top of the )
+                    // now I need to query for the current size of the dicom viewer (notice that this entire code only works because the resampled image is exactly on top of the physical image)
                     auto fixed_slice_physical = viewer->physical_viewed_image();
-                    
+                    std::printf("updating viewer %llu ",(size_t) viewer);
                     using FilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
                     auto resample = FilterType::New();
-
                     using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
                     resample->SetInput(f_moving);
-
                     resample->SetTransform(transform);
                     resample->SetSize(fixed_slice_physical->GetLargestPossibleRegion().GetSize());
                     resample->SetOutputOrigin(fixed_slice_physical->GetOrigin());
@@ -292,10 +290,11 @@ public:
                         canvas->drawRect(image_rec,paint_square);
                         SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
                         SkPaint imagePaint;
-                        imagePaint.setAlphaf(0.5f);   // 0.0 = fully transparent, 1.0 = opaque
+                        imagePaint.setAlphaf(0.7f);   // 0.0 = fully transparent, 1.0 = opaque
                         canvas->drawImageRect(wrapper.image, image_rec, opt,&imagePaint);
                     });
                 }
+                std::printf("\n");
                 ptr->is_update_in_progress = false;
             }
         }
@@ -356,15 +355,15 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
     optimizerScales[0] = 1.0;
     optimizerScales[1] = 1.0;
     optimizerScales[2] = 1.0;
-    optimizerScales[3] = 1.0 / 1000;
-    optimizerScales[4] = 1.0 / 1000;
-    optimizerScales[5] = 1.0 / 1000;
+    optimizerScales[3] = 1.0 / 800;
+    optimizerScales[4] = 1.0 / 800;
+    optimizerScales[5] = 1.0 / 800;
 
     optimizer->SetScales(optimizerScales);
 
     optimizer->SetNumberOfIterations(300);
 
-    optimizer->SetLearningRate(8.0);
+    optimizer->SetLearningRate(3.0);
     optimizer->SetMinimumStepLength(0.0001);
     optimizer->SetReturnBestParametersAndValue(true);
     optimizer->SetRelaxationFactor(0.5);
@@ -876,8 +875,10 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
     single_view_layout->add_press_call([&](Button *button, Press press, ConfigDraw *config)
     { 
         appdata.type = LayoutType::ONE; 
-        std::lock_guard<std::mutex> g{appdata.mut};
-        appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; 
+        {
+            std::lock_guard<std::mutex> g{appdata.mut};
+            appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; 
+        }
         appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); 
     });
 
@@ -886,8 +887,10 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
     double_view_layout->add_press_call([&](Button *button, Press press, ConfigDraw *config)
     { 
         appdata.type = LayoutType::TWO; 
-        std::lock_guard<std::mutex> g{appdata.mut};
-        appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; 
+        {
+            std::lock_guard<std::mutex> g{appdata.mut};
+            appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; 
+        }
         appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); 
     });
 
@@ -896,8 +899,10 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
     triple_view_layout->add_press_call([&](Button *button, Press press, ConfigDraw *config)
     { 
         appdata.type = LayoutType::THREE; 
-        std::lock_guard<std::mutex> g{appdata.mut};
-        appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; 
+        {
+            std::lock_guard<std::mutex> g{appdata.mut};
+            appdata.viewers = std::vector<curan::ui::DicomViewer*>{}; 
+        }
         appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK); 
     });
 
