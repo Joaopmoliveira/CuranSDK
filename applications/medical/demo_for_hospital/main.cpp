@@ -174,6 +174,7 @@ struct Application{
     curan::ui::DicomVolumetricMask projected_vol_mas{nullptr};
     std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
     RegionOfInterest roi;
+    curan::utilities::SafeQueue<curan::utilities::Job> sync_tasks_with_screen_queue;
 
     //we need to read these when doing the registration pipeline. The point is that the optimizer runs, queries the current location of the slices in the fixed volume
     //computes the intersection with the reoriented image, and then updates the overlays
@@ -1148,8 +1149,9 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
 
         appdata.pool->submit("",[&, fixed_image = ct_input_converted, moving_image = mri_input_converted ](){
             auto [resampled_output,checked_overlap_output] = solve_registration(fixed_image,moving_image,appdata);
-            std::printf("finished registration")
+            std::printf("finished registration!!!!!!!!\n");
         });
+
     });
 
     auto validate_checkered = Button::make("Validate Checkered Overlap", *appdata.resources); 
