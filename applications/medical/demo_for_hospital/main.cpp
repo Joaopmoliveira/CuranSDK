@@ -245,8 +245,8 @@ public:
     }
 
     Application* ptr = nullptr;
-    DICOMImageType::Pointer fixed;
-    DICOMImageType::Pointer moving;
+    DICOMImageType::Pointer f_fixed;
+    DICOMImageType::Pointer f_moving;
 
     void set(DICOMImageType::Pointer fixed,DICOMImageType::Pointer moving,Application& appdata){
         f_fixed = fixed;
@@ -1094,27 +1094,61 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
     registervolumes->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     registervolumes->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         std::printf("solving registration problem\n");
-        
-        ImageType::Pointer ct_input;
-        if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
-            ct_input = search->second.img;
-        else{
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find CT source dicom image",*appdata.resources));
-            return;
-        }
+        DICOMImageType::Pointer ct_input_converted;
+        {
+            ImageType::Pointer ct_input;
+            if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
+                ct_input = search->second.img;
+            else{
+                if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find CT source dicom image",*appdata.resources));
+                return;
+            }
 
-        ImageType::Pointer mri_input;
-        if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
-            mri_input = search->second.img;
-        else{
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find MRI source dicom image",*appdata.resources));
-            return;
+            using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
+            auto filter = FilterType::New();
+            filter->SetInput(ct_input);
+
+            try {
+                filter->Update();
+            } catch (const itk::ExceptionObject &err) {
+                std::cout << "ExceptionObject caught !" << std::endl;
+                std::cout << err << std::endl;
+                if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("failed to convert CT scan",*appdata.resources));
+                return;
+            }
+
+            ct_input_converted = filter->GetOutput();
+
+        }
+        DICOMImageType::Pointer mri_input_converted;
+        {
+            ImageType::Pointer mri_input;
+            if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
+                mri_input = search->second.img;
+            else{
+                if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find MRI source dicom image",*appdata.resources));
+                return;
+            }
+
+            using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
+            auto filter = FilterType::New();
+            filter->SetInput(mri_input);
+            try {
+                filter->Update();
+            } catch (const itk::ExceptionObject &err) {
+                std::cout << "ExceptionObject caught !" << std::endl;
+                std::cout << err << std::endl;
+                if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("failed to convert CT scan",*appdata.resources));
+                return;
+            }
+            mri_input_converted = filter->GetOutput();
         }
 
         if (config->stack_page != nullptr) config->stack_page->stack(success_overlay("starting registration",*appdata.resources));
 
-        appdata.pool->submit("",[appdat = &appdata, fixed_image = ct_input, moving_image = mri_input ](){
-            auto [resampled_output,checked_overlap_output] = solve_registration(fixed_image,moving_image,appdat);
+        appdata.pool->submit("",[&, fixed_image = ct_input_converted, moving_image = mri_input_converted ](){
+            auto [resampled_output,checked_overlap_output] = solve_registration(fixed_image,moving_image,appdata);
+            std::printf("finished registration")
         });
     });
 
