@@ -179,6 +179,7 @@ struct Application{
     //computes the intersection with the reoriented image, and then updates the overlays
     std::mutex mut;
     std::vector<curan::ui::DicomViewer*> viewers;
+    bool is_update_in_progress = false;
 
     Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
 
@@ -205,7 +206,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
 void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
-template <typename TRegistration>
+template <typename TRegistration,typename TransformType>
 class RegistrationInterfaceCommand : public itk::Command {
 public:
     using Self = RegistrationInterfaceCommand;
@@ -217,7 +218,7 @@ public:
     Application* ptr = nullptr;
     DICOMImageType::Pointer f_fixed;
     DICOMImageType::Pointer f_moving;
-
+    TransformType::Pointer transform;
 
 protected:
     RegistrationInterfaceCommand() { m_LastMetricValue = 0.0; };
@@ -245,13 +246,12 @@ public:
             std::cout << optimizer->GetCurrentPosition() << "\n";
             m_LastMetricValue = currentValue;
 
-            auto registration = dynamic_cast<RegistrationPointer>(optimizer->GetOwner());
-            if(!registration) return;
-
-            auto currentTransform = registration->GetModifiableTransform();  // <-- THE KEY LINE
-
             if(ptr){
                 std::lock_guard<std::mutex> g{ptr->mut};
+                if(ptr->is_update_in_progress)
+                    return;
+                ptr->is_update_in_progress = true;
+
                 for(auto viewer : ptr->viewers){
                     auto fixed_slice_physical = viewer->physical_viewed_image();
                     // now I need to query for the current size of the dicom viewer
@@ -261,21 +261,27 @@ public:
                     using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
                     resample->SetInput(f_moving);
 
-                    resample->SetTransform(currentTransform);
+                    resample->SetTransform(transform);
                     resample->SetSize(fixed_slice_physical->GetLargestPossibleRegion().GetSize());
                     resample->SetOutputOrigin(fixed_slice_physical->GetOrigin());
                     resample->SetOutputSpacing(fixed_slice_physical->GetSpacing());
                     resample->SetOutputDirection(fixed_slice_physical->GetDirection());
                     resample->SetDefaultPixelValue(0);
 
+                    using CastFilterType = itk::CastImageFilter<DICOMImageType, ImageType>;
+                    
+                    auto caster = CastFilterType::New();
+                    caster->SetInput(resample->GetOutput());
+
                     try{
-                        resample->Update();
+                        caster->Update();
                     } catch(...){
                         std::printf("failed to resample volume");
                         return;
                     }
-                    auto buff = curan::utilities::CaptureBuffer::make_shared(resample->GetOutput()->GetBufferPointer(),resample->GetOutput()->GetPixelContainer()->Size()*sizeof(char),resample->GetOutput());
-    		        curan::ui::ImageWrapper wrapper{buff,resample->GetOutput()->GetLargestPossibleRegion().GetSize()[0],resample->GetOutput()->GetLargestPossibleRegion().GetSize()[1]};
+
+                    auto buff = curan::utilities::CaptureBuffer::make_shared(caster->GetBufferPointer(),caster->GetOutput()->GetPixelContainer()->Size()*sizeof(char),caster->GetOutput());
+    		        curan::ui::ImageWrapper wrapper{buff,caster->GetOutput()->GetLargestPossibleRegion().GetSize()[0],caster->GetOutput()->GetLargestPossibleRegion().GetSize()[1]};
                     viewer->update_custom_drawingcall([=](SkCanvas* canvas, SkRect image_rec, SkRect widget_rec){
                         SkPaint paint_square;
                         paint_square.setStyle(SkPaint::kStroke_Style);
@@ -284,19 +290,22 @@ public:
                         paint_square.setColor(SK_ColorGREEN);
                         canvas->drawRect(image_rec,paint_square);
                         SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
-                        canvas->drawImageRect(wrapper, image_rec, opt);
+                        SkPaint imagePaint;
+                        imagePaint.setAlphaf(0.2f);   // 0.0 = fully transparent, 1.0 = opaque
+                        canvas->drawImageRect(wrapper.image, image_rec, opt,&imagePaint);
                     });
-
                 }
+                ptr->is_update_in_progress = false;
             }
         }
     }
 
 
-    void set(DICOMImageType::Pointer fixed,DICOMImageType::Pointer moving,Application& appdata){
+    void set(DICOMImageType::Pointer fixed,DICOMImageType::Pointer moving,Application& appdata,TransformType::Pointer intransform){
         f_fixed = fixed;
         f_moving = DeepCopy<DICOMImageType>(moving);
         ptr = &appdata;
+        transform = intransform;
     };
 
 };
@@ -382,10 +391,10 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
 
     registration->InPlaceOn();
 
-    using CommandType = RegistrationInterfaceCommand<RegistrationType>;
+    using CommandType = RegistrationInterfaceCommand<RegistrationType,TransformType>;
     auto command = CommandType::New();
     optimizer->AddObserver(itk::IterationEvent(), command);
-    command->set(fixed_image,moving_image,appdata);
+    command->set(fixed_image,moving_image,appdata,transform);
 
     try {
         registration->Update();
@@ -394,6 +403,14 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
         std::cout << err << std::endl;
         return std::make_tuple(ImageType::Pointer(),ImageType::Pointer());
     }
+
+    {
+        std::lock_guard<std::mutex> g{appdata.mut};
+        for(auto viewer : appdata.viewers){
+            viewer->clear_custom_drawingcall();
+        }
+    }
+
     using ResampleFilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
     auto finalTransform = registration->GetOutput()->Get();
     auto resample = ResampleFilterType::New();
