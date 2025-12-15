@@ -8,7 +8,10 @@ capabilities.
 
 ## Snippets of the Tool
 
-Transitioning between modalities whilst 
+Curan contains a broad range of functionality, ranging from registration between modalities, path planning, volumetric reconstruction, control, ultrasound-MRI registration, among others. 
+Here we show some of the functionality that we provide
+
+![using a color picker](resources/togif.gif)
 
 ## API Reference
 
