@@ -6,7 +6,7 @@ the contribution list and the end of the file. The library provides interfaces w
 simplify the implementation of medical demos with real time
 capabilities. 
 
-## Snippets of the Tool
+## Snippets of Curan
 
 Curan contains a broad range of functionality, ranging from registration between modalities, path planning, volumetric reconstruction, control, ultrasound-MRI registration, among others. 
 The major contribution of our platform is that intra-operative navigation can be achieved solely using an ultrasound probe and the robotic arm as shown in the following figure
@@ -18,14 +18,20 @@ To facilitate the use by surgical teams, we developed all facets of the surgical
 Here we show some of the functionality that we provide inside Curan
 
 Registration between modalities for planning
+
 ![](resources/registration_pre_operative.gif)
 
 Calibration of ultrasound with robotic system
+
 ![](resources/calibration_ultrasound.gif)
+
+Volumetric reconstruction of ultrasounds for intra-operative registration
+![](resources/reconstruction.gif)
 
 ## API Reference
 
-Curan has a [website](https://human-robotics-lab.github.io/CuranWeb/) where you can follow our tutorials on how to use the SDK we developed at the surgical robotics lab.
+Curan has a [website](https://human-robotics-lab.github.io/CuranWeb/) where you can follow our tutorials on how to use the SDK we developed at the surgical robotics lab. 
+**Note that this is work is progress, funding is necessary to finish documenting the entire project**
 
 The SDK is divided into nine main modules and a tenth module that was made when and if we ever decide to migrate away from the Plus Server
 1. utils - The library contains base classes used by all other modules,
