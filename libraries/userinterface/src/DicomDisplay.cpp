@@ -2,6 +2,7 @@
 #include "userinterface/widgets/ComputeImageBounds.h"
 #include "utils/Overloading.h"
 #include "geometry/Intersection.h"
+#include "itkRegionOfInterestImageFilter.h"
 
 namespace curan{
 namespace ui{
@@ -196,12 +197,39 @@ namespace ui{
     {
         image_info info;
         assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
+        
+        // Define the filter type (Input and Output types are the same 3D image)
+        typedef itk::RegionOfInterestImageFilter<ImageType, ImageType> ROIFilterType;
+
+        ROIFilterType::Pointer roi_filter = ROIFilterType::New();
+        roi_filter->SetInput(volumetric_mask->get_volume());
+
+        // 1. Setup the Region
+        // Make sure to use LargestPossibleRegion or UpdateOutputInformation first
+        volumetric_mask->get_volume()->UpdateOutputInformation(); 
+        ImageType::RegionType inputRegion = volumetric_mask->get_volume()->GetLargestPossibleRegion();
+
+        ImageType::SizeType size = inputRegion.GetSize();
+        size[direction] = 1; // Slice thickness of 1
+        ImageType::SpacingType spacing = volumetric_mask->get_volume()->GetSpacing();
+        ImageType::IndexType start = inputRegion.GetIndex();
+        start[direction] = index; // The slice index you want
+
+        ImageType::RegionType desiredRegion;
+        desiredRegion.SetSize(size);
+        desiredRegion.SetIndex(start);
     
+
+        // 2. Set the Region of Interest
+        roi_filter->SetRegionOfInterest(desiredRegion);
+        roi_filter->Update();
+        
+       /*
         extract_filter = ExtractFilterType::New();
         extract_filter->SetDirectionCollapseToSubmatrix();
         extract_filter->SetInput(volumetric_mask->get_volume());
     
-        ImageType::RegionType inputRegion = volumetric_mask->get_volume()->GetBufferedRegion();
+        ImageType::RegionType inputRegion = volumetric_mask->get_volume()->GetLargestPossibleRegion();
         ImageType::SpacingType spacing = volumetric_mask->get_volume()->GetSpacing();
         ImageType::SizeType size = inputRegion.GetSize();
     
@@ -214,9 +242,10 @@ namespace ui{
         desiredRegion.SetSize(size);
         desiredRegion.SetIndex(start);
         extract_filter->SetExtractionRegion(desiredRegion);
-        extract_filter->UpdateLargestPossibleRegion();
+        extract_filter->Update();
+        */
+        ImageType::Pointer pointer_to_block_of_memory = roi_filter->GetOutput();
     
-        ImageType::Pointer pointer_to_block_of_memory = extract_filter->GetOutput();
         info.physical_image = pointer_to_block_of_memory;
         ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
         auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);

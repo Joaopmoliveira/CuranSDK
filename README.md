@@ -6,6 +6,10 @@ the contribution list and the end of the file. The library provides interfaces w
 simplify the implementation of medical demos with real time
 capabilities. 
 
+## Snippets of the Tool
+
+Transitioning between modalities whilst 
+
 ## API Reference
 
 Curan has a [website](https://human-robotics-lab.github.io/CuranWeb/) where you can follow our tutorials on how to use the SDK we developed at the surgical robotics lab.

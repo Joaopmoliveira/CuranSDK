@@ -219,7 +219,7 @@ public:
     DICOMImageType::Pointer f_fixed;
     DICOMImageType::Pointer f_moving;
     TransformType::Pointer transform;
-
+    float g_rotation_angle = 0.0;
 protected:
     RegistrationInterfaceCommand() { m_LastMetricValue = 0.0; };
 
@@ -241,9 +241,7 @@ public:
         // Only print out when the Metric value changes
         if (itk::Math::abs(m_LastMetricValue - currentValue) > 1e-7)
         {
-            std::cout << optimizer->GetCurrentIteration() << "   ";
-            std::cout << currentValue << "   ";
-            std::cout << optimizer->GetCurrentPosition() << "\n";
+            g_rotation_angle += 10;
             m_LastMetricValue = currentValue;
 
             if(ptr){
@@ -251,11 +249,9 @@ public:
                 if(ptr->is_update_in_progress)
                     return;
                 ptr->is_update_in_progress = true;
-                std::printf("\n");
                 for(auto viewer : ptr->viewers){
                     // now I need to query for the current size of the dicom viewer (notice that this entire code only works because the resampled image is exactly on top of the physical image)
                     auto fixed_slice_physical = viewer->physical_viewed_image();
-                    std::printf("updating viewer %llu ",(size_t) viewer);
                     using FilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
                     auto resample = FilterType::New();
                     using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
@@ -265,8 +261,8 @@ public:
                     resample->SetOutputOrigin(fixed_slice_physical->GetOrigin());
                     resample->SetOutputSpacing(fixed_slice_physical->GetSpacing());
                     resample->SetOutputDirection(fixed_slice_physical->GetDirection());
-                    resample->SetDefaultPixelValue(0);
-
+                    resample->SetDefaultPixelValue(100);
+                    
                     using CastFilterType = itk::CastImageFilter<DICOMImageType, ImageType>;
                     
                     auto caster = CastFilterType::New();
@@ -280,21 +276,88 @@ public:
                     }
 
                     auto buff = curan::utilities::CaptureBuffer::make_shared(caster->GetOutput()->GetBufferPointer(),caster->GetOutput()->GetPixelContainer()->Size()*sizeof(char),caster->GetOutput());
-    		        curan::ui::ImageWrapper wrapper{buff,caster->GetOutput()->GetLargestPossibleRegion().GetSize()[0],caster->GetOutput()->GetLargestPossibleRegion().GetSize()[1]};
-                    viewer->update_custom_drawingcall([=](SkCanvas* canvas, SkRect image_rec, SkRect widget_rec){
-                        SkPaint paint_square;
-                        paint_square.setStyle(SkPaint::kStroke_Style);
-                        paint_square.setAntiAlias(true);
-                        paint_square.setStrokeWidth(4);
-                        paint_square.setColor(SK_ColorGREEN);
-                        canvas->drawRect(image_rec,paint_square);
-                        SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
-                        SkPaint imagePaint;
-                        imagePaint.setAlphaf(0.7f);   // 0.0 = fully transparent, 1.0 = opaque
-                        canvas->drawImageRect(wrapper.image, image_rec, opt,&imagePaint);
-                    });
+                    auto extracted_size = caster->GetOutput()->GetLargestPossibleRegion().GetSize();
+                    auto rotation = g_rotation_angle;
+                    switch (viewer->get_direction())
+                    {
+                    case curan::ui::Direction::X:
+                    {
+                        curan::ui::ImageWrapper wrapper = curan::ui::ImageWrapper{buff, extracted_size[1], extracted_size[2]};
+                        
+                        viewer->update_custom_drawingcall([=](SkCanvas* canvas, SkRect image_rec, SkRect widget_rec){
+                            const std::array<SkColor,5> colors = {SK_ColorGREEN, SK_ColorYELLOW, SK_ColorRED, SK_ColorBLUE, SK_ColorGREEN};
+                            const SkScalar pos[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+                            sk_sp<SkShader> shader = SkGradientShader::MakeSweep(
+                                image_rec.centerX(), image_rec.centerY(), colors.data(), pos, colors.size()
+                            );
+                            SkMatrix matrix;
+                            matrix.setRotate(rotation, image_rec.centerX(), image_rec.centerY()); 
+                            sk_sp<SkShader> animated_shader = shader->makeWithLocalMatrix(matrix);
+                            SkPaint paint_square;
+                            paint_square.setStyle(SkPaint::kStroke_Style);
+                            paint_square.setAntiAlias(true);
+                            paint_square.setStrokeWidth(4);
+                            paint_square.setShader(animated_shader);
+                            canvas->drawRect(image_rec,paint_square);
+                            SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
+                            SkPaint paintBlend;
+                            paintBlend.setAlpha(128);
+                            canvas->drawImageRect(wrapper.image, image_rec, opt,&paintBlend);
+                        });
+                        break;
+                    }
+                    case curan::ui::Direction::Y:
+                    {
+                        curan::ui::ImageWrapper wrapper = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[2]};
+                        viewer->update_custom_drawingcall([=](SkCanvas* canvas, SkRect image_rec, SkRect widget_rec){
+                            const std::array<SkColor,5> colors = {SK_ColorGREEN, SK_ColorYELLOW, SK_ColorRED, SK_ColorBLUE, SK_ColorGREEN};
+                            const SkScalar pos[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+                            sk_sp<SkShader> shader = SkGradientShader::MakeSweep(
+                                image_rec.centerX(), image_rec.centerY(), colors.data(), pos, colors.size()
+                            );
+                            SkMatrix matrix;
+                            matrix.setRotate(rotation, image_rec.centerX(), image_rec.centerY()); 
+                            sk_sp<SkShader> animated_shader = shader->makeWithLocalMatrix(matrix);
+                            SkPaint paint_square;
+                            paint_square.setStyle(SkPaint::kStroke_Style);
+                            paint_square.setAntiAlias(true);
+                            paint_square.setStrokeWidth(4);
+                            paint_square.setShader(animated_shader);
+                            canvas->drawRect(image_rec,paint_square);
+                            SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
+                            SkPaint paintBlend;
+                            paintBlend.setAlpha(128);
+                            canvas->drawImageRect(wrapper.image, image_rec, opt,&paintBlend);
+                        });
+                        break;
+                    }
+                    case curan::ui::Direction::Z:
+                    {
+                        curan::ui::ImageWrapper wrapper = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[1]};
+                        viewer->update_custom_drawingcall([=](SkCanvas* canvas, SkRect image_rec, SkRect widget_rec){
+                            const std::array<SkColor,5> colors = {SK_ColorGREEN, SK_ColorYELLOW, SK_ColorRED, SK_ColorBLUE, SK_ColorGREEN};
+                            const SkScalar pos[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+                            sk_sp<SkShader> shader = SkGradientShader::MakeSweep(
+                                image_rec.centerX(), image_rec.centerY(), colors.data(), pos, colors.size()
+                            );
+                            SkMatrix matrix;
+                            matrix.setRotate(rotation, image_rec.centerX(), image_rec.centerY()); 
+                            sk_sp<SkShader> animated_shader = shader->makeWithLocalMatrix(matrix);
+                            SkPaint paint_square;
+                            paint_square.setStyle(SkPaint::kStroke_Style);
+                            paint_square.setAntiAlias(true);
+                            paint_square.setStrokeWidth(4);
+                            paint_square.setShader(animated_shader);
+                            canvas->drawRect(image_rec,paint_square);
+                            SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
+                            SkPaint paintBlend;
+                            paintBlend.setAlpha(128);
+                            canvas->drawImageRect(wrapper.image, image_rec, opt,&paintBlend);
+                        });
+                        break;
+                    }
+                    }
                 }
-                std::printf("\n");
                 ptr->is_update_in_progress = false;
             }
         }
@@ -303,7 +366,7 @@ public:
 
     void set(DICOMImageType::Pointer fixed,DICOMImageType::Pointer moving,Application& appdata,TransformType::Pointer intransform){
         f_fixed = fixed;
-        f_moving = DeepCopy<DICOMImageType>(moving);
+        f_moving = moving;
         ptr = &appdata;
         transform = intransform;
     };
@@ -355,9 +418,9 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
     optimizerScales[0] = 1.0;
     optimizerScales[1] = 1.0;
     optimizerScales[2] = 1.0;
-    optimizerScales[3] = 1.0 / 800;
-    optimizerScales[4] = 1.0 / 800;
-    optimizerScales[5] = 1.0 / 800;
+    optimizerScales[3] = 1.0 / 1000;
+    optimizerScales[4] = 1.0 / 1000;
+    optimizerScales[5] = 1.0 / 1000;
 
     optimizer->SetScales(optimizerScales);
 
@@ -1392,8 +1455,8 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             eigen_rotation_matrix.col(1) = y_direction;
             eigen_rotation_matrix.col(2) = z_direction;
 
-            std::cout << "original orientation:\n" << original_eigen_rotation_matrix << std::endl;
-            std::cout << "modified orientation:\n" << eigen_rotation_matrix << std::endl;
+            //std::cout << "original orientation:\n" << original_eigen_rotation_matrix << std::endl;
+            //std::cout << "modified orientation:\n" << eigen_rotation_matrix << std::endl;
 
             BoundingBox bounding_box_original_image{input};        
             auto output_bounding_box = bounding_box_original_image.centered_bounding_box(eigen_rotation_matrix);
@@ -2427,9 +2490,9 @@ std::optional<ImageType::Pointer> get_volume(std::string path, std::string ident
 		
 		// Print orientation information for debugging
 		auto orientedImage = orienter->GetOutput();
-		std::cout << "Image Direction: " << orientedImage->GetDirection() << std::endl;
-		std::cout << "Image Origin: " << orientedImage->GetOrigin() << std::endl;
-		std::cout << "Image Spacing: " << orientedImage->GetSpacing() << std::endl;
+		//std::cout << "Image Direction: " << orientedImage->GetDirection() << std::endl;
+		//std::cout << "Image Origin: " << orientedImage->GetOrigin() << std::endl;
+		//std::cout << "Image Spacing: " << orientedImage->GetSpacing() << std::endl;
 	}
 	catch (const itk::ExceptionObject &ex)
 	{
@@ -2452,6 +2515,8 @@ typename Image::Pointer missalign(typename Image::Pointer image, std::array<doub
         axis[0] = 0.0;
         axis[1] = 1.0;  // rotate around Y-axis
         axis[2] = 0.0;
+
+        axis.Normalize();
 
         double angleInRadians = itk::Math::pi / angle_offset; // 15 degrees
         rotation.Set(axis, angleInRadians);
@@ -2482,131 +2547,6 @@ typename Image::Pointer missalign(typename Image::Pointer image, std::array<doub
     return artificiallyMisalignedImage;
 }
 
-int notmain(int argc, char* argv[]) {
-    std::printf("\nReading input volume...\n");
-    auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
-    std::printf("\nReading input volume...\n");
-    auto moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
-
-    if(!fixed_volume || ! moving_volume)
-    {
-        std::printf("failed to read moving or fixed volume");
-        return 1;
-    }
-
-    DICOMImageType::Pointer ct_input_converted;
-    {
-        using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
-        auto filter = FilterType::New();
-        filter->SetInput(*fixed_volume);
-
-        try {
-            filter->Update();
-        } catch (const itk::ExceptionObject &err) {
-            return 1;
-        }
-
-        ct_input_converted = filter->GetOutput();
-
-    }
-    DICOMImageType::Pointer mri_input_converted;
-    {
-        using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
-        auto filter = FilterType::New();
-        filter->SetInput(*moving_volume);
-        try {
-            filter->Update();
-        } catch (const itk::ExceptionObject &err) {
-            return 1;
-        }
-        mri_input_converted = filter->GetOutput();
-    }
-    using namespace curan::ui;
-    IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
-    Application appdata{resources,nullptr};
-
-    using TransformType = itk::VersorRigid3DTransform<double>;
-    auto groundTruthTransform = TransformType::New();
-
-    // Set rotation angle
-    TransformType::VersorType rotation;
-    {
-        itk::Vector<double,3> axis;
-        axis[0] = 0.0;
-        axis[1] = 1.0;  // rotate around Y-axis
-        axis[2] = 0.0;
-
-        double angleInRadians = itk::Math::pi / 12.0; // 15 degrees
-        rotation.Set(axis, angleInRadians);
-    }
-    groundTruthTransform->SetRotation(rotation);
-
-    // Set translation
-    TransformType::OutputVectorType translation;
-    translation[0] = 5.0;  // mm
-    translation[1] = -3.0;
-    translation[2] = 8.0;
-    groundTruthTransform->SetTranslation(translation);
-
-    using ResampleFilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
-    auto resampler = ResampleFilterType::New();
-
-    resampler->SetInput(mri_input_converted); // original moving image
-    resampler->SetTransform(groundTruthTransform);
-
-    resampler->SetSize(mri_input_converted->GetLargestPossibleRegion().GetSize());
-    resampler->SetOutputOrigin(mri_input_converted->GetOrigin());
-    resampler->SetOutputSpacing(mri_input_converted->GetSpacing());
-    resampler->SetOutputDirection(mri_input_converted->GetDirection());
-    resampler->SetDefaultPixelValue(0);
-    resampler->Update();
-
-    DICOMImageType::Pointer artificiallyMisalignedImage = resampler->GetOutput();
-
-    auto [resampled_output,checked_overlap_output] = solve_registration(ct_input_converted,artificiallyMisalignedImage,appdata);
-    std::printf("finished registration!!!!!!!!\n");
-
-    {
-        itk::ImageFileWriter<DICOMImageType>::Pointer warpedImageWriter;
-        warpedImageWriter = itk::ImageFileWriter<DICOMImageType>::New();
-        warpedImageWriter->SetInput(ct_input_converted);
-        warpedImageWriter->SetFileName("fixed.mha");
-        try{
-            warpedImageWriter->Update();
-        } catch (const itk::ExceptionObject & excp){
-            std::cerr << excp << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-
-    {
-        itk::ImageFileWriter<DICOMImageType>::Pointer warpedImageWriter;
-        warpedImageWriter = itk::ImageFileWriter<DICOMImageType>::New();
-        warpedImageWriter->SetInput(artificiallyMisalignedImage);
-        warpedImageWriter->SetFileName("moving.mha");
-        try{
-            warpedImageWriter->Update();
-        } catch (const itk::ExceptionObject & excp){
-            std::cerr << excp << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-
-    {
-        itk::ImageFileWriter<ImageType>::Pointer warpedImageWriter;
-        warpedImageWriter = itk::ImageFileWriter<ImageType>::New();
-        warpedImageWriter->SetInput(resampled_output);
-        warpedImageWriter->SetFileName("moving_overlayed.mha");
-        try{
-            warpedImageWriter->Update();
-        } catch (const itk::ExceptionObject & excp){
-            std::cerr << excp << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-
-    return 0;
-};
 
 int main(int argc, char* argv[]) {
     try{
@@ -2627,8 +2567,8 @@ int main(int argc, char* argv[]) {
             std::printf("failed to read moving or fixed volume\n");
             return 1;
         }
-        std::array<double,3> spacing{5.0,-3.0,8.0};
-        auto moving_volume = missalign<ImageType>(*optional_moving_volume,spacing, 12);
+        std::array<double,3> spacing{0.0,0.0,0.0};
+        auto moving_volume = missalign<ImageType>(*optional_moving_volume,spacing, 20);
 
         std::printf("found all moving and fixed volumes\n");
 
@@ -2783,7 +2723,7 @@ int main(int argc, char* argv[]) {
         desired_orientation.col(1) = y_dir;
         desired_orientation.col(2) = z_dir;
 
-        std::cout << "desired_orientation:\n" << desired_orientation << std::endl;
+        //std::cout << "desired_orientation:\n" << desired_orientation << std::endl;
         
         auto date = curan::utilities::formated_date<std::chrono::system_clock>(std::chrono::system_clock::now());
         curan::utilities::TrajectorySpecificationData specification{date,
@@ -2835,3 +2775,134 @@ int main(int argc, char* argv[]) {
     }
     return 0;
 }
+
+/*
+
+
+int notmain(int argc, char* argv[]) {
+    std::printf("\nReading input volume...\n");
+    auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
+    std::printf("\nReading input volume...\n");
+    auto moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
+
+    if(!fixed_volume || ! moving_volume)
+    {
+        std::printf("failed to read moving or fixed volume");
+        return 1;
+    }
+
+    DICOMImageType::Pointer ct_input_converted;
+    {
+        using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
+        auto filter = FilterType::New();
+        filter->SetInput(*fixed_volume);
+
+        try {
+            filter->Update();
+        } catch (const itk::ExceptionObject &err) {
+            return 1;
+        }
+
+        ct_input_converted = filter->GetOutput();
+
+    }
+    DICOMImageType::Pointer mri_input_converted;
+    {
+        using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
+        auto filter = FilterType::New();
+        filter->SetInput(*moving_volume);
+        try {
+            filter->Update();
+        } catch (const itk::ExceptionObject &err) {
+            return 1;
+        }
+        mri_input_converted = filter->GetOutput();
+    }
+    using namespace curan::ui;
+    IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
+    Application appdata{resources,nullptr};
+
+    using TransformType = itk::VersorRigid3DTransform<double>;
+    auto groundTruthTransform = TransformType::New();
+
+    // Set rotation angle
+    TransformType::VersorType rotation;
+    {
+        itk::Vector<double,3> axis;
+        axis[0] = 0.0;
+        axis[1] = 1.0;  // rotate around Y-axis
+        axis[2] = 0.0;
+
+        double angleInRadians = itk::Math::pi / 12.0; // 15 degrees
+        rotation.Set(axis, angleInRadians);
+    }
+    groundTruthTransform->SetRotation(rotation);
+
+    // Set translation
+    TransformType::OutputVectorType translation;
+    translation[0] = 5.0;  // mm
+    translation[1] = -3.0;
+    translation[2] = 8.0;
+    groundTruthTransform->SetTranslation(translation);
+
+    using ResampleFilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
+    auto resampler = ResampleFilterType::New();
+
+    resampler->SetInput(mri_input_converted); // original moving image
+    resampler->SetTransform(groundTruthTransform);
+
+    resampler->SetSize(mri_input_converted->GetLargestPossibleRegion().GetSize());
+    resampler->SetOutputOrigin(mri_input_converted->GetOrigin());
+    resampler->SetOutputSpacing(mri_input_converted->GetSpacing());
+    resampler->SetOutputDirection(mri_input_converted->GetDirection());
+    resampler->SetDefaultPixelValue(0);
+    resampler->Update();
+
+    DICOMImageType::Pointer artificiallyMisalignedImage = resampler->GetOutput();
+
+    auto [resampled_output,checked_overlap_output] = solve_registration(ct_input_converted,artificiallyMisalignedImage,appdata);
+    std::printf("finished registration!!!!!!!!\n");
+
+    {
+        itk::ImageFileWriter<DICOMImageType>::Pointer warpedImageWriter;
+        warpedImageWriter = itk::ImageFileWriter<DICOMImageType>::New();
+        warpedImageWriter->SetInput(ct_input_converted);
+        warpedImageWriter->SetFileName("fixed.mha");
+        try{
+            warpedImageWriter->Update();
+        } catch (const itk::ExceptionObject & excp){
+            std::cerr << excp << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+
+    {
+        itk::ImageFileWriter<DICOMImageType>::Pointer warpedImageWriter;
+        warpedImageWriter = itk::ImageFileWriter<DICOMImageType>::New();
+        warpedImageWriter->SetInput(artificiallyMisalignedImage);
+        warpedImageWriter->SetFileName("moving.mha");
+        try{
+            warpedImageWriter->Update();
+        } catch (const itk::ExceptionObject & excp){
+            std::cerr << excp << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+
+    {
+        itk::ImageFileWriter<ImageType>::Pointer warpedImageWriter;
+        warpedImageWriter = itk::ImageFileWriter<ImageType>::New();
+        warpedImageWriter->SetInput(resampled_output);
+        warpedImageWriter->SetFileName("moving_overlayed.mha");
+        try{
+            warpedImageWriter->Update();
+        } catch (const itk::ExceptionObject & excp){
+            std::cerr << excp << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+
+    return 0;
+};
+
+*/
