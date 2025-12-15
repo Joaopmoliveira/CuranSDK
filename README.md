@@ -17,15 +17,17 @@ To facilitate the use by surgical teams, we developed all facets of the surgical
 
 Here we show some of the functionality that we provide inside Curan
 
-Registration between modalities for planning
+*Registration between modalities for planning*
 
 ![](resources/registration_pre_operative.gif)
 
-Calibration of ultrasound with robotic system
+Our software solution follows previous reference points, from Slicer 3D, BrainLab, etc, and adds our own 
+
+*Calibration of ultrasound with robotic system*
 
 ![](resources/calibration_ultrasound.gif)
 
-Volumetric reconstruction of ultrasounds for intra-operative registration
+*Volumetric reconstruction of ultrasounds for intra-operative registration*
 ![](resources/reconstruction.gif)
 
 ## API Reference
