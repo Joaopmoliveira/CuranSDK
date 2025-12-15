@@ -9,9 +9,19 @@ capabilities.
 ## Snippets of the Tool
 
 Curan contains a broad range of functionality, ranging from registration between modalities, path planning, volumetric reconstruction, control, ultrasound-MRI registration, among others. 
-Here we show some of the functionality that we provide
+The major contribution of our platform is that intra-operative navigation can be achieved solely using an ultrasound probe and the robotic arm as shown in the following figure
 
-![using a color picker](resources/togif.gif)
+![](resources/fproposednavigation.png)
+
+To facilitate the use by surgical teams, we developed all facets of the surgical procedure using our own technological stack from scratch, so as to avoid licencing problems in the future. 
+
+Here we show some of the functionality that we provide inside Curan
+
+Registration between modalities for planning
+![](resources/registration_pre_operative.gif)
+
+Calibration of ultrasound with robotic system
+![](resources/calibration_ultrasound.gif)
 
 ## API Reference
 
