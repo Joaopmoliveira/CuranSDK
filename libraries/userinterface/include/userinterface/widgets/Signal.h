@@ -359,8 +359,11 @@ namespace curan
 															fixed_area_logic(std::forward<fixed>(inside_fixed), arg.xpos, arg.ypos);
 															if(arg.button==curan::ui::Press::LEFT){
 																if (!(current_status & MOUSE_CLICKED_LEFT)){
-																	if(current_status & INSIDE_FIXED_AREA)
+																	if(current_status & INSIDE_FIXED_AREA){
 																		current_status |= MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED;
+																		std::printf("changed was left inside fixed\n");
+																	}
+																		
 																	current_status |= MOUSE_CLICKED_LEFT_EVENT | MOUSE_CLICKED_LEFT;
 																}
 															} else {
@@ -401,6 +404,7 @@ namespace curan
 																	current_status &= ~MOUSE_CLICKED_RIGHT;
 																}
 															}
+															std::printf("changed was left inside fixed to false\n");
 															current_status &= ~(MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED | MOUSE_CLICKED_RIGHT_WAS_INSIDE_FIXED);
 														},
 														[&](curan::ui::Key arg)

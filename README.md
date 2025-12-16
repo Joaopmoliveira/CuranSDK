@@ -21,7 +21,7 @@ Here we show some of the functionality that we provide inside Curan
 
 ![](resources/registration_pre_operative.gif)
 
-Our software solution follows previous reference points, from Slicer 3D, BrainLab, etc, and adds our own 
+Our software solution follows previous reference points, ranging from Slicer 3D, BrainLab, etc, and adds our own planning tools that facilitate 
 
 *Calibration of ultrasound with robotic system*
 

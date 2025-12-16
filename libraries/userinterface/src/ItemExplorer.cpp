@@ -229,7 +229,7 @@ callablefunction ItemExplorer::call(){
 						current_height_offset = current_height_offset + increment;
 				}
 			},
-			[this,&interacted,config](Unpress arg) {
+			[this](Unpress arg) {
 
 			},
 			[this](Key arg) {

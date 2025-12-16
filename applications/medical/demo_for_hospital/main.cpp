@@ -1003,7 +1003,17 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
         case ONE:
         {
             auto image_display = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
-            image_display->push_options({"coronal view","axial view","saggital view","zoom","select path"});
+            if(appdata.current_volume.compare("raw")){
+                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("source")){
+                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("acpc")){
+                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("alongtrajectory")){
+                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("trajectory")){
+                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            }
             image_display->add_overlay_processor(overlay_lambda);
             std::lock_guard<std::mutex> g{appdata.mut};
             appdata.viewers.push_back(image_display.get());
@@ -1013,11 +1023,27 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
         case TWO:
         {
             auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
-            image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayx->add_overlay_processor(overlay_lambda);
             auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
-            image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayy->add_overlay_processor(overlay_lambda);
+
+            if(appdata.current_volume.compare("raw")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("source")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("acpc")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("alongtrajectory")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("trajectory")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            }
+
             std::lock_guard<std::mutex> g{appdata.mut};
             appdata.viewers.push_back(image_displayx.get());
             appdata.viewers.push_back(image_displayy.get());
@@ -1027,14 +1053,34 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
         case THREE:
         {
             auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
-            image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayx->add_overlay_processor(overlay_lambda);
             auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
-            image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayy->add_overlay_processor(overlay_lambda);
             auto image_displayz = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
-            image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayz->add_overlay_processor(overlay_lambda);
+
+            if(appdata.current_volume.compare("raw")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("source")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("acpc")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("alongtrajectory")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("trajectory")){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            }
+
             std::lock_guard<std::mutex> g{appdata.mut};
             appdata.viewers.push_back(image_displayx.get());
             appdata.viewers.push_back(image_displayy.get());
@@ -1254,8 +1300,8 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
                     if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find CT source dicom image",*appdata.resources));
                     return;
                 }
-                appdata.ct_volumes.emplace("source",fixed_image);
-                appdata.mri_volumes.emplace("source",moving_image);
+                appdata.ct_volumes["source"]=CachedVolume{fixed_image};
+                appdata.mri_volumes["source"] = CachedVolume{moving_image};
                 appdata.current_volume = "source";
 
                 if(appdata.modalitytype == ViewType::CT_VIEW){
@@ -1511,8 +1557,9 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             }
             return; 
         }
-        appdata.ct_volumes.emplace("acpc",output_ct);
-        appdata.mri_volumes.emplace("acpc",output_mri);
+
+        appdata.ct_volumes["acpc"]=CachedVolume{output_ct};
+        appdata.mri_volumes["acpc"]=CachedVolume{output_mri};
         
         if (config->stack_page != nullptr) {
             config->stack_page->stack(success_overlay("pc point defined",*appdata.resources)); 
@@ -1833,8 +1880,8 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
             return;
         }
 
-        appdata.ct_volumes.emplace("trajectory",ct_output);
-        appdata.mri_volumes.emplace("trajectory",mri_output);
+        appdata.ct_volumes["trajectory"] = CachedVolume{ct_output};
+        appdata.mri_volumes["trajectory"] = CachedVolume{mri_output};
         if (config->stack_page != nullptr) 
             config->stack_page->stack(success_overlay("resampled volume!",*appdata.resources));
         appdata.panel_constructor = select_entry_point_and_validate_point_selection;
@@ -2037,8 +2084,8 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
                 image_in_focus = mri_output;
             
             appdata.vol_mas->update_volume(image_in_focus,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
-            appdata.ct_volumes.emplace("alongtrajectory",CachedVolume{ct_output});
-            appdata.mri_volumes.emplace("alongtrajectory",CachedVolume{mri_output});
+            appdata.ct_volumes["alongtrajectory"]=CachedVolume{ct_output};
+            appdata.mri_volumes["alongtrajectory"]=CachedVolume{mri_output};
 
             auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
                 ImageType::IndexType local_index;
@@ -2589,8 +2636,8 @@ int main(int argc, char* argv[]) {
 
         DicomVolumetricMask vol{*fixed_volume};
         Application appdata{resources,&vol};
-        appdata.ct_volumes.emplace("raw",*fixed_volume);
-        appdata.mri_volumes.emplace("raw",moving_volume);
+        appdata.ct_volumes["raw"] = CachedVolume{*fixed_volume};
+        appdata.mri_volumes["raw"] = CachedVolume{moving_volume};
         Page page{appdata.main_page(),SK_ColorBLACK};
 
         page.update_page(viewer.get());
@@ -2607,8 +2654,8 @@ int main(int argc, char* argv[]) {
             }
             page.draw(canvas);
             auto signals = viewer->process_pending_signals();
-            if (!signals.empty())
-                page.propagate_signal(signals.back(), &config);
+            for(auto && sig : signals)
+                page.propagate_signal(sig, &config);
             glfwPollEvents();
 
             bool val = viewer->swapBuffers();

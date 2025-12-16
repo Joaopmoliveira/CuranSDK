@@ -226,7 +226,7 @@ namespace curan
 						insert_in_map(current_stroke);
 						current_stroke.clear();
 					}
-					return true;
+					return false;
 				}
 
 				if (interpreter.check(KEYBOARD_EVENT))

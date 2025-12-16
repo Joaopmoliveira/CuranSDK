@@ -47,7 +47,7 @@ callablefunction MiniPage::call(){
 		bool interacted = false;
 		std::visit(utilities::overloaded{
 			[this,&config](Empty arg) {
-
+	
 			},
 			[this,&config](Move arg) {
 				for(const auto& localcall : callbacks_move)

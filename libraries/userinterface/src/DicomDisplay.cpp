@@ -1020,21 +1020,6 @@ namespace ui{
             }
     
             if(is_options && interpreter.check(curan::ui::InterpreterStatus::INSIDE_ALLOCATED_AREA | 
-                                    curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT) ){
-                set_current_state(SliderStates::PRESSED);
-                for(auto& opt : f_options){
-                    if(opt.absolute_location.contains(xpos,ypos)){
-                        opt.is_hovering = false;
-                        opt.is_clicked = true; 
-                    } else {
-                        opt.is_hovering = false;
-                        opt.is_clicked = false;          
-                    }
-                }
-                return true;
-            }
-    
-            if(is_options && interpreter.check(curan::ui::InterpreterStatus::INSIDE_ALLOCATED_AREA | 
                                                 curan::ui::InterpreterStatus::MOUSE_MOVE_EVENT)){
                 set_current_state(SliderStates::PRESSED);
                 for(auto& opt : f_options){
@@ -1065,7 +1050,7 @@ namespace ui{
                     current_stroke.clear();
                 }
                 set_hightlight_color(SK_ColorDKGRAY);
-                return true;
+                return false;
             }
     
             if (interpreter.check(curan::ui::InterpreterStatus::OUTSIDE_ALLOCATED_AREA))
