@@ -29,10 +29,10 @@ namespace ui{
                        stro.second);
     }
     
-    std::optional<curan::ui::Stroke> DicomMask::draw(SkCanvas *canvas, const SkMatrix &inverse_homogenenous_transformation, const SkMatrix &homogenenous_transformation, const SkPoint &point, bool is_highlighting, SkPaint &paint_stroke, SkPaint &paint_square, const SkFont &text_font, bool is_pressed)
+    std::optional<std::tuple<size_t,curan::ui::Stroke>> DicomMask::draw(SkCanvas *canvas, const SkMatrix &inverse_homogenenous_transformation, const SkMatrix &homogenenous_transformation, const SkPoint &point, bool is_highlighting, SkPaint &paint_stroke, SkPaint &paint_square, const SkFont &text_font, bool is_pressed, bool is_deleting)
     {
     
-        if (is_highlighting)
+        if (is_highlighting || is_deleting)
         {
             double minimum = std::numeric_limits<double>::max();
             auto minimum_index = recorded_strokes.end();
@@ -97,7 +97,7 @@ namespace ui{
                                minimum_index->second);
                     paint_stroke.setStrokeWidth(8);
                     paint_stroke.setColor(SK_ColorGREEN);
-                    return minimum_index->second;
+                    return std::make_tuple(minimum_index->first,minimum_index->second);
                 }
                 else
                 {
@@ -759,65 +759,70 @@ namespace ui{
     
                 assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
                 if(is_options) is_pressed = false;
-                std::optional<curan::ui::Stroke> highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction, _current_index).draw(canvas, inverse_homogenenous_transformation, homogenenous_transformation, zoom_in.get_coordinates(), is_highlighting && is_panel_selected, paint_stroke, paint_square, text_font, is_pressed);
+                auto highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction, _current_index).draw(canvas, inverse_homogenenous_transformation, homogenenous_transformation, zoom_in.get_coordinates(), is_highlighting && is_panel_selected, paint_stroke, paint_square, text_font, is_pressed,is_deleting);
                 if (highlighted_and_pressed_stroke)
                 {
+                    auto& [key,stroke] = *highlighted_and_pressed_stroke;
                     is_pressed = false;
-                    Eigen::Matrix<double, 3,Eigen::Dynamic> point_in_itk_coordinates;
-                    std::visit(curan::utilities::overloaded{[&](const curan::ui::Path &path) {
-                                                                point_in_itk_coordinates = Eigen::Matrix<double, 3,Eigen::Dynamic>::Zero(3,path.normalized_recorded_points.size());
-                                                                switch (direction)
-                                                                {
-                                                                case Direction::X:
-                                                                    for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
-                                                                        point_in_itk_coordinates(0,col) =  _current_index;
-                                                                        point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::Y) - 1));
-                                                                        point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                    if(is_deleting)
+                        volumetric_mask->remove_paths(key);
+                    else {
+                        Eigen::Matrix<double, 3,Eigen::Dynamic> point_in_itk_coordinates;
+                        std::visit(curan::utilities::overloaded{[&](const curan::ui::Path &path) {
+                                                                    point_in_itk_coordinates = Eigen::Matrix<double, 3,Eigen::Dynamic>::Zero(3,path.normalized_recorded_points.size());
+                                                                    switch (direction)
+                                                                    {
+                                                                    case Direction::X:
+                                                                        for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
+                                                                            point_in_itk_coordinates(0,col) =  _current_index;
+                                                                            point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::Y) - 1));
+                                                                            point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                                                                        }
+                                                                    break;
+                                                                    case Direction::Y:
+                                                                        for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
+                                                                            point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::X) - 1));
+                                                                            point_in_itk_coordinates(1,col) =  _current_index;
+                                                                            point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                                                                        }
+                                                                    break;
+                                                                    case Direction::Z:
+                                                                        for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
+                                                                            point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::X) - 1));
+                                                                            point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Y) - 1));
+                                                                            point_in_itk_coordinates(2,col) = _current_index;
+                                                                        }
+                                                                    break;
                                                                     }
-                                                                break;
-                                                                case Direction::Y:
-                                                                    for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
-                                                                        point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::X) - 1));
-                                                                        point_in_itk_coordinates(1,col) =  _current_index;
-                                                                        point_in_itk_coordinates(2,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Z) - 1));
-                                                                    }
-                                                                break;
-                                                                case Direction::Z:
-                                                                    for(size_t col = 0 ; col < path.normalized_recorded_points.size() ; ++col){
-                                                                        point_in_itk_coordinates(0,col) =  (int)std::round(path.normalized_recorded_points[col].fX * (volumetric_mask->dimension(Direction::X) - 1));
-                                                                        point_in_itk_coordinates(1,col) =  (int)std::round(path.normalized_recorded_points[col].fY * (volumetric_mask->dimension(Direction::Y) - 1));
-                                                                        point_in_itk_coordinates(2,col) = _current_index;
-                                                                    }
-                                                                break;
-                                                                }
-                                                            },
-                                                            [&](const curan::ui::Point &point)
-                                                            {
-                                                                point_in_itk_coordinates = Eigen::Matrix<double, 3,Eigen::Dynamic>::Zero(3,1);
-                                                                switch (direction)
+                                                                },
+                                                                [&](const curan::ui::Point &point)
                                                                 {
-                                                                case Direction::X:
-                                                                {
-                                                                    point_in_itk_coordinates(0,0) = _current_index;
-                                                                    point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::Y) - 1));
-                                                                    point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
-                                                                }
-                                                                break;
-                                                                case Direction::Y:
-                                                                    point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
-                                                                    point_in_itk_coordinates(1,0) = _current_index;
-                                                                    point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
-                                                                break;
-                                                                case Direction::Z:
-                                                                    point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
-                                                                    point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Y) - 1));
-                                                                    point_in_itk_coordinates(2,0) = _current_index;
-                                                                break;
-                                                                }
-                                                            }},
-                               *highlighted_and_pressed_stroke);
-                    if (pending_strokes_to_process.size() < 10)
-                        pending_strokes_to_process.emplace_back(point_in_itk_coordinates, *highlighted_and_pressed_stroke, direction);
+                                                                    point_in_itk_coordinates = Eigen::Matrix<double, 3,Eigen::Dynamic>::Zero(3,1);
+                                                                    switch (direction)
+                                                                    {
+                                                                    case Direction::X:
+                                                                    {
+                                                                        point_in_itk_coordinates(0,0) = _current_index;
+                                                                        point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::Y) - 1));
+                                                                        point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                                                                    }
+                                                                    break;
+                                                                    case Direction::Y:
+                                                                        point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
+                                                                        point_in_itk_coordinates(1,0) = _current_index;
+                                                                        point_in_itk_coordinates(2,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Z) - 1));
+                                                                    break;
+                                                                    case Direction::Z:
+                                                                        point_in_itk_coordinates(0,0) = (int)std::round(point.normalized_point.fX * (volumetric_mask->dimension(Direction::X) - 1));
+                                                                        point_in_itk_coordinates(1,0) = (int)std::round(point.normalized_point.fY * (volumetric_mask->dimension(Direction::Y) - 1));
+                                                                        point_in_itk_coordinates(2,0) = _current_index;
+                                                                    break;
+                                                                    }
+                                                                }},
+                                stroke);
+                        if (pending_strokes_to_process.size() < 10)
+                            pending_strokes_to_process.emplace_back(point_in_itk_coordinates, stroke, direction);
+                    }
                 }
             }
     
@@ -1128,7 +1133,7 @@ namespace ui{
                                     curan::ui::InterpreterStatus::MOUSE_MOVE_EVENT | 
                                     curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT) ){
                 set_current_state(SliderStates::PRESSED);
-                if (!is_highlighting)
+                if (!(is_highlighting||is_deleting))
                     current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
                 return true;
             }
@@ -1137,7 +1142,7 @@ namespace ui{
                 interpreter.check(curan::ui::InterpreterStatus::INSIDE_ALLOCATED_AREA | 
                                     curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT_EVENT) ){
                 set_current_state(SliderStates::PRESSED);
-                if (!is_highlighting)
+                if (!(is_highlighting||is_deleting))
                     current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
                 return true;
             }

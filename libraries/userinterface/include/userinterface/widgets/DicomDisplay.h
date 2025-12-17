@@ -25,26 +25,19 @@ using stroke_added_callback = std::function<curan::ui::Stroke(void)>;
 using sliding_panel_callback = std::function<std::optional<curan::ui::ImageWrapper>(size_t slider_value)>;
 using clicked_highlighted_stroke_callback = std::function<curan::ui::Stroke(void)>;
 
-enum MaskUsed
-{
-    CLEAN = 0,
-    DIRTY
-};
 
 class DicomMask
 {
-    MaskUsed _mask_flag;
     std::unordered_map<size_t, curan::ui::Stroke> recorded_strokes;
 
 public:
-    DicomMask() : _mask_flag{MaskUsed::CLEAN} {}
+    DicomMask() = default;
     DicomMask(const DicomMask &m) = delete;
     DicomMask &operator=(const DicomMask &) = delete;
 
     template <typename... T>
     std::pair<std::unordered_map<size_t, curan::ui::Stroke>::iterator, bool> try_emplace(T &&...u)
     {
-        _mask_flag = MaskUsed::DIRTY;
         return recorded_strokes.try_emplace(std::forward<T>(u)...);
     }
 
@@ -62,6 +55,10 @@ public:
         recorded_strokes.erase(it);
     }
 
+    inline void erase(const size_t key){
+        recorded_strokes.erase(key);
+    }
+
     inline std::optional<curan::ui::Stroke> find(const size_t &key)
     {
         if (auto search = recorded_strokes.find(key); search != recorded_strokes.end())
@@ -74,17 +71,18 @@ public:
 
     inline operator bool() const
     {
-        return _mask_flag;
+        return recorded_strokes.size()>0;
     }
 
-    std::optional<curan::ui::Stroke> draw(SkCanvas *canvas, 
+    std::optional<std::tuple<size_t,curan::ui::Stroke>> draw(SkCanvas *canvas, 
                                     const SkMatrix &inverse_homogenenous_transformation, 
                                     const SkMatrix &homogenenous_transformation, 
                                     const SkPoint &point, bool is_highlighting, 
                                     SkPaint &paint_stroke, 
                                     SkPaint &paint_square, 
                                     const SkFont &text_font, 
-                                    bool is_pressed);
+                                    bool is_pressed,
+                                    bool is_deleting);
 };
 
 constexpr unsigned int Dimension = 3;
@@ -219,6 +217,15 @@ public:
         default:
             throw std::runtime_error("incorrect mask direction selected");
         };
+    }
+
+    void remove_paths(const size_t key){
+        for(auto& masks : masks_x)
+            masks.erase(key);
+        for(auto& masks : masks_y)
+            masks.erase(key);
+        for(auto& masks : masks_z)
+            masks.erase(key);
     }
 
     template <typename... T>
@@ -550,6 +557,7 @@ private:
 
     bool is_pressed = false;
     bool is_highlighting = false;
+    bool is_deleting = false;
     bool is_options = false;
     curan::ui::ZoomIn zoom_in;
 
@@ -658,6 +666,22 @@ public:
             insert_in_map(current_stroke);
             current_stroke.clear();
         }
+    }
+
+    inline bool query_path_selection(){
+        return is_highlighting;
+    }
+
+    inline void change_path_deletion(){
+        is_deleting = !is_deleting;
+        if (!current_stroke.empty()){
+            insert_in_map(current_stroke);
+            current_stroke.clear();
+        }
+    }
+
+    inline bool query_path_deletion(){
+        return is_deleting;
     }
 
     inline ImageType::Pointer physical_viewed_image(){
