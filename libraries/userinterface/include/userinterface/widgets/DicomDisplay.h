@@ -25,6 +25,13 @@ using stroke_added_callback = std::function<curan::ui::Stroke(void)>;
 using sliding_panel_callback = std::function<std::optional<curan::ui::ImageWrapper>(size_t slider_value)>;
 using clicked_highlighted_stroke_callback = std::function<curan::ui::Stroke(void)>;
 
+enum PathState{
+    SELECTPATH,
+    DRAWPATH,
+    DELETEPATH,
+    HIGHLIGHTPATH,
+    SIZE
+};
 
 class DicomMask
 {
@@ -558,6 +565,7 @@ private:
     bool is_pressed = false;
     bool is_highlighting = false;
     bool is_deleting = false;
+    bool is_drawing_paths = false;
     bool is_options = false;
     curan::ui::ZoomIn zoom_in;
 
@@ -612,7 +620,9 @@ private:
         ImageType::PointType world_coordinates;
         double value;
     };
-    
+
+    std::vector<ImageWrapper> state_display;
+
     CurrentLocationDicom current_mouse_location;
 
     curan::ui::SignalInterpreter interpreter;
@@ -666,6 +676,8 @@ public:
             insert_in_map(current_stroke);
             current_stroke.clear();
         }
+        is_deleting = false;
+        is_drawing_paths = false;
     }
 
     inline bool query_path_selection(){
@@ -678,10 +690,22 @@ public:
             insert_in_map(current_stroke);
             current_stroke.clear();
         }
+        is_highlighting = false;
+        is_drawing_paths = false;
     }
 
     inline bool query_path_deletion(){
         return is_deleting;
+    }
+
+    inline void change_path_drawing(){
+        is_drawing_paths = !is_drawing_paths;
+        if (!current_stroke.empty()){
+            insert_in_map(current_stroke);
+            current_stroke.clear();
+        }
+        is_highlighting = false;
+        is_deleting = false; 
     }
 
     inline ImageType::Pointer physical_viewed_image(){

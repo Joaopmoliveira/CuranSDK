@@ -382,7 +382,6 @@ namespace ui{
                                                         cached_number_of_geometries{volume_mask->geometries().size()}, 
                                                         system_icons{other}
     {
-
         cached_sum_of_geometries = 0.0;
         for(const auto& [key,geomdata] : volume_mask->geometries()){
             const auto& [geom,color] = geomdata;
@@ -467,7 +466,24 @@ namespace ui{
         if(compiled){
             throw std::runtime_error("cannot compile twice");
         }
-        //TODO: 
+        if (system_icons.is_loaded()) {
+            auto image = system_icons.get_icon("normalselection.ico");
+            if(!image)
+                throw std::runtime_error("failed to query identifier");
+            state_display.push_back(*image); 
+            image = system_icons.get_icon("drawpaths.ico");
+            if(!image)
+                throw std::runtime_error("failed to query identifier"); 
+            state_display.push_back(*image);
+            image = system_icons.get_icon("deletepaths.ico");
+            if(!image)
+                throw std::runtime_error("failed to query identifier"); 
+            state_display.push_back(*image);
+            image = system_icons.get_icon("highlightpaths.ico");
+            if(!image)
+                throw std::runtime_error("failed to query identifier"); 
+            state_display.push_back(*image);
+        }
         compiled = true;
     }
     
