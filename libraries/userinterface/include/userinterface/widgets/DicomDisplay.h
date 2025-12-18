@@ -29,8 +29,7 @@ enum PathState{
     SELECTPATH,
     DRAWPATH,
     DELETEPATH,
-    HIGHLIGHTPATH,
-    SIZE
+    HIGHLIGHTPATH
 };
 
 class DicomMask
@@ -84,12 +83,12 @@ public:
     std::optional<std::tuple<size_t,curan::ui::Stroke>> draw(SkCanvas *canvas, 
                                     const SkMatrix &inverse_homogenenous_transformation, 
                                     const SkMatrix &homogenenous_transformation, 
-                                    const SkPoint &point, bool is_highlighting, 
+                                    const SkPoint &point,
                                     SkPaint &paint_stroke, 
                                     SkPaint &paint_square, 
                                     const SkFont &text_font, 
                                     bool is_pressed,
-                                    bool is_deleting);
+                                    PathState current_path_state);
 };
 
 constexpr unsigned int Dimension = 3;
@@ -563,9 +562,7 @@ private:
     std::optional<custom_step> custom_drawing_call = std::nullopt;
 
     bool is_pressed = false;
-    bool is_highlighting = false;
-    bool is_deleting = false;
-    bool is_drawing_paths = false;
+    PathState current_path_state = PathState::SELECTPATH;
     bool is_options = false;
     curan::ui::ZoomIn zoom_in;
 
@@ -670,42 +667,35 @@ public:
             zoom_in.activate();
     }
 
-    inline void change_path_selection(){
-        is_highlighting = !is_highlighting;
+    inline void change_path_state(PathState state){
         if (!current_stroke.empty()){
             insert_in_map(current_stroke);
             current_stroke.clear();
         }
-        is_deleting = false;
-        is_drawing_paths = false;
-    }
 
-    inline bool query_path_selection(){
-        return is_highlighting;
-    }
-
-    inline void change_path_deletion(){
-        is_deleting = !is_deleting;
-        if (!current_stroke.empty()){
-            insert_in_map(current_stroke);
-            current_stroke.clear();
+        if(HIGHLIGHTPATH == state){
+            if(HIGHLIGHTPATH == current_path_state)
+                current_path_state= SELECTPATH;
+            else 
+                current_path_state = HIGHLIGHTPATH;
+            return;
         }
-        is_highlighting = false;
-        is_drawing_paths = false;
-    }
 
-    inline bool query_path_deletion(){
-        return is_deleting;
-    }
-
-    inline void change_path_drawing(){
-        is_drawing_paths = !is_drawing_paths;
-        if (!current_stroke.empty()){
-            insert_in_map(current_stroke);
-            current_stroke.clear();
+        if(DELETEPATH == state){
+            if(DELETEPATH == current_path_state)
+                current_path_state= SELECTPATH;
+            else 
+                current_path_state = DELETEPATH;
+            return;
         }
-        is_highlighting = false;
-        is_deleting = false; 
+
+        if(DRAWPATH == state){
+            if(DRAWPATH == current_path_state)
+                current_path_state= SELECTPATH;
+            else 
+                current_path_state = DRAWPATH;
+            return;
+        }
     }
 
     inline ImageType::Pointer physical_viewed_image(){

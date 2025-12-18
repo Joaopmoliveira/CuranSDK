@@ -29,10 +29,27 @@ namespace ui{
                        stro.second);
     }
     
-    std::optional<std::tuple<size_t,curan::ui::Stroke>> DicomMask::draw(SkCanvas *canvas, const SkMatrix &inverse_homogenenous_transformation, const SkMatrix &homogenenous_transformation, const SkPoint &point, bool is_highlighting, SkPaint &paint_stroke, SkPaint &paint_square, const SkFont &text_font, bool is_pressed, bool is_deleting)
-    {
-    
-        if (is_highlighting || is_deleting)
+/*
+enum PathState{
+    SELECTPATH = 1,
+    DRAWPATH = 2,
+    DELETEPATH = 4,
+    HIGHLIGHTPATH = 8
+};
+*/
+
+    std::optional<std::tuple<size_t,curan::ui::Stroke>> DicomMask::draw(
+        SkCanvas *canvas, 
+        const SkMatrix &inverse_homogenenous_transformation, 
+        const SkMatrix &homogenenous_transformation, 
+        const SkPoint &point, 
+        SkPaint &paint_stroke, 
+        SkPaint &paint_square, 
+        const SkFont &text_font, 
+        bool is_pressed, 
+        PathState current_path_state)
+    {    
+        if (current_path_state == HIGHLIGHTPATH || current_path_state == DELETEPATH)
         {
             double minimum = std::numeric_limits<double>::max();
             auto minimum_index = recorded_strokes.end();
@@ -467,19 +484,19 @@ namespace ui{
             throw std::runtime_error("cannot compile twice");
         }
         if (system_icons.is_loaded()) {
-            auto image = system_icons.get_icon("normalselection.ico");
+            auto image = system_icons.get_icon("normalselection.png");
             if(!image)
                 throw std::runtime_error("failed to query identifier");
             state_display.push_back(*image); 
-            image = system_icons.get_icon("drawpaths.ico");
+            image = system_icons.get_icon("drawpaths.png");
             if(!image)
                 throw std::runtime_error("failed to query identifier"); 
             state_display.push_back(*image);
-            image = system_icons.get_icon("deletepaths.ico");
+            image = system_icons.get_icon("deletepaths.png");
             if(!image)
                 throw std::runtime_error("failed to query identifier"); 
             state_display.push_back(*image);
-            image = system_icons.get_icon("highlightpaths.ico");
+            image = system_icons.get_icon("highlightpaths.png");
             if(!image)
                 throw std::runtime_error("failed to query identifier"); 
             state_display.push_back(*image);
@@ -775,12 +792,12 @@ namespace ui{
     
                 assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
                 if(is_options) is_pressed = false;
-                auto highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction, _current_index).draw(canvas, inverse_homogenenous_transformation, homogenenous_transformation, zoom_in.get_coordinates(), is_highlighting && is_panel_selected, paint_stroke, paint_square, text_font, is_pressed,is_deleting);
+                auto highlighted_and_pressed_stroke = volumetric_mask->current_mask(direction, _current_index).draw(canvas, inverse_homogenenous_transformation, homogenenous_transformation, zoom_in.get_coordinates(), paint_stroke, paint_square, text_font, is_pressed,current_path_state);
                 if (highlighted_and_pressed_stroke)
                 {
                     auto& [key,stroke] = *highlighted_and_pressed_stroke;
                     is_pressed = false;
-                    if(is_deleting)
+                    if(current_path_state & DELETEPATH)
                         volumetric_mask->remove_paths(key);
                     else {
                         Eigen::Matrix<double, 3,Eigen::Dynamic> point_in_itk_coordinates;
@@ -896,24 +913,46 @@ namespace ui{
             }
     
             canvas->drawRoundRect(dragable, reserved_slider_space.height() / 2.0f, reserved_slider_space.height() / 2.0f, slider_paint);
-        }
-            if(is_options){
-                SkAutoCanvasRestore restore{canvas, true};
-                //TODO : now I need to blur the background and render the options
-                auto image = canvas->getSurface()->makeImageSnapshot();
-                canvas->clipRect(get_position());
-                canvas->drawImage(image, 0, 0, options, &bluring_paint);
-                for(auto& opt : f_options){
-                    if(opt.is_clicked)
-                        options_paint.setColor(get_options_click_color());
-                    else if(opt.is_hovering)
-                        options_paint.setColor(get_options_hover_color());
-                    else 
-                        options_paint.setColor(get_options_waiting_color());
-                    canvas->drawRect(opt.absolute_location,options_paint);
-                    canvas->drawTextBlob(opt.text,opt.absolute_location.fLeft+buffer_sideways/2.0,opt.absolute_location.fBottom-buffer_sideways/2.0,options_paint_text);
-                }
+
+            const int offset_from_border = contained_squares.height()+10;
+            const int icon_size = 50;
+            SkRect current_selected_image_rectangle = SkRect::MakeLTRB(widget_rect.fRight-offset_from_border-icon_size,widget_rect.fBottom-offset_from_border-icon_size,widget_rect.fRight-offset_from_border,widget_rect.fBottom-offset_from_border);
+            SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
+            switch(current_path_state){
+                case SELECTPATH:
+                    canvas->drawImageRect(state_display[SELECTPATH].image, current_selected_image_rectangle, opt);
+                    break;
+                case DRAWPATH:
+                    canvas->drawImageRect(state_display[DRAWPATH].image, current_selected_image_rectangle, opt);
+                    break;
+                case DELETEPATH: 
+                    canvas->drawImageRect(state_display[DELETEPATH].image, current_selected_image_rectangle, opt);
+                    break;
+                case HIGHLIGHTPATH:
+                    canvas->drawImageRect(state_display[HIGHLIGHTPATH].image, current_selected_image_rectangle, opt);
+                    break;
+                default:
+                    break;
             }
+        }
+
+        if(is_options){
+            SkAutoCanvasRestore restore{canvas, true};
+            //TODO : now I need to blur the background and render the options
+            auto image = canvas->getSurface()->makeImageSnapshot();
+            canvas->clipRect(get_position());
+            canvas->drawImage(image, 0, 0, options, &bluring_paint);
+            for(auto& opt : f_options){
+                if(opt.is_clicked)
+                    options_paint.setColor(get_options_click_color());
+                else if(opt.is_hovering)
+                    options_paint.setColor(get_options_hover_color());
+                else 
+                    options_paint.setColor(get_options_waiting_color());
+                canvas->drawRect(opt.absolute_location,options_paint);
+                canvas->drawTextBlob(opt.text,opt.absolute_location.fLeft+buffer_sideways/2.0,opt.absolute_location.fBottom-buffer_sideways/2.0,options_paint_text);
+            }
+        }
         };
         return lamb;
     }
@@ -955,19 +994,6 @@ namespace ui{
             }
     
             interpreter.process(check_inside_allocated_area, check_inside_fixed_area, sig);
-    
-            if (interpreter.check(curan::ui::InterpreterStatus::KEYBOARD_EVENT)){
-                
-                set_current_state(SliderStates::WAITING);
-                auto arg = std::get<curan::ui::Key>(sig);
-                if (arg.key == GLFW_KEY_A && arg.action == GLFW_PRESS)
-                    change_zoom();
-                
-                if (arg.key == GLFW_KEY_S && arg.action == GLFW_PRESS)
-                    change_path_selection();
-                
-                return false;
-            }
     
             is_pressed = false;
     
@@ -1149,7 +1175,7 @@ namespace ui{
                                     curan::ui::InterpreterStatus::MOUSE_MOVE_EVENT | 
                                     curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT) ){
                 set_current_state(SliderStates::PRESSED);
-                if (!(is_highlighting||is_deleting))
+                if (current_path_state & DRAWPATH)
                     current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
                 return true;
             }
@@ -1158,7 +1184,7 @@ namespace ui{
                 interpreter.check(curan::ui::InterpreterStatus::INSIDE_ALLOCATED_AREA | 
                                     curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT_EVENT) ){
                 set_current_state(SliderStates::PRESSED);
-                if (!(is_highlighting||is_deleting))
+                if (current_path_state & DRAWPATH)
                     current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
                 return true;
             }

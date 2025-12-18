@@ -993,12 +993,14 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
                 viewer->change_zoom();
             break;
             case 4:
-                viewer->change_path_selection();
+                viewer->change_path_state(PathState::HIGHLIGHTPATH);
             break;
             case 5:
-                viewer->change_path_deletion();
+                viewer->change_path_state(PathState::DELETEPATH);
+                break;
             case 6:
-                viewer->change_path_drawing();
+                viewer->change_path_state(PathState::DRAWPATH);
+                break;
             default:
             break;
         }

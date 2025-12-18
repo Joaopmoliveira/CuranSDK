@@ -15,18 +15,21 @@ IconResources::IconResources(std::string path_to_resources)
 	for (auto& p : std::filesystem::directory_iterator(path_to_resources))
 	{
 		std::string filename = p.path().string();
-
+		std::printf("file loaded %s\n",filename.data());
 		int texWidth = 0;
 		int texHeight = 0;
 		int texChannels = 0;
 		constexpr auto stb_format = STBI_rgb_alpha;
 		stbi_uc* pixels = nullptr;
 		pixels = stbi_load(filename.data(), &texWidth, &texHeight, &texChannels, stb_format);
-		if (!pixels)
+		if (!pixels){
+			std::printf("failed to load data\n");
 			continue;
+		}
+		std::printf("loaded %s [width:%d height:%d]\n",filename.data(),texWidth,texHeight);
 		
 		auto buffer = utilities::CopyBuffer::make_shared((char*)pixels,texWidth*texHeight*stb_format);
-		curan::ui::ImageWrapper wrapper{buffer,static_cast<size_t>(texWidth),static_cast<size_t>(texHeight),SkColorType::kRGBA_8888_SkColorType};
+		curan::ui::ImageWrapper wrapper{buffer,static_cast<size_t>(texWidth),static_cast<size_t>(texHeight),SkColorType::kRGBA_8888_SkColorType, SkAlphaType::kUnpremul_SkAlphaType};
 		
 		stbi_image_free(pixels);
 
