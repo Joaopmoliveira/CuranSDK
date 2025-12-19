@@ -214,30 +214,6 @@ userinterface
 
 # ---------------------------------------
 
-add_executable(test_slidingpanel_api panel_with_slider.cpp)
-
-target_compile_definitions(test_slidingpanel_api PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_slidingpanel_api
-PUBLIC
-${ITK_LIBRARIES}
-userinterface
-)
-
-# ---------------------------------------
-
-add_executable(test_minipage_with_panelslider test_minipage_with_panelslider.cpp)
-
-target_compile_definitions(test_minipage_with_panelslider PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_minipage_with_panelslider
-PUBLIC
-${ITK_LIBRARIES}
-userinterface
-)
-
-# ---------------------------------------
-
 add_executable(test_writable_text_panel test_writable_text_panel.cpp)
 
 target_compile_definitions(test_writable_text_panel PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -331,19 +307,6 @@ userinterface
 
 # ----------------------------------------
 
-add_executable(test_specification_of_geometris_with_cube_intersection test_specification_of_geometris_with_cube_intersection.cpp)
-
-target_compile_definitions(test_specification_of_geometris_with_cube_intersection PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
-
-target_link_libraries(test_specification_of_geometris_with_cube_intersection
-PUBLIC
-${ITK_LIBRARIES}
-userinterface
-)
-
-
-# ----------------------------------------
-
 add_executable(test_memory_signal test_memory_signal.cpp)
 
 target_compile_definitions(test_memory_signal PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
@@ -394,31 +357,31 @@ geometry
 
 # ----------------------------------------
 
-add_executable(test_sequency_planner test_sequency_planner.cpp)
+#add_executable(test_sequency_planner test_sequency_planner.cpp)
 
-target_compile_definitions(test_sequency_planner PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+#target_compile_definitions(test_sequency_planner PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-target_link_libraries(test_sequency_planner
-PUBLIC
-${ITK_LIBRARIES}
-userinterface
-geometry
-imageprocessing
-)
+#target_link_libraries(test_sequency_planner
+#PUBLIC
+#${ITK_LIBRARIES}
+#userinterface
+#geometry
+#imageprocessing
+#)
 
 # ----------------------------------------
 
-add_executable(test_sequency_planner_cylinder test_sequency_planner_cylinder.cpp)
+#add_executable(test_sequency_planner_cylinder test_sequency_planner_cylinder.cpp)
 
-target_compile_definitions(test_sequency_planner_cylinder PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
+#target_compile_definitions(test_sequency_planner_cylinder PRIVATE CURAN_COPIED_RESOURCE_PATH="${post_build_resource_path}")
 
-target_link_libraries(test_sequency_planner_cylinder
-PUBLIC
-${ITK_LIBRARIES}
-userinterface
-geometry
-imageprocessing
-)
+#target_link_libraries(test_sequency_planner_cylinder
+#PUBLIC
+#${ITK_LIBRARIES}
+#userinterface
+#geometry
+#imageprocessing
+#)
 
 
 # ----------------------------------------

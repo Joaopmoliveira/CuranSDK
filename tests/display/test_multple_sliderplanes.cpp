@@ -5,11 +5,11 @@
 #include "userinterface/widgets/Container.h"
 #include "userinterface/widgets/ConfigDraw.h"
 #include "userinterface/widgets/IconResources.h"
+#include "userinterface/widgets/DicomDisplay.h"
 #include "userinterface/widgets/Slider.h"
 #include "userinterface/widgets/TextBlob.h"
 #include "userinterface/widgets/Page.h"
 #include "userinterface/widgets/Overlay.h"
-#include "userinterface/widgets/SliderPanel.h"
 #include "utils/Logger.h"
 #include "utils/Overloading.h"
 #include <variant>
@@ -62,11 +62,11 @@ int main() {
         castfilter->SetInput(rescale->GetOutput());
         castfilter->Update();
         
-        curan::ui::VolumetricMask vol{castfilter->GetOutput()};
+        curan::ui::DicomVolumetricMask vol{castfilter->GetOutput()};
 
-        std::unique_ptr<SlidingPanel> image_display_x = SlidingPanel::make(resources, &vol, Direction::X);
-        std::unique_ptr<SlidingPanel> image_display_y = SlidingPanel::make(resources, &vol, Direction::Y);
-        std::unique_ptr<SlidingPanel> image_display_z = SlidingPanel::make(resources, &vol, Direction::Z);
+        std::unique_ptr<curan::ui::DicomViewer> image_display_x = curan::ui::DicomViewer::make(resources, &vol, Direction::X);
+        std::unique_ptr<curan::ui::DicomViewer> image_display_y = curan::ui::DicomViewer::make(resources, &vol, Direction::Y);
+        std::unique_ptr<curan::ui::DicomViewer> image_display_z = curan::ui::DicomViewer::make(resources, &vol, Direction::Z);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 		*container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);

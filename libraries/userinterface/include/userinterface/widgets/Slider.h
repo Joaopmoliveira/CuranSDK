@@ -60,6 +60,10 @@ namespace curan {
 				return *(this);
 			}
 
+			inline std::array<float, 2> get_limits(){
+				return limits;
+			}
+
 			inline Slider& trigger(float in_current_value) {
 				value_pressed = in_current_value;
 				return *(this);

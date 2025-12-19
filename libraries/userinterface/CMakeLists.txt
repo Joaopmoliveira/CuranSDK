@@ -21,7 +21,6 @@ src/ImageWrapper.cpp
 src/Interactive.cpp
 src/Panel.cpp
 src/MiniPage.cpp
-src/SliderPanel.cpp
 src/MutatingTextPanel.cpp
 src/ImutableTextPanel.cpp
 src/ItemExplorer.cpp
@@ -30,7 +29,7 @@ src/RuntimeEffect.cpp
 src/Plotter.cpp
 src/TaskManager.cpp
 src/DicomDisplay.cpp
-src/TwoDimensionalViewer.cpp
+src/ColorDicomDisplay.cpp
 )
 
 find_package(ITK COMPONENTS ITKCommon ITKIOImageBase ITKIOGDCM ITKIOJPEG ITKIOTIFF ITKImageIO REQUIRED)

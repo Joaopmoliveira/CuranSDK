@@ -116,6 +116,7 @@ namespace curan
 
 				if(interpreter.check(INSIDE_FIXED_AREA | MOUSE_CLICKED_LEFT_EVENT)){
 					old_pressed_value = interpreter.last_move();
+					return true;
 				}
 
 				if (interpreter.check(MOUSE_CLICKED_LEFT_WAS_INSIDE_FIXED))
@@ -142,13 +143,13 @@ namespace curan
 				if (interpreter.check(INSIDE_FIXED_AREA))
 				{
 					set_current_state(SliderStates::HOVER);
-					return true;
+					return false;
 				}
 
 				if (interpreter.check(OUTSIDE_FIXED_AREA | MOUSE_MOVE_EVENT))
 				{
 					set_current_state(SliderStates::WAITING);
-					return true;
+					return false;
 				}
 
 				set_current_state(SliderStates::WAITING);

@@ -7,11 +7,11 @@
 #include "userinterface/widgets/ImutableTextPanel.h"
 #include "userinterface/widgets/Overlay.h"
 #include "userinterface/widgets/Page.h"
-#include "userinterface/widgets/SliderPanel.h"
 #include "userinterface/widgets/definitions/Interactive.h"
 #include "utils/TheadPool.h"
 #include <iostream>
 #include <thread>
+#include "userinterface/widgets/DicomDisplay.h"
 
 #include "itkAffineTransform.h"
 #include "itkCastImageFilter.h"
@@ -366,14 +366,14 @@ int main() {
     castfilter->SetInput(rescale->GetOutput());
     castfilter->Update();
 
-    curan::ui::VolumetricMask vol{castfilter->GetOutput()};
+    curan::ui::DicomVolumetricMask vol{castfilter->GetOutput()};
 
-    std::unique_ptr<SlidingPanel> image_display_x =
-        SlidingPanel::make(resources, &vol, Direction::X);
-    std::unique_ptr<SlidingPanel> image_display_y =
-        SlidingPanel::make(resources, &vol, Direction::Y);
-    std::unique_ptr<SlidingPanel> image_display_z =
-        SlidingPanel::make(resources, &vol, Direction::Z);
+    std::unique_ptr<curan::ui::DicomViewer> image_display_x =
+        curan::ui::DicomViewer::make(resources, &vol, Direction::X);
+    std::unique_ptr<curan::ui::DicomViewer> image_display_y =
+        curan::ui::DicomViewer::make(resources, &vol, Direction::Y);
+    std::unique_ptr<curan::ui::DicomViewer> image_display_z =
+        curan::ui::DicomViewer::make(resources, &vol, Direction::Z);
 
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,
                                      Container::Arrangement::HORIZONTAL);

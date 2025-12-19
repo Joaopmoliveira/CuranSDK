@@ -3,6 +3,7 @@ build/
 .vscode/
 _site/
 resources/swing/R4F.glb
+resources/dicom_sample/DICOM
 plus_config/wire_reconstructions/wire_reconstruction_recording/RecordingTest.igs_20240508_215732.mha
 
 isofurface_extraction.exe "C:\Dev\experiments_for_thesis\registration\vol\reconstruction_results1.mha" "C:\Dev\experiments_for_thesis\registration\vol\masked_volume.mha"

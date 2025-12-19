@@ -632,7 +632,7 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
                 viewer->change_zoom();
             break;
             case 4:
-                viewer->change_path_selection();
+                viewer->change_path_state(PathState::HIGHLIGHTPATH);
             break;
             default:
             break;

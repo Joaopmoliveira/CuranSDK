@@ -5,8 +5,10 @@
 #include "userinterface/widgets/Button.h"
 #include "userinterface/widgets/TextBlob.h"
 #include "userinterface/widgets/DicomDisplay.h"
+#include "userinterface/widgets/ColorDicomDisplay.h"
 #include "userinterface/widgets/MiniPage.h"
 #include "userinterface/widgets/Page.h"
+#include "userinterface/widgets/Slider.h"
 #include "userinterface/widgets/ItemExplorer.h"
 #include "userinterface/widgets/Overlay.h"
 #include "userinterface/widgets/MutatingTextPanel.h"
@@ -41,6 +43,7 @@
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkImageSeriesReader.h"
+#include "itkRayCastInterpolateImageFunction.h"
 
 #include <Eigen/Dense>
 #include "itkCheckerBoardImageFilter.h"
@@ -72,6 +75,41 @@ typename TImage::Pointer DeepCopy(typename TImage::Pointer input)
 
     for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator ){
         outputIterator.Set(inputIterator.Get());
+    }
+    return output;
+}
+
+struct ColorCoding{
+    std::array<float,2> ct_limits = {0.2650f,0.3175f};
+    std::array<float,2> mri_limits = {0.2150f,0.3725f};
+};
+
+template <typename TImageOut, typename TImage>
+typename TImageOut::Pointer DeepColoredCopy(typename TImage::Pointer input, const std::array<float,2>& color_coding,std::array<float,3> target_color)
+{
+    typename TImageOut::Pointer output = TImageOut::New();
+    output->SetRegions(input->GetLargestPossibleRegion());
+    output->SetDirection(input->GetDirection());
+    output->SetSpacing(input->GetSpacing());
+    output->SetOrigin(input->GetOrigin());
+    output->Allocate();
+
+    itk::ImageRegionConstIteratorWithIndex<TImage> inputIterator(input, input->GetLargestPossibleRegion());
+    itk::ImageRegionIterator<TImageOut> outputIterator(output, output->GetLargestPossibleRegion());
+
+    for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator ){
+        auto pixel = inputIterator.Get();
+        typename TImageOut::PixelType tocopy;
+        if(pixel > 255*color_coding[0] && pixel < 255*color_coding[1]){
+            tocopy[0] = target_color[0];
+            tocopy[1] = target_color[1];
+            tocopy[2] = target_color[2];
+        } else {
+            tocopy[0] = pixel;
+            tocopy[1] = pixel;
+            tocopy[2] = pixel;
+        }
+        outputIterator.Set(tocopy);
     }
     return output;
 }
@@ -140,6 +178,11 @@ struct CachedVolume{
     bool is_visible = true;
 };
 
+struct ColoredCachedVolume{
+    curan::ui::ColorDicomViewer::ImageType::Pointer img;
+    bool is_visible = true;
+};
+
 enum LayoutType{
     ONE,
     TWO,
@@ -161,6 +204,10 @@ struct Application{
     TrajectoryConeData trajectory_location;
     LayoutType type = LayoutType::THREE;
     ViewType modalitytype = ViewType::CT_VIEW;
+    std::map<std::string,CachedVolume> high_resolution_ct_volumes;
+    std::map<std::string,CachedVolume> high_resolution_mri_volumes;
+    std::map<std::string,ColoredCachedVolume> miscellaneous_colored_volumes;
+    std::map<std::string,CachedVolume> miscellaneous_volumes;
     std::map<std::string,CachedVolume> ct_volumes;
     std::map<std::string,CachedVolume> mri_volumes;
     std::string current_volume = "raw";
@@ -170,16 +217,19 @@ struct Application{
     std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
     std::function<std::unique_ptr<curan::ui::Container>(Application&)> panel_constructor;
     std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
-    curan::ui::DicomVolumetricMask projected_vol_mas{nullptr};
-    std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
+    curan::ui::ColorDicomVolumetricMask color_vol_mas{nullptr};
+    std::function<void(Application&,curan::ui::ColorDicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
     RegionOfInterest roi;
     curan::utilities::SafeQueue<curan::utilities::Job> sync_tasks_with_screen_queue;
-
+    ColorCoding color_coding;
     //we need to read these when doing the registration pipeline. The point is that the optimizer runs, queries the current location of the slices in the fixed volume
     //computes the intersection with the reoriented image, and then updates the overlays
     std::mutex mut;
     std::vector<curan::ui::DicomViewer*> viewers;
     bool is_update_in_progress = false;
+    float TransparencyValue = 0.204961;
+    float AlphaFuncValue = 0.052590;
+    float SampleDensityValue = 0.1;
 
     Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
 
@@ -195,14 +245,23 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
 std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata,int mask);
+std::unique_ptr<curan::ui::Overlay> create_slider_range_page(Application& appdata);
+std::unique_ptr<curan::ui::Overlay> create_projection_page(Application& appdata);
+
+//these functions are declared by the order that they follow during the planning procedure
 std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& appdata);
 
 void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
+
+std::unique_ptr<curan::ui::Container> validate_color_coding(Application& appdata);
+
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata);
-void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+
+void select_entry_point_and_validate(Application& appdata,curan::ui::ColorDicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata);
+
 void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
@@ -426,28 +485,28 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
 
     optimizer->SetNumberOfIterations(300);
 
-    optimizer->SetLearningRate(3.0);
+    optimizer->SetLearningRate(5.0);
     optimizer->SetMinimumStepLength(0.0001);
     optimizer->SetReturnBestParametersAndValue(true);
     optimizer->SetRelaxationFactor(0.5);
 
     typename RegistrationType::ShrinkFactorsArrayType shrinkFactorsPerLevel;
-    shrinkFactorsPerLevel.SetSize(Dimension);
+    constexpr size_t cascaded_dim = 2; 
+    shrinkFactorsPerLevel.SetSize(cascaded_dim);
     typename RegistrationType::SmoothingSigmasArrayType smoothingSigmasPerLevel;
-    smoothingSigmasPerLevel.SetSize(Dimension);
-    std::array<size_t,Dimension> piramid_sizes{4,2,1};
-    std::array<size_t,Dimension> bluering_sizes{3,1,0};
-    for (size_t i = 0; i < Dimension; ++i) {
+    smoothingSigmasPerLevel.SetSize(cascaded_dim);
+    std::array<size_t,cascaded_dim> piramid_sizes{4,1};
+    std::array<size_t,cascaded_dim> bluering_sizes{2,0};
+    for (size_t i = 0; i < cascaded_dim; ++i) {
         shrinkFactorsPerLevel[i] = piramid_sizes[i];
         smoothingSigmasPerLevel[i] = bluering_sizes[i];
     }
 
-    registration->SetNumberOfLevels(Dimension);
+    registration->SetNumberOfLevels(cascaded_dim);
     registration->SetSmoothingSigmasPerLevel(smoothingSigmasPerLevel);
     registration->SetShrinkFactorsPerLevel(shrinkFactorsPerLevel);
 
     typename RegistrationType::MetricSamplingStrategyEnum samplingStrategy = RegistrationType::MetricSamplingStrategyEnum::RANDOM;
-    registration->MetricSamplingReinitializeSeed(1234);
     registration->SetMetricSamplingStrategy(samplingStrategy);
     registration->SetMetricSamplingPercentage(0.2);
 
@@ -523,14 +582,20 @@ std::tuple<ImageType::Pointer,ImageType::Pointer> solve_registration(DICOMImageT
     return std::make_tuple(resampled_output,checked_overlap_output);
 }
 
-
-ImageType::Pointer allocate_image(Application& appdata,ImageType::Pointer input){
+curan::ui::ColorDicomViewer::ImageType::Pointer allocate_image_itk_based(
+    Application& appdata, 
+    ImageType::Pointer input , 
+    const std::array<float,2>& color_coding, 
+    const std::array<float,3>& colortoreplace,
+    float TransparencyValue,
+    float AlphaFuncValue,
+    float SampleDensityValue) {
     auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
         Eigen::Matrix<double,3,1> converted;
         converted << (double)point[0] , (double)point[1], (double)point[2];
         return converted;
     };
-    
+
     auto base0 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[1]);
     auto base1 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[2]);
     auto base2 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[3]);
@@ -545,19 +610,19 @@ ImageType::Pointer allocate_image(Application& appdata,ImageType::Pointer input)
     eigen_rotation_matrix.col(1) = y_direction;
     eigen_rotation_matrix.col(2) = z_direction;
 
-    ImageType::Pointer projectionimage = ImageType::New();
+    curan::ui::ColorDicomViewer::ImageType::Pointer projectionimage = curan::ui::ColorDicomViewer::ImageType::New();
   
-    ImageType::SizeType size;
-    size[0] = 256;  // size along X
-    size[1] = 256;  // size along Y 
+    curan::ui::ColorDicomViewer::ImageType::SizeType size;
+    size[0] = 512;  // size along X
+    size[1] = 512;  // size along Y 
     size[2] = 1;   // size along Z
 
-    ImageType::SpacingType spacing;
+    curan::ui::ColorDicomViewer::ImageType::SpacingType spacing;
     spacing[0] = (base1 - base0).norm()/(double)size[0]; // mm along X
     spacing[1] = (base3 - base0).norm()/(double)size[1]; // mm along X
     spacing[2] = 1.0; // mm along Z
   
-    ImageType::PointType origin;
+    curan::ui::ColorDicomViewer::ImageType::PointType origin;
     origin[0] = base0[0];
     origin[1] = base0[1];
     origin[2] = base0[2];
@@ -567,7 +632,7 @@ ImageType::Pointer allocate_image(Application& appdata,ImageType::Pointer input)
         for(size_t j = 0; j < 3; ++j)
             direction(i,j) = eigen_rotation_matrix(i,j);
   
-    ImageType::RegionType region;
+    curan::ui::ColorDicomViewer::ImageType::RegionType region;
     region.SetSize(size);
   
     projectionimage->SetRegions(region);
@@ -575,142 +640,95 @@ ImageType::Pointer allocate_image(Application& appdata,ImageType::Pointer input)
     projectionimage->SetOrigin(origin);
     projectionimage->SetDirection(direction);
     projectionimage->Allocate();
-    projectionimage->FillBuffer(0);
+    curan::ui::ColorDicomViewer::ImageType::PixelType rgb;
+    rgb[0] = 0;
+    rgb[1] = 0;
+    rgb[2] = 0;
+    projectionimage->FillBuffer(rgb);
 
-    typedef itk::ImageRegionIteratorWithIndex<ImageType> IteratorType;
-    IteratorType it(projectionimage, projectionimage->GetRequestedRegion());
-
-    const Eigen::Matrix<double,3,1> t0 = *appdata.trajectory_location.target_world_coordinates;
-    Eigen::Matrix<double,3,1> texcoord;
-    
-    std::array<std::tuple<ImageType::IndexType,double>,7> neighboors;
-    
-    auto overall_size = input->GetLargestPossibleRegion().GetSize();
-
-    auto check_pixel_inside = [&](auto tempindex){
-        if(tempindex[0] < 0                || tempindex[1] < 0                || tempindex[2] < 0 || 
-            tempindex[0] >= overall_size[0] || tempindex[1] >= overall_size[1] || tempindex[2] >= overall_size[2])
-             return false;
-        else 
-            return true;
+    auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
+        Eigen::Matrix<double,3,1> mixed;
+        mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
+        return mixed;
     };
-    ImageType::PointType pos;
-    float initial_alpha = 0.0;
-    {
-        ImageType::IndexType tmpindex;
-        pos[0] = t0[0];
-        pos[1] = t0[1];
-        pos[2] = t0[2];         
-        input->TransformPhysicalPointToIndex(pos,tmpindex);
-        if(!check_pixel_inside(tmpindex))
-            throw std::runtime_error("failure");
-        initial_alpha = (1.0/255.0)*input->GetPixel(tmpindex);
-    }
 
-    for (it.GoToBegin(); !it.IsAtEnd(); ++it)
-    {
-        ImageType::PointType pos;
-        projectionimage->TransformIndexToPhysicalPoint(it.GetIndex(),pos);
+    // World-space ray source
+    const Eigen::Vector3d t0_world = *appdata.trajectory_location.target_world_coordinates;
+    using InterpolatorType = itk::LinearInterpolateImageFunction<ImageType, double>;
+    auto interpolator = InterpolatorType::New();
+    interpolator->SetInputImage(input);
 
-        const Eigen::Matrix<double,3,1> te{pos[0],pos[1],pos[2]};
+    // 2. Pre-calculate the ray start in index space
+    itk::ContinuousIndex<double, 3> startIdx;
+    curan::ui::ColorDicomViewer::ImageType::PointType t0_itk;
+    t0_itk[0] = t0_world[0]; t0_itk[1] = t0_world[1]; t0_itk[2] = t0_world[2];
+    input->TransformPhysicalPointToContinuousIndex(t0_itk, startIdx);
+    float initial_alpha = (1.0/255.0) * interpolator->EvaluateAtContinuousIndex(startIdx);
 
-        const float min_iteratrions = 2.0;
-        const float max_iteratrions = 1024.0;
+    // 2. Multi-thread your loop
+    itk::MultiThreaderBase::Pointer multiThreader = itk::MultiThreaderBase::New();
+    multiThreader->ParallelizeImageRegion<3>(
+        projectionimage->GetRequestedRegion(),
+        [&](const curan::ui::ColorDicomViewer::ImageType::RegionType& region) {
+            
+            itk::ImageRegionIteratorWithIndex<curan::ui::ColorDicomViewer::ImageType> it(projectionimage, region);
+            it.GoToBegin();
+            curan::ui::ColorDicomViewer::ImageType::PointType t0_itk;
+            t0_itk[0] = t0_world[0]; t0_itk[1] = t0_world[1]; t0_itk[2] = t0_world[2];
+            
+            for (; !it.IsAtEnd(); ++it) {
+                size_t number_of_accumulations = 0;
+                curan::ui::ColorDicomViewer::ImageType::PointType te_phys;
+                projectionimage->TransformIndexToPhysicalPoint(it.GetIndex(), te_phys);
+                itk::ContinuousIndex<double, 3> endIdx;
+                input->TransformPhysicalPointToContinuousIndex(te_phys, endIdx);  
 
-        const float TransparencyValue = 0.01;
-        const float AlphaFuncValue = 0.01;
-        const float SampleDensityValue = 0.1;
-        
-        float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
-        if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
-        else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
+                Eigen::Matrix<double,4,1> accumulatedColor{0, 0, 0, 0};
 
-        auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
-            Eigen::Matrix<double,3,1> mixed;
-            mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
-            return mixed;
-        };
+                auto dirIdx = endIdx - startIdx;
+                double distIdx = std::sqrt(dirIdx[0]*dirIdx[0] + dirIdx[1]*dirIdx[1] + dirIdx[2]*dirIdx[2]);
+                auto stepIdx = (dirIdx / distIdx) * 0.5;
+                int numSteps = static_cast<int>(distIdx / 0.5);
+                double offset = static_cast<double>(std::rand()) / RAND_MAX;
+                itk::ContinuousIndex<double, 3> currentIdx = startIdx;
+                currentIdx += stepIdx * offset;
+                for (int s = 0; s < numSteps; ++s) {
+                    if (!interpolator->IsInsideBuffer(currentIdx)) {
+                                        currentIdx += stepIdx;
+                                        continue;
+                    }
 
+                    float pixelVal = (1.0/255.0)* interpolator->EvaluateAtContinuousIndex(currentIdx);
 
-        const Eigen::Matrix<double,3,1> deltaTexCoord = (te-t0)/(num_iterations-1.0);
-        texcoord = t0;  
-        
-        Eigen::Matrix<double,4,1> fragColor{initial_alpha, initial_alpha, initial_alpha, initial_alpha * TransparencyValue};
+                    Eigen::Matrix<double,4,1> src{pixelVal, pixelVal,pixelVal, pixelVal * TransparencyValue};
+                    if(pixelVal > color_coding[0] && pixelVal < color_coding[1]) {
+                        src[0] = colortoreplace[0];
+                        src[1] = colortoreplace[1];
+                        src[2] = colortoreplace[2];
+                    }
 
-        auto compute_dist_and_index = [](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
-            Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
-            const int offsets[7][3] = {
-                {0, 0, 0},
-                {1, 0, 0},
-                {0, 1, 0},
-                {0, 0, 1},
-                {-1, 0, 0}, 
-                {0, -1, 0},
-                {0, 0, -1}
-            };
-            ImageType::IndexType indec;
-            indec[0] = std::round(decimal_coordinates[0])+offsets[neighboorsindex][0];
-            indec[1] = std::round(decimal_coordinates[1])+offsets[neighboorsindex][1];
-            indec[2] = std::round(decimal_coordinates[2])+offsets[neighboorsindex][2];
-            tmp_to_compute_distance[0] = indec[0];
-            tmp_to_compute_distance[1] = indec[1];
-            tmp_to_compute_distance[2] = indec[2];
-            return std::tuple<ImageType::IndexType,double>(indec,(tmp_to_compute_distance-decimal_coordinates).norm()+1e-5);
-        };
+                    float current_alpha = src[3];
+                    if (current_alpha > AlphaFuncValue) {
+                        double weight = (1.0 - accumulatedColor[3]) * current_alpha;
+                        accumulatedColor.head<3>() += weight * src.head<3>();
+                        accumulatedColor[3] += weight;
+                        ++number_of_accumulations;
+                    }
 
-        while(num_iterations>0.0){
-            ImageType::IndexType current_index_on_input;
-            pos[0] = texcoord[0];
-            pos[1] = texcoord[1];
-            pos[2] = texcoord[2];         
-            input->TransformPhysicalPointToIndex(pos,current_index_on_input);
-            Eigen::Vector3d eigenized_index_on_input;
-            eigenized_index_on_input[0] = current_index_on_input[0];
-            eigenized_index_on_input[1] = current_index_on_input[1];
-            eigenized_index_on_input[2] = current_index_on_input[2];
+                    if (accumulatedColor[3] >= 0.98) break;
 
-            neighboors[0] = compute_dist_and_index(0,eigenized_index_on_input);
-            neighboors[1] = compute_dist_and_index(1,eigenized_index_on_input);
-            neighboors[2] = compute_dist_and_index(2,eigenized_index_on_input);
-            neighboors[3] = compute_dist_and_index(3,eigenized_index_on_input);
-            neighboors[4] = compute_dist_and_index(4,eigenized_index_on_input);
-            neighboors[5] = compute_dist_and_index(5,eigenized_index_on_input);
-            neighboors[6] = compute_dist_and_index(6,eigenized_index_on_input);
-
-            size_t number_of_found_pixels = 0;
-            double sum_of_dist = 0.0;
-            std::vector<std::tuple<double,double>> neighboors_residue;
-            for(size_t in = 0; in < 1 ; ++in){
-                const auto& [tmpindex,dist] = neighboors[in];
-                if(check_pixel_inside(tmpindex)){
-                    ++number_of_found_pixels;
-                    sum_of_dist += dist;
-                    neighboors_residue.push_back({(1.0/255.0)*input->GetPixel(tmpindex),dist});
+                    currentIdx += stepIdx;
                 }
+                //std::printf("number_of_accumulations: %llu\n",number_of_accumulations);
+                curan::ui::ColorDicomViewer::ImageType::PixelType pix;
+                pix[0] = 255.0*accumulatedColor[0];
+                pix[1] = 255.0*accumulatedColor[1];
+                pix[2] = 255.0*accumulatedColor[2];
+                it.Set(pix);
             }
-            if(number_of_found_pixels==0)
-                break;
+        }, nullptr);
 
-            double alpha = 0.0;
-            for(const auto& [alpha_val,dist] : neighboors_residue )
-                alpha += (dist/sum_of_dist)*alpha_val;
-
-            Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, alpha * TransparencyValue};
-            float mix_factor = color[3];
-            if (mix_factor > AlphaFuncValue){
-                fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
-                fragColor[3] += mix_factor;
-            }
-
-            if (mix_factor > fragColor[3])
-                fragColor = color;
-
-            texcoord += deltaTexCoord;
-            --num_iterations;
-        }
-        it.Set(255.0*fragColor[0]);
-  }
-  return projectionimage;
+    return projectionimage;
 }
 
 struct BoundingBox{
@@ -1009,16 +1027,16 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
         case ONE:
         {
             auto image_display = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
-            if(appdata.current_volume.compare("raw")){
+            if(appdata.current_volume.compare("raw")==0){
                 image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("source")){
+            } else if(appdata.current_volume.compare("source")==0){
                 image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("acpc")){
+            } else if(appdata.current_volume.compare("acpc")==0){
                 image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("alongtrajectory")){
-                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("trajectory")){
-                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("alongtrajectory")==0){
+                image_display->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("trajectory")==0){
+                image_display->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
             }
             image_display->add_overlay_processor(overlay_lambda);
             std::lock_guard<std::mutex> g{appdata.mut};
@@ -1033,21 +1051,21 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
             auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
             image_displayy->add_overlay_processor(overlay_lambda);
 
-            if(appdata.current_volume.compare("raw")){
+            if(appdata.current_volume.compare("raw")==0){
                 image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
                 image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("source")){
+            } else if(appdata.current_volume.compare("source")==0){
                 image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
                 image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("acpc")){
+            } else if(appdata.current_volume.compare("acpc")==0){
                 image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
                 image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("alongtrajectory")){
-                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("trajectory")){
-                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("alongtrajectory")==0){
+                image_displayx->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("trajectory")==0){
+                image_displayx->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
             }
 
             std::lock_guard<std::mutex> g{appdata.mut};
@@ -1065,32 +1083,146 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
             auto image_displayz = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
             image_displayz->add_overlay_processor(overlay_lambda);
 
-            if(appdata.current_volume.compare("raw")){
+            if(appdata.current_volume.compare("raw")==0){
                 image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
                 image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
                 image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("source")){
+            } else if(appdata.current_volume.compare("source")==0){
                 image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
                 image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
                 image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("acpc")){
+            } else if(appdata.current_volume.compare("acpc")==0){
                 image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
                 image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
                 image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("alongtrajectory")){
-                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-            } else if(appdata.current_volume.compare("trajectory")){
-                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
-                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("alongtrajectory")==0){
+                image_displayx->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("trajectory")==0){
+                image_displayx->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
             }
 
             std::lock_guard<std::mutex> g{appdata.mut};
             appdata.viewers.push_back(image_displayx.get());
             appdata.viewers.push_back(image_displayy.get());
             appdata.viewers.push_back(image_displayz.get());
+            *container << std::move(image_displayx) << std::move(image_displayy) << std::move(image_displayz);
+        }
+        break;
+        default:
+        throw std::runtime_error("cannot process layout type");
+    }
+    return std::move(container);
+}
+
+std::unique_ptr<curan::ui::Container> create_colored_dicom_viewers(Application& appdata){
+    using namespace curan::ui;
+    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+    auto overlay_lambda = [&](ColorDicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
+        switch(selected_option){
+            case 0:
+                viewer->update_volume(&appdata.color_vol_mas, Direction::X);
+            break;
+            case 1:
+                viewer->update_volume(&appdata.color_vol_mas, Direction::Y);
+            break;
+            case 2:
+                viewer->update_volume(&appdata.color_vol_mas, Direction::Z);
+            break;
+            case 3:
+                viewer->change_zoom();
+            break;
+            case 4:
+                viewer->change_path_state(ColorPathState::COLORHIGHLIGHTPATH);
+            break;
+            case 5:
+                viewer->change_path_state(ColorPathState::COLORDELETEPATH);
+                break;
+            case 6:
+                viewer->change_path_state(ColorPathState::COLORDRAWPATH);
+                break;
+            default:
+            break;
+        }
+    };
+    switch(appdata.type){
+        case ONE:
+        {
+            auto image_display = curan::ui::ColorDicomViewer::make(*appdata.resources, &appdata.color_vol_mas, Direction::X);
+            if(appdata.current_volume.compare("raw")==0){
+                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("source")==0){
+                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("acpc")==0){
+                image_display->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("alongtrajectory")==0){
+                image_display->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("trajectory")==0){
+                image_display->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+            }
+            image_display->add_overlay_processor(overlay_lambda);
+            *container << std::move(image_display);
+        }
+        break;
+        case TWO:
+        {
+            auto image_displayx = curan::ui::ColorDicomViewer::make(*appdata.resources, &appdata.color_vol_mas, Direction::X);
+            image_displayx->add_overlay_processor(overlay_lambda);
+            auto image_displayy = curan::ui::ColorDicomViewer::make(*appdata.resources, &appdata.color_vol_mas, Direction::Y);
+            image_displayy->add_overlay_processor(overlay_lambda);
+
+            if(appdata.current_volume.compare("raw")==0){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("source")==0){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("acpc")==0){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("alongtrajectory")==0){
+                image_displayx->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("trajectory")==0){
+                image_displayx->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+            }
+            *container << std::move(image_displayx) << std::move(image_displayy);
+        }
+        break;
+        case THREE:
+        {
+            auto image_displayx = curan::ui::ColorDicomViewer::make(*appdata.resources, &appdata.color_vol_mas, Direction::X);
+            image_displayx->add_overlay_processor(overlay_lambda);
+            auto image_displayy = curan::ui::ColorDicomViewer::make(*appdata.resources, &appdata.color_vol_mas, Direction::Y);
+            image_displayy->add_overlay_processor(overlay_lambda);
+            auto image_displayz = curan::ui::ColorDicomViewer::make(*appdata.resources, &appdata.color_vol_mas, Direction::Z);
+            image_displayz->add_overlay_processor(overlay_lambda);
+
+            if(appdata.current_volume.compare("raw")==0){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("source")==0){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("acpc")==0){
+                image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("alongtrajectory")==0){
+                image_displayx->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+            } else if(appdata.current_volume.compare("trajectory")==0){
+                image_displayx->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayy->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+                image_displayz->push_options({"view 1","view 2","bird eye","zoom","select path","delete path","draw path"});
+            }
             *container << std::move(image_displayx) << std::move(image_displayy) << std::move(image_displayz);
         }
         break;
@@ -1228,6 +1360,208 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
     return Overlay::make(std::move(container), SkColorSetARGB(100, 125, 125, 125), true);
 }
 
+
+std::unique_ptr<curan::ui::Overlay> create_slider_range_page(Application& appdata)
+{
+    using namespace curan::ui;
+	auto slider = Slider::make({ 0.0f, 255.0f });
+    float high_value = appdata.modalitytype == ViewType::CT_VIEW ? appdata.color_coding.ct_limits[1] : appdata.color_coding.mri_limits[1];
+	slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_current_value(high_value).set_size(SkRect::MakeWH(400, 40));
+	auto textblob = TextBlob::make("higher range");
+	textblob->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 60));
+	slider->set_callback([&](Slider* slider, ConfigDraw* config) {
+        if(appdata.modalitytype == ViewType::CT_VIEW){
+            auto higher_ct_value = slider->get_current_value();
+            if(higher_ct_value < appdata.color_coding.ct_limits[0])
+                 slider->set_current_value(appdata.color_coding.ct_limits[0]+0.01);
+            else
+                appdata.color_coding.ct_limits[1] = higher_ct_value;
+
+            if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end()){
+                auto vol =  ColoredCachedVolume{DeepColoredCopy<ColorDicomViewer::ImageType,ImageType>(search->second.img,appdata.color_coding.ct_limits,{255.0f,0.0f,0.0f})};
+                appdata.color_vol_mas.update_volume(vol.img);
+                appdata.miscellaneous_colored_volumes["ct_source"] = vol;
+            }else{
+                config->stack_page->stack(warning_overlay("could not convert to colored representation",*appdata.resources));
+                return;
+            }
+
+        } else {
+            auto higher_mri_value = slider->get_current_value();
+            if(higher_mri_value < appdata.color_coding.mri_limits[0])
+                 slider->set_current_value(appdata.color_coding.mri_limits[0]+0.01);
+            else
+                appdata.color_coding.mri_limits[1] = higher_mri_value;
+
+            if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end()){
+                auto vol = ColoredCachedVolume{DeepColoredCopy<ColorDicomViewer::ImageType,ImageType>(search->second.img,appdata.color_coding.mri_limits,{0.0f,0.0f,255.0f})};
+                appdata.color_vol_mas.update_volume(vol.img);
+                appdata.miscellaneous_colored_volumes["mri_source"] = vol;
+            }else{
+                config->stack_page->stack(warning_overlay("could not convert to colored representation",*appdata.resources));
+                return;
+            }
+
+        }
+	});
+
+	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container << std::move(textblob) << std::move(slider);
+	container->set_divisions({ 0.0 , 0.5 , 1.0 });
+
+    float low_value = appdata.modalitytype == ViewType::CT_VIEW ? appdata.color_coding.ct_limits[0] : appdata.color_coding.mri_limits[0];
+	auto slider1 = Slider::make({ 0.0f, 255.0f });
+	slider1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_current_value(low_value).set_size(SkRect::MakeWH(400, 40));
+	auto textblob1 = TextBlob::make("lower range");
+	textblob1->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 60));
+	slider1->set_callback([&](Slider* slider, ConfigDraw* config) {
+        if(appdata.modalitytype == ViewType::CT_VIEW){
+            auto lower_ct_value = slider->get_current_value();
+            if(lower_ct_value > appdata.color_coding.ct_limits[1])
+                 slider->set_current_value(appdata.color_coding.ct_limits[1]-0.01);
+            else
+                appdata.color_coding.ct_limits[0] = lower_ct_value;
+
+            if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end()){
+                auto vol =  ColoredCachedVolume{DeepColoredCopy<ColorDicomViewer::ImageType,ImageType>(search->second.img,appdata.color_coding.ct_limits,{255.0f,0.0f,0.0f})};
+                appdata.color_vol_mas.update_volume(vol.img);
+                appdata.miscellaneous_colored_volumes["ct_source"] = vol;
+            }else{
+                config->stack_page->stack(warning_overlay("could not convert to colored representation",*appdata.resources));
+                return;
+            }
+
+        } else {
+            auto lower_mri_value = slider->get_current_value();
+            if(lower_mri_value > appdata.color_coding.mri_limits[1])
+                 slider->set_current_value(appdata.color_coding.mri_limits[1]-0.01);
+            else
+                appdata.color_coding.mri_limits[0] = lower_mri_value;
+
+            if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end()){
+                auto vol = ColoredCachedVolume{DeepColoredCopy<ColorDicomViewer::ImageType,ImageType>(search->second.img,appdata.color_coding.mri_limits,{0.0f,0.0f,255.0f})};
+                appdata.color_vol_mas.update_volume(vol.img);
+                appdata.miscellaneous_colored_volumes["mri_source"] = vol;
+            }else{
+                config->stack_page->stack(warning_overlay("could not convert to colored representation",*appdata.resources));
+                return;
+            }
+        }
+	});
+
+	auto container1 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container1 << std::move(textblob1) << std::move(slider1);
+	container1->set_divisions({ 0.0 , 0.5 , 1.0 });
+
+    auto containerofcontainers = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *containerofcontainers << std::move(container) << std::move(container1);
+    return Overlay::make(std::move(containerofcontainers), SkColorSetARGB(100, 125, 125, 125), true);
+}
+
+
+
+std::unique_ptr<curan::ui::Overlay> create_projection_page(Application& appdata)
+{
+    using namespace curan::ui;
+	auto slider = Slider::make({ 0.0001f, 0.5f });
+    auto range = slider->get_limits();
+    std::printf("range[%.2f %.2f]\n",range[1],range[0]);
+    float transparency_value =  (appdata.TransparencyValue-range[0])/(range[1]-range[0]);
+    std::printf("value[%.2f]\n",transparency_value);
+	slider->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_current_value(transparency_value).set_size(SkRect::MakeWH(400, 40));
+	auto textblob = TextBlob::make("transparency");
+	textblob->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 60));
+	slider->set_callback([&](Slider* slider, ConfigDraw* config) {
+        auto transparency = slider->get_current_value();
+        auto range = slider->get_limits();
+        appdata.TransparencyValue = transparency*(range[1]-range[0])+range[0];
+        std::printf("appdata.TransparencyValue[%.6f] appdata.AlphaFuncValue[%.6f]\n",appdata.TransparencyValue,appdata.AlphaFuncValue);
+        try{                                                                                                                                                                    
+            if(appdata.modalitytype == ViewType::CT_VIEW){
+                ImageType::Pointer ct_input;
+                if (auto search = appdata.ct_volumes.find("trajectory"); search != appdata.ct_volumes.end())
+                    ct_input = search->second.img;
+                else
+                    throw std::runtime_error("failure due to missing volume");
+                curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based(appdata,ct_input,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+                appdata.miscellaneous_colored_volumes["ct_projection"] = ColoredCachedVolume{ct_projected_input};
+                appdata.color_vol_mas.update_volume(ct_projected_input);
+            }
+            else {
+                ImageType::Pointer mri_input;
+                if (auto search = appdata.mri_volumes.find("trajectory"); search != appdata.mri_volumes.end())
+                    mri_input = search->second.img;
+                else
+                throw std::runtime_error("failure due to missing volume");
+
+                curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based(appdata,mri_input,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+                appdata.miscellaneous_colored_volumes["mri_projection"] = ColoredCachedVolume{mri_projected_input};
+                appdata.color_vol_mas.update_volume(mri_projected_input);
+            }
+        } catch(...){
+            std::cout << "failure allocating image" << std::endl;
+            throw std::runtime_error("failure");
+        }
+	});
+
+	auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container << std::move(textblob) << std::move(slider);
+	container->set_divisions({ 0.0 , 0.5 , 1.0 });
+
+    float low_value = appdata.modalitytype == ViewType::CT_VIEW ? appdata.color_coding.ct_limits[0] : appdata.color_coding.mri_limits[0];
+	auto slider1 = Slider::make({ 0.0001f, 0.5f }); 
+    range = slider1->get_limits();
+    std::printf("range[%.2f %.2f]\n",range[1],range[0]);
+    float alpha_value =  (appdata.AlphaFuncValue-range[0])/(range[1]-range[0]);
+    std::printf("value[%.2f]\n",alpha_value);
+    slider1->set_current_value((appdata.AlphaFuncValue-range[0])/(range[1]-range[0]));
+	slider1->set_click_color(SK_ColorDKGRAY).set_hover_color(SK_ColorCYAN).set_waiting_color(SK_ColorDKGRAY).set_current_value(alpha_value).set_size(SkRect::MakeWH(400, 40));
+	auto textblob1 = TextBlob::make("alpha");
+	textblob1->set_text_color(SK_ColorWHITE).set_background_color(SK_ColorBLACK).set_size(SkRect::MakeWH(200, 60));
+	slider1->set_callback([&](Slider* slider, ConfigDraw* config) {
+        auto alpha = slider->get_current_value();
+        auto range = slider->get_limits();
+        appdata.AlphaFuncValue = alpha*(range[1]-range[0])+range[0];
+        std::printf("appdata.TransparencyValue[%.6f] appdata.AlphaFuncValue[%.6f]\n",appdata.TransparencyValue,appdata.AlphaFuncValue);
+        try{                                                                                                                                                                    
+            if(appdata.modalitytype == ViewType::CT_VIEW){
+                ImageType::Pointer ct_input;
+                if (auto search = appdata.ct_volumes.find("trajectory"); search != appdata.ct_volumes.end())
+                    ct_input = search->second.img;
+                else
+                    throw std::runtime_error("failure due to missing volume");
+                curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based(appdata,ct_input,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+                appdata.miscellaneous_colored_volumes["ct_projection"] = ColoredCachedVolume{ct_projected_input};
+                appdata.color_vol_mas.update_volume(ct_projected_input);
+            }
+            else {
+                ImageType::Pointer mri_input;
+                if (auto search = appdata.mri_volumes.find("trajectory"); search != appdata.mri_volumes.end())
+                    mri_input = search->second.img;
+                else
+                throw std::runtime_error("failure due to missing volume");
+
+                curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based(appdata,mri_input,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+                appdata.miscellaneous_colored_volumes["mri_projection"] = ColoredCachedVolume{mri_projected_input};
+                appdata.color_vol_mas.update_volume(mri_projected_input);
+            }
+            std::printf("added projection!\n");
+        } catch(...){
+            std::cout << "failure allocating image" << std::endl;
+            throw std::runtime_error("failure");
+        }
+	});
+
+	auto container1 = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
+	*container1 << std::move(textblob1) << std::move(slider1);
+	container1->set_divisions({ 0.0 , 0.5 , 1.0 });
+
+    auto containerofcontainers = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *containerofcontainers << std::move(container) << std::move(container1);
+    return Overlay::make(std::move(containerofcontainers), SkColorSetARGB(100, 125, 125, 125), true);
+}
+
+
 std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& appdata){
     using namespace curan::ui;
 
@@ -1298,7 +1632,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
 
         appdata.pool->submit("",[&, configlocal = config,  fixed_image = ct_input_converted, moving_image = mri_input_converted ](){
             auto [resampled_output,checked_overlap_output] = solve_registration(fixed_image,moving_image,appdata);
-            appdata.sync_tasks_with_screen_queue.push(curan::utilities::Job{"emplace volumes in maps",[&, config = configlocal,fixed_image = fixed_image, moving_image = resampled_output ](){
+            appdata.sync_tasks_with_screen_queue.push(curan::utilities::Job{"emplace volumes in maps",[&, config = configlocal,fixed_image = fixed_image, moving_image = resampled_output, checkered = checked_overlap_output ](){
                 ImageType::Pointer fixed_image;
                 if (auto search = appdata.ct_volumes.find("raw"); search != appdata.ct_volumes.end())
                     fixed_image = search->second.img;
@@ -1309,7 +1643,7 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
                 appdata.ct_volumes["source"]=CachedVolume{fixed_image};
                 appdata.mri_volumes["source"] = CachedVolume{moving_image};
                 appdata.current_volume = "source";
-
+                appdata.miscellaneous_volumes["checkered"] = CachedVolume{checkered};
                 if(appdata.modalitytype == ViewType::CT_VIEW){
                     appdata.vol_mas->update_volume(fixed_image);
                 } else {
@@ -1323,12 +1657,45 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
 
     auto validate_checkered = Button::make("Validate Checkered Overlap", *appdata.resources); 
     validate_checkered->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    validate_checkered->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        auto color = button->get_waiting_color();
+        if(color == SK_ColorGRAY){ // we need to change into the overlap
+            ImageType::Pointer overlapped;
+            if (auto search = appdata.miscellaneous_volumes.find("checkered"); search != appdata.miscellaneous_volumes.end())
+                overlapped = search->second.img;
+            else{
+                if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("registration must be solved before checking overlap",*appdata.resources));
+                return;
+            }
+            button->set_waiting_color(SkColorSetARGB(0xFF, 65, 105, 225));
+            appdata.vol_mas->update_volume(overlapped);
+        } else {
+            if(appdata.modalitytype == ViewType::CT_VIEW){
+                ImageType::Pointer fixed_image;
+                if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
+                    fixed_image = search->second.img;
+                else{
+                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find CT source dicom image",*appdata.resources));
+                    return;
+                }
+                appdata.vol_mas->update_volume(fixed_image);
+            } else {
+                ImageType::Pointer moving_image;
+                if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
+                    moving_image = search->second.img;
+                else{
+                    if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("could not find MRI source dicom image",*appdata.resources));
+                    return;
+                }
+                appdata.vol_mas->update_volume(moving_image);
+            }
+            button->set_waiting_color(SK_ColorGRAY);
+        }
 
-    auto validate_blending = Button::make("Validate Blending", *appdata.resources);
-    validate_blending->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+            
+    });
 
-    const std::string displaystring = (appdata.modalitytype == ViewType::CT_VIEW) ? "Switch to MRI" : "Switch to CT" ;
-    auto switchto = Button::make(displaystring, *appdata.resources);
+    auto switchto = Button::make("Switch Modality", *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
         std::printf("switch representation %s\n",appdata.current_volume.c_str());
@@ -1364,22 +1731,31 @@ std::unique_ptr<curan::ui::Container> select_registration_mri_ct(Application& ap
     auto fixregistration = Button::make("Fix Registration", *appdata.resources);
     fixregistration->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     fixregistration->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        if (auto search = appdata.mri_volumes.find("source"); search == appdata.mri_volumes.end()){
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("cannot advance without registration",*appdata.resources));
-            return;
+        if(appdata.modalitytype == ViewType::CT_VIEW){ 
+            ImageType::Pointer ctinput;
+            if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end()){
+                ctinput = search->second.img;
+            } else {
+                if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("cannot advance without complete registration",*appdata.resources));
+                return;
+            }
+            appdata.vol_mas->update_volume(ctinput);
+        } else {
+            ImageType::Pointer mriinput;
+            if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end()){
+                mriinput = search->second.img;
+            } else {
+                if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("cannot advance without complete registration",*appdata.resources));
+                return;
+            }
+            appdata.vol_mas->update_volume(mriinput);
         }
-
-        if (auto search = appdata.ct_volumes.find("source"); search == appdata.ct_volumes.end()){
-            if (config->stack_page != nullptr) config->stack_page->stack(warning_overlay("cannot advance without registration",*appdata.resources));
-            return;
-        }
-
         appdata.panel_constructor = select_ac_pc_midline;
         appdata.volume_callback  = ac_pc_midline_point_selection;
         appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
     });
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    *viwers_container << std::move(layout) << std::move(registervolumes) << std::move(validate_checkered) << std::move(validate_blending) << std::move(switchto) << std::move(fixregistration);
+    *viwers_container << std::move(layout) << std::move(registervolumes) << std::move(validate_checkered) << std::move(switchto) << std::move(fixregistration);
 
     viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
@@ -1585,18 +1961,33 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     auto check = Button::make("Trajectory Planning", *appdata.resources);
     check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     check->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        appdata.panel_constructor = select_target_and_region_of_entry;
-        appdata.volume_callback = select_target_and_region_of_entry_point_selection;
         if(appdata.ac_pc_data.ac_word_coordinates && appdata.ac_pc_data.pc_word_coordinates)
             appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
         else
             config->stack_page->stack(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
+
+        if (auto search = appdata.ct_volumes.find("source"); search != appdata.ct_volumes.end())
+            appdata.miscellaneous_colored_volumes["ct_source"] = ColoredCachedVolume{DeepColoredCopy<ColorDicomViewer::ImageType,ImageType>(search->second.img,appdata.color_coding.ct_limits,{255.0f,0.0f,0.0f})};
+        else{
+            config->stack_page->stack(warning_overlay("could not convert to colored representation",*appdata.resources));
+            return;
+        }
+
+        if (auto search = appdata.mri_volumes.find("source"); search != appdata.mri_volumes.end())
+            appdata.miscellaneous_colored_volumes["mri_source"] = ColoredCachedVolume{DeepColoredCopy<ColorDicomViewer::ImageType,ImageType>(search->second.img,appdata.color_coding.mri_limits,{0.0f,0.0f,255.0f})};
+        else{
+            config->stack_page->stack(warning_overlay("could not convert to colored representation",*appdata.resources));
+            return;
+        }
+                    
+        appdata.panel_constructor = validate_color_coding;
+        appdata.volume_callback = {};
+        appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
     });
-    const std::string displaystring = (appdata.modalitytype == ViewType::CT_VIEW) ? "Switch to MRI" : "Switch to CT" ;
-    auto switchto = Button::make(displaystring, *appdata.resources);
+
+    auto switchto = Button::make("Switch Modality", *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer localinput;
@@ -1623,7 +2014,6 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
             appdata.vol_mas->update_volume(localinput,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
-        std::printf("done switch representation %s\n",appdata.current_volume.c_str());
     });
 
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
@@ -1637,6 +2027,83 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
 
     return container;
 };
+
+std::unique_ptr<curan::ui::Container> validate_color_coding(Application& appdata){
+    using namespace curan::ui;
+    if(appdata.modalitytype == ViewType::CT_VIEW){
+        if (auto search = appdata.miscellaneous_colored_volumes.find("ct_source"); search != appdata.miscellaneous_colored_volumes.end())
+            appdata.color_vol_mas.update_volume(search->second.img);
+        else
+            throw std::runtime_error("failure to find colored images");
+    } else {
+        if (auto search = appdata.miscellaneous_colored_volumes.find("mri_source"); search != appdata.miscellaneous_colored_volumes.end())
+            appdata.color_vol_mas.update_volume(search->second.img);
+        else
+            throw std::runtime_error("failure to find colored images");
+    }
+
+    auto image_display = create_colored_dicom_viewers(appdata);
+    auto layout = Button::make("Layout", *appdata.resources);
+    layout->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    layout->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        if(config->stack_page!=nullptr){
+			config->stack_page->stack(layout_overlay(appdata));
+		}
+    });
+
+    auto switch_modalities = Button::make("Switch Modalities", *appdata.resources);
+    switch_modalities->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    switch_modalities->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
+            if (auto search = appdata.miscellaneous_colored_volumes.find("mri_source"); search != appdata.miscellaneous_colored_volumes.end()){
+                appdata.color_vol_mas.update_volume(search->second.img,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+                appdata.modalitytype = ViewType::MRI_VIEW;
+            } else{
+                config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
+                return;
+            }
+        } else { // if we are in mri mode then we want to go to ct
+            ImageType::Pointer localinput;
+            if (auto search = appdata.miscellaneous_colored_volumes.find("ct_source"); search != appdata.miscellaneous_colored_volumes.end()){
+                appdata.color_vol_mas.update_volume(search->second.img,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+                appdata.modalitytype = ViewType::CT_VIEW;
+            } else {   
+                config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
+                return;
+            }
+        }
+    });
+
+    auto update_intervals = Button::make("Update Intervals", *appdata.resources);
+    update_intervals->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    update_intervals->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        config->stack_page->stack(create_slider_range_page(appdata));
+    });
+
+    auto confirm_color_coding = Button::make("Confirm Color Coding", *appdata.resources);
+    confirm_color_coding->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    confirm_color_coding->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        std::printf("color coding ct: [%.4f %.4f] mir: [%.4f %.4f]\n",appdata.color_coding.ct_limits[0],appdata.color_coding.ct_limits[1],appdata.color_coding.mri_limits[0],appdata.color_coding.mri_limits[1]);
+        if(appdata.ac_pc_data.ac_word_coordinates && appdata.ac_pc_data.pc_word_coordinates){
+            appdata.panel_constructor = select_target_and_region_of_entry;
+            appdata.volume_callback = select_target_and_region_of_entry_point_selection;
+            appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
+        }
+        else
+            config->stack_page->stack(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
+    });
+
+    auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
+    *viwers_container << std::move(layout) << std::move(switch_modalities) << std::move(update_intervals) << std::move(confirm_color_coding);
+
+    viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
+
+    auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
+    *container << std::move(viwers_container) << std::move(image_display);
+    container->set_divisions({0.0, 0.1, 1.0});
+
+    return container;
+}
 
 void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
 
@@ -1906,11 +2373,10 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
 			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
 		}
     });
-    const std::string displaystring = (appdata.modalitytype == ViewType::CT_VIEW) ? "Switch to MRI" : "Switch to CT" ;
-    auto switchto = Button::make(displaystring, *appdata.resources);
+
+    auto switchto = Button::make("Switch Modality", *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer localinput;
@@ -1921,7 +2387,6 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
-            std::printf("updating to mri volume\n");
             appdata.vol_mas->update_volume(localinput,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::MRI_VIEW;
         } else { // if we are in mri mode then we want to go to ct
@@ -1933,11 +2398,9 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
                 config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
                 return;
             }
-            std::printf("updating to ct volume\n");
             appdata.vol_mas->update_volume(localinput,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
             appdata.modalitytype = ViewType::CT_VIEW;
         }
-        std::printf("done switch representation %s\n",appdata.current_volume.c_str());
     });
 
 
@@ -1953,7 +2416,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     return std::move(container);
 };
 
-void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+void select_entry_point_and_validate(Application& appdata,curan::ui::ColorDicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the columns of the highlighted path must be at least 1");
@@ -1966,8 +2429,8 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
     if(appdata.trajectory_location.entry_specification){
         appdata.trajectory_location.entry_specification = false;
         {
-            ImageType::IndexType local_index;
-            ImageType::PointType itk_point_in_world_coordinates;
+            curan::ui::ColorDicomViewer::ImageType::IndexType local_index;
+            curan::ui::ColorDicomViewer::ImageType::PointType itk_point_in_world_coordinates;
             local_index[0] = strokes.point_in_image_coordinates(0, 0);
             local_index[1] = strokes.point_in_image_coordinates(1, 0);
             local_index[2] = strokes.point_in_image_coordinates(2, 0);
@@ -2092,6 +2555,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
             appdata.vol_mas->update_volume(image_in_focus,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
             appdata.ct_volumes["alongtrajectory"]=CachedVolume{ct_output};
             appdata.mri_volumes["alongtrajectory"]=CachedVolume{mri_output};
+            appdata.current_volume = "alongtrajectory";
 
             auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
                 ImageType::IndexType local_index;
@@ -2184,16 +2648,15 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         appdata.vol_mas->update_volume(ct_input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
     else 
         appdata.vol_mas->update_volume(mri_input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
-    try{
-        ImageType::Pointer ct_projected_input = allocate_image(appdata,ct_input);
-        ImageType::Pointer mri_projected_input = allocate_image(appdata,mri_input);
-
-        //appdata.ct_volumes.emplace("tmp_proj",CachedVolume{ct_projected_input,false});
-        //appdata.mri_volumes.emplace("tmp_proj",CachedVolume{mri_projected_input,false});
+    try{                                                                                                                                                                    
+        curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based(appdata,ct_input,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+        curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based(appdata,mri_input,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+        appdata.miscellaneous_colored_volumes["ct_projection"] = ColoredCachedVolume{ct_projected_input};
+        appdata.miscellaneous_colored_volumes["mri_projection"] = ColoredCachedVolume{mri_projected_input};
         if(appdata.modalitytype == ViewType::CT_VIEW)
-            appdata.projected_vol_mas.update_volume(ct_projected_input);
+            appdata.color_vol_mas.update_volume(ct_projected_input);
         else 
-            appdata.projected_vol_mas.update_volume(mri_projected_input);
+            appdata.color_vol_mas.update_volume(mri_projected_input);
         std::printf("added projection!\n");
     } catch(...){
         std::cout << "failure allocating image" << std::endl;
@@ -2201,7 +2664,23 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     }
 
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
+    auto image_displayx = curan::ui::ColorDicomViewer::make(*appdata.resources, &appdata.color_vol_mas, Direction::Z);
+    image_displayx->push_options({"select path","delete path","draw path"});
+    image_displayx->add_overlay_processor([&](ColorDicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
+            switch(selected_option){
+                case 0:
+                    viewer->change_path_state(ColorPathState::COLORHIGHLIGHTPATH);
+                break;
+                case 1:
+                    viewer->change_path_state(ColorPathState::COLORDELETEPATH);
+                    break;
+                case 2:
+                    viewer->change_path_state(ColorPathState::COLORDRAWPATH);
+                    break;
+                default:
+                    break;
+            }
+        });
     auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
     image_displayy->push_options({"coronal view","axial view","saggital view","zoom"});
     image_displayy->add_overlay_processor([&](DicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
@@ -2232,6 +2711,12 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         appdata.trajectory_location.target_specification = false;    
     });
 
+    auto update_projection_params = Button::make("Update Projection", *appdata.resources);
+    update_projection_params->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    update_projection_params->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        config->stack_page->stack(create_projection_page(appdata));
+    });
+
     auto check = Button::make("Check", *appdata.resources);
     check->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     check->add_press_call([&](Button *button, Press press, ConfigDraw *config){
@@ -2246,8 +2731,58 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
             config->stack_page->stack(warning_overlay("cannot advance without AC-PC specification",*appdata.resources));
     });
 
+    auto switchto = Button::make("Switch Modality", *appdata.resources);
+    switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
+    switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
+        // so first I need to check which modality we are currently under
+        if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
+            ImageType::Pointer input;
+            if (auto search = appdata.mri_volumes.find(appdata.current_volume); search != appdata.mri_volumes.end())
+                input = search->second.img;
+            else{
+                std::printf("did not find the volume\n");
+                config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
+                return;
+            }
+
+            curan::ui::ColorDicomViewer::ImageType::Pointer proj_input;
+            if (auto search = appdata.miscellaneous_colored_volumes.find("mri_projection"); search != appdata.miscellaneous_colored_volumes.end())
+                proj_input = search->second.img;
+            else{
+                std::printf("did not find the volume\n");
+                config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
+                return;
+            }
+            appdata.color_vol_mas.update_volume(proj_input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.modalitytype = ViewType::MRI_VIEW;
+
+        } else { // if we are in mri mode then we want to go to ct
+            ImageType::Pointer input;
+            if (auto search = appdata.ct_volumes.find(appdata.current_volume); search != appdata.ct_volumes.end())
+                input = search->second.img;
+            else{   
+                std::printf("did not find the volume\n");
+                config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
+                return;
+            }
+
+            curan::ui::ColorDicomViewer::ImageType::Pointer proj_input;
+            if (auto search = appdata.miscellaneous_colored_volumes.find("ct_projection"); search != appdata.miscellaneous_colored_volumes.end())
+                proj_input = search->second.img;
+            else{
+                std::printf("did not find the volume\n");
+                config->stack_page->stack(warning_overlay("Cannot change to MRI view",*appdata.resources));
+                return;
+            }
+            appdata.color_vol_mas.update_volume(proj_input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES|curan::ui::DicomVolumetricMask::Policy::UPDATE_POINTS);
+            appdata.modalitytype = ViewType::CT_VIEW;
+        }
+    });
+
     auto viwers_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    *viwers_container << std::move(defineentry) << std::move(check);
+    *viwers_container << std::move(defineentry) << std::move(switchto) << std::move(update_projection_params) << std::move(check);
 
     viwers_container->set_shader_colors({SkColorSetRGB(225, 225, 225), SkColorSetRGB(255, 255, 240)});
 
@@ -2374,11 +2909,9 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
 		}
     });
 
-    const std::string displaystring = (appdata.modalitytype == ViewType::CT_VIEW) ? "Switch to MRI" : "Switch to CT" ;
-    auto switchto = Button::make(displaystring, *appdata.resources);
+    auto switchto = Button::make("Switch Modality", *appdata.resources);
     switchto->set_click_color(SK_ColorLTGRAY).set_hover_color(SK_ColorDKGRAY).set_waiting_color(SK_ColorGRAY).set_size(SkRect::MakeWH(200, 80));
     switchto->add_press_call([&](Button *button, Press press, ConfigDraw *config){
-        std::printf("switch representation %s\n",appdata.current_volume.c_str());
         // so first I need to check which modality we are currently under
         if(appdata.modalitytype == ViewType::CT_VIEW){ // if we are in ct mode then we want to go to mri
             ImageType::Pointer input;
@@ -2441,10 +2974,11 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
     auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
     *minimage_container << std::move(minipage);
     vol_mas->add_pressedhighlighted_call([this](DicomVolumetricMask *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
+        std::cout << "pressed was called!\n";
         if(volume_callback)
             volume_callback(*this,vol_mas,config_draw,strokes);
     });
-    projected_vol_mas.add_pressedhighlighted_call([this](DicomVolumetricMask *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
+    color_vol_mas.add_pressedhighlighted_call([this](ColorDicomVolumetricMask *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
         if(projected_volume_callback)
             projected_volume_callback(*this,vol_mas,config_draw,strokes);
     });
@@ -2491,34 +3025,37 @@ std::optional<ImageType::Pointer> get_volume(std::string path, std::string ident
 	nameGenerator->SetUseSeriesDetails(true);
 	nameGenerator->AddSeriesRestriction("0008|0021");
 
-	nameGenerator->SetDirectory(path);
+	
 
 	using SeriesIdContainer = std::vector<std::string>;
 
-	const SeriesIdContainer &seriesUID = nameGenerator->GetSeriesUIDs();
-    std::string seriesIdentifier;
-	auto seriesItr = seriesUID.begin();
-	auto seriesEnd = seriesUID.end();
+
 	bool found = false;
-    while (seriesItr != seriesEnd)
-	{
-        if(identifier.compare(std::string(seriesItr->c_str()))==0){
-            seriesIdentifier = std::string(seriesItr->c_str());
-            found = true;
+    
+    SeriesIdContainer targetFileNames;
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
+        if (entry.is_directory()) {
+            nameGenerator->SetDirectory(entry.path().string());
+            const std::vector<std::string> &seriesUIDs = nameGenerator->GetSeriesUIDs();
+            std::string seriesIdentifier;
+            for (const auto& uid : seriesUIDs) {
+                std::cout << "uid: " << uid << std::endl;
+                if (uid == identifier) {
+                    // 2. If found, grab the file names from this specific folder
+                    targetFileNames = nameGenerator->GetFileNames(uid);
+                    seriesIdentifier = uid;
+                    found = true;
+                    break; 
+                }
+            }
         }
-		//std::cout << seriesItr->c_str() << std::endl;
-		++seriesItr;
-	}
+    }
 
     if(!found)
         return std::nullopt;
 
-	using FileNamesContainer = std::vector<std::string>;
-	FileNamesContainer fileNames;
-
-	fileNames = nameGenerator->GetFileNames(seriesIdentifier);
-
-	reader->SetFileNames(fileNames);
+	reader->SetFileNames(targetFileNames);
 
 	using OrienterType = itk::OrientImageFilter<DICOMImageType, DICOMImageType>;
 	auto orienter = OrienterType::New();
@@ -2610,18 +3147,21 @@ int main(int argc, char* argv[]) {
         std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
         IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
 
-        std::printf("\nReading input volume...\n");
-        auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
-        std::printf("\nReading input volume...\n");
-        auto optional_moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
+        std::printf("\nReading fixed input volume...\n");
+        auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/DICOM","1.3.46.670589.61.128.1.20250525133838413000200013081989901.2011512512"); // 
+
+        std::printf("\nReading moving input volume...\n");
+        auto moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/DICOM","1.3.46.670589.11.34212.5.0.12080.20241015103841891.3011480480"); // 
         
-        if(!fixed_volume || ! optional_moving_volume)
+        if(!fixed_volume || ! moving_volume)
         {
-            std::printf("failed to read moving or fixed volume\n");
+            if(!fixed_volume) 
+                std::printf("failed to read fixed volume\n");
+            if(!moving_volume) 
+                std::printf("failed to read moving volume\n");
             return 1;
         }
-        std::array<double,3> spacing{0.0,0.0,0.0};
-        auto moving_volume = missalign<ImageType>(*optional_moving_volume,spacing, 20);
+
 
         std::printf("found all moving and fixed volumes\n");
 
@@ -2643,7 +3183,7 @@ int main(int argc, char* argv[]) {
         DicomVolumetricMask vol{*fixed_volume};
         Application appdata{resources,&vol};
         appdata.ct_volumes["raw"] = CachedVolume{*fixed_volume};
-        appdata.mri_volumes["raw"] = CachedVolume{moving_volume};
+        appdata.mri_volumes["raw"] = CachedVolume{*moving_volume};
         Page page{appdata.main_page(),SK_ColorBLACK};
 
         page.update_page(viewer.get());
@@ -2829,133 +3369,214 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+
 /*
+curan::ui::ColorDicomViewer::ImageType::Pointer allocate_image_single_threaded(
+    Application& appdata, 
+    ImageType::Pointer input , 
+    const std::array<float,2>& color_coding, 
+    const std::array<float,3>& colortoreplace,
+    float TransparencyValue,
+    float AlphaFuncValue,
+    float SampleDensityValue)
+{
+    auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
+        Eigen::Matrix<double,3,1> converted;
+        converted << (double)point[0] , (double)point[1], (double)point[2];
+        return converted;
+    };
+    
+    auto base0 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[1]);
+    auto base1 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[2]);
+    auto base2 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[3]);
+    auto base3 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[4]);
 
+    Eigen::Matrix<double,3,1> x_direction = (base1 - base0).normalized();
+    Eigen::Matrix<double,3,1> y_direction = (base3 - base0).normalized();
+    Eigen::Matrix<double, 3, 1> z_direction = x_direction.cross(y_direction);
+    
+    Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
+    eigen_rotation_matrix.col(0) = x_direction;
+    eigen_rotation_matrix.col(1) = y_direction;
+    eigen_rotation_matrix.col(2) = z_direction;
 
-int notmain(int argc, char* argv[]) {
-    std::printf("\nReading input volume...\n");
-    auto fixed_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.3932.2021030514141108000.402551251220210305"); // 
-    std::printf("\nReading input volume...\n");
-    auto moving_volume =  get_volume("C:/Dev/CuranSDK/resources/dicom_sample/ST983524","1.3.46.670589.11.80629.5.0.10680.2021030514141216000.403551251220210305"); // 
+    curan::ui::ColorDicomViewer::ImageType::Pointer projectionimage = curan::ui::ColorDicomViewer::ImageType::New();
+  
+    curan::ui::ColorDicomViewer::ImageType::SizeType size;
+    size[0] = 512;  // size along X
+    size[1] = 512;  // size along Y 
+    size[2] = 1;   // size along Z
 
-    if(!fixed_volume || ! moving_volume)
+    curan::ui::ColorDicomViewer::ImageType::SpacingType spacing;
+    spacing[0] = (base1 - base0).norm()/(double)size[0]; // mm along X
+    spacing[1] = (base3 - base0).norm()/(double)size[1]; // mm along X
+    spacing[2] = 1.0; // mm along Z
+  
+    curan::ui::ColorDicomViewer::ImageType::PointType origin;
+    origin[0] = base0[0];
+    origin[1] = base0[1];
+    origin[2] = base0[2];
+  
+    auto direction = input->GetDirection();
+    for(size_t i = 0; i < 3; ++i)
+        for(size_t j = 0; j < 3; ++j)
+            direction(i,j) = eigen_rotation_matrix(i,j);
+  
+    curan::ui::ColorDicomViewer::ImageType::RegionType region;
+    region.SetSize(size);
+  
+    projectionimage->SetRegions(region);
+    projectionimage->SetSpacing(spacing);
+    projectionimage->SetOrigin(origin);
+    projectionimage->SetDirection(direction);
+    projectionimage->Allocate();
+
+    curan::ui::ColorDicomViewer::ImageType::PixelType emptypix;
+    emptypix[0] = 0;
+    emptypix[1] = 0;
+    emptypix[2] = 0;
+    projectionimage->FillBuffer(emptypix);
+
+    typedef itk::ImageRegionIteratorWithIndex<curan::ui::ColorDicomViewer::ImageType> IteratorType;
+    IteratorType it(projectionimage, projectionimage->GetRequestedRegion());
+
+    const Eigen::Matrix<double,3,1> t0 = *appdata.trajectory_location.target_world_coordinates;
+    Eigen::Matrix<double,3,1> texcoord;
+    
+    std::array<std::tuple<ImageType::IndexType,double>,7> neighboors;
+    
+    auto overall_size = input->GetLargestPossibleRegion().GetSize();
+
+    auto check_pixel_inside = [&](auto tempindex){
+        if(tempindex[0] < 0                || tempindex[1] < 0                || tempindex[2] < 0 || 
+            tempindex[0] >= overall_size[0] || tempindex[1] >= overall_size[1] || tempindex[2] >= overall_size[2])
+             return false;
+        else 
+            return true;
+    };
+    ImageType::PointType pos;
+    float initial_alpha = 0.0;
     {
-        std::printf("failed to read moving or fixed volume");
-        return 1;
+        ImageType::IndexType tmpindex;
+        pos[0] = t0[0];
+        pos[1] = t0[1];
+        pos[2] = t0[2];         
+        input->TransformPhysicalPointToIndex(pos,tmpindex);
+        if(!check_pixel_inside(tmpindex))
+            throw std::runtime_error("failure");
+        initial_alpha = (1.0/255.0)*input->GetPixel(tmpindex);
     }
 
-    DICOMImageType::Pointer ct_input_converted;
+    for (it.GoToBegin(); !it.IsAtEnd(); ++it)
     {
-        using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
-        auto filter = FilterType::New();
-        filter->SetInput(*fixed_volume);
+        ImageType::PointType pos;
+        projectionimage->TransformIndexToPhysicalPoint(it.GetIndex(),pos);
 
-        try {
-            filter->Update();
-        } catch (const itk::ExceptionObject &err) {
-            return 1;
+        const Eigen::Matrix<double,3,1> te{pos[0],pos[1],pos[2]};
+
+        const float min_iteratrions = 2.0;
+        const float max_iteratrions = 1024.0;
+        
+        float num_iterations = ceil((te-t0).norm()/SampleDensityValue);
+        if (num_iterations<min_iteratrions) num_iterations = min_iteratrions;
+        else if (num_iterations>max_iteratrions) num_iterations = max_iteratrions;
+
+        auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
+            Eigen::Matrix<double,3,1> mixed;
+            mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
+            return mixed;
+        };
+
+
+        const Eigen::Matrix<double,3,1> deltaTexCoord = (te-t0)/(num_iterations-1.0);
+        texcoord = t0;  
+        
+        Eigen::Matrix<double,4,1> fragColor{initial_alpha, initial_alpha, initial_alpha, initial_alpha * TransparencyValue};
+
+        auto compute_dist_and_index = [](int neighboorsindex,const Eigen::Matrix<double,3,1>& decimal_coordinates){
+            Eigen::Matrix<double,3,1> tmp_to_compute_distance = Eigen::Matrix<double,3,1>::Zero();
+            const int offsets[7][3] = {
+                {0, 0, 0},
+                {1, 0, 0},
+                {0, 1, 0},
+                {0, 0, 1},
+                {-1, 0, 0}, 
+                {0, -1, 0},
+                {0, 0, -1}
+            };
+            ImageType::IndexType indec;
+            indec[0] = std::round(decimal_coordinates[0])+offsets[neighboorsindex][0];
+            indec[1] = std::round(decimal_coordinates[1])+offsets[neighboorsindex][1];
+            indec[2] = std::round(decimal_coordinates[2])+offsets[neighboorsindex][2];
+            tmp_to_compute_distance[0] = indec[0];
+            tmp_to_compute_distance[1] = indec[1];
+            tmp_to_compute_distance[2] = indec[2];
+            return std::tuple<ImageType::IndexType,double>(indec,(tmp_to_compute_distance-decimal_coordinates).norm()+1e-5);
+        };
+
+        while(num_iterations>0.0){
+            ImageType::IndexType current_index_on_input;
+            pos[0] = texcoord[0];
+            pos[1] = texcoord[1];
+            pos[2] = texcoord[2];         
+            input->TransformPhysicalPointToIndex(pos,current_index_on_input);
+            Eigen::Vector3d eigenized_index_on_input;
+            eigenized_index_on_input[0] = current_index_on_input[0];
+            eigenized_index_on_input[1] = current_index_on_input[1];
+            eigenized_index_on_input[2] = current_index_on_input[2];
+
+            neighboors[0] = compute_dist_and_index(0,eigenized_index_on_input);
+            neighboors[1] = compute_dist_and_index(1,eigenized_index_on_input);
+            neighboors[2] = compute_dist_and_index(2,eigenized_index_on_input);
+            neighboors[3] = compute_dist_and_index(3,eigenized_index_on_input);
+            neighboors[4] = compute_dist_and_index(4,eigenized_index_on_input);
+            neighboors[5] = compute_dist_and_index(5,eigenized_index_on_input);
+            neighboors[6] = compute_dist_and_index(6,eigenized_index_on_input);
+
+            size_t number_of_found_pixels = 0;
+            double sum_of_dist = 0.0;
+            std::vector<std::tuple<double,double>> neighboors_residue;
+            for(size_t in = 0; in < 1 ; ++in){
+                const auto& [tmpindex,dist] = neighboors[in];
+                if(check_pixel_inside(tmpindex)){
+                    ++number_of_found_pixels;
+                    sum_of_dist += dist;
+                    neighboors_residue.push_back({(1.0/255.0)*input->GetPixel(tmpindex),dist});
+                }
+            }
+            if(number_of_found_pixels==0)
+                break;
+
+            double alpha = 0.0;
+            for(const auto& [alpha_val,dist] : neighboors_residue )
+                alpha += (dist/sum_of_dist)*alpha_val;
+
+            Eigen::Matrix<double,4,1> color{alpha, alpha, alpha, alpha * TransparencyValue};
+
+            if(alpha> color_coding[0] && alpha < color_coding[1]){
+                color[0] = alpha*colortoreplace[0];
+                color[1] = alpha*colortoreplace[1];
+                color[2] = alpha*colortoreplace[2];
+            } 
+
+            float mix_factor = color[3];
+            if (mix_factor > AlphaFuncValue){
+                fragColor.block<3,1>(0,0) = mix(fragColor, color, mix_factor);
+                fragColor[3] += mix_factor;
+            }
+
+            if (mix_factor > fragColor[3])
+                fragColor = color;
+
+            texcoord += deltaTexCoord;
+            --num_iterations;
         }
-
-        ct_input_converted = filter->GetOutput();
-
-    }
-    DICOMImageType::Pointer mri_input_converted;
-    {
-        using FilterType = itk::CastImageFilter<ImageType,DICOMImageType>;
-        auto filter = FilterType::New();
-        filter->SetInput(*moving_volume);
-        try {
-            filter->Update();
-        } catch (const itk::ExceptionObject &err) {
-            return 1;
-        }
-        mri_input_converted = filter->GetOutput();
-    }
-    using namespace curan::ui;
-    IconResources resources{CURAN_COPIED_RESOURCE_PATH"/images"};
-    Application appdata{resources,nullptr};
-
-    using TransformType = itk::VersorRigid3DTransform<double>;
-    auto groundTruthTransform = TransformType::New();
-
-    // Set rotation angle
-    TransformType::VersorType rotation;
-    {
-        itk::Vector<double,3> axis;
-        axis[0] = 0.0;
-        axis[1] = 1.0;  // rotate around Y-axis
-        axis[2] = 0.0;
-
-        double angleInRadians = itk::Math::pi / 12.0; // 15 degrees
-        rotation.Set(axis, angleInRadians);
-    }
-    groundTruthTransform->SetRotation(rotation);
-
-    // Set translation
-    TransformType::OutputVectorType translation;
-    translation[0] = 5.0;  // mm
-    translation[1] = -3.0;
-    translation[2] = 8.0;
-    groundTruthTransform->SetTranslation(translation);
-
-    using ResampleFilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
-    auto resampler = ResampleFilterType::New();
-
-    resampler->SetInput(mri_input_converted); // original moving image
-    resampler->SetTransform(groundTruthTransform);
-
-    resampler->SetSize(mri_input_converted->GetLargestPossibleRegion().GetSize());
-    resampler->SetOutputOrigin(mri_input_converted->GetOrigin());
-    resampler->SetOutputSpacing(mri_input_converted->GetSpacing());
-    resampler->SetOutputDirection(mri_input_converted->GetDirection());
-    resampler->SetDefaultPixelValue(0);
-    resampler->Update();
-
-    DICOMImageType::Pointer artificiallyMisalignedImage = resampler->GetOutput();
-
-    auto [resampled_output,checked_overlap_output] = solve_registration(ct_input_converted,artificiallyMisalignedImage,appdata);
-    std::printf("finished registration!!!!!!!!\n");
-
-    {
-        itk::ImageFileWriter<DICOMImageType>::Pointer warpedImageWriter;
-        warpedImageWriter = itk::ImageFileWriter<DICOMImageType>::New();
-        warpedImageWriter->SetInput(ct_input_converted);
-        warpedImageWriter->SetFileName("fixed.mha");
-        try{
-            warpedImageWriter->Update();
-        } catch (const itk::ExceptionObject & excp){
-            std::cerr << excp << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-
-    {
-        itk::ImageFileWriter<DICOMImageType>::Pointer warpedImageWriter;
-        warpedImageWriter = itk::ImageFileWriter<DICOMImageType>::New();
-        warpedImageWriter->SetInput(artificiallyMisalignedImage);
-        warpedImageWriter->SetFileName("moving.mha");
-        try{
-            warpedImageWriter->Update();
-        } catch (const itk::ExceptionObject & excp){
-            std::cerr << excp << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-
-    {
-        itk::ImageFileWriter<ImageType>::Pointer warpedImageWriter;
-        warpedImageWriter = itk::ImageFileWriter<ImageType>::New();
-        warpedImageWriter->SetInput(resampled_output);
-        warpedImageWriter->SetFileName("moving_overlayed.mha");
-        try{
-            warpedImageWriter->Update();
-        } catch (const itk::ExceptionObject & excp){
-            std::cerr << excp << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-
-    return 0;
-};
-
+        curan::ui::ColorDicomViewer::ImageType::PixelType pix;
+        pix[0] = 255.0*fragColor[0];
+        pix[1] = 255.0*fragColor[1];
+        pix[2] = 255.0*fragColor[2];
+        it.Set(pix);
+  }
+  return projectionimage;
+}
 */

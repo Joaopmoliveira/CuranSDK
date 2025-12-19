@@ -1,22 +1,21 @@
-#include "userinterface/widgets/DicomDisplay.h"
+#include "userinterface/widgets/ColorDicomDisplay.h"
 #include "userinterface/widgets/ComputeImageBounds.h"
 #include "utils/Overloading.h"
 #include "geometry/Intersection.h"
 #include "itkRegionOfInterestImageFilter.h"
-#include <format>
 
 namespace curan{
 namespace ui{
 
-    size_t DicomVolumetricMask::counter = 0;
-    size_t DicomVolumetricMask::identifier = 0;
+    size_t ColorDicomVolumetricMask::counter = 0;
+    size_t ColorDicomVolumetricMask::identifier = 0;
     
-    DicomVolumetricMask::DicomVolumetricMask(ImageType::Pointer volume) : image{volume}
+    ColorDicomVolumetricMask::ColorDicomVolumetricMask(ImageType::Pointer volume) : image{volume}
     {
         update_volume(volume);
     }
     
-    void DicomMask::container_resized(const SkMatrix &inverse_homogenenous_transformation)
+    void ColorDicomMask::container_resized(const SkMatrix &inverse_homogenenous_transformation)
     {
         for (auto &stro : recorded_strokes)
             std::visit(curan::utilities::overloaded{[&](curan::ui::Path &path)
@@ -30,7 +29,7 @@ namespace ui{
                        stro.second);
     }
 
-    std::optional<std::tuple<size_t,curan::ui::Stroke>> DicomMask::draw(
+    std::optional<std::tuple<size_t,curan::ui::Stroke>> ColorDicomMask::draw(
         SkCanvas *canvas, 
         const SkMatrix &inverse_homogenenous_transformation, 
         const SkMatrix &homogenenous_transformation, 
@@ -39,9 +38,9 @@ namespace ui{
         SkPaint &paint_square, 
         const SkFont &text_font, 
         bool is_pressed, 
-        PathState current_path_state)
+        ColorPathState current_path_state)
     {    
-        if (current_path_state == HIGHLIGHTPATH || current_path_state == DELETEPATH)
+        if (current_path_state == COLORHIGHLIGHTPATH || current_path_state == COLORDELETEPATH)
         {
             double minimum = std::numeric_limits<double>::max();
             auto minimum_index = recorded_strokes.end();
@@ -165,7 +164,7 @@ namespace ui{
         return std::nullopt;
     }
     
-    void DicomViewer::query_if_required(bool force_update)
+    void ColorDicomViewer::query_if_required(bool force_update)
     { //TODO
         size_t previous = _current_index;
         assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
@@ -185,24 +184,24 @@ namespace ui{
         previous = _current_index;
     }
 
-    DicomViewer& DicomViewer::update_custom_drawingcall(custom_step call) {
+    ColorDicomViewer& ColorDicomViewer::update_custom_drawingcall(colorcustom_step call) {
         std::lock_guard<std::mutex> g{ get_mutex() };
         custom_drawing_call = call;
         return *(this);
     }
 
-    DicomViewer& DicomViewer::clear_custom_drawingcall() {
+    ColorDicomViewer& ColorDicomViewer::clear_custom_drawingcall() {
         std::lock_guard<std::mutex> g{ get_mutex() };
         custom_drawing_call = std::nullopt;
         return *(this);
     }
 
-    std::optional<custom_step> DicomViewer::get_custom_drawingcall() {
+    std::optional<colorcustom_step> ColorDicomViewer::get_custom_drawingcall() {
         std::lock_guard<std::mutex> g{ get_mutex() };
         return custom_drawing_call;
     }
     
-    DicomViewer::image_info DicomViewer::extract_slice_from_volume(size_t index)
+    ColorDicomViewer::image_info ColorDicomViewer::extract_slice_from_volume(size_t index)
     {
         image_info info;
         assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
@@ -231,7 +230,11 @@ namespace ui{
 
         // 2. Set the Region of Interest
         roi_filter->SetRegionOfInterest(desiredRegion);
-        roi_filter->Update();
+        try{
+            roi_filter->Update();
+        }   catch(...){
+            std::cout << "failure detected\n " << std::endl;
+        }
         
        /*
         extract_filter = ExtractFilterType::New();
@@ -257,29 +260,28 @@ namespace ui{
     
         info.physical_image = pointer_to_block_of_memory;
         ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
-        auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
+        auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(ImageType::PixelType), pointer_to_block_of_memory);
     
-        auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
-    
+        auto extracted_size = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
         switch (direction)
         {
         case Direction::X:
-            info.image = curan::ui::ImageWrapper{buff, extracted_size[1], extracted_size[2]};
+            info.image = curan::ui::ImageWrapper{buff, extracted_size[1], extracted_size[2],SkColorType::kRGBA_8888_SkColorType, SkAlphaType::kOpaque_SkAlphaType};
             info.width_spacing = spacing[1];
             info.height_spacing = spacing[2];
             break;
         case Direction::Y:
-            info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[2]};
+            info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[2],SkColorType::kRGBA_8888_SkColorType, SkAlphaType::kOpaque_SkAlphaType};
             info.width_spacing = spacing[0];
             info.height_spacing = spacing[2];
             break;
         case Direction::Z:
-            info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[1]};
+            info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[1],SkColorType::kRGBA_8888_SkColorType, SkAlphaType::kOpaque_SkAlphaType};
             info.width_spacing = spacing[0];
             info.height_spacing = spacing[1];
             break;
         }
-    
+
         /*
         The geometries are normalized in volume coordinates, thus we must
         convert them into world coordinates
@@ -384,8 +386,8 @@ namespace ui{
         return info;
     }
     
-    DicomViewer::DicomViewer(curan::ui::IconResources &other, 
-                            DicomVolumetricMask *volume_mask, 
+    ColorDicomViewer::ColorDicomViewer(curan::ui::IconResources &other, 
+                            ColorDicomVolumetricMask *volume_mask, 
                             Direction in_direction) : volumetric_mask{volume_mask},
                                                         chached_pointer{volume_mask->get_volume().GetPointer()},
                                                         cached_number_of_geometries{volume_mask->geometries().size()}, 
@@ -447,7 +449,7 @@ namespace ui{
     
     }
     
-    void DicomViewer::insert_in_map(const curan::ui::PointCollection &future_stroke)
+    void ColorDicomViewer::insert_in_map(const curan::ui::PointCollection &future_stroke)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
@@ -460,17 +462,17 @@ namespace ui{
             success = volumetric_mask->try_emplace(direction, current_value, curan::ui::Path{future_stroke.normalized_recorded_points, inverse_homogenenous_transformation});
     }
     
-    std::unique_ptr<DicomViewer> DicomViewer::make(curan::ui::IconResources &other, DicomVolumetricMask *volume_mask, Direction in_direction)
+    std::unique_ptr<ColorDicomViewer> ColorDicomViewer::make(curan::ui::IconResources &other, ColorDicomVolumetricMask *volume_mask, Direction in_direction)
     {
-        std::unique_ptr<DicomViewer> button = std::unique_ptr<DicomViewer>(new DicomViewer{other, volume_mask, in_direction});
+        std::unique_ptr<ColorDicomViewer> button = std::unique_ptr<ColorDicomViewer>(new ColorDicomViewer{other, volume_mask, in_direction});
         return button;
     }
     
-    DicomViewer::~DicomViewer()
+    ColorDicomViewer::~ColorDicomViewer()
     {
     }
     
-    void DicomViewer::compile()
+    void ColorDicomViewer::compile()
     {
         if(compiled){
             throw std::runtime_error("cannot compile twice");
@@ -496,7 +498,7 @@ namespace ui{
         compiled = true;
     }
     
-    void DicomViewer::update_volume(DicomVolumetricMask *volume_mask, Direction in_direction)
+    void ColorDicomViewer::update_volume(ColorDicomVolumetricMask *volume_mask, Direction in_direction)
     {
         std::lock_guard<std::mutex> g{get_mutex()};
         assert(volume_mask != nullptr && "volumetric mask must be different from nullptr");
@@ -509,11 +511,14 @@ namespace ui{
         query_if_required(true);
     }
     
-    void DicomViewer::internal_framebuffer_recomputation(){
+//constexpr size_t color_size_of_slider_in_height = 30;
+//constexpr size_t color_buffer_around_panel = 8;
+
+    void ColorDicomViewer::internal_framebuffer_recomputation(){
         auto pos = get_position();
-        reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft + buffer_around_panel, pos.fTop + buffer_around_panel, pos.fRight, pos.fBottom - size_of_slider_in_height - buffer_around_panel);
-        reserved_slider_space = SkRect::MakeLTRB(pos.fLeft + buffer_around_panel, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom - buffer_around_panel);
-        reserved_total_space = SkRect::MakeLTRB(pos.fLeft + buffer_around_panel, pos.fTop + buffer_around_panel, pos.fRight - buffer_around_panel, pos.fBottom - buffer_around_panel);
+        reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft + color_buffer_around_panel, pos.fTop + color_buffer_around_panel, pos.fRight, pos.fBottom - color_size_of_slider_in_height - color_buffer_around_panel);
+        reserved_slider_space = SkRect::MakeLTRB(pos.fLeft + color_buffer_around_panel, pos.fBottom - color_size_of_slider_in_height, pos.fRight, pos.fBottom - color_buffer_around_panel);
+        reserved_total_space = SkRect::MakeLTRB(pos.fLeft + color_buffer_around_panel, pos.fTop + color_buffer_around_panel, pos.fRight - color_buffer_around_panel, pos.fBottom - color_buffer_around_panel);
         if (!volumetric_mask->filled())
             return;
         double width = 1;
@@ -540,7 +545,7 @@ namespace ui{
         }
     
         assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
-        volumetric_mask->for_each(direction, [&](DicomMask &mask)
+        volumetric_mask->for_each(direction, [&](ColorDicomMask &mask)
                                   { mask.container_resized(inverse_homogenenous_transformation); });
     
         for (auto &[normalized_path, cached_path,color] : cached_polyheader_intersections)
@@ -599,13 +604,13 @@ namespace ui{
         return;
     }
     
-    void DicomViewer::framebuffer_resize(const SkRect &new_page_size)
+    void ColorDicomViewer::framebuffer_resize(const SkRect &new_page_size)
     {
         auto pos = get_position();
         std::lock_guard<std::mutex> g{get_mutex()};
-        reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft + buffer_around_panel, pos.fTop + buffer_around_panel, pos.fRight, pos.fBottom - size_of_slider_in_height - buffer_around_panel);
-        reserved_slider_space = SkRect::MakeLTRB(pos.fLeft + buffer_around_panel, pos.fBottom - size_of_slider_in_height, pos.fRight, pos.fBottom - buffer_around_panel);
-        reserved_total_space = SkRect::MakeLTRB(pos.fLeft + buffer_around_panel, pos.fTop + buffer_around_panel, pos.fRight - buffer_around_panel, pos.fBottom - buffer_around_panel);
+        reserved_drawing_space = SkRect::MakeLTRB(pos.fLeft + color_buffer_around_panel, pos.fTop + color_buffer_around_panel, pos.fRight, pos.fBottom - color_size_of_slider_in_height - color_buffer_around_panel);
+        reserved_slider_space = SkRect::MakeLTRB(pos.fLeft + color_buffer_around_panel, pos.fBottom - color_size_of_slider_in_height, pos.fRight, pos.fBottom - color_buffer_around_panel);
+        reserved_total_space = SkRect::MakeLTRB(pos.fLeft + color_buffer_around_panel, pos.fTop + color_buffer_around_panel, pos.fRight - color_buffer_around_panel, pos.fBottom - color_buffer_around_panel);
         if (!volumetric_mask->filled())
             return;
         double width = 1;
@@ -632,7 +637,7 @@ namespace ui{
         }
     
         assert(volumetric_mask != nullptr && "volumetric mask must be different from nullptr");
-        volumetric_mask->for_each(direction, [&](DicomMask &mask)
+        volumetric_mask->for_each(direction, [&](ColorDicomMask &mask)
                                   { mask.container_resized(inverse_homogenenous_transformation); });
     
         for (auto &[normalized_path, cached_path,color] : cached_polyheader_intersections)
@@ -693,7 +698,7 @@ namespace ui{
         return;
     }
     
-    curan::ui::drawablefunction DicomViewer::draw()
+    curan::ui::drawablefunction ColorDicomViewer::draw()
     {
         auto lamb = [this](SkCanvas *canvas)
         {
@@ -789,7 +794,7 @@ namespace ui{
                 {
                     auto& [key,stroke] = *highlighted_and_pressed_stroke;
                     is_pressed = false;
-                    if(current_path_state == DELETEPATH)
+                    if(current_path_state == COLORDELETEPATH)
                         volumetric_mask->remove_paths(key);
                     else {
                         Eigen::Matrix<double, 3,Eigen::Dynamic> point_in_itk_coordinates;
@@ -865,8 +870,8 @@ namespace ui{
     
             if(is_panel_selected){
                 std::string pixel_value;
-                if(current_mouse_location.value >= 0.0){
-                    pixel_value = "Pixel value: " + std::format("{:.2f}", current_mouse_location.value);
+                if(current_mouse_location.value[0] >= 0.0 || current_mouse_location.value[1] >= 0.0 || current_mouse_location.value[2] >= 0.0){
+                    pixel_value = "Pixel value: [" + std::format("{:.2f}, {:.2f}, {:.2f}]", current_mouse_location.value[0],current_mouse_location.value[1],current_mouse_location.value[2]);
                 } else 
                     pixel_value = "Pixel value: Out of range";
                 
@@ -879,7 +884,7 @@ namespace ui{
                 canvas->drawSimpleText(frame_coordinates.data(),frame_coordinates.size(),SkTextEncoding::kUTF8,reserved_slider_space.fLeft+buffer_sideways,reserved_slider_space.fTop-buffer_sideways-font_size,text_font,options_paint);   
             }
     
-            volumetric_mask->for_each(direction, [&](const DicomMask &mask)
+            volumetric_mask->for_each(direction, [&](const ColorDicomMask &mask)
                                       {
             if(mask){
                 slider_paint.setColor((increment_mask == _current_index) ? SK_ColorGREEN : hover_color);
@@ -911,17 +916,17 @@ namespace ui{
             SkRect current_selected_image_rectangle = SkRect::MakeLTRB(widget_rect.fRight-offset_from_border-icon_size,widget_rect.fBottom-offset_from_border-icon_size,widget_rect.fRight-offset_from_border,widget_rect.fBottom-offset_from_border);
             SkSamplingOptions opt = SkSamplingOptions(SkCubicResampler{ 1.0f / 3.0f, 1.0f / 3.0f });
             switch(current_path_state){
-                case SELECTPATH:
-                    canvas->drawImageRect(state_display[SELECTPATH].image, current_selected_image_rectangle, opt);
+                case COLORSELECTPATH:
+                    canvas->drawImageRect(state_display[COLORSELECTPATH].image, current_selected_image_rectangle, opt);
                     break;
-                case DRAWPATH:
-                    canvas->drawImageRect(state_display[DRAWPATH].image, current_selected_image_rectangle, opt);
+                case COLORDRAWPATH:
+                    canvas->drawImageRect(state_display[COLORDRAWPATH].image, current_selected_image_rectangle, opt);
                     break;
-                case DELETEPATH: 
-                    canvas->drawImageRect(state_display[DELETEPATH].image, current_selected_image_rectangle, opt);
+                case COLORDELETEPATH: 
+                    canvas->drawImageRect(state_display[COLORDELETEPATH].image, current_selected_image_rectangle, opt);
                     break;
-                case HIGHLIGHTPATH:
-                    canvas->drawImageRect(state_display[HIGHLIGHTPATH].image, current_selected_image_rectangle, opt);
+                case COLORHIGHLIGHTPATH:
+                    canvas->drawImageRect(state_display[COLORHIGHLIGHTPATH].image, current_selected_image_rectangle, opt);
                     break;
                 default:
                     break;
@@ -949,7 +954,7 @@ namespace ui{
         return lamb;
     }
     
-    curan::ui::callablefunction DicomViewer::call()
+    curan::ui::callablefunction ColorDicomViewer::call()
     {
         auto lamb = [this](curan::ui::Signal sig, curan::ui::ConfigDraw *config)
         {
@@ -1022,15 +1027,18 @@ namespace ui{
                 }
                 volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(current_mouse_location.image_coordinates,current_mouse_location.world_coordinates);
                 auto size = volumetric_mask->get_volume()->GetLargestPossibleRegion().GetSize();
-                if(size[0]> current_mouse_location.image_coordinates[0] && 
+            if(size[0]> current_mouse_location.image_coordinates[0] && 
                     size[1]> current_mouse_location.image_coordinates[1] && 
                     size[2]> current_mouse_location.image_coordinates[2] && 
                     current_mouse_location.image_coordinates[0]>= 0 &&
                     current_mouse_location.image_coordinates[1]>= 0 &&
-                    current_mouse_location.image_coordinates[2]>= 0)
-                    current_mouse_location.value= volumetric_mask->get_volume()->GetPixel(current_mouse_location.image_coordinates);
-                else 
-                    current_mouse_location.value = -100.0;
+                    current_mouse_location.image_coordinates[2]>= 0){
+                auto pixel = volumetric_mask->get_volume()->GetPixel(current_mouse_location.image_coordinates);
+                current_mouse_location.value[0] = pixel[0]; 
+                current_mouse_location.value[1] = pixel[1]; 
+                current_mouse_location.value[2] = pixel[2]; 
+            }else 
+                    current_mouse_location.value = {-100.0,-100.0,-100.0};
             }
     
     
@@ -1167,7 +1175,7 @@ namespace ui{
                                     curan::ui::InterpreterStatus::MOUSE_MOVE_EVENT | 
                                     curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT) ){
                 set_current_state(SliderStates::PRESSED);
-                if (current_path_state == DRAWPATH)
+                if (current_path_state == COLORDRAWPATH)
                     current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
                 return true;
             }
@@ -1176,7 +1184,7 @@ namespace ui{
                 interpreter.check(curan::ui::InterpreterStatus::INSIDE_ALLOCATED_AREA | 
                                     curan::ui::InterpreterStatus::MOUSE_CLICKED_LEFT_EVENT) ){
                 set_current_state(SliderStates::PRESSED);
-                if (current_path_state == DRAWPATH)
+                if (current_path_state == COLORDRAWPATH)
                     current_stroke.add_point(homogenenous_transformation, SkPoint::Make((float)xpos, (float)ypos));
                 return true;
             }
