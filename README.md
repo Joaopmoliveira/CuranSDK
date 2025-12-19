@@ -27,7 +27,7 @@ Our software solution follows previous reference points, ranging from Slicer 3D,
 
 ![](resources/calibration_ultrasound.gif)
 
-Given that the entire project aims to completly remove optical trackers from the pipeline, we introduce a new mathemathical formulation of needle wiring 
+Given that the entire project aims to completly remove optical trackers from the pipeline, we introduce a new mathemathical formulation of needle wiring  
 
 *Volumetric reconstruction of ultrasounds for intra-operative registration*
 ![](resources/reconstruction.gif)

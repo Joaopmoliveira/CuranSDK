@@ -128,13 +128,13 @@ struct Application{
     LayoutType type = LayoutType::THREE;
     std::map<std::string,CachedVolume> volumes;
     size_t volume_index = 0;
-    curan::ui::DicomVolumetricMask* vol_mas = nullptr;
+    curan::ui::DicomVolumetricMask<unsigned char>* vol_mas = nullptr;
     curan::ui::IconResources* resources = nullptr;
     std::shared_ptr<curan::utilities::ThreadPool> pool = curan::utilities::ThreadPool::create(2);
     std::function<std::unique_ptr<curan::ui::Container>(Application&)> panel_constructor;
-    std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
-    curan::ui::DicomVolumetricMask projected_vol_mas{nullptr};
-    std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
+    std::function<void(Application&,curan::ui::DicomVolumetricMask<unsigned char>*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> volume_callback;
+    curan::ui::DicomVolumetricMask<unsigned char> projected_vol_mas{nullptr};
+    std::function<void(Application&,curan::ui::DicomVolumetricMask<unsigned char>*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)> projected_volume_callback;
     RegionOfInterest roi;
 
     std::string trajectory_identifier;
@@ -143,7 +143,7 @@ struct Application{
     std::string projected_path_y;
     std::string projected_path_z;
 
-    Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
+    Application(curan::ui::IconResources & in_resources,curan::ui::DicomVolumetricMask<unsigned char>* in_vol_mas): resources{&in_resources},vol_mas{in_vol_mas}{}
 
     std::unique_ptr<curan::ui::Container> main_page();
 };
@@ -157,13 +157,13 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
 std::unique_ptr<curan::ui::Overlay> warning_overlay(const std::string &warning,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> success_overlay(const std::string &success,curan::ui::IconResources& resources);
 std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& appdata,int mask);
-void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask<unsigned char> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata);
-void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask<unsigned char> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Application& appdata);
-void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask<unsigned char> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata);
-void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
+void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask<unsigned char> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes);
 std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdata);
 
 
@@ -617,7 +617,7 @@ std::unique_ptr<curan::ui::Overlay> layout_overlay(Application& appdata)
 std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata){
     using namespace curan::ui;
     auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    auto overlay_lambda = [&](DicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
+    auto overlay_lambda = [&](DicomViewer<unsigned char>* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
         switch(selected_option){
             case 0:
                 viewer->update_volume(appdata.vol_mas, Direction::X);
@@ -641,7 +641,7 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
     switch(appdata.type){
         case ONE:
         {
-            auto image_display = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
+            auto image_display = curan::ui::DicomViewer<unsigned char>::make(*appdata.resources, appdata.vol_mas, Direction::X);
             image_display->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_display->add_overlay_processor(overlay_lambda);
             *container << std::move(image_display);
@@ -649,10 +649,10 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
         break;
         case TWO:
         {
-            auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
+            auto image_displayx = curan::ui::DicomViewer<unsigned char>::make(*appdata.resources, appdata.vol_mas, Direction::X);
             image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayx->add_overlay_processor(overlay_lambda);
-            auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
+            auto image_displayy = curan::ui::DicomViewer<unsigned char>::make(*appdata.resources, appdata.vol_mas, Direction::Y);
             image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayy->add_overlay_processor(overlay_lambda);
             *container << std::move(image_displayx) << std::move(image_displayy);
@@ -660,13 +660,13 @@ std::unique_ptr<curan::ui::Container> create_dicom_viewers(Application& appdata)
         break;
         case THREE:
         {
-            auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::X);
+            auto image_displayx = curan::ui::DicomViewer<unsigned char>::make(*appdata.resources, appdata.vol_mas, Direction::X);
             image_displayx->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayx->add_overlay_processor(overlay_lambda);
-            auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Y);
+            auto image_displayy = curan::ui::DicomViewer<unsigned char>::make(*appdata.resources, appdata.vol_mas, Direction::Y);
             image_displayy->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayy->add_overlay_processor(overlay_lambda);
-            auto image_displayz = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
+            auto image_displayz = curan::ui::DicomViewer<unsigned char>::make(*appdata.resources, appdata.vol_mas, Direction::Z);
             image_displayz->push_options({"coronal view","axial view","saggital view","zoom","select path"});
             image_displayz->add_overlay_processor(overlay_lambda);
             *container << std::move(image_displayx) << std::move(image_displayy) << std::move(image_displayz);
@@ -781,7 +781,7 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
     return Overlay::make(std::move(container), SkColorSetARGB(100, 125, 125, 125), true);
 }
 
-void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+void ac_pc_midline_point_selection(Application& appdata,curan::ui::DicomVolumetricMask<unsigned char> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the collumns of the highlighted path must be at least 1");
@@ -950,7 +950,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask<unsigned char>::Policy::UPDATE_GEOMETRIES));
 		}
     });
 
@@ -977,7 +977,7 @@ std::unique_ptr<curan::ui::Container> select_ac_pc_midline(Application& appdata)
     return std::move(container);
 };
 
-void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+void select_target_and_region_of_entry_point_selection(Application& appdata,curan::ui::DicomVolumetricMask<unsigned char> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the collumns of the highlighted path must be at least 1");
@@ -1216,7 +1216,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         }
 
         appdata.panel_constructor = select_entry_point_and_validate_point_selection;
-        appdata.volume_callback = std::function<void(Application&,curan::ui::DicomVolumetricMask*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)>{};
+        appdata.volume_callback = std::function<void(Application&,curan::ui::DicomVolumetricMask<unsigned char>*, curan::ui::ConfigDraw*, const curan::ui::directed_stroke&)>{};
         appdata.projected_volume_callback = select_entry_point_and_validate;
         appdata.tradable_page->construct(appdata.panel_constructor(appdata),SK_ColorBLACK);
     });
@@ -1228,7 +1228,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
         appdata.trajectory_location.main_diagonal_specification = false;
         appdata.trajectory_location.target_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask<unsigned char>::Policy::UPDATE_GEOMETRIES));
 		}
     });
 
@@ -1244,7 +1244,7 @@ std::unique_ptr<curan::ui::Container> select_target_and_region_of_entry(Applicat
     return std::move(container);
 };
 
-void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolumetricMask<std::uint8_t> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the columns of the highlighted path must be at least 1");
@@ -1340,7 +1340,7 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::DicomVolume
         try{
             filter->Update();
             auto output = filter->GetOutput();
-            appdata.vol_mas->update_volume(output,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+            appdata.vol_mas->update_volume(output,curan::ui::DicomVolumetricMask<std::uint8_t>::Policy::UPDATE_GEOMETRIES);
             appdata.volumes.emplace("alongtrajectory",output);
 
             auto convert_to_index_coordinates = [&](const Eigen::Matrix<double,3,1>& point){
@@ -1404,7 +1404,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     else{
         throw std::runtime_error("failure due to missing volume");
     }
-    appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES);
+    appdata.vol_mas->update_volume(input,curan::ui::DicomVolumetricMask<std::uint8_t>::Policy::UPDATE_GEOMETRIES);
     try{
         ImageType::Pointer projected_input = allocate_image(appdata);
         appdata.projected_vol_mas.update_volume(projected_input);
@@ -1414,10 +1414,10 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     }
 
     auto slidercontainer = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::HORIZONTAL);
-    auto image_displayx = curan::ui::DicomViewer::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
-    auto image_displayy = curan::ui::DicomViewer::make(*appdata.resources, appdata.vol_mas, Direction::Z);
+    auto image_displayx = curan::ui::DicomViewer<std::uint8_t>::make(*appdata.resources, &appdata.projected_vol_mas, Direction::Z);
+    auto image_displayy = curan::ui::DicomViewer<std::uint8_t>::make(*appdata.resources, appdata.vol_mas, Direction::Z);
     image_displayy->push_options({"coronal view","axial view","saggital view","zoom"});
-    image_displayy->add_overlay_processor([&](DicomViewer* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
+    image_displayy->add_overlay_processor([&](DicomViewer<std::uint8_t>* viewer, curan::ui::ConfigDraw* config, size_t selected_option){
         switch(selected_option){
             case 0:
                 viewer->update_volume(appdata.vol_mas, Direction::X);
@@ -1471,7 +1471,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     return std::move(container);
 }
 
-void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
+void select_roi_for_surgery_point_selection(Application& appdata,curan::ui::DicomVolumetricMask<unsigned char> *vol_mas, curan::ui::ConfigDraw *config_draw, const curan::ui::directed_stroke &strokes){
     // now we need to convert between itk coordinates and real world coordinates
     if (!(strokes.point_in_image_coordinates.cols() > 0))
         throw std::runtime_error("the collumns of the highlighted path must be at least 1");
@@ -1583,7 +1583,7 @@ std::unique_ptr<curan::ui::Container> select_roi_for_surgery(Application& appdat
         appdata.ac_pc_data.ac_specification = false;
         appdata.ac_pc_data.pc_specification = false;
         if(config->stack_page!=nullptr){
-			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask::Policy::UPDATE_GEOMETRIES));
+			config->stack_page->stack(create_volume_explorer_page(appdata,curan::ui::DicomVolumetricMask<std::uint8_t>::Policy::UPDATE_GEOMETRIES));
 		}
     });
 
@@ -1620,10 +1620,10 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
     tradable_page = minipage.get();
     auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
     *minimage_container << std::move(minipage);
-    vol_mas->add_pressedhighlighted_call([this](DicomVolumetricMask *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
+    vol_mas->add_pressedhighlighted_call([this](DicomVolumetricMask<std::uint8_t> *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
         volume_callback(*this,vol_mas,config_draw,strokes);
     });
-    projected_vol_mas.add_pressedhighlighted_call([this](DicomVolumetricMask *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
+    projected_vol_mas.add_pressedhighlighted_call([this](DicomVolumetricMask<std::uint8_t> *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
         projected_volume_callback(*this,vol_mas,config_draw,strokes);
     });
     return std::move(minimage_container);
@@ -1683,7 +1683,7 @@ try{
         std::cout << "improperly consumed the input volume";
         return 1;
     }
-    DicomVolumetricMask vol{orienter->GetOutput()};
+    DicomVolumetricMask<std::uint8_t> vol{orienter->GetOutput()};
     Application appdata{resources,&vol};
     appdata.volumes.emplace("source",orienter->GetOutput());
     Page page{appdata.main_page(),SK_ColorBLACK};

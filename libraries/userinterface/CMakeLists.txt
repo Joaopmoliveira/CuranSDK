@@ -28,7 +28,7 @@ src/Loader.cpp
 src/RuntimeEffect.cpp
 src/Plotter.cpp
 src/TaskManager.cpp
-src/DicomDisplay.cpp
+#src/DicomDisplay.cpp
 src/ColorDicomDisplay.cpp
 )
 
