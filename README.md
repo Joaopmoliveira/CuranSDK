@@ -21,11 +21,13 @@ Here we show some of the functionality that we provide inside Curan
 
 ![](resources/registration_pre_operative.gif)
 
-Our software solution follows previous reference points, ranging from Slicer 3D, BrainLab, etc, and adds our own planning tools that facilitate 
+Our software solution follows previous reference points, ranging from Slicer 3D, BrainLab, etc, and adds our own planning tools that facilitate neuro-navigation. We use volume rendering techniques to project undesirable structures form the path of the needle. 
 
 *Calibration of ultrasound with robotic system*
 
 ![](resources/calibration_ultrasound.gif)
+
+Given that the entire project aims to completly remove optical trackers from the pipeline, we introduce a new mathemathical formulation of needle wiring 
 
 *Volumetric reconstruction of ultrasounds for intra-operative registration*
 ![](resources/reconstruction.gif)
