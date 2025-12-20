@@ -21,6 +21,7 @@
 #include "utils/Overloading.h"
 #include "geometry/Intersection.h"
 #include "itkRegionOfInterestImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
 #include <format>
 
 namespace curan{
@@ -237,6 +238,7 @@ constexpr unsigned int Dimension = 3;
 
 template<typename PixelType>
 class DicomVolumetricMask;
+
 template<typename PixelType>
 using pressedhighlighted_event = std::function<void(DicomVolumetricMask<PixelType>*, curan::ui::ConfigDraw*, const directed_stroke&)>;
 
@@ -247,7 +249,7 @@ class DicomVolumetricMask
     static size_t counter;
     static size_t identifier;
     using ImageType = itk::Image<PixelType, Dimension>;
-    using PressedEvent = pressedhighlighted_event<DicomVolumetricMask<PixelType>>;
+    using PressedEvent = pressedhighlighted_event<PixelType>;
     std::vector<DicomMask> masks_x;
     std::vector<DicomMask> masks_y;
     std::vector<DicomMask> masks_z;
@@ -633,6 +635,11 @@ public:
     }
 };
 
+template<typename PixelType>
+size_t DicomVolumetricMask<PixelType>::counter = 0;
+template<typename PixelType>
+size_t DicomVolumetricMask<PixelType>::identifier = 0;
+
 constexpr size_t size_of_slider_in_height = 30;
 constexpr size_t buffer_around_panel = 8;
 
@@ -822,8 +829,18 @@ private:
 
         // 2. Set the Region of Interest
         roi_filter->SetRegionOfInterest(desiredRegion);
-        roi_filter->Update();
-        
+        using RescaleIntensityImageFilter = itk::RescaleIntensityImageFilter<ImageType, itk::Image<unsigned char, Dimension>>;
+        auto rescaleFilter = RescaleIntensityImageFilter::New();
+        rescaleFilter->SetInput(roi_filter->GetOutput());
+        rescaleFilter->SetOutputMinimum(0);
+        rescaleFilter->SetOutputMaximum(255);
+
+        try {
+            rescaleFilter->Update();
+        } catch (...) {
+            throw std::runtime_error("failure to rescale image");
+        }
+
        /*
         extract_filter = ExtractFilterType::New();
         extract_filter->SetDirectionCollapseToSubmatrix();
@@ -844,28 +861,28 @@ private:
         extract_filter->SetExtractionRegion(desiredRegion);
         extract_filter->Update();
         */
-        typename ImageType::Pointer pointer_to_block_of_memory = roi_filter->GetOutput();
+        itk::Image<unsigned char, Dimension>::Pointer pointer_to_block_of_memory = rescaleFilter->GetOutput();
     
-        info.physical_image = pointer_to_block_of_memory;
-        typename ImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
-        auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(PixelType), pointer_to_block_of_memory);
+        info.physical_image = roi_filter->GetOutput();
+        itk::Image<unsigned char, Dimension>::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+        auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size(), pointer_to_block_of_memory);
     
         auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
-    
+        SkColorType colorcoding = SkColorType::kGray_8_SkColorType;
         switch (direction)
         {
         case Direction::X:
-            info.image = curan::ui::ImageWrapper{buff, extracted_size[1], extracted_size[2]};
+            info.image = curan::ui::ImageWrapper{buff, extracted_size[1], extracted_size[2],colorcoding};
             info.width_spacing = spacing[1];
             info.height_spacing = spacing[2];
             break;
         case Direction::Y:
-            info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[2]};
+            info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[2],colorcoding};
             info.width_spacing = spacing[0];
             info.height_spacing = spacing[2];
             break;
         case Direction::Z:
-            info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[1]};
+            info.image = curan::ui::ImageWrapper{buff, extracted_size[0], extracted_size[1],colorcoding};
             info.width_spacing = spacing[0];
             info.height_spacing = spacing[1];
             break;
@@ -884,7 +901,8 @@ private:
             auto voldirection = volumetric_mask->get_volume()->GetDirection();
             auto size = volumetric_mask->get_volume()->GetLargestPossibleRegion().GetSize();
             typename ImageType::PointType vol_slice_center;
-            typename ImageType::IndexType index{{(size_t)(size[0]*0.5), (size_t)(size[1]*0.5), (size_t)(size[2]*0.5)}};
+            using IndexValue = typename ImageType::IndexType::IndexValueType;
+            typename ImageType::IndexType index{{static_cast<IndexValue>(size[0]/ 2), static_cast<IndexValue>(size[1]/ 2),static_cast<IndexValue>(size[2]/ 2)}};
             index[direction] = size[direction]*current_value;
             volumetric_mask->get_volume()->TransformIndexToPhysicalPoint(index, vol_slice_center);
             Eigen::Matrix<double, 3, 1> normal{voldirection(0,direction),voldirection(1,direction),voldirection(2,direction)};

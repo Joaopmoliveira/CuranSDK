@@ -13,7 +13,7 @@ The major contribution of our platform is that intra-operative navigation can be
 
 ![](resources/proposednavigation.png)
 
-To facilitate the use by surgical teams, we developed all facets of the surgical procedure using our own technological stack from scratch, so as to avoid licencing problems in the future. 
+To facilitate the use by surgical teams, we developed all facets of the surgical procedure using our own technological stack, allowing us to explore distinct tradeoffs from other engineering teams, e.g., use of atlas based solutions over manual coordinate use, integrated volumetric registration, etc.
 
 Here we show some of the functionality that we provide inside Curan
 
@@ -27,7 +27,7 @@ Our software solution follows previous reference points, ranging from Slicer 3D,
 
 ![](resources/calibration_ultrasound.gif)
 
-Given that the entire project aims to completly remove optical trackers from the pipeline, we introduce a new mathemathical formulation of needle wiring  
+Given that the entire project aims to completly remove optical trackers from the pipeline, we introduce a new mathemathical formulation of calibration based on wire phantoms with complete unknown geometry  
 
 *Volumetric reconstruction of ultrasounds for intra-operative registration*
 ![](resources/reconstruction.gif)

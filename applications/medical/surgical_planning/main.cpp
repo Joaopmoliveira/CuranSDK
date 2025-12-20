@@ -1620,10 +1620,10 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
     tradable_page = minipage.get();
     auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
     *minimage_container << std::move(minipage);
-    vol_mas->add_pressedhighlighted_call([this](DicomVolumetricMask<std::uint8_t> *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
+    vol_mas->add_pressedhighlighted_call([this](DicomVolumetricMask<std::uint8_t>* vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
         volume_callback(*this,vol_mas,config_draw,strokes);
     });
-    projected_vol_mas.add_pressedhighlighted_call([this](DicomVolumetricMask<std::uint8_t> *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
+    projected_vol_mas.add_pressedhighlighted_call([this](DicomVolumetricMask<std::uint8_t>* vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
         projected_volume_callback(*this,vol_mas,config_draw,strokes);
     });
     return std::move(minimage_container);

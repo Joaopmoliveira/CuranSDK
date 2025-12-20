@@ -192,7 +192,7 @@ int main()
 
 		DisplayParams param{std::move(context), 2200, 1200};
 		std::unique_ptr<Window> viewer = std::make_unique<Window>(std::move(param));
-        DicomVolumetricMask mask{nullptr};
+        DicomVolumetricMask<std::uint8_t> mask{nullptr};
 		auto geometry_name = mask.add_geometry(cube,SK_ColorRED);
         geometry_name = mask.add_geometry(cilinder,SK_ColorCYAN); 
         geometry_name = mask.add_geometry(piramid,SK_ColorYELLOW);
@@ -217,9 +217,9 @@ int main()
 
         //now I need to generate a ITK image that constains these shapes, transverse through the pixels and change their color
         //depending if the point is contained inside the shape or not
-        mask.update_volume(volume,DicomVolumetricMask::Policy::UPDATE_GEOMETRIES | DicomVolumetricMask::Policy::UPDATE_POINTS);
+        mask.update_volume(volume,DicomVolumetricMask<std::uint8_t>::Policy::UPDATE_GEOMETRIES | DicomVolumetricMask<std::uint8_t>::Policy::UPDATE_POINTS);
 
-		std::unique_ptr<curan::ui::DicomViewer> image_display = curan::ui::DicomViewer::make(resources, &mask, curan::ui::Direction::Z);
+		std::unique_ptr<curan::ui::DicomViewer<std::uint8_t>> image_display = curan::ui::DicomViewer<std::uint8_t>::make(resources, &mask, curan::ui::Direction::Z);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
 		*container << std::move(image_display);

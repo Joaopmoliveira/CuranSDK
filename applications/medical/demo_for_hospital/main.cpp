@@ -20,6 +20,7 @@
 #include "utils/TheadPool.h"
 #include "utils/FileStructures.h"
 #include "utils/DateManipulation.h"
+#include <random>
 
 #include "userinterface/widgets/Drawable.h"
 #include "utils/Lockable.h"
@@ -51,7 +52,6 @@
 using DicomPixelType = std::uint16_t;
 constexpr unsigned int Dimension = 3;
 using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
-
 #include "itkVersorRigid3DTransform.h"
 #include "itkImageRegistrationMethodv4.h"
 #include "itkRegularStepGradientDescentOptimizerv4.h"
@@ -77,8 +77,45 @@ typename TImage::Pointer DeepCopy(typename TImage::Pointer input)
     return output;
 }
 
+
+
+template <typename TImage>
+typename TImage::Pointer transform_with_boundary_ct_scan(typename TImage::Pointer input,std::array<double,2> range)
+{
+    range[0] *= itk::NumericTraits<typename TImage::PixelType>::max();
+    range[1] *= itk::NumericTraits<typename TImage::PixelType>::max();
+
+    using ThresholdFilterType = itk::BinaryThresholdImageFilter<TImage, TImage>;
+    auto thresholdFilter = ThresholdFilterType::New();
+    thresholdFilter->SetInput(input);
+    thresholdFilter->SetLowerThreshold(static_cast<typename TImage::PixelType>(range[0]));
+    thresholdFilter->SetUpperThreshold(static_cast<typename TImage::PixelType>(range[1]));
+    thresholdFilter->SetInsideValue(1);
+    thresholdFilter->SetOutsideValue(0);
+
+    using ConnectedComponentFilterType = itk::ConnectedComponentImageFilter<TImage, itk::Image<unsigned int, TImage::ImageDimension>>;
+    auto connectedFilter = ConnectedComponentFilterType::New();
+    connectedFilter->SetInput(thresholdFilter->GetOutput());
+
+    using KeepObjectsFilterType = itk::LabelShapeKeepObjectsImageFilter<itk::Image<unsigned int, TImage::ImageDimension>>;
+    auto keepFilter = KeepObjectsFilterType::New();
+    keepFilter->SetInput(connectedFilter->GetOutput());
+    keepFilter->SetBackgroundValue(0);
+    keepFilter->SetNumberOfObjects(1); 
+    keepFilter->SetAttribute(KeepObjectsFilterType::LabelObjectType::NUMBER_OF_PIXELS); 
+
+    keepFilter->Update();
+    
+    using CastFilterType = itk::CastImageFilter<LabelImageType, TImage>;
+    auto castFilter = CastFilterType::New();
+    castFilter->SetInput(keepFilter->GetOutput());
+    castFilter->Update();
+    
+    return castFilter->GetOutput();
+}
+
 struct ColorCoding{
-    std::array<float,2> ct_limits = {0.2650f,0.3175f};
+    std::array<float,2> ct_limits = {0.2650f,0.3175f}; //[0.4000 1.0000]
     std::array<float,2> mri_limits = {0.2150f,0.3725f};
 };
 
@@ -98,14 +135,15 @@ typename TImageOut::Pointer DeepColoredCopy(typename TImage::Pointer input, cons
     for(;!inputIterator.IsAtEnd(); ++inputIterator,++outputIterator ){
         auto pixel = inputIterator.Get();
         typename TImageOut::PixelType tocopy;
-        if(pixel > 255*color_coding[0] && pixel < 255*color_coding[1]){
+        if(pixel > itk::NumericTraits<typename TImage::PixelType>::max()*color_coding[0] && pixel < itk::NumericTraits<typename TImage::PixelType>::max()*color_coding[1]){
             tocopy[0] = target_color[0];
             tocopy[1] = target_color[1];
             tocopy[2] = target_color[2];
         } else {
-            tocopy[0] = pixel;
-            tocopy[1] = pixel;
-            tocopy[2] = pixel;
+            auto scaled_pixel = 255.0*pixel/itk::NumericTraits<typename TImage::PixelType>::max();
+            tocopy[0] = scaled_pixel;
+            tocopy[1] = scaled_pixel;
+            tocopy[2] = scaled_pixel;
         }
         outputIterator.Set(tocopy);
     }
@@ -181,6 +219,7 @@ struct ColoredCachedVolume{
     bool is_visible = true;
 };
 
+
 enum LayoutType{
     ONE,
     TWO,
@@ -192,8 +231,6 @@ enum ViewType{
     MRI_VIEW
 };
 
-
-
 struct Application;
 
 struct Application{
@@ -202,8 +239,6 @@ struct Application{
     TrajectoryConeData trajectory_location;
     LayoutType type = LayoutType::THREE;
     ViewType modalitytype = ViewType::CT_VIEW;
-    std::map<std::string,CachedVolume> high_resolution_ct_volumes;
-    std::map<std::string,CachedVolume> high_resolution_mri_volumes;
     std::map<std::string,ColoredCachedVolume> miscellaneous_colored_volumes;
     std::map<std::string,CachedVolume> miscellaneous_volumes;
     std::map<std::string,CachedVolume> ct_volumes;
@@ -320,20 +355,22 @@ public:
                     resample->SetOutputDirection(fixed_slice_physical->GetDirection());
                     resample->SetDefaultPixelValue(100);
                     
-                    using CastFilterType = itk::CastImageFilter<DICOMImageType,DICOMImageType>;
-                    
-                    auto caster = CastFilterType::New();
-                    caster->SetInput(resample->GetOutput());
+                    using RescaleFilterType = itk::RescaleIntensityImageFilter<DICOMImageType, itk::Image<unsigned char, Dimension>>;
+                    auto rescaler = RescaleFilterType::New();
+                    rescaler->SetInput(resample->GetOutput());
+                    rescaler->SetOutputMinimum(0);
+                    rescaler->SetOutputMaximum(255);
+
 
                     try{
-                        caster->Update();
+                        rescaler->Update();
                     } catch(...){
                         std::printf("failed to resample volume");
                         return;
                     }
 
-                    auto buff = curan::utilities::CaptureBuffer::make_shared(caster->GetOutput()->GetBufferPointer(),caster->GetOutput()->GetPixelContainer()->Size()*sizeof(char),caster->GetOutput());
-                    auto extracted_size = caster->GetOutput()->GetLargestPossibleRegion().GetSize();
+                    auto buff = curan::utilities::CaptureBuffer::make_shared(rescaler->GetOutput()->GetBufferPointer(),rescaler->GetOutput()->GetPixelContainer()->Size()*sizeof(char),rescaler->GetOutput());
+                    auto extracted_size = rescaler->GetOutput()->GetLargestPossibleRegion().GetSize();
                     auto rotation = g_rotation_angle;
                     switch (viewer->get_direction())
                     {
@@ -431,12 +468,22 @@ public:
 };
 
 std::tuple<DICOMImageType::Pointer,DICOMImageType::Pointer> solve_registration(DICOMImageType::Pointer fixed_image,DICOMImageType::Pointer moving_image, Application& appdata) {
+    using InternalPixelType = float;
+    using InternalImageType = itk::Image<InternalPixelType, 3>;
+    using CastToInternalFilterType = itk::CastImageFilter<DICOMImageType, InternalImageType>;
+
+    auto fixedCaster = CastToInternalFilterType::New();
+    fixedCaster->SetInput(fixed_image);
+
+    auto movingCaster = CastToInternalFilterType::New();
+    movingCaster->SetInput(moving_image);
+
     using ImageRegistrationType = DicomPixelType;
     using TransformType = itk::VersorRigid3DTransform<double>;
-    using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
+    using InterpolatorType = itk::LinearInterpolateImageFunction<InternalImageType, double>;
     using OptimizerType = itk::RegularStepGradientDescentOptimizerv4<double>;
-    using MetricType = itk::MattesMutualInformationImageToImageMetricv4<DICOMImageType,DICOMImageType>;
-    using RegistrationType =  itk::ImageRegistrationMethodv4<DICOMImageType,DICOMImageType,TransformType>;
+    using MetricType = itk::MattesMutualInformationImageToImageMetricv4<InternalImageType,InternalImageType>;
+    using RegistrationType =  itk::ImageRegistrationMethodv4<InternalImageType,InternalImageType,TransformType>;
 
     auto metric = MetricType::New();
     auto optimizer = OptimizerType::New();
@@ -457,16 +504,16 @@ std::tuple<DICOMImageType::Pointer,DICOMImageType::Pointer> solve_registration(D
 
     auto transform = TransformType::New();
 
-    using TransformInitializerType = itk::CenteredTransformInitializer<TransformType,DICOMImageType,DICOMImageType>;
+    using TransformInitializerType = itk::CenteredTransformInitializer<TransformType,InternalImageType,InternalImageType>;
     auto initializer = TransformInitializerType::New();
     initializer->SetTransform(transform);
-    initializer->SetFixedImage(fixed_image);
-    initializer->SetMovingImage(moving_image);
+    initializer->SetFixedImage(fixedCaster->GetOutput());
+    initializer->SetMovingImage(movingCaster->GetOutput());
     initializer->MomentsOn();
     initializer->InitializeTransform();
 
-    registration->SetFixedImage(fixed_image);
-    registration->SetMovingImage(moving_image);
+    registration->SetFixedImage(fixedCaster->GetOutput());
+    registration->SetMovingImage(movingCaster->GetOutput());
     registration->SetInitialTransform(transform);
 
     using OptimizerScalesType = OptimizerType::ScalesType;
@@ -531,12 +578,12 @@ std::tuple<DICOMImageType::Pointer,DICOMImageType::Pointer> solve_registration(D
         }
     }
 
-    using ResampleFilterType = itk::ResampleImageFilter<DICOMImageType, DICOMImageType>;
+    using ResampleFilterType = itk::ResampleImageFilter<InternalImageType, InternalImageType>;
     auto finalTransform = registration->GetOutput()->Get();
     auto resample = ResampleFilterType::New();
     
     resample->SetTransform(finalTransform);
-    resample->SetInput(moving_image);
+    resample->SetInput(movingCaster->GetOutput());
     
     resample->SetSize(fixed_image->GetLargestPossibleRegion().GetSize());
     resample->SetOutputOrigin(fixed_image->GetOrigin());
@@ -544,7 +591,7 @@ std::tuple<DICOMImageType::Pointer,DICOMImageType::Pointer> solve_registration(D
     resample->SetOutputDirection(fixed_image->GetDirection());
     resample->SetDefaultPixelValue(0);
     
-    using CastFilterType = itk::CastImageFilter<DICOMImageType,DICOMImageType>;
+    using CastFilterType = itk::CastImageFilter<InternalImageType,DICOMImageType>;
     
     auto caster = CastFilterType::New();
     caster->SetInput(resample->GetOutput());
@@ -565,173 +612,24 @@ std::tuple<DICOMImageType::Pointer,DICOMImageType::Pointer> solve_registration(D
     auto checker = CheckerBoardFilterType::New();
     
     checker->SetInput1(fixed_image);
-    checker->SetInput2(resample->GetOutput());
-    caster = CastFilterType::New();
-    caster->SetInput(checker->GetOutput());
+    checker->SetInput2(resampled_output);
+
     try {
-        caster->Update();
+        checker->Update();
     } catch (const itk::ExceptionObject &err) {
         std::cout << "ExceptionObject caught !" << std::endl;
         std::cout << err << std::endl;
         return std::make_tuple(DICOMImageType::Pointer(),DICOMImageType::Pointer());
     }
 
-   DICOMImageType::Pointer checked_overlap_output = caster->GetOutput();
+   DICOMImageType::Pointer checked_overlap_output = checker->GetOutput();
     return std::make_tuple(resampled_output,checked_overlap_output);
-}
-
-curan::ui::ColorDicomViewer::ImageType::Pointer allocate_image_itk_based(
-    Application& appdata, 
-   DICOMImageType::Pointer input , 
-    const std::array<float,2>& color_coding, 
-    const std::array<float,3>& colortoreplace,
-    float TransparencyValue,
-    float AlphaFuncValue,
-    float SampleDensityValue) {
-    auto convert_to_eigen = [&](gte::Vector3<curan::geometry::PolyHeadra::Rational> point){
-        Eigen::Matrix<double,3,1> converted;
-        converted << (double)point[0] , (double)point[1], (double)point[2];
-        return converted;
-    };
-
-    auto base0 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[1]);
-    auto base1 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[2]);
-    auto base2 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[3]);
-    auto base3 = convert_to_eigen(appdata.trajectory_location.piramid_world_coordinates.geometry.vertices[4]);
-
-    Eigen::Matrix<double,3,1> x_direction = (base1 - base0).normalized();
-    Eigen::Matrix<double,3,1> y_direction = (base3 - base0).normalized();
-    Eigen::Matrix<double, 3, 1> z_direction = x_direction.cross(y_direction);
-    
-    Eigen::Matrix<double, 3, 3> eigen_rotation_matrix;
-    eigen_rotation_matrix.col(0) = x_direction;
-    eigen_rotation_matrix.col(1) = y_direction;
-    eigen_rotation_matrix.col(2) = z_direction;
-
-    curan::ui::ColorDicomViewer::ImageType::Pointer projectionimage = curan::ui::ColorDicomViewer::ImageType::New();
-  
-    curan::ui::ColorDicomViewer::ImageType::SizeType size;
-    size[0] = 512;  // size along X
-    size[1] = 512;  // size along Y 
-    size[2] = 1;   // size along Z
-
-    curan::ui::ColorDicomViewer::ImageType::SpacingType spacing;
-    spacing[0] = (base1 - base0).norm()/(double)size[0]; // mm along X
-    spacing[1] = (base3 - base0).norm()/(double)size[1]; // mm along X
-    spacing[2] = 1.0; // mm along Z
-  
-    curan::ui::ColorDicomViewer::ImageType::PointType origin;
-    origin[0] = base0[0];
-    origin[1] = base0[1];
-    origin[2] = base0[2];
-  
-    auto direction = input->GetDirection();
-    for(size_t i = 0; i < 3; ++i)
-        for(size_t j = 0; j < 3; ++j)
-            direction(i,j) = eigen_rotation_matrix(i,j);
-  
-    curan::ui::ColorDicomViewer::ImageType::RegionType region;
-    region.SetSize(size);
-  
-    projectionimage->SetRegions(region);
-    projectionimage->SetSpacing(spacing);
-    projectionimage->SetOrigin(origin);
-    projectionimage->SetDirection(direction);
-    projectionimage->Allocate();
-    curan::ui::ColorDicomViewer::ImageType::PixelType rgb;
-    rgb[0] = 0;
-    rgb[1] = 0;
-    rgb[2] = 0;
-    projectionimage->FillBuffer(rgb);
-
-    auto mix = [](Eigen::Matrix<double,4,1> l, Eigen::Matrix<double,4,1> r,double mix_ratio){
-        Eigen::Matrix<double,3,1> mixed;
-        mixed = l.block<3,1>(0,0)*(1.0-mix_ratio)+r.block<3,1>(0,0)*mix_ratio;
-        return mixed;
-    };
-
-    // World-space ray source
-    const Eigen::Vector3d t0_world = *appdata.trajectory_location.target_world_coordinates;
-    using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
-    auto interpolator = InterpolatorType::New();
-    interpolator->SetInputImage(input);
-
-    // 2. Pre-calculate the ray start in index space
-    itk::ContinuousIndex<double, 3> startIdx;
-    curan::ui::ColorDicomViewer::ImageType::PointType t0_itk;
-    t0_itk[0] = t0_world[0]; t0_itk[1] = t0_world[1]; t0_itk[2] = t0_world[2];
-    input->TransformPhysicalPointToContinuousIndex(t0_itk, startIdx);
-    float initial_alpha = (1.0/255.0) * interpolator->EvaluateAtContinuousIndex(startIdx);
-
-    // 2. Multi-thread your loop
-    itk::MultiThreaderBase::Pointer multiThreader = itk::MultiThreaderBase::New();
-    multiThreader->ParallelizeImageRegion<3>(
-        projectionimage->GetRequestedRegion(),
-        [&](const curan::ui::ColorDicomViewer::ImageType::RegionType& region) {
-            
-            itk::ImageRegionIteratorWithIndex<curan::ui::ColorDicomViewer::ImageType> it(projectionimage, region);
-            it.GoToBegin();
-            curan::ui::ColorDicomViewer::ImageType::PointType t0_itk;
-            t0_itk[0] = t0_world[0]; t0_itk[1] = t0_world[1]; t0_itk[2] = t0_world[2];
-            
-            for (; !it.IsAtEnd(); ++it) {
-                size_t number_of_accumulations = 0;
-                curan::ui::ColorDicomViewer::ImageType::PointType te_phys;
-                projectionimage->TransformIndexToPhysicalPoint(it.GetIndex(), te_phys);
-                itk::ContinuousIndex<double, 3> endIdx;
-                input->TransformPhysicalPointToContinuousIndex(te_phys, endIdx);  
-
-                Eigen::Matrix<double,4,1> accumulatedColor{0, 0, 0, 0};
-
-                auto dirIdx = endIdx - startIdx;
-                double distIdx = std::sqrt(dirIdx[0]*dirIdx[0] + dirIdx[1]*dirIdx[1] + dirIdx[2]*dirIdx[2]);
-                auto stepIdx = (dirIdx / distIdx) * 0.5;
-                int numSteps = static_cast<int>(distIdx / 0.5);
-                double offset = static_cast<double>(std::rand()) / RAND_MAX;
-                itk::ContinuousIndex<double, 3> currentIdx = startIdx;
-                currentIdx += stepIdx * offset;
-                for (int s = 0; s < numSteps; ++s) {
-                    if (!interpolator->IsInsideBuffer(currentIdx)) {
-                                        currentIdx += stepIdx;
-                                        continue;
-                    }
-
-                    float pixelVal = (1.0/255.0)* interpolator->EvaluateAtContinuousIndex(currentIdx);
-
-                    Eigen::Matrix<double,4,1> src{pixelVal, pixelVal,pixelVal, pixelVal * TransparencyValue};
-                    if(pixelVal > color_coding[0] && pixelVal < color_coding[1]) {
-                        src[0] = colortoreplace[0];
-                        src[1] = colortoreplace[1];
-                        src[2] = colortoreplace[2];
-                    }
-
-                    float current_alpha = src[3];
-                    if (current_alpha > AlphaFuncValue) {
-                        double weight = (1.0 - accumulatedColor[3]) * current_alpha;
-                        accumulatedColor.head<3>() += weight * src.head<3>();
-                        accumulatedColor[3] += weight;
-                        ++number_of_accumulations;
-                    }
-
-                    if (accumulatedColor[3] >= 0.98) break;
-
-                    currentIdx += stepIdx;
-                }
-                //std::printf("number_of_accumulations: %llu\n",number_of_accumulations);
-                curan::ui::ColorDicomViewer::ImageType::PixelType pix;
-                pix[0] = 255.0*accumulatedColor[0];
-                pix[1] = 255.0*accumulatedColor[1];
-                pix[2] = 255.0*accumulatedColor[2];
-                it.Set(pix);
-            }
-        }, nullptr);
-
-    return projectionimage;
 }
 
 curan::ui::ColorDicomViewer::ImageType::Pointer allocate_image_itk_based_phong(
     Application& appdata, 
-   DICOMImageType::Pointer input , 
+    DICOMImageType::Pointer input , 
+    DICOMImageType::Pointer mask , 
     const std::array<float,2>& color_coding, 
     const std::array<float,3>& colortoreplace,
     float TransparencyValue,
@@ -760,8 +658,8 @@ curan::ui::ColorDicomViewer::ImageType::Pointer allocate_image_itk_based_phong(
     curan::ui::ColorDicomViewer::ImageType::Pointer projectionimage = curan::ui::ColorDicomViewer::ImageType::New();
   
     curan::ui::ColorDicomViewer::ImageType::SizeType size;
-    size[0] = 512;  // size along X
-    size[1] = 512;  // size along Y 
+    size[0] = 256;  // size along X
+    size[1] = 256;  // size along Y 
     size[2] = 1;   // size along Z
 
     curan::ui::ColorDicomViewer::ImageType::SpacingType spacing;
@@ -804,6 +702,10 @@ curan::ui::ColorDicomViewer::ImageType::Pointer allocate_image_itk_based_phong(
     using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
     auto interpolator = InterpolatorType::New();
     interpolator->SetInputImage(input);
+
+    using InterpolatorType = itk::LinearInterpolateImageFunction<DICOMImageType, double>;
+    auto maskinterpolator = InterpolatorType::New();
+    maskinterpolator->SetInputImage(mask);
 
     using GradientCalculatorType = itk::CentralDifferenceImageFunction<DICOMImageType, double>;
     auto gradientCalculator = GradientCalculatorType::New();
@@ -815,13 +717,14 @@ curan::ui::ColorDicomViewer::ImageType::Pointer allocate_image_itk_based_phong(
     t0_itk[0] = t0_world[0]; t0_itk[1] = t0_world[1]; t0_itk[2] = t0_world[2];
     input->TransformPhysicalPointToContinuousIndex(t0_itk, startIdx);
     float initial_alpha = (1.0/255.0) * interpolator->EvaluateAtContinuousIndex(startIdx);
-
+    std::random_device rd;
     // 2. Multi-thread your loop
     itk::MultiThreaderBase::Pointer multiThreader = itk::MultiThreaderBase::New();
     multiThreader->ParallelizeImageRegion<3>(
         projectionimage->GetRequestedRegion(),
         [&](const curan::ui::ColorDicomViewer::ImageType::RegionType& region) {
-            
+            std::uniform_real_distribution<> distribution(0.0, 1.0);
+            std::mt19937 generator(rd());
             itk::ImageRegionIteratorWithIndex<curan::ui::ColorDicomViewer::ImageType> it(projectionimage, region);
             it.GoToBegin();
             curan::ui::ColorDicomViewer::ImageType::PointType t0_itk;
@@ -846,7 +749,7 @@ curan::ui::ColorDicomViewer::ImageType::Pointer allocate_image_itk_based_phong(
                 double distIdx = std::sqrt(dirIdx[0]*dirIdx[0] + dirIdx[1]*dirIdx[1] + dirIdx[2]*dirIdx[2]);
                 auto stepIdx = (dirIdx / distIdx) * 0.5;
                 int numSteps = static_cast<int>(distIdx / 0.5);
-                double offset = static_cast<double>(std::rand()) / RAND_MAX;
+                double offset = distribution(generator);
                 itk::ContinuousIndex<double, 3> currentIdx = startIdx;
                 currentIdx += stepIdx * offset;
                 for (int s = 0; s < numSteps; ++s) {
@@ -854,8 +757,10 @@ curan::ui::ColorDicomViewer::ImageType::Pointer allocate_image_itk_based_phong(
                                         currentIdx += stepIdx;
                                         continue;
                     }
-
-                    float pixelVal = (1.0/255.0)* interpolator->EvaluateAtContinuousIndex(currentIdx);
+                    if(maskinterpolator->EvaluateAtContinuousIndex(currentIdx) > 0){
+                        break;
+                    }
+                    float pixelVal = (1.0/itk::NumericTraits<DICOMImageType::PixelType>::max())* interpolator->EvaluateAtContinuousIndex(currentIdx);
                     auto gradITK = gradientCalculator->EvaluateAtContinuousIndex(currentIdx);
                     Eigen::Vector3d normal(gradITK[0], gradITK[1], gradITK[2]);
 
@@ -1509,10 +1414,20 @@ std::unique_ptr<curan::ui::Overlay> create_volume_explorer_page(Application& app
                 desiredRegion.SetIndex(start);
                 extract_filter->SetExtractionRegion(desiredRegion);
                 extract_filter->UpdateLargestPossibleRegion();
-
-               DICOMImageType::Pointer pointer_to_block_of_memory = extract_filter->GetOutput();
-               DICOMImageType::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
-                auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * sizeof(DicomPixelType), pointer_to_block_of_memory);
+                using RescaleFilterType = itk::RescaleIntensityImageFilter<DICOMImageType, itk::Image<unsigned char, 3>>;
+                auto rescaler = RescaleFilterType::New();
+                rescaler->SetInput(extract_filter->GetOutput());
+                rescaler->SetOutputMinimum(0);
+                rescaler->SetOutputMaximum(255);
+                try{
+                    rescaler->Update();
+                } catch(...){
+                    std::cout << "massive failure" << std::endl;
+                }
+                
+               itk::Image<unsigned char, 3>::Pointer pointer_to_block_of_memory = rescaler->GetOutput();
+               itk::Image<unsigned char, 3>::SizeType size_itk = pointer_to_block_of_memory->GetLargestPossibleRegion().GetSize();
+                auto buff = curan::utilities::CaptureBuffer::make_shared(pointer_to_block_of_memory->GetBufferPointer(), pointer_to_block_of_memory->GetPixelContainer()->Size() * 1, pointer_to_block_of_memory);
                 auto extracted_size = pointer_to_block_of_memory->GetBufferedRegion().GetSize();
                 item_explorer->add(Item{identifier, description, buff, extracted_size[0], extracted_size[1]});
             }
@@ -1538,7 +1453,7 @@ std::unique_ptr<curan::ui::Overlay> create_slider_range_page(Application& appdat
         if(appdata.modalitytype == ViewType::CT_VIEW){
             auto higher_ct_value = slider->get_current_value();
             if(higher_ct_value < appdata.color_coding.ct_limits[0])
-                 slider->set_current_value(appdata.color_coding.ct_limits[0]+0.01);
+                 slider->set_current_value(appdata.color_coding.ct_limits[0]+0.001);
             else
                 appdata.color_coding.ct_limits[1] = higher_ct_value;
 
@@ -1554,7 +1469,7 @@ std::unique_ptr<curan::ui::Overlay> create_slider_range_page(Application& appdat
         } else {
             auto higher_mri_value = slider->get_current_value();
             if(higher_mri_value < appdata.color_coding.mri_limits[0])
-                 slider->set_current_value(appdata.color_coding.mri_limits[0]+0.01);
+                 slider->set_current_value(appdata.color_coding.mri_limits[0]+0.001);
             else
                 appdata.color_coding.mri_limits[1] = higher_mri_value;
 
@@ -1583,7 +1498,7 @@ std::unique_ptr<curan::ui::Overlay> create_slider_range_page(Application& appdat
         if(appdata.modalitytype == ViewType::CT_VIEW){
             auto lower_ct_value = slider->get_current_value();
             if(lower_ct_value > appdata.color_coding.ct_limits[1])
-                 slider->set_current_value(appdata.color_coding.ct_limits[1]-0.01);
+                 slider->set_current_value(appdata.color_coding.ct_limits[1]-0.001);
             else
                 appdata.color_coding.ct_limits[0] = lower_ct_value;
 
@@ -1599,7 +1514,7 @@ std::unique_ptr<curan::ui::Overlay> create_slider_range_page(Application& appdat
         } else {
             auto lower_mri_value = slider->get_current_value();
             if(lower_mri_value > appdata.color_coding.mri_limits[1])
-                 slider->set_current_value(appdata.color_coding.mri_limits[1]-0.01);
+                 slider->set_current_value(appdata.color_coding.mri_limits[1]-0.001);
             else
                 appdata.color_coding.mri_limits[0] = lower_mri_value;
 
@@ -1640,7 +1555,7 @@ std::unique_ptr<curan::ui::Overlay> create_projection_page(Application& appdata)
         auto transparency = slider->get_current_value();
         auto range = slider->get_limits();
         appdata.TransparencyValue = transparency*(range[1]-range[0])+range[0];
-        //std::printf("appdata.TransparencyValue[%.6f] appdata.AlphaFuncValue[%.6f]\n",appdata.TransparencyValue,appdata.AlphaFuncValue);
+        std::printf("appdata.TransparencyValue[%.6f] appdata.AlphaFuncValue[%.6f]\n",appdata.TransparencyValue,appdata.AlphaFuncValue);
         try{                                                                                                                                                                    
             if(appdata.modalitytype == ViewType::CT_VIEW){
                DICOMImageType::Pointer ct_input;
@@ -1648,7 +1563,12 @@ std::unique_ptr<curan::ui::Overlay> create_projection_page(Application& appdata)
                     ct_input = search->second.img;
                 else
                     throw std::runtime_error("failure due to missing volume");
-                curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based_phong(appdata,ct_input,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+                DICOMImageType::Pointer mask;
+                if (auto search = appdata.miscellaneous_volumes.find("mask"); search != appdata.miscellaneous_volumes.end())
+                    mask = search->second.img;
+                else
+                    throw std::runtime_error("failure due to missing volume");
+                curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based_phong(appdata,ct_input,mask,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
                 appdata.miscellaneous_colored_volumes["ct_projection"] = ColoredCachedVolume{ct_projected_input};
                 appdata.color_vol_mas.update_volume(ct_projected_input);
             }
@@ -1657,9 +1577,13 @@ std::unique_ptr<curan::ui::Overlay> create_projection_page(Application& appdata)
                 if (auto search = appdata.mri_volumes.find("trajectory"); search != appdata.mri_volumes.end())
                     mri_input = search->second.img;
                 else
-                throw std::runtime_error("failure due to missing volume");
-
-                curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based_phong(appdata,mri_input,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+                    throw std::runtime_error("failure due to missing volume");
+                DICOMImageType::Pointer mask;
+                if (auto search = appdata.miscellaneous_volumes.find("mask"); search != appdata.miscellaneous_volumes.end())
+                    mask = search->second.img;
+                else
+                    throw std::runtime_error("failure due to missing volume");
+                curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based_phong(appdata,mri_input,mask,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
                 appdata.miscellaneous_colored_volumes["mri_projection"] = ColoredCachedVolume{mri_projected_input};
                 appdata.color_vol_mas.update_volume(mri_projected_input);
             }
@@ -1687,7 +1611,7 @@ std::unique_ptr<curan::ui::Overlay> create_projection_page(Application& appdata)
         auto alpha = slider->get_current_value();
         auto range = slider->get_limits();
         appdata.AlphaFuncValue = alpha*(range[1]-range[0])+range[0];
-        //std::printf("appdata.TransparencyValue[%.6f] appdata.AlphaFuncValue[%.6f]\n",appdata.TransparencyValue,appdata.AlphaFuncValue);
+        std::printf("appdata.TransparencyValue[%.6f] appdata.AlphaFuncValue[%.6f]\n",appdata.TransparencyValue,appdata.AlphaFuncValue);
         try{                                                                                                                                                                    
             if(appdata.modalitytype == ViewType::CT_VIEW){
                DICOMImageType::Pointer ct_input;
@@ -1695,7 +1619,12 @@ std::unique_ptr<curan::ui::Overlay> create_projection_page(Application& appdata)
                     ct_input = search->second.img;
                 else
                     throw std::runtime_error("failure due to missing volume");
-                curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based_phong(appdata,ct_input,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+                DICOMImageType::Pointer mask;
+                if (auto search = appdata.miscellaneous_volumes.find("mask"); search != appdata.miscellaneous_volumes.end())
+                    mask = search->second.img;
+                else
+                    throw std::runtime_error("failure due to missing volume");
+                curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based_phong(appdata,ct_input,mask,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
                 appdata.miscellaneous_colored_volumes["ct_projection"] = ColoredCachedVolume{ct_projected_input};
                 appdata.color_vol_mas.update_volume(ct_projected_input);
             }
@@ -1705,8 +1634,12 @@ std::unique_ptr<curan::ui::Overlay> create_projection_page(Application& appdata)
                     mri_input = search->second.img;
                 else
                 throw std::runtime_error("failure due to missing volume");
-
-                curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based_phong(appdata,mri_input,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+                DICOMImageType::Pointer mask;
+                if (auto search = appdata.miscellaneous_volumes.find("mask"); search != appdata.miscellaneous_volumes.end())
+                    mask = search->second.img;
+                else
+                    throw std::runtime_error("failure due to missing volume");
+                curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based_phong(appdata,mri_input,mask,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
                 appdata.miscellaneous_colored_volumes["mri_projection"] = ColoredCachedVolume{mri_projected_input};
                 appdata.color_vol_mas.update_volume(mri_projected_input);
             }
@@ -2254,8 +2187,8 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         return;
     }
 
-   DICOMImageType::IndexType local_index;
-   DICOMImageType::PointType itk_point_in_world_coordinates;
+    DICOMImageType::IndexType local_index;
+    DICOMImageType::PointType itk_point_in_world_coordinates;
     local_index[0] = strokes.point_in_image_coordinates(0, 0);
     local_index[1] = strokes.point_in_image_coordinates(1, 0);
     local_index[2] = strokes.point_in_image_coordinates(2, 0);
@@ -2283,9 +2216,12 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
         curan::geometry::Piramid geom{curan::geometry::CENTROID_ALIGNED};
 
         const auto target_world_index = *appdata.trajectory_location.target_world_coordinates;
-        const auto main_diagonal_world_index = *appdata.trajectory_location.main_diagonal_word_coordinates;
+        const auto tmp_main_diagonal_world_index = *appdata.trajectory_location.main_diagonal_word_coordinates;
 
-        Eigen::Matrix<double,3,1> vector_aligned = target_world_index-main_diagonal_world_index;
+        Eigen::Matrix<double,3,1> vector_aligned = target_world_index-tmp_main_diagonal_world_index;
+
+        const auto main_diagonal_world_index += target_world_index+2.0*vector_aligned;
+
         double scale = vector_aligned.norm();
         Eigen::Vector3d z_direction = vector_aligned.normalized();
         Eigen::Vector3d x_direction = z_direction;
@@ -2763,13 +2699,13 @@ void select_entry_point_and_validate(Application& appdata,curan::ui::ColorDicomV
 std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_selection(Application& appdata){
     using namespace curan::ui;
 
-   DICOMImageType::Pointer ct_input;
+    DICOMImageType::Pointer ct_input;
     if (auto search = appdata.ct_volumes.find("trajectory"); search != appdata.ct_volumes.end())
         ct_input = search->second.img;
     else
         throw std::runtime_error("failure due to missing volume");
 
-   DICOMImageType::Pointer mri_input;
+    DICOMImageType::Pointer mri_input;
     if (auto search = appdata.mri_volumes.find("trajectory"); search != appdata.mri_volumes.end())
         mri_input = search->second.img;
     else
@@ -2779,9 +2715,11 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
         appdata.vol_mas->update_volume(ct_input,curan::ui::DicomVolumetricMask<std::uint16_t>::Policy::UPDATE_GEOMETRIES);
     else 
         appdata.vol_mas->update_volume(mri_input,curan::ui::DicomVolumetricMask<std::uint16_t>::Policy::UPDATE_GEOMETRIES);
-    try{                                                                                                                                                                    
-        curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based_phong(appdata,ct_input,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
-        curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based_phong(appdata,mri_input,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+    try{       
+        auto mask = transform_with_boundary_ct_scan(ct_input,std::array<double,2>{0.4,1.0});
+        appdata.miscellaneous_volumes["mask"] = CachedVolume{mask};
+        curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based_phong(appdata,ct_input,mask,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
+        curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based_phong(appdata,mri_input,mask,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
         appdata.miscellaneous_colored_volumes["ct_projection"] = ColoredCachedVolume{ct_projected_input};
         appdata.miscellaneous_colored_volumes["mri_projection"] = ColoredCachedVolume{mri_projected_input};
         if(appdata.modalitytype == ViewType::CT_VIEW)
@@ -3105,7 +3043,6 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
     auto minimage_container = Container::make(Container::ContainerType::LINEAR_CONTAINER, Container::Arrangement::VERTICAL);
     *minimage_container << std::move(minipage);
     vol_mas->add_pressedhighlighted_call([this](DicomVolumetricMask<std::uint16_t> *vol_mas, ConfigDraw *config_draw, const directed_stroke &strokes){
-        std::cout << "pressed was called!\n";
         if(volume_callback)
             volume_callback(*this,vol_mas,config_draw,strokes);
     });
@@ -3136,11 +3073,12 @@ std::unique_ptr<curan::ui::Container> Application::main_page(){
 #include <thread>
 
 
-using DICOMImageType = itk::Image<DicomPixelType, Dimension>;
+
 
 std::optional<DICOMImageType::Pointer> get_volume(std::string path, std::string identifier)
 {
-	using ReaderType = itk::ImageSeriesReader<DICOMImageType>;
+    using InternalImageType = itk::Image<double, Dimension>;
+	using ReaderType = itk::ImageSeriesReader<InternalImageType>;
 	auto reader = ReaderType::New();
 
 	using ImageIOType = itk::GDCMImageIO;
@@ -3186,20 +3124,20 @@ std::optional<DICOMImageType::Pointer> get_volume(std::string path, std::string 
 
 	reader->SetFileNames(targetFileNames);
 
-	using OrienterType = itk::OrientImageFilter<DICOMImageType, DICOMImageType>;
+	using OrienterType = itk::OrientImageFilter<InternalImageType, InternalImageType>;
 	auto orienter = OrienterType::New();
 	orienter->UseImageDirectionOn(); // Use direction cosines from DICOM
 
 	orienter->SetDesiredCoordinateOrientation(
 		itk::SpatialOrientation::ITK_COORDINATE_ORIENTATION_RAS);
 	orienter->SetInput(reader->GetOutput());
-    using RescaleType = itk::RescaleIntensityImageFilter<DICOMImageType, DICOMImageType>;
+    using RescaleType = itk::RescaleIntensityImageFilter<InternalImageType, InternalImageType>;
 	auto rescale = RescaleType::New();
 	rescale->SetInput(orienter->GetOutput()); // Use oriented image
 	rescale->SetOutputMinimum(0);
 	rescale->SetOutputMaximum(itk::NumericTraits<std::uint16_t>::max());
 
-	using FilterType = itk::CastImageFilter<DICOMImageType, DICOMImageType>;
+	using FilterType = itk::CastImageFilter<InternalImageType, DICOMImageType>;
 	auto filter = FilterType::New();
 	filter->SetInput(rescale->GetOutput());
 
@@ -3221,51 +3159,6 @@ std::optional<DICOMImageType::Pointer> get_volume(std::string path, std::string 
 
 	return filter->GetOutput();
 }
-
-template<typename Image>
-typename Image::Pointer missalign(typename Image::Pointer image, std::array<double,3> in_translation, double angle_offset){
-    using TransformType = itk::VersorRigid3DTransform<double>;
-    auto groundTruthTransform = TransformType::New();
-
-    // Set rotation angle
-    TransformType::VersorType rotation;
-    {
-        itk::Vector<double,3> axis;
-        axis[0] = 0.0;
-        axis[1] = 1.0;  // rotate around Y-axis
-        axis[2] = 0.0;
-
-        axis.Normalize();
-
-        double angleInRadians = itk::Math::pi / angle_offset; // 15 degrees
-        rotation.Set(axis, angleInRadians);
-    }
-    groundTruthTransform->SetRotation(rotation);
-
-    // Set translation
-    TransformType::OutputVectorType translation;
-    translation[0] = in_translation[0];  // mm
-    translation[1] = in_translation[1];  // mm
-    translation[2] = in_translation[2];  // mm
-    groundTruthTransform->SetTranslation(translation);
-
-    using ResampleFilterType = itk::ResampleImageFilter<Image,Image>;
-    auto resampler = ResampleFilterType::New();
-
-    resampler->SetInput(image); // original moving image
-    resampler->SetTransform(groundTruthTransform);
-
-    resampler->SetSize(image->GetLargestPossibleRegion().GetSize());
-    resampler->SetOutputOrigin(image->GetOrigin());
-    resampler->SetOutputSpacing(image->GetSpacing());
-    resampler->SetOutputDirection(image->GetDirection());
-    resampler->SetDefaultPixelValue(0);
-    resampler->Update();
-
-    typename Image::Pointer artificiallyMisalignedImage = resampler->GetOutput();
-    return artificiallyMisalignedImage;
-}
-
 
 int main(int argc, char* argv[]) {
     try{
@@ -3309,7 +3202,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        DicomVolumetricMask vol{*fixed_volume};
+        DicomVolumetricMask<std::uint16_t> vol{*fixed_volume};
         Application appdata{resources,&vol};
         appdata.ct_volumes["raw"] = CachedVolume{*fixed_volume};
         appdata.mri_volumes["raw"] = CachedVolume{*moving_volume};

@@ -62,11 +62,11 @@ int main() {
         castfilter->SetInput(rescale->GetOutput());
         castfilter->Update();
         
-        curan::ui::DicomVolumetricMask vol{castfilter->GetOutput()};
+        curan::ui::DicomVolumetricMask<std::uint8_t> vol{castfilter->GetOutput()};
 
-        std::unique_ptr<curan::ui::DicomViewer> image_display_x = curan::ui::DicomViewer::make(resources, &vol, Direction::X);
-        std::unique_ptr<curan::ui::DicomViewer> image_display_y = curan::ui::DicomViewer::make(resources, &vol, Direction::Y);
-        std::unique_ptr<curan::ui::DicomViewer> image_display_z = curan::ui::DicomViewer::make(resources, &vol, Direction::Z);
+        std::unique_ptr<curan::ui::DicomViewer<std::uint8_t>> image_display_x = curan::ui::DicomViewer<std::uint8_t>::make(resources, &vol, Direction::X);
+        std::unique_ptr<curan::ui::DicomViewer<std::uint8_t>> image_display_y = curan::ui::DicomViewer<std::uint8_t>::make(resources, &vol, Direction::Y);
+        std::unique_ptr<curan::ui::DicomViewer<std::uint8_t>> image_display_z = curan::ui::DicomViewer<std::uint8_t>::make(resources, &vol, Direction::Z);
 
 		auto container = Container::make(Container::ContainerType::LINEAR_CONTAINER,Container::Arrangement::HORIZONTAL);
 		*container << std::move(image_display_x) << std::move(image_display_y) << std::move(image_display_z);
