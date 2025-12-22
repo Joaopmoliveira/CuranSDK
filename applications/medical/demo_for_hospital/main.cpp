@@ -45,6 +45,9 @@
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkImageSeriesReader.h"
 #include "itkRayCastInterpolateImageFunction.h"
+#include "itkBinaryThresholdImageFilter.h"
+#include "itkConnectedComponentImageFilter.h"
+#include "itkLabelShapeKeepNObjectsImageFilter.h"
 
 #include <Eigen/Dense>
 #include "itkCheckerBoardImageFilter.h"
@@ -82,6 +85,9 @@ typename TImage::Pointer DeepCopy(typename TImage::Pointer input)
 template <typename TImage>
 typename TImage::Pointer transform_with_boundary_ct_scan(typename TImage::Pointer input,std::array<double,2> range)
 {
+    using LabelPixelType = unsigned int;
+    using LabelImageType = itk::Image<LabelPixelType, TImage::ImageDimension>;
+
     range[0] *= itk::NumericTraits<typename TImage::PixelType>::max();
     range[1] *= itk::NumericTraits<typename TImage::PixelType>::max();
 
@@ -97,20 +103,22 @@ typename TImage::Pointer transform_with_boundary_ct_scan(typename TImage::Pointe
     auto connectedFilter = ConnectedComponentFilterType::New();
     connectedFilter->SetInput(thresholdFilter->GetOutput());
 
-    using KeepObjectsFilterType = itk::LabelShapeKeepObjectsImageFilter<itk::Image<unsigned int, TImage::ImageDimension>>;
-    auto keepFilter = KeepObjectsFilterType::New();
-    keepFilter->SetInput(connectedFilter->GetOutput());
-    keepFilter->SetBackgroundValue(0);
-    keepFilter->SetNumberOfObjects(1); 
-    keepFilter->SetAttribute(KeepObjectsFilterType::LabelObjectType::NUMBER_OF_PIXELS); 
-
-    keepFilter->Update();
+    using KeepNFilterType = itk::LabelShapeKeepNObjectsImageFilter<LabelImageType>;
+    auto keepNFilter = KeepNFilterType::New();
+    keepNFilter->SetInput(connectedFilter->GetOutput());
+    keepNFilter->SetNumberOfObjects(1); // We only want the largest
+    keepNFilter->SetBackgroundValue(0);
     
+    // Sort by Number of Pixels (Size)
+    // In ITK, this is the default attribute, but explicitly setting it is safer:
+    keepNFilter->SetAttribute(KeepNFilterType::LabelObjectType::NUMBER_OF_PIXELS);
+
+    // 5. Cast back to the original TImage type
     using CastFilterType = itk::CastImageFilter<LabelImageType, TImage>;
     auto castFilter = CastFilterType::New();
-    castFilter->SetInput(keepFilter->GetOutput());
+    castFilter->SetInput(keepNFilter->GetOutput());
+
     castFilter->Update();
-    
     return castFilter->GetOutput();
 }
 
@@ -2220,7 +2228,7 @@ void select_target_and_region_of_entry_point_selection(Application& appdata,cura
 
         Eigen::Matrix<double,3,1> vector_aligned = target_world_index-tmp_main_diagonal_world_index;
 
-        const auto main_diagonal_world_index += target_world_index+2.0*vector_aligned;
+        const auto main_diagonal_world_index = target_world_index-2.0*vector_aligned;
 
         double scale = vector_aligned.norm();
         Eigen::Vector3d z_direction = vector_aligned.normalized();
@@ -2716,7 +2724,7 @@ std::unique_ptr<curan::ui::Container> select_entry_point_and_validate_point_sele
     else 
         appdata.vol_mas->update_volume(mri_input,curan::ui::DicomVolumetricMask<std::uint16_t>::Policy::UPDATE_GEOMETRIES);
     try{       
-        auto mask = transform_with_boundary_ct_scan(ct_input,std::array<double,2>{0.4,1.0});
+        auto mask = transform_with_boundary_ct_scan<DICOMImageType>(ct_input,std::array<double,2>{0.4,1.0});
         appdata.miscellaneous_volumes["mask"] = CachedVolume{mask};
         curan::ui::ColorDicomViewer::ImageType::Pointer ct_projected_input = allocate_image_itk_based_phong(appdata,ct_input,mask,appdata.color_coding.ct_limits,{1.0f,0.0f,0.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
         curan::ui::ColorDicomViewer::ImageType::Pointer mri_projected_input = allocate_image_itk_based_phong(appdata,mri_input,mask,appdata.color_coding.mri_limits,{0.0f,0.0f,1.0f},appdata.TransparencyValue,appdata.AlphaFuncValue,appdata.SampleDensityValue);
